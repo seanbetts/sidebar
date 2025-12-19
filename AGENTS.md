@@ -80,6 +80,69 @@ These skills provide detailed guidance for specific tasks. When the use case mat
 
 **Principle:** Skills are authoritative. Read the relevant SKILL.md for detailed procedures rather than improvising.
 
+## Managing Skill Dependencies
+
+When creating skills with bundled scripts that require external Python packages:
+
+### Automated Approach (Recommended)
+
+1. **Scan skill for dependencies**
+   ```bash
+   python scripts/add_skill_dependencies.py <skill-name>
+   ```
+   This helper script will:
+   - Scan all Python scripts in the skill's `scripts/` directory
+   - Detect imported packages using AST parsing
+   - Filter out standard library modules
+   - Show which external packages are needed
+   - Update `pyproject.toml` with missing dependencies
+
+2. **Rebuild Docker container**
+   ```bash
+   docker compose build
+   docker compose up -d
+   ```
+   The Docker container automatically installs all dependencies from `pyproject.toml` at build time.
+
+3. **Verify in container**
+   ```bash
+   docker compose exec agent-smith python -c "import requests; import pypdf"
+   ```
+
+### Manual Approach
+
+If you prefer manual control or the helper script doesn't detect something:
+
+1. **Add dependency to pyproject.toml**
+   Edit the `dependencies` list in `pyproject.toml`:
+   ```toml
+   dependencies = [
+       "your-package>=1.0.0",
+   ]
+   ```
+
+2. **Rebuild Docker container**
+   ```bash
+   docker compose build
+   docker compose up -d
+   ```
+
+### Currently Installed Packages
+
+These packages are already available in the Docker container:
+- **pypdf** - PDF processing (pdf skill)
+- **python-pptx** - PowerPoint processing (pptx skill)
+- **Pillow** - Image manipulation (used by pptx skill)
+- **defusedxml** - Safe XML parsing (used by docx/pptx ooxml scripts)
+- **requests** - HTTP library (for custom scripts)
+
+### Important Notes
+
+- **All skill dependencies** must go in `pyproject.toml` `dependencies` (not `dev` group)
+- **Dev dependencies** (like `skills-ref`) stay in `[dependency-groups]` and are NOT installed in Docker
+- **Local modules** (like `ooxml/` in docx/pptx skills) don't need to be added - they're bundled with the skill
+- **Rebuild required** - You must rebuild Docker whenever dependencies change
+
 ## Validation (mandatory)
 
 ### When to Run Validation
@@ -108,9 +171,10 @@ These skills provide detailed guidance for specific tasks. When the use case mat
 
 - **`skills/`** - All Agent Skills. Each subdirectory is a skill with SKILL.md.
 - **`scripts/validate-all.sh`** - Validation script for all skills. Keep updated if validation logic changes.
-- **`docker/Dockerfile`** - Docker configuration for bash + Unix environment. Keep minimal (no dev tools).
+- **`scripts/add_skill_dependencies.py`** - Helper script to scan skill imports and update pyproject.toml.
+- **`docker/Dockerfile`** - Docker configuration for bash + Unix environment with auto-installed dependencies.
 - **`docker-compose.yml`** - Development environment config. Mounts skills/ as volume.
-- **`pyproject.toml`** - Python project config. Dev dependencies only (skills-ref).
+- **`pyproject.toml`** - Python project config. Runtime dependencies for skills, dev dependencies for validation.
 - **`AGENTS.md`** - This file. Keep updated as project evolves.
 - **`README.md`** - Human-readable documentation.
 

@@ -7,8 +7,19 @@ authors = [
 ]
 requires-python = ">=3.11"
 
-# No runtime dependencies initially - add as needed by skills
-dependencies = []
+# Runtime dependencies for skills with bundled scripts
+dependencies = [
+    # PDF processing (pdf skill)
+    "pypdf>=4.0.0",
+    # PowerPoint processing (pptx skill)
+    "python-pptx>=0.6.23",
+    # Image manipulation (used by pptx skill)
+    "Pillow>=10.0.0",
+    # Safe XML parsing (used by docx/pptx ooxml scripts)
+    "defusedxml>=0.7.1",
+    # HTTP library (for custom scripts)
+    "requests>=2.31.0",
+]
 
 [dependency-groups]
 dev = [
