@@ -51,6 +51,47 @@ vim skills/my-new-skill/SKILL.md
 ./scripts/validate-all.sh
 ```
 
+## Testing
+
+Agent-smith uses pytest for testing critical scripts and utilities.
+
+### Running Tests
+
+```bash
+# On your local machine
+python scripts/run_tests.py
+
+# Run with coverage report
+python scripts/run_tests.py --cov
+
+# Run specific test file
+python scripts/run_tests.py tests/scripts/test_add_skill_dependencies.py
+
+# In Docker container
+./scripts/run_tests_docker.sh
+```
+
+### Test-Driven Development
+
+When adding new features, write tests first:
+
+1. Create test file in `tests/`
+2. Write test cases (they should fail)
+3. Implement the feature
+4. Run tests (they should pass)
+5. Run full suite before committing
+
+See [AGENTS.md](./AGENTS.md#testing-tdd-workflow) for detailed TDD workflow.
+
+### What's Tested
+
+- ✅ Critical utility scripts (add_skill_dependencies.py)
+- ✅ Validation logic (quick_validate.py)
+- ✅ Helper modules (XMLEditor, utilities)
+- ✅ Complex domain logic (text extraction, document manipulation)
+
+All tests live in the `tests/` directory at project root.
+
 ## Structure
 
 ```

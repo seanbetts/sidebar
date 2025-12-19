@@ -23,8 +23,14 @@ COPY pyproject.toml ./
 # handling corporate proxies/firewalls with self-signed certificates
 RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -e .
 
+# Install pytest for testing (minimal, doesn't need full dev group)
+RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org pytest>=8.0.0
+
 # Skills will be mounted at /skills
 RUN mkdir -p /skills
+# Tests will be mounted at /tests
+RUN mkdir -p /tests
+
 WORKDIR /skills
 
 # Default command: interactive bash

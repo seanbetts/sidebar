@@ -25,4 +25,28 @@ dependencies = [
 dev = [
     # Agent Skills validation tool (dev only)
     "skills-ref @ git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref",
+    # Testing infrastructure
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-xdist>=3.5.0",  # Parallel test execution
+    "PyYAML>=6.0",  # Required by quick_validate.py
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",                    # Verbose output
+    "--strict-markers",      # Raise error on unknown markers
+    "--tb=short",           # Shorter traceback format
+    "--cov=scripts",        # Coverage for scripts/
+    "--cov=skills",         # Coverage for skills/*/scripts/
+    "--cov-report=term-missing",  # Show missing lines
+    "--cov-report=html",    # HTML coverage report
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
 ]
