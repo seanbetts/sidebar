@@ -177,10 +177,6 @@ Follow this format for commit messages:
 <type>: <brief description>
 
 <detailed description>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
 **Types:**
@@ -198,10 +194,6 @@ feat: add web-scraping skill
 
 Add new skill for web scraping with BeautifulSoup.
 Includes example scripts and common patterns.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
 ## Security Considerations
