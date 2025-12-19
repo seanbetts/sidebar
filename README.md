@@ -2,6 +2,8 @@
 
 Lightweight development environment for [Agent Skills](https://github.com/agentskills/agentskills).
 
+> **For AI Agents:** See [AGENTS.md](./AGENTS.md) for detailed development instructions.
+
 ## Setup
 
 ```bash
@@ -56,7 +58,9 @@ agent-smith/
 ├── skills/            # Agent skills (mounted to /skills in container)
 ├── scripts/           # Utility scripts
 ├── docker/            # Docker configuration
-└── pyproject.toml     # Python project config
+├── pyproject.toml     # Python project config
+├── README.md          # Human-readable documentation
+└── AGENTS.md          # AI agent development guide
 ```
 
 ## Resources
@@ -77,3 +81,4 @@ agent-smith/
 
 - **[Skill Client Integration Spec](https://github.com/anthropics/skills/blob/main/spec/skill-client-integration.md)** - Implementing filesystem-based and tool-based skill clients
 - **[Agent Skills Repository](https://github.com/agentskills/agentskills)** - Main project repository
+- **[AGENTS.md Standard](https://agents.md)** - Format for AI agent development instructions
