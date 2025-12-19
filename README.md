@@ -76,9 +76,9 @@ agent-smith/
 - **[skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref)** - Reference library for validating skills
 - **[Skill Creator](./skills/skill-creator/SKILL.md)** - Included skill for creating new skills
 - **[Example Skills](https://github.com/anthropics/skills)** - Anthropic's official skills collection
+- **[AGENTS.md](https://agents.md)** - Standard format for AI agent development instructions (see our [AGENTS.md](./AGENTS.md))
 
 ### Advanced
 
 - **[Skill Client Integration Spec](https://github.com/anthropics/skills/blob/main/spec/skill-client-integration.md)** - Implementing filesystem-based and tool-based skill clients
 - **[Agent Skills Repository](https://github.com/agentskills/agentskills)** - Main project repository
-- **[AGENTS.md Standard](https://agents.md)** - Format for AI agent development instructions
