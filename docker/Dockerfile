@@ -1,15 +1,19 @@
 FROM python:3.11-slim
 
-# Install essential Unix tools for skill development and CA certificates
+# Install essential Unix tools and Doppler CLI dependencies
 RUN apt-get update && apt-get install -y \
     git \
     curl \
     vim \
     ca-certificates \
+    apt-transport-https \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv (Python package manager)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Doppler CLI installation skipped due to corporate firewall restrictions
+# DOPPLER_TOKEN is available as environment variable (configured in docker-compose.yml)
+# You can use doppler run from the host, or manually install doppler in the container if needed:
+#   docker cp $(which doppler) agent-smith:/usr/local/bin/doppler
 
 # Create app directory for installing dependencies
 RUN mkdir -p /app
