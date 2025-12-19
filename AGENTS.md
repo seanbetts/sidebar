@@ -167,14 +167,141 @@ These packages are already available in the Docker container:
 3. Re-run validation
 4. Do not commit until validation passes
 
+## Testing (TDD workflow)
+
+### Running Tests
+
+**Before every commit** - Run tests to ensure no regressions:
+
+```bash
+# Run all tests on host
+python scripts/run_tests.py
+
+# Run specific test file
+python scripts/run_tests.py tests/scripts/test_add_skill_dependencies.py
+
+# Run tests in Docker
+./scripts/run_tests_docker.sh
+
+# Run tests with coverage report
+python scripts/run_tests.py --cov
+```
+
+### Test-Driven Development (TDD)
+
+When adding new features to scripts or utilities:
+
+1. **Write tests first**
+   ```bash
+   # Create test file
+   vim tests/scripts/test_my_new_feature.py
+
+   # Write test cases for expected behavior
+   def test_my_new_feature_basic_case():
+       result = my_new_feature("input")
+       assert result == "expected output"
+   ```
+
+2. **Run tests (they should fail)**
+   ```bash
+   python scripts/run_tests.py tests/scripts/test_my_new_feature.py
+   # Expected: FAILED (feature not implemented yet)
+   ```
+
+3. **Implement the feature**
+   ```bash
+   vim scripts/my_new_script.py
+   # Write the actual implementation
+   ```
+
+4. **Run tests again (they should pass)**
+   ```bash
+   python scripts/run_tests.py tests/scripts/test_my_new_feature.py
+   # Expected: PASSED
+   ```
+
+5. **Run all tests before committing**
+   ```bash
+   python scripts/run_tests.py
+   ./scripts/validate-all.sh
+   git add .
+   git commit -m "feat: add my new feature"
+   ```
+
+### What to Test
+
+**Test these:**
+- ✅ Scripts that modify files (add_skill_dependencies.py)
+- ✅ Validation logic (quick_validate.py)
+- ✅ Helper modules used by multiple scripts (utilities.py, XMLEditor)
+- ✅ Complex domain logic (text extraction, document manipulation)
+
+**Don't test these:**
+- ❌ Simple glue scripts (one-time utilities)
+- ❌ Scripts that only call other libraries
+- ❌ SKILL.md files (validated by skills-ref)
+
+### Test Structure
+
+All tests live in the central `tests/` directory:
+
+```
+tests/
+├── scripts/           # Tests for scripts/ directory
+├── skills/            # Tests for skills/**/scripts/
+├── fixtures/          # Test data (sample files)
+└── conftest.py        # Shared fixtures
+```
+
+### Writing Good Tests
+
+**Use fixtures from conftest.py:**
+```python
+def test_with_temp_directory(temp_dir):
+    # temp_dir is a Path object to temporary directory
+    test_file = temp_dir / "test.txt"
+    test_file.write_text("content")
+    assert test_file.exists()
+```
+
+**Test edge cases:**
+```python
+def test_handles_missing_file():
+    with pytest.raises(FileNotFoundError):
+        process_file("nonexistent.txt")
+```
+
+**Use descriptive names:**
+```python
+# Good
+def test_add_skill_dependencies_filters_stdlib_modules():
+    ...
+
+# Bad
+def test_filter():
+    ...
+```
+
+### Test Coverage
+
+Focus on testing critical functionality:
+- ✅ Dependency management workflow (add_skill_dependencies.py)
+- ✅ Skill validation (quick_validate.py)
+- ✅ Skill discovery (list_skills.py)
+
+Coverage reports are generated in `htmlcov/` directory after running tests with `--cov`.
+
 ## File Artefacts (maintain these)
 
 - **`skills/`** - All Agent Skills. Each subdirectory is a skill with SKILL.md.
+- **`tests/`** - Test suite for critical scripts and utilities. Uses pytest framework.
 - **`scripts/validate-all.sh`** - Validation script for all skills. Keep updated if validation logic changes.
 - **`scripts/add_skill_dependencies.py`** - Helper script to scan skill imports and update pyproject.toml.
+- **`scripts/run_tests.py`** - Test runner for host environment.
+- **`scripts/run_tests_docker.sh`** - Test runner for Docker environment.
 - **`docker/Dockerfile`** - Docker configuration for bash + Unix environment with auto-installed dependencies.
-- **`docker-compose.yml`** - Development environment config. Mounts skills/ as volume.
-- **`pyproject.toml`** - Python project config. Runtime dependencies for skills, dev dependencies for validation.
+- **`docker-compose.yml`** - Development environment config. Mounts skills/ and tests/ as volumes.
+- **`pyproject.toml`** - Python project config. Runtime dependencies for skills, dev dependencies for validation and testing.
 - **`AGENTS.md`** - This file. Keep updated as project evolves.
 - **`README.md`** - Human-readable documentation.
 

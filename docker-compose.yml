@@ -6,6 +6,8 @@ services:
     volumes:
       # Mount skills directory (bidirectional - edit locally, access in container)
       - ./skills:/skills
+      # Mount tests directory for running tests in Docker
+      - ./tests:/tests
     stdin_open: true
     tty: true
     environment:

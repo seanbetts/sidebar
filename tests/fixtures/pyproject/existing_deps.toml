@@ -1,0 +1,10 @@
+[project]
+name = "test-project"
+version = "0.1.0"
+description = "Test project with existing dependencies"
+requires-python = ">=3.11"
+
+dependencies = [
+    "requests>=2.31.0",
+    "Pillow>=10.0.0",
+]
