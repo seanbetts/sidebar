@@ -19,7 +19,8 @@ WORKDIR /app
 COPY pyproject.toml ./
 
 # Install project dependencies (not dev dependencies)
-# Using trusted-host flags to handle corporate proxies/firewalls
+# Note: Using pip instead of uv because uv lacks --trusted-host equivalent for
+# handling corporate proxies/firewalls with self-signed certificates
 RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -e .
 
 # Skills will be mounted at /skills
