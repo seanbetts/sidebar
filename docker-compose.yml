@@ -1,0 +1,12 @@
+services:
+  agent-smith:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    volumes:
+      # Mount skills directory (bidirectional - edit locally, access in container)
+      - ./skills:/skills
+    stdin_open: true
+    tty: true
+    environment:
+      - PYTHONUNBUFFERED=1

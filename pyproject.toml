@@ -1,0 +1,17 @@
+[project]
+name = "agent-smith"
+version = "0.1.0"
+description = "Lightweight development environment for Agent Skills"
+authors = [
+    {name = "Sean Betts", email = "19579294+seanbetts@users.noreply.github.com"}
+]
+requires-python = ">=3.11"
+
+# No runtime dependencies initially - add as needed by skills
+dependencies = []
+
+[dependency-groups]
+dev = [
+    # Agent Skills validation tool (dev only)
+    "skills-ref @ git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref",
+]
