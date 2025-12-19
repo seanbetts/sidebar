@@ -12,3 +12,4 @@ services:
     tty: true
     environment:
       - PYTHONUNBUFFERED=1
+      - DOPPLER_TOKEN=${DOPPLER_TOKEN}
