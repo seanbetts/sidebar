@@ -15,8 +15,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
 
-# Base websites directory
-WEBSITES_BASE = Path.home() / "Documents" / "Agent Smith" / "Websites"
+# Base websites directory (use workspace if available, fallback to local)
+WEBSITES_BASE = Path(os.getenv("WORKSPACE_BASE", str(Path.home() / "Agent Smith"))) / "websites"
 
 
 def sanitize_filename(title: str) -> str:
