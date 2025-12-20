@@ -19,9 +19,10 @@ from typing import Dict, Any, Optional
 DEFAULT_TRANSCRIPT_DIR = Path.home() / "Documents" / "Agent Smith" / "Transcripts"
 DEFAULT_AUDIO_DIR = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Downloads"
 
-# Script paths
-YOUTUBE_DOWNLOAD_SCRIPT = Path("/skills/youtube-download/scripts/download_video.py")
-AUDIO_TRANSCRIBE_SCRIPT = Path("/skills/audio-transcribe/scripts/transcribe_audio.py")
+# Script paths - dynamically locate based on this script's location
+SCRIPT_DIR = Path(__file__).parent.parent.parent  # Go up to skills/
+YOUTUBE_DOWNLOAD_SCRIPT = SCRIPT_DIR / "youtube-download" / "scripts" / "download_video.py"
+AUDIO_TRANSCRIBE_SCRIPT = SCRIPT_DIR / "audio-transcribe" / "scripts" / "transcribe_audio.py"
 
 
 def run_command(cmd: list, stage: str) -> Dict[str, Any]:

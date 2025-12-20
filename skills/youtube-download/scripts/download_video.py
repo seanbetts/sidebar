@@ -171,7 +171,8 @@ def download_youtube(
     url: str,
     audio_only: bool = False,
     is_playlist: bool = False,
-    output_dir: Optional[str] = None
+    output_dir: Optional[str] = None,
+    quiet: bool = False
 ) -> Dict[str, Any]:
     """
     Download YouTube video or audio.
@@ -181,6 +182,7 @@ def download_youtube(
         audio_only: If True, download audio only (MP3)
         is_playlist: If True, download entire playlist
         output_dir: Custom output directory (default: iCloud Downloads)
+        quiet: If True, suppress progress output (for JSON mode)
 
     Returns:
         Dictionary with download results
@@ -230,8 +232,9 @@ def download_youtube(
         'file_access_retries': 3,
         'socket_timeout': 30,
         'continuedl': True,
-        'noprogress': False,
-        'progress_hooks': [progress_hook],
+        'noprogress': True if quiet else False,
+        'progress_hooks': [] if quiet else [progress_hook],
+        'quiet': quiet,
     }
 
     # Audio-only configuration
@@ -257,37 +260,47 @@ def download_youtube(
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Extract info without downloading
-            print(f"Fetching video information...")
+            if not quiet:
+                print(f"Fetching video information...")
             info = ydl.extract_info(processed_url, download=False)
 
             if not info:
                 raise ValueError("Could not extract video information")
 
             title = info.get('title', 'Unknown')
-            print(f"Title: {title}")
+            if not quiet:
+                print(f"Title: {title}")
 
             # Get expected filename
             filename = ydl.prepare_filename(info)
 
             # Download
-            print(f"Starting download...")
+            if not quiet:
+                print(f"Starting download...")
             ydl.download([processed_url])
 
             # Verify output (video only)
             if not audio_only:
                 output_path = Path(save_path) / Path(filename).name
                 if output_path.exists():
-                    print("\nVerifying output streams...")
+                    if not quiet:
+                        print("\nVerifying output streams...")
                     verify_output(str(output_path))
 
         end_time = time.time()
         duration = end_time - start_time
 
+        # Get final filename (postprocessors may change extension)
+        final_filename = Path(filename).name
+        if audio_only:
+            # FFmpegExtractAudio changes extension to .mp3
+            final_filename = Path(filename).stem + '.mp3'
+
         return {
             'url': processed_url,
             'title': title,
             'output_dir': str(save_path),
-            'filename': Path(filename).name,
+            'filename': final_filename,
             'audio_only': audio_only,
             'is_playlist': is_playlist,
             'duration_seconds': int(duration),
@@ -398,7 +411,8 @@ Requirements:
             url=args.url,
             audio_only=args.audio,
             is_playlist=args.playlist,
-            output_dir=args.output
+            output_dir=args.output,
+            quiet=args.json
         )
 
         # Output results

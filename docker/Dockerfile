@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     apt-transport-https \
     gnupg \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Doppler CLI installation skipped due to corporate firewall restrictions
