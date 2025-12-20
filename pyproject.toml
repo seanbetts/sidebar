@@ -23,6 +23,9 @@ dependencies = [
     "PyYAML>=6.0",
     # YouTube downloading (youtube-download skill)
     "yt-dlp>=2024.0.0",
+    # Audio transcription (audio-transcribe skill)
+    "pydub>=0.25.1",
+    "tqdm>=4.66.0",
 ]
 
 [dependency-groups]
