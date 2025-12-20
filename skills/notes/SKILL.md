@@ -1,11 +1,12 @@
 ---
 name: notes
 description: Create, update, and append markdown notes with automatic organization, metadata, and tagging. Use for quick note-taking with minimal friction.
-capabilities:
-  reads: false
-  writes: true
-  network: false
-  external_apis: false
+metadata:
+  capabilities:
+    reads: false
+    writes: true
+    network: false
+    external_apis: false
 ---
 
 # Notes Skill

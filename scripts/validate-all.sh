@@ -58,3 +58,8 @@ if [[ $FAILURES -gt 0 ]]; then
 fi
 
 echo "✓ All skills valid!"
+
+# Generate SKILLS.md catalog after successful validation
+echo ""
+echo "Generating SKILLS.md catalog..."
+python3 scripts/generate_skills_md.py

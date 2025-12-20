@@ -1,11 +1,12 @@
 ---
 name: fs
 description: Comprehensive filesystem operations for workspace - list, read, write, delete, move, search files. Use for all file management tasks in /workspace.
-capabilities:
-  reads: true
-  writes: true
-  network: false
-  external_apis: false
+metadata:
+  capabilities:
+    reads: true
+    writes: true
+    network: false
+    external_apis: false
 ---
 
 # Filesystem Operations (fs)
