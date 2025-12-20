@@ -15,16 +15,18 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Create main FastAPI app
+# Create FastMCP server and get its HTTP app
+mcp = FastMCP("agent-smith-skills")
+register_mcp_tools(mcp)
+mcp_app = mcp.http_app()
+
+# Create main FastAPI app with MCP lifespan
 app = FastAPI(
     title="Agent Smith Skills API",
     description="Skills API with FastAPI REST + MCP Streamable HTTP",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=mcp_app.lifespan
 )
-
-# Create FastMCP server with Streamable HTTP
-mcp = FastMCP("agent-smith-skills", stateless_http=True)
-register_mcp_tools(mcp)
 
 
 # Unified authentication middleware
@@ -64,8 +66,9 @@ async def auth_middleware(request: Request, call_next):
 
 
 # Mount MCP endpoint (auth handled by middleware)
-# FastMCP with stateless_http=True exposes the app directly
-app.mount("/mcp", mcp.app)
+# FastMCP creates its own /mcp route, so we mount at root
+# This makes the MCP endpoint available at /mcp (not /mcp/mcp)
+app.mount("", mcp_app)
 
 # Add REST routers (auth handled by middleware)
 app.include_router(health.router, tags=["health"])
