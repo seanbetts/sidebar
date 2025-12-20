@@ -1,12 +1,33 @@
 #!/usr/bin/env python3
 """Rename File"""
-import sys, json, argparse
+import sys, json, argparse, yaml
 from pathlib import Path
 
 DOCUMENTS_BASE = Path.home() / "Documents" / "Agent Smith" / "Documents"
+CONFIG_FILE = Path.home() / ".agent-smith" / "folder_config.yaml"
+
+def resolve_alias(path: str) -> str:
+    if not path.startswith('@'):
+        return path
+    parts = path[1:].split('/', 1)
+    alias = parts[0]
+    remainder = parts[1] if len(parts) > 1 else ""
+    if not CONFIG_FILE.exists():
+        raise ValueError(f"Folder configuration not found")
+    with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+    if not config or 'aliases' not in config:
+        raise ValueError(f"Invalid folder configuration")
+    if alias not in config['aliases']:
+        raise ValueError(f"Alias '@{alias}' not found")
+    folder_path = config['aliases'][alias]
+    if remainder:
+        return f"{folder_path}/{remainder}"
+    return folder_path
 
 def validate_path(p):
-    full = (DOCUMENTS_BASE / p).resolve()
+    resolved = resolve_alias(p)
+    full = (DOCUMENTS_BASE / resolved).resolve()
     try:
         full.relative_to(DOCUMENTS_BASE.resolve())
     except ValueError:
