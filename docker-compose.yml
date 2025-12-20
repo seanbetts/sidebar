@@ -1,4 +1,5 @@
 services:
+  # Existing agent-smith (keep for development)
   agent-smith:
     build:
       context: .
@@ -8,9 +9,74 @@ services:
       - ./skills:/skills
       # Mount tests directory for running tests in Docker
       - ./tests:/tests
+      # Add shared workspace
+      - workspace:/workspace
     stdin_open: true
     tty: true
     environment:
       - PYTHONUNBUFFERED=1
       - DOPPLER_TOKEN=${DOPPLER_TOKEN}
       - GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON=${GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON}
+      - WORKSPACE_BASE=/workspace
+    networks:
+      - agent-network
+
+  # NEW: Skills API (FastAPI + MCP)
+  skills-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.skills-api
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./skills:/skills:ro  # Read-only mount - skills are untrusted code
+      - ./api:/app/api
+      - workspace:/workspace
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WORKSPACE_BASE=/workspace
+      - BEARER_TOKEN=${BEARER_TOKEN}
+      - DOPPLER_TOKEN=${DOPPLER_TOKEN}
+    user: "1000:1000"  # Run as non-root user
+    cap_drop:
+      - ALL  # Drop all Linux capabilities
+    cap_add:
+      - NET_BIND_SERVICE  # Only allow binding to ports
+    security_opt:
+      - no-new-privileges:true
+    read_only: true  # Root filesystem is read-only
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # NEW: OpenWebUI
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "3000:8080"
+    volumes:
+      - open-webui-data:/app/backend/data
+      - workspace:/workspace
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - WEBUI_URL=http://localhost:3000
+    networks:
+      - agent-network
+    depends_on:
+      skills-api:
+        condition: service_healthy
+
+volumes:
+  workspace:
+  open-webui-data:
+
+networks:
+  agent-network:
+    driver: bridge

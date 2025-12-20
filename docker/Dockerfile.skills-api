@@ -1,0 +1,45 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Create non-root user for security
+RUN useradd -m -u 1000 -s /bin/bash appuser && \
+    chown -R appuser:appuser /app
+
+# Copy dependency files
+COPY pyproject.toml ./
+COPY api/requirements.txt ./requirements.txt
+
+# Install Python dependencies
+# Note: Using pip instead of uv because uv lacks --trusted-host equivalent for
+# handling corporate proxies/firewalls with self-signed certificates
+RUN pip install --no-cache-dir \
+    --trusted-host pypi.org \
+    --trusted-host pypi.python.org \
+    --trusted-host files.pythonhosted.org \
+    -e . && \
+    pip install --no-cache-dir \
+    --trusted-host pypi.org \
+    --trusted-host pypi.python.org \
+    --trusted-host files.pythonhosted.org \
+    -r requirements.txt
+
+# Copy API code
+COPY api/ ./api/
+
+# Create writable directories for non-root user
+RUN mkdir -p /workspace /tmp && \
+    chown -R appuser:appuser /workspace /tmp
+
+# Switch to non-root user
+USER appuser
+
+# Expose API port
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8001/health || exit 1
+
+# Start FastAPI server
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8001"]
