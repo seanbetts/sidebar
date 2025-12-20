@@ -1,19 +1,42 @@
 #!/usr/bin/env python3
 """Get File/Folder Info - Get metadata for files or folders"""
-import sys, json, argparse
+import sys, json, argparse, yaml
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
 
 DOCUMENTS_BASE = Path.home() / "Documents" / "Agent Smith" / "Documents"
+CONFIG_FILE = Path.home() / ".agent-smith" / "folder_config.yaml"
+
+def resolve_alias(path: str) -> str:
+    """Resolve @alias in path to actual folder path."""
+    if not path.startswith('@'):
+        return path
+    parts = path[1:].split('/', 1)
+    alias = parts[0]
+    remainder = parts[1] if len(parts) > 1 else ""
+    if not CONFIG_FILE.exists():
+        raise ValueError(f"Folder configuration not found. Run: python /skills/folder-config/scripts/init_config.py")
+    with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+    if not config or 'aliases' not in config:
+        raise ValueError(f"Invalid folder configuration: {CONFIG_FILE}")
+    if alias not in config['aliases']:
+        available = ', '.join(f"@{a}" for a in sorted(config['aliases'].keys()))
+        raise ValueError(f"Alias '@{alias}' not found. Available aliases: {available}")
+    folder_path = config['aliases'][alias]
+    if remainder:
+        return f"{folder_path}/{remainder}"
+    return folder_path
 
 def validate_path(relative_path: str) -> Path:
-    full_path = (DOCUMENTS_BASE / relative_path).resolve()
+    resolved_path = resolve_alias(relative_path)
+    full_path = (DOCUMENTS_BASE / resolved_path).resolve()
     try:
         full_path.relative_to(DOCUMENTS_BASE.resolve())
     except ValueError:
-        raise ValueError(f"Path '{relative_path}' escapes documents folder")
-    if Path(relative_path).is_absolute():
+        raise ValueError(f"Path '{relative_path}' resolves outside documents folder")
+    if Path(resolved_path).is_absolute():
         raise ValueError("Absolute paths not allowed")
     return full_path
 

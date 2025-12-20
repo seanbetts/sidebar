@@ -8,20 +8,74 @@ Create a new markdown file in the local documents folder.
 import sys
 import json
 import argparse
+import yaml
 from pathlib import Path
 from typing import Dict, Any
 
 
 # Base documents directory
 DOCUMENTS_BASE = Path.home() / "Documents" / "Agent Smith" / "Documents"
+CONFIG_FILE = Path.home() / ".agent-smith" / "folder_config.yaml"
+
+
+def resolve_alias(path: str) -> str:
+    """
+    Resolve @alias in path to actual folder path.
+
+    Args:
+        path: Path that may contain @alias
+
+    Returns:
+        Path with @alias resolved
+
+    Raises:
+        ValueError: If alias not found or config missing
+    """
+    # If path doesn't start with @, return as-is
+    if not path.startswith('@'):
+        return path
+
+    # Extract alias (first path component)
+    parts = path[1:].split('/', 1)  # Remove @ and split on first /
+    alias = parts[0]
+    remainder = parts[1] if len(parts) > 1 else ""
+
+    # Load config
+    if not CONFIG_FILE.exists():
+        raise ValueError(
+            f"Folder configuration not found. "
+            f"Run: python /skills/folder-config/scripts/init_config.py"
+        )
+
+    with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+
+    if not config or 'aliases' not in config:
+        raise ValueError(f"Invalid folder configuration: {CONFIG_FILE}")
+
+    # Resolve alias
+    if alias not in config['aliases']:
+        available = ', '.join(f"@{a}" for a in sorted(config['aliases'].keys()))
+        raise ValueError(
+            f"Alias '@{alias}' not found. "
+            f"Available aliases: {available}"
+        )
+
+    folder_path = config['aliases'][alias]
+
+    # Combine with remainder
+    if remainder:
+        return f"{folder_path}/{remainder}"
+    return folder_path
 
 
 def validate_path(relative_path: str) -> Path:
     """
     Validate that the path is safe and within documents folder.
+    Supports @alias syntax for folder shortcuts.
 
     Args:
-        relative_path: Relative path from documents base
+        relative_path: Relative path from documents base (may include @alias)
 
     Returns:
         Absolute Path object
@@ -29,22 +83,25 @@ def validate_path(relative_path: str) -> Path:
     Raises:
         ValueError: If path is invalid or escapes documents folder
     """
+    # Resolve any @alias in the path
+    resolved_path = resolve_alias(relative_path)
+
     # Convert to Path and resolve
-    full_path = (DOCUMENTS_BASE / relative_path).resolve()
+    full_path = (DOCUMENTS_BASE / resolved_path).resolve()
 
     # Check that resolved path is within documents base
     try:
         full_path.relative_to(DOCUMENTS_BASE.resolve())
     except ValueError:
         raise ValueError(
-            f"Path '{relative_path}' escapes documents folder. "
+            f"Path '{relative_path}' resolves to a location outside documents folder. "
             f"All paths must be relative to: {DOCUMENTS_BASE}"
         )
 
-    # Reject absolute paths
-    if Path(relative_path).is_absolute():
+    # Reject absolute paths in the original input (after alias resolution)
+    if Path(resolved_path).is_absolute():
         raise ValueError(
-            f"Absolute paths not allowed. Use relative paths only."
+            f"Absolute paths not allowed. Use relative paths or @alias syntax."
         )
 
     return full_path
@@ -148,6 +205,10 @@ Examples:
 
   # Create in subfolder (creates folder if needed)
   %(prog)s "2025/january/journal.md" --title "January Journal"
+
+  # Use @alias for quick access to folders
+  %(prog)s "@notes/meeting.md" --title "Meeting Notes"
+  %(prog)s "@coding/new-project.md" --content "Project notes"
         """
     )
 
