@@ -1,0 +1,132 @@
+#!/bin/bash
+set -euo pipefail
+
+# migrate_to_workspace.sh - Migrate documents from ~/Documents to /workspace Docker volume
+# This script safely migrates existing documents to the workspace volume used by Skills API
+
+OLD_BASE="$HOME/Documents/Agent Smith/Documents"
+NEW_BASE="/workspace"
+CONTAINER_NAME="agent-smith-skills-api-1"
+
+echo "=========================================="
+echo "Agent Smith Workspace Migration"
+echo "=========================================="
+echo ""
+echo "This script will migrate your documents to the Docker workspace volume."
+echo ""
+echo "  Source:      $OLD_BASE"
+echo "  Destination: $NEW_BASE (Docker volume)"
+echo ""
+
+# Check if old location exists
+if [ ! -d "$OLD_BASE" ]; then
+    echo "✓ No existing documents found at $OLD_BASE"
+    echo "  Nothing to migrate. The workspace is ready to use!"
+    exit 0
+fi
+
+# Count files in old location
+OLD_FILE_COUNT=$(find "$OLD_BASE" -type f 2>/dev/null | wc -l | tr -d ' ')
+echo "Found $OLD_FILE_COUNT files to migrate."
+echo ""
+
+# Dry-run option
+if [[ "${1:-}" == "--dry-run" ]]; then
+    echo "DRY-RUN MODE: Showing what would be migrated..."
+    echo ""
+    echo "Files that would be copied:"
+    find "$OLD_BASE" -type f | head -20
+    if [ "$OLD_FILE_COUNT" -gt 20 ]; then
+        echo "... and $(($OLD_FILE_COUNT - 20)) more files"
+    fi
+    echo ""
+    echo "To perform the actual migration, run without --dry-run"
+    exit 0
+fi
+
+# Confirm migration
+read -p "Proceed with migration? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Migration cancelled."
+    exit 0
+fi
+
+echo ""
+echo "Starting migration..."
+echo ""
+
+# Ensure Skills API container is running
+echo "[1/4] Ensuring Skills API container is running..."
+if ! docker compose ps skills-api | grep -q "Up"; then
+    echo "  Starting skills-api container..."
+    docker compose up -d skills-api
+    sleep 3
+fi
+echo "  ✓ Container running"
+
+# Create workspace directory structure
+echo ""
+echo "[2/4] Creating workspace directory structure..."
+docker compose exec -T skills-api mkdir -p /workspace/notes
+docker compose exec -T skills-api mkdir -p /workspace/documents
+echo "  ✓ Directories created"
+
+# Copy files to workspace volume
+echo ""
+echo "[3/4] Copying files to workspace volume..."
+docker cp "$OLD_BASE/." "$CONTAINER_NAME:/workspace/documents/"
+echo "  ✓ Files copied"
+
+# Verify migration
+echo ""
+echo "[4/4] Verifying migration..."
+NEW_FILE_COUNT=$(docker compose exec -T skills-api find /workspace -type f 2>/dev/null | wc -l | tr -d ' ')
+echo "  Files in workspace: $NEW_FILE_COUNT"
+
+if [ "$NEW_FILE_COUNT" -ge "$OLD_FILE_COUNT" ]; then
+    echo "  ✓ Migration successful!"
+else
+    echo "  ⚠️  Warning: File count mismatch"
+    echo "     Expected: $OLD_FILE_COUNT"
+    echo "     Found:    $NEW_FILE_COUNT"
+    echo ""
+    echo "  Please verify the migration before deleting source files."
+    exit 1
+fi
+
+echo ""
+echo "=========================================="
+echo "Migration Complete!"
+echo "=========================================="
+echo ""
+echo "Files are now in the Docker workspace volume."
+echo "You can access them via the Skills API or through the container."
+echo ""
+
+# Ask about deleting old location
+read -p "Delete original files from $OLD_BASE? [y/N] " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo ""
+    echo "Creating backup archive before deletion..."
+    BACKUP_FILE="$HOME/Documents/agent-smith-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+    tar -czf "$BACKUP_FILE" -C "$HOME/Documents" "Agent Smith/Documents"
+    echo "  ✓ Backup created: $BACKUP_FILE"
+
+    echo ""
+    echo "Deleting original files..."
+    rm -rf "$OLD_BASE"
+    echo "  ✓ Original files deleted"
+
+    echo ""
+    echo "Migration and cleanup complete!"
+    echo "Backup available at: $BACKUP_FILE"
+else
+    echo ""
+    echo "Original files kept at: $OLD_BASE"
+    echo "You can delete them manually once you've verified the migration."
+fi
+
+echo ""
+echo "✓ All done!"
