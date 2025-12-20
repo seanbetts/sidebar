@@ -65,13 +65,13 @@ async def auth_middleware(request: Request, call_next):
     return response
 
 
+# Add REST routers BEFORE mounting MCP (auth handled by middleware)
+app.include_router(health.router, tags=["health"])
+
 # Mount MCP endpoint (auth handled by middleware)
 # FastMCP creates its own /mcp route, so we mount at root
 # This makes the MCP endpoint available at /mcp (not /mcp/mcp)
 app.mount("", mcp_app)
-
-# Add REST routers (auth handled by middleware)
-app.include_router(health.router, tags=["health"])
 
 
 # Initialize executor and path validator as app state
