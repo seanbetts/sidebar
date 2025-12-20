@@ -1,3 +1,8 @@
+---
+name: youtube-transcribe
+description: Transcribe YouTube videos to text by downloading audio and using OpenAI's Whisper API. Use when you need to convert YouTube lectures, podcasts, interviews, or presentations to text transcripts.
+---
+
 # youtube-transcribe
 
 Transcribe YouTube videos by downloading audio and running speech-to-text transcription.

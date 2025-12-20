@@ -1,3 +1,8 @@
+---
+name: subdomain-discover
+description: Discover subdomains using DNS bruteforce, Certificate Transparency logs, and sitemap parsing. Use when you need to map a brand's digital footprint, perform security reconnaissance, or prepare for crawler policy analysis.
+---
+
 # subdomain-discover
 
 Discover subdomains for a target domain using multiple reconnaissance techniques.

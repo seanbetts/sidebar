@@ -1,3 +1,8 @@
+---
+name: web-save
+description: Save web pages as clean markdown files using Jina.ai Reader API. Use when you need to archive articles, blog posts, documentation, or any web content for later reading or building a local knowledge base.
+---
+
 # web-save
 
 Save web pages as markdown files using Jina.ai Reader API.

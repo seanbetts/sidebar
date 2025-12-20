@@ -1,3 +1,8 @@
+---
+name: audio-transcribe
+description: Transcribe audio files to text using OpenAI's Whisper API with automatic chunking for large files. Use when you need to convert meeting recordings, podcasts, interviews, or any audio content to text.
+---
+
 # audio-transcribe
 
 Transcribe audio files using OpenAI's transcription API with automatic chunking for large files.

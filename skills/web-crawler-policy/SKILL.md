@@ -1,3 +1,8 @@
+---
+name: web-crawler-policy
+description: Analyze robots.txt and llms.txt policies to understand which crawlers can access content. Use when auditing crawler policies, analyzing AI content accessibility, or generating marketing intelligence on brand representation in LLMs.
+---
+
 # web-crawler-policy
 
 Analyze robots.txt and llms.txt policies across domains to understand crawler permissions and AI content accessibility.

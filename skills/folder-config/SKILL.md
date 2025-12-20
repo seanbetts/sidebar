@@ -1,3 +1,8 @@
+---
+name: folder-config
+description: Centralized folder structure management with aliases and path resolution. Use internally by other skills to resolve @alias paths, or use directly to set up custom folder shortcuts and browse the document hierarchy.
+---
+
 # folder-config
 
 Centralized folder structure management for Agent Smith documents. Provides folder aliases, path resolution, and navigation tools.
