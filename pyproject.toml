@@ -19,6 +19,11 @@ dependencies = [
     "defusedxml>=0.7.1",
     # HTTP library (for custom scripts)
     "requests>=2.31.0",
+    # Google Drive API (drive-read, drive-write, drive-manage, drive-search skills)
+    "google-api-python-client>=2.150.0",
+    "google-auth>=2.35.0",
+    "google-auth-oauthlib>=1.2.0",
+    "google-auth-httplib2>=0.2.0",
 ]
 
 [dependency-groups]
