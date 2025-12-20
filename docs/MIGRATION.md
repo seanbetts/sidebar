@@ -1,6 +1,6 @@
 # Workspace Migration Guide
 
-This guide explains how to migrate your existing documents from `~/Documents/Agent Smith/Documents` to the Docker `/workspace` volume.
+This guide explains how to migrate your existing documents from `~/Agent Smith/Documents` to the Docker workspace volume.
 
 ## Why Migrate?
 
@@ -27,11 +27,11 @@ The migration script is located at `scripts/migrate_to_workspace.sh`.
 
 ### What It Does
 
-1. **Checks source**: Verifies `~/Documents/Agent Smith/Documents` exists
+1. **Checks source**: Verifies `~/Agent Smith/Documents` exists
 2. **Counts files**: Shows how many files will be migrated
 3. **Starts container**: Ensures Skills API is running
 4. **Creates structure**: Sets up `/workspace/notes` and `/workspace/documents`
-5. **Copies files**: Uses `docker cp` to transfer files to the volume
+5. **Copies files**: Pipes tar through docker to copy with correct ownership (excludes .DS_Store)
 6. **Verifies**: Confirms file count matches
 7. **Backup & cleanup**: Optionally creates tar.gz backup and deletes originals
 
@@ -55,11 +55,12 @@ doppler run -- docker compose up -d skills-api
 docker compose exec skills-api mkdir -p /workspace/documents
 docker compose exec skills-api mkdir -p /workspace/notes
 
-# 3. Copy files to workspace
-docker cp "$HOME/Documents/Agent Smith/Documents/." agent-smith-skills-api-1:/workspace/documents/
+# 3. Copy files to workspace (excluding .DS_Store, as appuser)
+cd "$HOME/Agent Smith/Documents"
+tar --exclude='.DS_Store' -czf - . | docker compose exec -T -u appuser skills-api tar -xzf - -C /workspace/documents/
 
 # 4. Verify migration
-docker compose exec skills-api ls -la /workspace/documents/
+docker compose exec skills-api find /workspace/documents -type f | wc -l
 
 # 5. Test access via Skills API
 doppler run -- python3 tests/test_mcp_client.py
@@ -91,12 +92,12 @@ If you need to rollback:
 
 ```bash
 # 1. Find your backup
-ls -lh ~/Documents/agent-smith-backup-*.tar.gz
+ls -lh ~/agent-smith-backup-*.tar.gz
 
 # 2. Extract backup
-tar -xzf ~/Documents/agent-smith-backup-20241220-*.tar.gz -C ~/Documents/
+tar -xzf ~/agent-smith-backup-20241220-*.tar.gz -C ~/
 
-# 3. Your files are restored to ~/Documents/Agent Smith/Documents/
+# 3. Your files are restored to ~/Agent Smith/Documents/
 ```
 
 ## Troubleshooting
@@ -112,11 +113,11 @@ doppler run -- docker compose up -d skills-api
 The script will warn you if counts don't match. Check:
 
 ```bash
-# Check source
-find "$HOME/Documents/Agent Smith/Documents" -type f | wc -l
+# Check source (excluding .DS_Store)
+find "$HOME/Agent Smith/Documents" -type f -not -name ".DS_Store" | wc -l
 
 # Check destination
-docker compose exec skills-api find /workspace -type f | wc -l
+docker compose exec skills-api find /workspace/documents -type f | wc -l
 ```
 
 ### Permission errors
@@ -130,7 +131,10 @@ Ensure you have permission to read source files and the Docker daemon is running
 docker volume inspect agent-smith_workspace
 
 # List volume contents
-docker compose exec skills-api ls -la /workspace/
+docker compose exec skills-api ls -la /workspace/documents/
+
+# Check file ownership (should be appuser:appuser)
+docker compose exec skills-api ls -ln /workspace/documents/
 ```
 
 ## FAQ
@@ -142,10 +146,13 @@ A: Only if you confirm the deletion prompt after successful migration. A backup 
 A: Yes, but it will overwrite existing files in /workspace. Use dry-run to check first.
 
 **Q: What if I have files in both locations?**
-A: The migration will merge them. Newer files will overwrite older ones with the same name.
+A: The migration will merge them. Tar will overwrite files with the same name.
 
 **Q: Can I access /workspace from my Mac?**
-A: Yes, via Docker commands or by mounting the volume. The Skills API provides the primary interface.
+A: Yes, via Docker commands or the Skills API. The volume is managed by Docker but accessible through the container.
 
 **Q: What happens to my old local-* skills?**
-A: They'll continue to work with ~/Documents. The new fs skills work with /workspace. You can use both during transition.
+A: They'll continue to work with ~/Agent Smith/Documents. The new fs skills work with /workspace. You can use both during transition.
+
+**Q: How are permissions handled?**
+A: Files are copied as the appuser (uid 1000) to ensure the Skills API can read and write them properly.
