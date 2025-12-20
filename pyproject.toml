@@ -21,6 +21,8 @@ dependencies = [
     "requests>=2.31.0",
     # YAML processing (folder-config skill)
     "PyYAML>=6.0",
+    # YouTube downloading (youtube-download skill)
+    "yt-dlp>=2024.0.0",
 ]
 
 [dependency-groups]
