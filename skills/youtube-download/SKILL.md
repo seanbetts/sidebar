@@ -1,3 +1,8 @@
+---
+name: youtube-download
+description: Download YouTube videos (MP4) or audio (MP3) using yt-dlp with automatic quality selection and format conversion. Use when you need to download videos for offline viewing, extract audio, or archive YouTube content.
+---
+
 # youtube-download
 
 Download YouTube videos or audio using yt-dlp.
