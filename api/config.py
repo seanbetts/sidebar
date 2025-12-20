@@ -1,5 +1,5 @@
 """Configuration settings for Agent Smith Skills API."""
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
 
@@ -26,10 +26,11 @@ class Settings(BaseSettings):
     # jwt_algorithm: str = "HS256"
     # jwt_expiry_hours: int = 24
 
-    class Config:
-        env_prefix = ""
-        case_sensitive = False
-        env_file = ".env"
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        case_sensitive=False,
+        env_file=".env"
+    )
 
 
 settings = Settings()

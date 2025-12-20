@@ -14,11 +14,13 @@ COPY api/requirements.txt ./requirements.txt
 # Note: Using pip instead of uv because uv lacks --trusted-host equivalent for
 # handling corporate proxies/firewalls with self-signed certificates
 RUN pip install --no-cache-dir \
+    --timeout=600 \
     --trusted-host pypi.org \
     --trusted-host pypi.python.org \
     --trusted-host files.pythonhosted.org \
     -e . && \
     pip install --no-cache-dir \
+    --timeout=600 \
     --trusted-host pypi.org \
     --trusted-host pypi.python.org \
     --trusted-host files.pythonhosted.org \
