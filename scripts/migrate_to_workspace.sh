@@ -25,8 +25,8 @@ if [ ! -d "$OLD_BASE" ]; then
     exit 0
 fi
 
-# Count files in old location
-OLD_FILE_COUNT=$(find "$OLD_BASE" -type f -not -name ".DS_Store" 2>/dev/null | wc -l | tr -d ' ')
+# Count files in old location (exclude Mac junk files)
+OLD_FILE_COUNT=$(find "$OLD_BASE" -type f -not -name ".DS_Store" -not -name "._*" 2>/dev/null | wc -l | tr -d ' ')
 echo "Found $OLD_FILE_COUNT files to migrate."
 echo ""
 
@@ -35,7 +35,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     echo "DRY-RUN MODE: Showing what would be migrated..."
     echo ""
     echo "Files that would be copied:"
-    find "$OLD_BASE" -type f -not -name ".DS_Store" | head -20
+    find "$OLD_BASE" -type f -not -name ".DS_Store" -not -name "._*" | head -20
     if [ "$OLD_FILE_COUNT" -gt 20 ]; then
         echo "... and $(($OLD_FILE_COUNT - 20)) more files"
     fi
@@ -76,8 +76,8 @@ echo "  ✓ Directories created with correct ownership"
 # Copy files to workspace volume using tar piped through docker
 echo ""
 echo "[3/4] Copying files to workspace volume..."
-echo "  Creating tar archive (excluding .DS_Store)..."
-tar --exclude='.DS_Store' -czf - -C "$OLD_BASE" . | docker compose exec -T skills-api tar -xzf - -C /workspace/documents/ 2>/dev/null
+echo "  Creating tar archive (excluding Mac junk files)..."
+tar --exclude='.DS_Store' --exclude='._*' -czf - -C "$OLD_BASE" . | docker compose exec -T skills-api tar -xzf - -C /workspace/documents/ 2>/dev/null
 PIPE_STATUS=$?
 if [ $PIPE_STATUS -eq 0 ]; then
     echo "  ✓ Files copied"
@@ -121,7 +121,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo ""
     echo "Creating backup archive before deletion..."
     BACKUP_FILE="$HOME/agent-smith-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
-    tar --exclude='.DS_Store' -czf "$BACKUP_FILE" -C "$HOME" "Agent Smith/Documents"
+    tar --exclude='.DS_Store' --exclude='._*' -czf "$BACKUP_FILE" -C "$HOME" "Agent Smith/Documents"
     echo "  ✓ Backup created: $BACKUP_FILE"
 
     echo ""
