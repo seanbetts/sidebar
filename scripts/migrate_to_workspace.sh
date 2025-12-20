@@ -65,20 +65,28 @@ if ! docker compose ps skills-api | grep -q "Up"; then
 fi
 echo "  ✓ Container running"
 
-# Create workspace directory structure
+# Create workspace directory structure with correct ownership
 echo ""
 echo "[2/4] Creating workspace directory structure..."
 docker compose exec -T skills-api mkdir -p /workspace/notes
 docker compose exec -T skills-api mkdir -p /workspace/documents
-echo "  ✓ Directories created"
+docker compose exec -T skills-api chown -R appuser:appuser /workspace
+echo "  ✓ Directories created with correct ownership"
 
 # Copy files to workspace volume using tar piped through docker
 echo ""
 echo "[3/4] Copying files to workspace volume..."
 echo "  Creating tar archive (excluding .DS_Store)..."
-cd "$OLD_BASE"
-tar --exclude='.DS_Store' -czf - . | docker compose exec -T -u appuser skills-api tar -xzf - -C /workspace/documents/
-echo "  ✓ Files copied with correct ownership"
+tar --exclude='.DS_Store' -czf - -C "$OLD_BASE" . | docker compose exec -T skills-api tar -xzf - -C /workspace/documents/ 2>/dev/null
+PIPE_STATUS=$?
+if [ $PIPE_STATUS -eq 0 ]; then
+    echo "  ✓ Files copied"
+else
+    echo "  ⚠️  Some warnings during copy (likely Mac extended attributes)"
+fi
+echo "  Setting ownership to appuser..."
+docker compose exec -T skills-api chown -R appuser:appuser /workspace
+echo "  ✓ Ownership set"
 
 # Verify migration
 echo ""
