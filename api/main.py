@@ -1,4 +1,5 @@
 """Agent Smith Skills API - FastAPI + MCP integration."""
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
@@ -20,12 +21,32 @@ mcp = FastMCP("agent-smith-skills")
 register_mcp_tools(mcp)
 mcp_app = mcp.http_app()
 
-# Create main FastAPI app with MCP lifespan
+
+# Combined lifespan that wraps MCP lifespan and our startup logic
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Combined lifespan for MCP and app state initialization."""
+    # Use MCP's lifespan context
+    async with mcp_app.lifespan(app):
+        # Initialize our app state
+        app.state.executor = SkillExecutor(
+            skills_dir=settings.skills_dir,
+            workspace_base=settings.workspace_base
+        )
+        app.state.path_validator = PathValidator(
+            workspace_base=settings.workspace_base,
+            writable_paths=settings.writable_paths
+        )
+        yield
+        # Cleanup happens here if needed
+
+
+# Create main FastAPI app with combined lifespan
 app = FastAPI(
     title="Agent Smith Skills API",
     description="Skills API with FastAPI REST + MCP Streamable HTTP",
     version="1.0.0",
-    lifespan=mcp_app.lifespan
+    lifespan=lifespan
 )
 
 
@@ -72,20 +93,6 @@ app.include_router(health.router, tags=["health"])
 # FastMCP creates its own /mcp route, so we mount at root
 # This makes the MCP endpoint available at /mcp (not /mcp/mcp)
 app.mount("", mcp_app)
-
-
-# Initialize executor and path validator as app state
-@app.on_event("startup")
-async def startup():
-    """Initialize application state on startup."""
-    app.state.executor = SkillExecutor(
-        skills_dir=settings.skills_dir,
-        workspace_base=settings.workspace_base
-    )
-    app.state.path_validator = PathValidator(
-        workspace_base=settings.workspace_base,
-        writable_paths=settings.writable_paths
-    )
 
 
 @app.get("/")
