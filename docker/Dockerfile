@@ -1,17 +1,14 @@
 FROM python:3.11-slim
 
-# Install essential Unix tools and Doppler CLI dependencies
-# Note: ffmpeg removed due to Docker memory constraints (640MB dependencies)
-# For youtube-download/youtube-transcribe skills, install ffmpeg on host:
-#   brew install ffmpeg (macOS) or apt-get install ffmpeg (Linux)
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    vim \
-    ca-certificates \
-    apt-transport-https \
-    gnupg \
-    && rm -rf /var/lib/apt/lists/*
+# Minimal Docker image - skip all network downloads during build
+# Corporate firewall with SSL inspection prevents reliable downloads
+#
+# To add tools after container is running:
+#   ffmpeg: docker cp $(which ffmpeg) agent-smith:/usr/local/bin/
+#   Or install on host and run skills from host instead of inside container
+#
+# Most Python-based skills work fine without additional tools
+# Base image includes: python, pip, tar
 
 # Doppler CLI installation skipped due to corporate firewall restrictions
 # DOPPLER_TOKEN is available as environment variable (configured in docker-compose.yml)
