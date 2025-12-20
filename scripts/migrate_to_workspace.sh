@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# migrate_to_workspace.sh - Migrate documents from ~/Documents to /workspace Docker volume
+# migrate_to_workspace.sh - Migrate documents to /workspace Docker volume
 # This script safely migrates existing documents to the workspace volume used by Skills API
 
-OLD_BASE="$HOME/Documents/Agent Smith/Documents"
+OLD_BASE="$HOME/Agent Smith/Documents"
 NEW_BASE="/workspace"
 CONTAINER_NAME="agent-smith-skills-api-1"
 
@@ -26,7 +26,7 @@ if [ ! -d "$OLD_BASE" ]; then
 fi
 
 # Count files in old location
-OLD_FILE_COUNT=$(find "$OLD_BASE" -type f 2>/dev/null | wc -l | tr -d ' ')
+OLD_FILE_COUNT=$(find "$OLD_BASE" -type f -not -name ".DS_Store" 2>/dev/null | wc -l | tr -d ' ')
 echo "Found $OLD_FILE_COUNT files to migrate."
 echo ""
 
@@ -35,7 +35,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     echo "DRY-RUN MODE: Showing what would be migrated..."
     echo ""
     echo "Files that would be copied:"
-    find "$OLD_BASE" -type f | head -20
+    find "$OLD_BASE" -type f -not -name ".DS_Store" | head -20
     if [ "$OLD_FILE_COUNT" -gt 20 ]; then
         echo "... and $(($OLD_FILE_COUNT - 20)) more files"
     fi
@@ -61,7 +61,7 @@ echo "[1/4] Ensuring Skills API container is running..."
 if ! docker compose ps skills-api | grep -q "Up"; then
     echo "  Starting skills-api container..."
     docker compose up -d skills-api
-    sleep 3
+    sleep 5
 fi
 echo "  ✓ Container running"
 
@@ -72,16 +72,18 @@ docker compose exec -T skills-api mkdir -p /workspace/notes
 docker compose exec -T skills-api mkdir -p /workspace/documents
 echo "  ✓ Directories created"
 
-# Copy files to workspace volume
+# Copy files to workspace volume using tar piped through docker
 echo ""
 echo "[3/4] Copying files to workspace volume..."
-docker cp "$OLD_BASE/." "$CONTAINER_NAME:/workspace/documents/"
-echo "  ✓ Files copied"
+echo "  Creating tar archive (excluding .DS_Store)..."
+cd "$OLD_BASE"
+tar --exclude='.DS_Store' -czf - . | docker compose exec -T -u appuser skills-api tar -xzf - -C /workspace/documents/
+echo "  ✓ Files copied with correct ownership"
 
 # Verify migration
 echo ""
 echo "[4/4] Verifying migration..."
-NEW_FILE_COUNT=$(docker compose exec -T skills-api find /workspace -type f 2>/dev/null | wc -l | tr -d ' ')
+NEW_FILE_COUNT=$(docker compose exec -T skills-api find /workspace/documents -type f 2>/dev/null | wc -l | tr -d ' ')
 echo "  Files in workspace: $NEW_FILE_COUNT"
 
 if [ "$NEW_FILE_COUNT" -ge "$OLD_FILE_COUNT" ]; then
@@ -110,8 +112,8 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo ""
     echo "Creating backup archive before deletion..."
-    BACKUP_FILE="$HOME/Documents/agent-smith-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
-    tar -czf "$BACKUP_FILE" -C "$HOME/Documents" "Agent Smith/Documents"
+    BACKUP_FILE="$HOME/agent-smith-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+    tar --exclude='.DS_Store' -czf "$BACKUP_FILE" -C "$HOME" "Agent Smith/Documents"
     echo "  ✓ Backup created: $BACKUP_FILE"
 
     echo ""
