@@ -41,7 +41,7 @@ python transcribe_youtube.py URL [--language LANG] [--model MODEL] [--output-dir
   - Options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
 - `--output-dir`: Directory for transcripts (default: ~/Documents/Agent Smith/Transcripts)
 - `--keep-audio`: Keep downloaded audio file after transcription
-- `--audio-dir`: Directory for downloaded audio (default: iCloud Downloads)
+- `--audio-dir`: Directory for downloaded audio (default: .tmp/youtube-transcribe/ in project root)
 - `--json`: Output results in JSON format
 
 **Features**:
@@ -125,7 +125,7 @@ JSON output combines results from both stages:
 
 1. **Download Stage**:
    - Validates YouTube URL
-   - Downloads audio using youtube-download skill
+   - Downloads audio using youtube-download skill to `~/Documents/Agent Smith/.tmp/youtube-transcribe/`
    - Reports download progress and completion
    - Returns audio file location
 
@@ -135,7 +135,11 @@ JSON output combines results from both stages:
    - Reports transcription progress
    - Saves transcript with metadata
 
-3. **Cleanup Stage**:
+3. **Metadata Update**:
+   - Updates transcript to include YouTube URL and video title
+   - Replaces audio filename reference with source information
+
+4. **Cleanup Stage**:
    - Removes audio file (unless --keep-audio specified)
    - On error, attempts cleanup to avoid orphaned files
 
@@ -171,10 +175,11 @@ JSON output combines results from both stages:
 
 ## Default Save Locations
 
-**Audio Files**:
+**Audio Files (Temporary)**:
 ```
-~/Library/Mobile Documents/com~apple~CloudDocs/Downloads/
+~/Documents/Agent Smith/.tmp/youtube-transcribe/
 ```
+Audio files are automatically deleted after transcription unless `--keep-audio` is specified.
 
 **Transcripts**:
 ```

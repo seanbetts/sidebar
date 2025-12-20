@@ -17,12 +17,46 @@ from typing import Dict, Any, Optional
 
 # Default directories
 DEFAULT_TRANSCRIPT_DIR = Path.home() / "Documents" / "Agent Smith" / "Transcripts"
-DEFAULT_AUDIO_DIR = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Downloads"
+DEFAULT_AUDIO_DIR = Path.home() / "Documents" / "Agent Smith" / ".tmp" / "youtube-transcribe"
 
 # Script paths - dynamically locate based on this script's location
 SCRIPT_DIR = Path(__file__).parent.parent.parent  # Go up to skills/
+PROJECT_ROOT = SCRIPT_DIR.parent  # Go up to project root
+
 YOUTUBE_DOWNLOAD_SCRIPT = SCRIPT_DIR / "youtube-download" / "scripts" / "download_video.py"
 AUDIO_TRANSCRIBE_SCRIPT = SCRIPT_DIR / "audio-transcribe" / "scripts" / "transcribe_audio.py"
+
+
+def update_transcript_metadata(transcript_path: str, youtube_url: str, title: str) -> None:
+    """
+    Update transcript metadata to include YouTube URL instead of audio filename.
+
+    Args:
+        transcript_path: Path to the transcript file
+        youtube_url: Original YouTube video URL
+        title: Video title
+    """
+    try:
+        with open(transcript_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Replace the "Original file:" line with YouTube URL
+        lines = content.split('\n')
+        updated_lines = []
+        for line in lines:
+            if line.startswith('# Original file:'):
+                updated_lines.append(f'# YouTube URL: {youtube_url}')
+                updated_lines.append(f'# Video title: {title}')
+            else:
+                updated_lines.append(line)
+
+        # Write back
+        with open(transcript_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(updated_lines))
+
+    except Exception as e:
+        # Don't fail the whole operation if metadata update fails
+        print(f"Warning: Could not update transcript metadata: {e}")
 
 
 def run_command(cmd: list, stage: str) -> Dict[str, Any]:
@@ -96,6 +130,10 @@ def transcribe_youtube(
     """
     start_time = time.time()
 
+    # Determine audio directory and create it if needed
+    target_audio_dir = Path(audio_dir).expanduser() if audio_dir else DEFAULT_AUDIO_DIR
+    target_audio_dir.mkdir(parents=True, exist_ok=True)
+
     # Stage 1: Download audio
     print("=" * 80)
     print("Downloading YouTube Audio...")
@@ -106,11 +144,9 @@ def transcribe_youtube(
         str(YOUTUBE_DOWNLOAD_SCRIPT),
         url,
         "--audio",
-        "--json"
+        "--json",
+        "--output", str(target_audio_dir)
     ]
-
-    if audio_dir:
-        download_cmd.extend(["--output", audio_dir])
 
     download_result = run_command(download_cmd, "download")
 
@@ -152,6 +188,13 @@ def transcribe_youtube(
 
         print(f"File: {audio_file_path.name}")
         print(f"Transcript: {transcribe_data['output_file']}")
+
+        # Update transcript metadata with YouTube URL
+        update_transcript_metadata(
+            transcribe_data['output_file'],
+            url,
+            download_data['title']
+        )
 
         # Calculate transcription duration
         transcription_duration = int(time.time() - start_time) - download_data['duration_seconds']
