@@ -281,3 +281,198 @@ def register_mcp_tools(mcp: FastMCP):
         )
 
         return json.dumps(result)
+
+    @mcp.tool()
+    async def fs_move(
+        source: str,
+        destination: str,
+        dry_run: bool = False
+    ) -> str:
+        """Move file or directory to a new location in workspace.
+
+        Args:
+            source: Source path relative to workspace
+            destination: Destination path relative to workspace
+            dry_run: If true, validate but don't actually move
+        """
+        start_time = time.time()
+
+        # Validate paths
+        source_path = path_validator.validate_write_path(source)
+        dest_path = path_validator.validate_write_path(destination)
+
+        if dry_run:
+            # Audit log dry-run
+            AuditLogger.log_tool_call(
+                tool_name="fs_move",
+                parameters={"source": source, "destination": destination, "dry_run": True},
+                resolved_path=source_path,
+                duration_ms=(time.time() - start_time) * 1000,
+                success=True
+            )
+            return json.dumps({
+                "success": True,
+                "dry_run": True,
+                "message": f"Would move {source} to {destination}"
+            })
+
+        # Execute move
+        args = [source, destination]
+        result = await executor.execute("fs", "move.py", args)
+
+        # Audit log
+        AuditLogger.log_tool_call(
+            tool_name="fs_move",
+            parameters={"source": source, "destination": destination},
+            resolved_path=source_path,
+            duration_ms=(time.time() - start_time) * 1000,
+            success=result.get("success", False)
+        )
+
+        return json.dumps(result)
+
+    @mcp.tool()
+    async def fs_rename(
+        path: str,
+        new_name: str,
+        dry_run: bool = False
+    ) -> str:
+        """Rename file or directory (stays in same directory).
+
+        Args:
+            path: Path to file/directory relative to workspace
+            new_name: New name (just the name, not a full path)
+            dry_run: If true, validate but don't actually rename
+        """
+        start_time = time.time()
+
+        # Validate path
+        validated_path = path_validator.validate_write_path(path)
+
+        if dry_run:
+            # Audit log dry-run
+            AuditLogger.log_tool_call(
+                tool_name="fs_rename",
+                parameters={"path": path, "new_name": new_name, "dry_run": True},
+                resolved_path=validated_path,
+                duration_ms=(time.time() - start_time) * 1000,
+                success=True
+            )
+            return json.dumps({
+                "success": True,
+                "dry_run": True,
+                "message": f"Would rename to {new_name}"
+            })
+
+        # Execute rename
+        args = [path, new_name]
+        result = await executor.execute("fs", "rename.py", args)
+
+        # Audit log
+        AuditLogger.log_tool_call(
+            tool_name="fs_rename",
+            parameters={"path": path, "new_name": new_name},
+            resolved_path=validated_path,
+            duration_ms=(time.time() - start_time) * 1000,
+            success=result.get("success", False)
+        )
+
+        return json.dumps(result)
+
+    @mcp.tool()
+    async def fs_copy(
+        source: str,
+        destination: str,
+        dry_run: bool = False
+    ) -> str:
+        """Copy file or directory to a new location in workspace.
+
+        Args:
+            source: Source path relative to workspace
+            destination: Destination path relative to workspace
+            dry_run: If true, validate but don't actually copy
+        """
+        start_time = time.time()
+
+        # Validate paths
+        source_path = path_validator.validate_read_path(source)
+        dest_path = path_validator.validate_write_path(destination)
+
+        if dry_run:
+            # Audit log dry-run
+            AuditLogger.log_tool_call(
+                tool_name="fs_copy",
+                parameters={"source": source, "destination": destination, "dry_run": True},
+                resolved_path=source_path,
+                duration_ms=(time.time() - start_time) * 1000,
+                success=True
+            )
+            return json.dumps({
+                "success": True,
+                "dry_run": True,
+                "message": f"Would copy {source} to {destination}"
+            })
+
+        # Execute copy
+        args = [source, destination]
+        result = await executor.execute("fs", "copy.py", args)
+
+        # Audit log
+        AuditLogger.log_tool_call(
+            tool_name="fs_copy",
+            parameters={"source": source, "destination": destination},
+            resolved_path=source_path,
+            duration_ms=(time.time() - start_time) * 1000,
+            success=result.get("success", False)
+        )
+
+        return json.dumps(result)
+
+    @mcp.tool()
+    async def fs_search(
+        directory: str = ".",
+        name_pattern: str = None,
+        content_pattern: str = None,
+        case_sensitive: bool = False,
+        max_results: int = 100
+    ) -> str:
+        """Search for files by name or content in workspace.
+
+        Args:
+            directory: Directory to search in (default: ".")
+            name_pattern: Filename pattern (supports * and ? wildcards)
+            content_pattern: Content to search for (regex pattern)
+            case_sensitive: Make search case-sensitive (default: false)
+            max_results: Maximum number of results (default: 100)
+        """
+        start_time = time.time()
+
+        # Validate path
+        validated_path = path_validator.validate_read_path(directory)
+
+        # Build args
+        args = ["--directory", directory]
+        if name_pattern:
+            args.extend(["--name", name_pattern])
+        if content_pattern:
+            args.extend(["--content", content_pattern])
+        if case_sensitive:
+            args.append("--case-sensitive")
+        args.extend(["--max-results", str(max_results)])
+
+        result = await executor.execute("fs", "search.py", args)
+
+        # Audit log
+        AuditLogger.log_tool_call(
+            tool_name="fs_search",
+            parameters={
+                "directory": directory,
+                "name_pattern": name_pattern,
+                "content_pattern": content_pattern
+            },
+            resolved_path=validated_path,
+            duration_ms=(time.time() - start_time) * 1000,
+            success=result.get("success", False)
+        )
+
+        return json.dumps(result)
