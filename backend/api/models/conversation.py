@@ -16,7 +16,7 @@ class Conversation(Base):
     title = Column(String(500), nullable=False)
     title_generated = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     is_archived = Column(Boolean, default=False)
     first_message = Column(Text)  # Preview of first message (first 100 chars)
     message_count = Column(Integer, default=0)

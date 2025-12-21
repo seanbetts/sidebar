@@ -195,8 +195,9 @@ async def update_conversation(
         conversation.title_generated = updates.titleGenerated
     if updates.isArchived is not None:
         conversation.is_archived = updates.isArchived
+        # Only update timestamp when archiving (actual conversation state change)
+        conversation.updated_at = datetime.now(timezone.utc)
 
-    conversation.updated_at = datetime.now(timezone.utc)
     db.commit()
 
     return {"success": True}
