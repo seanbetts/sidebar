@@ -1,43 +1,85 @@
 /**
  * Chat store for managing messages and streaming state
  */
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import type { Message, ToolCall } from '$lib/types/chat';
+import { conversationsAPI } from '$lib/services/api';
 
 export interface ChatState {
 	messages: Message[];
 	isStreaming: boolean;
 	currentMessageId: string | null;
+	conversationId: string | null;
 }
 
 function createChatStore() {
 	const { subscribe, set, update } = writable<ChatState>({
 		messages: [],
 		isStreaming: false,
-		currentMessageId: null
+		currentMessageId: null,
+		conversationId: null
 	});
 
 	return {
 		subscribe,
 
 		/**
+		 * Load an existing conversation
+		 */
+		async loadConversation(conversationId: string) {
+			const conversation = await conversationsAPI.get(conversationId);
+			set({
+				conversationId,
+				messages: conversation.messages.map(msg => ({
+					...msg,
+					timestamp: new Date(msg.timestamp)
+				})),
+				isStreaming: false,
+				currentMessageId: null
+			});
+		},
+
+		/**
+		 * Start a new conversation
+		 */
+		async startNewConversation() {
+			const conversation = await conversationsAPI.create();
+			set({
+				conversationId: conversation.id,
+				messages: [],
+				isStreaming: false,
+				currentMessageId: null
+			});
+			return conversation.id;
+		},
+
+		/**
 		 * Add a user message and start streaming assistant response
 		 */
-		sendMessage(content: string): string {
+		async sendMessage(content: string): Promise<string> {
+			const state = get({ subscribe });
+
+			// Create new conversation if none exists
+			if (!state.conversationId) {
+				await this.startNewConversation();
+			}
+
 			const userMessageId = crypto.randomUUID();
 			const assistantMessageId = crypto.randomUUID();
+
+			const userMessage: Message = {
+				id: userMessageId,
+				role: 'user',
+				content,
+				status: 'complete',
+				timestamp: new Date()
+			};
 
 			update((state) => ({
 				...state,
 				messages: [
 					...state.messages,
-					{
-						id: userMessageId,
-						role: 'user',
-						content,
-						status: 'complete',
-						timestamp: new Date()
-					},
+					userMessage,
 					{
 						id: assistantMessageId,
 						role: 'assistant',
@@ -50,6 +92,16 @@ function createChatStore() {
 				isStreaming: true,
 				currentMessageId: assistantMessageId
 			}));
+
+			// Persist user message to backend
+			const currentState = get({ subscribe });
+			if (currentState.conversationId) {
+				try {
+					await conversationsAPI.addMessage(currentState.conversationId, userMessage);
+				} catch (error) {
+					console.error('Failed to persist user message:', error);
+				}
+			}
 
 			return assistantMessageId;
 		},
@@ -115,7 +167,7 @@ function createChatStore() {
 		/**
 		 * Mark streaming as complete
 		 */
-		finishStreaming(messageId: string) {
+		async finishStreaming(messageId: string) {
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) =>
@@ -124,6 +176,18 @@ function createChatStore() {
 				isStreaming: false,
 				currentMessageId: null
 			}));
+
+			// Persist assistant message to backend
+			const state = get({ subscribe });
+			const assistantMessage = state.messages.find(m => m.id === messageId);
+
+			if (state.conversationId && assistantMessage) {
+				try {
+					await conversationsAPI.addMessage(state.conversationId, assistantMessage);
+				} catch (error) {
+					console.error('Failed to persist assistant message:', error);
+				}
+			}
 		},
 
 		/**
@@ -141,14 +205,10 @@ function createChatStore() {
 		},
 
 		/**
-		 * Clear all messages
+		 * Clear all messages (starts new conversation)
 		 */
-		clear() {
-			set({
-				messages: [],
-				isStreaming: false,
-				currentMessageId: null
-			});
+		async clear() {
+			await this.startNewConversation();
 		}
 	};
 }

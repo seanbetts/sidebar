@@ -1,4 +1,23 @@
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=agent_smith
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-agent_smith_dev}
+      - POSTGRES_DB=agent_smith
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent_smith"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Existing agent-smith (keep for development)
   agent-smith:
     build:
@@ -39,6 +58,7 @@ services:
       - DOPPLER_TOKEN=${DOPPLER_TOKEN}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=postgresql://agent_smith:${POSTGRES_PASSWORD:-agent_smith_dev}@postgres:5432/agent_smith
     user: "1000:1000"  # Run as non-root user
     cap_drop:
       - ALL  # Drop all Linux capabilities
@@ -51,6 +71,9 @@ services:
       - /tmp:noexec,nosuid,nodev
     networks:
       - agent-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 30s
@@ -75,6 +98,7 @@ services:
 
 volumes:
   workspace:
+  postgres_data:
 
 networks:
   agent-network:

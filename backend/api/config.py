@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # Authentication
     bearer_token: str
 
+    # Database
+    database_url: str = "postgresql://agent_smith:agent_smith_dev@postgres:5432/agent_smith"
+
     # Claude API configuration
     anthropic_api_key: str  # Loaded from Doppler
     model_name: str = "claude-sonnet-4-5-20250929"
