@@ -13,6 +13,7 @@
   let editedTitle = conversation.title;
 
   $: isActive = $currentConversationId === conversation.id;
+  $: isGeneratingTitle = $conversationListStore.generatingTitleIds.has(conversation.id);
 
   async function handleClick() {
     currentConversationId.set(conversation.id);
@@ -91,10 +92,14 @@
         on:click={(e) => e.stopPropagation()}
         autofocus
       />
+    {:else if isGeneratingTitle}
+      <div class="title-skeleton">
+        <div class="skeleton-bar"></div>
+      </div>
     {:else}
       <div class="title">{conversation.title}</div>
     {/if}
-    {#if conversation.firstMessage && !isEditing}
+    {#if conversation.firstMessage && !isEditing && !isGeneratingTitle}
       <div class="preview">{conversation.firstMessage}</div>
     {/if}
     <div class="meta">
@@ -255,5 +260,35 @@
 
   .menu-item.delete {
     color: var(--color-destructive);
+  }
+
+  .title-skeleton {
+    margin-bottom: 0.25rem;
+    height: 0.875rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .skeleton-bar {
+    width: 60%;
+    height: 0.625rem;
+    background: linear-gradient(
+      90deg,
+      var(--color-muted) 0%,
+      var(--color-muted-foreground) 50%,
+      var(--color-muted) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 0.25rem;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
   }
 </style>

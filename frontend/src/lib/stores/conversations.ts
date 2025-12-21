@@ -9,13 +9,15 @@ interface ConversationListState {
   conversations: Conversation[];
   loading: boolean;
   searchQuery: string;
+  generatingTitleIds: Set<string>;
 }
 
 function createConversationListStore() {
   const { subscribe, set, update } = writable<ConversationListState>({
     conversations: [],
     loading: false,
-    searchQuery: ''
+    searchQuery: '',
+    generatingTitleIds: new Set()
   });
 
   return {
@@ -59,6 +61,63 @@ function createConversationListStore() {
       } catch (error) {
         console.error('Failed to delete conversation:', error);
       }
+    },
+
+    /**
+     * Add a new conversation to the list without full refresh
+     */
+    addConversation(conversation: Conversation) {
+      update(state => ({
+        ...state,
+        conversations: [conversation, ...state.conversations]
+      }));
+    },
+
+    /**
+     * Update conversation metadata (message count, preview) without full refresh
+     */
+    updateConversationMetadata(id: string, updates: { messageCount?: number; firstMessage?: string; updatedAt?: string }) {
+      update(state => ({
+        ...state,
+        conversations: state.conversations.map(c =>
+          c.id === id ? { ...c, ...updates } : c
+        )
+      }));
+    },
+
+    /**
+     * Mark a conversation as generating title
+     */
+    setGeneratingTitle(id: string, generating: boolean) {
+      update(state => {
+        const newGeneratingIds = new Set(state.generatingTitleIds);
+        if (generating) {
+          newGeneratingIds.add(id);
+        } else {
+          newGeneratingIds.delete(id);
+        }
+        return {
+          ...state,
+          generatingTitleIds: newGeneratingIds
+        };
+      });
+    },
+
+    /**
+     * Update a single conversation's title without refreshing the entire list
+     */
+    updateConversationTitle(id: string, title: string) {
+      update(state => {
+        const newGeneratingIds = new Set(state.generatingTitleIds);
+        newGeneratingIds.delete(id);
+        return {
+          ...state,
+          generatingTitleIds: newGeneratingIds,
+          conversations: state.conversations.map(c =>
+            c.id === id ? { ...c, title, titleGenerated: true } : c
+          )
+        };
+      });
     }
   };
 }

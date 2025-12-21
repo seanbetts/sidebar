@@ -58,6 +58,7 @@ services:
       - DOPPLER_TOKEN=${DOPPLER_TOKEN}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - DATABASE_URL=postgresql://agent_smith:${POSTGRES_PASSWORD:-agent_smith_dev}@postgres:5432/agent_smith
     user: "1000:1000"  # Run as non-root user
     cap_drop:

@@ -52,8 +52,11 @@ function createChatStore() {
 				currentMessageId: null
 			});
 
-			// Refresh conversation list in sidebar
-			await conversationListStore.refresh();
+			// Mark as generating title from the start
+			conversationListStore.setGeneratingTitle(conversation.id, true);
+
+			// Add conversation to sidebar without full refresh
+			conversationListStore.addConversation(conversation);
 
 			return conversation.id;
 		},
@@ -190,17 +193,30 @@ function createChatStore() {
 				try {
 					await conversationsAPI.addMessage(state.conversationId, assistantMessage);
 
-					// Check if this is the first exchange (2 messages total)
 					const messageCount = state.messages.length;
+
+					// Check if this is the first exchange (2 messages total)
 					if (messageCount === 2) {
-						// Trigger title generation (don't wait for it)
+						const firstMessage = state.messages[0]?.content.substring(0, 100);
+
+						// Update conversation metadata (message count and preview)
+						conversationListStore.updateConversationMetadata(state.conversationId, {
+							messageCount,
+							firstMessage,
+							updatedAt: new Date().toISOString()
+						});
+
+						// Trigger title generation (generating state was set when conversation was created)
 						generateTitle(state.conversationId).catch(err => {
 							console.error('Title generation failed:', err);
 						});
+					} else {
+						// For subsequent messages, just update the metadata
+						conversationListStore.updateConversationMetadata(state.conversationId, {
+							messageCount,
+							updatedAt: new Date().toISOString()
+						});
 					}
-
-					// Refresh conversation list to update message count and preview
-					await conversationListStore.refresh();
 				} catch (error) {
 					console.error('Failed to persist assistant message:', error);
 				}
@@ -248,6 +264,9 @@ export const chatStore = createChatStore();
  * Generate a title for a conversation using Gemini Flash
  */
 async function generateTitle(conversationId: string): Promise<void> {
+	// Mark as generating
+	conversationListStore.setGeneratingTitle(conversationId, true);
+
 	try {
 		const response = await fetch('/api/chat/generate-title', {
 			method: 'POST',
@@ -261,8 +280,12 @@ async function generateTitle(conversationId: string): Promise<void> {
 
 		const data = await response.json();
 		console.log(`Title generated: ${data.title}${data.fallback ? ' (fallback)' : ''}`);
+
+		// Update just this conversation's title in the sidebar (no full refresh)
+		conversationListStore.updateConversationTitle(conversationId, data.title);
 	} catch (error) {
 		// Silent fail - title generation is not critical
 		console.error('Title generation error:', error);
+		conversationListStore.setGeneratingTitle(conversationId, false);
 	}
 }

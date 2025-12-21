@@ -10,6 +10,7 @@ from api.config import Settings, settings
 from api.services.claude_client import ClaudeClient
 from api.auth import verify_bearer_token
 from api.db.session import get_db
+from api.db.dependencies import get_current_user_id
 from api.models.conversation import Conversation
 
 
@@ -95,7 +96,7 @@ async def stream_chat(
 async def generate_title(
     request: Request,
     db: Session = Depends(get_db),
-    user_id: str = Depends(verify_bearer_token)
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Generate a concise title for a conversation using Gemini Flash.
@@ -118,12 +119,19 @@ async def generate_title(
         raise HTTPException(status_code=400, detail="conversation_id required")
 
     # Get conversation and verify ownership
+    print(f"DEBUG: Looking for conversation_id={conversation_id}, user_id={user_id}")
     conversation = db.query(Conversation).filter(
         Conversation.id == conversation_id,
         Conversation.user_id == user_id
     ).first()
 
     if not conversation:
+        # Check if conversation exists at all
+        any_conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if any_conv:
+            print(f"DEBUG: Conversation exists but belongs to user_id={any_conv.user_id}")
+        else:
+            print(f"DEBUG: Conversation {conversation_id} does not exist in database")
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     # Get first user and assistant messages from JSONB array
