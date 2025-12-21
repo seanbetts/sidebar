@@ -1,0 +1,55 @@
+<script lang="ts">
+	import { onMount, afterUpdate } from 'svelte';
+	import type { Message as MessageType } from '$lib/types/chat';
+	import Message from './Message.svelte';
+
+	export let messages: MessageType[];
+
+	let containerElement: HTMLDivElement;
+	let shouldAutoScroll = true;
+
+	function scrollToBottom() {
+		if (containerElement && shouldAutoScroll) {
+			containerElement.scrollTop = containerElement.scrollHeight;
+		}
+	}
+
+	function handleScroll() {
+		if (!containerElement) return;
+
+		// Check if user is near bottom (within 100px)
+		const isNearBottom =
+			containerElement.scrollHeight - containerElement.scrollTop - containerElement.clientHeight <
+			100;
+
+		shouldAutoScroll = isNearBottom;
+	}
+
+	// Auto-scroll when messages update
+	afterUpdate(() => {
+		scrollToBottom();
+	});
+
+	onMount(() => {
+		scrollToBottom();
+	});
+</script>
+
+<div
+	bind:this={containerElement}
+	onscroll={handleScroll}
+	class="flex-1 overflow-y-auto p-4 space-y-4"
+>
+	{#if messages.length === 0}
+		<div class="flex items-center justify-center h-full text-gray-500">
+			<div class="text-center">
+				<p class="text-xl mb-2">Welcome to Agent Smith</p>
+				<p class="text-sm">Start a conversation by typing a message below</p>
+			</div>
+		</div>
+	{:else}
+		{#each messages as message (message.id)}
+			<Message {message} />
+		{/each}
+	{/if}
+</div>
