@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { Message } from '$lib/types/chat';
+	import { Badge } from '$lib/components/ui/badge';
 	import ToolCall from './ToolCall.svelte';
 
 	export let message: Message;
 
-	$: roleColor = message.role === 'user' ? 'bg-blue-50' : 'bg-gray-50';
+	$: roleColor = message.role === 'user' ? 'bg-muted' : 'bg-card';
 	$: roleName = message.role === 'user' ? 'You' : 'Agent Smith';
 
 	function formatTime(date: Date): string {
@@ -15,17 +16,17 @@
 	}
 </script>
 
-<div class="p-4 {roleColor} rounded-lg mb-4">
+<div class="p-4 {roleColor} rounded-lg mb-4 border">
 	<div class="flex items-center gap-2 mb-2">
-		<span class="font-medium text-sm">{roleName}</span>
-		<span class="text-xs text-gray-500">{formatTime(message.timestamp)}</span>
+		<Badge variant={message.role === 'user' ? 'default' : 'outline'}>{roleName}</Badge>
+		<span class="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
 		{#if message.status === 'streaming'}
-			<span class="text-xs text-blue-500 animate-pulse">●</span>
+			<span class="text-xs animate-pulse">●</span>
 		{/if}
 	</div>
 
 	{#if message.content}
-		<div class="prose prose-sm max-w-none whitespace-pre-wrap">
+		<div class="text-sm whitespace-pre-wrap text-foreground">
 			{message.content}
 		</div>
 	{/if}
@@ -39,7 +40,7 @@
 	{/if}
 
 	{#if message.error}
-		<div class="mt-3 p-3 bg-red-100 border border-red-300 rounded text-sm text-red-700">
+		<div class="mt-3 p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
 			<strong>Error:</strong>
 			{message.error}
 		</div>

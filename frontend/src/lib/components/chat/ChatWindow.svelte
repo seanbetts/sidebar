@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { chatStore } from '$lib/stores/chat';
 	import { SSEClient } from '$lib/api/sse';
+	import { Button } from '$lib/components/ui/button';
+	import { Separator } from '$lib/components/ui/separator';
+	import ModeToggle from '$lib/components/mode-toggle.svelte';
 	import MessageList from './MessageList.svelte';
 	import ChatInput from './ChatInput.svelte';
 
@@ -49,19 +52,19 @@
 	}
 </script>
 
-<div class="flex flex-col h-screen max-w-5xl mx-auto">
+<div class="flex flex-col h-screen max-w-6xl mx-auto bg-background">
 	<!-- Header -->
-	<header class="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+	<header class="flex items-center justify-between p-4 border-b">
 		<div>
-			<h1 class="text-2xl font-bold">Agent Smith</h1>
-			<p class="text-sm text-gray-500">AI Assistant with Tool Access</p>
+			<h1 class="text-2xl font-bold text-foreground">Agent Smith</h1>
+			<p class="text-sm text-muted-foreground">AI Assistant with Tool Access</p>
 		</div>
-		<button
-			onclick={() => chatStore.clear()}
-			class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
-		>
-			Clear Chat
-		</button>
+		<div class="flex items-center gap-2">
+			<Button variant="outline" size="sm" onclick={() => chatStore.clear()}>
+				Clear Chat
+			</Button>
+			<ModeToggle />
+		</div>
 	</header>
 
 	<!-- Messages -->
