@@ -1,11 +1,16 @@
 import type { Message } from '$lib/types/chat';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
+import { browser } from '$app/environment';
 
 /**
  * API service for conversations
  */
 class ConversationsAPI {
-  private baseUrl = '/api/conversations';
+  private get baseUrl(): string {
+    // In browser, use relative URLs
+    // In SSR, use absolute URL to backend service
+    return browser ? '/api/conversations' : 'http://skills-api:8001/api/conversations';
+  }
 
   async create(title: string = 'New Chat'): Promise<Conversation> {
     const response = await fetch(`${this.baseUrl}/`, {

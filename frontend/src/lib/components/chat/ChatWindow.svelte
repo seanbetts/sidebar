@@ -12,7 +12,7 @@
 	async function handleSend(message: string) {
 
 		// Add user message and start streaming assistant response
-		const assistantMessageId = chatStore.sendMessage(message);
+		const assistantMessageId = await chatStore.sendMessage(message);
 
 		try {
 			// Connect to SSE stream
@@ -34,8 +34,8 @@
 					chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
 				},
 
-				onComplete: () => {
-					chatStore.finishStreaming(assistantMessageId);
+				onComplete: async () => {
+					await chatStore.finishStreaming(assistantMessageId);
 				},
 
 				onError: (error) => {
@@ -59,12 +59,7 @@
 			<h1 class="text-2xl font-bold text-foreground">Agent Smith</h1>
 			<p class="text-sm text-muted-foreground">AI Assistant with Tool Access</p>
 		</div>
-		<div class="flex items-center gap-2">
-			<Button variant="outline" size="sm" onclick={() => chatStore.clear()}>
-				Clear Chat
-			</Button>
-			<ModeToggle />
-		</div>
+		<ModeToggle />
 	</header>
 
 	<!-- Messages -->
