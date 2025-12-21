@@ -41,9 +41,9 @@
 	class="flex-1 overflow-y-auto p-4 space-y-4"
 >
 	{#if messages.length === 0}
-		<div class="flex items-center justify-center h-full text-gray-500">
+		<div class="flex items-center justify-center h-full text-muted-foreground">
 			<div class="text-center">
-				<p class="text-xl mb-2">Welcome to Agent Smith</p>
+				<p class="text-xl mb-2 font-semibold">Welcome to Agent Smith</p>
 				<p class="text-sm">Start a conversation by typing a message below</p>
 			</div>
 		</div>
