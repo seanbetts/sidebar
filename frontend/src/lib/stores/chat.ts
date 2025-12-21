@@ -190,6 +190,15 @@ function createChatStore() {
 				try {
 					await conversationsAPI.addMessage(state.conversationId, assistantMessage);
 
+					// Check if this is the first exchange (2 messages total)
+					const messageCount = state.messages.length;
+					if (messageCount === 2) {
+						// Trigger title generation (don't wait for it)
+						generateTitle(state.conversationId).catch(err => {
+							console.error('Title generation failed:', err);
+						});
+					}
+
 					// Refresh conversation list to update message count and preview
 					await conversationListStore.refresh();
 				} catch (error) {
@@ -234,3 +243,26 @@ function createChatStore() {
 }
 
 export const chatStore = createChatStore();
+
+/**
+ * Generate a title for a conversation using Gemini Flash
+ */
+async function generateTitle(conversationId: string): Promise<void> {
+	try {
+		const response = await fetch('/api/chat/generate-title', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ conversation_id: conversationId })
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to generate title: ${response.statusText}`);
+		}
+
+		const data = await response.json();
+		console.log(`Title generated: ${data.title}${data.fallback ? ' (fallback)' : ''}`);
+	} catch (error) {
+		// Silent fail - title generation is not critical
+		console.error('Title generation error:', error);
+	}
+}

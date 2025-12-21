@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import Sidebar from '$lib/components/history/Sidebar.svelte';
+	import { Toaster } from 'svelte-sonner';
 </script>
 
 <div class="app">
@@ -9,6 +10,8 @@
 		<slot />
 	</main>
 </div>
+
+<Toaster richColors position="top-right" />
 
 <style>
 	.app {
