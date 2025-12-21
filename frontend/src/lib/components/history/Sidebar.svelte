@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ChevronLeft, ChevronRight, Plus } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Plus, MessageSquare, Folder, FileText } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
+  import CollapsibleSection from '$lib/components/sidebar/CollapsibleSection.svelte';
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
+  import FileTree from '$lib/components/files/FileTree.svelte';
 
   let isCollapsed = false;
 
@@ -27,7 +29,7 @@
     <!-- Header -->
     <div class="header">
       {#if !isCollapsed}
-        <h2>History</h2>
+        <h2>Sidebar</h2>
         <button on:click={toggleSidebar} class="collapse-btn" aria-label="Collapse sidebar">
           <ChevronLeft size={20} />
         </button>
@@ -45,11 +47,33 @@
         <span>New Chat</span>
       </button>
 
-      <!-- Search Bar -->
-      <SearchBar />
+      <!-- Universal Search Bar -->
+      <div class="search-container">
+        <SearchBar />
+      </div>
 
-      <!-- Conversation List -->
-      <ConversationList />
+      <div class="sections">
+        <!-- History Section -->
+        <CollapsibleSection title="History" icon={MessageSquare} defaultExpanded={true}>
+          <div class="history-content">
+            <ConversationList />
+          </div>
+        </CollapsibleSection>
+
+        <!-- Notes Section -->
+        <CollapsibleSection title="Notes" icon={FileText} defaultExpanded={false}>
+          <div class="notes-content">
+            <FileTree basePath="notes" emptyMessage="No notes found" hideExtensions={true} />
+          </div>
+        </CollapsibleSection>
+
+        <!-- Documents Section -->
+        <CollapsibleSection title="Documents" icon={Folder} defaultExpanded={false}>
+          <div class="files-content">
+            <FileTree basePath="documents" emptyMessage="No files found" hideExtensions={false} />
+          </div>
+        </CollapsibleSection>
+      </div>
     {/if}
   </div>
 </div>
@@ -125,5 +149,31 @@
 
   .new-chat-btn:hover {
     opacity: 0.9;
+  }
+
+  .search-container {
+    padding: 0 1rem 1rem 1rem;
+  }
+
+  .sections {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .history-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .notes-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .files-content {
+    display: flex;
+    flex-direction: column;
   }
 </style>
