@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # Authentication
     bearer_token: str
 
+    # Claude API configuration
+    anthropic_api_key: str  # Loaded from Doppler
+    model_name: str = "claude-sonnet-4-5-20250929"
+
     # Write allowlist - only these paths can be written
     writable_paths: list[str] = ["/workspace/notes", "/workspace/documents"]
 

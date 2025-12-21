@@ -2,13 +2,13 @@ services:
   # Existing agent-smith (keep for development)
   agent-smith:
     build:
-      context: .
+      context: ./backend
       dockerfile: docker/Dockerfile
     volumes:
       # Mount skills directory (bidirectional - edit locally, access in container)
-      - ./skills:/skills
+      - ./backend/skills:/skills
       # Mount tests directory for running tests in Docker
-      - ./tests:/tests
+      - ./backend/tests:/tests
       # Add shared workspace
       - workspace:/workspace
     stdin_open: true
@@ -24,19 +24,21 @@ services:
   # NEW: Skills API (FastAPI + MCP)
   skills-api:
     build:
-      context: .
+      context: ./backend
       dockerfile: docker/Dockerfile.skills-api
     ports:
       - "8001:8001"
     volumes:
-      - ./skills:/skills:ro  # Read-only mount - skills are untrusted code
-      - ./api:/app/api
+      - ./backend/skills:/skills:ro  # Read-only mount - skills are untrusted code
+      - ./backend/api:/app/api
       - workspace:/workspace
     environment:
       - PYTHONUNBUFFERED=1
       - WORKSPACE_BASE=/workspace
       - BEARER_TOKEN=${BEARER_TOKEN}
       - DOPPLER_TOKEN=${DOPPLER_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     user: "1000:1000"  # Run as non-root user
     cap_drop:
       - ALL  # Drop all Linux capabilities

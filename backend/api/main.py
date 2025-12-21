@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from api.routers import health
+from api.routers import health, chat
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
 from api.executors.skill_executor import SkillExecutor
@@ -88,6 +88,7 @@ async def auth_middleware(request: Request, call_next):
 
 # Add REST routers BEFORE mounting MCP (auth handled by middleware)
 app.include_router(health.router, tags=["health"])
+app.include_router(chat.router, tags=["chat"])
 
 # Mount MCP endpoint (auth handled by middleware)
 # FastMCP creates its own /mcp route, so we mount at root
@@ -103,6 +104,7 @@ async def root():
         "endpoints": {
             "rest": "/docs (Bearer token)",
             "mcp": "/mcp (Bearer token)",
+            "chat": "/chat/stream (Bearer token, SSE)",
             "health": "/health (no auth)"
         },
         "security": {
