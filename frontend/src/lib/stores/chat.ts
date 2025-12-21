@@ -4,6 +4,7 @@
 import { writable, get } from 'svelte/store';
 import type { Message, ToolCall } from '$lib/types/chat';
 import { conversationsAPI } from '$lib/services/api';
+import { conversationListStore } from './conversations';
 
 export interface ChatState {
 	messages: Message[];
@@ -50,6 +51,10 @@ function createChatStore() {
 				isStreaming: false,
 				currentMessageId: null
 			});
+
+			// Refresh conversation list in sidebar
+			await conversationListStore.refresh();
+
 			return conversation.id;
 		},
 
@@ -184,6 +189,9 @@ function createChatStore() {
 			if (state.conversationId && assistantMessage) {
 				try {
 					await conversationsAPI.addMessage(state.conversationId, assistantMessage);
+
+					// Refresh conversation list to update message count and preview
+					await conversationListStore.refresh();
 				} catch (error) {
 					console.error('Failed to persist assistant message:', error);
 				}
@@ -202,6 +210,18 @@ function createChatStore() {
 				isStreaming: false,
 				currentMessageId: null
 			}));
+		},
+
+		/**
+		 * Reset to empty state without creating a conversation
+		 */
+		reset() {
+			set({
+				conversationId: null,
+				messages: [],
+				isStreaming: false,
+				currentMessageId: null
+			});
 		},
 
 		/**

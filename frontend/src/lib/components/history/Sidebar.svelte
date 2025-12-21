@@ -60,8 +60,8 @@
     flex-direction: column;
     height: 100vh;
     width: 260px;
-    background-color: var(--color-background-secondary, #f8f9fa);
-    border-right: 1px solid var(--color-border, #e0e0e0);
+    background-color: var(--color-sidebar);
+    border-right: 1px solid var(--color-sidebar-border);
     transition: width 0.2s ease;
   }
 
@@ -81,13 +81,14 @@
     align-items: center;
     justify-content: space-between;
     padding: 1rem;
-    border-bottom: 1px solid var(--color-border, #e0e0e0);
+    border-bottom: 1px solid var(--color-sidebar-border);
   }
 
   .header h2 {
     font-size: 1.125rem;
     font-weight: 600;
     margin: 0;
+    color: var(--color-sidebar-foreground);
   }
 
   .collapse-btn {
@@ -99,12 +100,12 @@
     border: none;
     cursor: pointer;
     border-radius: 0.375rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-muted-foreground);
     transition: background-color 0.2s;
   }
 
   .collapse-btn:hover {
-    background-color: var(--color-background-hover, #e8e8e8);
+    background-color: var(--color-sidebar-accent);
   }
 
   .new-chat-btn {
@@ -113,16 +114,16 @@
     gap: 0.5rem;
     margin: 1rem;
     padding: 0.75rem 1rem;
-    background-color: var(--color-primary, #000);
-    color: white;
+    background-color: var(--color-sidebar-primary);
+    color: var(--color-sidebar-primary-foreground);
     border: none;
     border-radius: 0.5rem;
     cursor: pointer;
     font-weight: 500;
-    transition: background-color 0.2s;
+    transition: opacity 0.2s;
   }
 
   .new-chat-btn:hover {
-    background-color: var(--color-primary-hover, #333);
+    opacity: 0.9;
   }
 </style>

@@ -51,23 +51,29 @@
   :global(.search-icon) {
     position: absolute;
     left: 0.75rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-muted-foreground);
     pointer-events: none;
   }
 
   .search-input {
     width: 100%;
     padding: 0.5rem 0.75rem 0.5rem 2.5rem;
-    border: 1px solid var(--color-border, #e0e0e0);
+    border: 1px solid var(--color-sidebar-border);
     border-radius: 0.375rem;
     font-size: 0.875rem;
-    background-color: white;
+    background-color: var(--color-sidebar-accent);
+    color: var(--color-sidebar-foreground);
     transition: border-color 0.2s;
+  }
+
+  .search-input::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 0.7;
   }
 
   .search-input:focus {
     outline: none;
-    border-color: var(--color-primary, #000);
+    border-color: var(--color-sidebar-primary);
   }
 
   .clear-btn {
@@ -81,11 +87,11 @@
     border: none;
     cursor: pointer;
     border-radius: 0.25rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-muted-foreground);
     transition: background-color 0.2s;
   }
 
   .clear-btn:hover {
-    background-color: var(--color-background-hover, #f0f0f0);
+    background-color: var(--color-accent);
   }
 </style>

@@ -22,7 +22,8 @@
     if (confirm(`Delete "${conversation.title}"?`)) {
       await conversationListStore.deleteConversation(conversation.id);
       if (isActive) {
-        await chatStore.clear();
+        chatStore.reset();
+        currentConversationId.set(null);
       }
     }
     showMenu = false;
@@ -82,15 +83,16 @@
     cursor: pointer;
     transition: background-color 0.2s;
     border-left: 2px solid transparent;
+    color: var(--color-sidebar-foreground);
   }
 
   .conversation-item:hover {
-    background-color: var(--color-background-hover, #f0f0f0);
+    background-color: var(--color-sidebar-accent);
   }
 
   .conversation-item.active {
-    background-color: var(--color-background-selected, #e8e8e8);
-    border-left-color: var(--color-primary, #000);
+    background-color: var(--color-sidebar-accent);
+    border-left-color: var(--color-sidebar-primary);
   }
 
   .content {
@@ -105,11 +107,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--color-sidebar-foreground);
   }
 
   .preview {
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-muted-foreground);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -120,7 +123,8 @@
     display: flex;
     gap: 0.5rem;
     font-size: 0.75rem;
-    color: var(--color-text-tertiary, #999);
+    color: var(--color-muted-foreground);
+    opacity: 0.7;
   }
 
   .actions {
@@ -138,7 +142,7 @@
     border: none;
     cursor: pointer;
     border-radius: 0.25rem;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-muted-foreground);
     opacity: 0;
     transition: all 0.2s;
   }
@@ -148,7 +152,7 @@
   }
 
   .menu-btn:hover {
-    background-color: var(--color-background-hover, #e8e8e8);
+    background-color: var(--color-accent);
   }
 
   .menu {
@@ -156,8 +160,8 @@
     top: 100%;
     right: 0;
     margin-top: 0.25rem;
-    background-color: white;
-    border: 1px solid var(--color-border, #e0e0e0);
+    background-color: var(--color-popover);
+    border: 1px solid var(--color-border);
     border-radius: 0.375rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     z-index: 10;
@@ -176,13 +180,14 @@
     font-size: 0.875rem;
     text-align: left;
     transition: background-color 0.2s;
+    color: var(--color-popover-foreground);
   }
 
   .menu-item:hover {
-    background-color: var(--color-background-hover, #f0f0f0);
+    background-color: var(--color-accent);
   }
 
   .menu-item.delete {
-    color: var(--color-danger, #dc2626);
+    color: var(--color-destructive);
   }
 </style>

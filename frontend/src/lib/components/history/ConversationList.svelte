@@ -48,17 +48,19 @@
   .empty {
     padding: 2rem 1rem;
     text-align: center;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-muted-foreground);
     font-size: 0.875rem;
   }
 
   .empty p {
     margin: 0.5rem 0;
+    color: var(--color-sidebar-foreground);
   }
 
   .empty .hint {
     font-size: 0.75rem;
-    color: var(--color-text-tertiary, #999);
+    color: var(--color-muted-foreground);
+    opacity: 0.7;
   }
 
   .group {
@@ -69,7 +71,7 @@
     padding: 0.5rem 1rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-text-secondary, #666);
+    color: var(--color-muted-foreground);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -84,11 +86,11 @@
   }
 
   .conversation-list::-webkit-scrollbar-thumb {
-    background: var(--color-border, #e0e0e0);
+    background: var(--color-sidebar-border);
     border-radius: 3px;
   }
 
   .conversation-list::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-tertiary, #999);
+    background: var(--color-muted-foreground);
   }
 </style>
