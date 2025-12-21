@@ -1,13 +1,16 @@
 <script lang="ts">
-  import { MoreVertical, Trash2 } from 'lucide-svelte';
+  import { MoreVertical, Trash2, Pencil } from 'lucide-svelte';
   import type { Conversation } from '$lib/types/history';
   import { chatStore } from '$lib/stores/chat';
   import { conversationListStore, currentConversationId } from '$lib/stores/conversations';
+  import { conversationsAPI } from '$lib/services/api';
 
   export let conversation: Conversation;
 
   let showMenu = false;
   let isActive = false;
+  let isEditing = false;
+  let editedTitle = conversation.title;
 
   $: isActive = $currentConversationId === conversation.id;
 
@@ -15,6 +18,36 @@
     currentConversationId.set(conversation.id);
     await chatStore.loadConversation(conversation.id);
     showMenu = false;
+  }
+
+  function handleRename(event: MouseEvent) {
+    event.stopPropagation();
+    editedTitle = conversation.title;
+    isEditing = true;
+    showMenu = false;
+  }
+
+  async function saveRename() {
+    if (editedTitle.trim() && editedTitle !== conversation.title) {
+      try {
+        await conversationsAPI.update(conversation.id, { title: editedTitle.trim() });
+        conversation.title = editedTitle.trim();
+        await conversationListStore.refresh();
+      } catch (error) {
+        console.error('Failed to rename conversation:', error);
+        editedTitle = conversation.title;
+      }
+    }
+    isEditing = false;
+  }
+
+  function cancelRename(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      editedTitle = conversation.title;
+      isEditing = false;
+    } else if (event.key === 'Enter') {
+      saveRename();
+    }
   }
 
   async function handleDelete(event: MouseEvent) {
@@ -48,8 +81,20 @@
 
 <div class="conversation-item" class:active={isActive} on:click={handleClick} role="button" tabindex="0">
   <div class="content">
-    <div class="title">{conversation.title}</div>
-    {#if conversation.firstMessage}
+    {#if isEditing}
+      <input
+        type="text"
+        class="title-input"
+        bind:value={editedTitle}
+        on:blur={saveRename}
+        on:keydown={cancelRename}
+        on:click={(e) => e.stopPropagation()}
+        autofocus
+      />
+    {:else}
+      <div class="title">{conversation.title}</div>
+    {/if}
+    {#if conversation.firstMessage && !isEditing}
       <div class="preview">{conversation.firstMessage}</div>
     {/if}
     <div class="meta">
@@ -65,6 +110,10 @@
 
     {#if showMenu}
       <div class="menu">
+        <button class="menu-item" on:click={handleRename}>
+          <Pencil size={16} />
+          <span>Rename</span>
+        </button>
         <button class="menu-item delete" on:click={handleDelete}>
           <Trash2 size={16} />
           <span>Delete</span>
@@ -108,6 +157,23 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--color-sidebar-foreground);
+  }
+
+  .title-input {
+    width: 100%;
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--color-sidebar-accent);
+    color: var(--color-sidebar-foreground);
+    border: 1px solid var(--color-sidebar-border);
+    border-radius: 0.25rem;
+    outline: none;
+  }
+
+  .title-input:focus {
+    border-color: var(--color-sidebar-primary);
   }
 
   .preview {

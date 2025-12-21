@@ -6,8 +6,37 @@
 	import ModeToggle from '$lib/components/mode-toggle.svelte';
 	import MessageList from './MessageList.svelte';
 	import ChatInput from './ChatInput.svelte';
+	import { toast } from 'svelte-sonner';
 
 	let sseClient = new SSEClient();
+
+	/**
+	 * Parse error messages and return user-friendly descriptions
+	 */
+	function getUserFriendlyError(error: string): string {
+		// Check for credit balance errors
+		if (error.includes('credit balance is too low') || error.includes('insufficient_credits')) {
+			return 'API credit balance too low. Please check your Anthropic account billing.';
+		}
+
+		// Check for rate limit errors
+		if (error.includes('rate_limit') || error.includes('429')) {
+			return 'Rate limit exceeded. Please wait a moment and try again.';
+		}
+
+		// Check for authentication errors
+		if (error.includes('authentication') || error.includes('401')) {
+			return 'Authentication failed. Please check your API credentials.';
+		}
+
+		// Check for network errors
+		if (error.includes('fetch') || error.includes('network')) {
+			return 'Network error. Please check your connection and try again.';
+		}
+
+		// Default to a generic message
+		return 'An error occurred while processing your request. Please try again.';
+	}
 
 	async function handleSend(message: string) {
 
@@ -39,15 +68,18 @@
 				},
 
 				onError: (error) => {
-					chatStore.setError(assistantMessageId, error);
+					const friendlyError = getUserFriendlyError(error);
+					toast.error(friendlyError);
+					console.error('Chat error:', error);
+					chatStore.setError(assistantMessageId, 'Request failed');
 				}
 			});
 		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			const friendlyError = getUserFriendlyError(errorMessage);
+			toast.error(friendlyError);
 			console.error('Chat error:', error);
-			chatStore.setError(
-				assistantMessageId,
-				error instanceof Error ? error.message : 'Unknown error'
-			);
+			chatStore.setError(assistantMessageId, 'Request failed');
 		}
 	}
 </script>
