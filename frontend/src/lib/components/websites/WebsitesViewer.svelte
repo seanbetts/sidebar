@@ -4,7 +4,7 @@
   import StarterKit from '@tiptap/starter-kit';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { Markdown } from 'tiptap-markdown';
-  import { ArrowLeft, Globe } from 'lucide-svelte';
+  import { Globe } from 'lucide-svelte';
   import { websitesStore } from '$lib/stores/websites';
 
   let editorElement: HTMLDivElement;
@@ -35,10 +35,6 @@
 
 <div class="website-pane">
   <div class="website-header">
-    <button class="back-btn" on:click={() => websitesStore.clearActive()}>
-      <ArrowLeft size={16} />
-      <span>Back to notes</span>
-    </button>
     {#if $websitesStore.active}
       <div class="website-meta">
         <div class="title">{$websitesStore.active.title}</div>
@@ -65,28 +61,11 @@
   .website-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 1rem;
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-card);
-  }
-
-  .back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: 1px solid var(--color-border);
-    background: transparent;
-    border-radius: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    font-size: 0.85rem;
-    color: var(--color-foreground);
-    cursor: pointer;
-  }
-
-  .back-btn:hover {
-    background-color: var(--color-muted);
   }
 
   .website-meta {
