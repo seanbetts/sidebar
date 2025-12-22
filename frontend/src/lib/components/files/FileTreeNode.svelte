@@ -7,6 +7,7 @@
   export let onToggle: (path: string) => void;
   export let basePath: string = 'documents';
   export let hideExtensions: boolean = false;
+  export let onFileClick: ((path: string) => void) | undefined = undefined;
 
   let showMenu = false;
   let isEditing = false;
@@ -23,6 +24,8 @@
   function handleClick() {
     if (node.type === 'directory') {
       onToggle(node.path);
+    } else if (node.type === 'file' && onFileClick) {
+      onFileClick(node.path);
     }
   }
 
@@ -163,7 +166,7 @@
 
 {#if isExpanded && hasChildren}
   {#each node.children as child}
-    <svelte:self node={child} level={level + 1} {onToggle} {basePath} {hideExtensions} />
+    <svelte:self node={child} level={level + 1} {onToggle} {basePath} {hideExtensions} {onFileClick} />
   {/each}
 {/if}
 
