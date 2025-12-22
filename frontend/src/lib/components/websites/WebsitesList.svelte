@@ -22,7 +22,9 @@
   {:else}
     {#each $websitesStore.items as site (site.id)}
       <button class="website-item" on:click={() => websitesStore.loadById(site.id)}>
-        <Globe size={14} class="website-icon" />
+        <span class="website-icon">
+          <Globe />
+        </span>
         <div class="website-text">
           <span class="website-title">{site.title}</span>
           <span class="website-domain">{site.domain}</span>
@@ -61,8 +63,16 @@
 
   .website-icon {
     flex-shrink: 0;
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .website-icon :global(svg) {
+    width: 16px;
+    height: 16px;
   }
 
   .website-text {

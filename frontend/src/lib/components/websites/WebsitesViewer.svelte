@@ -37,7 +37,14 @@
   <div class="website-header">
     {#if $websitesStore.active}
       <div class="website-meta">
-        <div class="title">{$websitesStore.active.title}</div>
+        <div class="title-row">
+          <span class="title-text">{$websitesStore.active.title}</span>
+          {#if $websitesStore.active.published_at}
+            <span class="published-date">
+              {new Date($websitesStore.active.published_at).toLocaleDateString()}
+            </span>
+          {/if}
+        </div>
         <a class="source" href={$websitesStore.active.url} target="_blank" rel="noopener noreferrer">
           <Globe size={14} />
           <span>{$websitesStore.active.domain}</span>
@@ -61,7 +68,7 @@
   .website-header {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 1rem;
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--color-border);
@@ -71,15 +78,25 @@
   .website-meta {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 0.2rem;
   }
 
-  .website-meta .title {
+  .title-row {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .title-text {
     font-size: 1rem;
     font-weight: 600;
-    text-align: right;
     color: var(--color-foreground);
+  }
+
+  .published-date {
+    font-size: 0.8rem;
+    color: var(--color-muted-foreground);
   }
 
   .website-meta .source {

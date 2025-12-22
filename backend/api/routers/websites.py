@@ -31,7 +31,7 @@ async def list_websites(
     websites = (
         db.query(Website)
         .filter(Website.deleted_at.is_(None))
-        .order_by(Website.updated_at.desc())
+        .order_by(Website.saved_at.desc().nullslast(), Website.created_at.desc())
         .all()
     )
     return {"items": [website_summary(site) for site in websites]}
