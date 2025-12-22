@@ -1,11 +1,17 @@
 <script lang="ts">
 	import MarkdownEditor from '$lib/components/editor/MarkdownEditor.svelte';
 	import ChatSidebar from '$lib/components/chat/ChatSidebar.svelte';
+	import WebsitesViewer from '$lib/components/websites/WebsitesViewer.svelte';
+	import { websitesStore } from '$lib/stores/websites';
 </script>
 
 <div class="page-container">
 	<div class="main-area">
-		<MarkdownEditor />
+		{#if $websitesStore.active}
+			<WebsitesViewer />
+		{:else}
+			<MarkdownEditor />
+		{/if}
 	</div>
 
 	<ChatSidebar />

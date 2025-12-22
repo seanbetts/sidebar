@@ -4,6 +4,7 @@
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
+  import { websitesStore } from '$lib/stores/websites';
   import CollapsibleSection from '$lib/components/sidebar/CollapsibleSection.svelte';
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
@@ -45,11 +46,13 @@
       if (save) await editorStore.saveNote();
     }
 
+    websitesStore.clearActive();
     currentNoteId.set(path);
     await editorStore.loadNote('notes', path);
   }
 
   async function handleNewNote() {
+    websitesStore.clearActive();
     newNoteName = '';
     isNewNoteDialogOpen = true;
   }
