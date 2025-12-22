@@ -10,6 +10,22 @@
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
 
+  function formatDateWithOrdinal(date: Date) {
+    const day = date.getDate();
+    const suffix = day % 100 >= 11 && day % 100 <= 13
+      ? 'th'
+      : day % 10 === 1
+        ? 'st'
+        : day % 10 === 2
+          ? 'nd'
+          : day % 10 === 3
+            ? 'rd'
+            : 'th';
+    const month = date.toLocaleDateString(undefined, { month: 'long' });
+    const year = date.getFullYear();
+    return `${day}${suffix} ${month} ${year}`;
+  }
+
   onMount(() => {
     editor = new Editor({
       element: editorElement,
@@ -39,16 +55,18 @@
       <div class="website-meta">
         <div class="title-row">
           <span class="title-text">{$websitesStore.active.title}</span>
+        </div>
+        <div class="source-row">
+          <a class="source" href={$websitesStore.active.url} target="_blank" rel="noopener noreferrer">
+            <Globe size={14} />
+            <span>{$websitesStore.active.domain}</span>
+          </a>
           {#if $websitesStore.active.published_at}
             <span class="published-date">
-              {new Date($websitesStore.active.published_at).toLocaleDateString()}
+              {formatDateWithOrdinal(new Date($websitesStore.active.published_at))}
             </span>
           {/if}
         </div>
-        <a class="source" href={$websitesStore.active.url} target="_blank" rel="noopener noreferrer">
-          <Globe size={14} />
-          <span>{$websitesStore.active.domain}</span>
-        </a>
       </div>
     {/if}
   </div>
@@ -86,6 +104,12 @@
     display: inline-flex;
     align-items: baseline;
     gap: 0.5rem;
+  }
+
+  .source-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .title-text {
