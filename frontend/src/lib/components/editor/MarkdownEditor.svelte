@@ -397,6 +397,11 @@
     padding-left: 0;
   }
 
+  :global(.tiptap ul[data-type='taskList'] ul[data-type='taskList']) {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
   :global(.tiptap ul[data-type='taskList'] > li) {
     display: flex;
     align-items: flex-start;
