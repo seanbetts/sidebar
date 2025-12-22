@@ -41,9 +41,6 @@
         const markdown = editor.storage.markdown.getMarkdown();
         editorStore.updateContent(markdown);
         scheduleAutoSave();
-      },
-      onCreate: ({ editor }) => {
-        console.log('Editor created, editable:', editor.isEditable);
       }
     });
 
@@ -53,7 +50,6 @@
       // Only update editor when switching to a different note, not on every content change
       if (editor && !state.isLoading && state.currentNoteId && state.currentNoteId !== lastNoteId) {
         lastNoteId = state.currentNoteId;
-        console.log('Loading new note into editor:', state.currentNoteId);
 
         // Set flag to prevent onUpdate from firing
         isUpdatingContent = true;
@@ -66,8 +62,6 @@
         setTimeout(() => {
           isUpdatingContent = false;
         }, 0);
-
-        console.log('Editor content loaded');
       }
     });
   });
@@ -228,7 +222,7 @@
   }
 
   .tiptap-editor {
-    max-width: 65ch;
+    max-width: 85ch;
     margin: 0 auto;
   }
 
@@ -337,8 +331,14 @@
   }
 
   :global(.tiptap li) {
-    margin-top: 0.25em;
-    margin-bottom: 0.25em;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    line-height: 1.4;
+  }
+
+  :global(.tiptap li p) {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
   }
 
   :global(.tiptap blockquote) {
