@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ChevronLeft, ChevronRight, Plus, MessageSquare, Folder, FileText } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Plus, MessageSquare, Folder, FileText, Settings, User, Monitor, Wrench } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -16,6 +16,13 @@
   let isNewNoteDialogOpen = false;
   let newNoteName = '';
   let newNoteInput: HTMLInputElement | null = null;
+  let isSettingsOpen = false;
+  const settingsSections = [
+    { key: 'account', label: 'Account', icon: User },
+    { key: 'system', label: 'System', icon: Monitor },
+    { key: 'skills', label: 'Skills', icon: Wrench }
+  ];
+  let activeSettingsSection = 'account';
 
   onMount(() => {
     conversationListStore.load();
@@ -131,6 +138,44 @@
   </AlertDialog.Content>
 </AlertDialog.Root>
 
+<AlertDialog.Root bind:open={isSettingsOpen}>
+  <AlertDialog.Content class="settings-dialog">
+    <AlertDialog.Header class="settings-header">
+      <AlertDialog.Title>Settings</AlertDialog.Title>
+      <AlertDialog.Description>Configure your workspace.</AlertDialog.Description>
+    </AlertDialog.Header>
+    <div class="settings-layout">
+      <aside class="settings-nav">
+        {#each settingsSections as section (section.key)}
+          <button
+            class="settings-nav-item"
+            class:active={activeSettingsSection === section.key}
+            on:click={() => (activeSettingsSection = section.key)}
+          >
+            <svelte:component this={section.icon} size={16} />
+            <span>{section.label}</span>
+          </button>
+        {/each}
+      </aside>
+      <div class="settings-content">
+        {#if activeSettingsSection === 'account'}
+          <h3>Account</h3>
+          <p>Profile, security, and billing settings will appear here.</p>
+        {:else if activeSettingsSection === 'system'}
+          <h3>System</h3>
+          <p>Theme, notifications, and system preferences will appear here.</p>
+        {:else}
+          <h3>Skills</h3>
+          <p>Manage installed skills and permissions here.</p>
+        {/if}
+      </div>
+    </div>
+    <AlertDialog.Footer>
+      <AlertDialog.Action onclick={() => (isSettingsOpen = false)}>Close</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
 <div class="sidebar" class:collapsed={isCollapsed}>
   <div class="sidebar-content">
     <!-- Header -->
@@ -186,6 +231,15 @@
         </CollapsibleSection>
       </div>
     {/if}
+
+    <div class="sidebar-footer">
+      <button on:click={() => (isSettingsOpen = true)} class="settings-btn" aria-label="Open settings">
+        <Settings size={18} />
+        {#if !isCollapsed}
+          <span>Settings</span>
+        {/if}
+      </button>
+    </div>
   </div>
 </div>
 
@@ -286,6 +340,123 @@
   .files-content {
     display: flex;
     flex-direction: column;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--color-sidebar-border);
+    display: flex;
+    justify-content: center;
+  }
+
+  .settings-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-sidebar-foreground);
+    background-color: transparent;
+    border: 1px solid var(--color-sidebar-border);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .settings-btn:hover {
+    background-color: var(--color-sidebar-accent);
+    border-color: var(--color-sidebar-border);
+  }
+
+  .sidebar.collapsed .settings-btn {
+    width: auto;
+    justify-content: center;
+    padding: 0.5rem;
+  }
+
+  .settings-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 1.5rem;
+    min-height: 420px;
+    padding: 0.75rem 0 0;
+  }
+
+  .settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border-right: 1px solid var(--color-border);
+    padding-right: 0.75rem;
+  }
+
+  .settings-nav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    border: none;
+    color: var(--color-muted-foreground);
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .settings-nav-item:hover {
+    background-color: var(--color-sidebar-accent);
+    color: var(--color-foreground);
+  }
+
+  .settings-nav-item.active {
+    background-color: var(--color-sidebar-accent);
+    color: var(--color-foreground);
+    font-weight: 600;
+  }
+
+  .settings-content h3 {
+    margin: 0 0 0.35rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .settings-content p {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  .settings-dialog {
+    max-width: 860px;
+    width: min(92vw, 860px);
+    max-height: min(85vh, 680px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .settings-header {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.75rem;
+  }
+
+  .settings-layout {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .settings-nav {
+    overflow-y: auto;
+  }
+
+  .settings-content {
+    overflow-y: auto;
+    padding-right: 0.5rem;
   }
 
   .new-note-btn {
