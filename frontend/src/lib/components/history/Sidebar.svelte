@@ -70,12 +70,14 @@
       });
 
       if (!response.ok) throw new Error('Failed to create note');
+      const data = await response.json();
+      const noteId = data?.id || filename;
 
       // Reload the files tree and open the new note
       const { filesStore } = await import('$lib/stores/files');
       await filesStore.load('notes');
-      currentNoteId.set(filename);
-      await editorStore.loadNote('notes', filename);
+      currentNoteId.set(noteId);
+      await editorStore.loadNote('notes', noteId);
       isNewNoteDialogOpen = false;
     } catch (error) {
       console.error('Failed to create note:', error);
@@ -193,11 +195,25 @@
     </div>
 
     {#if !isCollapsed}
-      <!-- New Chat Button -->
-      <button on:click={handleNewChat} class="new-chat-btn">
-        <Plus size={20} />
-        <span>New Chat</span>
-      </button>
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button
+          on:click={handleNewChat}
+          class="quick-action-btn"
+          aria-label="New chat"
+          title="New chat"
+        >
+          <MessageSquare size={20} />
+        </button>
+        <button
+          on:click={handleNewNote}
+          class="quick-action-btn"
+          aria-label="New note"
+          title="New note"
+        >
+          <FileText size={20} />
+        </button>
+      </div>
 
       <!-- Universal Search Bar -->
       <div class="search-container">
@@ -215,10 +231,6 @@
         <!-- Notes Section -->
         <CollapsibleSection title="Notes" icon={FileText} defaultExpanded={false}>
           <div class="notes-content">
-            <button on:click={handleNewNote} class="new-note-btn">
-              <Plus size={16} />
-              <span>New Note</span>
-            </button>
             <FileTree basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
           </div>
         </CollapsibleSection>
@@ -297,22 +309,27 @@
     background-color: var(--color-sidebar-accent);
   }
 
-  .new-chat-btn {
-    display: flex;
-    align-items: center;
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
     margin: 1rem;
-    padding: 0.75rem 1rem;
+  }
+
+  .quick-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem;
     background-color: var(--color-sidebar-primary);
     color: var(--color-sidebar-primary-foreground);
     border: none;
     border-radius: 0.5rem;
     cursor: pointer;
-    font-weight: 500;
     transition: opacity 0.2s;
   }
 
-  .new-chat-btn:hover {
+  .quick-action-btn:hover {
     opacity: 0.9;
   }
 
@@ -459,23 +476,4 @@
     padding-right: 0.5rem;
   }
 
-  .new-note-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0.5rem 0.75rem;
-    padding: 0.5rem 0.75rem;
-    background-color: var(--color-sidebar-primary);
-    color: var(--color-sidebar-primary-foreground);
-    border: none;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.875rem;
-    transition: opacity 0.2s;
-  }
-
-  .new-note-btn:hover {
-    opacity: 0.9;
-  }
 </style>
