@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ModeToggle from "$lib/components/mode-toggle.svelte";
+	import ScratchpadPopover from "$lib/components/scratchpad-popover.svelte";
 </script>
 
 <header class="site-header">
@@ -11,6 +12,7 @@
 		</div>
 	</div>
 	<div class="actions">
+		<ScratchpadPopover />
 		<ModeToggle />
 	</div>
 </header>
