@@ -1,5 +1,8 @@
 <script lang="ts">
   import { ChevronRight, ChevronDown, File, Folder, FolderOpen, MoreVertical, Trash2, Pencil } from 'lucide-svelte';
+  import { get } from 'svelte/store';
+  import { filesStore } from '$lib/stores/files';
+  import { editorStore } from '$lib/stores/editor';
   import type { FileNode } from '$lib/types/file';
 
   export let node: FileNode;
@@ -36,7 +39,12 @@
 
   function handleRename(event: MouseEvent) {
     event.stopPropagation();
-    editedName = node.name;
+    // Strip extension for files when hideExtensions is true
+    if (hideExtensions && node.type === 'file') {
+      editedName = node.name.replace(/\.[^/.]+$/, '');
+    } else {
+      editedName = node.name;
+    }
     isEditing = true;
     showMenu = false;
   }
@@ -44,20 +52,35 @@
   async function saveRename() {
     if (editedName.trim() && editedName !== node.name) {
       try {
+        // Add extension back if missing for files with hideExtensions
+        let newName = editedName.trim();
+        if (hideExtensions && node.type === 'file') {
+          const extension = node.name.match(/\.[^/.]+$/)?.[0] || '';
+          if (!newName.endsWith(extension)) {
+            newName += extension;
+          }
+        }
+
         const response = await fetch(`/api/files/rename`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             basePath,
             oldPath: node.path,
-            newName: editedName.trim()
+            newName
           })
         });
 
         if (!response.ok) throw new Error('Failed to rename');
 
+        // Update editor store if the currently open note was renamed
+        const currentStore = get(editorStore);
+        if (currentStore.currentNoteId === node.path) {
+          editorStore.updateNoteName(newName);
+        }
+
         // Reload the tree
-        window.location.reload();
+        await filesStore.load(basePath);
       } catch (error) {
         console.error('Failed to rename:', error);
         editedName = node.name;
@@ -91,8 +114,14 @@
 
         if (!response.ok) throw new Error('Failed to delete');
 
+        // Close editor if the deleted file was currently open
+        const currentStore = get(editorStore);
+        if (currentStore.currentNoteId === node.path) {
+          editorStore.reset();
+        }
+
         // Reload the tree
-        window.location.reload();
+        await filesStore.load(basePath);
       } catch (error) {
         console.error('Failed to delete:', error);
       }

@@ -20,6 +20,9 @@
   $: currentNoteName = $editorStore.currentNoteName;
   $: isLoading = $editorStore.isLoading;
 
+  // Strip file extension from note name for display
+  $: displayTitle = currentNoteName ? currentNoteName.replace(/\.[^/.]+$/, '') : '';
+
   onMount(() => {
     editor = new Editor({
       element: editorElement,
@@ -109,7 +112,7 @@
     <div class="editor-header">
       <div class="header-left">
         <FileText size={20} />
-        <h2 class="note-title">{currentNoteName}</h2>
+        <h2 class="note-title">{displayTitle}</h2>
       </div>
       <div class="header-right">
         {#if saveError}

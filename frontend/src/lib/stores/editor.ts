@@ -72,6 +72,13 @@ function createEditorStore() {
       }));
     },
 
+    updateNoteName(newName: string) {
+      update(state => ({
+        ...state,
+        currentNoteName: newName
+      }));
+    },
+
     async saveNote() {
       const state = get({ subscribe });
 
