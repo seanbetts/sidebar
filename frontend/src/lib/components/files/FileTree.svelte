@@ -7,6 +7,7 @@
   export let basePath: string = 'documents';
   export let emptyMessage: string = 'No files found';
   export let hideExtensions: boolean = false;
+  export let onFileClick: ((path: string) => void) | undefined = undefined;
 
   // Reactive variables for tree data
   $: treeData = $filesStore.trees[basePath];
@@ -27,7 +28,7 @@
     <div class="loading">Loading files...</div>
   {:else if children.length > 0}
     {#each children as child}
-      <FileTreeNode node={child} level={0} onToggle={handleToggle} {basePath} {hideExtensions} />
+      <FileTreeNode node={child} level={0} onToggle={handleToggle} {basePath} {hideExtensions} {onFileClick} />
     {/each}
   {:else}
     <div class="empty">{emptyMessage}</div>

@@ -170,3 +170,104 @@ async def delete_file_or_folder(
         return {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
+
+
+@router.get("/content")
+async def get_file_content(
+    basePath: str = "notes",
+    path: str = "",
+    user_id: str = Depends(verify_bearer_token)
+):
+    """
+    Get the content of a file.
+
+    Query params:
+        basePath: Subdirectory within workspace (e.g., "notes", "documents")
+        path: Relative path to file within basePath
+
+    Returns:
+        {
+            "content": "file content...",
+            "name": "filename.md",
+            "path": "relative/path.md",
+            "modified": 1234567890
+        }
+    """
+    if not path:
+        raise HTTPException(status_code=400, detail="path parameter required")
+
+    workspace_path = Path(WORKSPACE_BASE) / basePath
+    full_path = workspace_path / path
+
+    # Security: Ensure path is within workspace
+    try:
+        full_path.relative_to(workspace_path)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not full_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if not full_path.is_file():
+        raise HTTPException(status_code=400, detail="Path is not a file")
+
+    try:
+        content = full_path.read_text(encoding='utf-8')
+        return {
+            "content": content,
+            "name": full_path.name,
+            "path": str(full_path.relative_to(workspace_path)),
+            "modified": full_path.stat().st_mtime
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
+
+
+@router.post("/content")
+async def update_file_content(
+    request: dict,
+    user_id: str = Depends(verify_bearer_token)
+):
+    """
+    Update the content of a file.
+
+    Body:
+        {
+            "basePath": "notes",
+            "path": "relative/path/file.md",
+            "content": "new content..."
+        }
+
+    Returns:
+        {
+            "success": true,
+            "modified": 1234567890
+        }
+    """
+    base_path = request.get("basePath", "notes")
+    path = request.get("path", "")
+    content = request.get("content", "")
+
+    if not path:
+        raise HTTPException(status_code=400, detail="path required")
+
+    workspace_path = Path(WORKSPACE_BASE) / base_path
+    full_path = workspace_path / path
+
+    # Security: Ensure path is within workspace
+    try:
+        full_path.relative_to(workspace_path)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Create parent directories if needed
+    full_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        full_path.write_text(content, encoding='utf-8')
+        return {
+            "success": True,
+            "modified": full_path.stat().st_mtime
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")

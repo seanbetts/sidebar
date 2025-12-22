@@ -3,6 +3,7 @@
   import { ChevronLeft, ChevronRight, Plus, MessageSquare, Folder, FileText } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
+  import { editorStore, currentNoteId } from '$lib/stores/editor';
   import CollapsibleSection from '$lib/components/sidebar/CollapsibleSection.svelte';
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
@@ -21,6 +22,47 @@
 
   function toggleSidebar() {
     isCollapsed = !isCollapsed;
+  }
+
+  async function handleNoteClick(path: string) {
+    // Save current note if dirty
+    if ($editorStore.isDirty && $editorStore.currentNoteId) {
+      const save = confirm('Save changes before switching notes?');
+      if (save) await editorStore.saveNote();
+    }
+
+    currentNoteId.set(path);
+    await editorStore.loadNote('notes', path);
+  }
+
+  async function handleNewNote() {
+    const name = prompt('Note name:');
+    if (!name) return;
+
+    const filename = name.endsWith('.md') ? name : `${name}.md`;
+
+    try {
+      const response = await fetch('/api/files/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          basePath: 'notes',
+          path: filename,
+          content: `# ${name}\n\n`
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to create note');
+
+      // Reload the files tree and open the new note
+      const { filesStore } = await import('$lib/stores/files');
+      await filesStore.load('notes');
+      currentNoteId.set(filename);
+      await editorStore.loadNote('notes', filename);
+    } catch (error) {
+      console.error('Failed to create note:', error);
+      alert('Failed to create note. Please try again.');
+    }
   }
 </script>
 
@@ -63,7 +105,11 @@
         <!-- Notes Section -->
         <CollapsibleSection title="Notes" icon={FileText} defaultExpanded={false}>
           <div class="notes-content">
-            <FileTree basePath="notes" emptyMessage="No notes found" hideExtensions={true} />
+            <button on:click={handleNewNote} class="new-note-btn">
+              <Plus size={16} />
+              <span>New Note</span>
+            </button>
+            <FileTree basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
           </div>
         </CollapsibleSection>
 
@@ -175,5 +221,25 @@
   .files-content {
     display: flex;
     flex-direction: column;
+  }
+
+  .new-note-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--color-sidebar-primary);
+    color: var(--color-sidebar-primary-foreground);
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: opacity 0.2s;
+  }
+
+  .new-note-btn:hover {
+    opacity: 0.9;
   }
 </style>
