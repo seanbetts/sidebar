@@ -21,13 +21,13 @@
     <div class="websites-empty">No websites saved</div>
   {:else}
     {#each $websitesStore.items as site (site.id)}
-      <a class="website-item" href={site.url} target="_blank" rel="noopener noreferrer">
-        <Globe size={14} />
+      <button class="website-item" on:click={() => websitesStore.loadById(site.id)}>
+        <Globe size={14} class="website-icon" />
         <div class="website-text">
           <span class="website-title">{site.title}</span>
           <span class="website-domain">{site.domain}</span>
         </div>
-      </a>
+      </button>
     {/each}
   {/if}
 </div>
@@ -46,14 +46,23 @@
     gap: 0.5rem;
     padding: 0.4rem 0.5rem;
     border-radius: 0.5rem;
-    text-decoration: none;
     color: var(--color-sidebar-foreground);
     background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
     transition: background-color 0.2s ease;
   }
 
   .website-item:hover {
     background-color: var(--color-sidebar-accent);
+  }
+
+  .website-icon {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
   }
 
   .website-text {
