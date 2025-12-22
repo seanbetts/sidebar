@@ -8,8 +8,14 @@
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
   import FileTree from '$lib/components/files/FileTree.svelte';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
   let isCollapsed = false;
+  let isErrorDialogOpen = false;
+  let errorMessage = 'Failed to create note. Please try again.';
+  let isNewNoteDialogOpen = false;
+  let newNoteName = '';
+  let newNoteInput: HTMLInputElement | null = null;
 
   onMount(() => {
     conversationListStore.load();
@@ -36,9 +42,13 @@
   }
 
   async function handleNewNote() {
-    const name = prompt('Note name:');
-    if (!name) return;
+    newNoteName = '';
+    isNewNoteDialogOpen = true;
+  }
 
+  async function createNoteFromDialog() {
+    const name = newNoteName.trim();
+    if (!name) return;
     const filename = name.endsWith('.md') ? name : `${name}.md`;
 
     try {
@@ -59,12 +69,67 @@
       await filesStore.load('notes');
       currentNoteId.set(filename);
       await editorStore.loadNote('notes', filename);
+      isNewNoteDialogOpen = false;
     } catch (error) {
       console.error('Failed to create note:', error);
-      alert('Failed to create note. Please try again.');
+      errorMessage = 'Failed to create note. Please try again.';
+      isErrorDialogOpen = true;
     }
   }
+
 </script>
+
+<AlertDialog.Root bind:open={isNewNoteDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      newNoteInput?.focus();
+      newNoteInput?.select();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Create a new note</AlertDialog.Title>
+      <AlertDialog.Description>Pick a name. We'll save it as a markdown file.</AlertDialog.Description>
+    </AlertDialog.Header>
+    <div class="py-2">
+      <input
+        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        type="text"
+        placeholder="Note name"
+        bind:this={newNoteInput}
+        bind:value={newNoteName}
+        on:keydown={(event) => {
+          if (event.key === 'Enter') createNoteFromDialog();
+        }}
+      />
+    </div>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={() => (isNewNoteDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action
+        disabled={!newNoteName.trim()}
+        onclick={createNoteFromDialog}
+      >
+        Create note
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={isErrorDialogOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>Unable to create note</AlertDialog.Title>
+      <AlertDialog.Description>{errorMessage}</AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Action
+        onclick={() => (isErrorDialogOpen = false)}
+      >
+        OK
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
 
 <div class="sidebar" class:collapsed={isCollapsed}>
   <div class="sidebar-content">

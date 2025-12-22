@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { ChevronRight, ChevronDown, File, Folder, FolderOpen, MoreVertical, Trash2, Pencil } from 'lucide-svelte';
   import { get } from 'svelte/store';
   import { filesStore } from '$lib/stores/files';
   import { editorStore } from '$lib/stores/editor';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+  import { buttonVariants } from '$lib/components/ui/button/index.js';
   import type { FileNode } from '$lib/types/file';
 
   export let node: FileNode;
@@ -15,9 +18,13 @@
   let showMenu = false;
   let isEditing = false;
   let editedName = node.name;
+  let isDeleteDialogOpen = false;
+  let editInput: HTMLInputElement | null = null;
+  let deleteButton: HTMLButtonElement | null = null;
 
   $: isExpanded = node.expanded || false;
   $: hasChildren = node.children && node.children.length > 0;
+  $: itemType = node.type === 'directory' ? 'folder' : 'file';
 
   // Display name: remove extension for files if hideExtensions is true
   $: displayName = (hideExtensions && node.type === 'file')
@@ -100,35 +107,70 @@
 
   async function handleDelete(event: MouseEvent) {
     event.stopPropagation();
-    const itemType = node.type === 'directory' ? 'folder' : 'file';
-    if (confirm(`Delete ${itemType} "${node.name}"?`)) {
-      try {
-        const response = await fetch(`/api/files/delete`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            basePath,
-            path: node.path
-          })
-        });
-
-        if (!response.ok) throw new Error('Failed to delete');
-
-        // Close editor if the deleted file was currently open
-        const currentStore = get(editorStore);
-        if (currentStore.currentNoteId === node.path) {
-          editorStore.reset();
-        }
-
-        // Reload the tree
-        await filesStore.load(basePath);
-      } catch (error) {
-        console.error('Failed to delete:', error);
-      }
-    }
+    isDeleteDialogOpen = true;
     showMenu = false;
   }
+
+  async function confirmDelete() {
+    try {
+      const response = await fetch(`/api/files/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          basePath,
+          path: node.path
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to delete');
+
+      // Close editor if the deleted file was currently open
+      const currentStore = get(editorStore);
+      if (currentStore.currentNoteId === node.path) {
+        editorStore.reset();
+      }
+
+      // Reload the tree
+      await filesStore.load(basePath);
+      isDeleteDialogOpen = false;
+    } catch (error) {
+      console.error('Failed to delete:', error);
+    }
+  }
+
+  $: if (isEditing) {
+    tick().then(() => {
+      editInput?.focus();
+      editInput?.select();
+    });
+  }
 </script>
+
+<AlertDialog.Root bind:open={isDeleteDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      deleteButton?.focus();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Delete {itemType}?</AlertDialog.Title>
+      <AlertDialog.Description>
+        This will permanently delete "{node.name}". This action cannot be undone.
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action
+        class={buttonVariants({ variant: 'destructive' })}
+        bind:ref={deleteButton}
+        onclick={confirmDelete}
+      >
+        Delete
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
 
 <div class="tree-node" style="padding-left: {level * 1}rem;">
   <div class="node-content">
@@ -161,11 +203,11 @@
         <input
           type="text"
           class="name-input"
+          bind:this={editInput}
           bind:value={editedName}
           on:blur={saveRename}
           on:keydown={cancelRename}
           on:click={(e) => e.stopPropagation()}
-          autofocus
         />
       {:else}
         <span class="name">{displayName}</span>

@@ -17,6 +17,9 @@ RUN --mount=type=cache,target=/root/.npm \
 # Copy source code
 COPY . .
 
+# Limit Node memory usage during build to avoid OOM in Docker
+ENV NODE_OPTIONS=--max-old-space-size=1024
+
 # Build the app using npx to ensure vite is found
 RUN npx vite build
 

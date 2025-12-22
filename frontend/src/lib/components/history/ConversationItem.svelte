@@ -1,9 +1,12 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { MoreVertical, Trash2, Pencil } from 'lucide-svelte';
   import type { Conversation } from '$lib/types/history';
   import { chatStore } from '$lib/stores/chat';
   import { conversationListStore, currentConversationId } from '$lib/stores/conversations';
   import { conversationsAPI } from '$lib/services/api';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+  import { buttonVariants } from '$lib/components/ui/button/index.js';
 
   export let conversation: Conversation;
 
@@ -11,6 +14,9 @@
   let isActive = false;
   let isEditing = false;
   let editedTitle = conversation.title;
+  let editInput: HTMLInputElement | null = null;
+  let isDeleteDialogOpen = false;
+  let deleteButton: HTMLButtonElement | null = null;
 
   $: isActive = $currentConversationId === conversation.id;
   $: isGeneratingTitle = $conversationListStore.generatingTitleIds.has(conversation.id);
@@ -53,19 +59,36 @@
 
   async function handleDelete(event: MouseEvent) {
     event.stopPropagation();
-    if (confirm(`Delete "${conversation.title}"?`)) {
-      await conversationListStore.deleteConversation(conversation.id);
-      if (isActive) {
-        chatStore.reset();
-        currentConversationId.set(null);
-      }
-    }
+    isDeleteDialogOpen = true;
     showMenu = false;
   }
 
   function toggleMenu(event: MouseEvent) {
     event.stopPropagation();
     showMenu = !showMenu;
+  }
+
+  async function confirmDelete() {
+    await conversationListStore.deleteConversation(conversation.id);
+    if (isActive) {
+      chatStore.reset();
+      currentConversationId.set(null);
+    }
+    isDeleteDialogOpen = false;
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleClick();
+    }
+  }
+
+  $: if (isEditing) {
+    tick().then(() => {
+      editInput?.focus();
+      editInput?.select();
+    });
   }
 
   function formatDate(dateString: string): string {
@@ -80,17 +103,50 @@
   }
 </script>
 
-<div class="conversation-item" class:active={isActive} on:click={handleClick} role="button" tabindex="0">
+<AlertDialog.Root bind:open={isDeleteDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      deleteButton?.focus();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Delete conversation?</AlertDialog.Title>
+      <AlertDialog.Description>
+        This will permanently delete "{conversation.title}". This action cannot be undone.
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action
+        class={buttonVariants({ variant: 'destructive' })}
+        bind:ref={deleteButton}
+        onclick={confirmDelete}
+      >
+        Delete
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<div
+  class="conversation-item"
+  class:active={isActive}
+  on:click={handleClick}
+  on:keydown={handleKeydown}
+  role="button"
+  tabindex="0"
+>
   <div class="content">
     {#if isEditing}
       <input
         type="text"
         class="title-input"
+        bind:this={editInput}
         bind:value={editedTitle}
         on:blur={saveRename}
         on:keydown={cancelRename}
         on:click={(e) => e.stopPropagation()}
-        autofocus
       />
     {:else if isGeneratingTitle}
       <div class="title-skeleton">

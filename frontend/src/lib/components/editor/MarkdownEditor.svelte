@@ -1,17 +1,21 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { beforeNavigate } from '$app/navigation';
+  import { beforeNavigate, goto } from '$app/navigation';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
   import { Markdown } from 'tiptap-markdown';
   import { editorStore } from '$lib/stores/editor';
   import { FileText, Save, Clock } from 'lucide-svelte';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
   let saveTimeout: ReturnType<typeof setTimeout>;
   let unsubscribe: (() => void) | undefined;
   let isUpdatingContent = false; // Flag to prevent onUpdate during programmatic changes
+  let isLeaveDialogOpen = false;
+  let pendingHref: string | null = null;
+  let allowNavigateOnce = false;
 
   $: isDirty = $editorStore.isDirty;
   $: isSaving = $editorStore.isSaving;
@@ -69,10 +73,15 @@
     });
   });
 
-  beforeNavigate(({ cancel }) => {
+  beforeNavigate(({ cancel, to }) => {
+    if (allowNavigateOnce) {
+      allowNavigateOnce = false;
+      return;
+    }
     if ($editorStore.isDirty) {
-      const confirmed = confirm('You have unsaved changes. Leave anyway?');
-      if (!confirmed) cancel();
+      cancel();
+      pendingHref = to?.url?.href ?? null;
+      isLeaveDialogOpen = true;
     }
   });
 
@@ -105,7 +114,37 @@
     if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}m ago`;
     return date.toLocaleTimeString();
   }
+
+  function stayOnPage() {
+    isLeaveDialogOpen = false;
+    pendingHref = null;
+  }
+
+  async function confirmLeave() {
+    isLeaveDialogOpen = false;
+    if (!pendingHref) return;
+    allowNavigateOnce = true;
+    await goto(pendingHref);
+    pendingHref = null;
+  }
 </script>
+
+<AlertDialog.Root bind:open={isLeaveDialogOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>Leave without saving?</AlertDialog.Title>
+      <AlertDialog.Description>
+        You have unsaved changes. If you leave now, they will be lost.
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={stayOnPage}>Stay</AlertDialog.Cancel>
+      <AlertDialog.Action onclick={confirmLeave}>
+        Leave
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
 
 <div class="editor-container">
   {#if currentNoteName}
