@@ -29,11 +29,20 @@
 		display: flex;
 		flex-direction: column;
 		flex: 1;
-		overflow: auto;
+		height: 100%;
+		min-height: 0;
+		overflow: hidden;
 	}
 
 	.page-content {
 		flex: 1;
-		overflow: auto;
+		display: flex;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	:global(.page-content > *) {
+		flex: 1;
+		min-height: 0;
 	}
 </style>

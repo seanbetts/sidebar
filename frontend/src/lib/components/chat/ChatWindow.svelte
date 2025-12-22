@@ -83,7 +83,7 @@
 	}
 </script>
 
-<div class="flex flex-col h-screen max-w-6xl mx-auto bg-background">
+<div class="flex flex-col h-full min-h-0 max-w-6xl mx-auto bg-background">
 	<!-- Messages -->
 	<MessageList messages={$chatStore.messages} />
 

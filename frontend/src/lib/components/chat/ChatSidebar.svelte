@@ -9,9 +9,10 @@
 <style>
   .chat-sidebar {
     width: 400px;
-    height: 100vh;
+    height: 100%;
     border-left: 1px solid var(--color-border);
     background-color: var(--color-background);
     overflow: hidden;
+    min-height: 0;
   }
 </style>

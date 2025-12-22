@@ -14,13 +14,15 @@
 <style>
 	.page-container {
 		display: flex;
-		height: 100vh;
+		height: 100%;
 		width: 100%;
 		overflow: hidden;
+		min-height: 0;
 	}
 
 	.main-area {
 		flex: 1;
 		overflow: hidden;
+		min-height: 0;
 	}
 </style>

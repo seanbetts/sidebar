@@ -195,7 +195,8 @@
   .editor-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
+    min-height: 0;
     background-color: var(--color-background);
   }
 
@@ -259,7 +260,8 @@
   .editor-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 2rem;
+    padding: 1rem 2rem;
+    min-height: 0;
   }
 
   .editor-scroll.hidden {
