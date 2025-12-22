@@ -1,11 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ChevronLeft, ChevronRight, Plus, MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench } from 'lucide-svelte';
+  import { ChevronRight, MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import { websitesStore } from '$lib/stores/websites';
-  import CollapsibleSection from '$lib/components/sidebar/CollapsibleSection.svelte';
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
   import FileTree from '$lib/components/files/FileTree.svelte';
@@ -37,6 +36,13 @@
 
   function toggleSidebar() {
     isCollapsed = !isCollapsed;
+  }
+
+  let activeSection: 'history' | 'notes' | 'websites' = 'history';
+
+  function openSection(section: typeof activeSection) {
+    activeSection = section;
+    isCollapsed = false;
   }
 
   async function handleNoteClick(path: string) {
@@ -182,219 +188,273 @@
   </AlertDialog.Content>
 </AlertDialog.Root>
 
-<div class="sidebar" class:collapsed={isCollapsed}>
-  <div class="sidebar-content">
-    <!-- Header -->
-    <div class="header">
-      {#if !isCollapsed}
-        <h2>Sidebar</h2>
-        <button on:click={toggleSidebar} class="collapse-btn" aria-label="Collapse sidebar">
-          <ChevronLeft size={20} />
-        </button>
-      {:else}
-        <button on:click={toggleSidebar} class="collapse-btn" aria-label="Expand sidebar">
-          <ChevronRight size={20} />
-        </button>
-      {/if}
+<div class="sidebar-shell" class:collapsed={isCollapsed}>
+  <div class="sidebar-rail">
+    <button
+      class="rail-toggle"
+      on:click={toggleSidebar}
+      aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+    >
+      <Menu size={20} />
+    </button>
+
+    <div class="rail-actions">
+      <button
+        on:click={() => openSection('history')}
+        class="rail-btn"
+        aria-label="History"
+        title="History"
+      >
+        <MessageSquare size={18} />
+      </button>
+      <button
+        on:click={() => openSection('notes')}
+        class="rail-btn"
+        aria-label="Notes"
+        title="Notes"
+      >
+        <FileText size={18} />
+      </button>
+      <button
+        on:click={() => openSection('websites')}
+        class="rail-btn"
+        aria-label="Websites"
+        title="Websites"
+      >
+        <Globe size={18} />
+      </button>
     </div>
 
-    {#if !isCollapsed}
-      <!-- Quick Actions -->
-      <div class="quick-actions">
-        <button
-          on:click={handleNewChat}
-          class="quick-action-btn"
-          aria-label="New chat"
-          title="New chat"
-        >
-          <MessageSquare size={20} />
-        </button>
-        <button
-          on:click={handleNewNote}
-          class="quick-action-btn"
-          aria-label="New note"
-          title="New note"
-        >
-          <FileText size={20} />
-        </button>
-      </div>
+    <div class="rail-footer">
+      <button
+        on:click={() => (isSettingsOpen = true)}
+        class="rail-btn"
+        aria-label="Open settings"
+        title="Settings"
+      >
+        <Settings size={18} />
+      </button>
+    </div>
+  </div>
 
-      <!-- Universal Search Bar -->
-      <div class="search-container">
-        <SearchBar />
-      </div>
-
-      <div class="sections">
-        <!-- History Section -->
-        <CollapsibleSection title="History" icon={MessageSquare} defaultExpanded={true}>
+  <div class="sidebar-panel" aria-hidden={isCollapsed}>
+    <div class="panel-body">
+      {#if activeSection === 'history'}
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <div class="panel-section-header-row">
+              <div class="panel-section-title">History</div>
+              <div class="panel-section-actions"></div>
+            </div>
+            <SearchBar />
+          </div>
           <div class="history-content">
             <ConversationList />
           </div>
-        </CollapsibleSection>
-
-        <!-- Notes Section -->
-        <CollapsibleSection title="Notes" icon={FileText} defaultExpanded={false}>
+        </div>
+      {:else if activeSection === 'notes'}
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <div class="panel-section-header-row">
+              <div class="panel-section-title">Notes</div>
+              <div class="panel-section-actions">
+                <button class="panel-action" on:click={handleNewNote} aria-label="New note" title="New note">
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
+            <SearchBar />
+          </div>
           <div class="notes-content">
             <FileTree basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
           </div>
-        </CollapsibleSection>
-
-        <!-- Websites Section -->
-        <CollapsibleSection title="Websites" icon={Globe} defaultExpanded={false}>
+        </div>
+      {:else}
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <div class="panel-section-header-row">
+              <div class="panel-section-title">Websites</div>
+              <div class="panel-section-actions"></div>
+            </div>
+            <SearchBar />
+          </div>
           <div class="files-content">
             <WebsitesList />
           </div>
-        </CollapsibleSection>
-      </div>
-    {/if}
-
-    <div class="sidebar-footer">
-      <button on:click={() => (isSettingsOpen = true)} class="settings-btn" aria-label="Open settings">
-        <Settings size={18} />
-        {#if !isCollapsed}
-          <span>Settings</span>
-        {/if}
-      </button>
+        </div>
+      {/if}
     </div>
   </div>
 </div>
 
 <style>
-  .sidebar {
+  .sidebar-shell {
     display: flex;
-    flex-direction: column;
     height: 100vh;
-    width: 260px;
     background-color: var(--color-sidebar);
     border-right: 1px solid var(--color-sidebar-border);
-    transition: width 0.2s ease;
   }
 
-  .sidebar.collapsed {
-    width: 60px;
-  }
-
-  .sidebar-content {
+  .sidebar-rail {
+    width: 56px;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .header {
-    display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
-    border-bottom: 1px solid var(--color-sidebar-border);
+    padding: 0.75rem 0.5rem;
+    border-right: 1px solid var(--color-sidebar-border);
+    background-color: var(--color-sidebar);
+    gap: 0.75rem;
   }
 
-  .header h2 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0;
-    color: var(--color-sidebar-foreground);
-  }
-
-  .collapse-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    border-radius: 0.375rem;
-    color: var(--color-muted-foreground);
-    transition: background-color 0.2s;
-  }
-
-  .collapse-btn:hover {
-    background-color: var(--color-sidebar-accent);
-  }
-
-  .quick-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem;
-    margin: 1rem;
-  }
-
-  .quick-action-btn {
+  .rail-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.65rem;
-    background-color: var(--color-sidebar-primary);
-    color: var(--color-sidebar-primary-foreground);
-    border: none;
+    width: 40px;
+    height: 40px;
     border-radius: 0.5rem;
+    border: 1px solid var(--color-sidebar-border);
+    background-color: transparent;
+    color: var(--color-sidebar-foreground);
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
 
-  .quick-action-btn:hover {
-    opacity: 0.9;
+  .rail-toggle:hover {
+    background-color: var(--color-sidebar-accent);
   }
 
-  .search-container {
-    padding: 0 1rem 1rem 1rem;
-  }
-
-  .sections {
-    flex: 1;
-    overflow-y: auto;
+  .rail-actions {
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+    flex: 1;
+    width: 100%;
+  }
+
+  .rail-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--color-sidebar-foreground);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .rail-btn:hover {
+    background-color: var(--color-sidebar-accent);
+  }
+
+  .rail-footer {
+    display: flex;
+    justify-content: center;
+  }
+
+  .sidebar-panel {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-sidebar);
+    transition: width 0.2s ease, opacity 0.2s ease;
+    overflow: hidden;
+  }
+
+  .sidebar-shell.collapsed .sidebar-panel {
+    width: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .panel-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .panel-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .panel-section-header {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--color-sidebar-border);
+  }
+
+  .panel-section-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .panel-section-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--color-sidebar-foreground);
+  }
+
+  .panel-section-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .panel-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--color-sidebar-foreground);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .panel-action:hover {
+    background-color: var(--color-sidebar-accent);
   }
 
   .history-content {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
   }
 
   .notes-content {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
   }
 
   .files-content {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
   }
 
-  .sidebar-footer {
-    margin-top: auto;
-    padding: 0.75rem 1rem;
-    border-top: 1px solid var(--color-sidebar-border);
-    display: flex;
-    justify-content: center;
-  }
-
-  .settings-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--color-sidebar-foreground);
-    background-color: transparent;
-    border: 1px solid var(--color-sidebar-border);
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-
-  .settings-btn:hover {
-    background-color: var(--color-sidebar-accent);
-    border-color: var(--color-sidebar-border);
-  }
-
-  .sidebar.collapsed .settings-btn {
-    width: auto;
-    justify-content: center;
-    padding: 0.5rem;
-  }
 
   .settings-layout {
     display: grid;

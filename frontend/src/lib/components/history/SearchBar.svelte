@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Search, X } from 'lucide-svelte';
+  import { X } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
 
   let searchQuery = '';
@@ -22,11 +22,10 @@
 
 <div class="search-bar">
   <div class="search-input-wrapper">
-    <Search size={16} class="search-icon" />
     <input
       type="text"
       bind:value={searchQuery}
-      placeholder="Search conversations..."
+      placeholder="Type to search..."
       class="search-input"
     />
     {#if searchQuery}
@@ -38,26 +37,15 @@
 </div>
 
 <style>
-  .search-bar {
-    padding: 0 1rem 1rem 1rem;
-  }
-
   .search-input-wrapper {
     position: relative;
     display: flex;
     align-items: center;
   }
 
-  :global(.search-icon) {
-    position: absolute;
-    left: 0.75rem;
-    color: var(--color-muted-foreground);
-    pointer-events: none;
-  }
-
   .search-input {
     width: 100%;
-    padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+    padding: 0.5rem 0.75rem;
     border: 1px solid var(--color-sidebar-border);
     border-radius: 0.375rem;
     font-size: 0.875rem;
