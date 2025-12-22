@@ -3,6 +3,7 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
+  import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { Markdown } from 'tiptap-markdown';
   import { editorStore } from '$lib/stores/editor';
   import { FileText, Save, Clock } from 'lucide-svelte';
@@ -32,6 +33,8 @@
       element: editorElement,
       extensions: [
         StarterKit,
+        TaskList,
+        TaskItem.configure({ nested: true }),
         Markdown  // Enables markdown shortcuts and parsing
       ],
       content: '',
@@ -364,6 +367,12 @@
     padding-left: 1.5em;
   }
 
+  :global(.tiptap li > ul),
+  :global(.tiptap li > ol) {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
   :global(.tiptap ul) {
     list-style-type: disc;
   }
@@ -381,6 +390,38 @@
   :global(.tiptap li p) {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
+  }
+
+  :global(.tiptap ul[data-type='taskList']) {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  :global(.tiptap ul[data-type='taskList'] > li) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+  }
+
+  :global(.tiptap ul[data-type='taskList'] > li > label) {
+    margin-top: 0.2em;
+  }
+
+  :global(.tiptap ul[data-type='taskList'] > li > div) {
+    flex: 1;
+  }
+
+  :global(.tiptap ul[data-type='taskList'] > li > div > p) {
+    margin: 0;
+  }
+
+  :global(.tiptap ul[data-type='taskList'] > li > div > p:empty) {
+    display: none;
+  }
+
+  :global(.tiptap ul[data-type='taskList'] > li[data-checked='true'] > div) {
+    color: var(--color-muted-foreground);
+    text-decoration: line-through;
   }
 
   :global(.tiptap blockquote) {
