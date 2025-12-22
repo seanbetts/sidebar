@@ -3,7 +3,6 @@
 	import { SSEClient } from '$lib/api/sse';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import ModeToggle from '$lib/components/mode-toggle.svelte';
 	import MessageList from './MessageList.svelte';
 	import ChatInput from './ChatInput.svelte';
 	import { toast } from 'svelte-sonner';
@@ -85,15 +84,6 @@
 </script>
 
 <div class="flex flex-col h-screen max-w-6xl mx-auto bg-background">
-	<!-- Header -->
-	<header class="flex items-center justify-between p-4 border-b">
-		<div>
-			<h1 class="text-2xl font-bold text-foreground">Agent Smith</h1>
-			<p class="text-sm text-muted-foreground">AI Assistant with Tool Access</p>
-		</div>
-		<ModeToggle />
-	</header>
-
 	<!-- Messages -->
 	<MessageList messages={$chatStore.messages} />
 
