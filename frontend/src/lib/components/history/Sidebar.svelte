@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ChevronLeft, ChevronRight, Plus, MessageSquare, Folder, FileText, Settings, User, Monitor, Wrench } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Plus, MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -8,6 +8,7 @@
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
   import FileTree from '$lib/components/files/FileTree.svelte';
+  import WebsitesList from '$lib/components/websites/WebsitesList.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
   let isCollapsed = false;
@@ -235,10 +236,10 @@
           </div>
         </CollapsibleSection>
 
-        <!-- Documents Section -->
-        <CollapsibleSection title="Documents" icon={Folder} defaultExpanded={false}>
+        <!-- Websites Section -->
+        <CollapsibleSection title="Websites" icon={Globe} defaultExpanded={false}>
           <div class="files-content">
-            <FileTree basePath="documents" emptyMessage="No files found" hideExtensions={false} />
+            <WebsitesList />
           </div>
         </CollapsibleSection>
       </div>
