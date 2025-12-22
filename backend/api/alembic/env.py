@@ -7,11 +7,12 @@ from sqlalchemy import pool
 from alembic import context
 
 # Import Base for autogenerate support
-from db.base import Base
-from config import settings
+from api.db.base import Base
+from api.config import settings
 
 # Import all models here so Alembic can detect them
-from models import conversation  # noqa: F401
+from api.models import conversation  # noqa: F401
+from api.models import note  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
