@@ -107,6 +107,28 @@ class ToolMapper:
                     },
                     "required": ["url"]
                 }
+            },
+            {
+                "name": "notes_delete",
+                "description": "Delete a note in the database by ID.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "note_id": {"type": "string", "description": "Note UUID"}
+                    },
+                    "required": ["note_id"]
+                }
+            },
+            {
+                "name": "website_delete",
+                "description": "Delete a website in the database by ID.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "website_id": {"type": "string", "description": "Website UUID"}
+                    },
+                    "required": ["website_id"]
+                }
             }
         ]
 
@@ -274,6 +296,36 @@ class ToolMapper:
                 AuditLogger.log_tool_call(
                     tool_name="website_save",
                     parameters={"url": url},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False)
+                )
+
+                return result
+
+            elif name == "notes_delete":
+                note_id = parameters.get("note_id")
+                args = [note_id, "--database"]
+
+                result = await self.executor.execute("notes", "delete_note.py", args)
+
+                AuditLogger.log_tool_call(
+                    tool_name="notes_delete",
+                    parameters={"note_id": note_id},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False)
+                )
+
+                return result
+
+            elif name == "website_delete":
+                website_id = parameters.get("website_id")
+                args = [website_id, "--database"]
+
+                result = await self.executor.execute("web-save", "delete_website.py", args)
+
+                AuditLogger.log_tool_call(
+                    tool_name="website_delete",
+                    parameters={"website_id": website_id},
                     duration_ms=(time.time() - start_time) * 1000,
                     success=result.get("success", False)
                 )
