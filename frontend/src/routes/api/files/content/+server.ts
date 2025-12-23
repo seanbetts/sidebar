@@ -6,8 +6,11 @@ const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
 
 export const GET: RequestHandler = async ({ fetch, url }) => {
   try {
-    const basePath = url.searchParams.get('basePath') || 'notes';
+    const basePath = url.searchParams.get('basePath') || 'documents';
     const path = url.searchParams.get('path') || '';
+    if (basePath === 'notes') {
+      return json({ error: 'Notes are served from /api/notes' }, { status: 400 });
+    }
 
     const response = await fetch(
       `${API_URL}/api/files/content?basePath=${basePath}&path=${encodeURIComponent(path)}`,
@@ -33,6 +36,9 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
 export const POST: RequestHandler = async ({ request, fetch }) => {
   try {
     const body = await request.json();
+    if (body?.basePath === 'notes') {
+      return json({ error: 'Notes are served from /api/notes' }, { status: 400 });
+    }
 
     const response = await fetch(`${API_URL}/api/files/content`, {
       method: 'POST',

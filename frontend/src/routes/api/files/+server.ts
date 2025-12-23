@@ -7,6 +7,9 @@ const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
 export const GET: RequestHandler = async ({ fetch, url }) => {
   try {
     const basePath = url.searchParams.get('basePath') || 'documents';
+    if (basePath === 'notes') {
+      return json({ error: 'Notes are served from /api/notes' }, { status: 400 });
+    }
 
     const response = await fetch(`${API_URL}/api/files/tree?basePath=${basePath}`, {
       headers: {
