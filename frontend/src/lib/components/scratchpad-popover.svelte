@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import { TaskList, TaskItem } from '@tiptap/extension-list';
@@ -8,11 +9,7 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
 
-	const scratchpadPath = 'scratchpad.md';
 	const scratchpadHeading = '# ✏️ Scratchpad';
-	const scratchpadTitle = '✏️ Scratchpad';
-	const scratchpadFilename = `${scratchpadTitle}.md`;
-	const scratchpadStorageKey = 'scratchpadNoteId';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -25,7 +22,6 @@
 	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	let isClosing = false;
 	let hasUserEdits = false;
-	let scratchpadId: string | null = null;
 
 	function stripHeading(markdown: string): string {
 		const trimmed = markdown.trim();
@@ -44,67 +40,8 @@
 		return markdown.replace(/^\s*[-*]\s+\[ \]\s*$/gm, '').trim();
 	}
 
-	function findScratchpadId(nodes: Array<{ name?: string; path?: string; type?: string; children?: unknown[] }>) {
-		for (const node of nodes) {
-			if (node.type === 'file' && node.name === scratchpadFilename) {
-				return node.path || null;
-			}
-			if (node.type === 'directory' && Array.isArray(node.children)) {
-				const found = findScratchpadId(node.children as Array<{ name?: string; path?: string; type?: string; children?: unknown[] }>);
-				if (found) return found;
-			}
-		}
-		return null;
-	}
-
-	async function resolveScratchpadId(): Promise<string> {
-		if (scratchpadId) return scratchpadId;
-		const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(scratchpadStorageKey) : null;
-		if (stored) {
-			const verify = await fetch(
-				`/api/files/content?basePath=notes&path=${encodeURIComponent(stored)}`
-			);
-			if (verify.ok) {
-				scratchpadId = stored;
-				return stored;
-			}
-			localStorage.removeItem(scratchpadStorageKey);
-		}
-
-		const treeResponse = await fetch('/api/files?basePath=notes');
-		if (treeResponse.ok) {
-			const data = await treeResponse.json();
-			const found = findScratchpadId(data?.children || []);
-			if (found) {
-				scratchpadId = found;
-				localStorage.setItem(scratchpadStorageKey, found);
-				return found;
-			}
-		}
-
-		const content = `${scratchpadHeading}\n\n`;
-		const createResponse = await fetch('/api/files/content', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				basePath: 'notes',
-				path: scratchpadPath,
-				content
-			})
-		});
-		if (!createResponse.ok) throw new Error('Failed to create scratchpad');
-		const created = await createResponse.json();
-		if (!created?.id) throw new Error('Scratchpad id missing');
-		scratchpadId = created.id;
-		localStorage.setItem(scratchpadStorageKey, created.id);
-		return created.id;
-	}
-
 	async function ensureScratchpadExists() {
-		const noteId = await resolveScratchpadId();
-		const response = await fetch(
-			`/api/files/content?basePath=notes&path=${encodeURIComponent(noteId)}`
-		);
+		const response = await fetch('/api/scratchpad');
 		if (!response.ok) throw new Error('Missing scratchpad');
 		const data = await response.json();
 		const content = typeof data.content === 'string' ? data.content : '';
@@ -154,13 +91,10 @@
 		isSaving = true;
 		saveError = null;
 		try {
-			const noteId = await resolveScratchpadId();
-			const response = await fetch('/api/files/content', {
+			const response = await fetch('/api/scratchpad', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					basePath: 'notes',
-					path: noteId,
 					content
 				})
 			});
@@ -198,6 +132,16 @@
 	onDestroy(() => {
 		if (saveTimeout) clearTimeout(saveTimeout);
 		if (editor) editor.destroy();
+	});
+
+	const unsubscribeScratchpad = scratchpadStore.subscribe(() => {
+		if (isOpen && !isLoading) {
+			loadScratchpad();
+		}
+	});
+
+	onDestroy(() => {
+		unsubscribeScratchpad();
 	});
 
 	$: if (isOpen && editorElement && !editor) {

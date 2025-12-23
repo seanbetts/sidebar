@@ -11,6 +11,7 @@
 	import { websitesStore } from '$lib/stores/websites';
 	import { editorStore } from '$lib/stores/editor';
 	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
+	import { scratchpadStore } from '$lib/stores/scratchpad';
 
 	let sseClient = new SSEClient();
 
@@ -96,6 +97,14 @@
 				onThemeSet: (data) => {
 					const theme = data?.theme === 'dark' ? 'dark' : 'light';
 					setThemeMode(theme as ThemeMode);
+				},
+
+				onScratchpadUpdated: () => {
+					scratchpadStore.bump();
+				},
+
+				onScratchpadCleared: () => {
+					scratchpadStore.bump();
 				},
 
 				onComplete: async () => {

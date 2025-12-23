@@ -15,6 +15,8 @@ export interface SSECallbacks {
 	onNoteDeleted?: (data: { id?: string }) => void;
 	onWebsiteDeleted?: (data: { id?: string }) => void;
 	onThemeSet?: (data: { theme?: string }) => void;
+	onScratchpadUpdated?: () => void;
+	onScratchpadCleared?: () => void;
 }
 
 export class SSEClient {
@@ -134,6 +136,14 @@ export class SSEClient {
 
 			case 'ui_theme_set':
 				callbacks.onThemeSet?.(data);
+				break;
+
+			case 'scratchpad_updated':
+				callbacks.onScratchpadUpdated?.();
+				break;
+
+			case 'scratchpad_cleared':
+				callbacks.onScratchpadCleared?.();
 				break;
 
 			default:
