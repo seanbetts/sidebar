@@ -8,6 +8,7 @@ export interface WebsiteItem {
   saved_at: string | null;
   published_at: string | null;
   pinned: boolean;
+  archived?: boolean;
   updated_at: string | null;
   last_opened_at: string | null;
 }

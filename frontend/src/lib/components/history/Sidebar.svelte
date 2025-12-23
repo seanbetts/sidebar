@@ -8,7 +8,7 @@
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/history/NotesPanel.svelte';
-  import WebsitesList from '$lib/components/websites/WebsitesList.svelte';
+  import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
   let isCollapsed = false;
@@ -353,7 +353,7 @@
             <SearchBar />
           </div>
           <div class="files-content">
-            <WebsitesList />
+            <WebsitesPanel />
           </div>
         </div>
       {/if}
