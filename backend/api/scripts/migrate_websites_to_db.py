@@ -118,7 +118,7 @@ def migrate():
                 source=source,
                 saved_at=saved_at,
                 published_at=published_at,
-                metadata_={"pinned": False},
+            metadata_={"pinned": False, "archived": False},
                 created_at=now,
                 updated_at=now,
                 last_opened_at=None,
