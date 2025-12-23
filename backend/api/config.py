@@ -1,4 +1,5 @@
 """Configuration settings for Agent Smith Skills API."""
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://agent_smith:agent_smith_dev@postgres:5432/agent_smith"
 
     # Claude API configuration
-    anthropic_api_key: str  # Loaded from Doppler
+    anthropic_api_key: str  # Loaded from Doppler or environment
     model_name: str = "claude-sonnet-4-5-20250929"
 
     # Write allowlist - only these paths can be written
@@ -36,9 +37,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="",
         case_sensitive=False,
-        env_file=".env",
+        env_file=".env.test" if os.getenv("TESTING") else ".env",
+        env_file_encoding="utf-8",
         extra="ignore"  # Ignore extra environment variables (like DOPPLER_TOKEN)
     )
 
 
+# Singleton settings instance
+# In production: loads from environment or Doppler
+# In tests: loads from .env.test when TESTING=1 is set
 settings = Settings()
