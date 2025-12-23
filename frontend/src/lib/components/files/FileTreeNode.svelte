@@ -1,6 +1,20 @@
 <script lang="ts">
-  import { tick } from 'svelte';
-  import { ChevronRight, ChevronDown, File, Folder, FolderOpen, MoreVertical, Trash2, Pencil } from 'lucide-svelte';
+  import { onDestroy, tick } from 'svelte';
+  import {
+    ChevronRight,
+    ChevronDown,
+    File,
+    Folder,
+    FolderOpen,
+    MoreVertical,
+    Trash2,
+    Pencil,
+    Pin,
+    PinOff,
+    FolderInput,
+    Archive,
+    Download
+  } from 'lucide-svelte';
   import { get } from 'svelte/store';
   import { filesStore } from '$lib/stores/files';
   import { editorStore } from '$lib/stores/editor';
@@ -21,6 +35,12 @@
   let isDeleteDialogOpen = false;
   let editInput: HTMLInputElement | null = null;
   let deleteButton: HTMLButtonElement | null = null;
+  let menuElement: HTMLDivElement | null = null;
+  let menuButton: HTMLButtonElement | null = null;
+  let menuTimeout: ReturnType<typeof setTimeout> | null = null;
+  let removeOutsideListener: (() => void) | null = null;
+  let showMoveMenu = false;
+  let folderOptions: { label: string; value: string; depth: number }[] = [];
 
   $: isExpanded = node.expanded || false;
   $: hasChildren = node.children && node.children.length > 0;
@@ -42,6 +62,11 @@
   function toggleMenu(event: MouseEvent) {
     event.stopPropagation();
     showMenu = !showMenu;
+  }
+
+  function closeMenu() {
+    showMenu = false;
+    showMoveMenu = false;
   }
 
   function handleRename(event: MouseEvent) {
@@ -68,15 +93,30 @@
           }
         }
 
-        const response = await fetch(`/api/files/rename`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            basePath,
-            oldPath: node.path,
-            newName
-          })
-        });
+        const response = basePath === 'notes'
+          ? await fetch(
+              node.type === 'directory'
+                ? '/api/notes/folders/rename'
+                : `/api/notes/${node.path}/rename`,
+              {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(
+                  node.type === 'directory'
+                    ? { oldPath: node.path.replace(/^folder:/, ''), newName }
+                    : { newName }
+                )
+              }
+            )
+          : await fetch(`/api/files/rename`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                basePath,
+                oldPath: node.path,
+                newName
+              })
+            });
 
         if (!response.ok) throw new Error('Failed to rename');
 
@@ -111,16 +151,144 @@
     showMenu = false;
   }
 
+  function buildFolderOptions() {
+    const state = get(filesStore);
+    const tree = state.trees[basePath];
+    const rootChildren = tree?.children || [];
+    const options: { label: string; value: string; depth: number }[] = [
+      { label: 'Notes', value: '', depth: 0 }
+    ];
+
+    const walk = (nodes: FileNode[], depth: number) => {
+      for (const child of nodes) {
+        if (child.type !== 'directory') continue;
+        const folderName = child.name;
+        if (folderName === 'Archive') continue;
+        const folderPath = child.path.replace(/^folder:/, '');
+        options.push({ label: folderName, value: folderPath, depth });
+        if (child.children?.length) {
+          walk(child.children, depth + 1);
+        }
+      }
+    };
+
+    walk(rootChildren, 1);
+    folderOptions = options;
+  }
+
+  async function handlePinToggle(event: MouseEvent) {
+    event.stopPropagation();
+    if (node.type !== 'file') return;
+    try {
+      const pinned = !node.pinned;
+      const response = await fetch(`/api/notes/${node.path}/pin`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned })
+      });
+      if (!response.ok) throw new Error('Failed to update pin');
+      await filesStore.load(basePath);
+    } catch (error) {
+      console.error('Failed to pin note:', error);
+    } finally {
+      closeMenu();
+    }
+  }
+
+  async function handleArchive(event: MouseEvent) {
+    event.stopPropagation();
+    if (node.type !== 'file') return;
+    try {
+      const response = await fetch(`/api/notes/${node.path}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived: true })
+      });
+      if (!response.ok) throw new Error('Failed to archive note');
+      await filesStore.load(basePath);
+    } catch (error) {
+      console.error('Failed to archive note:', error);
+    } finally {
+      closeMenu();
+    }
+  }
+
+  async function handleMove(event: MouseEvent, folder: string) {
+    event.stopPropagation();
+    if (node.type !== 'file') return;
+    try {
+      const response = await fetch(`/api/notes/${node.path}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder })
+      });
+      if (!response.ok) throw new Error('Failed to move note');
+      await filesStore.load(basePath);
+    } catch (error) {
+      console.error('Failed to move note:', error);
+    } finally {
+      closeMenu();
+    }
+  }
+
+  async function handleDownload(event: MouseEvent) {
+    event.stopPropagation();
+    if (node.type !== 'file') return;
+    try {
+      if (basePath === 'notes') {
+        const link = document.createElement('a');
+        link.href = `/api/notes/${node.path}/download`;
+        link.download = `${displayName}.md`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return;
+      }
+
+      const response = await fetch(
+        `/api/files/content?basePath=${basePath}&path=${encodeURIComponent(node.path)}`
+      );
+      if (!response.ok) throw new Error('Failed to load note content');
+      const data = await response.json();
+      const blob = new Blob([data.content || ''], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = data.name || `${displayName}.md`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download note:', error);
+    } finally {
+      closeMenu();
+    }
+  }
+
   async function confirmDelete() {
     try {
-      const response = await fetch(`/api/files/delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          basePath,
-          path: node.path
-        })
-      });
+      const response = basePath === 'notes'
+        ? await fetch(
+            node.type === 'directory'
+              ? '/api/notes/folders'
+              : `/api/notes/${node.path}`,
+            {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: node.type === 'directory'
+                ? JSON.stringify({ path: node.path.replace(/^folder:/, '') })
+                : undefined
+            }
+          )
+        : await fetch(`/api/files/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              basePath,
+              path: node.path
+            })
+          });
 
       if (!response.ok) throw new Error('Failed to delete');
 
@@ -144,6 +312,39 @@
       editInput?.select();
     });
   }
+
+  $: if (showMenu) {
+    if (menuTimeout) clearTimeout(menuTimeout);
+    menuTimeout = setTimeout(() => {
+      closeMenu();
+    }, 4000);
+
+    if (!removeOutsideListener) {
+      const handleOutsideClick = (event: MouseEvent) => {
+        const target = event.target as Node;
+        if (menuElement?.contains(target) || menuButton?.contains(target)) {
+          return;
+        }
+        closeMenu();
+      };
+      document.addEventListener('click', handleOutsideClick, true);
+      removeOutsideListener = () => document.removeEventListener('click', handleOutsideClick, true);
+    }
+  } else {
+    if (menuTimeout) {
+      clearTimeout(menuTimeout);
+      menuTimeout = null;
+    }
+    if (removeOutsideListener) {
+      removeOutsideListener();
+      removeOutsideListener = null;
+    }
+  }
+
+  onDestroy(() => {
+    if (menuTimeout) clearTimeout(menuTimeout);
+    if (removeOutsideListener) removeOutsideListener();
+  });
 </script>
 
 <AlertDialog.Root bind:open={isDeleteDialogOpen}>
@@ -215,16 +416,61 @@
     </button>
 
     <div class="actions">
-      <button class="menu-btn" on:click={toggleMenu} aria-label="More options">
+      <button class="menu-btn" on:click={toggleMenu} aria-label="More options" bind:this={menuButton}>
         <MoreVertical size={16} />
       </button>
 
       {#if showMenu}
-        <div class="menu">
+        <div class="menu" bind:this={menuElement} on:click|stopPropagation>
           <button class="menu-item" on:click={handleRename}>
             <Pencil size={16} />
             <span>Rename</span>
           </button>
+          {#if node.type === 'file'}
+            <button class="menu-item" on:click={handlePinToggle}>
+              {#if node.pinned}
+                <PinOff size={16} />
+                <span>Unpin</span>
+              {:else}
+                <Pin size={16} />
+                <span>Pin</span>
+              {/if}
+            </button>
+            <button
+              class="menu-item"
+              on:click={(event) => {
+                event.stopPropagation();
+                showMoveMenu = !showMoveMenu;
+                buildFolderOptions();
+              }}
+            >
+              <FolderInput size={16} />
+              <span>Move</span>
+            </button>
+            {#if showMoveMenu}
+              <div class="menu-submenu">
+                {#each folderOptions as option (option.value)}
+                  <button
+                    class="menu-subitem"
+                    style={`padding-left: ${option.depth * 12 + 12}px`}
+                    on:click={(event) => handleMove(event, option.value)}
+                  >
+                    {option.label}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+            {#if !node.archived}
+              <button class="menu-item" on:click={handleArchive}>
+                <Archive size={16} />
+                <span>Archive</span>
+              </button>
+            {/if}
+            <button class="menu-item" on:click={handleDownload}>
+              <Download size={16} />
+              <span>Download</span>
+            </button>
+          {/if}
           <button class="menu-item delete" on:click={handleDelete}>
             <Trash2 size={16} />
             <span>Delete</span>
@@ -377,5 +623,26 @@
 
   .menu-item.delete {
     color: var(--color-destructive);
+  }
+
+  .menu-submenu {
+    padding: 0.25rem 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .menu-subitem {
+    display: block;
+    width: 100%;
+    padding: 0.35rem 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-align: left;
+    color: var(--color-popover-foreground);
+  }
+
+  .menu-subitem:hover {
+    background-color: var(--color-accent);
   }
 </style>

@@ -42,9 +42,9 @@ function createEditorStore() {
       update(state => ({ ...state, isLoading: true, saveError: null }));
 
       try {
-        const response = await fetch(
-          `/api/files/content?basePath=${basePath}&path=${encodeURIComponent(path)}`
-        );
+        const response = basePath === 'notes'
+          ? await fetch(`/api/notes/${path}`)
+          : await fetch(`/api/files/content?basePath=${basePath}&path=${encodeURIComponent(path)}`);
 
         if (!response.ok) throw new Error('Failed to load note');
 
@@ -96,15 +96,21 @@ function createEditorStore() {
       update(s => ({ ...s, isSaving: true, saveError: null }));
 
       try {
-        const response = await fetch('/api/files/content', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            basePath: state.basePath,
-            path: state.currentNoteId,
-            content: state.content
-          })
-        });
+        const response = state.basePath === 'notes'
+          ? await fetch(`/api/notes/${state.currentNoteId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: state.content })
+            })
+          : await fetch('/api/files/content', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                basePath: state.basePath,
+                path: state.currentNoteId,
+                content: state.content
+              })
+            });
 
         if (!response.ok) throw new Error('Failed to save note');
 

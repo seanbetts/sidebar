@@ -35,6 +35,68 @@ class NotesService:
         return f"# {title}\n\n{content or ''}".strip() + "\n"
 
     @staticmethod
+    def parse_note_id(value: str) -> uuid.UUID | None:
+        try:
+            return uuid.UUID(value)
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
+    def is_archived_folder(folder: str) -> bool:
+        return folder == "Archive" or folder.startswith("Archive/")
+
+    @staticmethod
+    def build_notes_tree(notes: Iterable[Note]) -> dict:
+        root = {"name": "notes", "path": "/", "type": "directory", "children": [], "expanded": False}
+        index: dict[str, dict] = {"": root}
+
+        for note in notes:
+            if note.title == "✏️ Scratchpad":
+                continue
+            metadata = note.metadata_ or {}
+            folder = metadata.get("folder") or ""
+            is_folder_marker = bool(metadata.get("folder_marker"))
+            folder_parts = [part for part in folder.split("/") if part]
+            current_path = ""
+            current_node = root
+
+            for part in folder_parts:
+                current_path = f"{current_path}/{part}" if current_path else part
+                if current_path not in index:
+                    node = {
+                        "name": part,
+                        "path": f"folder:{current_path}",
+                        "type": "directory",
+                        "children": [],
+                        "expanded": False
+                    }
+                    index[current_path] = node
+                    current_node["children"].append(node)
+                current_node = index[current_path]
+
+            if is_folder_marker:
+                continue
+
+            is_archived = NotesService.is_archived_folder(folder)
+            current_node["children"].append({
+                "name": f"{note.title}.md",
+                "path": str(note.id),
+                "type": "file",
+                "modified": note.updated_at.timestamp() if note.updated_at else None,
+                "pinned": bool(metadata.get("pinned")),
+                "archived": is_archived
+            })
+
+        def sort_children(node: dict) -> None:
+            node["children"].sort(key=lambda item: (item.get("type") != "directory", item.get("name", "").lower()))
+            for child in node["children"]:
+                if child.get("type") == "directory":
+                    sort_children(child)
+
+        sort_children(root)
+        return root
+
+    @staticmethod
     def create_note(
         db: Session,
         content: str,

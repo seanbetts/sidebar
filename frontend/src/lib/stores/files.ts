@@ -35,7 +35,10 @@ function createFilesStore() {
       }));
 
       try {
-        const response = await fetch(`/api/files?basePath=${basePath}`);
+        const endpoint = basePath === 'notes'
+          ? '/api/notes/tree'
+          : `/api/files?basePath=${basePath}`;
+        const response = await fetch(endpoint);
         if (!response.ok) throw new Error('Failed to load files');
 
         const data = await response.json();

@@ -78,11 +78,10 @@
     const filename = name.endsWith('.md') ? name : `${name}.md`;
 
     try {
-      const response = await fetch('/api/files/content', {
+      const response = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          basePath: 'notes',
           path: filename,
           content: `# ${name}\n\n`
         })
@@ -110,13 +109,10 @@
     if (!name) return;
 
     try {
-      const response = await fetch('/api/files/folder', {
+      const response = await fetch('/api/notes/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          basePath: 'notes',
-          path: name
-        })
+        body: JSON.stringify({ path: name })
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
