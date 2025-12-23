@@ -103,15 +103,27 @@ class SkillExecutor:
                 cmd = ["python", str(script_path)] + args + ["--json"]
 
                 # Minimal environment - only what's needed
+                pythonpath = os.environ.get("PYTHONPATH", "")
+                if Path("/app").exists():
+                    pythonpath = f"{pythonpath}:/app" if pythonpath else "/app"
+
                 env = {
                     "WORKSPACE_BASE": str(self.workspace_base),
                     "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
-                    "PYTHONPATH": os.environ.get("PYTHONPATH", ""),
+                    "PYTHONPATH": pythonpath,
                 }
 
-                # Add Doppler token if present (for skills that need secrets)
-                if "DOPPLER_TOKEN" in os.environ:
-                    env["DOPPLER_TOKEN"] = os.environ["DOPPLER_TOKEN"]
+                # Add selected runtime secrets/config if present (required for DB-backed skills)
+                for key in (
+                    "DOPPLER_TOKEN",
+                    "BEARER_TOKEN",
+                    "ANTHROPIC_API_KEY",
+                    "DATABASE_URL",
+                    "OPENAI_API_KEY",
+                    "GOOGLE_API_KEY",
+                ):
+                    if key in os.environ:
+                        env[key] = os.environ[key]
 
                 # Execute with strict timeout and no shell
                 result = subprocess.run(
