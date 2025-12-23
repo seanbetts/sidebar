@@ -203,6 +203,33 @@ class ToolMapper:
                 }
             },
             {
+                "name": "scratchpad_get",
+                "description": "Fetch the scratchpad note.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {}
+                }
+            },
+            {
+                "name": "scratchpad_update",
+                "description": "Update the scratchpad content.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "string"}
+                    },
+                    "required": ["content"]
+                }
+            },
+            {
+                "name": "scratchpad_clear",
+                "description": "Clear the scratchpad content.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {}
+                }
+            },
+            {
                 "name": "website_delete",
                 "description": "Delete a website in the database by ID.",
                 "input_schema": {
@@ -267,6 +294,17 @@ class ToolMapper:
                         "published_before": {"type": "string"},
                         "title": {"type": "string"}
                     }
+                }
+            },
+            {
+                "name": "ui_theme_set",
+                "description": "Set the UI theme to light or dark.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "theme": {"type": "string", "enum": ["light", "dark"]}
+                    },
+                    "required": ["theme"]
                 }
             }
         ]
@@ -532,6 +570,49 @@ class ToolMapper:
 
                 return self._normalize_result(result)
 
+            elif name == "scratchpad_get":
+                args = ["--database"]
+
+                result = await self.executor.execute("notes", "scratchpad_get.py", args)
+
+                AuditLogger.log_tool_call(
+                    tool_name="scratchpad_get",
+                    parameters={},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False)
+                )
+
+                return self._normalize_result(result)
+
+            elif name == "scratchpad_update":
+                content = parameters.get("content", "")
+                args = ["--content", content, "--database"]
+
+                result = await self.executor.execute("notes", "scratchpad_update.py", args)
+
+                AuditLogger.log_tool_call(
+                    tool_name="scratchpad_update",
+                    parameters={"content": "<redacted>"},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False)
+                )
+
+                return self._normalize_result(result)
+
+            elif name == "scratchpad_clear":
+                args = ["--database"]
+
+                result = await self.executor.execute("notes", "scratchpad_clear.py", args)
+
+                AuditLogger.log_tool_call(
+                    tool_name="scratchpad_clear",
+                    parameters={},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False)
+                )
+
+                return self._normalize_result(result)
+
             elif name == "website_delete":
                 website_id = parameters.get("website_id")
                 args = [website_id, "--database"]
@@ -621,6 +702,22 @@ class ToolMapper:
                     parameters=parameters,
                     duration_ms=(time.time() - start_time) * 1000,
                     success=result.get("success", False)
+                )
+
+                return self._normalize_result(result)
+
+            elif name == "ui_theme_set":
+                theme = parameters.get("theme")
+                if theme not in {"light", "dark"}:
+                    return self._normalize_result({"success": False, "error": "Invalid theme"})
+
+                result = {"success": True, "data": {"theme": theme}}
+
+                AuditLogger.log_tool_call(
+                    tool_name="ui_theme_set",
+                    parameters={"theme": theme},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=True
                 )
 
                 return self._normalize_result(result)
