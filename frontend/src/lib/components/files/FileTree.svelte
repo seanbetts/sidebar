@@ -40,7 +40,8 @@
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    max-height: 400px;
+    flex: 1;
+    min-height: 0;
     padding-bottom: 80px;
   }
 
