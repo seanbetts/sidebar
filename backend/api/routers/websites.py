@@ -10,6 +10,7 @@ router = APIRouter(prefix="/websites", tags=["websites"])
 
 
 def website_summary(website: Website) -> dict:
+    metadata = website.metadata_ or {}
     return {
         "id": str(website.id),
         "title": website.title,
@@ -17,7 +18,8 @@ def website_summary(website: Website) -> dict:
         "domain": website.domain,
         "saved_at": website.saved_at.isoformat() if website.saved_at else None,
         "published_at": website.published_at.isoformat() if website.published_at else None,
-        "pinned": (website.metadata_ or {}).get("pinned", False),
+        "pinned": metadata.get("pinned", False),
+        "archived": metadata.get("archived", False),
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None
     }
@@ -71,6 +73,25 @@ async def update_pin(
         raise HTTPException(status_code=404, detail="Website not found")
 
     website.metadata_ = {**(website.metadata_ or {}), "pinned": pinned}
+    website.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"success": True}
+
+
+@router.patch("/{website_id}/archive")
+async def update_archive(
+    website_id: str,
+    request: dict,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    archived = bool(request.get("archived", False))
+    website = db.query(Website).filter(Website.id == website_id, Website.deleted_at.is_(None)).first()
+    if not website:
+        raise HTTPException(status_code=404, detail="Website not found")
+
+    website.metadata_ = {**(website.metadata_ or {}), "archived": archived}
     website.updated_at = datetime.now(timezone.utc)
     db.commit()
 
