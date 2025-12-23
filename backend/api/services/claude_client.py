@@ -215,6 +215,20 @@ class ClaudeClient:
                                                 "theme": result_data.get("theme")
                                             }
                                         }
+                                    elif tool_use["name"] == "scratchpad_update":
+                                        yield {
+                                            "type": "scratchpad_updated",
+                                            "data": {
+                                                "id": result_data.get("id")
+                                            }
+                                        }
+                                    elif tool_use["name"] == "scratchpad_clear":
+                                        yield {
+                                            "type": "scratchpad_cleared",
+                                            "data": {
+                                                "id": result_data.get("id")
+                                            }
+                                        }
 
                                 # Add to tool results for next turn
                                 tool_results.append({

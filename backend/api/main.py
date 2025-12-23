@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from api.routers import health, chat, conversations, files, websites
+from api.routers import health, chat, conversations, files, websites, scratchpad
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
 from api.executors.skill_executor import SkillExecutor
@@ -92,6 +92,7 @@ app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(conversations.router, prefix="/api", tags=["conversations"])
 app.include_router(files.router, prefix="/api", tags=["files"])
 app.include_router(websites.router, prefix="/api", tags=["websites"])
+app.include_router(scratchpad.router, prefix="/api", tags=["scratchpad"])
 
 # Mount MCP endpoint (auth handled by middleware)
 # FastMCP creates its own /mcp route, so we mount at root
