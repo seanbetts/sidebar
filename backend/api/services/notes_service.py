@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Iterable, Optional
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from api.models.note import Note
@@ -166,8 +167,46 @@ class NotesService:
         db: Session,
         *,
         folder: Optional[str] = None,
+        pinned: Optional[bool] = None,
+        archived: Optional[bool] = None,
+        created_after: Optional[datetime] = None,
+        created_before: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        updated_before: Optional[datetime] = None,
+        opened_after: Optional[datetime] = None,
+        opened_before: Optional[datetime] = None,
+        title_search: Optional[str] = None,
     ) -> Iterable[Note]:
         query = db.query(Note).filter(Note.deleted_at.is_(None))
+
         if folder is not None:
             query = query.filter(Note.metadata_["folder"].astext == folder)
+
+        if pinned is not None:
+            query = query.filter(Note.metadata_["pinned"].astext == str(pinned).lower())
+
+        if archived is not None:
+            archived_filter = or_(
+                Note.metadata_["archived"].astext == str(archived).lower(),
+                Note.metadata_["folder"].astext.like("Archive/%"),
+                Note.metadata_["folder"].astext == "Archive",
+            )
+            query = query.filter(archived_filter if archived else ~archived_filter)
+
+        if created_after is not None:
+            query = query.filter(Note.created_at >= created_after)
+        if created_before is not None:
+            query = query.filter(Note.created_at <= created_before)
+        if updated_after is not None:
+            query = query.filter(Note.updated_at >= updated_after)
+        if updated_before is not None:
+            query = query.filter(Note.updated_at <= updated_before)
+        if opened_after is not None:
+            query = query.filter(Note.last_opened_at >= opened_after)
+        if opened_before is not None:
+            query = query.filter(Note.last_opened_at <= opened_before)
+
+        if title_search:
+            query = query.filter(Note.title.ilike(f"%{title_search}%"))
+
         return query.order_by(Note.updated_at.desc()).all()

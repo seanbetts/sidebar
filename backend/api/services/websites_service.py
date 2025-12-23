@@ -181,10 +181,54 @@ class WebsitesService:
         return website
 
     @staticmethod
-    def list_websites(db: Session) -> Iterable[Website]:
+    def list_websites(
+        db: Session,
+        *,
+        domain: Optional[str] = None,
+        pinned: Optional[bool] = None,
+        archived: Optional[bool] = None,
+        created_after: Optional[datetime] = None,
+        created_before: Optional[datetime] = None,
+        updated_after: Optional[datetime] = None,
+        updated_before: Optional[datetime] = None,
+        opened_after: Optional[datetime] = None,
+        opened_before: Optional[datetime] = None,
+        published_after: Optional[datetime] = None,
+        published_before: Optional[datetime] = None,
+        title_search: Optional[str] = None,
+    ) -> Iterable[Website]:
+        query = db.query(Website).filter(Website.deleted_at.is_(None))
+
+        if domain is not None:
+            query = query.filter(Website.domain == domain)
+
+        if pinned is not None:
+            query = query.filter(Website.metadata_["pinned"].astext == str(pinned).lower())
+
+        if archived is not None:
+            query = query.filter(Website.metadata_["archived"].astext == str(archived).lower())
+
+        if created_after is not None:
+            query = query.filter(Website.created_at >= created_after)
+        if created_before is not None:
+            query = query.filter(Website.created_at <= created_before)
+        if updated_after is not None:
+            query = query.filter(Website.updated_at >= updated_after)
+        if updated_before is not None:
+            query = query.filter(Website.updated_at <= updated_before)
+        if opened_after is not None:
+            query = query.filter(Website.last_opened_at >= opened_after)
+        if opened_before is not None:
+            query = query.filter(Website.last_opened_at <= opened_before)
+        if published_after is not None:
+            query = query.filter(Website.published_at >= published_after)
+        if published_before is not None:
+            query = query.filter(Website.published_at <= published_before)
+
+        if title_search:
+            query = query.filter(Website.title.ilike(f"%{title_search}%"))
+
         return (
-            db.query(Website)
-            .filter(Website.deleted_at.is_(None))
-            .order_by(Website.saved_at.desc().nullslast(), Website.created_at.desc())
+            query.order_by(Website.saved_at.desc().nullslast(), Website.created_at.desc())
             .all()
         )

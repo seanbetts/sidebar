@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""
+List Websites
+
+List websites with filters from the database.
+"""
+
+import argparse
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+try:
+    from api.db.session import SessionLocal
+    from api.services.websites_service import WebsitesService
+except Exception:
+    SessionLocal = None
+    WebsitesService = None
+
+
+def parse_bool(value: str | None) -> bool | None:
+    if value is None:
+        return None
+    return value.lower() in {"true", "1", "yes", "y"}
+
+
+def parse_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"Invalid datetime: {value}") from exc
+
+
+def list_websites_database(args: argparse.Namespace) -> dict:
+    if SessionLocal is None or WebsitesService is None:
+        raise RuntimeError("Database dependencies are unavailable")
+
+    db = SessionLocal()
+    try:
+        websites = WebsitesService.list_websites(
+            db,
+            domain=args.domain,
+            pinned=parse_bool(args.pinned),
+            archived=parse_bool(args.archived),
+            created_after=parse_datetime(args.created_after),
+            created_before=parse_datetime(args.created_before),
+            updated_after=parse_datetime(args.updated_after),
+            updated_before=parse_datetime(args.updated_before),
+            opened_after=parse_datetime(args.opened_after),
+            opened_before=parse_datetime(args.opened_before),
+            published_after=parse_datetime(args.published_after),
+            published_before=parse_datetime(args.published_before),
+            title_search=args.title,
+        )
+        items = []
+        for site in websites:
+            metadata = site.metadata_ or {}
+            items.append({
+                "id": str(site.id),
+                "title": site.title,
+                "url": site.url,
+                "domain": site.domain,
+                "pinned": bool(metadata.get("pinned")),
+                "archived": bool(metadata.get("archived")),
+                "saved_at": site.saved_at.isoformat() if site.saved_at else None,
+                "published_at": site.published_at.isoformat() if site.published_at else None,
+                "created_at": site.created_at.isoformat() if site.created_at else None,
+                "updated_at": site.updated_at.isoformat() if site.updated_at else None,
+                "last_opened_at": site.last_opened_at.isoformat() if site.last_opened_at else None,
+            })
+
+        return {"items": items, "count": len(items)}
+    finally:
+        db.close()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="List websites")
+    parser.add_argument("--domain", help="Domain filter")
+    parser.add_argument("--pinned", help="true or false")
+    parser.add_argument("--archived", help="true or false")
+    parser.add_argument("--created-after", help="ISO datetime filter")
+    parser.add_argument("--created-before", help="ISO datetime filter")
+    parser.add_argument("--updated-after", help="ISO datetime filter")
+    parser.add_argument("--updated-before", help="ISO datetime filter")
+    parser.add_argument("--opened-after", help="ISO datetime filter")
+    parser.add_argument("--opened-before", help="ISO datetime filter")
+    parser.add_argument("--published-after", help="ISO datetime filter")
+    parser.add_argument("--published-before", help="ISO datetime filter")
+    parser.add_argument("--title", help="Search by title")
+    parser.add_argument("--database", action="store_true", help="Use database mode")
+    parser.add_argument("--json", action="store_true", help="JSON output")
+
+    args = parser.parse_args()
+
+    try:
+        if not args.database:
+            raise ValueError("Database mode required")
+
+        result = list_websites_database(args)
+        output = {"success": True, "data": result}
+        print(json.dumps(output, indent=2))
+        sys.exit(0)
+
+    except Exception as e:
+        error_output = {"success": False, "error": str(e)}
+        print(json.dumps(error_output, indent=2), file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
