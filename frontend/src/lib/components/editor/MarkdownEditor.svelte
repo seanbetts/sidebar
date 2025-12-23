@@ -6,6 +6,7 @@
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { Markdown } from 'tiptap-markdown';
   import { editorStore } from '$lib/stores/editor';
+  import { toast } from 'svelte-sonner';
   import { FileText, Save, Clock } from 'lucide-svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
@@ -56,22 +57,48 @@
 
     // Update editor when store changes (e.g., loading new note)
     let lastNoteId = '';
+    let lastContent = '';
     unsubscribe = editorStore.subscribe(state => {
-      // Only update editor when switching to a different note, not on every content change
-      if (editor && !state.isLoading && state.currentNoteId && state.currentNoteId !== lastNoteId) {
-        lastNoteId = state.currentNoteId;
+      if (!editor || state.isLoading) return;
 
-        // Set flag to prevent onUpdate from firing
+      if (!state.currentNoteId) {
+        lastNoteId = '';
+        lastContent = '';
         isUpdatingContent = true;
-
-        // Clear editor first, then set content
         editor.commands.clearContent();
-        editor.commands.setContent(state.content || '');
-
-        // Reset flag after a microtask to allow the update to complete
         setTimeout(() => {
           isUpdatingContent = false;
         }, 0);
+        return;
+      }
+
+      const nextContent = state.content || '';
+
+      const isSameNote = state.currentNoteId === lastNoteId && lastNoteId !== '';
+      const isExternalUpdate = isSameNote && !state.isDirty && nextContent !== lastContent;
+      const shouldSync =
+        state.currentNoteId !== lastNoteId ||
+        isExternalUpdate;
+
+      if (!shouldSync) return;
+
+      lastNoteId = state.currentNoteId;
+      lastContent = nextContent;
+
+      // Set flag to prevent onUpdate from firing
+      isUpdatingContent = true;
+
+      // Clear editor first, then set content
+      editor.commands.clearContent();
+      editor.commands.setContent(nextContent);
+
+      // Reset flag after a microtask to allow the update to complete
+      setTimeout(() => {
+        isUpdatingContent = false;
+      }, 0);
+
+      if (isExternalUpdate) {
+        toast.message('Note updated');
       }
     });
   });
