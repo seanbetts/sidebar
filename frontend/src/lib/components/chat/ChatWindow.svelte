@@ -75,8 +75,11 @@
 						chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
 					},
 
-					onNoteCreated: async () => {
+					onNoteCreated: async (data) => {
 						await filesStore.load('notes');
+						if (data?.id) {
+							await editorStore.loadNote('notes', data.id);
+						}
 					},
 
 					onNoteUpdated: async (data) => {
@@ -93,7 +96,11 @@
 						await websitesStore.load();
 					},
 
-					onNoteDeleted: async () => {
+					onNoteDeleted: async (data) => {
+						const editorState = get(editorStore);
+						if (data?.id && editorState.currentNoteId === data.id) {
+							editorStore.reset();
+						}
 						await filesStore.load('notes');
 					},
 

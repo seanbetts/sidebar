@@ -1,8 +1,18 @@
 /**
  * Files store for managing multiple file tree states
  */
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import type { FileNode, FileTreeState, SingleFileTree } from '$lib/types/file';
+import { editorStore } from '$lib/stores/editor';
+
+function hasFilePath(nodes: FileNode[] | undefined, targetPath: string): boolean {
+  if (!nodes) return false;
+  for (const node of nodes) {
+    if (node.type === 'file' && node.path === targetPath) return true;
+    if (node.children && hasFilePath(node.children, targetPath)) return true;
+  }
+  return false;
+}
 
 function createFilesStore() {
   const { subscribe, set, update } = writable<FileTreeState>({
@@ -29,16 +39,24 @@ function createFilesStore() {
         if (!response.ok) throw new Error('Failed to load files');
 
         const data = await response.json();
+        const children = data.children || [];
         update(state => ({
           trees: {
             ...state.trees,
             [basePath]: {
               ...state.trees[basePath],
-              children: data.children || [],
+              children,
               loading: false
             }
           }
         }));
+
+        if (basePath === 'notes') {
+          const editorState = get(editorStore);
+          if (editorState.currentNoteId && !hasFilePath(children, editorState.currentNoteId)) {
+            editorStore.reset();
+          }
+        }
       } catch (error) {
         console.error(`Failed to load file tree for ${basePath}:`, error);
         update(state => ({
