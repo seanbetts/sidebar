@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { beforeNavigate, goto } from '$app/navigation';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
@@ -7,9 +7,14 @@
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
   import { editorStore } from '$lib/stores/editor';
+  import { filesStore } from '$lib/stores/files';
+  import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
-  import { FileText, Save, Clock } from 'lucide-svelte';
+  import { FileText, Save, Clock, X, Pencil, FolderInput, Archive, Pin, PinOff, Download, Trash2 } from 'lucide-svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+  import * as Popover from '$lib/components/ui/popover/index.js';
+  import { Button } from '$lib/components/ui/button';
+  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
@@ -19,6 +24,11 @@
   let isLeaveDialogOpen = false;
   let pendingHref: string | null = null;
   let allowNavigateOnce = false;
+  let isRenameDialogOpen = false;
+  let renameValue = '';
+  let renameInput: HTMLInputElement | null = null;
+  let isDeleteDialogOpen = false;
+  let folderOptions: { label: string; value: string; depth: number }[] = [];
 
   $: isDirty = $editorStore.isDirty;
   $: isSaving = $editorStore.isSaving;
@@ -26,9 +36,162 @@
   $: saveError = $editorStore.saveError;
   $: currentNoteName = $editorStore.currentNoteName;
   $: isLoading = $editorStore.isLoading;
+  $: currentNoteId = $editorStore.currentNoteId;
 
   // Strip file extension from note name for display
   $: displayTitle = currentNoteName ? currentNoteName.replace(/\.[^/.]+$/, '') : '';
+
+  function findNoteNode(noteId: string | null, tree: any) {
+    if (!noteId) return null;
+    const nodes = tree?.children || [];
+    const walk = (items: any[]): any | null => {
+      for (const item of items) {
+        if (item.type === 'file' && item.path === noteId) return item;
+        if (item.children) {
+          const match = walk(item.children);
+          if (match) return match;
+        }
+      }
+      return null;
+    };
+    return walk(nodes);
+  }
+
+  $: noteNode = findNoteNode(currentNoteId, $filesStore.trees['notes']);
+
+  function buildFolderOptions() {
+    const tree = get(filesStore).trees['notes'];
+    const nodes = tree?.children || [];
+    const options: { label: string; value: string; depth: number }[] = [
+      { label: 'Notes', value: '', depth: 0 }
+    ];
+
+    const walk = (items: any[], depth: number) => {
+      for (const item of items) {
+        if (item.type !== 'directory') continue;
+        if (item.name === 'Archive') continue;
+        const folderPath = item.path.replace(/^folder:/, '');
+        options.push({ label: item.name, value: folderPath, depth });
+        if (item.children?.length) {
+          walk(item.children, depth + 1);
+        }
+      }
+    };
+
+    walk(nodes, 1);
+    folderOptions = options;
+  }
+
+  async function handleClose() {
+    if (isDirty) {
+      const save = confirm('Save changes before closing this note?');
+      if (save) {
+        await editorStore.saveNote();
+      }
+    }
+    editorStore.reset();
+  }
+
+  function openRenameDialog() {
+    renameValue = displayTitle;
+    isRenameDialogOpen = true;
+  }
+
+  async function handleRename() {
+    if (!currentNoteId) return;
+    const trimmed = renameValue.trim();
+    if (!trimmed || trimmed === displayTitle) {
+      isRenameDialogOpen = false;
+      return;
+    }
+    if (isDirty) {
+      const save = confirm('Save changes before renaming this note?');
+      if (save) {
+        await editorStore.saveNote();
+      }
+    }
+    const response = await fetch(`/api/notes/${currentNoteId}/rename`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName: `${trimmed}.md` })
+    });
+    if (!response.ok) {
+      console.error('Failed to rename note');
+      return;
+    }
+    await filesStore.load('notes');
+    await editorStore.loadNote('notes', currentNoteId, { source: 'user' });
+    isRenameDialogOpen = false;
+  }
+
+  async function handleMove(folder: string) {
+    if (!currentNoteId) return;
+    const response = await fetch(`/api/notes/${currentNoteId}/move`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder })
+    });
+    if (!response.ok) {
+      console.error('Failed to move note');
+      return;
+    }
+    await filesStore.load('notes');
+  }
+
+  async function handleArchive() {
+    if (!currentNoteId) return;
+    const response = await fetch(`/api/notes/${currentNoteId}/archive`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: true })
+    });
+    if (!response.ok) {
+      console.error('Failed to archive note');
+      return;
+    }
+    await filesStore.load('notes');
+    editorStore.reset();
+  }
+
+  async function handlePinToggle() {
+    if (!currentNoteId) return;
+    const node = noteNode;
+    const pinned = !(node?.pinned);
+    const response = await fetch(`/api/notes/${currentNoteId}/pin`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned })
+    });
+    if (!response.ok) {
+      console.error('Failed to update pin');
+      return;
+    }
+    await filesStore.load('notes');
+  }
+
+  async function handleDownload() {
+    if (!currentNoteId) return;
+    const link = document.createElement('a');
+    link.href = `/api/notes/${currentNoteId}/download`;
+    link.download = `${displayTitle || 'note'}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  async function handleDelete() {
+    if (!currentNoteId) return;
+    const response = await fetch(`/api/notes/${currentNoteId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      console.error('Failed to delete note');
+      return;
+    }
+    await filesStore.load('notes');
+    editorStore.reset();
+    isDeleteDialogOpen = false;
+  }
 
   onMount(() => {
     editor = new Editor({
@@ -118,6 +281,13 @@
     }
   });
 
+  $: if (isRenameDialogOpen) {
+    tick().then(() => {
+      renameInput?.focus();
+      renameInput?.select();
+    });
+  }
+
   onDestroy(() => {
     clearTimeout(saveTimeout);
     if (unsubscribe) {
@@ -179,6 +349,47 @@
   </AlertDialog.Content>
 </AlertDialog.Root>
 
+<AlertDialog.Root bind:open={isRenameDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      renameInput?.focus();
+      renameInput?.select();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Rename note</AlertDialog.Title>
+      <AlertDialog.Description>Update the note title.</AlertDialog.Description>
+    </AlertDialog.Header>
+    <div class="py-2">
+      <input
+        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        type="text"
+        placeholder="Note title"
+        bind:this={renameInput}
+        bind:value={renameValue}
+        on:keydown={(event) => {
+          if (event.key === 'Enter') handleRename();
+        }}
+      />
+    </div>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={() => (isRenameDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action disabled={!renameValue.trim()} onclick={handleRename}>
+        Rename
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<NoteDeleteDialog
+  bind:open={isDeleteDialogOpen}
+  itemType="note"
+  itemName={displayTitle}
+  onConfirm={handleDelete}
+  onCancel={() => (isDeleteDialogOpen = false)}
+/>
+
 <div class="editor-container">
   {#if currentNoteName}
     <div class="editor-header">
@@ -202,6 +413,86 @@
             Saved {formatLastSaved(lastSaved)}
           </span>
         {/if}
+        <div class="note-actions">
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handlePinToggle}
+            aria-label="Pin note"
+            title="Pin note"
+          >
+            {#if noteNode?.pinned}
+              <PinOff size={16} />
+            {:else}
+              <Pin size={16} />
+            {/if}
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={openRenameDialog}
+            aria-label="Rename note"
+            title="Rename note"
+          >
+            <Pencil size={16} />
+          </Button>
+          <Popover.Root onOpenChange={(open) => open && buildFolderOptions()}>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <Button size="icon" variant="ghost" {...props} aria-label="Move note" title="Move note">
+                  <FolderInput size={16} />
+                </Button>
+              {/snippet}
+            </Popover.Trigger>
+            <Popover.Content class="note-move-menu" align="start" sideOffset={8}>
+              {#each folderOptions as option (option.value)}
+                <button
+                  class="note-move-item"
+                  style={`padding-left: ${option.depth * 12 + 12}px`}
+                  on:click={() => handleMove(option.value)}
+                >
+                  {option.label}
+                </button>
+              {/each}
+            </Popover.Content>
+          </Popover.Root>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handleDownload}
+            aria-label="Download note"
+            title="Download note"
+          >
+            <Download size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handleArchive}
+            aria-label="Archive note"
+            title="Archive note"
+          >
+            <Archive size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={() => (isDeleteDialogOpen = true)}
+            aria-label="Delete note"
+            title="Delete note"
+          >
+            <Trash2 size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handleClose}
+            aria-label="Close note"
+            title="Close note"
+          >
+            <X size={16} />
+          </Button>
+        </div>
       </div>
     </div>
   {/if}
@@ -234,7 +525,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 1.5rem;
     min-height: 57px;
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-card);
@@ -258,6 +549,13 @@
   .header-right {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+  }
+
+  .note-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
   }
 
   .status {
@@ -267,6 +565,27 @@
     font-size: 0.75rem;
     padding: 0 0.75rem;
     border-radius: 0.375rem;
+  }
+
+  .note-move-menu {
+    width: 220px;
+    padding: 0.25rem 0;
+  }
+
+  .note-move-item {
+    display: block;
+    width: 100%;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0.4rem 0.75rem;
+    text-align: left;
+    font-size: 0.8rem;
+    color: var(--color-popover-foreground);
+  }
+
+  .note-move-item:hover {
+    background-color: var(--color-accent);
   }
 
   .status.saving {

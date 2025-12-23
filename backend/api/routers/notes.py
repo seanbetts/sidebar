@@ -93,6 +93,34 @@ async def rename_folder(
     return {"success": True, "newPath": f"folder:{new_folder}"}
 
 
+@router.patch("/folders/move")
+async def move_folder(
+    request: dict,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    old_path = (request.get("oldPath") or "").strip("/")
+    new_parent = (request.get("newParent") or "").strip("/")
+    if not old_path:
+        raise HTTPException(status_code=400, detail="oldPath required")
+
+    if new_parent and (new_parent == old_path or new_parent.startswith(f"{old_path}/")):
+        raise HTTPException(status_code=400, detail="Invalid destination folder")
+
+    basename = old_path.split("/")[-1]
+    new_folder = f"{new_parent}/{basename}".strip("/") if new_parent else basename
+
+    notes = db.query(Note).filter(Note.deleted_at.is_(None)).all()
+    for note in notes:
+        folder = (note.metadata_ or {}).get("folder") or ""
+        if folder == old_path or folder.startswith(f"{old_path}/"):
+            updated_folder = folder.replace(old_path, new_folder, 1)
+            note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
+            note.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"success": True, "newPath": f"folder:{new_folder}"}
+
+
 @router.delete("/folders")
 async def delete_folder(
     request: dict,
