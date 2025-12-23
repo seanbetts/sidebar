@@ -10,6 +10,7 @@
 	import { filesStore } from '$lib/stores/files';
 	import { websitesStore } from '$lib/stores/websites';
 	import { editorStore } from '$lib/stores/editor';
+	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 
 	let sseClient = new SSEClient();
 
@@ -90,6 +91,11 @@
 
 				onWebsiteDeleted: async () => {
 					await websitesStore.load();
+				},
+
+				onThemeSet: (data) => {
+					const theme = data?.theme === 'dark' ? 'dark' : 'light';
+					setThemeMode(theme as ThemeMode);
 				},
 
 				onComplete: async () => {

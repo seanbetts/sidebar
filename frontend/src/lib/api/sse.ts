@@ -14,6 +14,7 @@ export interface SSECallbacks {
 	onWebsiteSaved?: (data: { id?: string; title?: string; url?: string }) => void;
 	onNoteDeleted?: (data: { id?: string }) => void;
 	onWebsiteDeleted?: (data: { id?: string }) => void;
+	onThemeSet?: (data: { theme?: string }) => void;
 }
 
 export class SSEClient {
@@ -129,6 +130,10 @@ export class SSEClient {
 
 			case 'website_deleted':
 				callbacks.onWebsiteDeleted?.(data);
+				break;
+
+			case 'ui_theme_set':
+				callbacks.onThemeSet?.(data);
 				break;
 
 			default:

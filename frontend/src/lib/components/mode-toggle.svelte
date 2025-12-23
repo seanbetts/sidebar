@@ -1,31 +1,22 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { onMount } from 'svelte';
+	import { getStoredTheme, setThemeMode } from '$lib/utils/theme';
 
 	let isDark = $state(false);
 
 	onMount(() => {
-		// Check for saved preference or system preference
+		const stored = getStoredTheme();
 		isDark =
-			localStorage.getItem('theme') === 'dark' ||
-			(!localStorage.getItem('theme') &&
-				window.matchMedia('(prefers-color-scheme: dark)').matches);
+			stored === 'dark' ||
+			(!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-		// Apply theme
-		if (isDark) {
-			document.documentElement.classList.add('dark');
-		}
+		setThemeMode(isDark ? 'dark' : 'light');
 	});
 
 	function toggleTheme() {
 		isDark = !isDark;
-		if (isDark) {
-			document.documentElement.classList.add('dark');
-			localStorage.setItem('theme', 'dark');
-		} else {
-			document.documentElement.classList.remove('dark');
-			localStorage.setItem('theme', 'light');
-		}
+		setThemeMode(isDark ? 'dark' : 'light');
 	}
 </script>
 

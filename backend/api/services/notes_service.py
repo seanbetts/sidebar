@@ -163,6 +163,27 @@ class NotesService:
         return note
 
     @staticmethod
+    def get_note_by_title(
+        db: Session,
+        title: str,
+        *,
+        mark_opened: bool = True,
+    ) -> Optional[Note]:
+        note = (
+            db.query(Note)
+            .filter(Note.title == title, Note.deleted_at.is_(None))
+            .first()
+        )
+        if not note:
+            return None
+
+        if mark_opened:
+            note.last_opened_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(note)
+        return note
+
+    @staticmethod
     def list_notes(
         db: Session,
         *,

@@ -208,6 +208,13 @@ class ClaudeClient:
                                                 "id": result_data.get("id")
                                             }
                                         }
+                                    elif tool_use["name"] == "ui_theme_set":
+                                        yield {
+                                            "type": "ui_theme_set",
+                                            "data": {
+                                                "theme": result_data.get("theme")
+                                            }
+                                        }
 
                                 # Add to tool results for next turn
                                 tool_results.append({
