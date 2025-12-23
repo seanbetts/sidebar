@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Message } from '$lib/types/chat';
 	import { Badge } from '$lib/components/ui/badge';
+	import ChatMarkdown from './ChatMarkdown.svelte';
 	import ToolCall from './ToolCall.svelte';
 
 	export let message: Message;
@@ -26,9 +27,13 @@
 	</div>
 
 	{#if message.content}
-		<div class="text-sm whitespace-pre-wrap text-foreground">
-			{message.content}
-		</div>
+		{#if message.status === 'streaming'}
+			<div class="text-sm whitespace-pre-wrap text-foreground">
+				{message.content}
+			</div>
+		{:else}
+			<ChatMarkdown content={message.content} />
+		{/if}
 	{/if}
 
 	{#if message.toolCalls && message.toolCalls.length > 0}

@@ -123,9 +123,22 @@ function createChatStore() {
 		appendToken(messageId: string, token: string) {
 			update((state) => ({
 				...state,
-				messages: state.messages.map((msg) =>
-					msg.id === messageId ? { ...msg, content: msg.content + token } : msg
-				)
+				messages: state.messages.map((msg) => {
+					if (msg.id !== messageId) return msg;
+
+					let prefix = '';
+					if (msg.needsNewline && msg.content) {
+						if (!msg.content.endsWith('\n') && !token.startsWith('\n')) {
+							prefix = '\n\n';
+						}
+					}
+
+					return {
+						...msg,
+						content: msg.content + prefix + token,
+						needsNewline: msg.needsNewline ? false : msg.needsNewline
+					};
+				})
 			}));
 		},
 
@@ -169,7 +182,8 @@ function createChatStore() {
 						...msg,
 						toolCalls: msg.toolCalls?.map((tc) =>
 							tc.id === toolCallId ? { ...tc, result, status } : tc
-						)
+						),
+						needsNewline: true
 					};
 				})
 			}));
