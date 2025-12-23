@@ -4,6 +4,7 @@
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import { TaskList, TaskItem } from '@tiptap/extension-list';
+	import { TableKit } from '@tiptap/extension-table';
 	import { Markdown } from 'tiptap-markdown';
 	import { Pencil } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
@@ -113,7 +114,7 @@
 		if (!editorElement || editor) return;
 		editor = new Editor({
 			element: editorElement,
-			extensions: [StarterKit, TaskList, TaskItem.configure({ nested: true }), Markdown],
+			extensions: [StarterKit, TaskList, TaskItem.configure({ nested: true }), TableKit, Markdown],
 			content: '',
 			editable: true,
 			editorProps: {
@@ -302,5 +303,30 @@
 	:global(.scratchpad-editor ul[data-type='taskList'] > li[data-checked='true'] > div) {
 		color: var(--color-muted-foreground);
 		text-decoration: line-through;
+	}
+
+	:global(.scratchpad-editor table) {
+		width: 100%;
+		border-collapse: collapse;
+		margin: 1em 0;
+		font-size: 0.95em;
+	}
+
+	:global(.scratchpad-editor th),
+	:global(.scratchpad-editor td) {
+		border: 1px solid var(--color-border);
+		padding: 0em 0.75em;
+		text-align: left;
+		vertical-align: top;
+	}
+
+	:global(.scratchpad-editor thead th) {
+		background-color: var(--color-muted);
+		color: var(--color-foreground);
+		font-weight: 600;
+	}
+
+	:global(.scratchpad-editor tbody tr:nth-child(even)) {
+		background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
 	}
 </style>

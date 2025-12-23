@@ -3,6 +3,7 @@
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
+  import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
 
   export let content: string;
@@ -13,7 +14,7 @@
   onMount(() => {
     editor = new Editor({
       element: editorElement,
-      extensions: [StarterKit, TaskList, TaskItem.configure({ nested: true }), Markdown],
+      extensions: [StarterKit, TaskList, TaskItem.configure({ nested: true }), TableKit, Markdown],
       content: '',
       editable: false,
       editorProps: {
@@ -38,5 +39,30 @@
 <style>
   :global(.chat-markdown [contenteditable='false']:focus) {
     outline: none;
+  }
+
+  :global(.chat-markdown table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.95em;
+  }
+
+  :global(.chat-markdown th),
+  :global(.chat-markdown td) {
+    border: 1px solid var(--color-border);
+    padding: 0em 0.75em;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  :global(.chat-markdown thead th) {
+    background-color: var(--color-muted);
+    color: var(--color-foreground);
+    font-weight: 600;
+  }
+
+  :global(.chat-markdown tbody tr:nth-child(even)) {
+    background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
   }
 </style>

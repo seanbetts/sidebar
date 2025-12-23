@@ -4,6 +4,7 @@
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
+  import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
   import { editorStore } from '$lib/stores/editor';
   import { toast } from 'svelte-sonner';
@@ -36,6 +37,7 @@
         StarterKit,
         TaskList,
         TaskItem.configure({ nested: true }),
+        TableKit,
         Markdown  // Enables markdown shortcuts and parsing
       ],
       content: '',
@@ -478,6 +480,31 @@
     border: none;
     border-top: 1px solid var(--color-border);
     margin: 2em 0;
+  }
+
+  :global(.tiptap table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.95em;
+  }
+
+  :global(.tiptap th),
+  :global(.tiptap td) {
+    border: 1px solid var(--color-border);
+    padding: 0em 0.75em;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  :global(.tiptap thead th) {
+    background-color: var(--color-muted);
+    color: var(--color-foreground);
+    font-weight: 600;
+  }
+
+  :global(.tiptap tbody tr:nth-child(even)) {
+    background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
   }
 
   :global(.tiptap a) {
