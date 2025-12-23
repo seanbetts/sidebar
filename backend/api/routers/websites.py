@@ -1,5 +1,7 @@
 """Websites router for archived web content in Postgres."""
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.session import get_db
@@ -7,6 +9,13 @@ from api.models.website import Website
 from api.services.websites_service import WebsitesService, WebsiteNotFoundError
 
 router = APIRouter(prefix="/websites", tags=["websites"])
+
+
+def parse_website_id(value: str):
+    try:
+        return uuid.UUID(value)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid website id")
 
 
 def website_summary(website: Website) -> dict:
@@ -63,7 +72,27 @@ async def update_pin(
 ):
     pinned = bool(request.get("pinned", False))
     try:
-        WebsitesService.update_pinned(db, website_id, pinned)
+        website_uuid = parse_website_id(website_id)
+        WebsitesService.update_pinned(db, website_uuid, pinned)
+    except WebsiteNotFoundError:
+        raise HTTPException(status_code=404, detail="Website not found")
+
+    return {"success": True}
+
+
+@router.patch("/{website_id}/rename")
+async def update_title(
+    website_id: str,
+    request: dict,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    title = request.get("title", "")
+    if not title:
+        raise HTTPException(status_code=400, detail="title required")
+    try:
+        website_uuid = parse_website_id(website_id)
+        WebsitesService.update_website(db, website_uuid, title=title)
     except WebsiteNotFoundError:
         raise HTTPException(status_code=404, detail="Website not found")
 
@@ -79,11 +108,28 @@ async def update_archive(
 ):
     archived = bool(request.get("archived", False))
     try:
-        WebsitesService.update_archived(db, website_id, archived)
+        website_uuid = parse_website_id(website_id)
+        WebsitesService.update_archived(db, website_uuid, archived)
     except WebsiteNotFoundError:
         raise HTTPException(status_code=404, detail="Website not found")
 
     return {"success": True}
+
+
+@router.get("/{website_id}/download")
+async def download_website(
+    website_id: str,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    website_uuid = parse_website_id(website_id)
+    website = WebsitesService.get_website(db, website_uuid, mark_opened=False)
+    if not website:
+        raise HTTPException(status_code=404, detail="Website not found")
+
+    filename = f"{website.title}.md"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(website.content or "", media_type="text/markdown", headers=headers)
 
 
 @router.delete("/{website_id}")

@@ -1,15 +1,22 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
-  import { Globe } from 'lucide-svelte';
+  import { Globe, Pin, PinOff, Pencil, Download, Archive, Trash2, X } from 'lucide-svelte';
   import { websitesStore } from '$lib/stores/websites';
+  import { Button } from '$lib/components/ui/button';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
+  let isRenameDialogOpen = false;
+  let renameValue = '';
+  let renameInput: HTMLInputElement | null = null;
+  let isDeleteDialogOpen = false;
 
   function formatDateWithOrdinal(date: Date) {
     const day = date.getDate();
@@ -52,7 +59,149 @@
   $: if (editor && $websitesStore.active) {
     editor.commands.setContent($websitesStore.active.content || '');
   }
+
+  function openRenameDialog() {
+    if (!$websitesStore.active) return;
+    renameValue = $websitesStore.active.title || '';
+    isRenameDialogOpen = true;
+  }
+
+  async function handleRename() {
+    const active = $websitesStore.active;
+    if (!active) return;
+    const trimmed = renameValue.trim();
+    if (!trimmed || trimmed === active.title) {
+      isRenameDialogOpen = false;
+      return;
+    }
+    const response = await fetch(`/api/websites/${active.id}/rename`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: trimmed })
+    });
+    if (!response.ok) {
+      console.error('Failed to rename website');
+      return;
+    }
+    await websitesStore.load();
+    await websitesStore.loadById(active.id);
+    isRenameDialogOpen = false;
+  }
+
+  async function handlePinToggle() {
+    const active = $websitesStore.active;
+    if (!active) return;
+    const response = await fetch(`/api/websites/${active.id}/pin`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned: !active.pinned })
+    });
+    if (!response.ok) {
+      console.error('Failed to update pin');
+      return;
+    }
+    await websitesStore.load();
+    await websitesStore.loadById(active.id);
+  }
+
+  async function handleArchive() {
+    const active = $websitesStore.active;
+    if (!active) return;
+    const response = await fetch(`/api/websites/${active.id}/archive`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: !active.archived })
+    });
+    if (!response.ok) {
+      console.error('Failed to archive website');
+      return;
+    }
+    await websitesStore.load();
+    if (active.archived) {
+      await websitesStore.loadById(active.id);
+    } else {
+      websitesStore.clearActive();
+    }
+  }
+
+  async function handleDownload() {
+    const active = $websitesStore.active;
+    if (!active) return;
+    const link = document.createElement('a');
+    link.href = `/api/websites/${active.id}/download`;
+    link.download = `${active.title || 'website'}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  async function handleDelete() {
+    const active = $websitesStore.active;
+    if (!active) return;
+    const response = await fetch(`/api/websites/${active.id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      console.error('Failed to delete website');
+      return;
+    }
+    await websitesStore.load();
+    websitesStore.clearActive();
+    isDeleteDialogOpen = false;
+  }
+
+  function handleClose() {
+    websitesStore.clearActive();
+  }
+
+  $: if (isRenameDialogOpen) {
+    tick().then(() => {
+      renameInput?.focus();
+      renameInput?.select();
+    });
+  }
 </script>
+
+<AlertDialog.Root bind:open={isRenameDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      renameInput?.focus();
+      renameInput?.select();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Rename website</AlertDialog.Title>
+      <AlertDialog.Description>Update the website title.</AlertDialog.Description>
+    </AlertDialog.Header>
+    <div class="py-2">
+      <input
+        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        type="text"
+        placeholder="Website title"
+        bind:this={renameInput}
+        bind:value={renameValue}
+        on:keydown={(event) => {
+          if (event.key === 'Enter') handleRename();
+        }}
+      />
+    </div>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={() => (isRenameDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action disabled={!renameValue.trim()} onclick={handleRename}>
+        Rename
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<NoteDeleteDialog
+  bind:open={isDeleteDialogOpen}
+  itemType="website"
+  itemName={$websitesStore.active?.title ?? ''}
+  onConfirm={handleDelete}
+  onCancel={() => (isDeleteDialogOpen = false)}
+/>
 
 <div class="website-pane">
   <div class="website-header">
@@ -61,6 +210,8 @@
         <div class="title-row">
           <Globe size={18} />
           <span class="title-text">{$websitesStore.active.title}</span>
+        </div>
+        <div class="website-meta-row">
           <span class="subtitle">
             <a class="source" href={$websitesStore.active.url} target="_blank" rel="noopener noreferrer">
               <span>{formatDomain($websitesStore.active.domain)}</span>
@@ -72,6 +223,66 @@
               </span>
             {/if}
           </span>
+          <div class="website-actions">
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handlePinToggle}
+            aria-label="Pin website"
+            title="Pin website"
+          >
+            {#if $websitesStore.active.pinned}
+              <PinOff size={16} />
+            {:else}
+              <Pin size={16} />
+            {/if}
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={openRenameDialog}
+            aria-label="Rename website"
+            title="Rename website"
+          >
+            <Pencil size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handleDownload}
+            aria-label="Download website"
+            title="Download website"
+          >
+            <Download size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handleArchive}
+            aria-label={$websitesStore.active.archived ? 'Unarchive website' : 'Archive website'}
+            title={$websitesStore.active.archived ? 'Unarchive website' : 'Archive website'}
+          >
+            <Archive size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={() => (isDeleteDialogOpen = true)}
+            aria-label="Delete website"
+            title="Delete website"
+          >
+            <Trash2 size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handleClose}
+            aria-label="Close website"
+            title="Close website"
+          >
+            <X size={16} />
+          </Button>
+          </div>
         </div>
       </div>
     {/if}
@@ -103,6 +314,9 @@
   .website-meta {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
   }
 
   .title-row {
@@ -112,12 +326,24 @@
     flex-wrap: wrap;
   }
 
+  .website-meta-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
   .subtitle {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     font-size: 0.8rem;
     color: var(--color-muted-foreground);
+  }
+
+  .website-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
   }
 
   .pipe {

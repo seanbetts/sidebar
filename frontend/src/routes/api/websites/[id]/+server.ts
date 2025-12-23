@@ -23,3 +23,24 @@ export const GET: RequestHandler = async ({ fetch, params }) => {
     return json({ error: 'Failed to load website' }, { status: 500 });
   }
 };
+
+export const DELETE: RequestHandler = async ({ fetch, params }) => {
+  try {
+    const response = await fetch(`${API_URL}/api/websites/${params.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${BEARER_TOKEN}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return json(data);
+  } catch (error) {
+    console.error('Failed to delete website:', error);
+    return json({ error: 'Failed to delete website' }, { status: 500 });
+  }
+};
