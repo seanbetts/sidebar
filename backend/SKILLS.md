@@ -1,7 +1,7 @@
 # Agent Smith Skills Catalog
 
-**Last Updated:** 2025-12-20 22:37:27
-**Total Skills:** 20
+**Last Updated:** 2025-12-23 23:29:32
+**Total Skills:** 14
 
 This file is auto-generated from skill frontmatter. Do not edit manually.
 
@@ -10,9 +10,6 @@ This file is auto-generated from skill frontmatter. Do not edit manually.
 ## Active Skills
 
 ### Filesystem
-
-#### [folder-config](./skills/folder-config/SKILL.md)
-Centralized folder structure management with aliases and path resolution. Use internally by other skills to resolve @alias paths, or use directly to set up custom folder shortcuts and browse the document hierarchy.
 
 #### [fs](./skills/fs/SKILL.md) `[reads, writes]`
 Comprehensive filesystem operations for workspace - list, read, write, delete, move, search files. Use for all file management tasks in /workspace.
@@ -60,25 +57,8 @@ Transcribe YouTube videos to text by downloading audio and using OpenAI's Whispe
 
 ### Development
 
-#### [list-skills](./skills/list-skills/SKILL.md)
-Lists all available Agent Skills with their names and descriptions. Use when you need to show the user what skills are available or help them discover capabilities.
-
 #### [mcp-builder](./skills/mcp-builder/SKILL.md)
 Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).
 
 #### [skill-creator](./skills/skill-creator/SKILL.md)
 Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.
-
-### Other
-
-#### [local-manage](./skills/local-manage/SKILL.md)
-Management operations for local files - move, rename, delete, copy files. Use when you need to organize or clean up markdown documents in the local documents folder.
-
-#### [local-read](./skills/local-read/SKILL.md)
-Read operations for local files - list files, read content, get file info. Use when you need to explore or read markdown documents in the local documents folder.
-
-#### [local-search](./skills/local-search/SKILL.md)
-Search operations for local files - search by filename or content. Use when you need to find specific markdown documents in the local documents folder.
-
-#### [local-write](./skills/local-write/SKILL.md)
-Write operations for local files - create files, update content, create folders. Use when you need to create or modify markdown documents in the local documents folder.
