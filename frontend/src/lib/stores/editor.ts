@@ -12,6 +12,7 @@ export interface EditorState {
   lastSaved: Date | null;
   saveError: string | null;
   basePath: string;
+  lastUpdateSource: 'ai' | 'user' | null;
 }
 
 function createEditorStore() {
@@ -26,13 +27,18 @@ function createEditorStore() {
     isLoading: false,
     lastSaved: null,
     saveError: null,
-    basePath: 'notes'
+    basePath: 'notes',
+    lastUpdateSource: null
   });
 
   return {
     subscribe,
 
-    async loadNote(basePath: string, path: string) {
+    async loadNote(
+      basePath: string,
+      path: string,
+      options?: { source?: 'ai' | 'user' }
+    ) {
       update(state => ({ ...state, isLoading: true, saveError: null }));
 
       try {
@@ -53,7 +59,8 @@ function createEditorStore() {
           originalContent: data.content,
           isDirty: false,
           isLoading: false,
-          basePath
+          basePath,
+          lastUpdateSource: options?.source ?? null
         }));
       } catch (error) {
         update(state => ({
@@ -68,14 +75,16 @@ function createEditorStore() {
       update(state => ({
         ...state,
         content: newContent,
-        isDirty: newContent !== state.originalContent
+        isDirty: newContent !== state.originalContent,
+        lastUpdateSource: null
       }));
     },
 
     updateNoteName(newName: string) {
       update(state => ({
         ...state,
-        currentNoteName: newName
+        currentNoteName: newName,
+        lastUpdateSource: null
       }));
     },
 
@@ -105,15 +114,24 @@ function createEditorStore() {
           isDirty: false,
           isSaving: false,
           lastSaved: new Date(),
-          saveError: null
+          saveError: null,
+          lastUpdateSource: null
         }));
       } catch (error) {
         update(s => ({
           ...s,
           isSaving: false,
-          saveError: 'Failed to save note'
+          saveError: 'Failed to save note',
+          lastUpdateSource: null
         }));
       }
+    },
+
+    clearUpdateSource() {
+      update(state => ({
+        ...state,
+        lastUpdateSource: null
+      }));
     },
 
     reset() {
@@ -128,7 +146,8 @@ function createEditorStore() {
         isLoading: false,
         lastSaved: null,
         saveError: null,
-        basePath: 'notes'
+        basePath: 'notes',
+        lastUpdateSource: null
       });
     }
   };
