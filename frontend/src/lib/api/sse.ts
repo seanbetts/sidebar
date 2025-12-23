@@ -12,6 +12,8 @@ export interface SSECallbacks {
 	onNoteCreated?: (data: { id?: string; title?: string; folder?: string }) => void;
 	onNoteUpdated?: (data: { id?: string; title?: string }) => void;
 	onWebsiteSaved?: (data: { id?: string; title?: string; url?: string }) => void;
+	onNoteDeleted?: (data: { id?: string }) => void;
+	onWebsiteDeleted?: (data: { id?: string }) => void;
 }
 
 export class SSEClient {
@@ -119,6 +121,14 @@ export class SSEClient {
 
 			case 'website_saved':
 				callbacks.onWebsiteSaved?.(data);
+				break;
+
+			case 'note_deleted':
+				callbacks.onNoteDeleted?.(data);
+				break;
+
+			case 'website_deleted':
+				callbacks.onWebsiteDeleted?.(data);
 				break;
 
 			default:

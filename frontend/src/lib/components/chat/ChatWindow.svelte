@@ -84,6 +84,14 @@
 					await websitesStore.load();
 				},
 
+				onNoteDeleted: async () => {
+					await filesStore.load('notes');
+				},
+
+				onWebsiteDeleted: async () => {
+					await websitesStore.load();
+				},
+
 				onComplete: async () => {
 					await chatStore.finishStreaming(assistantMessageId);
 				},

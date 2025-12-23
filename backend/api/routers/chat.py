@@ -69,7 +69,7 @@ async def stream_chat(
                     # Tool execution completed
                     yield f"event: tool_result\ndata: {json.dumps(event)}\n\n"
 
-                elif event_type in {"note_created", "note_updated", "website_saved"}:
+                elif event_type in {"note_created", "note_updated", "website_saved", "note_deleted", "website_deleted"}:
                     yield f"event: {event_type}\ndata: {json.dumps(event.get('data', {}))}\n\n"
 
                 elif event_type == "error":

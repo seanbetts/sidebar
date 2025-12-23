@@ -194,6 +194,20 @@ class ClaudeClient:
                                                 "url": result_data.get("url")
                                             }
                                         }
+                                    elif tool_use["name"] == "notes_delete":
+                                        yield {
+                                            "type": "note_deleted",
+                                            "data": {
+                                                "id": result_data.get("id")
+                                            }
+                                        }
+                                    elif tool_use["name"] == "website_delete":
+                                        yield {
+                                            "type": "website_deleted",
+                                            "data": {
+                                                "id": result_data.get("id")
+                                            }
+                                        }
 
                                 # Add to tool results for next turn
                                 tool_results.append({
