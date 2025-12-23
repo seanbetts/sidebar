@@ -170,7 +170,7 @@
 	<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'icon' })} aria-label="Open scratchpad">
 		<Pencil size={18} />
 	</Popover.Trigger>
-	<Popover.Content class="scratchpad-popover">
+	<Popover.Content class="scratchpad-popover w-[840px] max-w-[95vw]" align="end" sideOffset={8}>
 		<div class="scratchpad-header">
 			<h2>✏️ Scratchpad</h2>
 			{#if isSaving}
@@ -192,7 +192,9 @@
 
 <style>
 	.scratchpad-popover {
-		width: min(92vw, 840px);
+		width: 840px;
+		max-width: min(95vw, 840px);
+		margin-right: 1rem;
 		max-height: min(85vh, 720px);
 		display: flex;
 		flex-direction: column;

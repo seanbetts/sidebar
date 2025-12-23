@@ -101,9 +101,7 @@
 
   .website-meta {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.2rem;
+    align-items: center;
   }
 
   .title-row {
@@ -152,5 +150,9 @@
 
   :global(.website-viewer [contenteditable='false']:focus) {
     outline: none;
+  }
+
+  :global(.website-viewer a) {
+    cursor: pointer;
   }
 </style>

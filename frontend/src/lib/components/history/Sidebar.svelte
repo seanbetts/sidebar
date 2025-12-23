@@ -41,7 +41,7 @@
     isCollapsed = !isCollapsed;
   }
 
-  let activeSection: 'history' | 'notes' | 'websites' = 'history';
+  let activeSection: 'history' | 'notes' | 'websites' = 'notes';
 
   function openSection(section: typeof activeSection) {
     activeSection = section;
@@ -271,14 +271,6 @@
 
     <div class="rail-actions">
       <button
-        on:click={() => openSection('history')}
-        class="rail-btn"
-        aria-label="History"
-        title="History"
-      >
-        <MessageSquare size={18} />
-      </button>
-      <button
         on:click={() => openSection('notes')}
         class="rail-btn"
         aria-label="Notes"
@@ -293,6 +285,14 @@
         title="Websites"
       >
         <Globe size={18} />
+      </button>
+      <button
+        on:click={() => openSection('history')}
+        class="rail-btn"
+        aria-label="Chat"
+        title="Chat"
+      >
+        <MessageSquare size={18} />
       </button>
     </div>
 
@@ -310,20 +310,7 @@
 
   <div class="sidebar-panel" aria-hidden={isCollapsed}>
     <div class="panel-body">
-      {#if activeSection === 'history'}
-        <div class="panel-section">
-          <div class="panel-section-header">
-            <div class="panel-section-header-row">
-              <div class="panel-section-title">History</div>
-              <div class="panel-section-actions"></div>
-            </div>
-            <SearchBar />
-          </div>
-          <div class="history-content">
-            <ConversationList />
-          </div>
-        </div>
-      {:else if activeSection === 'notes'}
+      {#if activeSection === 'notes'}
         <div class="panel-section">
           <div class="panel-section-header">
             <div class="panel-section-header-row">
@@ -343,7 +330,7 @@
             <NotesPanel basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
           </div>
         </div>
-      {:else}
+      {:else if activeSection === 'websites'}
         <div class="panel-section">
           <div class="panel-section-header">
             <div class="panel-section-header-row">
@@ -354,6 +341,19 @@
           </div>
           <div class="files-content">
             <WebsitesPanel />
+          </div>
+        </div>
+      {:else}
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <div class="panel-section-header-row">
+              <div class="panel-section-title">Chat</div>
+              <div class="panel-section-actions"></div>
+            </div>
+            <SearchBar />
+          </div>
+          <div class="history-content">
+            <ConversationList />
           </div>
         </div>
       {/if}

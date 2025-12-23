@@ -262,8 +262,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.875rem;
-    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    padding: 0 0.75rem;
     border-radius: 0.375rem;
   }
 
@@ -461,6 +461,10 @@
     text-decoration: line-through;
   }
 
+  :global(.tiptap ul[data-type='taskList'] input[type='checkbox']) {
+    accent-color: #000;
+  }
+
   :global(.tiptap blockquote) {
     border-left: 3px solid var(--color-border);
     padding-left: 1em;
@@ -482,6 +486,7 @@
   }
 
   :global(.tiptap a:hover) {
+    cursor: pointer;
     opacity: 0.8;
   }
 
