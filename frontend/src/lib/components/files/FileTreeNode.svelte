@@ -18,8 +18,7 @@
   import { get } from 'svelte/store';
   import { filesStore } from '$lib/stores/files';
   import { editorStore } from '$lib/stores/editor';
-  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-  import { buttonVariants } from '$lib/components/ui/button/index.js';
+  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
   import type { FileNode } from '$lib/types/file';
 
   export let node: FileNode;
@@ -34,7 +33,6 @@
   let editedName = node.name;
   let isDeleteDialogOpen = false;
   let editInput: HTMLInputElement | null = null;
-  let deleteButton: HTMLButtonElement | null = null;
   let menuElement: HTMLDivElement | null = null;
   let menuButton: HTMLButtonElement | null = null;
   let menuTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -151,7 +149,7 @@
     showMenu = false;
   }
 
-  function buildFolderOptions() {
+  function buildFolderOptions(excludePath?: string) {
     const state = get(filesStore);
     const tree = state.trees[basePath];
     const rootChildren = tree?.children || [];
@@ -165,6 +163,12 @@
         const folderName = child.name;
         if (folderName === 'Archive') continue;
         const folderPath = child.path.replace(/^folder:/, '');
+        if (excludePath && (folderPath === excludePath || folderPath.startsWith(`${excludePath}/`))) {
+          if (child.children?.length) {
+            walk(child.children, depth + 1);
+          }
+          continue;
+        }
         options.push({ label: folderName, value: folderPath, depth });
         if (child.children?.length) {
           walk(child.children, depth + 1);
@@ -226,6 +230,27 @@
       await filesStore.load(basePath);
     } catch (error) {
       console.error('Failed to move note:', error);
+    } finally {
+      closeMenu();
+    }
+  }
+
+  async function handleMoveFolder(event: MouseEvent, newParent: string) {
+    event.stopPropagation();
+    if (node.type !== 'directory') return;
+    try {
+      const response = await fetch('/api/notes/folders/move', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          oldPath: node.path.replace(/^folder:/, ''),
+          newParent
+        })
+      });
+      if (!response.ok) throw new Error('Failed to move folder');
+      await filesStore.load(basePath);
+    } catch (error) {
+      console.error('Failed to move folder:', error);
     } finally {
       closeMenu();
     }
@@ -347,31 +372,13 @@
   });
 </script>
 
-<AlertDialog.Root bind:open={isDeleteDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      deleteButton?.focus();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Delete {itemType}?</AlertDialog.Title>
-      <AlertDialog.Description>
-        This will permanently delete "{node.name}". This action cannot be undone.
-      </AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action
-        class={buttonVariants({ variant: 'destructive' })}
-        bind:ref={deleteButton}
-        onclick={confirmDelete}
-      >
-        Delete
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<NoteDeleteDialog
+  bind:open={isDeleteDialogOpen}
+  itemType={itemType}
+  itemName={node.name}
+  onConfirm={confirmDelete}
+  onCancel={() => (isDeleteDialogOpen = false)}
+/>
 
 <div class="tree-node" style="padding-left: {level * 1}rem;">
   <div class="node-content">
@@ -470,6 +477,31 @@
               <Download size={16} />
               <span>Download</span>
             </button>
+          {:else if node.type === 'directory'}
+            <button
+              class="menu-item"
+              on:click={(event) => {
+                event.stopPropagation();
+                showMoveMenu = !showMoveMenu;
+                buildFolderOptions(node.path.replace(/^folder:/, ''));
+              }}
+            >
+              <FolderInput size={16} />
+              <span>Move</span>
+            </button>
+            {#if showMoveMenu}
+              <div class="menu-submenu">
+                {#each folderOptions as option (option.value)}
+                  <button
+                    class="menu-subitem"
+                    style={`padding-left: ${option.depth * 12 + 12}px`}
+                    on:click={(event) => handleMoveFolder(event, option.value)}
+                  >
+                    {option.label}
+                  </button>
+                {/each}
+              </div>
+            {/if}
           {/if}
           <button class="menu-item delete" on:click={handleDelete}>
             <Trash2 size={16} />
