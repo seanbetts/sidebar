@@ -6,6 +6,10 @@
 	import MessageList from './MessageList.svelte';
 	import ChatInput from './ChatInput.svelte';
 	import { toast } from 'svelte-sonner';
+	import { get } from 'svelte/store';
+	import { filesStore } from '$lib/stores/files';
+	import { websitesStore } from '$lib/stores/websites';
+	import { editorStore } from '$lib/stores/editor';
 
 	let sseClient = new SSEClient();
 
@@ -60,6 +64,24 @@
 
 				onToolResult: (event) => {
 					chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
+				},
+
+				onNoteCreated: async () => {
+					await filesStore.load('notes');
+				},
+
+				onNoteUpdated: async (data) => {
+					await filesStore.load('notes');
+					if (data?.id) {
+						const editorState = get(editorStore);
+						if (editorState.currentNoteId === data.id) {
+							await editorStore.loadNote('notes', data.id);
+						}
+					}
+				},
+
+				onWebsiteSaved: async () => {
+					await websitesStore.load();
 				},
 
 				onComplete: async () => {

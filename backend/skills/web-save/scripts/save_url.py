@@ -12,11 +12,22 @@ import os
 import re
 import requests
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
+from urllib.parse import urlparse
+
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
 
 # Base websites directory (use workspace if available, fallback to local)
 WEBSITES_BASE = Path(os.getenv("WORKSPACE_BASE", str(Path.home() / "Agent Smith"))) / "websites"
+
+try:
+    from api.db.session import SessionLocal
+    from api.services.websites_service import WebsitesService
+except Exception:
+    SessionLocal = None
+    WebsitesService = None
 
 
 def sanitize_filename(title: str) -> str:
@@ -198,6 +209,39 @@ date: {today}
     }
 
 
+def save_url_database(url: str) -> Dict[str, Any]:
+    if SessionLocal is None or WebsitesService is None:
+        raise RuntimeError("Database dependencies are unavailable")
+
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+
+    api_key = os.environ.get('JINA_API_KEY', '')
+    content = get_markdown_content(url, api_key)
+    title = extract_title(content) or urlparse(url).netloc
+
+    db = SessionLocal()
+    try:
+        website = WebsitesService.save_website(
+            db,
+            url=url,
+            title=title,
+            content=content,
+            source=url,
+            saved_at=datetime.now(timezone.utc),
+            pinned=False,
+            archived=False,
+        )
+        return {
+            "id": str(website.id),
+            "title": website.title,
+            "url": website.url,
+            "domain": website.domain
+        }
+    finally:
+        db.close()
+
+
 def format_human_readable(result: Dict[str, Any]) -> str:
     """
     Format result in human-readable format.
@@ -272,16 +316,24 @@ Environment Variables:
         action='store_true',
         help='Output results in JSON format'
     )
+    parser.add_argument(
+        '--database',
+        action='store_true',
+        help='Save to database instead of filesystem'
+    )
 
     args = parser.parse_args()
 
     try:
         # Save the URL
-        result = save_url(
-            url=args.url,
-            folder=args.folder,
-            filename=args.filename
-        )
+        if args.database:
+            result = save_url_database(url=args.url)
+        else:
+            result = save_url(
+                url=args.url,
+                folder=args.folder,
+                filename=args.filename
+            )
 
         # Output results
         if args.json:

@@ -1,10 +1,10 @@
 """Websites router for archived web content in Postgres."""
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.models.website import Website
+from api.services.websites_service import WebsitesService, WebsiteNotFoundError
 
 router = APIRouter(prefix="/websites", tags=["websites"])
 
@@ -31,10 +31,7 @@ async def list_websites(
     db: Session = Depends(get_db)
 ):
     websites = (
-        db.query(Website)
-        .filter(Website.deleted_at.is_(None))
-        .order_by(Website.saved_at.desc().nullslast(), Website.created_at.desc())
-        .all()
+        WebsitesService.list_websites(db)
     )
     return {"items": [website_summary(site) for site in websites]}
 
@@ -45,12 +42,9 @@ async def get_website(
     user_id: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
-    website = db.query(Website).filter(Website.id == website_id, Website.deleted_at.is_(None)).first()
+    website = WebsitesService.get_website(db, website_id, mark_opened=True)
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
-
-    website.last_opened_at = datetime.now(timezone.utc)
-    db.commit()
 
     return {
         **website_summary(website),
@@ -68,13 +62,10 @@ async def update_pin(
     db: Session = Depends(get_db)
 ):
     pinned = bool(request.get("pinned", False))
-    website = db.query(Website).filter(Website.id == website_id, Website.deleted_at.is_(None)).first()
-    if not website:
+    try:
+        WebsitesService.update_pinned(db, website_id, pinned)
+    except WebsiteNotFoundError:
         raise HTTPException(status_code=404, detail="Website not found")
-
-    website.metadata_ = {**(website.metadata_ or {}), "pinned": pinned}
-    website.updated_at = datetime.now(timezone.utc)
-    db.commit()
 
     return {"success": True}
 
@@ -87,13 +78,10 @@ async def update_archive(
     db: Session = Depends(get_db)
 ):
     archived = bool(request.get("archived", False))
-    website = db.query(Website).filter(Website.id == website_id, Website.deleted_at.is_(None)).first()
-    if not website:
+    try:
+        WebsitesService.update_archived(db, website_id, archived)
+    except WebsiteNotFoundError:
         raise HTTPException(status_code=404, detail="Website not found")
-
-    website.metadata_ = {**(website.metadata_ or {}), "archived": archived}
-    website.updated_at = datetime.now(timezone.utc)
-    db.commit()
 
     return {"success": True}
 
@@ -104,13 +92,8 @@ async def delete_website(
     user_id: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
-    website = db.query(Website).filter(Website.id == website_id, Website.deleted_at.is_(None)).first()
-    if not website:
+    deleted = WebsitesService.delete_website(db, website_id)
+    if not deleted:
         raise HTTPException(status_code=404, detail="Website not found")
-
-    now = datetime.now(timezone.utc)
-    website.deleted_at = now
-    website.updated_at = now
-    db.commit()
 
     return {"success": True}

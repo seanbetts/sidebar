@@ -69,6 +69,44 @@ class ToolMapper:
                         "case_sensitive": {"type": "boolean", "description": "Case-sensitive search"}
                     }
                 }
+            },
+            {
+                "name": "notes_create",
+                "description": "Create a markdown note in the database (visible in UI).",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string", "description": "Optional note title"},
+                        "content": {"type": "string", "description": "Markdown content"},
+                        "folder": {"type": "string", "description": "Optional folder path"},
+                        "tags": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["content"]
+                }
+            },
+            {
+                "name": "notes_update",
+                "description": "Update an existing note in the database by ID.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "note_id": {"type": "string", "description": "Note UUID"},
+                        "title": {"type": "string", "description": "Optional note title"},
+                        "content": {"type": "string", "description": "Markdown content"}
+                    },
+                    "required": ["note_id", "content"]
+                }
+            },
+            {
+                "name": "website_save",
+                "description": "Save a website to the database (visible in UI).",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "Website URL"}
+                    },
+                    "required": ["url"]
+                }
             }
         ]
 
@@ -171,6 +209,71 @@ class ToolMapper:
                     tool_name="fs_search",
                     parameters=parameters,
                     resolved_path=validated_path,
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False)
+                )
+
+                return result
+
+            elif name == "notes_create":
+                title = parameters.get("title", "")
+                content = parameters.get("content", "")
+                folder = parameters.get("folder")
+                tags = parameters.get("tags")
+
+                args = [title, "--content", content, "--mode", "create", "--database"]
+                if folder:
+                    args.extend(["--folder", folder])
+                if tags:
+                    args.extend(["--tags", ",".join(tags)])
+
+                result = await self.executor.execute("notes", "save_markdown.py", args)
+
+                AuditLogger.log_tool_call(
+                    tool_name="notes_create",
+                    parameters={"title": title, "folder": folder, "tags": tags},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False)
+                )
+
+                return result
+
+            elif name == "notes_update":
+                note_id = parameters.get("note_id")
+                title = parameters.get("title", "")
+                content = parameters.get("content", "")
+
+                args = [
+                    title,
+                    "--content",
+                    content,
+                    "--mode",
+                    "update",
+                    "--note-id",
+                    note_id,
+                    "--database",
+                ]
+
+                result = await self.executor.execute("notes", "save_markdown.py", args)
+
+                AuditLogger.log_tool_call(
+                    tool_name="notes_update",
+                    parameters={"note_id": note_id, "title": title},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=result.get("success", False)
+                )
+
+                return result
+
+            elif name == "website_save":
+                url = parameters.get("url", "")
+                args = [url, "--database"]
+
+                result = await self.executor.execute("web-save", "save_url.py", args)
+
+                AuditLogger.log_tool_call(
+                    tool_name="website_save",
+                    parameters={"url": url},
                     duration_ms=(time.time() - start_time) * 1000,
                     success=result.get("success", False)
                 )

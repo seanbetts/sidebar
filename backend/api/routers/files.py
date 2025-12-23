@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.models.note import Note
+from api.services.notes_service import NotesService, NoteNotFoundError
 from typing import Dict, Any
 
 router = APIRouter(prefix="/files", tags=["files"])
@@ -486,30 +487,17 @@ async def update_file_content(
                 raise HTTPException(status_code=404, detail="File not found")
 
         if note:
-            title = extract_title(content, note.title)
-            note.title = title
-            note.content = content
-            note.updated_at = now
-            db.commit()
-            return {"success": True, "modified": note.updated_at.timestamp(), "id": str(note.id)}
+            try:
+                updated = NotesService.update_note(db, note.id, content)
+            except NoteNotFoundError:
+                raise HTTPException(status_code=404, detail="File not found")
+            return {"success": True, "modified": updated.updated_at.timestamp(), "id": str(updated.id)}
 
-        fallback_title = Path(path).stem
-        title = extract_title(content, fallback_title)
         folder = Path(path).parent.as_posix()
         folder = "" if folder == "." else folder
 
-        note = Note(
-            title=title,
-            content=content,
-            metadata_={"folder": folder, "pinned": False},
-            created_at=now,
-            updated_at=now,
-            last_opened_at=None,
-            deleted_at=None
-        )
-        db.add(note)
-        db.commit()
-        return {"success": True, "modified": note.updated_at.timestamp(), "id": str(note.id)}
+        created = NotesService.create_note(db, content, folder=folder)
+        return {"success": True, "modified": created.updated_at.timestamp(), "id": str(created.id)}
 
     workspace_path = Path(WORKSPACE_BASE) / base_path
     full_path = workspace_path / path

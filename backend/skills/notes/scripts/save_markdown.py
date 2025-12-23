@@ -6,6 +6,7 @@ Create, update, or append markdown notes with automatic organization and metadat
 """
 
 import sys
+import uuid
 import json
 import os
 import argparse
@@ -13,9 +14,20 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List
 
+# Add backend to sys.path for database mode.
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
 # Base workspace directory
 WORKSPACE_BASE = Path(os.getenv("WORKSPACE_BASE", "/workspace"))
 NOTES_BASE = WORKSPACE_BASE / "notes"
+
+try:
+    from api.db.session import SessionLocal
+    from api.services.notes_service import NotesService
+except Exception:
+    SessionLocal = None
+    NotesService = None
 
 
 def save_markdown(
@@ -117,6 +129,42 @@ def save_markdown(
     }
 
 
+def save_markdown_database(
+    title: str,
+    content: str,
+    mode: str = "create",
+    folder: str = None,
+    note_id: str = None,
+) -> Dict[str, Any]:
+    if SessionLocal is None or NotesService is None:
+        raise RuntimeError("Database dependencies are unavailable")
+
+    db = SessionLocal()
+    try:
+        if mode == "update":
+            if not note_id:
+                raise ValueError("note_id is required for update mode")
+            note = NotesService.update_note(db, uuid.UUID(note_id), content, title=title)
+            return {"id": str(note.id), "title": note.title}
+
+        if mode != "create":
+            raise ValueError("Database mode supports create or update only")
+
+        note = NotesService.create_note(
+            db,
+            content,
+            title=title,
+            folder=folder or "",
+        )
+        return {
+            "id": str(note.id),
+            "title": note.title,
+            "folder": (note.metadata_ or {}).get("folder", ""),
+        }
+    finally:
+        db.close()
+
+
 def main():
     """Main entry point for save_markdown script."""
     parser = argparse.ArgumentParser(
@@ -162,9 +210,18 @@ Examples:
         help='Comma-separated tags'
     )
     parser.add_argument(
+        '--note-id',
+        help='Note UUID for update mode'
+    )
+    parser.add_argument(
         '--json',
         action='store_true',
         help='Output results in JSON format'
+    )
+    parser.add_argument(
+        '--database',
+        action='store_true',
+        help='Save to database instead of filesystem'
     )
 
     args = parser.parse_args()
@@ -173,13 +230,22 @@ Examples:
     tags = args.tags.split(",") if args.tags else None
 
     try:
-        result = save_markdown(
-            args.title,
-            args.content,
-            args.mode,
-            args.folder,
-            tags
-        )
+        if args.database:
+            result = save_markdown_database(
+                args.title,
+                args.content,
+                args.mode,
+                args.folder,
+                args.note_id,
+            )
+        else:
+            result = save_markdown(
+                args.title,
+                args.content,
+                args.mode,
+                args.folder,
+                tags
+            )
 
         output = {
             'success': True,
