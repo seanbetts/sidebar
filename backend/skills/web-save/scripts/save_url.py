@@ -19,35 +19,12 @@ from urllib.parse import urlparse
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-# Base websites directory (use workspace if available, fallback to local)
-WEBSITES_BASE = Path(os.getenv("WORKSPACE_BASE", str(Path.home() / "Agent Smith"))) / "websites"
-
 try:
     from api.db.session import SessionLocal
     from api.services.websites_service import WebsitesService
 except Exception:
     SessionLocal = None
     WebsitesService = None
-
-
-def sanitize_filename(title: str) -> str:
-    """
-    Convert a string into a safe filename.
-
-    Args:
-        title: String to convert to filename
-
-    Returns:
-        Sanitized filename string
-    """
-    # Remove or replace invalid filename characters
-    safe_title = re.sub(r'[<>:"/\\|?*]', '', title)
-    # Replace spaces with dashes
-    safe_title = safe_title.replace(' ', '-')
-    # Remove multiple dashes
-    safe_title = re.sub(r'-+', '-', safe_title)
-    # Remove leading/trailing dashes
-    return safe_title.strip('-')
 
 
 def extract_title(content: str) -> str:
@@ -118,97 +95,6 @@ def get_markdown_content(url: str, api_key: str) -> str:
         ) from e
 
 
-def save_url(
-    url: str,
-    folder: str = None,
-    filename: str = None
-) -> Dict[str, Any]:
-    """
-    Fetch URL and save as markdown file.
-
-    Args:
-        url: Web page URL to save
-        folder: Optional subfolder within Websites/
-        filename: Optional custom filename (without .md extension)
-
-    Returns:
-        Dictionary with file info and metadata
-
-    Raises:
-        ValueError: If URL or API key invalid
-        requests.exceptions.RequestException: If fetch fails
-        IOError: If file save fails
-    """
-    # Ensure URL has protocol
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
-
-    # Get API key from environment
-    api_key = os.environ.get('JINA_API_KEY', '')
-
-    # Fetch markdown content
-    content = get_markdown_content(url, api_key)
-
-    # Determine save location
-    if folder:
-        save_path = WEBSITES_BASE / folder
-    else:
-        save_path = WEBSITES_BASE
-
-    # Create directory if it doesn't exist
-    save_path.mkdir(parents=True, exist_ok=True)
-
-    # Determine filename
-    if filename:
-        # Use provided filename
-        safe_filename = sanitize_filename(filename)
-    else:
-        # Extract title from content
-        title = extract_title(content)
-        if title:
-            safe_filename = sanitize_filename(title)
-        else:
-            # Use domain name as fallback
-            domain = url.split("//")[-1].split("/")[0]
-            safe_filename = sanitize_filename(domain)
-
-    # Ensure .md extension
-    if not safe_filename.endswith('.md'):
-        safe_filename += '.md'
-
-    # Full path for the markdown file
-    file_path = save_path / safe_filename
-
-    # Create content with metadata
-    today = datetime.now().strftime('%Y-%m-%d')
-    full_content = f"""---
-source: {url}
-date: {today}
----
-
-{content}"""
-
-    # Save file
-    try:
-        file_path.write_text(full_content, encoding='utf-8')
-    except IOError as e:
-        raise IOError(f"Failed to save file: {str(e)}") from e
-
-    # Get file info
-    file_size = file_path.stat().st_size
-    relative_path = file_path.relative_to(WEBSITES_BASE)
-
-    return {
-        'path': str(file_path),
-        'relative_path': str(relative_path),
-        'filename': safe_filename,
-        'size': file_size,
-        'url': url,
-        'date': today,
-        'saved': True
-    }
-
-
 def save_url_database(url: str) -> Dict[str, Any]:
     if SessionLocal is None or WebsitesService is None:
         raise RuntimeError("Database dependencies are unavailable")
@@ -242,54 +128,18 @@ def save_url_database(url: str) -> Dict[str, Any]:
         db.close()
 
 
-def format_human_readable(result: Dict[str, Any]) -> str:
-    """
-    Format result in human-readable format.
-
-    Args:
-        result: Result dictionary from save_url
-
-    Returns:
-        Formatted string for display
-    """
-    lines = []
-
-    lines.append("=" * 80)
-    lines.append("WEB PAGE SAVED SUCCESSFULLY")
-    lines.append("=" * 80)
-    lines.append("")
-
-    lines.append(f"Source URL: {result['url']}")
-    lines.append(f"Saved to: {result['relative_path']}")
-    lines.append(f"Full Path: {result['path']}")
-    lines.append(f"Size: {result['size']:,} bytes")
-    lines.append(f"Date: {result['date']}")
-
-    lines.append("=" * 80)
-
-    return '\n'.join(lines)
-
-
 def main():
     """Main entry point for save_url script."""
     parser = argparse.ArgumentParser(
         description='Save web page as markdown using Jina.ai Reader API',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"""
-Base Directory: {WEBSITES_BASE}
-
 Examples:
   # Save article
   %(prog)s "https://example.com/article"
 
-  # Save to subfolder
-  %(prog)s "https://example.com/article" --folder "Tech Articles"
-
-  # Custom filename
-  %(prog)s "https://example.com/article" --filename "my-article"
-
   # JSON output
-  %(prog)s "https://example.com/article" --json
+  %(prog)s "https://example.com/article" --database --json
 
 Environment Variables:
   JINA_API_KEY: Required. Get from https://jina.ai/
@@ -303,14 +153,6 @@ Environment Variables:
     )
 
     # Optional arguments
-    parser.add_argument(
-        '--folder',
-        help='Subfolder within Websites/ to save to'
-    )
-    parser.add_argument(
-        '--filename',
-        help='Custom filename (without .md extension)'
-    )
     parser.add_argument(
         '--json',
         action='store_true',
@@ -326,24 +168,17 @@ Environment Variables:
 
     try:
         # Save the URL
-        if args.database:
-            result = save_url_database(url=args.url)
-        else:
-            result = save_url(
-                url=args.url,
-                folder=args.folder,
-                filename=args.filename
-            )
+        if not args.database:
+            raise ValueError("Database mode required")
+
+        result = save_url_database(url=args.url)
 
         # Output results
-        if args.json:
-            output = {
-                'success': True,
-                'data': result
-            }
-            print(json.dumps(output, indent=2))
-        else:
-            print(format_human_readable(result))
+        output = {
+            'success': True,
+            'data': result
+        }
+        print(json.dumps(output, indent=2))
 
         sys.exit(0)
 
