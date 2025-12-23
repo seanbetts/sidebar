@@ -85,7 +85,9 @@ def build_notes_tree(notes: list[Note]) -> Dict[str, Any]:
     for note in notes:
         if note.title == "✏️ Scratchpad":
             continue
-        folder = (note.metadata_ or {}).get("folder") or ""
+        metadata = note.metadata_ or {}
+        folder = metadata.get("folder") or ""
+        is_folder_marker = bool(metadata.get("folder_marker"))
         folder_parts = [part for part in folder.split("/") if part]
         current_path = ""
         current_node = root
@@ -104,11 +106,17 @@ def build_notes_tree(notes: list[Note]) -> Dict[str, Any]:
                 current_node["children"].append(node)
             current_node = index[current_path]
 
+        if is_folder_marker:
+            continue
+
+        is_archived = folder == "Archive" or folder.startswith("Archive/")
         current_node["children"].append({
             "name": f"{note.title}.md",
             "path": str(note.id),
             "type": "file",
-            "modified": note.updated_at.timestamp() if note.updated_at else None
+            "modified": note.updated_at.timestamp() if note.updated_at else None,
+            "pinned": bool(metadata.get("pinned")),
+            "archived": is_archived
         })
 
     def sort_children(node: Dict[str, Any]) -> None:
@@ -166,6 +174,60 @@ async def get_file_tree(
 
     # Return the children directly, not the root folder itself
     return {"children": tree.get("children", [])}
+
+
+@router.post("/folder")
+async def create_folder(
+    request: dict,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a folder within workspace.
+
+    Body:
+        {
+            "basePath": "notes",
+            "path": "Folder/Subfolder"
+        }
+    """
+    base_path = request.get("basePath", "notes")
+    path = (request.get("path") or "").strip("/")
+
+    if not path:
+        raise HTTPException(status_code=400, detail="path required")
+
+    if base_path == "notes":
+        now = datetime.now(timezone.utc)
+        notes = db.query(Note).filter(Note.deleted_at.is_(None)).all()
+        for note in notes:
+            note_folder = (note.metadata_ or {}).get("folder") or ""
+            if note_folder == path or note_folder.startswith(f"{path}/"):
+                return {"success": True, "exists": True}
+
+        note = Note(
+            title="__folder__",
+            content="",
+            metadata_={"folder": path, "pinned": False, "folder_marker": True},
+            created_at=now,
+            updated_at=now,
+            last_opened_at=None,
+            deleted_at=None
+        )
+        db.add(note)
+        db.commit()
+        return {"success": True, "id": str(note.id)}
+
+    workspace_path = Path(WORKSPACE_BASE) / base_path
+    full_path = workspace_path / path
+
+    try:
+        full_path.relative_to(workspace_path)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    full_path.mkdir(parents=True, exist_ok=True)
+    return {"success": True}
 
 
 @router.post("/rename")
