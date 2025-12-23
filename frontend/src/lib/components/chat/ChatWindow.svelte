@@ -46,78 +46,86 @@
 	async function handleSend(message: string) {
 
 		// Add user message and start streaming assistant response
-		const assistantMessageId = await chatStore.sendMessage(message);
+		const { assistantMessageId, userMessageId } = await chatStore.sendMessage(message);
+		const { conversationId } = get(chatStore);
 
 		try {
 			// Connect to SSE stream
-			await sseClient.connect(message, {
-				onToken: (content) => {
-					chatStore.appendToken(assistantMessageId, content);
+			await sseClient.connect(
+				{
+					message,
+					conversationId: conversationId ?? undefined,
+					userMessageId
 				},
+				{
+					onToken: (content) => {
+						chatStore.appendToken(assistantMessageId, content);
+					},
 
-				onToolCall: (event) => {
-					chatStore.addToolCall(assistantMessageId, {
-						id: event.id,
-						name: event.name,
-						parameters: event.parameters,
-						status: event.status
-					});
-				},
+					onToolCall: (event) => {
+						chatStore.addToolCall(assistantMessageId, {
+							id: event.id,
+							name: event.name,
+							parameters: event.parameters,
+							status: event.status
+						});
+					},
 
-				onToolResult: (event) => {
-					chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
-				},
+					onToolResult: (event) => {
+						chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
+					},
 
-				onNoteCreated: async () => {
-					await filesStore.load('notes');
-				},
+					onNoteCreated: async () => {
+						await filesStore.load('notes');
+					},
 
-				onNoteUpdated: async (data) => {
-					await filesStore.load('notes');
-					if (data?.id) {
-						const editorState = get(editorStore);
-						if (editorState.currentNoteId === data.id) {
-							await editorStore.loadNote('notes', data.id);
+					onNoteUpdated: async (data) => {
+						await filesStore.load('notes');
+						if (data?.id) {
+							const editorState = get(editorStore);
+							if (editorState.currentNoteId === data.id) {
+								await editorStore.loadNote('notes', data.id);
+							}
 						}
+					},
+
+					onWebsiteSaved: async () => {
+						await websitesStore.load();
+					},
+
+					onNoteDeleted: async () => {
+						await filesStore.load('notes');
+					},
+
+					onWebsiteDeleted: async () => {
+						await websitesStore.load();
+					},
+
+					onThemeSet: (data) => {
+						const theme = data?.theme === 'dark' ? 'dark' : 'light';
+						setThemeMode(theme as ThemeMode);
+					},
+
+					onScratchpadUpdated: () => {
+						scratchpadStore.bump();
+					},
+
+					onScratchpadCleared: () => {
+						scratchpadStore.bump();
+					},
+
+					onComplete: async () => {
+						await chatStore.finishStreaming(assistantMessageId);
+					},
+
+					onError: (error) => {
+						const friendlyError = getUserFriendlyError(error);
+						toast.error(friendlyError);
+						console.error('Chat error:', error);
+						chatStore.setError(assistantMessageId, 'Request failed');
 					}
-				},
-
-				onWebsiteSaved: async () => {
-					await websitesStore.load();
-				},
-
-				onNoteDeleted: async () => {
-					await filesStore.load('notes');
-				},
-
-				onWebsiteDeleted: async () => {
-					await websitesStore.load();
-				},
-
-				onThemeSet: (data) => {
-					const theme = data?.theme === 'dark' ? 'dark' : 'light';
-					setThemeMode(theme as ThemeMode);
-				},
-
-				onScratchpadUpdated: () => {
-					scratchpadStore.bump();
-				},
-
-				onScratchpadCleared: () => {
-					scratchpadStore.bump();
-				},
-
-				onComplete: async () => {
-					await chatStore.finishStreaming(assistantMessageId);
-				},
-
-				onError: (error) => {
-					const friendlyError = getUserFriendlyError(error);
-					toast.error(friendlyError);
-					console.error('Chat error:', error);
-					chatStore.setError(assistantMessageId, 'Request failed');
 				}
-			});
+			);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 			const friendlyError = getUserFriendlyError(errorMessage);

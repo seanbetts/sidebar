@@ -17,10 +17,39 @@ from api.models.conversation import Conversation
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+def _build_history(messages, user_message_id, latest_message):
+    history = []
+    if not messages:
+        return history
+
+    for message in messages:
+        role = message.get("role")
+        if role not in {"user", "assistant"}:
+            continue
+
+        content = message.get("content")
+        if content is None:
+            continue
+
+        if user_message_id and message.get("id") == user_message_id:
+            continue
+
+        history.append({"role": role, "content": content})
+
+    if not user_message_id and history:
+        last = history[-1]
+        if last.get("role") == "user" and last.get("content") == latest_message:
+            history = history[:-1]
+
+    return history
+
+
 @router.post("/stream")
 async def stream_chat(
     request: Request,
-    user_id: str = Depends(verify_bearer_token)
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
 ):
     """
     Stream chat response with tool calls via SSE.
@@ -31,7 +60,9 @@ async def stream_chat(
     Body:
         {
             "message": "User message",
-            "history": [...]  # Optional conversation history
+            "conversation_id": "uuid",  # Optional conversation id
+            "user_message_id": "uuid",  # Optional message id to avoid duplicates
+            "history": [...]            # Optional conversation history
         }
 
     SSE Events:
@@ -43,10 +74,23 @@ async def stream_chat(
     """
     data = await request.json()
     message = data.get("message")
+    conversation_id = data.get("conversation_id")
+    user_message_id = data.get("user_message_id")
     history = data.get("history", [])
 
     if not message:
-        return {"error": "Message required"}, 400
+        raise HTTPException(status_code=400, detail="Message required")
+
+    if conversation_id:
+        conversation = db.query(Conversation).filter(
+            Conversation.id == conversation_id,
+            Conversation.user_id == user_id
+        ).first()
+
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        history = _build_history(conversation.messages, user_message_id, message)
 
     # Create Claude client
     claude_client = ClaudeClient(settings)

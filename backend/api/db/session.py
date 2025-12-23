@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from api.config import settings
 from typing import Generator
 
-# Create engine
+# Create engine - Always use PostgreSQL
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,

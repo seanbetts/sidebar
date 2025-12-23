@@ -2,10 +2,23 @@
 Shared pytest fixtures for agent-smith tests.
 """
 
+import os
 import json
 import tempfile
 from pathlib import Path
 import pytest
+
+# CRITICAL: Set TESTING=1 before any application imports
+# This ensures Settings loads from .env.test instead of .env
+os.environ["TESTING"] = "1"
+
+# Also set individual env vars as a fallback
+# These are mock values - never use real secrets in tests
+os.environ.setdefault("BEARER_TOKEN", "test-bearer-token-12345")
+os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-12345")
+os.environ.setdefault("OPENAI_API_KEY", "test-openai-key-12345")
+os.environ.setdefault("DATABASE_URL", "postgresql://agent_smith:agent_smith_dev@localhost:5432/agent_smith_test")
+os.environ.setdefault("WORKSPACE_BASE", "/tmp/test-workspace")
 
 
 @pytest.fixture
@@ -210,3 +223,76 @@ def mock_drive_service():
 def mock_env_vars(monkeypatch, mock_service_account_json):
     """Set up mock environment variables for Google Drive testing."""
     monkeypatch.setenv('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON', mock_service_account_json)
+
+
+# Database test fixtures
+
+@pytest.fixture(scope="session")
+def test_db_engine():
+    """
+    Create a test database engine for PostgreSQL.
+
+    This is a session-scoped fixture that creates the test database schema once
+    and tears it down after all tests complete.
+    """
+    from sqlalchemy import create_engine, text
+    from api.db.base import Base
+
+    # Use the test database URL
+    test_db_url = os.getenv("DATABASE_URL", "postgresql://agent_smith:agent_smith_dev@localhost:5432/agent_smith_test")
+
+    # Create engine
+    engine = create_engine(test_db_url, pool_pre_ping=True)
+
+    # Create all tables
+    Base.metadata.create_all(engine)
+
+    yield engine
+
+    # Cleanup: Drop all tables after all tests
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
+@pytest.fixture
+def test_db(test_db_engine):
+    """
+    Create a clean database session for each test.
+
+    This fixture provides a database session and ensures that all changes
+    are rolled back after each test, maintaining test isolation.
+    """
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy import text
+
+    # Create session
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
+    db = TestSessionLocal()
+
+    try:
+        yield db
+    finally:
+        # Rollback any uncommitted changes
+        db.rollback()
+
+        # Clean up all data from tables (but keep schema)
+        # This ensures each test starts with a clean state
+        for table in reversed(Base.metadata.sorted_tables):
+            db.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
+        db.commit()
+
+        db.close()
+
+
+@pytest.fixture
+def test_client():
+    """
+    Create a FastAPI test client.
+
+    This fixture provides a test client for making requests to API endpoints.
+    The client automatically handles authentication and database sessions.
+    """
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    return TestClient(app)

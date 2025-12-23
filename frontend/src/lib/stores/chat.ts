@@ -64,7 +64,10 @@ function createChatStore() {
 		/**
 		 * Add a user message and start streaming assistant response
 		 */
-		async sendMessage(content: string): Promise<string> {
+		async sendMessage(content: string): Promise<{
+			assistantMessageId: string;
+			userMessageId: string;
+		}> {
 			const state = get({ subscribe });
 
 			// Create new conversation if none exists
@@ -111,7 +114,7 @@ function createChatStore() {
 				}
 			}
 
-			return assistantMessageId;
+			return { assistantMessageId, userMessageId };
 		},
 
 		/**

@@ -9,7 +9,7 @@ const BEARER_TOKEN = process.env.BEARER_TOKEN;
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { message, history } = await request.json();
+		const { message, history, conversation_id, user_message_id } = await request.json();
 
 		if (!message) {
 			throw error(400, 'Message is required');
@@ -22,7 +22,12 @@ export const POST: RequestHandler = async ({ request }) => {
 				Authorization: `Bearer ${BEARER_TOKEN}`,
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify({ message, history })
+			body: JSON.stringify({
+				message,
+				history,
+				conversation_id,
+				user_message_id
+			})
 		});
 
 		if (!response.ok) {

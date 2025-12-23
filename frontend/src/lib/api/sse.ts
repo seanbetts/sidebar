@@ -25,7 +25,10 @@ export class SSEClient {
 	/**
 	 * Connect to SSE endpoint and stream chat response
 	 */
-	async connect(message: string, callbacks: SSECallbacks): Promise<void> {
+	async connect(
+		payload: { message: string; conversationId?: string; userMessageId?: string },
+		callbacks: SSECallbacks
+	): Promise<void> {
 		try {
 			// Send message to backend via fetch POST to get SSE stream
 			const response = await fetch('/api/chat', {
@@ -33,7 +36,11 @@ export class SSEClient {
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ message })
+				body: JSON.stringify({
+					message: payload.message,
+					conversation_id: payload.conversationId,
+					user_message_id: payload.userMessageId
+				})
 			});
 
 			if (!response.ok) {
