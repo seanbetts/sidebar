@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ChevronRight, MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus } from 'lucide-svelte';
+  import { ChevronRight, MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import { websitesStore } from '$lib/stores/websites';
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
-  import FileTree from '$lib/components/files/FileTree.svelte';
+  import NotesPanel from '$lib/components/history/NotesPanel.svelte';
   import WebsitesList from '$lib/components/websites/WebsitesList.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
@@ -17,6 +17,9 @@
   let isNewNoteDialogOpen = false;
   let newNoteName = '';
   let newNoteInput: HTMLInputElement | null = null;
+  let isNewFolderDialogOpen = false;
+  let newFolderName = '';
+  let newFolderInput: HTMLInputElement | null = null;
   let isSettingsOpen = false;
   const settingsSections = [
     { key: 'account', label: 'Account', icon: User },
@@ -63,6 +66,12 @@
     isNewNoteDialogOpen = true;
   }
 
+  function handleNewFolder() {
+    websitesStore.clearActive();
+    newFolderName = '';
+    isNewFolderDialogOpen = true;
+  }
+
   async function createNoteFromDialog() {
     const name = newNoteName.trim();
     if (!name) return;
@@ -92,6 +101,31 @@
     } catch (error) {
       console.error('Failed to create note:', error);
       errorMessage = 'Failed to create note. Please try again.';
+      isErrorDialogOpen = true;
+    }
+  }
+
+  async function createFolderFromDialog() {
+    const name = newFolderName.trim().replace(/^\/+|\/+$/g, '');
+    if (!name) return;
+
+    try {
+      const response = await fetch('/api/files/folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          basePath: 'notes',
+          path: name
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to create folder');
+      const { filesStore } = await import('$lib/stores/files');
+      await filesStore.load('notes');
+      isNewFolderDialogOpen = false;
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+      errorMessage = 'Failed to create folder. Please try again.';
       isErrorDialogOpen = true;
     }
   }
@@ -129,6 +163,42 @@
         onclick={createNoteFromDialog}
       >
         Create note
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={isNewFolderDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      newFolderInput?.focus();
+      newFolderInput?.select();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Create a new folder</AlertDialog.Title>
+      <AlertDialog.Description>Folders help organize your notes.</AlertDialog.Description>
+    </AlertDialog.Header>
+    <div class="py-2">
+      <input
+        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        type="text"
+        placeholder="Folder name"
+        bind:this={newFolderInput}
+        bind:value={newFolderName}
+        on:keydown={(event) => {
+          if (event.key === 'Enter') createFolderFromDialog();
+        }}
+      />
+    </div>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={() => (isNewFolderDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action
+        disabled={!newFolderName.trim()}
+        onclick={createFolderFromDialog}
+      >
+        Create folder
       </AlertDialog.Action>
     </AlertDialog.Footer>
   </AlertDialog.Content>
@@ -259,6 +329,9 @@
             <div class="panel-section-header-row">
               <div class="panel-section-title">Notes</div>
               <div class="panel-section-actions">
+                <button class="panel-action" on:click={handleNewFolder} aria-label="New folder" title="New folder">
+                  <Folder size={16} />
+                </button>
                 <button class="panel-action" on:click={handleNewNote} aria-label="New note" title="New note">
                   <Plus size={16} />
                 </button>
@@ -267,7 +340,7 @@
             <SearchBar />
           </div>
           <div class="notes-content">
-            <FileTree basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
+            <NotesPanel basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
           </div>
         </div>
       {:else}

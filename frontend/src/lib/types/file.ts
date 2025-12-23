@@ -12,6 +12,8 @@ export interface FileNode {
   modified?: string;
   children?: FileNode[];
   expanded?: boolean;
+  pinned?: boolean;
+  archived?: boolean;
 }
 
 export interface SingleFileTree {
