@@ -9,6 +9,9 @@ export interface SSECallbacks {
 	onToolResult?: (event: any) => void;
 	onComplete?: () => void;
 	onError?: (error: string) => void;
+	onNoteCreated?: (data: { id?: string; title?: string; folder?: string }) => void;
+	onNoteUpdated?: (data: { id?: string; title?: string }) => void;
+	onWebsiteSaved?: (data: { id?: string; title?: string; url?: string }) => void;
 }
 
 export class SSEClient {
@@ -104,6 +107,18 @@ export class SSEClient {
 
 			case 'error':
 				callbacks.onError?.(data.error || 'Unknown error');
+				break;
+
+			case 'note_created':
+				callbacks.onNoteCreated?.(data);
+				break;
+
+			case 'note_updated':
+				callbacks.onNoteUpdated?.(data);
+				break;
+
+			case 'website_saved':
+				callbacks.onWebsiteSaved?.(data);
 				break;
 
 			default:

@@ -166,6 +166,35 @@ class ClaudeClient:
                                     "status": status
                                 }
 
+                                if result.get("success"):
+                                    result_data = result.get("data") or {}
+                                    if tool_use["name"] == "notes_create":
+                                        yield {
+                                            "type": "note_created",
+                                            "data": {
+                                                "id": result_data.get("id"),
+                                                "title": result_data.get("title"),
+                                                "folder": result_data.get("folder")
+                                            }
+                                        }
+                                    elif tool_use["name"] == "notes_update":
+                                        yield {
+                                            "type": "note_updated",
+                                            "data": {
+                                                "id": result_data.get("id"),
+                                                "title": result_data.get("title")
+                                            }
+                                        }
+                                    elif tool_use["name"] == "website_save":
+                                        yield {
+                                            "type": "website_saved",
+                                            "data": {
+                                                "id": result_data.get("id"),
+                                                "title": result_data.get("title"),
+                                                "url": result_data.get("url")
+                                            }
+                                        }
+
                                 # Add to tool results for next turn
                                 tool_results.append({
                                     "type": "tool_result",
