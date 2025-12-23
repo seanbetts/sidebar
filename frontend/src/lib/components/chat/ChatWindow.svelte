@@ -78,7 +78,7 @@
 					onNoteCreated: async (data) => {
 						await filesStore.load('notes');
 						if (data?.id) {
-							await editorStore.loadNote('notes', data.id);
+							await editorStore.loadNote('notes', data.id, { source: 'ai' });
 						}
 					},
 
@@ -87,7 +87,7 @@
 						if (data?.id) {
 							const editorState = get(editorStore);
 							if (editorState.currentNoteId === data.id) {
-								await editorStore.loadNote('notes', data.id);
+								await editorStore.loadNote('notes', data.id, { source: 'ai' });
 							}
 						}
 					},

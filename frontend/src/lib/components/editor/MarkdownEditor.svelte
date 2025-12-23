@@ -97,8 +97,9 @@
         isUpdatingContent = false;
       }, 0);
 
-      if (isExternalUpdate) {
+      if (isExternalUpdate && state.lastUpdateSource === 'ai') {
         toast.message('Note updated');
+        editorStore.clearUpdateSource();
       }
     });
   });

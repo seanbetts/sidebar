@@ -57,7 +57,7 @@
 
     websitesStore.clearActive();
     currentNoteId.set(path);
-    await editorStore.loadNote('notes', path);
+    await editorStore.loadNote('notes', path, { source: 'user' });
   }
 
   async function handleNewNote() {
@@ -96,7 +96,7 @@
       const { filesStore } = await import('$lib/stores/files');
       await filesStore.load('notes');
       currentNoteId.set(noteId);
-      await editorStore.loadNote('notes', noteId);
+      await editorStore.loadNote('notes', noteId, { source: 'user' });
       isNewNoteDialogOpen = false;
     } catch (error) {
       console.error('Failed to create note:', error);
