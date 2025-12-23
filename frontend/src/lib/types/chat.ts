@@ -20,6 +20,7 @@ export interface Message {
 	content: string;
 	status: MessageStatus;
 	toolCalls?: ToolCall[];
+	needsNewline?: boolean;
 	timestamp: Date;
 	error?: string;
 }
