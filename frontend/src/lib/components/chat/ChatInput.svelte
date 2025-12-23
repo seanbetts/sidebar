@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import { Send } from 'lucide-svelte';
 
 	export let disabled = false;
 	export let onsend: ((message: string) => void) | undefined = undefined;
@@ -22,16 +23,77 @@
 	}
 </script>
 
-<div class="flex gap-2 p-4 border-t bg-background">
-	<textarea
-		bind:value={inputValue}
-		onkeydown={handleKeydown}
-		placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-		{disabled}
-		rows="3"
-		class="flex-1 p-3 border rounded-lg resize-none bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-	></textarea>
-	<Button onclick={handleSubmit} disabled={disabled || !inputValue.trim()} class="px-6">
-		Send
-	</Button>
+<div class="chat-input-bar">
+	<div class="chat-input-shell">
+		<textarea
+			bind:value={inputValue}
+			onkeydown={handleKeydown}
+			placeholder="Ask Anything..."
+			{disabled}
+			rows="3"
+			class="chat-input-textarea"
+		></textarea>
+		<div class="chat-input-actions">
+			<div class="chat-input-left"></div>
+			<Button
+				onclick={handleSubmit}
+				disabled={disabled || !inputValue.trim()}
+				size="icon"
+				aria-label="Send message"
+			>
+				<Send size={16} />
+			</Button>
+		</div>
+	</div>
 </div>
+
+<style>
+	.chat-input-bar {
+		padding: 1rem;
+		border-top: 1px solid var(--color-border);
+		background-color: var(--color-background);
+	}
+
+	.chat-input-shell {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.9rem;
+		padding: 0.75rem 0.75rem 0.6rem;
+		background-color: var(--color-card);
+	}
+
+	.chat-input-textarea {
+		width: 100%;
+		min-height: 60px;
+		border: none;
+		outline: none;
+		resize: none;
+		background-color: transparent;
+		color: var(--color-foreground);
+		font-size: 0.95rem;
+		line-height: 1.5;
+	}
+
+	.chat-input-textarea::placeholder {
+		color: var(--color-muted-foreground);
+	}
+
+	.chat-input-textarea:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.chat-input-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.chat-input-left {
+		min-height: 1px;
+		flex: 1;
+	}
+</style>

@@ -233,6 +233,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.5rem;
+    min-height: 57px;
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-card);
     flex-shrink: 0;
@@ -249,6 +250,7 @@
     margin: 0;
     font-size: 1.125rem;
     font-weight: 600;
+    line-height: 1.2;
   }
 
   .header-right {
@@ -340,7 +342,7 @@
   :global(.tiptap h2) {
     font-size: 1.5em;
     font-weight: 600;
-    margin-top: 1.5em;
+    margin-top: 0.5em;
     margin-bottom: 0.5em;
     color: var(--color-foreground);
   }
@@ -348,7 +350,7 @@
   :global(.tiptap h3) {
     font-size: 1.25em;
     font-weight: 600;
-    margin-top: 1.25em;
+    margin-top: 0.5em;
     margin-bottom: 0.5em;
     color: var(--color-foreground);
   }

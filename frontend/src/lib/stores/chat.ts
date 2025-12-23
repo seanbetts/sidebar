@@ -4,7 +4,7 @@
 import { writable, get } from 'svelte/store';
 import type { Message, ToolCall } from '$lib/types/chat';
 import { conversationsAPI } from '$lib/services/api';
-import { conversationListStore } from './conversations';
+import { conversationListStore, currentConversationId } from './conversations';
 
 export interface ChatState {
 	messages: Message[];
@@ -29,6 +29,7 @@ function createChatStore() {
 		 */
 		async loadConversation(conversationId: string) {
 			const conversation = await conversationsAPI.get(conversationId);
+			currentConversationId.set(conversationId);
 			set({
 				conversationId,
 				messages: conversation.messages.map(msg => ({
@@ -45,6 +46,7 @@ function createChatStore() {
 		 */
 		async startNewConversation() {
 			const conversation = await conversationsAPI.create();
+			currentConversationId.set(conversation.id);
 			set({
 				conversationId: conversation.id,
 				messages: [],

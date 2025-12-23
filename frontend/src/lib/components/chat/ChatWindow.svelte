@@ -10,8 +10,10 @@
 	import { filesStore } from '$lib/stores/files';
 	import { websitesStore } from '$lib/stores/websites';
 	import { editorStore } from '$lib/stores/editor';
+	import { conversationListStore } from '$lib/stores/conversations';
 	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
+	import { MessageSquare } from 'lucide-svelte';
 
 	let sseClient = new SSEClient();
 
@@ -141,12 +143,49 @@
 			chatStore.setError(assistantMessageId, 'Request failed');
 		}
 	}
+
+	$: conversationTitle = (() => {
+		const conversationId = $chatStore.conversationId;
+		if (!conversationId) return 'New Chat';
+		const match = $conversationListStore.conversations.find((c) => c.id === conversationId);
+		return match?.title || 'New Chat';
+	})();
 </script>
 
 <div class="flex flex-col h-full min-h-0 max-w-6xl mx-auto bg-background">
+	<div class="chat-header">
+		<div class="header-left">
+			<MessageSquare size={20} />
+			<h2 class="chat-title">{conversationTitle}</h2>
+		</div>
+	</div>
 	<!-- Messages -->
 	<MessageList messages={$chatStore.messages} />
 
 	<!-- Input -->
 	<ChatInput onsend={handleSend} disabled={$chatStore.isStreaming} />
 </div>
+
+<style>
+	.chat-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem 1.5rem;
+		min-height: 57px;
+		border-bottom: 1px solid var(--color-border);
+		background-color: var(--color-card);
+	}
+
+	.header-left {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+
+	.chat-title {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--color-foreground);
+	}
+</style>

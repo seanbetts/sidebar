@@ -26,6 +26,10 @@
     return `${day}${suffix} ${month} ${year}`;
   }
 
+  function formatDomain(domain: string) {
+    return domain.replace(/^www\./i, '');
+  }
+
   onMount(() => {
     editor = new Editor({
       element: editorElement,
@@ -54,18 +58,19 @@
     {#if $websitesStore.active}
       <div class="website-meta">
         <div class="title-row">
+          <Globe size={18} />
           <span class="title-text">{$websitesStore.active.title}</span>
-        </div>
-        <div class="source-row">
-          <a class="source" href={$websitesStore.active.url} target="_blank" rel="noopener noreferrer">
-            <Globe size={14} />
-            <span>{$websitesStore.active.domain}</span>
-          </a>
-          {#if $websitesStore.active.published_at}
-            <span class="published-date">
-              {formatDateWithOrdinal(new Date($websitesStore.active.published_at))}
-            </span>
-          {/if}
+          <span class="subtitle">
+            <a class="source" href={$websitesStore.active.url} target="_blank" rel="noopener noreferrer">
+              <span>{formatDomain($websitesStore.active.domain)}</span>
+            </a>
+            {#if $websitesStore.active.published_at}
+              <span class="pipe">|</span>
+              <span class="published-date">
+                {formatDateWithOrdinal(new Date($websitesStore.active.published_at))}
+              </span>
+            {/if}
+          </span>
         </div>
       </div>
     {/if}
@@ -89,6 +94,7 @@
     justify-content: flex-start;
     gap: 1rem;
     padding: 1rem 1.5rem;
+    min-height: 57px;
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-card);
   }
@@ -102,14 +108,21 @@
 
   .title-row {
     display: inline-flex;
-    align-items: baseline;
-    gap: 0.5rem;
-  }
-
-  .source-row {
-    display: inline-flex;
     align-items: center;
     gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .subtitle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .pipe {
+    color: var(--color-muted-foreground);
   }
 
   .title-text {
@@ -119,7 +132,6 @@
   }
 
   .published-date {
-    font-size: 0.8rem;
     color: var(--color-muted-foreground);
   }
 
@@ -127,7 +139,6 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.8rem;
     color: var(--color-muted-foreground);
     text-decoration: none;
   }

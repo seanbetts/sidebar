@@ -8,7 +8,7 @@
 
 <style>
   .chat-sidebar {
-    width: 400px;
+    width: 480px;
     height: 100%;
     border-left: 1px solid var(--color-border);
     background-color: var(--color-background);
