@@ -15,6 +15,35 @@ class ToolMapper:
         self.executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
         self.path_validator = PathValidator(settings.workspace_base, settings.writable_paths)
 
+    @staticmethod
+    def _normalize_result(result: Any) -> Dict[str, Any]:
+        if isinstance(result, dict):
+            success = bool(result.get("success", False))
+            data = result.get("data")
+            error = result.get("error")
+
+            if success and data is None:
+                data = {
+                    key: value
+                    for key, value in result.items()
+                    if key not in {"success", "error"}
+                }
+
+            if not success and not error:
+                error = "Unknown error"
+
+            return {
+                "success": success,
+                "data": data,
+                "error": error
+            }
+
+        return {
+            "success": True,
+            "data": result,
+            "error": None
+        }
+
     def get_claude_tools(self) -> List[Dict[str, Any]]:
         """Convert MCP tools to Claude tool schema."""
         return [
@@ -159,7 +188,7 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             elif name == "fs_read":
                 path = parameters.get("path")
@@ -184,7 +213,7 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             elif name == "fs_write":
                 path = parameters.get("path")
@@ -207,7 +236,7 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             elif name == "fs_search":
                 directory = parameters.get("directory", ".")
@@ -235,7 +264,7 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             elif name == "notes_create":
                 title = parameters.get("title", "")
@@ -258,7 +287,7 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             elif name == "notes_update":
                 note_id = parameters.get("note_id")
@@ -285,7 +314,7 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             elif name == "website_save":
                 url = parameters.get("url", "")
@@ -300,7 +329,7 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             elif name == "notes_delete":
                 note_id = parameters.get("note_id")
@@ -315,7 +344,7 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             elif name == "website_delete":
                 website_id = parameters.get("website_id")
@@ -330,10 +359,10 @@ class ToolMapper:
                     success=result.get("success", False)
                 )
 
-                return result
+                return self._normalize_result(result)
 
             else:
-                return {"success": False, "error": f"Unknown tool: {name}"}
+                return self._normalize_result({"success": False, "error": f"Unknown tool: {name}"})
 
         except Exception as e:
             AuditLogger.log_tool_call(
@@ -343,4 +372,4 @@ class ToolMapper:
                 success=False,
                 error=str(e)
             )
-            return {"success": False, "error": str(e)}
+            return self._normalize_result({"success": False, "error": str(e)})
