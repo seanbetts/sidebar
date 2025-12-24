@@ -147,11 +147,12 @@ class ClaudeClient:
                             # Execute tools and build tool result messages
                             tool_results = []
                             for tool_use in tool_uses:
+                                display_name = self.tool_mapper.get_tool_display_name(tool_use["name"])
                                 # Announce tool call
                                 yield {
                                     "type": "tool_call",
                                     "id": tool_use["id"],
-                                    "name": tool_use["name"],
+                                    "name": display_name,
                                     "parameters": tool_use["input"],
                                     "status": "pending"
                                 }
@@ -168,14 +169,14 @@ class ClaudeClient:
                                 yield {
                                     "type": "tool_result",
                                     "id": tool_use["id"],
-                                    "name": tool_use["name"],
+                                    "name": display_name,
                                     "result": result,
                                     "status": status
                                 }
 
                                 if result.get("success"):
                                     result_data = result.get("data") or {}
-                                    if tool_use["name"] == "Create Note":
+                                    if display_name == "Create Note":
                                         yield {
                                             "type": "note_created",
                                             "data": {
@@ -184,7 +185,7 @@ class ClaudeClient:
                                                 "folder": result_data.get("folder")
                                             }
                                         }
-                                    elif tool_use["name"] == "Update Note":
+                                    elif display_name == "Update Note":
                                         yield {
                                             "type": "note_updated",
                                             "data": {
@@ -192,7 +193,7 @@ class ClaudeClient:
                                                 "title": result_data.get("title")
                                             }
                                         }
-                                    elif tool_use["name"] == "Save Website":
+                                    elif display_name == "Save Website":
                                         yield {
                                             "type": "website_saved",
                                             "data": {
@@ -201,35 +202,35 @@ class ClaudeClient:
                                                 "url": result_data.get("url")
                                             }
                                         }
-                                    elif tool_use["name"] == "Delete Note":
+                                    elif display_name == "Delete Note":
                                         yield {
                                             "type": "note_deleted",
                                             "data": {
                                                 "id": result_data.get("id")
                                             }
                                         }
-                                    elif tool_use["name"] == "Delete Website":
+                                    elif display_name == "Delete Website":
                                         yield {
                                             "type": "website_deleted",
                                             "data": {
                                                 "id": result_data.get("id")
                                             }
                                         }
-                                    elif tool_use["name"] == "Set UI Theme":
+                                    elif display_name == "Set UI Theme":
                                         yield {
                                             "type": "ui_theme_set",
                                             "data": {
                                                 "theme": result_data.get("theme")
                                             }
                                         }
-                                    elif tool_use["name"] == "Update Scratchpad":
+                                    elif display_name == "Update Scratchpad":
                                         yield {
                                             "type": "scratchpad_updated",
                                             "data": {
                                                 "id": result_data.get("id")
                                             }
                                         }
-                                    elif tool_use["name"] == "Clear Scratchpad":
+                                    elif display_name == "Clear Scratchpad":
                                         yield {
                                             "type": "scratchpad_cleared",
                                             "data": {

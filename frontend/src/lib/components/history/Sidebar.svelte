@@ -52,6 +52,7 @@
   let initialEnabledSkills: string[] = [];
   let isLoadingSkills = false;
   let skillsError = '';
+  $: allSkillsEnabled = skills.length > 0 && enabledSkills.length === skills.length;
   let locationSuggestions: Array<{ description: string; place_id: string }> = [];
   let isLoadingLocations = false;
   let locationLookupError = '';
@@ -308,6 +309,14 @@
       enabledSkills = [...new Set([...enabledSkills, name])];
     } else {
       enabledSkills = enabledSkills.filter((skill) => skill !== name);
+    }
+  }
+
+  function toggleAllSkills(enabled: boolean) {
+    if (enabled) {
+      enabledSkills = skills.map((skill) => skill.id);
+    } else {
+      enabledSkills = [];
     }
   }
 
@@ -887,7 +896,20 @@
           </div>
         {:else}
           <h3>Skills</h3>
-          <p>Manage installed skills and permissions here.</p>
+          <div class="skills-header">
+            <p>Manage installed skills and permissions here.</p>
+            <label class="skill-toggle">
+              <input
+                type="checkbox"
+                checked={allSkillsEnabled}
+                on:change={(event) =>
+                  toggleAllSkills((event.currentTarget as HTMLInputElement).checked)
+                }
+              />
+              <span class="skill-switch" aria-hidden="true"></span>
+              <span class="skill-toggle-label">Enable all</span>
+            </label>
+          </div>
           <div class="skills-panel">
             {#if isLoadingSkills}
               <div class="settings-meta">
@@ -1500,6 +1522,22 @@
     padding-right: 0.25rem;
   }
 
+  .skills-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .skills-header p {
+    margin: 0;
+  }
+
+  .skill-toggle-label {
+    font-size: 0.85rem;
+    color: var(--color-muted-foreground);
+  }
+
   .skills-category {
     display: flex;
     flex-direction: column;
@@ -1564,6 +1602,7 @@
     align-items: center;
     cursor: pointer;
     position: relative;
+    gap: 0.5rem;
   }
 
   .skill-toggle input {
@@ -1576,7 +1615,7 @@
     width: 42px;
     height: 24px;
     border-radius: 999px;
-    background: rgba(148, 163, 184, 0.35);
+    background: var(--color-border);
     position: relative;
     transition: background 0.2s ease;
   }
@@ -1589,13 +1628,13 @@
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--color-background);
     transition: transform 0.2s ease;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   }
 
   .skill-toggle input:checked + .skill-switch {
-    background: rgba(37, 99, 235, 0.9);
+    background: var(--color-foreground);
   }
 
   .skill-toggle input:checked + .skill-switch::after {
