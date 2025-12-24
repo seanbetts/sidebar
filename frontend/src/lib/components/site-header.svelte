@@ -34,7 +34,7 @@
 	<div class="brand">
 		<span class="brand-mark" aria-hidden="true"></span>
 		<div class="brand-text">
-			<div class="title">Agent Smith</div>
+			<div class="title">sideBar</div>
 			<div class="subtitle">Workspace</div>
 		</div>
 	</div>

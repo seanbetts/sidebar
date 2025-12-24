@@ -238,7 +238,7 @@ python discover_subdomains.py example.com --wordlist wordlist.txt
 
 ### Pipeline Integration
 
-Use with other Agent Smith skills:
+Use with other sideBar skills:
 
 ```bash
 # Discover subdomains, then analyze robots.txt policies

@@ -76,7 +76,7 @@ date: 2025-12-20
 ## Configuration
 
 The skill uses:
-- **Base folder**: `/workspace/websites/` (Docker) or `~/Agent Smith/websites/` (local fallback)
+- **Base folder**: `/workspace/websites/` (Docker) or `~/sideBar/websites/` (local fallback)
 - **API**: Jina.ai Reader API (https://r.jina.ai/)
 - **API Key**: From `JINA_API_KEY` environment variable
 

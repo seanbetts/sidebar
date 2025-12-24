@@ -78,7 +78,7 @@ def generate_skills_md():
 
     # Generate markdown
     lines = [
-        "# Agent Smith Skills Catalog",
+        "# sideBar Skills Catalog",
         "",
         f"**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         f"**Total Skills:** {len(skills)}",

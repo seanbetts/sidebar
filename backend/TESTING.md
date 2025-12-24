@@ -1,6 +1,6 @@
 # Testing Guide
 
-Guide for running tests in the Agent Smith backend.
+Guide for running tests in the sideBar backend.
 
 ## Prerequisites
 

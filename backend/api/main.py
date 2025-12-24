@@ -1,4 +1,4 @@
-"""Agent Smith Skills API - FastAPI + MCP integration."""
+"""sideBar Skills API - FastAPI + MCP integration."""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
 
 # Create main FastAPI app with combined lifespan
 app = FastAPI(
-    title="Agent Smith Skills API",
+    title="sideBar Skills API",
     description="Skills API with FastAPI REST + MCP Streamable HTTP",
     version="1.0.0",
     lifespan=lifespan
@@ -105,7 +105,7 @@ app.mount("", mcp_app)
 async def root():
     """Root endpoint with API information."""
     return {
-        "message": "Agent Smith Skills API",
+        "message": "sideBar Skills API",
         "endpoints": {
             "rest": "/docs (Bearer token)",
             "mcp": "/mcp (Bearer token)",

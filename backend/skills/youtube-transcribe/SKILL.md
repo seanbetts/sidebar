@@ -44,7 +44,7 @@ python transcribe_youtube.py URL [--language LANG] [--model MODEL] [--output-dir
 - `--language`: Language code for transcription (default: "en")
 - `--model`: Transcription model (default: "gpt-4o-transcribe")
   - Options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
-- `--output-dir`: Directory for transcripts (default: ~/Documents/Agent Smith/Transcripts)
+- `--output-dir`: Directory for transcripts (default: ~/Documents/sideBar/Transcripts)
 - `--keep-audio`: Keep downloaded audio file after transcription
 - `--audio-dir`: Directory for downloaded audio (default: .tmp/youtube-transcribe/ in project root)
 - `--json`: Output results in JSON format
@@ -96,14 +96,14 @@ Filename: Example Video.mp3
 Transcribing Audio...
 ==========================================================================
 File: Example Video.mp3
-Transcript: ~/Documents/Agent Smith/Transcripts/Example Video_20251220_143045_transcript.txt
+Transcript: ~/Documents/sideBar/Transcripts/Example Video_20251220_143045_transcript.txt
 Duration: 15m 30s
 
 ==========================================================================
 TRANSCRIPTION COMPLETED SUCCESSFULLY
 ==========================================================================
 YouTube URL: https://youtube.com/watch?v=VIDEO_ID
-Transcript: ~/Documents/Agent Smith/Transcripts/Example Video_20251220_143045_transcript.txt
+Transcript: ~/Documents/sideBar/Transcripts/Example Video_20251220_143045_transcript.txt
 Audio file: Removed (use --keep-audio to keep)
 ```
 
@@ -117,7 +117,7 @@ JSON output combines results from both stages:
     "title": "Example Video",
     "audio_file": "~/Library/Mobile Documents/com~apple~CloudDocs/Downloads/Example Video.mp3",
     "audio_kept": false,
-    "transcript_file": "~/Documents/Agent Smith/Transcripts/Example Video_20251220_143045_transcript.txt",
+    "transcript_file": "~/Documents/sideBar/Transcripts/Example Video_20251220_143045_transcript.txt",
     "language": "en",
     "model": "gpt-4o-transcribe",
     "download_duration_seconds": 45,
@@ -130,7 +130,7 @@ JSON output combines results from both stages:
 
 1. **Download Stage**:
    - Validates YouTube URL
-   - Downloads audio using youtube-download skill to `~/Documents/Agent Smith/.tmp/youtube-transcribe/`
+   - Downloads audio using youtube-download skill to `~/Documents/sideBar/.tmp/youtube-transcribe/`
    - Reports download progress and completion
    - Returns audio file location
 
@@ -182,13 +182,13 @@ JSON output combines results from both stages:
 
 **Audio Files (Temporary)**:
 ```
-~/Documents/Agent Smith/.tmp/youtube-transcribe/
+~/Documents/sideBar/.tmp/youtube-transcribe/
 ```
 Audio files are automatically deleted after transcription unless `--keep-audio` is specified.
 
 **Transcripts**:
 ```
-~/Documents/Agent Smith/Transcripts/
+~/Documents/sideBar/Transcripts/
 ```
 
 ## Model Comparison

@@ -1,4 +1,4 @@
-# Agent Smith
+# sideBar
 
 Lightweight development environment for [Agent Skills](https://github.com/agentskills/agentskills).
 

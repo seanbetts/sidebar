@@ -50,7 +50,7 @@ python analyze_policies.py --domains DOMAIN1 DOMAIN2 ... [OPTIONS]
 - `--timeout SECONDS`: HTTP request timeout (default: 10.0)
 - `--no-llms`: Skip checking for llms.txt files
 - `--save-robots`: Save robots.txt and llms.txt files to disk
-- `--output-dir DIR`: Output directory for saved files (default: ~/Documents/Agent Smith/Reports)
+- `--output-dir DIR`: Output directory for saved files (default: ~/Documents/sideBar/Reports)
 
 **Output Options**:
 - `--output FILE`: Export results to CSV
@@ -236,21 +236,21 @@ python analyze_policies.py example.com --report --llm-api-key "sk-..."
 
 **Reports and Analysis**:
 ```
-~/Documents/Agent Smith/Reports/{domain}/
+~/Documents/sideBar/Reports/{domain}/
 ```
 
 **Saved robots.txt files** (with `--save-robots`):
 ```
-~/Documents/Agent Smith/Reports/{domain}/robots_{subdomain}_{timestamp}.txt
-~/Documents/Agent Smith/Reports/{domain}/llms_{subdomain}_{timestamp}.txt
+~/Documents/sideBar/Reports/{domain}/robots_{subdomain}_{timestamp}.txt
+~/Documents/sideBar/Reports/{domain}/llms_{subdomain}_{timestamp}.txt
 ```
 
 **Output files** (with `--all`):
 ```
-~/Documents/Agent Smith/Reports/{domain}/crawler_analysis_{timestamp}.csv
-~/Documents/Agent Smith/Reports/{domain}/scan_results_{timestamp}.json
-~/Documents/Agent Smith/Reports/{domain}/analysis_report_{timestamp}.md
-~/Documents/Agent Smith/Reports/{domain}/analysis_report_{timestamp}_analysis.json
+~/Documents/sideBar/Reports/{domain}/crawler_analysis_{timestamp}.csv
+~/Documents/sideBar/Reports/{domain}/scan_results_{timestamp}.json
+~/Documents/sideBar/Reports/{domain}/analysis_report_{timestamp}.md
+~/Documents/sideBar/Reports/{domain}/analysis_report_{timestamp}_analysis.json
 ```
 
 ## Workflow

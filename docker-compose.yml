@@ -84,7 +84,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # Agent Smith Frontend (SvelteKit)
+  # sideBar Frontend (SvelteKit)
   frontend:
     build:
       context: ./frontend

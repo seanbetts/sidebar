@@ -43,7 +43,7 @@
 	{#if messages.length === 0}
 		<div class="flex items-center justify-center h-full text-muted-foreground">
 			<div class="text-center">
-				<p class="text-xl mb-2 font-semibold">Welcome to Agent Smith</p>
+				<p class="text-xl mb-2 font-semibold">Welcome to sideBar</p>
 				<p class="text-sm">Start a conversation by typing a message below</p>
 			</div>
 		</div>

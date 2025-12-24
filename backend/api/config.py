@@ -1,4 +1,4 @@
-"""Configuration settings for Agent Smith Skills API."""
+"""Configuration settings for sideBar Skills API."""
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path

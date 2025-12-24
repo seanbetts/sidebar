@@ -1,4 +1,4 @@
-Generic single-database configuration for Agent Smith.
+Generic single-database configuration for sideBar.
 
 To create a new migration:
     alembic revision --autogenerate -m "description"

@@ -1,1 +1,1 @@
-"""Agent Smith Skills API - FastAPI + MCP integration."""
+"""sideBar Skills API - FastAPI + MCP integration."""

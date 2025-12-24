@@ -11,7 +11,7 @@ metadata:
 
 # Filesystem Operations (fs)
 
-Complete filesystem CRUD operations for Agent Smith workspace.
+Complete filesystem CRUD operations for sideBar workspace.
 
 ## Base Directory
 

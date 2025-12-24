@@ -7,7 +7,7 @@
 	export let message: Message;
 
 	$: roleColor = message.role === 'user' ? 'bg-muted' : 'bg-card';
-	$: roleName = message.role === 'user' ? 'You' : 'Agent Smith';
+	$: roleName = message.role === 'user' ? 'You' : 'sideBar';
 
 	function formatTime(date: Date): string {
 		return new Date(date).toLocaleTimeString('en-US', {

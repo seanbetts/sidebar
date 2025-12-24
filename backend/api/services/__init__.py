@@ -1,1 +1,1 @@
-"""Services for Agent Smith API."""
+"""Services for sideBar API."""

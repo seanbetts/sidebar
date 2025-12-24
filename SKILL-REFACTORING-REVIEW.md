@@ -28,7 +28,7 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 **Current State:**
 - Takes audio file path as input
 - Calls OpenAI Whisper API for transcription
-- Saves transcript as `.txt` file to `~/Documents/Agent Smith/Transcripts/`
+- Saves transcript as `.txt` file to `~/Documents/sideBar/Transcripts/`
 - Returns file path in JSON output
 
 **Should it be database-backed?** 🟡 YES
@@ -191,7 +191,7 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 **Current State:**
 - Analyzes robots.txt and llms.txt files
 - Returns analysis results (CSV, JSON, markdown)
-- Optionally saves reports to `~/Documents/Agent Smith/Reports/`
+- Optionally saves reports to `~/Documents/sideBar/Reports/`
 
 **Should it be database-backed?** 🔴 NO
 - Analysis tool, not persistent content

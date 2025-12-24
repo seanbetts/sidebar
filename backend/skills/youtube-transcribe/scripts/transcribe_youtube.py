@@ -16,8 +16,8 @@ from typing import Dict, Any, Optional
 
 
 # Default directories
-DEFAULT_TRANSCRIPT_DIR = Path.home() / "Documents" / "Agent Smith" / "Transcripts"
-DEFAULT_AUDIO_DIR = Path.home() / "Documents" / "Agent Smith" / ".tmp" / "youtube-transcribe"
+DEFAULT_TRANSCRIPT_DIR = Path.home() / "Documents" / "sideBar" / "Transcripts"
+DEFAULT_AUDIO_DIR = Path.home() / "Documents" / "sideBar" / ".tmp" / "youtube-transcribe"
 
 # Script paths - dynamically locate based on this script's location
 SCRIPT_DIR = Path(__file__).parent.parent.parent  # Go up to skills/
@@ -118,7 +118,7 @@ def transcribe_youtube(
         url: YouTube video URL
         language: Language code for transcription
         model: Transcription model to use
-        output_dir: Directory for transcripts (default: ~/Documents/Agent Smith/Transcripts)
+        output_dir: Directory for transcripts (default: ~/Documents/sideBar/Transcripts)
         audio_dir: Directory for audio files (default: iCloud Downloads)
         keep_audio: Keep audio file after transcription
 

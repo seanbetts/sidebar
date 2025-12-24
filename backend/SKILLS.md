@@ -1,4 +1,4 @@
-# Agent Smith Skills Catalog
+# sideBar Skills Catalog
 
 **Last Updated:** 2025-12-23 23:29:32
 **Total Skills:** 14

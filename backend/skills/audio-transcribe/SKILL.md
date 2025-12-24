@@ -44,7 +44,7 @@ python transcribe_audio.py FILE [--language LANG] [--model MODEL] [--output-dir 
 - `--language`: Language code (default: "en")
 - `--model`: Transcription model (default: "gpt-4o-transcribe")
   - Options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
-- `--output-dir`: Directory for transcripts (default: ~/Documents/Agent Smith/Transcripts)
+- `--output-dir`: Directory for transcripts (default: ~/Documents/sideBar/Transcripts)
 - `--chunking-strategy`: Use "auto" for automatic VAD-based chunking
 - `--prompt`: Optional text to guide model's style
 - `--response-format`: Output format (json, text, srt, vtt, verbose_json)
@@ -106,7 +106,7 @@ meeting_20251220_143045_transcript.txt
 
 Transcripts are saved to:
 ```
-~/Documents/Agent Smith/Transcripts/
+~/Documents/sideBar/Transcripts/
 ```
 
 ## Supported Audio Formats

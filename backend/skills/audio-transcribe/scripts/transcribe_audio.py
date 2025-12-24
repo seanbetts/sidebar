@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 
 # Default output directory
-DEFAULT_OUTPUT = Path.home() / "Documents" / "Agent Smith" / "Transcripts"
+DEFAULT_OUTPUT = Path.home() / "Documents" / "sideBar" / "Transcripts"
 
 # API size limit (25MB with safety margin)
 MAX_SIZE = 25_000_000
