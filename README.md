@@ -23,12 +23,6 @@ uv sync
 # Start container
 docker compose up -d
 
-# Enter bash + Unix environment
-docker compose exec sidebar bash
-
-# Inside container - skills are at /skills
-ls /skills
-
 # Stop container
 docker compose down
 ```

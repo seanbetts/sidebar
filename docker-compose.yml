@@ -4,6 +4,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
+    container_name: sidebar-postgres
     environment:
       - POSTGRES_USER=sidebar
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sidebar_dev}
@@ -20,33 +21,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # Existing sidebar (keep for development)
-  sidebar:
-    build:
-      context: ./backend
-      dockerfile: docker/Dockerfile
-    volumes:
-      # Mount skills directory (bidirectional - edit locally, access in container)
-      - ./backend/skills:/skills
-      # Mount tests directory for running tests in Docker
-      - ./backend/tests:/tests
-      # Add shared workspace
-      - workspace:/workspace
-    stdin_open: true
-    tty: true
-    environment:
-      - PYTHONUNBUFFERED=1
-      - DOPPLER_TOKEN=${DOPPLER_TOKEN}
-      - GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON=${GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON}
-      - WORKSPACE_BASE=/workspace
-    networks:
-      - sidebar-network
-
   # NEW: Skills API (FastAPI + MCP)
   skills-api:
     build:
       context: ./backend
       dockerfile: docker/Dockerfile.skills-api
+    container_name: sidebar-api
     ports:
       - "8001:8001"
     volumes:
@@ -91,6 +71,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: sidebar-frontend
     ports:
       - "3000:3000"
     environment:

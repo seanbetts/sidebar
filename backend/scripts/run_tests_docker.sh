@@ -9,13 +9,13 @@ set -euo pipefail
 
 echo "Running tests in Docker container..."
 
-# Ensure container is running
-if ! docker compose ps sidebar | grep -q "Up"; then
+# Ensure skills-api container is running
+if ! docker compose ps skills-api | grep -q "Up"; then
     echo "Starting Docker container..."
     docker compose up -d
 fi
 
-# Run pytest in container
-docker compose exec sidebar pytest /tests "$@"
+# Run pytest in skills-api container
+docker compose exec skills-api pytest /app/api "$@"
 
 echo "Tests complete!"

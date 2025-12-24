@@ -10,7 +10,7 @@ echo "Setting up test database..."
 DB_USER="sidebar"
 DB_PASSWORD="sidebar_dev"
 DB_NAME="sidebar_test"
-CONTAINER_NAME="sidebar-postgres-1"
+CONTAINER_NAME="sidebar-postgres"
 
 # Check if PostgreSQL container is running
 if ! docker compose ps postgres | grep -q "Up"; then
