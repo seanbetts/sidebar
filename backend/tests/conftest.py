@@ -1,5 +1,5 @@
 """
-Shared pytest fixtures for agent-smith tests.
+Shared pytest fixtures for sidebar tests.
 """
 
 import os
@@ -17,7 +17,7 @@ os.environ["TESTING"] = "1"
 os.environ.setdefault("BEARER_TOKEN", "test-bearer-token-12345")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-12345")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key-12345")
-os.environ.setdefault("DATABASE_URL", "postgresql://agent_smith:agent_smith_dev@localhost:5432/agent_smith_test")
+os.environ.setdefault("DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5432/sidebar_test")
 os.environ.setdefault("WORKSPACE_BASE", "/tmp/test-workspace")
 
 
@@ -239,7 +239,7 @@ def test_db_engine():
     from api.db.base import Base
 
     # Use the test database URL
-    test_db_url = os.getenv("DATABASE_URL", "postgresql://agent_smith:agent_smith_dev@localhost:5432/agent_smith_test")
+    test_db_url = os.getenv("DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5432/sidebar_test")
 
     # Create engine
     engine = create_engine(test_db_url, pool_pre_ping=True)

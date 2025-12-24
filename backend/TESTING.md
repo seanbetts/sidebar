@@ -49,7 +49,7 @@ Tests use a separate PostgreSQL database to ensure isolation from development da
 
 Tests automatically load from `.env.test`:
 - `TESTING=1` - Enables test mode
-- `DATABASE_URL=postgresql://agent_smith:agent_smith_dev@localhost:5432/agent_smith_test`
+- `DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5432/sidebar_test`
 - `BEARER_TOKEN=test-bearer-token-12345` - Mock auth token
 - `ANTHROPIC_API_KEY=test-anthropic-key-12345` - Mock API key
 
@@ -132,7 +132,7 @@ ERROR: PostgreSQL is not running on localhost:5432
 
 ### Test database doesn't exist
 ```
-sqlalchemy.exc.OperationalError: database "agent_smith_test" does not exist
+sqlalchemy.exc.OperationalError: database "sidebar_test" does not exist
 ```
 **Solution**: Run `./scripts/setup_test_db.sh`
 
@@ -161,8 +161,8 @@ services:
   postgres:
     image: postgres:16-alpine
     env:
-      POSTGRES_USER: agent_smith
-      POSTGRES_PASSWORD: agent_smith_dev
+      POSTGRES_USER: sidebar
+      POSTGRES_PASSWORD: sidebar_dev
       POSTGRES_DB: postgres
     options: >-
       --health-cmd pg_isready
@@ -173,13 +173,13 @@ services:
 steps:
   - name: Setup test database
     run: |
-      PGPASSWORD=agent_smith_dev psql -h localhost -U agent_smith -d postgres -c "CREATE DATABASE agent_smith_test;"
+      PGPASSWORD=sidebar_dev psql -h localhost -U sidebar -d postgres -c "CREATE DATABASE sidebar_test;"
 
   - name: Run tests
     run: pytest tests/
     env:
       TESTING: 1
-      DATABASE_URL: postgresql://agent_smith:agent_smith_dev@localhost:5432/agent_smith_test
+      DATABASE_URL: postgresql://sidebar:sidebar_dev@localhost:5432/sidebar_test
       BEARER_TOKEN: test-bearer-token-12345
       ANTHROPIC_API_KEY: test-anthropic-key-12345
 ```

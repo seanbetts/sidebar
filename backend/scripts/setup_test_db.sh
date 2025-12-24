@@ -7,10 +7,10 @@ set -e
 echo "Setting up test database..."
 
 # Database credentials (must match .env.test)
-DB_USER="agent_smith"
-DB_PASSWORD="agent_smith_dev"
-DB_NAME="agent_smith_test"
-CONTAINER_NAME="agent-smith-postgres-1"
+DB_USER="sidebar"
+DB_PASSWORD="sidebar_dev"
+DB_NAME="sidebar_test"
+CONTAINER_NAME="sidebar-postgres-1"
 
 # Check if PostgreSQL container is running
 if ! docker compose ps postgres | grep -q "Up"; then

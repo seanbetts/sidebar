@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Optional
 from pathlib import Path
 
-logger = logging.getLogger("agent_smith.audit")
+logger = logging.getLogger("sidebar.audit")
 
 
 class AuditLogger:

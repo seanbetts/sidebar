@@ -8,7 +8,7 @@ from api.security.audit_logger import AuditLogger
 @pytest.fixture
 def capture_logs(caplog):
     """Capture audit logs."""
-    caplog.set_level(logging.INFO, logger="agent_smith.audit")
+    caplog.set_level(logging.INFO, logger="sidebar.audit")
     return caplog
 
 

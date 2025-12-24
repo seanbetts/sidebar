@@ -24,7 +24,7 @@ uv sync
 docker compose up -d
 
 # Enter bash + Unix environment
-docker compose exec agent-smith bash
+docker compose exec sidebar bash
 
 # Inside container - skills are at /skills
 ls /skills
@@ -53,7 +53,7 @@ vim skills/my-new-skill/SKILL.md
 
 ## Testing
 
-Agent-smith uses pytest for testing critical scripts and utilities.
+sideBar uses pytest for testing critical scripts and utilities.
 
 ### Running Tests
 
@@ -95,7 +95,7 @@ All tests live in the `tests/` directory at project root.
 ## Structure
 
 ```
-agent-smith/
+sidebar/
 ├── skills/            # Agent skills (mounted to /skills in container)
 ├── scripts/           # Utility scripts
 ├── docker/            # Docker configuration

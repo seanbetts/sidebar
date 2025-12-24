@@ -17,7 +17,7 @@ logging.basicConfig(
 )
 
 # Create FastMCP server and get its HTTP app
-mcp = FastMCP("agent-smith-skills")
+mcp = FastMCP("sidebar-skills")
 register_mcp_tools(mcp)
 mcp_app = mcp.http_app()
 

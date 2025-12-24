@@ -1,5 +1,5 @@
 {
-  "name": "agent-smith-frontend",
+  "name": "sidebar-frontend",
   "version": "1.0.0",
   "description": "sideBar Frontend - SvelteKit UI",
   "type": "module",

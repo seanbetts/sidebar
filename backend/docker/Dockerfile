@@ -4,7 +4,7 @@ FROM python:3.11-slim
 # Corporate firewall with SSL inspection prevents reliable downloads
 #
 # To add tools after container is running:
-#   ffmpeg: docker cp $(which ffmpeg) agent-smith:/usr/local/bin/
+#   ffmpeg: docker cp $(which ffmpeg) sidebar:/usr/local/bin/
 #   Or install on host and run skills from host instead of inside container
 #
 # Most Python-based skills work fine without additional tools
@@ -13,7 +13,7 @@ FROM python:3.11-slim
 # Doppler CLI installation skipped due to corporate firewall restrictions
 # DOPPLER_TOKEN is available as environment variable (configured in docker-compose.yml)
 # You can use doppler run from the host, or manually install doppler in the container if needed:
-#   docker cp $(which doppler) agent-smith:/usr/local/bin/doppler
+#   docker cp $(which doppler) sidebar:/usr/local/bin/doppler
 
 # Create app directory for installing dependencies
 RUN mkdir -p /app

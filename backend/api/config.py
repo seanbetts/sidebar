@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     bearer_token: str
 
     # Database
-    database_url: str = "postgresql://agent_smith:agent_smith_dev@postgres:5432/agent_smith"
+    database_url: str = "postgresql://sidebar:sidebar_dev@postgres:5432/sidebar"
 
     # Claude API configuration
     anthropic_api_key: str  # Loaded from Doppler or environment

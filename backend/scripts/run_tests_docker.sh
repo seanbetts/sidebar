@@ -10,12 +10,12 @@ set -euo pipefail
 echo "Running tests in Docker container..."
 
 # Ensure container is running
-if ! docker compose ps agent-smith | grep -q "Up"; then
+if ! docker compose ps sidebar | grep -q "Up"; then
     echo "Starting Docker container..."
     docker compose up -d
 fi
 
 # Run pytest in container
-docker compose exec agent-smith pytest /tests "$@"
+docker compose exec sidebar pytest /tests "$@"
 
 echo "Tests complete!"

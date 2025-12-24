@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test runner for agent-smith project.
+Test runner for sidebar project.
 
 Usage:
     # Run all tests

@@ -1,25 +1,27 @@
+name: sidebar
+
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=agent_smith
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-agent_smith_dev}
-      - POSTGRES_DB=agent_smith
+      - POSTGRES_USER=sidebar
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sidebar_dev}
+      - POSTGRES_DB=sidebar
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
-      - agent-network
+      - sidebar-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agent_smith"]
+      test: ["CMD-SHELL", "pg_isready -U sidebar"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Existing agent-smith (keep for development)
-  agent-smith:
+  # Existing sidebar (keep for development)
+  sidebar:
     build:
       context: ./backend
       dockerfile: docker/Dockerfile
@@ -38,7 +40,7 @@ services:
       - GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON=${GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON}
       - WORKSPACE_BASE=/workspace
     networks:
-      - agent-network
+      - sidebar-network
 
   # NEW: Skills API (FastAPI + MCP)
   skills-api:
@@ -62,7 +64,7 @@ services:
       - JINA_API_KEY=${JINA_API_KEY}
       - JINA_SSL_VERIFY=false
       - JINA_CA_BUNDLE=
-      - DATABASE_URL=postgresql://agent_smith:${POSTGRES_PASSWORD:-agent_smith_dev}@postgres:5432/agent_smith
+      - DATABASE_URL=postgresql://sidebar:${POSTGRES_PASSWORD:-sidebar_dev}@postgres:5432/sidebar
     user: "1000:1000"  # Run as non-root user
     cap_drop:
       - ALL  # Drop all Linux capabilities
@@ -74,7 +76,7 @@ services:
     tmpfs:
       - /tmp:noexec,nosuid,nodev
     networks:
-      - agent-network
+      - sidebar-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,7 +97,7 @@ services:
       - API_URL=http://skills-api:8001
       - BEARER_TOKEN=${BEARER_TOKEN}
     networks:
-      - agent-network
+      - sidebar-network
     depends_on:
       skills-api:
         condition: service_healthy
@@ -105,5 +107,5 @@ volumes:
   postgres_data:
 
 networks:
-  agent-network:
+  sidebar-network:
     driver: bridge

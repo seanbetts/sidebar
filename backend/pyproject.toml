@@ -1,5 +1,5 @@
 [project]
-name = "agent-smith"
+name = "sidebar"
 version = "0.1.0"
 description = "Lightweight development environment for Agent Skills"
 authors = [
