@@ -1,0 +1,85 @@
+"""Service layer for user settings."""
+from __future__ import annotations
+
+from datetime import datetime, timezone, date
+from typing import Optional, Any
+
+from sqlalchemy.orm import Session
+
+from api.models.user_settings import UserSettings
+
+
+class UserSettingsService:
+    """Service for managing per-user settings."""
+
+    UNSET = object()
+
+    @staticmethod
+    def get_settings(db: Session, user_id: str) -> Optional[UserSettings]:
+        return db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+
+    @staticmethod
+    def upsert_settings(
+        db: Session,
+        user_id: str,
+        *,
+        system_prompt: Any = UNSET,
+        first_message_prompt: Any = UNSET,
+        communication_style: Any = UNSET,
+        working_relationship: Any = UNSET,
+        name: Any = UNSET,
+        job_title: Any = UNSET,
+        employer: Any = UNSET,
+        date_of_birth: Any = UNSET,
+        gender: Any = UNSET,
+        pronouns: Any = UNSET,
+        location: Any = UNSET,
+    ) -> UserSettings:
+        now = datetime.now(timezone.utc)
+        settings = UserSettingsService.get_settings(db, user_id)
+        if settings:
+            if system_prompt is not UserSettingsService.UNSET:
+                settings.system_prompt = system_prompt
+            if first_message_prompt is not UserSettingsService.UNSET:
+                settings.first_message_prompt = first_message_prompt
+            if communication_style is not UserSettingsService.UNSET:
+                settings.communication_style = communication_style
+            if working_relationship is not UserSettingsService.UNSET:
+                settings.working_relationship = working_relationship
+            if name is not UserSettingsService.UNSET:
+                settings.name = name
+            if job_title is not UserSettingsService.UNSET:
+                settings.job_title = job_title
+            if employer is not UserSettingsService.UNSET:
+                settings.employer = employer
+            if date_of_birth is not UserSettingsService.UNSET:
+                settings.date_of_birth = date_of_birth
+            if gender is not UserSettingsService.UNSET:
+                settings.gender = gender
+            if pronouns is not UserSettingsService.UNSET:
+                settings.pronouns = pronouns
+            if location is not UserSettingsService.UNSET:
+                settings.location = location
+            settings.updated_at = now
+        else:
+            settings = UserSettings(
+                user_id=user_id,
+                system_prompt=None if system_prompt is UserSettingsService.UNSET else system_prompt,
+                first_message_prompt=None if first_message_prompt is UserSettingsService.UNSET else first_message_prompt,
+                communication_style=None if communication_style is UserSettingsService.UNSET else communication_style,
+                working_relationship=None if working_relationship is UserSettingsService.UNSET else working_relationship,
+                name=None if name is UserSettingsService.UNSET else name,
+                job_title=None if job_title is UserSettingsService.UNSET else job_title,
+                employer=None if employer is UserSettingsService.UNSET else employer,
+                date_of_birth=None if date_of_birth is UserSettingsService.UNSET else date_of_birth,
+                gender=None if gender is UserSettingsService.UNSET else gender,
+                pronouns=None if pronouns is UserSettingsService.UNSET else pronouns,
+                location=None if location is UserSettingsService.UNSET else location,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(settings)
+
+        db.commit()
+        db.refresh(settings)
+        return settings

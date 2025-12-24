@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str  # Loaded from Doppler or environment
     model_name: str = "claude-sonnet-4-5-20250929"
 
+    # Google Places API
+    google_places_api_key: str | None = None
+
     # Write allowlist - only these paths can be written
     writable_paths: list[str] = ["/workspace/notes", "/workspace/documents"]
 

@@ -1,6 +1,7 @@
 """Chat router with SSE streaming support."""
 import json
 import os
+from datetime import datetime, timezone
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -8,6 +9,8 @@ from google import genai
 from google.genai import types
 from api.config import Settings, settings
 from api.services.claude_client import ClaudeClient
+from api.services.user_settings_service import UserSettingsService
+from api.prompts import build_first_message_prompt, build_system_prompt, detect_operating_system
 from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
@@ -42,6 +45,8 @@ def _build_history(messages, user_message_id, latest_message):
             history = history[:-1]
 
     return history
+
+
 
 
 @router.post("/stream")
@@ -92,13 +97,24 @@ async def stream_chat(
 
         history = _build_history(conversation.messages, user_message_id, message)
 
+    settings_record = UserSettingsService.get_settings(db, user_id)
+    user_agent = request.headers.get("user-agent")
+    operating_system = detect_operating_system(user_agent)
+    now = datetime.now(timezone.utc)
+    location_fallback = settings_record.location if settings_record and settings_record.location else "Unknown"
+
+    system_prompt = build_system_prompt(settings_record, location_fallback, now)
+    if not history:
+        first_message_prompt = build_first_message_prompt(settings_record, operating_system, now)
+        history = [{"role": "user", "content": first_message_prompt}]
+
     # Create Claude client
     claude_client = ClaudeClient(settings)
 
     async def event_generator():
         """Generate SSE events."""
         try:
-            async for event in claude_client.stream_with_tools(message, history):
+            async for event in claude_client.stream_with_tools(message, history, system_prompt=system_prompt):
                 event_type = event.get("type")
 
                 if event_type == "token":
