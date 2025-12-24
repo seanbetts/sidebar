@@ -56,6 +56,12 @@
   let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
   let wasSettingsOpen = false;
   let settingsDirty = false;
+  let profileImageUrl = '';
+  let profileImageVersion = 0;
+  let isUploadingProfileImage = false;
+  let profileImageError = '';
+  const defaultAvatarSrc = '/images/logo.svg';
+  $: profileImageSrc = profileImageUrl ? `${profileImageUrl}?v=${profileImageVersion}` : '';
   const pronounOptions = [
     'he/him',
     'she/her',
@@ -75,6 +81,7 @@
 
   onMount(() => {
     conversationListStore.load();
+    loadSettings(true);
   });
 
   async function loadSettings(force = false) {
@@ -97,6 +104,7 @@
       gender = data?.gender ?? '';
       pronouns = data?.pronouns ?? '';
       location = data?.location ?? '';
+      profileImageUrl = data?.profile_image_url ?? '';
       initialCommunicationStyle = communicationStyle;
       initialWorkingRelationship = workingRelationship;
       initialName = name;
@@ -170,6 +178,43 @@
     } finally {
       isSavingSettings = false;
     }
+  }
+
+  async function uploadProfileImage(file: File) {
+    if (isUploadingProfileImage) return;
+    isUploadingProfileImage = true;
+    profileImageError = '';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/settings/profile-image', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        throw new Error('Failed to upload profile image');
+      }
+      const data = await response.json();
+      profileImageUrl = data?.profile_image_url ?? profileImageUrl;
+      profileImageVersion = Date.now();
+    } catch (error) {
+      console.error('Failed to upload profile image:', error);
+      profileImageError =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to upload profile image.';
+    } finally {
+      isUploadingProfileImage = false;
+    }
+  }
+
+  function handleProfileImageChange(event: Event) {
+    const target = event.currentTarget as HTMLInputElement | null;
+    const file = target?.files?.[0];
+    if (!file) return;
+    uploadProfileImage(file);
+    if (target) target.value = '';
   }
 
   function resetSettings() {
@@ -295,6 +340,7 @@
     settingsLoaded = false;
     settingsError = '';
     locationSuggestions = [];
+    profileImageError = '';
   }
 
   $: settingsDirty =
@@ -602,6 +648,31 @@
         {#if activeSettingsSection === 'account'}
           <h3>Account</h3>
           <p>Basic details used to personalise prompts.</p>
+          <div class="settings-avatar">
+            <div class="settings-avatar-preview">
+              {#if profileImageSrc}
+                <img src={profileImageSrc} alt="Profile" on:error={() => (profileImageUrl = '')} />
+              {:else}
+                <img class="logo" src={defaultAvatarSrc} alt="Logo" />
+              {/if}
+            </div>
+            <label class="settings-avatar-upload">
+              <input
+                type="file"
+                accept="image/*"
+                on:change={handleProfileImageChange}
+                disabled={isUploadingProfileImage}
+              />
+              {#if isUploadingProfileImage}
+                Uploading...
+              {:else}
+                Upload photo
+              {/if}
+            </label>
+            {#if profileImageError}
+              <div class="settings-error">{profileImageError}</div>
+            {/if}
+          </div>
           <div class="settings-form settings-grid">
             <label class="settings-label">
               <span>Name</span>
@@ -769,11 +840,15 @@
     <div class="rail-footer">
       <button
         on:click={() => (isSettingsOpen = true)}
-        class="rail-btn"
+        class="rail-btn rail-btn-avatar"
         aria-label="Open settings"
         title="Settings"
       >
-        <Settings size={18} />
+        {#if profileImageSrc}
+          <img class="rail-avatar" src={profileImageSrc} alt="Profile" on:error={() => (profileImageUrl = '')} />
+        {:else}
+          <img class="rail-avatar logo" src={defaultAvatarSrc} alt="Logo" />
+        {/if}
       </button>
     </div>
   </div>
@@ -1179,6 +1254,76 @@
     .settings-grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  .settings-avatar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0 1.5rem;
+  }
+
+  .settings-avatar-preview {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--color-sidebar-accent);
+    color: var(--color-foreground);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    overflow: hidden;
+  }
+
+  .settings-avatar-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .settings-avatar-preview img.logo {
+    padding: 0.75rem;
+    object-fit: contain;
+  }
+
+  .settings-avatar-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 0.55rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .settings-avatar-upload input {
+    display: none;
+  }
+
+  .rail-btn-avatar {
+    padding: 0.35rem;
+  }
+
+  .rail-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .rail-avatar.logo {
+    padding: 3px;
+    object-fit: contain;
+  }
+
+  :global(.dark) .settings-avatar-preview img.logo,
+  :global(.dark) .rail-avatar.logo {
+    filter: invert(1);
   }
 
   .settings-autocomplete {

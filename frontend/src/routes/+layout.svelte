@@ -5,6 +5,10 @@
 	import { Toaster } from 'svelte-sonner';
 </script>
 
+<svelte:head>
+	<title>sideBar</title>
+</svelte:head>
+
 <div class="app">
 	<Sidebar />
 	<main class="main-content">

@@ -2,7 +2,9 @@
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from pathlib import Path
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -26,6 +28,7 @@ class SettingsResponse(BaseModel):
     gender: Optional[str] = None
     pronouns: Optional[str] = None
     location: Optional[str] = None
+    profile_image_url: Optional[str] = None
 
 
 class SettingsUpdate(BaseModel):
@@ -74,6 +77,12 @@ def _resolve_default(value: Optional[str], default: str) -> Optional[str]:
     return trimmed if trimmed else default
 
 
+def _profile_image_url(settings_record) -> Optional[str]:
+    if settings_record and settings_record.profile_image_path:
+        return "/api/settings/profile-image"
+    return None
+
+
 @router.get("", response_model=SettingsResponse)
 async def get_settings(
     db: Session = Depends(get_db),
@@ -98,6 +107,7 @@ async def get_settings(
         gender=settings.gender if settings else None,
         pronouns=settings.pronouns if settings else None,
         location=settings.location if settings else None,
+        profile_image_url=_profile_image_url(settings),
     )
 
 
@@ -131,4 +141,63 @@ async def update_settings(
         gender=settings.gender,
         pronouns=settings.pronouns,
         location=settings.location,
+        profile_image_url=_profile_image_url(settings),
     )
+
+
+@router.post("/profile-image")
+async def upload_profile_image(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid image type")
+
+    contents = await file.read()
+    if len(contents) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image too large (max 2MB)")
+
+    extension = "png"
+    content_type = file.content_type or ""
+    if content_type in {"image/jpeg", "image/jpg"}:
+        extension = "jpg"
+    elif content_type == "image/png":
+        extension = "png"
+    elif content_type == "image/webp":
+        extension = "webp"
+    elif content_type == "image/gif":
+        extension = "gif"
+    elif file.filename and "." in file.filename:
+        extension = file.filename.rsplit(".", 1)[-1].lower()
+
+    base_dir = Path("/workspace/profile-images")
+    base_dir.mkdir(parents=True, exist_ok=True)
+    file_path = base_dir / f"{user_id}.{extension}"
+
+    file_path.write_bytes(contents)
+
+    settings = UserSettingsService.upsert_settings(
+        db,
+        user_id,
+        profile_image_path=str(file_path),
+    )
+    return {"profile_image_url": _profile_image_url(settings)}
+
+
+@router.get("/profile-image")
+async def get_profile_image(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    settings = UserSettingsService.get_settings(db, user_id)
+    if not settings or not settings.profile_image_path:
+        raise HTTPException(status_code=404, detail="Profile image not found")
+
+    file_path = Path(settings.profile_image_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Profile image not found")
+
+    return FileResponse(file_path)

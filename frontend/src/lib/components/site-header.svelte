@@ -32,6 +32,7 @@
 
 <header class="site-header">
 	<div class="brand">
+		<img src="/images/logo.svg" alt="sideBar" class="brand-logo" />
 		<span class="brand-mark" aria-hidden="true"></span>
 		<div class="brand-text">
 			<div class="title">sideBar</div>
@@ -68,6 +69,15 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+	}
+
+	.brand-logo {
+		height: 2rem;
+		width: auto;
+	}
+
+	:global(.dark) .brand-logo {
+		filter: invert(1);
 	}
 
 	.brand-mark {

@@ -23,6 +23,7 @@ class UserSettings(Base):
     gender = Column(Text, nullable=True)
     pronouns = Column(Text, nullable=True)
     location = Column(Text, nullable=True)
+    profile_image_path = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
