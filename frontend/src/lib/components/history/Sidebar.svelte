@@ -21,6 +21,9 @@
   let newFolderName = '';
   let newFolderInput: HTMLInputElement | null = null;
   let isSettingsOpen = false;
+  let isNewWebsiteDialogOpen = false;
+  let newWebsiteUrl = '';
+  let newWebsiteInput: HTMLInputElement | null = null;
   const settingsSections = [
     { key: 'account', label: 'Account', icon: User },
     { key: 'system', label: 'System', icon: Monitor },
@@ -70,6 +73,46 @@
     websitesStore.clearActive();
     newFolderName = '';
     isNewFolderDialogOpen = true;
+  }
+
+  function handleNewWebsite() {
+    newWebsiteUrl = '';
+    isNewWebsiteDialogOpen = true;
+  }
+
+  async function saveWebsiteFromDialog() {
+    const url = newWebsiteUrl.trim();
+    if (!url) return;
+
+    try {
+      const response = await fetch('/api/websites/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        const detail = data?.error;
+        const message = typeof detail === 'string' ? detail : detail?.message;
+        throw new Error(message || 'Failed to save website');
+      }
+
+      const websiteId = data?.data?.id;
+
+      await websitesStore.load();
+      if (websiteId) {
+        await websitesStore.loadById(websiteId);
+      }
+      isNewWebsiteDialogOpen = false;
+    } catch (error) {
+      console.error('Failed to save website:', error);
+      errorMessage =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to save website. Please try again.';
+      isErrorDialogOpen = true;
+    }
   }
 
   async function createNoteFromDialog() {
@@ -195,6 +238,42 @@
         onclick={createFolderFromDialog}
       >
         Create folder
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={isNewWebsiteDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      newWebsiteInput?.focus();
+      newWebsiteInput?.select();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Save a website</AlertDialog.Title>
+      <AlertDialog.Description>Paste a URL to save it to your archive.</AlertDialog.Description>
+    </AlertDialog.Header>
+    <div class="py-2">
+      <input
+        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        type="text"
+        placeholder="https://example.com"
+        bind:this={newWebsiteInput}
+        bind:value={newWebsiteUrl}
+        on:keydown={(event) => {
+          if (event.key === 'Enter') saveWebsiteFromDialog();
+        }}
+      />
+    </div>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={() => (isNewWebsiteDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action
+        disabled={!newWebsiteUrl.trim()}
+        onclick={saveWebsiteFromDialog}
+      >
+        Save website
       </AlertDialog.Action>
     </AlertDialog.Footer>
   </AlertDialog.Content>
@@ -331,7 +410,11 @@
           <div class="panel-section-header">
             <div class="panel-section-header-row">
               <div class="panel-section-title">Websites</div>
-              <div class="panel-section-actions"></div>
+              <div class="panel-section-actions">
+                <button class="panel-action" on:click={handleNewWebsite} aria-label="Save website" title="Save website">
+                  <Plus size={16} />
+                </button>
+              </div>
             </div>
             <SearchBar />
           </div>

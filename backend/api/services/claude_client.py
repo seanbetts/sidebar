@@ -168,7 +168,7 @@ class ClaudeClient:
 
                                 if result.get("success"):
                                     result_data = result.get("data") or {}
-                                    if tool_use["name"] == "notes_create":
+                                    if tool_use["name"] == "Create Note":
                                         yield {
                                             "type": "note_created",
                                             "data": {
@@ -177,7 +177,7 @@ class ClaudeClient:
                                                 "folder": result_data.get("folder")
                                             }
                                         }
-                                    elif tool_use["name"] == "notes_update":
+                                    elif tool_use["name"] == "Update Note":
                                         yield {
                                             "type": "note_updated",
                                             "data": {
@@ -185,7 +185,7 @@ class ClaudeClient:
                                                 "title": result_data.get("title")
                                             }
                                         }
-                                    elif tool_use["name"] == "website_save":
+                                    elif tool_use["name"] == "Save Website":
                                         yield {
                                             "type": "website_saved",
                                             "data": {
@@ -194,35 +194,35 @@ class ClaudeClient:
                                                 "url": result_data.get("url")
                                             }
                                         }
-                                    elif tool_use["name"] == "notes_delete":
+                                    elif tool_use["name"] == "Delete Note":
                                         yield {
                                             "type": "note_deleted",
                                             "data": {
                                                 "id": result_data.get("id")
                                             }
                                         }
-                                    elif tool_use["name"] == "website_delete":
+                                    elif tool_use["name"] == "Delete Website":
                                         yield {
                                             "type": "website_deleted",
                                             "data": {
                                                 "id": result_data.get("id")
                                             }
                                         }
-                                    elif tool_use["name"] == "ui_theme_set":
+                                    elif tool_use["name"] == "Set UI Theme":
                                         yield {
                                             "type": "ui_theme_set",
                                             "data": {
                                                 "theme": result_data.get("theme")
                                             }
                                         }
-                                    elif tool_use["name"] == "scratchpad_update":
+                                    elif tool_use["name"] == "Update Scratchpad":
                                         yield {
                                             "type": "scratchpad_updated",
                                             "data": {
                                                 "id": result_data.get("id")
                                             }
                                         }
-                                    elif tool_use["name"] == "scratchpad_clear":
+                                    elif tool_use["name"] == "Clear Scratchpad":
                                         yield {
                                             "type": "scratchpad_cleared",
                                             "data": {

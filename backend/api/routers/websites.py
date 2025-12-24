@@ -1,6 +1,6 @@
 """Websites router for archived web content in Postgres."""
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
@@ -43,6 +43,25 @@ async def list_websites(
         WebsitesService.list_websites(db)
     )
     return {"items": [website_summary(site) for site in websites]}
+
+
+@router.post("/save")
+async def save_website(
+    request: Request,
+    payload: dict,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    url = payload.get("url", "")
+    if not url:
+        raise HTTPException(status_code=400, detail="url required")
+
+    executor = request.app.state.executor
+    result = await executor.execute("web-save", "save_url.py", [url, "--database"])
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to save website"))
+
+    return result
 
 
 @router.get("/{website_id}")

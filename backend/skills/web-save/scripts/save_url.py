@@ -13,7 +13,7 @@ import re
 import requests
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
 from urllib.parse import urlparse
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
@@ -58,6 +58,44 @@ def extract_title(content: str) -> str:
     return None
 
 
+def parse_published_at(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def parse_jina_metadata(content: str) -> Tuple[Dict[str, Optional[str]], str]:
+    metadata: Dict[str, Optional[str]] = {
+        "title": None,
+        "url_source": None,
+        "published_time": None
+    }
+
+    title_match = re.search(r'^Title:\s*(.+)$', content, re.MULTILINE)
+    if title_match:
+        metadata["title"] = title_match.group(1).strip()
+
+    url_match = re.search(r'^URL Source:\s*(.+)$', content, re.MULTILINE)
+    if url_match:
+        metadata["url_source"] = url_match.group(1).strip()
+
+    published_match = re.search(r'^Published Time:\s*(.+)$', content, re.MULTILINE)
+    if published_match:
+        metadata["published_time"] = published_match.group(1).strip()
+
+    cleaned = content
+    cleaned = re.sub(r'^Title:.*\n?', '', cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r'^URL Source:.*\n?', '', cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r'^Published Time:.*\n?', '', cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r'^Markdown Content:\s*', '', cleaned, flags=re.MULTILINE)
+    cleaned = cleaned.lstrip()
+
+    return metadata, cleaned
+
+
 def get_markdown_content(url: str, api_key: str) -> str:
     """
     Fetch markdown content from Jina.ai API.
@@ -83,10 +121,21 @@ def get_markdown_content(url: str, api_key: str) -> str:
         "Authorization": f"Bearer {api_key}"
     }
 
+    ssl_verify = os.environ.get("JINA_SSL_VERIFY", "true").lower()
+    verify_setting: Any = not (ssl_verify in {"0", "false", "no", "off"})
+    ca_bundle = os.environ.get("JINA_CA_BUNDLE")
+    if ca_bundle:
+        verify_setting = ca_bundle
+
     jina_url = f"https://r.jina.ai/{url}"
 
     try:
-        response = requests.get(jina_url, headers=headers, timeout=30)
+        response = requests.get(
+            jina_url,
+            headers=headers,
+            timeout=30,
+            verify=verify_setting
+        )
         response.raise_for_status()
         return response.text
     except requests.exceptions.RequestException as e:
@@ -104,7 +153,10 @@ def save_url_database(url: str) -> Dict[str, Any]:
 
     api_key = os.environ.get('JINA_API_KEY', '')
     content = get_markdown_content(url, api_key)
-    title = extract_title(content) or urlparse(url).netloc
+    parsed_metadata, cleaned_content = parse_jina_metadata(content)
+    title = parsed_metadata.get("title") or extract_title(cleaned_content) or urlparse(url).netloc
+    source = parsed_metadata.get("url_source") or url
+    published_at = parse_published_at(parsed_metadata.get("published_time"))
 
     db = SessionLocal()
     try:
@@ -112,9 +164,11 @@ def save_url_database(url: str) -> Dict[str, Any]:
             db,
             url=url,
             title=title,
-            content=content,
-            source=url,
+            content=cleaned_content,
+            source=source,
+            url_full=url,
             saved_at=datetime.now(timezone.utc),
+            published_at=published_at,
             pinned=False,
             archived=False,
         )
@@ -207,6 +261,8 @@ Environment Variables:
                 'suggestions': [
                     'Check your internet connection',
                     'Verify the URL is accessible',
+                    'Set JINA_SSL_VERIFY=false if corporate SSL interception is blocking requests',
+                    'Provide a CA bundle via JINA_CA_BUNDLE if needed',
                     'Check if Jina.ai API is operational',
                     'Verify your API key is valid'
                 ]

@@ -121,6 +121,11 @@ class SkillExecutor:
                     "DATABASE_URL",
                     "OPENAI_API_KEY",
                     "GOOGLE_API_KEY",
+                    "JINA_API_KEY",
+                    "JINA_SSL_VERIFY",
+                    "JINA_CA_BUNDLE",
+                    "REQUESTS_CA_BUNDLE",
+                    "SSL_CERT_FILE",
                 ):
                     if key in os.environ:
                         env[key] = os.environ[key]

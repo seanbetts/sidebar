@@ -59,6 +59,9 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - JINA_API_KEY=${JINA_API_KEY}
+      - JINA_SSL_VERIFY=false
+      - JINA_CA_BUNDLE=
       - DATABASE_URL=postgresql://agent_smith:${POSTGRES_PASSWORD:-agent_smith_dev}@postgres:5432/agent_smith
     user: "1000:1000"  # Run as non-root user
     cap_drop:
