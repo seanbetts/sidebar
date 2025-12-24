@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder } from 'lucide-svelte';
+  import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder, Loader2 } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -24,6 +24,7 @@
   let isNewWebsiteDialogOpen = false;
   let newWebsiteUrl = '';
   let newWebsiteInput: HTMLInputElement | null = null;
+  let isSavingWebsite = false;
   const settingsSections = [
     { key: 'account', label: 'Account', icon: User },
     { key: 'system', label: 'System', icon: Monitor },
@@ -82,8 +83,9 @@
 
   async function saveWebsiteFromDialog() {
     const url = newWebsiteUrl.trim();
-    if (!url) return;
+    if (!url || isSavingWebsite) return;
 
+    isSavingWebsite = true;
     try {
       const response = await fetch('/api/websites/save', {
         method: 'POST',
@@ -112,6 +114,8 @@
           ? error.message
           : 'Failed to save website. Please try again.';
       isErrorDialogOpen = true;
+    } finally {
+      isSavingWebsite = false;
     }
   }
 
@@ -262,18 +266,31 @@
         placeholder="https://example.com"
         bind:this={newWebsiteInput}
         bind:value={newWebsiteUrl}
+        disabled={isSavingWebsite}
         on:keydown={(event) => {
           if (event.key === 'Enter') saveWebsiteFromDialog();
         }}
       />
     </div>
     <AlertDialog.Footer>
-      <AlertDialog.Cancel onclick={() => (isNewWebsiteDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Cancel
+        disabled={isSavingWebsite}
+        onclick={() => (isNewWebsiteDialogOpen = false)}
+      >
+        Cancel
+      </AlertDialog.Cancel>
       <AlertDialog.Action
-        disabled={!newWebsiteUrl.trim()}
+        disabled={!newWebsiteUrl.trim() || isSavingWebsite}
         onclick={saveWebsiteFromDialog}
       >
-        Save website
+        {#if isSavingWebsite}
+          <span class="inline-flex items-center gap-2">
+            <Loader2 size={14} class="animate-spin" />
+            Saving...
+          </span>
+        {:else}
+          Save website
+        {/if}
       </AlertDialog.Action>
     </AlertDialog.Footer>
   </AlertDialog.Content>

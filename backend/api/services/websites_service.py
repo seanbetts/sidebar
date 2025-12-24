@@ -30,6 +30,19 @@ class WebsitesService:
         return parsed.netloc or value
 
     @staticmethod
+    def get_by_url(
+        db: Session,
+        url: str,
+        *,
+        include_deleted: bool = False
+    ) -> Optional[Website]:
+        normalized_url = WebsitesService.normalize_url(url)
+        query = db.query(Website).filter(Website.url == normalized_url)
+        if not include_deleted:
+            query = query.filter(Website.deleted_at.is_(None))
+        return query.first()
+
+    @staticmethod
     def save_website(
         db: Session,
         *,
@@ -48,6 +61,65 @@ class WebsitesService:
         domain = WebsitesService.extract_domain(normalized_url)
         metadata = {"pinned": pinned, "archived": archived}
 
+        website = Website(
+            url=normalized_url,
+            url_full=url_full,
+            domain=domain,
+            title=title,
+            content=content,
+            source=source,
+            saved_at=saved_at,
+            published_at=published_at,
+            metadata_=metadata,
+            created_at=now,
+            updated_at=now,
+            last_opened_at=None,
+            deleted_at=None,
+        )
+        db.add(website)
+        db.commit()
+        db.refresh(website)
+        return website
+
+    @staticmethod
+    def upsert_website(
+        db: Session,
+        *,
+        url: str,
+        title: str,
+        content: str,
+        source: Optional[str] = None,
+        url_full: Optional[str] = None,
+        saved_at: Optional[datetime] = None,
+        published_at: Optional[datetime] = None,
+        pinned: bool = False,
+        archived: bool = False,
+    ) -> Website:
+        now = datetime.now(timezone.utc)
+        normalized_url = WebsitesService.normalize_url(url)
+        domain = WebsitesService.extract_domain(normalized_url)
+
+        website = WebsitesService.get_by_url(db, normalized_url, include_deleted=True)
+        if website:
+            website.url_full = url_full or website.url_full
+            website.domain = domain
+            website.title = title
+            website.content = content
+            website.source = source
+            website.saved_at = saved_at
+            website.published_at = published_at
+            metadata = {**(website.metadata_ or {}), "archived": False}
+            if "pinned" not in metadata:
+                metadata["pinned"] = pinned
+            website.metadata_ = metadata
+            if website.deleted_at is not None:
+                website.deleted_at = None
+            website.updated_at = now
+            db.commit()
+            db.refresh(website)
+            return website
+
+        metadata = {"pinned": pinned, "archived": archived}
         website = Website(
             url=normalized_url,
             url_full=url_full,
