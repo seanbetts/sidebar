@@ -6,7 +6,7 @@ from typing import Dict, List
 
 import yaml
 
-from api.services.tool_mapper import SKILL_DISPLAY
+from api.services.tool_mapper import SKILL_DISPLAY, EXPOSED_SKILLS
 
 
 class SkillCatalogService:
@@ -40,7 +40,21 @@ class SkillCatalogService:
                 }
             )
 
-        return skills
+        if "ui-theme" not in {skill["id"] for skill in skills}:
+            ui_display = SKILL_DISPLAY.get("ui-theme", {})
+            skills.append(
+                {
+                    "id": "ui-theme",
+                    "name": ui_display.get("name", "UI Theme"),
+                    "description": ui_display.get(
+                        "description",
+                        "Allow the assistant to switch light or dark mode.",
+                    ),
+                    "category": category_map.get("ui-theme", "System"),
+                }
+            )
+
+        return [skill for skill in skills if skill["id"] in EXPOSED_SKILLS]
 
     @staticmethod
     def _read_frontmatter(skill_md: Path) -> Dict[str, str]:
@@ -79,4 +93,5 @@ class SkillCatalogService:
             "youtube-transcribe": "Media",
             "mcp-builder": "Development",
             "skill-creator": "Development",
+            "ui-theme": "System",
         }

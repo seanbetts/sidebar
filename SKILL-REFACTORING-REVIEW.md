@@ -4,6 +4,33 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 
 **Status**: Reviewing 11 remaining skills (removed list-skills and folder-config as redundant/deprecated).
 
+## Current Findings (Dec 2025)
+
+**Discrepancy Identified:** The Skills UI now lists all installed skills (from `backend/skills/`) but only a subset are exposed to the model via `backend/api/services/tool_mapper.py`. This means toggling a skill in Settings does **not** guarantee it is available to the AI agent.
+
+**Currently exposed via tool_mapper:**
+- fs
+- notes
+- web-save
+- ui-theme (special case for light/dark mode)
+
+**Installed but NOT exposed via tool_mapper (still missing tool definitions):**
+- audio-transcribe
+- docx
+- mcp-builder
+- pdf
+- pptx
+- skill-creator
+- subdomain-discover
+- web-crawler-policy
+- xlsx
+- youtube-download
+- youtube-transcribe
+
+**Impact:** The agent will tell the user it lacks media/doc/spreadsheet tools even when all skills are enabled.
+
+**Recommendation:** Add tool definitions for all missing skills (at least minimal entrypoints), then wire them into the model tool list so Settings toggles reflect real availability.
+
 ## Architecture Model Summary
 
 **Current Pattern:**

@@ -1,6 +1,7 @@
 """Maps MCP tools to Claude tool definitions and handles execution."""
 import json
 import time
+import re
 from typing import Dict, Any, List
 from api.config import settings
 from api.executors.skill_executor import SkillExecutor
@@ -64,6 +65,17 @@ SKILL_DISPLAY = {
         "name": "Skill Creator",
         "description": "Guide for creating and updating skills."
     },
+    "ui-theme": {
+        "name": "UI Theme",
+        "description": "Allow the assistant to switch light or dark mode."
+    },
+}
+
+EXPOSED_SKILLS = {
+    "fs",
+    "notes",
+    "web-save",
+    "ui-theme",
 }
 
 
@@ -378,11 +390,37 @@ class ToolMapper:
                     },
                     "required": ["theme"]
                 },
-                "skill": None,  # Special case - no skill execution
+                "skill": "ui-theme",  # Special case - no skill execution
                 "script": None,
                 "build_args": None
             }
         }
+        self._build_tool_name_maps()
+
+    def _build_tool_name_maps(self) -> None:
+        self.tool_name_map = {}
+        self.tool_name_reverse = {}
+        for display_name in self.tools.keys():
+            safe_name = self._normalize_tool_name(display_name)
+            base = safe_name
+            suffix = 1
+            while safe_name in self.tool_name_map and self.tool_name_map[safe_name] != display_name:
+                suffix += 1
+                safe_name = f"{base}_{suffix}"
+                if len(safe_name) > 128:
+                    safe_name = safe_name[:128]
+            self.tool_name_map[safe_name] = display_name
+            self.tool_name_reverse[display_name] = safe_name
+
+    @staticmethod
+    def _normalize_tool_name(name: str) -> str:
+        safe = re.sub(r"[^a-zA-Z0-9_-]+", "_", name).strip("_")
+        if not safe:
+            safe = "tool"
+        return safe[:128]
+
+    def get_tool_display_name(self, tool_name: str) -> str:
+        return self.tool_name_map.get(tool_name, tool_name)
 
     @staticmethod
     def _normalize_result(result: Any) -> Dict[str, Any]:
@@ -417,7 +455,7 @@ class ToolMapper:
         """Convert tool configs to Claude tool schema."""
         return [
             {
-                "name": name,
+                "name": self.tool_name_reverse.get(name, name),
                 "description": config["description"],
                 "input_schema": config["input_schema"]
             }
@@ -436,11 +474,12 @@ class ToolMapper:
 
         try:
             # Get tool config
-            tool_config = self.tools.get(name)
+            display_name = self.get_tool_display_name(name)
+            tool_config = self.tools.get(display_name)
             if not tool_config:
                 return self._normalize_result({
                     "success": False,
-                    "error": f"Unknown tool: {name}"
+                    "error": f"Unknown tool: {display_name}"
                 })
 
             if not self._is_skill_enabled(tool_config.get("skill"), allowed_skills):
@@ -450,7 +489,7 @@ class ToolMapper:
                 })
 
             # Special case: UI theme (no skill execution)
-            if name == "Set UI Theme":
+            if display_name == "Set UI Theme":
                 theme = parameters.get("theme")
                 if theme not in {"light", "dark"}:
                     return self._normalize_result({"success": False, "error": "Invalid theme"})
@@ -486,13 +525,13 @@ class ToolMapper:
 
             # Log execution (redact sensitive content)
             log_params = parameters.copy()
-            if "content" in log_params and name == "Update Scratchpad":
+            if "content" in log_params and display_name == "Update Scratchpad":
                 log_params["content"] = "<redacted>"
-            if "content" in log_params and name in ["Create Note", "Update Note", "Write File"]:
+            if "content" in log_params and display_name in ["Create Note", "Update Note", "Write File"]:
                 log_params.pop("content", None)
 
             AuditLogger.log_tool_call(
-                tool_name=name,
+                tool_name=display_name,
                 parameters=log_params,
                 duration_ms=(time.time() - start_time) * 1000,
                 success=result.get("success", False)
