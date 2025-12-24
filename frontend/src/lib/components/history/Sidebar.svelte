@@ -60,6 +60,7 @@
   let profileImageVersion = 0;
   let isUploadingProfileImage = false;
   let profileImageError = '';
+  const sidebarLogoSrc = '/images/logo.svg';
   $: profileImageSrc = profileImageUrl ? `${profileImageUrl}?v=${profileImageVersion}` : '';
   const pronounOptions = [
     'he/him',
@@ -205,6 +206,31 @@
         error instanceof Error && error.message
           ? error.message
           : 'Failed to upload profile image.';
+    } finally {
+      isUploadingProfileImage = false;
+    }
+  }
+
+  async function deleteProfileImage() {
+    if (isUploadingProfileImage) return;
+    isUploadingProfileImage = true;
+    profileImageError = '';
+
+    try {
+      const response = await fetch('/api/settings/profile-image', {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete profile image');
+      }
+      profileImageUrl = '';
+      profileImageVersion = Date.now();
+    } catch (error) {
+      console.error('Failed to delete profile image:', error);
+      profileImageError =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to delete profile image.';
     } finally {
       isUploadingProfileImage = false;
     }
@@ -675,6 +701,16 @@
             {#if profileImageError}
               <div class="settings-error">{profileImageError}</div>
             {/if}
+            {#if profileImageSrc}
+              <button
+                type="button"
+                class="settings-avatar-remove"
+                on:click={deleteProfileImage}
+                disabled={isUploadingProfileImage}
+              >
+                Remove photo
+              </button>
+            {/if}
           </div>
           <div class="settings-form settings-grid">
             <label class="settings-label">
@@ -850,9 +886,7 @@
         {#if profileImageSrc}
           <img class="rail-avatar" src={profileImageSrc} alt="Profile" on:error={() => (profileImageUrl = '')} />
         {:else}
-          <div class="rail-avatar rail-avatar-placeholder" aria-hidden="true">
-            <User size={16} />
-          </div>
+          <img class="rail-avatar rail-avatar-logo" src={sidebarLogoSrc} alt="App logo" />
         {/if}
       </button>
     </div>
@@ -1316,6 +1350,20 @@
     display: none;
   }
 
+  .settings-avatar-remove {
+    border: 0;
+    background: transparent;
+    color: var(--color-muted-foreground);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .settings-avatar-remove:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
   .rail-btn-avatar {
     padding: 0.35rem;
   }
@@ -1327,18 +1375,18 @@
     object-fit: cover;
   }
 
-  .rail-avatar-placeholder {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(148, 163, 184, 0.18);
-    color: rgba(71, 85, 105, 0.9);
+  .rail-avatar-logo {
+    padding: 3px;
+    object-fit: contain;
   }
 
-  :global(.dark) .settings-avatar-placeholder,
-  :global(.dark) .rail-avatar-placeholder {
+  :global(.dark) .settings-avatar-placeholder {
     background: rgba(148, 163, 184, 0.26);
     color: rgba(226, 232, 240, 0.9);
+  }
+
+  :global(.dark) .rail-avatar-logo {
+    filter: invert(1);
   }
 
   .settings-autocomplete {

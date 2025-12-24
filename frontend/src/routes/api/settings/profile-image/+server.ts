@@ -93,3 +93,32 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		throw error(500, 'Internal server error');
 	}
 };
+
+export const DELETE: RequestHandler = async ({ request, fetch }) => {
+	try {
+		const authHeader = request.headers.get('authorization');
+		const bearerToken = resolveBearerToken();
+
+		const response = await fetch(`${API_URL}/api/settings/profile-image`, {
+			method: 'DELETE',
+			headers: {
+				Authorization: authHeader || `Bearer ${bearerToken}`
+			}
+		});
+
+		if (!response.ok) {
+			const body = await response.text();
+			return new Response(body, { status: response.status });
+		}
+
+		return new Response(await response.text(), {
+			headers: { 'Content-Type': 'application/json' }
+		});
+	} catch (err) {
+		console.error('Profile image DELETE error:', err);
+		if (err instanceof Error && 'status' in err) {
+			throw err;
+		}
+		throw error(500, 'Internal server error');
+	}
+};

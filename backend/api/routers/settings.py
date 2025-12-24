@@ -217,3 +217,28 @@ async def get_profile_image(
         raise HTTPException(status_code=404, detail="Profile image not found")
 
     return FileResponse(file_path)
+
+
+@router.delete("/profile-image")
+async def delete_profile_image(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    settings = UserSettingsService.get_settings(db, user_id)
+    if not settings or not settings.profile_image_path:
+        raise HTTPException(status_code=404, detail="Profile image not found")
+
+    file_path = Path(settings.profile_image_path)
+    if file_path.exists():
+        try:
+            file_path.unlink()
+        except OSError:
+            raise HTTPException(status_code=500, detail="Failed to delete profile image")
+
+    UserSettingsService.upsert_settings(
+        db,
+        user_id,
+        profile_image_path=None,
+    )
+    return {"success": True}
