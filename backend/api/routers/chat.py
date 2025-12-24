@@ -11,11 +11,18 @@ from api.config import Settings, settings
 from api.services.claude_client import ClaudeClient
 from api.services.user_settings_service import UserSettingsService
 from api.services.skill_catalog_service import SkillCatalogService
-from api.prompts import build_first_message_prompt, build_system_prompt, detect_operating_system
+from api.prompts import (
+    build_first_message_prompt,
+    build_system_prompt,
+    detect_operating_system,
+    build_recent_activity_block,
+)
 from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
 from api.models.conversation import Conversation
+from api.models.note import Note
+from api.models.website import Website
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -54,6 +61,68 @@ def _resolve_enabled_skills(settings_record):
     if not settings_record or settings_record.enabled_skills is None:
         return all_ids
     return [skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids]
+
+
+def _start_of_today(now: datetime) -> datetime:
+    return datetime(now.year, now.month, now.day, tzinfo=now.tzinfo)
+
+
+def _get_recent_activity(db: Session, user_id: str, now: datetime) -> tuple[list[dict], list[dict], list[dict]]:
+    start_of_day = _start_of_today(now)
+
+    notes = (
+        db.query(Note)
+        .filter(Note.last_opened_at >= start_of_day)
+        .order_by(Note.last_opened_at.desc())
+        .all()
+    )
+    websites = (
+        db.query(Website)
+        .filter(Website.last_opened_at >= start_of_day)
+        .order_by(Website.last_opened_at.desc())
+        .all()
+    )
+    conversations = (
+        db.query(Conversation)
+        .filter(
+            Conversation.user_id == user_id,
+            Conversation.is_archived == False,
+            Conversation.updated_at >= start_of_day,
+        )
+        .order_by(Conversation.updated_at.desc())
+        .all()
+    )
+
+    note_items = [
+        {
+            "id": str(note.id),
+            "title": note.title,
+            "last_opened_at": note.last_opened_at.isoformat() if note.last_opened_at else None,
+            "folder": note.metadata_.get("folder") if note.metadata_ else None,
+        }
+        for note in notes
+    ]
+    website_items = [
+        {
+            "id": str(website.id),
+            "title": website.title,
+            "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None,
+            "domain": website.domain,
+            "url": website.url_full or website.url,
+        }
+        for website in websites
+    ]
+    conversation_items = [
+        {
+            "id": str(conversation.id),
+            "title": conversation.title,
+            "last_opened_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+            "message_count": conversation.message_count,
+        }
+        for conversation in conversations
+    ]
+
+    return note_items, website_items, conversation_items
 
 
 
@@ -113,6 +182,14 @@ async def stream_chat(
     location_fallback = settings_record.location if settings_record and settings_record.location else "Unknown"
 
     system_prompt = build_system_prompt(settings_record, location_fallback, now)
+    note_items, website_items, conversation_items = _get_recent_activity(db, user_id, now)
+    recent_activity_block = build_recent_activity_block(
+        note_items,
+        website_items,
+        conversation_items,
+    )
+    if recent_activity_block:
+        system_prompt = f"{system_prompt}\n\n{recent_activity_block}"
     enabled_skills = _resolve_enabled_skills(settings_record)
     if not history:
         first_message_prompt = build_first_message_prompt(settings_record, operating_system, now)

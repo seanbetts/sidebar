@@ -197,6 +197,52 @@ def build_prompt_variables(
     }
 
 
+def build_recent_activity_block(
+    notes: list[dict[str, Any]],
+    websites: list[dict[str, Any]],
+    conversations: list[dict[str, Any]],
+) -> str:
+    lines: list[str] = []
+
+    if notes:
+        lines.append("Notes opened today:")
+        for note in notes:
+            folder = f", folder: {note['folder']}" if note.get("folder") else ""
+            lines.append(
+                f"- {note['title']} (last_opened_at: {note['last_opened_at']}, id: {note['id']}{folder})"
+            )
+
+    if websites:
+        if lines:
+            lines.append("")
+        lines.append("Websites opened today:")
+        for website in websites:
+            domain = f", domain: {website['domain']}" if website.get("domain") else ""
+            url = f", url: {website['url']}" if website.get("url") else ""
+            lines.append(
+                f"- {website['title']} (last_opened_at: {website['last_opened_at']}, id: {website['id']}{domain}{url})"
+            )
+
+    if conversations:
+        if lines:
+            lines.append("")
+        lines.append("Chats active today:")
+        for conversation in conversations:
+            message_count = (
+                f", messages: {conversation['message_count']}"
+                if conversation.get("message_count") is not None
+                else ""
+            )
+            lines.append(
+                f"- {conversation['title']} (last_opened_at: {conversation['last_opened_at']}, id: {conversation['id']}{message_count})"
+            )
+
+    if not lines:
+        return ""
+
+    return "<recent_activity>\n" + "\n".join(lines) + "\n</recent_activity>"
+
+
 def build_system_prompt(settings_record: Any, current_location: str, now: datetime) -> str:
     variables = build_prompt_variables(settings_record, current_location, None, now)
     return resolve_template(SYSTEM_PROMPT_TEMPLATE, variables)
