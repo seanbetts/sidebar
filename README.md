@@ -27,6 +27,20 @@ docker compose up -d
 docker compose down
 ```
 
+## Settings API
+
+The backend exposes per-user settings and profile endpoints:
+
+- `GET /api/settings` — fetch current settings
+- `PATCH /api/settings` — update settings (profile fields, styles, enabled skills)
+- `POST /api/settings/profile-image` — upload avatar (max 2MB)
+- `GET /api/settings/profile-image` — fetch avatar
+- `DELETE /api/settings/profile-image` — remove avatar
+
+Skills catalog for the settings UI:
+
+- `GET /api/skills` — list available skills (filtered to exposed tools)
+
 ## Creating Skills
 
 Use the included skill-creator skill:

@@ -73,6 +73,9 @@ Critique drafts and use Socratic dialogue to surface blind spots.
 
 Any non obvious claim, statistic, or figure must be backed by an authentic published source. Never fabricate citations. If you cannot source it, say you do not know."""
 
+MAX_STYLE_CHARS = 4000
+MAX_PROFILE_FIELD_CHARS = 200
+
 
 def _resolve_default(value: Optional[str], default: str) -> Optional[str]:
     if value is None:
@@ -94,6 +97,20 @@ def _resolve_enabled_skills(settings_record) -> list[str]:
         return all_ids
     enabled = [skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids]
     return enabled
+
+
+def _clean_text_field(value: Optional[str], field_name: str, max_length: int) -> Optional[str]:
+    if value is None:
+        return None
+    trimmed = value.strip()
+    if not trimmed:
+        return None
+    if len(trimmed) > max_length:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_name} exceeds max length ({max_length} characters)",
+        )
+    return trimmed
 
 
 @router.get("", response_model=SettingsResponse)
@@ -133,6 +150,59 @@ async def update_settings(
     _: str = Depends(verify_bearer_token),
 ):
     updates = payload.dict(exclude_unset=True)
+    if "communication_style" in updates:
+        updates["communication_style"] = _clean_text_field(
+            updates.get("communication_style"),
+            "communication_style",
+            MAX_STYLE_CHARS,
+        )
+    if "working_relationship" in updates:
+        updates["working_relationship"] = _clean_text_field(
+            updates.get("working_relationship"),
+            "working_relationship",
+            MAX_STYLE_CHARS,
+        )
+    if "name" in updates:
+        updates["name"] = _clean_text_field(updates.get("name"), "name", MAX_PROFILE_FIELD_CHARS)
+    if "job_title" in updates:
+        updates["job_title"] = _clean_text_field(
+            updates.get("job_title"),
+            "job_title",
+            MAX_PROFILE_FIELD_CHARS,
+        )
+    if "employer" in updates:
+        updates["employer"] = _clean_text_field(
+            updates.get("employer"),
+            "employer",
+            MAX_PROFILE_FIELD_CHARS,
+        )
+    if "gender" in updates:
+        updates["gender"] = _clean_text_field(
+            updates.get("gender"),
+            "gender",
+            MAX_PROFILE_FIELD_CHARS,
+        )
+    if "pronouns" in updates:
+        updates["pronouns"] = _clean_text_field(
+            updates.get("pronouns"),
+            "pronouns",
+            MAX_PROFILE_FIELD_CHARS,
+        )
+    if "location" in updates:
+        updates["location"] = _clean_text_field(
+            updates.get("location"),
+            "location",
+            MAX_PROFILE_FIELD_CHARS,
+        )
+    if "enabled_skills" in updates and updates["enabled_skills"] is not None:
+        catalog = SkillCatalogService.list_skills(settings.skills_dir)
+        allowed = {skill["id"] for skill in catalog}
+        invalid = [skill for skill in updates["enabled_skills"] if skill not in allowed]
+        if invalid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid skills: {', '.join(invalid)}",
+            )
     settings = UserSettingsService.upsert_settings(
         db,
         user_id,

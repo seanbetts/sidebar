@@ -69,7 +69,7 @@ def test_build_first_message_prompt_includes_profile() -> None:
     assert "I am male." in prompt
     assert "My pronouns are he/him." in prompt
     assert "I am 25 years old." in prompt
-    assert "I use a macOS." in prompt
+    assert "I use macOS." in prompt
     assert "I am the Engineer at Acme." in prompt
 
 

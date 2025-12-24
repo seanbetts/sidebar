@@ -24,6 +24,9 @@ from api.services.user_settings_service import UserSettingsService
 class PromptContextService:
     """Build prompt context blocks from DB and open UI state."""
 
+    MAX_SYSTEM_PROMPT_CHARS = 40000
+    MAX_FIRST_MESSAGE_CHARS = 8000
+
     @staticmethod
     def build_prompts(
         db: Session,
@@ -66,11 +69,19 @@ class PromptContextService:
                 recent_activity_block,
             ]
         )
+        system_prompt = PromptContextService._truncate_text(
+            system_prompt,
+            PromptContextService.MAX_SYSTEM_PROMPT_CHARS,
+        )
 
         first_message_prompt = build_first_message_prompt(
             settings_record,
             operating_system,
             timestamp,
+        )
+        first_message_prompt = PromptContextService._truncate_text(
+            first_message_prompt,
+            PromptContextService.MAX_FIRST_MESSAGE_CHARS,
         )
 
         return system_prompt, first_message_prompt
@@ -78,6 +89,12 @@ class PromptContextService:
     @staticmethod
     def _start_of_today(now: datetime) -> datetime:
         return datetime(now.year, now.month, now.day, tzinfo=now.tzinfo)
+
+    @staticmethod
+    def _truncate_text(value: str, max_chars: int) -> str:
+        if len(value) <= max_chars:
+            return value
+        return value[:max_chars]
 
     @staticmethod
     def _get_recent_activity(
