@@ -4,6 +4,7 @@ from api.prompts import (
     resolve_template,
     build_system_prompt,
     build_first_message_prompt,
+    build_recent_activity_block,
 )
 
 
@@ -68,3 +69,43 @@ def test_build_first_message_prompt_includes_profile() -> None:
     assert "I am 25 years old." in prompt
     assert "I use a macOS." in prompt
     assert "I am the Engineer at Acme." in prompt
+
+
+def test_build_recent_activity_block() -> None:
+    notes = [
+        {
+            "id": "note-1",
+            "title": "Daily log",
+            "last_opened_at": "2025-01-02T09:00:00Z",
+            "folder": "work",
+        }
+    ]
+    websites = [
+        {
+            "id": "web-1",
+            "title": "Docs",
+            "last_opened_at": "2025-01-02T10:00:00Z",
+            "domain": "example.com",
+            "url": "https://example.com/docs",
+        }
+    ]
+    conversations = [
+        {
+            "id": "chat-1",
+            "title": "Project X",
+            "last_opened_at": "2025-01-02T11:00:00Z",
+            "message_count": 4,
+        }
+    ]
+    block = build_recent_activity_block(notes, websites, conversations)
+    assert "<recent_activity>" in block
+    assert "Notes opened today:" in block
+    assert "Websites opened today:" in block
+    assert "Chats active today:" in block
+    assert "Daily log" in block
+    assert "folder: work" in block
+    assert "Docs" in block
+    assert "domain: example.com" in block
+    assert "url: https://example.com/docs" in block
+    assert "Project X" in block
+    assert "messages: 4" in block
