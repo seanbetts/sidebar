@@ -11,6 +11,7 @@ import argparse
 import os
 import re
 import requests
+import urllib3
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Tuple
@@ -126,6 +127,8 @@ def get_markdown_content(url: str, api_key: str) -> str:
     ca_bundle = os.environ.get("JINA_CA_BUNDLE")
     if ca_bundle:
         verify_setting = ca_bundle
+    if verify_setting is False:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     jina_url = f"https://r.jina.ai/{url}"
 
@@ -160,7 +163,7 @@ def save_url_database(url: str) -> Dict[str, Any]:
 
     db = SessionLocal()
     try:
-        website = WebsitesService.save_website(
+        website = WebsitesService.upsert_website(
             db,
             url=url,
             title=title,
