@@ -13,7 +13,7 @@
 	import { conversationListStore } from '$lib/stores/conversations';
 	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
-	import { MessageSquare } from 'lucide-svelte';
+	import { MessageSquare, Plus, X } from 'lucide-svelte';
 
 	let sseClient = new SSEClient();
 
@@ -150,6 +150,14 @@
 		const match = $conversationListStore.conversations.find((c) => c.id === conversationId);
 		return match?.title || 'New Chat';
 	})();
+
+	async function handleNewChat() {
+		await chatStore.startNewConversation();
+	}
+
+	function handleCloseChat() {
+		chatStore.reset();
+	}
 </script>
 
 <div class="flex flex-col h-full min-h-0 max-w-6xl mx-auto bg-background">
@@ -157,6 +165,26 @@
 		<div class="header-left">
 			<MessageSquare size={20} />
 			<h2 class="chat-title">{conversationTitle}</h2>
+		</div>
+		<div class="header-right">
+			<Button
+				size="icon"
+				variant="ghost"
+				onclick={handleNewChat}
+				aria-label="New chat"
+				title="New chat"
+			>
+				<Plus size={16} />
+			</Button>
+			<Button
+				size="icon"
+				variant="ghost"
+				onclick={handleCloseChat}
+				aria-label="Close chat"
+				title="Close chat"
+			>
+				<X size={16} />
+			</Button>
 		</div>
 	</div>
 	<!-- Messages -->
@@ -171,7 +199,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1rem 1.5rem;
+		padding: 0.5rem 1.5rem;
 		min-height: 57px;
 		border-bottom: 1px solid var(--color-border);
 		background-color: var(--color-card);
@@ -183,9 +211,19 @@
 		gap: 0.6rem;
 	}
 
+	.header-right {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
 	.chat-title {
 		font-size: 1rem;
 		font-weight: 600;
 		color: var(--color-foreground);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 300px;
 	}
 </style>

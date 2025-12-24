@@ -40,12 +40,12 @@
 		</div>
 	</div>
 	<div class="actions">
-		<ScratchpadPopover />
-		<ModeToggle />
 		<div class="datetime">
 			<span class="date">{currentDate}</span>
 			<span class="time">{currentTime}</span>
 		</div>
+		<ScratchpadPopover />
+		<ModeToggle />
 	</div>
 </header>
 
@@ -117,7 +117,7 @@
 		flex-direction: column;
 		align-items: flex-end;
 		gap: 0.1rem;
-		margin-left: 1.25rem;
+		margin-right: 1.25rem;
 	}
 
 	.date {

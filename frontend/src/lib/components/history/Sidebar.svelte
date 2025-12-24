@@ -60,7 +60,6 @@
   let profileImageVersion = 0;
   let isUploadingProfileImage = false;
   let profileImageError = '';
-  const defaultAvatarSrc = '/images/logo.svg';
   $: profileImageSrc = profileImageUrl ? `${profileImageUrl}?v=${profileImageVersion}` : '';
   const pronounOptions = [
     'he/him',
@@ -186,11 +185,13 @@
     profileImageError = '';
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
       const response = await fetch('/api/settings/profile-image', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'X-Filename': file.name
+        },
+        body: file
       });
       if (!response.ok) {
         throw new Error('Failed to upload profile image');
@@ -653,7 +654,9 @@
               {#if profileImageSrc}
                 <img src={profileImageSrc} alt="Profile" on:error={() => (profileImageUrl = '')} />
               {:else}
-                <img class="logo" src={defaultAvatarSrc} alt="Logo" />
+                <div class="settings-avatar-placeholder" aria-hidden="true">
+                  <User size={20} />
+                </div>
               {/if}
             </div>
             <label class="settings-avatar-upload">
@@ -847,7 +850,9 @@
         {#if profileImageSrc}
           <img class="rail-avatar" src={profileImageSrc} alt="Profile" on:error={() => (profileImageUrl = '')} />
         {:else}
-          <img class="rail-avatar logo" src={defaultAvatarSrc} alt="Logo" />
+          <div class="rail-avatar rail-avatar-placeholder" aria-hidden="true">
+            <User size={16} />
+          </div>
         {/if}
       </button>
     </div>
@@ -1282,9 +1287,15 @@
     object-fit: cover;
   }
 
-  .settings-avatar-preview img.logo {
-    padding: 0.75rem;
-    object-fit: contain;
+  .settings-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(148, 163, 184, 0.18);
+    color: rgba(71, 85, 105, 0.9);
   }
 
   .settings-avatar-upload {
@@ -1316,14 +1327,18 @@
     object-fit: cover;
   }
 
-  .rail-avatar.logo {
-    padding: 3px;
-    object-fit: contain;
+  .rail-avatar-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(148, 163, 184, 0.18);
+    color: rgba(71, 85, 105, 0.9);
   }
 
-  :global(.dark) .settings-avatar-preview img.logo,
-  :global(.dark) .rail-avatar.logo {
-    filter: invert(1);
+  :global(.dark) .settings-avatar-placeholder,
+  :global(.dark) .rail-avatar-placeholder {
+    background: rgba(148, 163, 184, 0.26);
+    color: rgba(226, 232, 240, 0.9);
   }
 
   .settings-autocomplete {

@@ -3,7 +3,7 @@ from datetime import date
 from typing import Optional
 
 from pathlib import Path
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -147,20 +147,36 @@ async def update_settings(
 
 @router.post("/profile-image")
 async def upload_profile_image(
-    file: UploadFile = File(...),
+    request: Request,
+    file: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
+    contents: bytes
+    content_type = ""
+    filename = request.headers.get("x-filename") or "profile-image"
+
+    if file is not None:
+        content_type = file.content_type or ""
+        filename = file.filename or filename
+        contents = await file.read()
+    else:
+        content_type = request.headers.get("content-type") or ""
+        if not content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="Invalid image type")
+        contents = await request.body()
+
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty image payload")
+
+    if not content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid image type")
 
-    contents = await file.read()
     if len(contents) > 2 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Image too large (max 2MB)")
 
     extension = "png"
-    content_type = file.content_type or ""
     if content_type in {"image/jpeg", "image/jpg"}:
         extension = "jpg"
     elif content_type == "image/png":
@@ -169,8 +185,8 @@ async def upload_profile_image(
         extension = "webp"
     elif content_type == "image/gif":
         extension = "gif"
-    elif file.filename and "." in file.filename:
-        extension = file.filename.rsplit(".", 1)[-1].lower()
+    elif filename and "." in filename:
+        extension = filename.rsplit(".", 1)[-1].lower()
 
     base_dir = Path("/workspace/profile-images")
     base_dir.mkdir(parents=True, exist_ok=True)

@@ -78,6 +78,7 @@ services:
     environment:
       - API_URL=http://skills-api:8001
       - BEARER_TOKEN=${BEARER_TOKEN}
+      - BODY_SIZE_LIMIT=2M
     networks:
       - sidebar-network
     depends_on:

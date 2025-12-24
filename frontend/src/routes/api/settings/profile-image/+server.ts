@@ -48,17 +48,34 @@ export const GET: RequestHandler = async ({ request, fetch }) => {
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
 	try {
-		const formData = await request.formData();
+		const contentType = request.headers.get('content-type') || '';
 		const authHeader = request.headers.get('authorization');
 		const bearerToken = resolveBearerToken();
+		const filename = request.headers.get('x-filename') || 'profile-image';
 
-		const response = await fetch(`${API_URL}/api/settings/profile-image`, {
-			method: 'POST',
-			headers: {
-				Authorization: authHeader || `Bearer ${bearerToken}`
-			},
-			body: formData
-		});
+		let response: Response;
+		if (contentType.startsWith('image/') || contentType === 'application/octet-stream') {
+			const buffer = await request.arrayBuffer();
+			response = await fetch(`${API_URL}/api/settings/profile-image`, {
+				method: 'POST',
+				headers: {
+					Authorization: authHeader || `Bearer ${bearerToken}`,
+					'Content-Type': contentType || 'application/octet-stream',
+					'X-Filename': filename
+				},
+				body: buffer
+			});
+		} else {
+			const formData = await request.formData();
+			response = await fetch(`${API_URL}/api/settings/profile-image`, {
+				method: 'POST',
+				headers: {
+					Authorization: authHeader || `Bearer ${bearerToken}`,
+					'X-Filename': filename
+				},
+				body: formData
+			});
+		}
 
 		if (!response.ok) {
 			const body = await response.text();
