@@ -89,10 +89,10 @@ def _profile_image_url(settings_record) -> Optional[str]:
 
 def _resolve_enabled_skills(settings_record) -> list[str]:
     catalog = SkillCatalogService.list_skills(settings.skills_dir)
-    all_names = [skill["name"] for skill in catalog]
+    all_ids = [skill["id"] for skill in catalog]
     if not settings_record or settings_record.enabled_skills is None:
-        return all_names
-    enabled = [name for name in settings_record.enabled_skills if name in all_names]
+        return all_ids
+    enabled = [skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids]
     return enabled
 
 

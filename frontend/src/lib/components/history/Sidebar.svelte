@@ -47,7 +47,7 @@
   let isSavingSettings = false;
   let settingsLoaded = false;
   let settingsError = '';
-  let skills: Array<{ name: string; description: string; category?: string }> = [];
+  let skills: Array<{ id: string; name: string; description: string; category?: string }> = [];
   let enabledSkills: string[] = [];
   let initialEnabledSkills: string[] = [];
   let isLoadingSkills = false;
@@ -112,13 +112,7 @@
     }
   }
 
-  function firstSentence(text: string) {
-    if (!text) return '';
-    const match = text.match(/^[^.!?]+[.!?]/);
-    return match ? match[0].trim() : text.trim();
-  }
-
-  function groupSkills(list: Array<{ name: string; description: string; category?: string }>) {
+  function groupSkills(list: Array<{ id: string; name: string; description: string; category?: string }>) {
     const groups = new Map<string, typeof list>();
     list.forEach((skill) => {
       const category = skill.category || 'Other';
@@ -916,15 +910,15 @@
                           <label class="skill-toggle">
                             <input
                               type="checkbox"
-                              checked={enabledSkills.includes(skill.name)}
+                              checked={enabledSkills.includes(skill.id)}
                               on:change={(event) =>
-                                toggleSkill(skill.name, (event.currentTarget as HTMLInputElement).checked)
+                                toggleSkill(skill.id, (event.currentTarget as HTMLInputElement).checked)
                               }
                             />
                             <span class="skill-switch" aria-hidden="true"></span>
                           </label>
                         </div>
-                        <div class="skill-description">{firstSentence(skill.description)}</div>
+                        <div class="skill-description">{skill.description}</div>
                       </div>
                     {/each}
                   </div>

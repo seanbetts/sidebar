@@ -50,10 +50,10 @@ def _build_history(messages, user_message_id, latest_message):
 
 def _resolve_enabled_skills(settings_record):
     catalog = SkillCatalogService.list_skills(settings.skills_dir)
-    all_names = [skill["name"] for skill in catalog]
+    all_ids = [skill["id"] for skill in catalog]
     if not settings_record or settings_record.enabled_skills is None:
-        return all_names
-    return [name for name in settings_record.enabled_skills if name in all_names]
+        return all_ids
+    return [skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids]
 
 
 

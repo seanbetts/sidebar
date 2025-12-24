@@ -11,6 +11,7 @@ router = APIRouter(prefix="/skills", tags=["skills"])
 
 
 class SkillItem(BaseModel):
+    id: str
     name: str
     description: str
     category: str

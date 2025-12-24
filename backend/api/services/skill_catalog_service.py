@@ -6,6 +6,8 @@ from typing import Dict, List
 
 import yaml
 
+from api.services.tool_mapper import SKILL_DISPLAY
+
 
 class SkillCatalogService:
     """Load skill metadata from SKILL.md frontmatter."""
@@ -24,11 +26,14 @@ class SkillCatalogService:
                 continue
 
             metadata = SkillCatalogService._read_frontmatter(skill_md)
-            name = (metadata.get("name") or skill_path.name).strip()
-            description = (metadata.get("description") or "").strip()
-            category = category_map.get(name, "Other")
+            skill_id = skill_path.name
+            display = SKILL_DISPLAY.get(skill_id, {})
+            name = (display.get("name") or metadata.get("name") or skill_id).strip()
+            description = (display.get("description") or metadata.get("description") or "").strip()
+            category = category_map.get(skill_id, "Other")
             skills.append(
                 {
+                    "id": skill_id,
                     "name": name,
                     "description": description,
                     "category": category,
