@@ -1,6 +1,7 @@
 """Prompt templates and helpers for chat context injection."""
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -29,6 +30,29 @@ Help with brainstorming questions, simplifying complex topics, and polishing pro
 Critique drafts and use Socratic dialogue to surface blind spots.
 
 Any non obvious claim, statistic, or figure must be backed by an authentic published source. Never fabricate citations. If you cannot source it, say you do not know."""
+
+SUPPORTED_VARIABLES = {
+    "owner",
+    "name",
+    "currentDate",
+    "currentTime",
+    "currentLocation",
+    "timezone",
+    "gender",
+    "pronouns",
+    "age",
+    "jobTitle",
+    "employer",
+    "occupation",
+    "operatingSystem",
+    "current_date",
+    "current_time",
+    "current_location",
+    "operating_system",
+    "conversation_context",
+    "communication_style",
+    "working_relationship",
+}
 
 SYSTEM_PROMPT_TEMPLATE = """<message_context>
 
@@ -89,6 +113,18 @@ FIRST_MESSAGE_TEMPLATE = """<conversation_context>
 {working_relationship}
 </working_relationship>"""
 
+_TOKEN_PATTERN = re.compile(r"\{([a-zA-Z0-9_]+)\}")
+
+
+def resolve_template(template: str, variables: dict[str, Any], keep_unknown: bool = True) -> str:
+    def replace(match: re.Match[str]) -> str:
+        key = match.group(1)
+        if key in variables and variables[key] is not None:
+            return str(variables[key])
+        return match.group(0) if keep_unknown else ""
+
+    return _TOKEN_PATTERN.sub(replace, template)
+
 
 def resolve_default(value: str | None, default: str) -> str:
     if value is None:
@@ -122,16 +158,48 @@ def calculate_age(date_of_birth: date | None, today: date) -> int | None:
     return years if birthday_passed else years - 1
 
 
-def build_system_prompt(settings_record: Any, current_location: str, now: datetime) -> str:
-    owner = settings_record.name.strip() if settings_record and settings_record.name else "the user"
+def build_prompt_variables(
+    settings_record: Any,
+    current_location: str,
+    operating_system: str | None,
+    now: datetime,
+) -> dict[str, Any]:
+    name = settings_record.name.strip() if settings_record and settings_record.name else None
+    owner = name or "the user"
+    gender = settings_record.gender.strip() if settings_record and settings_record.gender else None
+    pronouns = settings_record.pronouns.strip() if settings_record and settings_record.pronouns else None
+    job_title = settings_record.job_title.strip() if settings_record and settings_record.job_title else None
+    employer = settings_record.employer.strip() if settings_record and settings_record.employer else None
+    date_of_birth = settings_record.date_of_birth if settings_record else None
+    age = calculate_age(date_of_birth, now.date())
+    timezone_label = now.tzname() or "UTC"
     current_date = now.strftime("%Y-%m-%d")
-    current_time = now.strftime("%H:%M UTC")
-    return SYSTEM_PROMPT_TEMPLATE.format(
-        owner=owner,
-        current_date=current_date,
-        current_time=current_time,
-        current_location=current_location,
-    )
+    current_time = f"{now.strftime('%H:%M')} {timezone_label}"
+
+    return {
+        "owner": owner,
+        "name": name or owner,
+        "currentDate": current_date,
+        "currentTime": current_time,
+        "currentLocation": current_location,
+        "timezone": timezone_label,
+        "gender": gender,
+        "pronouns": pronouns,
+        "age": age,
+        "jobTitle": job_title,
+        "employer": employer,
+        "occupation": job_title,
+        "operatingSystem": operating_system,
+        "current_date": current_date,
+        "current_time": current_time,
+        "current_location": current_location,
+        "operating_system": operating_system,
+    }
+
+
+def build_system_prompt(settings_record: Any, current_location: str, now: datetime) -> str:
+    variables = build_prompt_variables(settings_record, current_location, None, now)
+    return resolve_template(SYSTEM_PROMPT_TEMPLATE, variables)
 
 
 def build_first_message_prompt(
@@ -139,13 +207,6 @@ def build_first_message_prompt(
     operating_system: str | None,
     now: datetime,
 ) -> str:
-    today = now.date()
-    name = settings_record.name.strip() if settings_record and settings_record.name else None
-    gender = settings_record.gender.strip() if settings_record and settings_record.gender else None
-    pronouns = settings_record.pronouns.strip() if settings_record and settings_record.pronouns else None
-    job_title = settings_record.job_title.strip() if settings_record and settings_record.job_title else None
-    employer = settings_record.employer.strip() if settings_record and settings_record.employer else None
-    date_of_birth = settings_record.date_of_birth if settings_record else None
     communication_style = resolve_default(
         settings_record.communication_style if settings_record else None,
         DEFAULT_COMMUNICATION_STYLE,
@@ -154,7 +215,13 @@ def build_first_message_prompt(
         settings_record.working_relationship if settings_record else None,
         DEFAULT_WORKING_RELATIONSHIP,
     )
-    age = calculate_age(date_of_birth, today)
+    variables = build_prompt_variables(settings_record, "", operating_system, now)
+    age = variables.get("age")
+    name = variables.get("name")
+    gender = variables.get("gender")
+    pronouns = variables.get("pronouns")
+    job_title = variables.get("jobTitle")
+    employer = variables.get("employer")
 
     context_lines = []
     intro_parts = []
@@ -176,8 +243,11 @@ def build_first_message_prompt(
         context_lines.append(f"I am {job_title}.")
 
     conversation_context = "\n\n".join(context_lines) if context_lines else "I am the user."
-    return FIRST_MESSAGE_TEMPLATE.format(
-        conversation_context=conversation_context,
-        communication_style=communication_style,
-        working_relationship=working_relationship,
+    variables.update(
+        {
+            "conversation_context": conversation_context,
+            "communication_style": communication_style,
+            "working_relationship": working_relationship,
+        }
     )
+    return resolve_template(FIRST_MESSAGE_TEMPLATE, variables)
