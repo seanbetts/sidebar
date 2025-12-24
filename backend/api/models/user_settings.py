@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, Date, DateTime, Text
+from sqlalchemy.dialects.postgresql import JSONB
 
 from api.db.base import Base
 
@@ -24,6 +25,7 @@ class UserSettings(Base):
     pronouns = Column(Text, nullable=True)
     location = Column(Text, nullable=True)
     profile_image_path = Column(Text, nullable=True)
+    enabled_skills = Column(JSONB, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

@@ -12,6 +12,8 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.services.user_settings_service import UserSettingsService
+from api.services.skill_catalog_service import SkillCatalogService
+from api.config import settings
 
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -29,6 +31,7 @@ class SettingsResponse(BaseModel):
     pronouns: Optional[str] = None
     location: Optional[str] = None
     profile_image_url: Optional[str] = None
+    enabled_skills: list[str] = []
 
 
 class SettingsUpdate(BaseModel):
@@ -41,6 +44,7 @@ class SettingsUpdate(BaseModel):
     gender: Optional[str] = None
     pronouns: Optional[str] = None
     location: Optional[str] = None
+    enabled_skills: Optional[list[str]] = None
 
 
 DEFAULT_COMMUNICATION_STYLE = """Use UK English.
@@ -83,6 +87,15 @@ def _profile_image_url(settings_record) -> Optional[str]:
     return None
 
 
+def _resolve_enabled_skills(settings_record) -> list[str]:
+    catalog = SkillCatalogService.list_skills(settings.skills_dir)
+    all_names = [skill["name"] for skill in catalog]
+    if not settings_record or settings_record.enabled_skills is None:
+        return all_names
+    enabled = [name for name in settings_record.enabled_skills if name in all_names]
+    return enabled
+
+
 @router.get("", response_model=SettingsResponse)
 async def get_settings(
     db: Session = Depends(get_db),
@@ -108,6 +121,7 @@ async def get_settings(
         pronouns=settings.pronouns if settings else None,
         location=settings.location if settings else None,
         profile_image_url=_profile_image_url(settings),
+        enabled_skills=_resolve_enabled_skills(settings),
     )
 
 
@@ -142,6 +156,7 @@ async def update_settings(
         pronouns=settings.pronouns,
         location=settings.location,
         profile_image_url=_profile_image_url(settings),
+        enabled_skills=_resolve_enabled_skills(settings),
     )
 
 

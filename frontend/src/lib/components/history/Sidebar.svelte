@@ -47,6 +47,11 @@
   let isSavingSettings = false;
   let settingsLoaded = false;
   let settingsError = '';
+  let skills: Array<{ name: string; description: string; category?: string }> = [];
+  let enabledSkills: string[] = [];
+  let initialEnabledSkills: string[] = [];
+  let isLoadingSkills = false;
+  let skillsError = '';
   let locationSuggestions: Array<{ description: string; place_id: string }> = [];
   let isLoadingLocations = false;
   let locationLookupError = '';
@@ -82,7 +87,48 @@
   onMount(() => {
     conversationListStore.load();
     loadSettings(true);
+    loadSkills();
   });
+
+  async function loadSkills() {
+    if (isLoadingSkills) return;
+    isLoadingSkills = true;
+    skillsError = '';
+
+    try {
+      const response = await fetch('/api/skills');
+      if (!response.ok) {
+        throw new Error('Failed to load skills');
+      }
+      const data = await response.json();
+      skills = Array.isArray(data?.skills) ? data.skills : [];
+    } catch (error) {
+      skillsError =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to load skills.';
+    } finally {
+      isLoadingSkills = false;
+    }
+  }
+
+  function firstSentence(text: string) {
+    if (!text) return '';
+    const match = text.match(/^[^.!?]+[.!?]/);
+    return match ? match[0].trim() : text.trim();
+  }
+
+  function groupSkills(list: Array<{ name: string; description: string; category?: string }>) {
+    const groups = new Map<string, typeof list>();
+    list.forEach((skill) => {
+      const category = skill.category || 'Other';
+      if (!groups.has(category)) {
+        groups.set(category, []);
+      }
+      groups.get(category)?.push(skill);
+    });
+    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }
 
   async function loadSettings(force = false) {
     if (isLoadingSettings || (settingsLoaded && !force)) return;
@@ -105,6 +151,7 @@
       pronouns = data?.pronouns ?? '';
       location = data?.location ?? '';
       profileImageUrl = data?.profile_image_url ?? '';
+      enabledSkills = Array.isArray(data?.enabled_skills) ? data.enabled_skills : [];
       initialCommunicationStyle = communicationStyle;
       initialWorkingRelationship = workingRelationship;
       initialName = name;
@@ -114,6 +161,7 @@
       initialGender = gender;
       initialPronouns = pronouns;
       initialLocation = location;
+      initialEnabledSkills = [...enabledSkills];
       settingsLoaded = true;
     } catch (error) {
       settingsError =
@@ -142,10 +190,11 @@
           employer,
           date_of_birth: dateOfBirth || null,
           gender,
-          pronouns,
-          location
-        })
-      });
+        pronouns,
+        location,
+        enabled_skills: enabledSkills
+      })
+    });
 
       if (!response.ok) {
         throw new Error('Failed to save settings');
@@ -161,6 +210,7 @@
       gender = data?.gender ?? '';
       pronouns = data?.pronouns ?? '';
       location = data?.location ?? '';
+      enabledSkills = Array.isArray(data?.enabled_skills) ? data.enabled_skills : enabledSkills;
       initialCommunicationStyle = communicationStyle;
       initialWorkingRelationship = workingRelationship;
       initialName = name;
@@ -170,6 +220,7 @@
       initialGender = gender;
       initialPronouns = pronouns;
       initialLocation = location;
+      initialEnabledSkills = [...enabledSkills];
     } catch (error) {
       settingsError =
         error instanceof Error && error.message
@@ -254,7 +305,16 @@
     gender = initialGender;
     pronouns = initialPronouns;
     location = initialLocation;
+    enabledSkills = [...initialEnabledSkills];
     settingsError = '';
+  }
+
+  function toggleSkill(name: string, enabled: boolean) {
+    if (enabled) {
+      enabledSkills = [...new Set([...enabledSkills, name])];
+    } else {
+      enabledSkills = enabledSkills.filter((skill) => skill !== name);
+    }
   }
 
   async function handleNewChat() {
@@ -380,7 +440,12 @@
       dateOfBirth !== initialDateOfBirth ||
       gender !== initialGender ||
       pronouns !== initialPronouns ||
-      location !== initialLocation);
+      location !== initialLocation ||
+      normalizeSkillList(enabledSkills) !== normalizeSkillList(initialEnabledSkills));
+
+  function normalizeSkillList(list: string[]) {
+    return [...new Set(list)].sort().join('|');
+  }
 
   $: if (settingsLoaded && isSettingsOpen && settingsDirty) {
     scheduleAutosave();
@@ -829,6 +894,44 @@
         {:else}
           <h3>Skills</h3>
           <p>Manage installed skills and permissions here.</p>
+          <div class="skills-panel">
+            {#if isLoadingSkills}
+              <div class="settings-meta">
+                <Loader2 size={16} class="spin" />
+                Loading skills...
+              </div>
+            {:else if skillsError}
+              <div class="settings-error">{skillsError}</div>
+            {:else if skills.length === 0}
+              <div class="settings-meta">No skills found.</div>
+            {:else}
+              {#each groupSkills(skills) as [category, categorySkills]}
+                <div class="skills-category">
+                  <div class="skills-category-title">{category}</div>
+                  <div class="skills-grid">
+                    {#each categorySkills as skill}
+                      <div class="skill-row">
+                        <div class="skill-row-header">
+                          <div class="skill-name">{skill.name}</div>
+                          <label class="skill-toggle">
+                            <input
+                              type="checkbox"
+                              checked={enabledSkills.includes(skill.name)}
+                              on:change={(event) =>
+                                toggleSkill(skill.name, (event.currentTarget as HTMLInputElement).checked)
+                              }
+                            />
+                            <span class="skill-switch" aria-hidden="true"></span>
+                          </label>
+                        </div>
+                        <div class="skill-description">{firstSentence(skill.description)}</div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            {/if}
+          </div>
         {/if}
       </div>
     </div>
@@ -1393,6 +1496,118 @@
     position: relative;
   }
 
+  .skills-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-top: 1rem;
+    max-height: 56vh;
+    overflow: auto;
+    padding-right: 0.25rem;
+  }
+
+  .skills-category {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .skills-category-title {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted-foreground);
+  }
+
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+
+  .skill-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-card);
+  }
+
+  .skill-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .skill-name {
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .skill-description {
+    font-size: 0.85rem;
+    color: var(--color-muted-foreground);
+    line-height: 1.4;
+  }
+
+  @media (max-width: 1100px) {
+    .skills-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 700px) {
+    .skills-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .skill-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .skill-toggle input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .skill-switch {
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.35);
+    position: relative;
+    transition: background 0.2s ease;
+  }
+
+  .skill-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
+
+  .skill-toggle input:checked + .skill-switch {
+    background: rgba(37, 99, 235, 0.9);
+  }
+
+  .skill-toggle input:checked + .skill-switch::after {
+    transform: translateX(18px);
+  }
+
   .settings-suggestions {
     position: absolute;
     z-index: 40;
@@ -1450,8 +1665,10 @@
   .settings-dialog {
     max-width: 1200px;
     width: min(96vw, 1200px);
+    height: min(85vh, 680px);
     max-height: min(85vh, 680px);
-    overflow: auto;
+    min-height: min(85vh, 680px);
+    overflow: hidden;
     display: flex;
     flex-direction: column;
   }
@@ -1463,7 +1680,8 @@
 
   .settings-layout {
     flex: 1;
-    overflow: visible;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .settings-nav {
@@ -1471,7 +1689,8 @@
   }
 
   .settings-content {
-    overflow: visible;
+    height: 100%;
+    overflow: auto;
     padding-right: 0.5rem;
   }
 

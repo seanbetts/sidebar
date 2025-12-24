@@ -35,6 +35,7 @@ class UserSettingsService:
         pronouns: Any = UNSET,
         location: Any = UNSET,
         profile_image_path: Any = UNSET,
+        enabled_skills: Any = UNSET,
     ) -> UserSettings:
         now = datetime.now(timezone.utc)
         settings = UserSettingsService.get_settings(db, user_id)
@@ -63,6 +64,8 @@ class UserSettingsService:
                 settings.location = location
             if profile_image_path is not UserSettingsService.UNSET:
                 settings.profile_image_path = profile_image_path
+            if enabled_skills is not UserSettingsService.UNSET:
+                settings.enabled_skills = enabled_skills
             settings.updated_at = now
         else:
             settings = UserSettings(
@@ -79,6 +82,7 @@ class UserSettingsService:
                 pronouns=None if pronouns is UserSettingsService.UNSET else pronouns,
                 location=None if location is UserSettingsService.UNSET else location,
                 profile_image_path=None if profile_image_path is UserSettingsService.UNSET else profile_image_path,
+                enabled_skills=None if enabled_skills is UserSettingsService.UNSET else enabled_skills,
                 created_at=now,
                 updated_at=now,
             )

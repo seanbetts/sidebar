@@ -35,10 +35,9 @@ class SkillExecutor:
         # Concurrency control
         self._semaphore = asyncio.Semaphore(settings.skill_max_concurrent)
 
-        # Whitelist of allowed skills (add as needed)
+        # Whitelist of allowed skills (installed skill directories)
         self.allowed_skills = {
-            "fs", "notes", "web-save", "youtube-download",
-            "youtube-transcribe", "audio-transcribe"
+            path.name for path in self.skills_dir.iterdir() if path.is_dir()
         }
 
     def _validate_script_path(self, skill_name: str, script_name: str) -> Path:

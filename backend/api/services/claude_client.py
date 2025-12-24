@@ -35,7 +35,8 @@ class ClaudeClient:
         self,
         message: str,
         conversation_history: List[Dict[str, Any]] = None,
-        system_prompt: str | None = None
+        system_prompt: str | None = None,
+        allowed_skills: List[str] | None = None
     ) -> AsyncIterator[Dict[str, Any]]:
         """
         Stream chat with tool execution and multi-turn conversation.
@@ -52,7 +53,7 @@ class ClaudeClient:
         messages.append({"role": "user", "content": message})
 
         # Get Claude tools from mapper
-        tools = self.tool_mapper.get_claude_tools()
+        tools = self.tool_mapper.get_claude_tools(allowed_skills)
 
         # Allow up to 5 tool use rounds to prevent infinite loops
         max_rounds = 5
@@ -158,7 +159,8 @@ class ClaudeClient:
                                 # Execute tool
                                 result = await self.tool_mapper.execute_tool(
                                     tool_use["name"],
-                                    tool_use["input"]
+                                    tool_use["input"],
+                                    allowed_skills=allowed_skills
                                 )
 
                                 # Return result

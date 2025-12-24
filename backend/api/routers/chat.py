@@ -10,6 +10,7 @@ from google.genai import types
 from api.config import Settings, settings
 from api.services.claude_client import ClaudeClient
 from api.services.user_settings_service import UserSettingsService
+from api.services.skill_catalog_service import SkillCatalogService
 from api.prompts import build_first_message_prompt, build_system_prompt, detect_operating_system
 from api.auth import verify_bearer_token
 from api.db.session import get_db
@@ -45,6 +46,14 @@ def _build_history(messages, user_message_id, latest_message):
             history = history[:-1]
 
     return history
+
+
+def _resolve_enabled_skills(settings_record):
+    catalog = SkillCatalogService.list_skills(settings.skills_dir)
+    all_names = [skill["name"] for skill in catalog]
+    if not settings_record or settings_record.enabled_skills is None:
+        return all_names
+    return [name for name in settings_record.enabled_skills if name in all_names]
 
 
 
@@ -104,6 +113,7 @@ async def stream_chat(
     location_fallback = settings_record.location if settings_record and settings_record.location else "Unknown"
 
     system_prompt = build_system_prompt(settings_record, location_fallback, now)
+    enabled_skills = _resolve_enabled_skills(settings_record)
     if not history:
         first_message_prompt = build_first_message_prompt(settings_record, operating_system, now)
         history = [{"role": "user", "content": first_message_prompt}]
@@ -114,7 +124,12 @@ async def stream_chat(
     async def event_generator():
         """Generate SSE events."""
         try:
-            async for event in claude_client.stream_with_tools(message, history, system_prompt=system_prompt):
+            async for event in claude_client.stream_with_tools(
+                message,
+                history,
+                system_prompt=system_prompt,
+                allowed_skills=enabled_skills,
+            ):
                 event_type = event.get("type")
 
                 if event_type == "token":

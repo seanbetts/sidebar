@@ -354,7 +354,7 @@ class ToolMapper:
             "error": None
         }
 
-    def get_claude_tools(self) -> List[Dict[str, Any]]:
+    def get_claude_tools(self, allowed_skills: List[str] | None = None) -> List[Dict[str, Any]]:
         """Convert tool configs to Claude tool schema."""
         return [
             {
@@ -363,9 +363,15 @@ class ToolMapper:
                 "input_schema": config["input_schema"]
             }
             for name, config in self.tools.items()
+            if self._is_skill_enabled(config.get("skill"), allowed_skills)
         ]
 
-    async def execute_tool(self, name: str, parameters: dict) -> Dict[str, Any]:
+    async def execute_tool(
+        self,
+        name: str,
+        parameters: dict,
+        allowed_skills: List[str] | None = None
+    ) -> Dict[str, Any]:
         """Execute tool via skill executor."""
         start_time = time.time()
 
@@ -376,6 +382,12 @@ class ToolMapper:
                 return self._normalize_result({
                     "success": False,
                     "error": f"Unknown tool: {name}"
+                })
+
+            if not self._is_skill_enabled(tool_config.get("skill"), allowed_skills):
+                return self._normalize_result({
+                    "success": False,
+                    "error": f"Skill disabled: {tool_config.get('skill')}"
                 })
 
             # Special case: UI theme (no skill execution)
@@ -438,6 +450,14 @@ class ToolMapper:
                 error=str(e)
             )
             return self._normalize_result({"success": False, "error": str(e)})
+
+    @staticmethod
+    def _is_skill_enabled(skill_name: str | None, allowed_skills: List[str] | None) -> bool:
+        if not skill_name:
+            return True
+        if allowed_skills is None:
+            return True
+        return skill_name in set(allowed_skills)
 
     # Argument builders for each tool type
     def _build_fs_list_args(self, params: dict) -> list:
