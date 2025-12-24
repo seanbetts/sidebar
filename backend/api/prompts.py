@@ -98,6 +98,10 @@ Any non obvious claim, statistic, or figure must be backed by an authentic publi
 If tools for web lookup are available, use them for time sensitive or niche facts and for anything that needs verification.
 </accuracy_and_sources>"""
 
+CONTEXT_GUIDANCE_TEMPLATE = """<context_guidance>
+The following blocks summarize what {name} has been working on today and what is currently open in the UI. Use them to ground your responses and to decide whether you should reference or continue work in those items. If you need more detail, you can open the items using your tools by id or ask the user for clarification. These blocks are informational and may be incomplete.
+</context_guidance>"""
+
 FIRST_MESSAGE_TEMPLATE = """<conversation_context>
 
 {conversation_context}
@@ -238,9 +242,58 @@ def build_recent_activity_block(
             )
 
     if not lines:
-        return ""
+        return "<recent_activity>\nNo items have been opened today.\n</recent_activity>"
 
     return "<recent_activity>\n" + "\n".join(lines) + "\n</recent_activity>"
+
+
+def _truncate_content(value: str | None, limit: int) -> str | None:
+    if value is None:
+        return None
+    if len(value) <= limit:
+        return value
+    return value[:limit]
+
+
+def build_open_context_block(
+    note: dict[str, Any] | None,
+    website: dict[str, Any] | None,
+    max_chars: int = 20000,
+) -> str:
+    lines: list[str] = []
+
+    if note:
+        lines.append("Note currently open:")
+        title = note.get("title") or "Untitled"
+        note_id = note.get("id") or "unknown"
+        path = note.get("path") or note.get("folder")
+        path_text = f", path: {path}" if path else ""
+        lines.append(f"- {title} (id: {note_id}{path_text})")
+        content = _truncate_content(note.get("content"), max_chars)
+        if content:
+            lines.append("Content:")
+            lines.append(content)
+
+    if website:
+        if lines:
+            lines.append("")
+        lines.append("Website currently open:")
+        title = website.get("title") or "Untitled"
+        website_id = website.get("id") or "unknown"
+        domain = website.get("domain")
+        url = website.get("url")
+        domain_text = f", domain: {domain}" if domain else ""
+        url_text = f", url: {url}" if url else ""
+        lines.append(f"- {title} (id: {website_id}{domain_text}{url_text})")
+        content = _truncate_content(website.get("content"), max_chars)
+        if content:
+            lines.append("Content:")
+            lines.append(content)
+
+    if not lines:
+        return "<current_open>\nNo items are currently open.\n</current_open>"
+
+    return "<current_open>\n" + "\n".join(lines) + "\n</current_open>"
 
 
 def build_system_prompt(settings_record: Any, current_location: str, now: datetime) -> str:

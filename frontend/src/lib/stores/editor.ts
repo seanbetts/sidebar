@@ -12,6 +12,7 @@ export interface EditorState {
   lastSaved: Date | null;
   saveError: string | null;
   basePath: string;
+  isReadOnly: boolean;
   lastUpdateSource: 'ai' | 'user' | null;
 }
 
@@ -28,6 +29,7 @@ function createEditorStore() {
     lastSaved: null,
     saveError: null,
     basePath: 'notes',
+    isReadOnly: false,
     lastUpdateSource: null
   });
 
@@ -60,6 +62,7 @@ function createEditorStore() {
           isDirty: false,
           isLoading: false,
           basePath,
+          isReadOnly: false,
           lastUpdateSource: options?.source ?? null
         }));
       } catch (error) {
@@ -72,12 +75,17 @@ function createEditorStore() {
     },
 
     updateContent(newContent: string) {
-      update(state => ({
-        ...state,
-        content: newContent,
-        isDirty: newContent !== state.originalContent,
-        lastUpdateSource: null
-      }));
+      update(state => {
+        if (state.isReadOnly) {
+          return state;
+        }
+        return {
+          ...state,
+          content: newContent,
+          isDirty: newContent !== state.originalContent,
+          lastUpdateSource: null
+        };
+      });
     },
 
     updateNoteName(newName: string) {
@@ -91,7 +99,7 @@ function createEditorStore() {
     async saveNote() {
       const state = get({ subscribe });
 
-      if (!state.currentNoteId || !state.isDirty) return;
+      if (state.isReadOnly || !state.currentNoteId || !state.isDirty) return;
 
       update(s => ({ ...s, isSaving: true, saveError: null }));
 
@@ -140,6 +148,24 @@ function createEditorStore() {
       }));
     },
 
+    openPreview(title: string, content: string) {
+      set({
+        currentNoteId: 'prompt-preview',
+        currentNotePath: null,
+        currentNoteName: title,
+        content,
+        originalContent: content,
+        isDirty: false,
+        isSaving: false,
+        isLoading: false,
+        lastSaved: null,
+        saveError: null,
+        basePath: 'preview',
+        isReadOnly: true,
+        lastUpdateSource: null
+      });
+    },
+
     reset() {
       set({
         currentNoteId: null,
@@ -153,6 +179,7 @@ function createEditorStore() {
         lastSaved: null,
         saveError: null,
         basePath: 'notes',
+        isReadOnly: false,
         lastUpdateSource: null
       });
     }

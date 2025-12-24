@@ -36,7 +36,8 @@ class ClaudeClient:
         message: str,
         conversation_history: List[Dict[str, Any]] = None,
         system_prompt: str | None = None,
-        allowed_skills: List[str] | None = None
+        allowed_skills: List[str] | None = None,
+        tool_context: Dict[str, Any] | None = None
     ) -> AsyncIterator[Dict[str, Any]]:
         """
         Stream chat with tool execution and multi-turn conversation.
@@ -44,6 +45,7 @@ class ClaudeClient:
         Args:
             message: User message
             conversation_history: Previous messages (optional)
+            tool_context: Context passed to tool execution (optional)
 
         Yields:
             Events: token, tool_call, tool_result, error
@@ -161,7 +163,8 @@ class ClaudeClient:
                                 result = await self.tool_mapper.execute_tool(
                                     tool_use["name"],
                                     tool_use["input"],
-                                    allowed_skills=allowed_skills
+                                    allowed_skills=allowed_skills,
+                                    context=tool_context
                                 )
 
                                 # Return result
@@ -235,6 +238,14 @@ class ClaudeClient:
                                             "type": "scratchpad_cleared",
                                             "data": {
                                                 "id": result_data.get("id")
+                                            }
+                                        }
+                                    elif display_name == "Generate Prompts":
+                                        yield {
+                                            "type": "prompt_preview",
+                                            "data": {
+                                                "system_prompt": result_data.get("system_prompt"),
+                                                "first_message_prompt": result_data.get("first_message_prompt"),
                                             }
                                         }
 

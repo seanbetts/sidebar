@@ -11,18 +11,11 @@ from api.config import Settings, settings
 from api.services.claude_client import ClaudeClient
 from api.services.user_settings_service import UserSettingsService
 from api.services.skill_catalog_service import SkillCatalogService
-from api.prompts import (
-    build_first_message_prompt,
-    build_system_prompt,
-    detect_operating_system,
-    build_recent_activity_block,
-)
+from api.services.prompt_context_service import PromptContextService
 from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
 from api.models.conversation import Conversation
-from api.models.note import Note
-from api.models.website import Website
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -63,66 +56,7 @@ def _resolve_enabled_skills(settings_record):
     return [skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids]
 
 
-def _start_of_today(now: datetime) -> datetime:
-    return datetime(now.year, now.month, now.day, tzinfo=now.tzinfo)
-
-
-def _get_recent_activity(db: Session, user_id: str, now: datetime) -> tuple[list[dict], list[dict], list[dict]]:
-    start_of_day = _start_of_today(now)
-
-    notes = (
-        db.query(Note)
-        .filter(Note.last_opened_at >= start_of_day)
-        .order_by(Note.last_opened_at.desc())
-        .all()
-    )
-    websites = (
-        db.query(Website)
-        .filter(Website.last_opened_at >= start_of_day)
-        .order_by(Website.last_opened_at.desc())
-        .all()
-    )
-    conversations = (
-        db.query(Conversation)
-        .filter(
-            Conversation.user_id == user_id,
-            Conversation.is_archived == False,
-            Conversation.updated_at >= start_of_day,
-        )
-        .order_by(Conversation.updated_at.desc())
-        .all()
-    )
-
-    note_items = [
-        {
-            "id": str(note.id),
-            "title": note.title,
-            "last_opened_at": note.last_opened_at.isoformat() if note.last_opened_at else None,
-            "folder": note.metadata_.get("folder") if note.metadata_ else None,
-        }
-        for note in notes
-    ]
-    website_items = [
-        {
-            "id": str(website.id),
-            "title": website.title,
-            "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None,
-            "domain": website.domain,
-            "url": website.url_full or website.url,
-        }
-        for website in websites
-    ]
-    conversation_items = [
-        {
-            "id": str(conversation.id),
-            "title": conversation.title,
-            "last_opened_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
-            "message_count": conversation.message_count,
-        }
-        for conversation in conversations
-    ]
-
-    return note_items, website_items, conversation_items
+ 
 
 
 
@@ -160,6 +94,7 @@ async def stream_chat(
     conversation_id = data.get("conversation_id")
     user_message_id = data.get("user_message_id")
     history = data.get("history", [])
+    open_context = data.get("open_context") or {}
 
     if not message:
         raise HTTPException(status_code=400, detail="Message required")
@@ -177,26 +112,26 @@ async def stream_chat(
 
     settings_record = UserSettingsService.get_settings(db, user_id)
     user_agent = request.headers.get("user-agent")
-    operating_system = detect_operating_system(user_agent)
     now = datetime.now(timezone.utc)
-    location_fallback = settings_record.location if settings_record and settings_record.location else "Unknown"
-
-    system_prompt = build_system_prompt(settings_record, location_fallback, now)
-    note_items, website_items, conversation_items = _get_recent_activity(db, user_id, now)
-    recent_activity_block = build_recent_activity_block(
-        note_items,
-        website_items,
-        conversation_items,
+    system_prompt, first_message_prompt = PromptContextService.build_prompts(
+        db=db,
+        user_id=user_id,
+        open_context=open_context,
+        user_agent=user_agent,
+        now=now,
     )
-    if recent_activity_block:
-        system_prompt = f"{system_prompt}\n\n{recent_activity_block}"
     enabled_skills = _resolve_enabled_skills(settings_record)
     if not history:
-        first_message_prompt = build_first_message_prompt(settings_record, operating_system, now)
         history = [{"role": "user", "content": first_message_prompt}]
 
     # Create Claude client
     claude_client = ClaudeClient(settings)
+    tool_context = {
+        "db": db,
+        "user_id": user_id,
+        "open_context": open_context,
+        "user_agent": user_agent,
+    }
 
     async def event_generator():
         """Generate SSE events."""
@@ -206,6 +141,7 @@ async def stream_chat(
                 history,
                 system_prompt=system_prompt,
                 allowed_skills=enabled_skills,
+                tool_context=tool_context,
             ):
                 event_type = event.get("type")
 
@@ -230,6 +166,7 @@ async def stream_chat(
                     "ui_theme_set",
                     "scratchpad_updated",
                     "scratchpad_cleared",
+                    "prompt_preview",
                 }:
                     yield f"event: {event_type}\ndata: {json.dumps(event.get('data', {}))}\n\n"
 

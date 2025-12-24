@@ -69,6 +69,10 @@ SKILL_DISPLAY = {
         "name": "UI Theme",
         "description": "Allow the assistant to switch light or dark mode."
     },
+    "prompt-preview": {
+        "name": "Prompt Preview",
+        "description": "Generate the current system prompt output for preview."
+    },
 }
 
 EXPOSED_SKILLS = {
@@ -76,6 +80,7 @@ EXPOSED_SKILLS = {
     "notes",
     "web-save",
     "ui-theme",
+    "prompt-preview",
 }
 
 
@@ -393,6 +398,16 @@ class ToolMapper:
                 "skill": "ui-theme",  # Special case - no skill execution
                 "script": None,
                 "build_args": None
+            },
+            "Generate Prompts": {
+                "description": "Generate the current system prompt output for preview.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {}
+                },
+                "skill": "prompt-preview",
+                "script": None,
+                "build_args": None
             }
         }
         self._build_tool_name_maps()
@@ -467,7 +482,8 @@ class ToolMapper:
         self,
         name: str,
         parameters: dict,
-        allowed_skills: List[str] | None = None
+        allowed_skills: List[str] | None = None,
+        context: Dict[str, Any] | None = None
     ) -> Dict[str, Any]:
         """Execute tool via skill executor."""
         start_time = time.time()
@@ -499,6 +515,46 @@ class ToolMapper:
                 AuditLogger.log_tool_call(
                     tool_name=name,
                     parameters={"theme": theme},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    success=True
+                )
+
+                return self._normalize_result(result)
+
+            # Special case: prompt preview
+            if display_name == "Generate Prompts":
+                if not context:
+                    return self._normalize_result({
+                        "success": False,
+                        "error": "Missing prompt context"
+                    })
+                db = context.get("db")
+                user_id = context.get("user_id")
+                if not db or not user_id:
+                    return self._normalize_result({
+                        "success": False,
+                        "error": "Missing database or user context"
+                    })
+
+                from api.services.prompt_context_service import PromptContextService
+
+                system_prompt, first_message_prompt = PromptContextService.build_prompts(
+                    db=db,
+                    user_id=user_id,
+                    open_context=context.get("open_context"),
+                    user_agent=context.get("user_agent"),
+                )
+                result = {
+                    "success": True,
+                    "data": {
+                        "system_prompt": system_prompt,
+                        "first_message_prompt": first_message_prompt,
+                    },
+                }
+
+                AuditLogger.log_tool_call(
+                    tool_name=display_name,
+                    parameters={},
                     duration_ms=(time.time() - start_time) * 1000,
                     success=True
                 )

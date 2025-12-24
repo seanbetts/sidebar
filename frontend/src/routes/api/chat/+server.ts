@@ -10,7 +10,7 @@ const BEARER_TOKEN = process.env.BEARER_TOKEN;
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const userAgent = request.headers.get('user-agent') || '';
-		const { message, history, conversation_id, user_message_id } = await request.json();
+		const { message, history, conversation_id, user_message_id, open_context } = await request.json();
 
 		if (!message) {
 			throw error(400, 'Message is required');
@@ -28,7 +28,8 @@ export const POST: RequestHandler = async ({ request }) => {
 				message,
 				history,
 				conversation_id,
-				user_message_id
+				user_message_id,
+				open_context
 			})
 		});
 

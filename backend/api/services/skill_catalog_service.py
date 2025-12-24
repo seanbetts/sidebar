@@ -94,4 +94,5 @@ class SkillCatalogService:
             "mcp-builder": "Development",
             "skill-creator": "Development",
             "ui-theme": "System",
+            "prompt-preview": "System",
         }

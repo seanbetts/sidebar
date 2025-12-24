@@ -39,6 +39,7 @@
   $: currentNoteName = $editorStore.currentNoteName;
   $: isLoading = $editorStore.isLoading;
   $: currentNoteId = $editorStore.currentNoteId;
+  $: isReadOnly = $editorStore.isReadOnly;
 
   // Strip file extension from note name for display
   $: displayTitle = currentNoteName ? currentNoteName.replace(/\.[^/.]+$/, '') : '';
@@ -309,6 +310,10 @@
     });
   }
 
+  $: if (editor) {
+    editor.setEditable(!isReadOnly);
+  }
+
   onDestroy(() => {
     clearTimeout(saveTimeout);
     if (unsubscribe) {
@@ -321,7 +326,7 @@
 
   function scheduleAutoSave() {
     clearTimeout(saveTimeout);
-    if ($editorStore.isDirty) {
+    if ($editorStore.isDirty && !$editorStore.isReadOnly) {
       saveTimeout = setTimeout(() => {
         editorStore.saveNote();
       }, 1500);
@@ -419,7 +424,9 @@
         <h2 class="note-title">{displayTitle}</h2>
       </div>
       <div class="header-right">
-        {#if saveError}
+        {#if isReadOnly}
+          <span class="status saved">Read-only preview</span>
+        {:else if saveError}
           <span class="status error">{saveError}</span>
         {:else if isSaving}
           <span class="status saving">
@@ -435,97 +442,122 @@
           </span>
         {/if}
         <div class="note-actions">
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handlePinToggle}
-            aria-label="Pin note"
-            title="Pin note"
-          >
-            {#if noteNode?.pinned}
-              <PinOff size={16} />
-            {:else}
-              <Pin size={16} />
-            {/if}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={openRenameDialog}
-            aria-label="Rename note"
-            title="Rename note"
-          >
-            <Pencil size={16} />
-          </Button>
-          <Popover.Root onOpenChange={(open) => open && buildFolderOptions()}>
-            <Popover.Trigger>
-              {#snippet child({ props })}
-                <Button size="icon" variant="ghost" {...props} aria-label="Move note" title="Move note">
-                  <FolderInput size={16} />
-                </Button>
-              {/snippet}
-            </Popover.Trigger>
-            <Popover.Content class="note-move-menu" align="start" sideOffset={8}>
-              {#each folderOptions as option (option.value)}
-                <button
-                  class="note-move-item"
-                  style={`padding-left: ${option.depth * 12 + 12}px`}
-                  on:click={() => handleMove(option.value)}
-                >
-                  {option.label}
-                </button>
-              {/each}
-            </Popover.Content>
-          </Popover.Root>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handleCopy}
-            aria-label={isCopied ? 'Copied note' : 'Copy note'}
-            title={isCopied ? 'Copied' : 'Copy note'}
-          >
-            {#if isCopied}
-              <Check size={16} />
-            {:else}
-              <Copy size={16} />
-            {/if}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handleDownload}
-            aria-label="Download note"
-            title="Download note"
-          >
-            <Download size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handleArchive}
-            aria-label="Archive note"
-            title="Archive note"
-          >
-            <Archive size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={() => (isDeleteDialogOpen = true)}
-            aria-label="Delete note"
-            title="Delete note"
-          >
-            <Trash2 size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handleClose}
-            aria-label="Close note"
-            title="Close note"
-          >
-            <X size={16} />
-          </Button>
+          {#if isReadOnly}
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={handleCopy}
+              aria-label={isCopied ? 'Copied preview' : 'Copy preview'}
+              title={isCopied ? 'Copied' : 'Copy preview'}
+            >
+              {#if isCopied}
+                <Check size={16} />
+              {:else}
+                <Copy size={16} />
+              {/if}
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={handleClose}
+              aria-label="Close preview"
+              title="Close preview"
+            >
+              <X size={16} />
+            </Button>
+          {:else}
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={handlePinToggle}
+              aria-label="Pin note"
+              title="Pin note"
+            >
+              {#if noteNode?.pinned}
+                <PinOff size={16} />
+              {:else}
+                <Pin size={16} />
+              {/if}
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={openRenameDialog}
+              aria-label="Rename note"
+              title="Rename note"
+            >
+              <Pencil size={16} />
+            </Button>
+            <Popover.Root onOpenChange={(open) => open && buildFolderOptions()}>
+              <Popover.Trigger>
+                {#snippet child({ props })}
+                  <Button size="icon" variant="ghost" {...props} aria-label="Move note" title="Move note">
+                    <FolderInput size={16} />
+                  </Button>
+                {/snippet}
+              </Popover.Trigger>
+              <Popover.Content class="note-move-menu" align="start" sideOffset={8}>
+                {#each folderOptions as option (option.value)}
+                  <button
+                    class="note-move-item"
+                    style={`padding-left: ${option.depth * 12 + 12}px`}
+                    on:click={() => handleMove(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                {/each}
+              </Popover.Content>
+            </Popover.Root>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={handleCopy}
+              aria-label={isCopied ? 'Copied note' : 'Copy note'}
+              title={isCopied ? 'Copied' : 'Copy note'}
+            >
+              {#if isCopied}
+                <Check size={16} />
+              {:else}
+                <Copy size={16} />
+              {/if}
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={handleDownload}
+              aria-label="Download note"
+              title="Download note"
+            >
+              <Download size={16} />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={handleArchive}
+              aria-label="Archive note"
+              title="Archive note"
+            >
+              <Archive size={16} />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={() => (isDeleteDialogOpen = true)}
+              aria-label="Delete note"
+              title="Delete note"
+            >
+              <Trash2 size={16} />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={handleClose}
+              aria-label="Close note"
+              title="Close note"
+            >
+              <X size={16} />
+            </Button>
+          {/if}
         </div>
       </div>
     </div>

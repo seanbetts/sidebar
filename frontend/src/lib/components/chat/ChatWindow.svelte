@@ -45,6 +45,20 @@
 		return 'An error occurred while processing your request. Please try again.';
 	}
 
+	function buildPromptPreviewMarkdown(systemPrompt?: string, firstMessagePrompt?: string): string {
+		const sections: string[] = [];
+		if (systemPrompt) {
+			sections.push(`## System Prompt\n\n\`\`\`\n${systemPrompt}\n\`\`\``);
+		}
+		if (firstMessagePrompt) {
+			sections.push(`## First Message Prompt\n\n\`\`\`\n${firstMessagePrompt}\n\`\`\``);
+		}
+		if (!sections.length) {
+			return 'No prompt content was returned.';
+		}
+		return sections.join('\n\n');
+	}
+
 	async function handleSend(message: string) {
 
 		// Add user message and start streaming assistant response
@@ -53,11 +67,38 @@
 
 		try {
 			// Connect to SSE stream
+			const editorState = get(editorStore);
+			const websiteState = get(websitesStore);
+			const openContext: {
+				note?: { id: string; title: string; path: string | null; content: string };
+				website?: { id: string; title: string; url: string; domain: string; content: string };
+			} = {};
+
+			if (editorState.currentNoteId) {
+				openContext.note = {
+					id: editorState.currentNoteId,
+					title: editorState.currentNoteName || 'Untitled note',
+					path: editorState.currentNotePath,
+					content: editorState.content || ''
+				};
+			}
+
+			if (websiteState.active) {
+				openContext.website = {
+					id: websiteState.active.id,
+					title: websiteState.active.title,
+					url: websiteState.active.url_full || websiteState.active.url,
+					domain: websiteState.active.domain,
+					content: websiteState.active.content || ''
+				};
+			}
+
 			await sseClient.connect(
 				{
 					message,
 					conversationId: conversationId ?? undefined,
-					userMessageId
+					userMessageId,
+					openContext
 				},
 				{
 					onToken: (content) => {
@@ -121,6 +162,14 @@
 
 					onScratchpadCleared: () => {
 						scratchpadStore.bump();
+					},
+
+					onPromptPreview: (data) => {
+						const content = buildPromptPreviewMarkdown(
+							data?.system_prompt,
+							data?.first_message_prompt
+						);
+						editorStore.openPreview('Prompt Preview', content);
 					},
 
 					onComplete: async () => {

@@ -5,6 +5,8 @@ from api.prompts import (
     build_system_prompt,
     build_first_message_prompt,
     build_recent_activity_block,
+    build_open_context_block,
+    CONTEXT_GUIDANCE_TEMPLATE,
 )
 
 
@@ -109,3 +111,40 @@ def test_build_recent_activity_block() -> None:
     assert "url: https://example.com/docs" in block
     assert "Project X" in block
     assert "messages: 4" in block
+
+
+def test_build_recent_activity_block_empty() -> None:
+    block = build_recent_activity_block([], [], [])
+    assert "No items have been opened today." in block
+
+
+def test_build_open_context_block_truncates() -> None:
+    note = {
+        "id": "note-1",
+        "title": "Draft",
+        "path": "notes/draft.md",
+        "content": "x" * 10,
+    }
+    website = {
+        "id": "web-1",
+        "title": "Spec",
+        "domain": "example.com",
+        "url": "https://example.com/spec",
+        "content": "y" * 10,
+    }
+    block = build_open_context_block(note, website, max_chars=5)
+    assert "<current_open>" in block
+    assert "Note currently open:" in block
+    assert "Website currently open:" in block
+    assert "xxxxx" in block
+    assert "yyyyy" in block
+
+
+def test_build_open_context_block_empty() -> None:
+    block = build_open_context_block(None, None)
+    assert "No items are currently open." in block
+
+
+def test_context_guidance_template_renders_name() -> None:
+    rendered = resolve_template(CONTEXT_GUIDANCE_TEMPLATE, {"name": "Sam"})
+    assert "Sam has been working on today" in rendered

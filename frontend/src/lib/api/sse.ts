@@ -17,6 +17,7 @@ export interface SSECallbacks {
 	onThemeSet?: (data: { theme?: string }) => void;
 	onScratchpadUpdated?: () => void;
 	onScratchpadCleared?: () => void;
+	onPromptPreview?: (data: { system_prompt?: string; first_message_prompt?: string }) => void;
 }
 
 export class SSEClient {
@@ -26,7 +27,7 @@ export class SSEClient {
 	 * Connect to SSE endpoint and stream chat response
 	 */
 	async connect(
-		payload: { message: string; conversationId?: string; userMessageId?: string },
+		payload: { message: string; conversationId?: string; userMessageId?: string; openContext?: any },
 		callbacks: SSECallbacks
 	): Promise<void> {
 		try {
@@ -39,7 +40,8 @@ export class SSEClient {
 				body: JSON.stringify({
 					message: payload.message,
 					conversation_id: payload.conversationId,
-					user_message_id: payload.userMessageId
+					user_message_id: payload.userMessageId,
+					open_context: payload.openContext
 				})
 			});
 
@@ -151,6 +153,10 @@ export class SSEClient {
 
 			case 'scratchpad_cleared':
 				callbacks.onScratchpadCleared?.();
+				break;
+
+			case 'prompt_preview':
+				callbacks.onPromptPreview?.(data);
 				break;
 
 			default:
