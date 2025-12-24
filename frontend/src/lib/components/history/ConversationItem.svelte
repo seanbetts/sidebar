@@ -155,9 +155,6 @@
     {:else}
       <div class="title">{conversation.title}</div>
     {/if}
-    {#if conversation.firstMessage && !isEditing && !isGeneratingTitle}
-      <div class="preview">{conversation.firstMessage}</div>
-    {/if}
     <div class="meta">
       <span class="timestamp">{formatDate(conversation.updatedAt)}</span>
       <span class="message-count">{conversation.messageCount} messages</span>
@@ -189,7 +186,7 @@
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 1rem;
     cursor: pointer;
     transition: background-color 0.2s;
     border-left: 2px solid transparent;
