@@ -25,6 +25,47 @@
   let newWebsiteUrl = '';
   let newWebsiteInput: HTMLInputElement | null = null;
   let isSavingWebsite = false;
+  let communicationStyle = '';
+  let workingRelationship = '';
+  let name = '';
+  let jobTitle = '';
+  let employer = '';
+  let dateOfBirth = '';
+  let gender = '';
+  let pronouns = '';
+  let location = '';
+  let initialCommunicationStyle = '';
+  let initialWorkingRelationship = '';
+  let initialName = '';
+  let initialJobTitle = '';
+  let initialEmployer = '';
+  let initialDateOfBirth = '';
+  let initialGender = '';
+  let initialPronouns = '';
+  let initialLocation = '';
+  let isLoadingSettings = false;
+  let isSavingSettings = false;
+  let settingsLoaded = false;
+  let settingsError = '';
+  let locationSuggestions: Array<{ description: string; place_id: string }> = [];
+  let isLoadingLocations = false;
+  let locationLookupError = '';
+  let locationLookupTimer: ReturnType<typeof setTimeout> | null = null;
+  let activeLocationIndex = -1;
+  let lastSelectedLocation = '';
+  let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  let wasSettingsOpen = false;
+  let settingsDirty = false;
+  const pronounOptions = [
+    'he/him',
+    'she/her',
+    'they/them',
+    'he/they',
+    'she/they',
+    'they/he',
+    'they/she',
+    'other'
+  ];
   const settingsSections = [
     { key: 'account', label: 'Account', icon: User },
     { key: 'system', label: 'System', icon: Monitor },
@@ -35,6 +76,114 @@
   onMount(() => {
     conversationListStore.load();
   });
+
+  async function loadSettings(force = false) {
+    if (isLoadingSettings || (settingsLoaded && !force)) return;
+    isLoadingSettings = true;
+    settingsError = '';
+
+    try {
+      const response = await fetch('/api/settings');
+      if (!response.ok) {
+        throw new Error('Failed to load settings');
+      }
+      const data = await response.json();
+      communicationStyle = data?.communication_style ?? '';
+      workingRelationship = data?.working_relationship ?? '';
+      name = data?.name ?? '';
+      jobTitle = data?.job_title ?? '';
+      employer = data?.employer ?? '';
+      dateOfBirth = data?.date_of_birth ?? '';
+      gender = data?.gender ?? '';
+      pronouns = data?.pronouns ?? '';
+      location = data?.location ?? '';
+      initialCommunicationStyle = communicationStyle;
+      initialWorkingRelationship = workingRelationship;
+      initialName = name;
+      initialJobTitle = jobTitle;
+      initialEmployer = employer;
+      initialDateOfBirth = dateOfBirth;
+      initialGender = gender;
+      initialPronouns = pronouns;
+      initialLocation = location;
+      settingsLoaded = true;
+    } catch (error) {
+      settingsError =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to load settings.';
+    } finally {
+      isLoadingSettings = false;
+    }
+  }
+
+  async function saveSettings() {
+    if (isSavingSettings) return;
+    isSavingSettings = true;
+    settingsError = '';
+
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          communication_style: communicationStyle,
+          working_relationship: workingRelationship,
+          name,
+          job_title: jobTitle,
+          employer,
+          date_of_birth: dateOfBirth || null,
+          gender,
+          pronouns,
+          location
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
+      }
+
+      const data = await response.json();
+      communicationStyle = data?.communication_style ?? '';
+      workingRelationship = data?.working_relationship ?? '';
+      name = data?.name ?? '';
+      jobTitle = data?.job_title ?? '';
+      employer = data?.employer ?? '';
+      dateOfBirth = data?.date_of_birth ?? '';
+      gender = data?.gender ?? '';
+      pronouns = data?.pronouns ?? '';
+      location = data?.location ?? '';
+      initialCommunicationStyle = communicationStyle;
+      initialWorkingRelationship = workingRelationship;
+      initialName = name;
+      initialJobTitle = jobTitle;
+      initialEmployer = employer;
+      initialDateOfBirth = dateOfBirth;
+      initialGender = gender;
+      initialPronouns = pronouns;
+      initialLocation = location;
+    } catch (error) {
+      settingsError =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to save settings.';
+    } finally {
+      isSavingSettings = false;
+    }
+  }
+
+  function resetSettings() {
+    communicationStyle = initialCommunicationStyle;
+    workingRelationship = initialWorkingRelationship;
+    name = initialName;
+    jobTitle = initialJobTitle;
+    employer = initialEmployer;
+    dateOfBirth = initialDateOfBirth;
+    gender = initialGender;
+    pronouns = initialPronouns;
+    location = initialLocation;
+    settingsError = '';
+  }
 
   async function handleNewChat() {
     await chatStore.clear();
@@ -51,6 +200,124 @@
     activeSection = section;
     isCollapsed = false;
   }
+
+  $: if (isSettingsOpen && !settingsLoaded) {
+    loadSettings();
+  }
+
+  function selectLocation(value: string) {
+    location = value;
+    locationSuggestions = [];
+    locationLookupError = '';
+    if (locationLookupTimer) clearTimeout(locationLookupTimer);
+    activeLocationIndex = -1;
+    lastSelectedLocation = value.trim();
+  }
+
+  async function searchLocations(value: string) {
+    const query = value.trim();
+    if (query.length < 2) {
+      locationSuggestions = [];
+      locationLookupError = '';
+      activeLocationIndex = -1;
+      return;
+    }
+
+    isLoadingLocations = true;
+    locationLookupError = '';
+    try {
+      const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(query)}`);
+      if (!response.ok) {
+        throw new Error('Failed to load locations');
+      }
+      const data = await response.json();
+      locationSuggestions = Array.isArray(data?.predictions) ? data.predictions : [];
+      activeLocationIndex = locationSuggestions.length ? 0 : -1;
+    } catch (error) {
+      console.error('Failed to load locations:', error);
+      locationLookupError = 'Unable to load locations.';
+    } finally {
+      isLoadingLocations = false;
+    }
+  }
+
+  function handleLocationInput() {
+    if (location.trim() === lastSelectedLocation) {
+      locationSuggestions = [];
+      locationLookupError = '';
+      activeLocationIndex = -1;
+      return;
+    }
+    if (locationLookupTimer) clearTimeout(locationLookupTimer);
+    locationLookupTimer = setTimeout(() => {
+      searchLocations(location);
+    }, 300);
+  }
+
+  function handleLocationKeydown(event: KeyboardEvent) {
+    if (!locationSuggestions.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      activeLocationIndex = Math.min(activeLocationIndex + 1, locationSuggestions.length - 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      activeLocationIndex = Math.max(activeLocationIndex - 1, 0);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (activeLocationIndex >= 0) {
+        selectLocation(locationSuggestions[activeLocationIndex].description);
+      }
+    } else if (event.key === 'Escape') {
+      locationSuggestions = [];
+      activeLocationIndex = -1;
+    }
+  }
+
+  function handleLocationBlur() {
+    setTimeout(() => {
+      locationSuggestions = [];
+      activeLocationIndex = -1;
+    }, 150);
+  }
+
+  function scheduleAutosave() {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      saveSettings();
+    }, 800);
+  }
+
+  async function handleSettingsClose() {
+    if (settingsDirty) {
+      await saveSettings();
+    }
+    settingsLoaded = false;
+    settingsError = '';
+    locationSuggestions = [];
+  }
+
+  $: settingsDirty =
+    settingsLoaded &&
+    (communicationStyle !== initialCommunicationStyle ||
+      workingRelationship !== initialWorkingRelationship ||
+      name !== initialName ||
+      jobTitle !== initialJobTitle ||
+      employer !== initialEmployer ||
+      dateOfBirth !== initialDateOfBirth ||
+      gender !== initialGender ||
+      pronouns !== initialPronouns ||
+      location !== initialLocation);
+
+  $: if (settingsLoaded && isSettingsOpen && settingsDirty) {
+    scheduleAutosave();
+  }
+
+  $: if (wasSettingsOpen && !isSettingsOpen) {
+    handleSettingsClose();
+  }
+
+  $: wasSettingsOpen = isSettingsOpen;
 
   async function handleNoteClick(path: string) {
     // Save current note if dirty
@@ -313,7 +580,7 @@
 </AlertDialog.Root>
 
 <AlertDialog.Root bind:open={isSettingsOpen}>
-  <AlertDialog.Content class="settings-dialog">
+  <AlertDialog.Content class="settings-dialog !max-w-[1200px] !w-[96vw]">
     <AlertDialog.Header class="settings-header">
       <AlertDialog.Title>Settings</AlertDialog.Title>
       <AlertDialog.Description>Configure your workspace.</AlertDialog.Description>
@@ -334,10 +601,121 @@
       <div class="settings-content">
         {#if activeSettingsSection === 'account'}
           <h3>Account</h3>
-          <p>Profile, security, and billing settings will appear here.</p>
+          <p>Basic details used to personalise prompts.</p>
+          <div class="settings-form settings-grid">
+            <label class="settings-label">
+              <span>Name</span>
+              <input class="settings-input" type="text" bind:value={name} placeholder="Name" />
+            </label>
+            <label class="settings-label">
+              <span>Job title</span>
+              <input class="settings-input" type="text" bind:value={jobTitle} placeholder="Job title" />
+            </label>
+            <label class="settings-label">
+              <span>Employer</span>
+              <input class="settings-input" type="text" bind:value={employer} placeholder="Employer" />
+            </label>
+            <label class="settings-label">
+              <span>Date of birth</span>
+              <input class="settings-input" type="date" bind:value={dateOfBirth} />
+            </label>
+            <label class="settings-label">
+              <span>Gender</span>
+              <input class="settings-input" type="text" bind:value={gender} placeholder="Gender" />
+            </label>
+            <label class="settings-label">
+              <span>Pronouns</span>
+              <select class="settings-input" bind:value={pronouns}>
+                <option value="">Select pronouns</option>
+                {#each pronounOptions as option}
+                  <option value={option}>{option}</option>
+                {/each}
+              </select>
+            </label>
+            <label class="settings-label">
+              <span>Location</span>
+              <div class="settings-autocomplete">
+                <input
+                  class="settings-input"
+                  type="text"
+                  bind:value={location}
+                  placeholder="City, country"
+                  on:input={handleLocationInput}
+                  on:focus={handleLocationInput}
+                  on:keydown={handleLocationKeydown}
+                  on:blur={handleLocationBlur}
+                />
+                {#if isLoadingLocations}
+                  <div class="settings-suggestions">
+                    <div class="settings-suggestion muted">Loading...</div>
+                  </div>
+                {:else if locationLookupError}
+                  <div class="settings-suggestions">
+                    <div class="settings-suggestion muted">{locationLookupError}</div>
+                  </div>
+                {:else if locationSuggestions.length}
+                  <div class="settings-suggestions">
+                    {#each locationSuggestions as suggestion, index}
+                      <button
+                        class="settings-suggestion"
+                        class:active={index === activeLocationIndex}
+                        type="button"
+                        on:mouseenter={() => (activeLocationIndex = index)}
+                        on:click={() => selectLocation(suggestion.description)}
+                      >
+                        {suggestion.description}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            </label>
+          </div>
+          <div class="settings-actions">
+            {#if isLoadingSettings}
+              <div class="settings-meta">
+                <Loader2 size={16} class="spin" />
+                Loading...
+              </div>
+            {/if}
+            {#if settingsError}
+              <div class="settings-error">{settingsError}</div>
+            {/if}
+          </div>
         {:else if activeSettingsSection === 'system'}
           <h3>System</h3>
-          <p>Theme, notifications, and system preferences will appear here.</p>
+          <p>Customize the prompts that guide your assistant.</p>
+          <div class="settings-form">
+            <label class="settings-label">
+              <span>Communication style</span>
+              <textarea
+                class="settings-textarea"
+                bind:value={communicationStyle}
+                placeholder="Style, tone, and formatting rules."
+                rows="8"
+              ></textarea>
+            </label>
+            <label class="settings-label">
+              <span>Working relationship</span>
+              <textarea
+                class="settings-textarea"
+                bind:value={workingRelationship}
+                placeholder="How the assistant should challenge and collaborate with you."
+                rows="8"
+              ></textarea>
+            </label>
+            <div class="settings-actions">
+              {#if isLoadingSettings}
+                <div class="settings-meta">
+                  <Loader2 size={16} class="spin" />
+                  Loading...
+                </div>
+              {/if}
+            </div>
+            {#if settingsError}
+              <div class="settings-error">{settingsError}</div>
+            {/if}
+          </div>
         {:else}
           <h3>Skills</h3>
           <p>Manage installed skills and permissions here.</p>
@@ -681,11 +1059,191 @@
     line-height: 1.5;
   }
 
+  .settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .settings-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: var(--color-foreground);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .settings-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    resize: vertical;
+  }
+
+  .settings-input {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .settings-textarea:focus {
+    outline: 2px solid rgba(94, 140, 255, 0.35);
+    border-color: rgba(94, 140, 255, 0.45);
+  }
+
+  .settings-input:focus {
+    outline: 2px solid rgba(94, 140, 255, 0.35);
+    border-color: rgba(94, 140, 255, 0.45);
+  }
+
+  .settings-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .settings-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.55rem;
+    border: none;
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
+  .settings-button.secondary {
+    background: var(--color-secondary);
+    border: 1px solid var(--color-border);
+    color: var(--color-secondary-foreground);
+  }
+
+  .settings-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .settings-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-muted-foreground);
+    font-size: 0.8rem;
+  }
+
+  .settings-success {
+    color: #2f8a4d;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .settings-error {
+    color: #c0392b;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 1.25rem;
+  }
+
+  .settings-grid .settings-actions,
+  .settings-grid .settings-error,
+  .settings-grid .settings-success,
+  .settings-grid .settings-meta {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 900px) {
+    .settings-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .settings-autocomplete {
+    position: relative;
+  }
+
+  .settings-suggestions {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.6rem;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 0.25rem 0;
+  }
+
+  .settings-suggestion {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    color: var(--color-card-foreground);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .settings-suggestion:hover {
+    background: var(--color-sidebar-accent);
+  }
+
+  .settings-suggestion.active {
+    background: var(--color-sidebar-accent);
+    font-weight: 600;
+  }
+
+  .settings-suggestion.muted {
+    color: var(--color-muted-foreground);
+    cursor: default;
+  }
+
+  :global(.spin) {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   .settings-dialog {
-    max-width: 860px;
-    width: min(92vw, 860px);
+    max-width: 1200px;
+    width: min(96vw, 1200px);
     max-height: min(85vh, 680px);
-    overflow: hidden;
+    overflow: auto;
     display: flex;
     flex-direction: column;
   }
@@ -697,7 +1255,7 @@
 
   .settings-layout {
     flex: 1;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .settings-nav {
@@ -705,7 +1263,7 @@
   }
 
   .settings-content {
-    overflow-y: auto;
+    overflow: visible;
     padding-right: 0.5rem;
   }
 

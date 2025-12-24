@@ -34,7 +34,8 @@ class ClaudeClient:
     async def stream_with_tools(
         self,
         message: str,
-        conversation_history: List[Dict[str, Any]] = None
+        conversation_history: List[Dict[str, Any]] = None,
+        system_prompt: str | None = None
     ) -> AsyncIterator[Dict[str, Any]]:
         """
         Stream chat with tool execution and multi-turn conversation.
@@ -61,12 +62,16 @@ class ClaudeClient:
             while current_round < max_rounds:
                 current_round += 1
 
-                async with self.client.messages.stream(
-                    model=self.model,
-                    max_tokens=4096,
-                    messages=messages,
-                    tools=tools
-                ) as stream:
+                stream_args = {
+                    "model": self.model,
+                    "max_tokens": 4096,
+                    "messages": messages,
+                    "tools": tools,
+                }
+                if system_prompt:
+                    stream_args["system"] = system_prompt
+
+                async with self.client.messages.stream(**stream_args) as stream:
                     # Track content blocks for building assistant message
                     content_blocks = []
                     tool_uses = []

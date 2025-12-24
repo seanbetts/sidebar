@@ -9,6 +9,7 @@ const BEARER_TOKEN = process.env.BEARER_TOKEN;
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
+		const userAgent = request.headers.get('user-agent') || '';
 		const { message, history, conversation_id, user_message_id } = await request.json();
 
 		if (!message) {
@@ -20,7 +21,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			method: 'POST',
 			headers: {
 				Authorization: `Bearer ${BEARER_TOKEN}`,
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
+				...(userAgent ? { 'User-Agent': userAgent } : {})
 			},
 			body: JSON.stringify({
 				message,
