@@ -10,7 +10,7 @@
   import { filesStore } from '$lib/stores/files';
   import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
-  import { FileText, Save, Clock, X, Pencil, FolderInput, Archive, Pin, PinOff, Download, Trash2 } from 'lucide-svelte';
+  import { FileText, Save, Clock, X, Pencil, FolderInput, Archive, Pin, PinOff, Copy, Check, Download, Trash2 } from 'lucide-svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import * as Popover from '$lib/components/ui/popover/index.js';
   import { Button } from '$lib/components/ui/button';
@@ -29,6 +29,8 @@
   let renameInput: HTMLInputElement | null = null;
   let isDeleteDialogOpen = false;
   let folderOptions: { label: string; value: string; depth: number }[] = [];
+  let copyTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isCopied = false;
 
   $: isDirty = $editorStore.isDirty;
   $: isSaving = $editorStore.isSaving;
@@ -179,6 +181,21 @@
     link.remove();
   }
 
+  async function handleCopy() {
+    if (!currentNoteId) return;
+    try {
+      await navigator.clipboard.writeText($editorStore.content || '');
+      isCopied = true;
+      if (copyTimeout) clearTimeout(copyTimeout);
+      copyTimeout = setTimeout(() => {
+        isCopied = false;
+        copyTimeout = null;
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to copy note content:', error);
+    }
+  }
+
   async function handleDelete() {
     if (!currentNoteId) return;
     const response = await fetch(`/api/notes/${currentNoteId}`, {
@@ -267,6 +284,10 @@
         editorStore.clearUpdateSource();
       }
     });
+  });
+
+  onDestroy(() => {
+    if (copyTimeout) clearTimeout(copyTimeout);
   });
 
   beforeNavigate(({ cancel, to }) => {
@@ -456,6 +477,19 @@
               {/each}
             </Popover.Content>
           </Popover.Root>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handleCopy}
+            aria-label={isCopied ? 'Copied note' : 'Copy note'}
+            title={isCopied ? 'Copied' : 'Copy note'}
+          >
+            {#if isCopied}
+              <Check size={16} />
+            {:else}
+              <Copy size={16} />
+            {/if}
+          </Button>
           <Button
             size="icon"
             variant="ghost"

@@ -5,7 +5,7 @@
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
-  import { Globe, Pin, PinOff, Pencil, Download, Archive, Trash2, X } from 'lucide-svelte';
+  import { Globe, Pin, PinOff, Pencil, Copy, Check, Download, Archive, Trash2, X } from 'lucide-svelte';
   import { websitesStore } from '$lib/stores/websites';
   import { Button } from '$lib/components/ui/button';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -17,6 +17,8 @@
   let renameValue = '';
   let renameInput: HTMLInputElement | null = null;
   let isDeleteDialogOpen = false;
+  let copyTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isCopied = false;
 
   function formatDateWithOrdinal(date: Date) {
     const day = date.getDate();
@@ -54,6 +56,7 @@
 
   onDestroy(() => {
     if (editor) editor.destroy();
+    if (copyTimeout) clearTimeout(copyTimeout);
   });
 
   $: if (editor && $websitesStore.active) {
@@ -133,6 +136,22 @@
     document.body.appendChild(link);
     link.click();
     link.remove();
+  }
+
+  async function handleCopy() {
+    const active = $websitesStore.active;
+    if (!active) return;
+    try {
+      await navigator.clipboard.writeText(active.content || '');
+      isCopied = true;
+      if (copyTimeout) clearTimeout(copyTimeout);
+      copyTimeout = setTimeout(() => {
+        isCopied = false;
+        copyTimeout = null;
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to copy website content:', error);
+    }
   }
 
   async function handleDelete() {
@@ -245,6 +264,19 @@
             title="Rename website"
           >
             <Pencil size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onclick={handleCopy}
+            aria-label={isCopied ? 'Copied website' : 'Copy website'}
+            title={isCopied ? 'Copied' : 'Copy website'}
+          >
+            {#if isCopied}
+              <Check size={16} />
+            {:else}
+              <Copy size={16} />
+            {/if}
           </Button>
           <Button
             size="icon"
