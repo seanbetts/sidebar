@@ -3,6 +3,7 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
+  import { Image } from '@tiptap/extension-image';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
@@ -216,6 +217,7 @@
       element: editorElement,
       extensions: [
         StarterKit,
+        Image.configure({ inline: false, allowBase64: true }),
         TaskList,
         TaskItem.configure({ nested: true }),
         TableKit,

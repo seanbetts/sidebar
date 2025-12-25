@@ -119,3 +119,43 @@
     @apply bg-background text-foreground;
   }
 }
+
+.tiptap p:has(img),
+.tiptap-editor p:has(img),
+.scratchpad-editor p:has(img),
+.website-viewer p:has(img),
+.chat-markdown p:has(img),
+.ProseMirror p:has(img) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 0 1rem;
+  width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
+  margin-left: auto;
+  margin-right: auto;
+  white-space: nowrap;
+  scroll-padding-inline: 1rem;
+  scroll-snap-type: x proximity;
+}
+
+.tiptap img,
+.tiptap-editor img,
+.scratchpad-editor img,
+.website-viewer img,
+.chat-markdown img,
+.ProseMirror img {
+  max-height: 400px;
+  max-width: 80%;
+  height: auto;
+  display: inline-block;
+  object-fit: contain;
+  flex: 0 0 auto;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
+  scroll-snap-align: center;
+}
