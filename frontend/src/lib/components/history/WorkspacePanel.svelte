@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { filesStore } from '$lib/stores/files';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import type { FileNode } from '$lib/types/file';
@@ -11,9 +10,8 @@
   $: searchQuery = treeData?.searchQuery || '';
   $: loading = treeData?.loading || false;
 
-  onMount(() => {
-    filesStore.load(basePath);
-  });
+  // Data loading is now handled by parent Sidebar component
+  // onMount removed to prevent duplicate loads and initial flicker
 
   function handleToggle(path: string) {
     filesStore.toggleExpanded(basePath, path);

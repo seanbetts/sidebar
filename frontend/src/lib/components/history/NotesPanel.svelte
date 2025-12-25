@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { ChevronRight } from 'lucide-svelte';
   import { filesStore } from '$lib/stores/files';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
@@ -17,9 +16,8 @@
 
   const ARCHIVE_FOLDER = 'Archive';
 
-  onMount(() => {
-    filesStore.load(basePath);
-  });
+  // Data loading is now handled by parent Sidebar component
+  // onMount removed to prevent duplicate loads and initial flicker
 
   function handleToggle(path: string) {
     filesStore.toggleExpanded(basePath, path);
