@@ -22,11 +22,15 @@
   let isNewFolderDialogOpen = false;
   let newFolderName = '';
   let newFolderInput: HTMLInputElement | null = null;
+  let isNewWorkspaceFolderDialogOpen = false;
+  let newWorkspaceFolderName = '';
+  let newWorkspaceFolderInput: HTMLInputElement | null = null;
   let isSettingsOpen = false;
   let isNewWebsiteDialogOpen = false;
   let newWebsiteUrl = '';
   let newWebsiteInput: HTMLInputElement | null = null;
   let isSavingWebsite = false;
+  let isCreatingWorkspaceFolder = false;
   let isCreatingNote = false;
   let isCreatingFolder = false;
   let isSaveChangesDialogOpen = false;
@@ -553,6 +557,11 @@
     isNewFolderDialogOpen = true;
   }
 
+  function handleNewWorkspaceFolder() {
+    newWorkspaceFolderName = '';
+    isNewWorkspaceFolderDialogOpen = true;
+  }
+
   function handleNewWebsite() {
     newWebsiteUrl = '';
     isNewWebsiteDialogOpen = true;
@@ -654,6 +663,30 @@
     }
   }
 
+  async function createWorkspaceFolderFromDialog() {
+    const name = newWorkspaceFolderName.trim().replace(/^\/+|\/+$/g, '');
+    if (!name || isCreatingWorkspaceFolder) return;
+
+    isCreatingWorkspaceFolder = true;
+    try {
+      const response = await fetch('/api/files/folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ basePath: '.', path: name })
+      });
+
+      if (!response.ok) throw new Error('Failed to create folder');
+      await filesStore.load('.');
+      isNewWorkspaceFolderDialogOpen = false;
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+      errorMessage = 'Failed to create folder. Please try again.';
+      isErrorDialogOpen = true;
+    } finally {
+      isCreatingWorkspaceFolder = false;
+    }
+  }
+
 </script>
 
 <AlertDialog.Root bind:open={isNewNoteDialogOpen}>
@@ -730,6 +763,54 @@
         onclick={createFolderFromDialog}
       >
         {#if isCreatingFolder}
+          <span class="inline-flex items-center gap-2">
+            <Loader2 size={14} class="animate-spin" />
+            Creating...
+          </span>
+        {:else}
+          Create folder
+        {/if}
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={isNewWorkspaceFolderDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      newWorkspaceFolderInput?.focus();
+      newWorkspaceFolderInput?.select();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Create a new folder</AlertDialog.Title>
+      <AlertDialog.Description>Folders help organize your workspace.</AlertDialog.Description>
+    </AlertDialog.Header>
+    <div class="py-2">
+      <input
+        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        type="text"
+        placeholder="Folder name"
+        bind:this={newWorkspaceFolderInput}
+        bind:value={newWorkspaceFolderName}
+        on:keydown={(event) => {
+          if (event.key === 'Enter') createWorkspaceFolderFromDialog();
+        }}
+      />
+    </div>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel
+        disabled={isCreatingWorkspaceFolder}
+        onclick={() => (isNewWorkspaceFolderDialogOpen = false)}
+      >
+        Cancel
+      </AlertDialog.Cancel>
+      <AlertDialog.Action
+        disabled={!newWorkspaceFolderName.trim() || isCreatingWorkspaceFolder}
+        onclick={createWorkspaceFolderFromDialog}
+      >
+        {#if isCreatingWorkspaceFolder}
           <span class="inline-flex items-center gap-2">
             <Loader2 size={14} class="animate-spin" />
             Creating...
@@ -1179,7 +1260,11 @@
         <div class="panel-section-header">
           <div class="panel-section-header-row">
             <div class="panel-section-title">Files</div>
-            <div class="panel-section-actions"></div>
+            <div class="panel-section-actions">
+              <button class="panel-action" on:click={handleNewWorkspaceFolder} aria-label="New folder" title="New folder">
+                <Folder size={16} />
+              </button>
+            </div>
           </div>
           <SearchBar
             onSearch={(query) => filesStore.searchFiles('.', query)}
