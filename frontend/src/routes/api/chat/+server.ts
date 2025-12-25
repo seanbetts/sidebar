@@ -17,7 +17,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			user_message_id,
 			open_context,
 			current_location,
-			current_location_levels
+			current_location_levels,
+			current_weather
 		} = await request.json();
 
 		if (!message) {
@@ -39,7 +40,8 @@ export const POST: RequestHandler = async ({ request }) => {
 				user_message_id,
 				open_context,
 				current_location,
-				current_location_levels
+				current_location_levels,
+				current_weather
 			})
 		});
 

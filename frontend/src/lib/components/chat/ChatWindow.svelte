@@ -105,6 +105,16 @@
 					console.error('Failed to parse live location levels:', error);
 				}
 			}
+			let currentWeather: Record<string, unknown> | undefined;
+			const rawWeather =
+				typeof window !== 'undefined' ? localStorage.getItem('sidebar.weather') : null;
+			if (rawWeather) {
+				try {
+					currentWeather = JSON.parse(rawWeather);
+				} catch (error) {
+					console.error('Failed to parse weather cache:', error);
+				}
+			}
 
 			await sseClient.connect(
 				{
@@ -113,7 +123,8 @@
 					userMessageId,
 					openContext,
 					currentLocation: currentLocation || undefined,
-					currentLocationLevels
+					currentLocationLevels,
+					currentWeather
 				},
 				{
 					onToken: (content) => {

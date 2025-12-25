@@ -545,6 +545,7 @@ class ToolMapper:
                     user_agent=context.get("user_agent"),
                     current_location=context.get("current_location"),
                     current_location_levels=context.get("current_location_levels"),
+                    current_weather=context.get("current_weather"),
                 )
                 result = {
                     "success": True,

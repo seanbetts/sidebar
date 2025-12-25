@@ -35,6 +35,7 @@ class PromptContextService:
         user_agent: str | None,
         current_location: str | None = None,
         current_location_levels: dict[str, Any] | str | None = None,
+        current_weather: dict[str, Any] | str | None = None,
         now: datetime | None = None,
     ) -> tuple[str, str]:
         timestamp = now or datetime.now(timezone.utc)
@@ -49,6 +50,7 @@ class PromptContextService:
             settings_record,
             resolved_location,
             current_location_levels,
+            current_weather,
             timestamp,
         )
 

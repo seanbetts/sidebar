@@ -37,6 +37,7 @@ SUPPORTED_VARIABLES = {
     "currentDate",
     "currentTime",
     "currentLocationLevels",
+    "currentWeather",
     "timezone",
     "gender",
     "pronouns",
@@ -48,6 +49,7 @@ SUPPORTED_VARIABLES = {
     "current_date",
     "current_time",
     "current_location_levels",
+    "current_weather",
     "operating_system",
     "conversation_context",
     "communication_style",
@@ -64,6 +66,8 @@ Current time: {current_time}
 Home location: {homeLocation}
 
 Current location: {currentLocationLevels}
+
+Current weather at current location: {currentWeather}
 </message_context>
 
 <instruction_priority>
@@ -176,10 +180,142 @@ def _format_location_levels(levels: dict[str, Any] | str | None) -> str:
     return " | ".join(parts) if parts else "Unavailable"
 
 
+def _weather_description(code: int) -> str:
+    if code == 0:
+        return "clear sky"
+    if code == 1:
+        return "mainly clear"
+    if code == 2:
+        return "partly cloudy"
+    if code == 3:
+        return "overcast"
+    if code == 45:
+        return "fog"
+    if code == 48:
+        return "depositing rime fog"
+    if code == 51:
+        return "light drizzle"
+    if code == 53:
+        return "moderate drizzle"
+    if code == 55:
+        return "dense drizzle"
+    if code == 56:
+        return "light freezing drizzle"
+    if code == 57:
+        return "dense freezing drizzle"
+    if code == 61:
+        return "slight rain"
+    if code == 63:
+        return "moderate rain"
+    if code == 65:
+        return "heavy rain"
+    if code == 66:
+        return "light freezing rain"
+    if code == 67:
+        return "heavy freezing rain"
+    if code == 71:
+        return "slight snow fall"
+    if code == 73:
+        return "moderate snow fall"
+    if code == 75:
+        return "heavy snow fall"
+    if code == 77:
+        return "snow grains"
+    if code == 80:
+        return "slight rain showers"
+    if code == 81:
+        return "moderate rain showers"
+    if code == 82:
+        return "violent rain showers"
+    if code == 85:
+        return "slight snow showers"
+    if code == 86:
+        return "heavy snow showers"
+    if code == 95:
+        return "thunderstorm"
+    if code == 96:
+        return "thunderstorm with slight hail"
+    if code == 99:
+        return "thunderstorm with heavy hail"
+    return "unavailable"
+
+
+def _wind_direction_label(degrees: float) -> str:
+    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    index = int((degrees + 22.5) // 45) % 8
+    return directions[index]
+
+
+def _format_weather(weather: dict[str, Any] | str | None) -> str:
+    if not weather:
+        return "Unavailable"
+    if isinstance(weather, str):
+        return weather
+
+    temperature = weather.get("temperature_c")
+    feels_like = weather.get("feels_like_c")
+    weather_code = weather.get("weather_code")
+    is_day = weather.get("is_day")
+    wind_speed = weather.get("wind_speed_kph")
+    wind_direction = weather.get("wind_direction_degrees")
+    precipitation = weather.get("precipitation_mm")
+    cloud_cover = weather.get("cloud_cover_percent")
+    daily = weather.get("daily") or []
+
+    if temperature is None or weather_code is None or is_day is None:
+        return "Unavailable"
+
+    description = _weather_description(weather_code)
+    day_label = "daytime" if is_day == 1 else "nighttime"
+    temp_text = f"{round(temperature)}°C"
+    feels_like_text = f"{round(feels_like)}°C" if feels_like is not None else None
+    wind_text = None
+    if wind_speed is not None:
+        wind_dir_label = _wind_direction_label(float(wind_direction)) if wind_direction is not None else None
+        wind_text = f"{round(wind_speed)} km/h" + (f" {wind_dir_label}" if wind_dir_label else "")
+    precip_text = f"{precipitation} mm" if precipitation is not None else None
+    cloud_text = f"{cloud_cover}%" if cloud_cover is not None else None
+
+    parts = [f"It is {day_label}, {description}, {temp_text}"]
+    if feels_like_text:
+        parts.append(f"feels like {feels_like_text}")
+    if wind_text:
+        parts.append(f"wind {wind_text}")
+    if precip_text:
+        parts.append(f"precipitation {precip_text}")
+    if cloud_text:
+        parts.append(f"cloud cover {cloud_text}")
+
+    sentence = ", ".join(parts) + "."
+
+    if daily:
+        forecast_parts = []
+        for index, entry in enumerate(daily[:3]):
+            max_c = entry.get("temperature_max_c")
+            min_c = entry.get("temperature_min_c")
+            code = entry.get("weather_code")
+            precip = entry.get("precipitation_probability_max")
+            if max_c is None or min_c is None or code is None:
+                continue
+            desc = _weather_description(code)
+            label = "Today" if index == 0 else "Tomorrow" if index == 1 else "Next day"
+            precip_text = f"{precip}% chance of precipitation" if precip is not None else None
+            forecast_bits = [f"{label}: {round(min_c)}–{round(max_c)}°C, {desc}"]
+            if precip_text:
+                forecast_bits.append(precip_text)
+            forecast_parts.append(", ".join(forecast_bits))
+
+        if forecast_parts:
+            sentence = sentence + " Forecast: " + ". ".join(forecast_parts) + "."
+
+    return sentence
+
+
 def build_prompt_variables(
     settings_record: Any,
     current_location: str,
     current_location_levels: dict[str, Any] | str | None,
+    current_weather: dict[str, Any] | str | None,
     operating_system: str | None,
     now: datetime,
 ) -> dict[str, Any]:
@@ -196,6 +332,7 @@ def build_prompt_variables(
     current_date = now.strftime("%Y-%m-%d")
     current_time = f"{now.strftime('%H:%M')} {timezone_label}"
     formatted_levels = _format_location_levels(current_location_levels)
+    formatted_weather = _format_weather(current_weather)
 
     return {
         "owner": owner,
@@ -204,6 +341,7 @@ def build_prompt_variables(
         "currentTime": current_time,
         "homeLocation": home_location or "Unknown",
         "currentLocationLevels": formatted_levels,
+        "currentWeather": formatted_weather,
         "timezone": timezone_label,
         "gender": gender,
         "pronouns": pronouns,
@@ -215,6 +353,7 @@ def build_prompt_variables(
         "current_date": current_date,
         "current_time": current_time,
         "current_location_levels": formatted_levels,
+        "current_weather": formatted_weather,
         "home_location": home_location,
         "operating_system": operating_system,
     }
@@ -319,12 +458,14 @@ def build_system_prompt(
     settings_record: Any,
     current_location: str,
     current_location_levels: dict[str, Any] | str | None,
+    current_weather: dict[str, Any] | str | None,
     now: datetime,
 ) -> str:
     variables = build_prompt_variables(
         settings_record,
         current_location,
         current_location_levels,
+        current_weather,
         None,
         now,
     )
@@ -344,7 +485,7 @@ def build_first_message_prompt(
         settings_record.working_relationship if settings_record else None,
         DEFAULT_WORKING_RELATIONSHIP,
     )
-    variables = build_prompt_variables(settings_record, "", None, operating_system, now)
+    variables = build_prompt_variables(settings_record, "", None, None, operating_system, now)
     age = variables.get("age")
     name = variables.get("name")
     gender = variables.get("gender")

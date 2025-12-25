@@ -34,6 +34,7 @@ export class SSEClient {
 			openContext?: any;
 			currentLocation?: string;
 			currentLocationLevels?: Record<string, string>;
+			currentWeather?: Record<string, unknown>;
 		},
 		callbacks: SSECallbacks
 	): Promise<void> {
@@ -50,7 +51,8 @@ export class SSEClient {
 					user_message_id: payload.userMessageId,
 					open_context: payload.openContext,
 					current_location: payload.currentLocation,
-					current_location_levels: payload.currentLocationLevels
+					current_location_levels: payload.currentLocationLevels,
+					current_weather: payload.currentWeather
 				})
 			});
 

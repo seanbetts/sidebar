@@ -97,6 +97,7 @@ async def stream_chat(
     open_context = data.get("open_context") or {}
     current_location = data.get("current_location")
     current_location_levels = data.get("current_location_levels")
+    current_weather = data.get("current_weather")
 
     if not message:
         raise HTTPException(status_code=400, detail="Message required")
@@ -122,6 +123,7 @@ async def stream_chat(
         user_agent=user_agent,
         current_location=current_location,
         current_location_levels=current_location_levels,
+        current_weather=current_weather,
         now=now,
     )
     enabled_skills = _resolve_enabled_skills(settings_record)
@@ -137,6 +139,7 @@ async def stream_chat(
         "user_agent": user_agent,
         "current_location": current_location,
         "current_location_levels": current_location_levels,
+        "current_weather": current_weather,
     }
 
     async def event_generator():
