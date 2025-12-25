@@ -162,10 +162,9 @@
 					onToolEnd: (event) => {
 						const status = event?.status === 'error' ? 'error' : 'success';
 						if (event?.name) {
-							chatStore.setActiveTool(assistantMessageId, event.name, status);
-							chatStore.clearActiveTool(assistantMessageId);
+							chatStore.finalizeActiveTool(assistantMessageId, event.name, status);
 						} else {
-							chatStore.clearActiveTool(assistantMessageId);
+							chatStore.finalizeActiveTool(assistantMessageId, 'Tool', status);
 						}
 					},
 

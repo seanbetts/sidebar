@@ -11,6 +11,7 @@
 		messageId: string;
 		name: string;
 		status: 'running' | 'success' | 'error';
+		startedAt?: number;
 	} | null = null;
 
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;

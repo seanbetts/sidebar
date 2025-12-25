@@ -94,6 +94,12 @@ If a claim needs evidence and you cannot verify it, say you do not know or label
 Any non obvious claim, statistic, or figure must be backed by an authentic published source. Never fabricate citations.
 
 If tools for web lookup are available, use them for time sensitive or niche facts and for anything that needs verification.
+
+When you use web search, you MUST include a "Sources:" section at the end of your response listing all the URLs you referenced, formatted as markdown links. Example:
+
+Sources:
+- [Title of Source](https://example.com/article)
+- [Another Source](https://example.com/page)
 </accuracy_and_sources>"""
 
 CONTEXT_GUIDANCE_TEMPLATE = """<context_guidance>

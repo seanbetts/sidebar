@@ -4,7 +4,12 @@
 	import Message from './Message.svelte';
 
 	export let messages: MessageType[];
-	export let activeTool: { messageId: string; name: string; status: 'running' | 'success' | 'error' } | null = null;
+	export let activeTool: {
+		messageId: string;
+		name: string;
+		status: 'running' | 'success' | 'error';
+		startedAt?: number;
+	} | null = null;
 
 	let containerElement: HTMLDivElement;
 	let shouldAutoScroll = true;
