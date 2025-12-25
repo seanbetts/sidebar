@@ -4,7 +4,7 @@
 	import Message from './Message.svelte';
 
 	export let messages: MessageType[];
-	export let serverTool: { messageId: string; name: string; query?: string } | null = null;
+	export let activeTool: { messageId: string; name: string; status: 'running' | 'success' | 'error' } | null = null;
 
 	let containerElement: HTMLDivElement;
 	let shouldAutoScroll = true;
@@ -50,7 +50,7 @@
 		</div>
 	{:else}
 		{#each messages as message (message.id)}
-			<Message {message} {serverTool} />
+			<Message {message} {activeTool} />
 		{/each}
 	{/if}
 </div>

@@ -11,10 +11,10 @@ export interface ChatState {
 	isStreaming: boolean;
 	currentMessageId: string | null;
 	conversationId: string | null;
-	serverTool: {
+	activeTool: {
 		messageId: string;
 		name: string;
-		query?: string;
+		status: 'running' | 'success' | 'error';
 	} | null;
 }
 
@@ -24,8 +24,9 @@ function createChatStore() {
 		isStreaming: false,
 		currentMessageId: null,
 		conversationId: null,
-		serverTool: null
+		activeTool: null
 	});
+	let toolClearTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	return {
 		subscribe,
@@ -44,7 +45,7 @@ function createChatStore() {
 				})),
 				isStreaming: false,
 				currentMessageId: null,
-				serverTool: null
+				activeTool: null
 			});
 		},
 
@@ -59,7 +60,7 @@ function createChatStore() {
 				messages: [],
 				isStreaming: false,
 				currentMessageId: null,
-				serverTool: null
+				activeTool: null
 			});
 
 			// Mark as generating title from the start
@@ -112,7 +113,7 @@ function createChatStore() {
 				],
 				isStreaming: true,
 				currentMessageId: assistantMessageId,
-				serverTool: null
+				activeTool: null
 			}));
 
 			// Persist user message to backend
@@ -211,7 +212,7 @@ function createChatStore() {
 				),
 				isStreaming: false,
 				currentMessageId: null,
-				serverTool: state.serverTool?.messageId === messageId ? null : state.serverTool
+				activeTool: state.activeTool?.messageId === messageId ? null : state.activeTool
 			}));
 
 			// Persist assistant message to backend
@@ -263,7 +264,7 @@ function createChatStore() {
 				),
 				isStreaming: false,
 				currentMessageId: null,
-				serverTool: null
+				activeTool: null
 			}));
 		},
 
@@ -276,7 +277,7 @@ function createChatStore() {
 				messages: [],
 				isStreaming: false,
 				currentMessageId: null,
-				serverTool: null
+				activeTool: null
 			});
 		},
 
@@ -287,22 +288,32 @@ function createChatStore() {
 			await this.startNewConversation();
 		},
 
-		setServerTool(messageId: string, name: string, query?: string) {
+		setActiveTool(messageId: string, name: string, status: 'running' | 'success' | 'error') {
+			if (toolClearTimeout) {
+				clearTimeout(toolClearTimeout);
+				toolClearTimeout = null;
+			}
 			update((state) => ({
 				...state,
-				serverTool: {
+				activeTool: {
 					messageId,
 					name,
-					query
+					status
 				}
 			}));
 		},
 
-		clearServerTool(messageId: string) {
-			update((state) => ({
-				...state,
-				serverTool: state.serverTool?.messageId === messageId ? null : state.serverTool
-			}));
+		clearActiveTool(messageId: string, delayMs: number = 1200) {
+			if (toolClearTimeout) {
+				clearTimeout(toolClearTimeout);
+			}
+			toolClearTimeout = setTimeout(() => {
+				update((state) => ({
+					...state,
+					activeTool: state.activeTool?.messageId === messageId ? null : state.activeTool
+				}));
+				toolClearTimeout = null;
+			}, delayMs);
 		}
 	};
 }

@@ -3,21 +3,23 @@
 	import type { Message } from '$lib/types/chat';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import { Copy, Check } from 'lucide-svelte';
+	import { AlertTriangle, Check, Copy, Wrench } from 'lucide-svelte';
 	import ChatMarkdown from './ChatMarkdown.svelte';
-	import ToolCall from './ToolCall.svelte';
 
 	export let message: Message;
-	export let serverTool: { messageId: string; name: string; query?: string } | null = null;
+	export let activeTool: {
+		messageId: string;
+		name: string;
+		status: 'running' | 'success' | 'error';
+	} | null = null;
 
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isCopied = false;
 
 	$: roleColor = message.role === 'user' ? 'bg-muted' : 'bg-card';
 	$: roleName = message.role === 'user' ? 'You' : 'sideBar';
-	$: isServerToolActive = serverTool?.messageId === message.id;
-	$: serverToolLabel =
-		serverTool?.name === 'web_search' ? 'Searching the web...' : 'Running a server tool...';
+	$: isToolActive = activeTool?.messageId === message.id;
+	$: toolLabel = activeTool?.name ? `Using ${activeTool.name}` : 'Using a tool';
 
 	function formatTime(date: Date): string {
 		return new Date(date).toLocaleTimeString('en-US', {
@@ -54,10 +56,16 @@
 			{#if message.status === 'streaming'}
 				<span class="text-xs animate-pulse">●</span>
 			{/if}
-			{#if isServerToolActive}
+			{#if isToolActive}
 				<span class="server-tool-indicator">
-					<span class="server-tool-dot"></span>
-					<span>{serverToolLabel}</span>
+					{#if activeTool?.status === 'running'}
+						<Wrench size={12} />
+					{:else if activeTool?.status === 'success'}
+						<Check size={12} />
+					{:else if activeTool?.status === 'error'}
+						<AlertTriangle size={12} />
+					{/if}
+					<span>{toolLabel}</span>
 				</span>
 			{/if}
 		</div>
@@ -89,14 +97,6 @@
 		{/if}
 	{/if}
 
-	{#if message.toolCalls && message.toolCalls.length > 0}
-		<div class="mt-3 space-y-2">
-			{#each message.toolCalls as toolCall (toolCall.id)}
-				<ToolCall {toolCall} />
-			{/each}
-		</div>
-	{/if}
-
 	{#if message.error}
 		<div class="mt-3 p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
 			<strong>Error:</strong>
@@ -112,28 +112,5 @@
 		gap: 0.35rem;
 		font-size: 0.75rem;
 		color: var(--color-muted-foreground);
-	}
-
-	.server-tool-dot {
-		width: 0.45rem;
-		height: 0.45rem;
-		border-radius: 999px;
-		background: var(--color-muted-foreground);
-		animation: pulse 1.5s ease-in-out infinite;
-	}
-
-	@keyframes pulse {
-		0% {
-			opacity: 0.3;
-			transform: scale(0.9);
-		}
-		50% {
-			opacity: 1;
-			transform: scale(1);
-		}
-		100% {
-			opacity: 0.3;
-			transform: scale(0.9);
-		}
 	}
 </style>

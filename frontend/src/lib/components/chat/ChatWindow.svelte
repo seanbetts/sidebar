@@ -154,15 +154,19 @@
 					onToolResult: (event) => {
 						chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
 					},
-					onServerToolStart: (event) => {
-						const query =
-							event?.name === 'web_search' && typeof event?.input?.query === 'string'
-								? event.input.query
-								: undefined;
-						chatStore.setServerTool(assistantMessageId, event?.name || 'server_tool', query);
+					onToolStart: (event) => {
+						if (event?.name) {
+							chatStore.setActiveTool(assistantMessageId, event.name, 'running');
+						}
 					},
-					onServerToolEnd: () => {
-						chatStore.clearServerTool(assistantMessageId);
+					onToolEnd: (event) => {
+						const status = event?.status === 'error' ? 'error' : 'success';
+						if (event?.name) {
+							chatStore.setActiveTool(assistantMessageId, event.name, status);
+							chatStore.clearActiveTool(assistantMessageId);
+						} else {
+							chatStore.clearActiveTool(assistantMessageId);
+						}
 					},
 
 					onNoteCreated: async (data) => {
@@ -284,7 +288,7 @@
 		</div>
 	</div>
 	<!-- Messages -->
-	<MessageList messages={$chatStore.messages} serverTool={$chatStore.serverTool} />
+	<MessageList messages={$chatStore.messages} activeTool={$chatStore.activeTool} />
 
 	<!-- Input -->
 	<ChatInput onsend={handleSend} disabled={$chatStore.isStreaming} />

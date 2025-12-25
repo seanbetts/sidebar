@@ -59,6 +59,10 @@ class ClaudeClient:
                     return item.get("error_code")
         return None
 
+    @staticmethod
+    def _web_search_status(content_block: Any) -> str:
+        return "error" if ClaudeClient._web_search_error(content_block) else "success"
+
     def __init__(self, settings: Settings):
         # Create custom httpx client that bypasses SSL verification
         # TEMPORARY WORKAROUND for corporate SSL interception
@@ -167,10 +171,10 @@ class ClaudeClient:
                                     }
                                 elif event.content_block.type == "web_search_tool_result":
                                     yield {
-                                        "type": "server_tool_end",
+                                        "type": "tool_end",
                                         "data": {
-                                            "name": "web_search",
-                                            "error": ClaudeClient._web_search_error(event.content_block),
+                                            "name": "Web Search",
+                                            "status": ClaudeClient._web_search_status(event.content_block),
                                         },
                                     }
                                     content_blocks.append(
@@ -211,9 +215,10 @@ class ClaudeClient:
                                     current_server_tool["input"] = {}
                                 if current_server_tool["name"] == "web_search":
                                     yield {
-                                        "type": "server_tool_start",
+                                        "type": "tool_start",
                                         "data": {
-                                            "name": "web_search",
+                                            "name": "Web Search",
+                                            "status": "running",
                                             "input": current_server_tool["input"],
                                         },
                                     }
@@ -267,6 +272,13 @@ class ClaudeClient:
                                     "parameters": tool_use["input"],
                                     "status": "pending"
                                 }
+                                yield {
+                                    "type": "tool_start",
+                                    "data": {
+                                        "name": display_name,
+                                        "status": "running",
+                                    },
+                                }
 
                                 # Execute tool
                                 result = await self.tool_mapper.execute_tool(
@@ -284,6 +296,13 @@ class ClaudeClient:
                                     "name": display_name,
                                     "result": result,
                                     "status": status
+                                }
+                                yield {
+                                    "type": "tool_end",
+                                    "data": {
+                                        "name": display_name,
+                                        "status": status,
+                                    },
                                 }
 
                                 if result.get("success"):
