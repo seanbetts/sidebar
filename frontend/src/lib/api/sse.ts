@@ -27,7 +27,14 @@ export class SSEClient {
 	 * Connect to SSE endpoint and stream chat response
 	 */
 	async connect(
-		payload: { message: string; conversationId?: string; userMessageId?: string; openContext?: any },
+		payload: {
+			message: string;
+			conversationId?: string;
+			userMessageId?: string;
+			openContext?: any;
+			currentLocation?: string;
+			currentLocationLevels?: Record<string, string>;
+		},
 		callbacks: SSECallbacks
 	): Promise<void> {
 		try {
@@ -41,7 +48,9 @@ export class SSEClient {
 					message: payload.message,
 					conversation_id: payload.conversationId,
 					user_message_id: payload.userMessageId,
-					open_context: payload.openContext
+					open_context: payload.openContext,
+					current_location: payload.currentLocation,
+					current_location_levels: payload.currentLocationLevels
 				})
 			});
 

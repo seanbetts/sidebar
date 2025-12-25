@@ -9,6 +9,7 @@
 	let timeInterval: ReturnType<typeof setInterval> | undefined;
 	const locationCacheKey = "sidebar.liveLocation";
 	const locationCacheTimeKey = "sidebar.liveLocationTs";
+	const locationCacheLevelsKey = "sidebar.liveLocationLevels";
 	const locationCacheTtlMs = 30 * 60 * 1000;
 
 	function updateDateTime() {
@@ -65,6 +66,9 @@
 						liveLocation = label;
 						localStorage.setItem(locationCacheKey, label);
 						localStorage.setItem(locationCacheTimeKey, Date.now().toString());
+					}
+					if (data?.levels) {
+						localStorage.setItem(locationCacheLevelsKey, JSON.stringify(data.levels));
 					}
 				} catch (error) {
 					console.error("Failed to load live location:", error);
@@ -186,6 +190,7 @@
 		color: var(--color-muted-foreground);
 		white-space: nowrap;
 	}
+
 
 	.date {
 		font-size: 0.75rem;

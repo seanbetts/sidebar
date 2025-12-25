@@ -93,12 +93,27 @@
 				};
 			}
 
+			const currentLocation =
+				typeof window !== 'undefined' ? localStorage.getItem('sidebar.liveLocation') || '' : '';
+			let currentLocationLevels: Record<string, string> | undefined;
+			const rawLevels =
+				typeof window !== 'undefined' ? localStorage.getItem('sidebar.liveLocationLevels') : null;
+			if (rawLevels) {
+				try {
+					currentLocationLevels = JSON.parse(rawLevels);
+				} catch (error) {
+					console.error('Failed to parse live location levels:', error);
+				}
+			}
+
 			await sseClient.connect(
 				{
 					message,
 					conversationId: conversationId ?? undefined,
 					userMessageId,
-					openContext
+					openContext,
+					currentLocation: currentLocation || undefined,
+					currentLocationLevels
 				},
 				{
 					onToken: (content) => {

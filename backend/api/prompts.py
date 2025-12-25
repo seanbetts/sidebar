@@ -63,7 +63,7 @@ Current time: {current_time}
 
 Home location: {homeLocation}
 
-Current location levels: {currentLocationLevels}
+Current location: {currentLocationLevels}
 </message_context>
 
 <instruction_priority>

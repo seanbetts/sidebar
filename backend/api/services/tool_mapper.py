@@ -543,6 +543,8 @@ class ToolMapper:
                     user_id=user_id,
                     open_context=context.get("open_context"),
                     user_agent=context.get("user_agent"),
+                    current_location=context.get("current_location"),
+                    current_location_levels=context.get("current_location_levels"),
                 )
                 result = {
                     "success": True,

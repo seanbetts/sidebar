@@ -66,6 +66,23 @@ def _extract_component(components: list[dict], component_type: str) -> str | Non
     return None
 
 
+def _collect_levels(components: list[dict]) -> dict[str, str]:
+    levels: dict[str, str] = {}
+    for component in components:
+        name = component.get("long_name")
+        if not name:
+            continue
+        for ctype in component.get("types", []):
+            if ctype.startswith("administrative_area_level_") or ctype in {
+                "locality",
+                "postal_town",
+                "sublocality",
+                "country",
+            }:
+                levels[ctype] = name
+    return levels
+
+
 @router.get("/autocomplete")
 async def autocomplete_places(
     input: str,
@@ -133,15 +150,11 @@ async def reverse_geocode(
         )
 
     components = (details.get("result") or {}).get("address_components") or []
-    city = (
-        _extract_component(components, "locality")
-        or _extract_component(components, "postal_town")
-        or _extract_component(components, "administrative_area_level_2")
-        or _extract_component(components, "sublocality")
-    )
-    region = _extract_component(components, "administrative_area_level_1")
+    levels = _collect_levels(components)
+    locality = _extract_component(components, "locality")
+    country = _extract_component(components, "country")
 
-    if not city or not region:
-        return {"label": None}
+    if not locality or not country:
+        return {"label": None, "levels": levels}
 
-    return {"label": f"{city}, {region}"}
+    return {"label": f"{locality}, {country}", "levels": levels}

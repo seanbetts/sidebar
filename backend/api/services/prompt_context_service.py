@@ -33,6 +33,8 @@ class PromptContextService:
         user_id: str,
         open_context: dict[str, Any] | None,
         user_agent: str | None,
+        current_location: str | None = None,
+        current_location_levels: dict[str, Any] | str | None = None,
         now: datetime | None = None,
     ) -> tuple[str, str]:
         timestamp = now or datetime.now(timezone.utc)
@@ -40,9 +42,15 @@ class PromptContextService:
         location_fallback = (
             settings_record.location if settings_record and settings_record.location else "Unknown"
         )
+        resolved_location = current_location or "Current location not available"
         operating_system = detect_operating_system(user_agent)
 
-        system_prompt = build_system_prompt(settings_record, location_fallback, timestamp)
+        system_prompt = build_system_prompt(
+            settings_record,
+            resolved_location,
+            current_location_levels,
+            timestamp,
+        )
 
         context_guidance = resolve_template(
             CONTEXT_GUIDANCE_TEMPLATE,
