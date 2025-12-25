@@ -63,7 +63,10 @@
 		<div class="flex items-center gap-2">
 			<Badge variant={message.role === 'user' ? 'default' : 'outline'}>{roleName}</Badge>
 			{#if message.status === 'streaming'}
-				<span class="text-xs animate-pulse">●</span>
+				<span class="streaming-indicator">
+					<span class="streaming-dot">●</span>
+					<span class="streaming-text">Working...</span>
+				</span>
 			{/if}
 			{#if isToolActive}
 				<span class="server-tool-indicator">
@@ -119,6 +122,55 @@
 		gap: 0.35rem;
 		font-size: 0.75rem;
 		color: var(--color-muted-foreground);
+	}
+
+	.streaming-indicator {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.75rem;
+		color: var(--color-muted-foreground);
+	}
+
+	.streaming-dot {
+		font-size: 0.85rem;
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.streaming-text {
+		position: relative;
+		background: linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--color-muted-foreground) 35%, transparent) 0%,
+			var(--color-muted-foreground) 50%,
+			color-mix(in oklab, var(--color-muted-foreground) 35%, transparent) 100%
+		);
+		background-size: 200% 100%;
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+		animation: shimmer 1.5s ease-in-out infinite;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
+	@keyframes pulse {
+		0% {
+			opacity: 0.35;
+		}
+		50% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0.35;
+		}
 	}
 
 	.message-footer {
