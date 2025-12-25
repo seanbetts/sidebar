@@ -149,13 +149,13 @@
 .website-viewer img,
 .chat-markdown img,
 .ProseMirror img {
-  max-height: 400px;
+  max-height: 350px;
   max-width: 80%;
   height: auto;
   display: inline-block;
   object-fit: contain;
   flex: 0 0 auto;
-  padding: 0 0.5rem;
+  padding: 0.5rem 0.5rem;
   box-sizing: border-box;
   scroll-snap-align: center;
 }
