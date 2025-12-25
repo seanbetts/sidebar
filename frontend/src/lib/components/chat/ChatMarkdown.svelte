@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
+  import { Image } from '@tiptap/extension-image';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
@@ -14,7 +15,14 @@
   onMount(() => {
     editor = new Editor({
       element: editorElement,
-      extensions: [StarterKit, TaskList, TaskItem.configure({ nested: true }), TableKit, Markdown],
+      extensions: [
+        StarterKit,
+        Image.configure({ inline: false, allowBase64: true }),
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        TableKit,
+        Markdown
+      ],
       content: '',
       editable: false,
       editorProps: {

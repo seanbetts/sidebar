@@ -31,8 +31,9 @@
   },
   "dependencies": {
     "@tiptap/core": "^3.14.0",
-    "@tiptap/extension-table": "^3.14.0",
+    "@tiptap/extension-image": "^3.14.0",
     "@tiptap/extension-list": "^3.14.0",
+    "@tiptap/extension-table": "^3.14.0",
     "@tiptap/pm": "^3.14.0",
     "@tiptap/starter-kit": "^3.14.0",
     "lucide-svelte": "^0.562.0",
