@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { chatStore } from '$lib/stores/chat';
 	import { SSEClient } from '$lib/api/sse';
 	import { Button } from '$lib/components/ui/button';
@@ -16,6 +17,11 @@
 	import { MessageSquare, Plus, X } from 'lucide-svelte';
 
 	let sseClient = new SSEClient();
+
+	onDestroy(() => {
+		// Clean up SSE connection when component unmounts
+		sseClient.disconnect();
+	});
 
 	/**
 	 * Parse error messages and return user-friendly descriptions

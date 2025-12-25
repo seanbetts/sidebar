@@ -21,7 +21,8 @@ export interface SSECallbacks {
 }
 
 export class SSEClient {
-	private eventSource: EventSource | null = null;
+	private abortController: AbortController | null = null;
+	private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
 	/**
 	 * Connect to SSE endpoint and stream chat response
@@ -38,6 +39,9 @@ export class SSEClient {
 		},
 		callbacks: SSECallbacks
 	): Promise<void> {
+		// Create abort controller for this connection
+		this.abortController = new AbortController();
+
 		try {
 			// Send message to backend via fetch POST to get SSE stream
 			const response = await fetch('/api/chat', {
@@ -53,7 +57,8 @@ export class SSEClient {
 					current_location: payload.currentLocation,
 					current_location_levels: payload.currentLocationLevels,
 					current_weather: payload.currentWeather
-				})
+				}),
+				signal: this.abortController.signal
 			});
 
 			if (!response.ok) {
@@ -65,12 +70,12 @@ export class SSEClient {
 			}
 
 			// Parse SSE stream manually
-			const reader = response.body.getReader();
+			this.reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
 
 			while (true) {
-				const { done, value } = await reader.read();
+				const { done, value } = await this.reader.read();
 				if (done) break;
 
 				// Accumulate chunks
@@ -107,8 +112,17 @@ export class SSEClient {
 				}
 			}
 		} catch (error) {
+			// Don't report error if connection was intentionally aborted
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.log('SSE connection aborted');
+				return;
+			}
 			console.error('SSE connection error:', error);
 			callbacks.onError?.(error instanceof Error ? error.message : String(error));
+		} finally {
+			// Clean up references
+			this.reader = null;
+			this.abortController = null;
 		}
 	}
 
@@ -179,9 +193,18 @@ export class SSEClient {
 	 * Disconnect from SSE stream
 	 */
 	disconnect(): void {
-		if (this.eventSource) {
-			this.eventSource.close();
-			this.eventSource = null;
+		// Abort the fetch request
+		if (this.abortController) {
+			this.abortController.abort();
+			this.abortController = null;
+		}
+
+		// Cancel the reader
+		if (this.reader) {
+			this.reader.cancel().catch(() => {
+				// Ignore errors from cancelling already-closed reader
+			});
+			this.reader = null;
 		}
 	}
 }
