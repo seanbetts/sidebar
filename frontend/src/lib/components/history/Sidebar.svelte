@@ -95,10 +95,11 @@
   ];
   let activeSettingsSection = 'account';
   let loadedSections = new Set<string>();
+  let isMounted = false;
 
   onMount(() => {
-    // Load data for the initially active section only
-    loadSectionData(activeSection);
+    // Mark as mounted to enable reactive data loading
+    isMounted = true;
 
     // Load settings and skills (non-blocking)
     loadSettings(true);
@@ -385,17 +386,35 @@
     isCollapsed = false;
   }
 
-  // Lazy load section data when switching sections
-  $: if (activeSection) {
+  // Lazy load section data when switching sections (only after mount to ensure stores are ready)
+  $: if (isMounted && activeSection) {
     loadSectionData(activeSection);
   }
 
   function loadSectionData(section: typeof activeSection) {
-    // Only load each section once
-    if (loadedSections.has(section)) return;
+    // Only load each section once (track by Set to prevent duplicates)
+    if (loadedSections.has(section)) {
+      return;
+    }
 
+    // Check if data already exists to prevent unnecessary reloads
+    const hasData = {
+      'notes': $filesStore.trees?.['notes']?.children?.length > 0,
+      'websites': $websitesStore.items?.length > 0,
+      'workspace': $filesStore.trees?.['.']?.children?.length > 0,
+      'history': $conversationListStore.conversations?.length > 0
+    }[section];
+
+    // If data already exists, mark as loaded and skip
+    if (hasData) {
+      loadedSections.add(section);
+      return;
+    }
+
+    // Mark as loading before calling load to prevent race conditions
     loadedSections.add(section);
 
+    // Load data based on section
     switch (section) {
       case 'notes':
         filesStore.load('notes');

@@ -12,7 +12,8 @@
 
   $: treeData = $filesStore.trees[basePath];
   $: children = treeData?.children || [];
-  $: loading = treeData?.loading || false;
+  // Show loading if explicitly loading OR if tree hasn't been initialized yet
+  $: loading = treeData?.loading ?? !treeData;
 
   const ARCHIVE_FOLDER = 'Archive';
 
