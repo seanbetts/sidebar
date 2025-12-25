@@ -48,6 +48,17 @@ class ClaudeClient:
             result["content"] = content_block.content
         return result
 
+    @staticmethod
+    def _web_search_error(content_block: Any) -> str | None:
+        content = getattr(content_block, "content", None)
+        if isinstance(content, dict) and content.get("type") == "web_search_tool_result_error":
+            return content.get("error_code")
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "web_search_tool_result_error":
+                    return item.get("error_code")
+        return None
+
     def __init__(self, settings: Settings):
         # Create custom httpx client that bypasses SSL verification
         # TEMPORARY WORKAROUND for corporate SSL interception
@@ -155,6 +166,13 @@ class ClaudeClient:
                                         "input_partial": "",
                                     }
                                 elif event.content_block.type == "web_search_tool_result":
+                                    yield {
+                                        "type": "server_tool_end",
+                                        "data": {
+                                            "name": "web_search",
+                                            "error": ClaudeClient._web_search_error(event.content_block),
+                                        },
+                                    }
                                     content_blocks.append(
                                         ClaudeClient._serialize_web_search_result(event.content_block)
                                     )
@@ -191,6 +209,14 @@ class ClaudeClient:
                                         )
                                 except json.JSONDecodeError:
                                     current_server_tool["input"] = {}
+                                if current_server_tool["name"] == "web_search":
+                                    yield {
+                                        "type": "server_tool_start",
+                                        "data": {
+                                            "name": "web_search",
+                                            "input": current_server_tool["input"],
+                                        },
+                                    }
                                 content_blocks.append(
                                     {
                                         "type": "server_tool_use",

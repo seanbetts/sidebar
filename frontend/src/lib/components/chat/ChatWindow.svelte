@@ -154,6 +154,16 @@
 					onToolResult: (event) => {
 						chatStore.updateToolResult(assistantMessageId, event.id, event.result, event.status);
 					},
+					onServerToolStart: (event) => {
+						const query =
+							event?.name === 'web_search' && typeof event?.input?.query === 'string'
+								? event.input.query
+								: undefined;
+						chatStore.setServerTool(assistantMessageId, event?.name || 'server_tool', query);
+					},
+					onServerToolEnd: () => {
+						chatStore.clearServerTool(assistantMessageId);
+					},
 
 					onNoteCreated: async (data) => {
 						await filesStore.load('notes');
@@ -274,7 +284,7 @@
 		</div>
 	</div>
 	<!-- Messages -->
-	<MessageList messages={$chatStore.messages} />
+	<MessageList messages={$chatStore.messages} serverTool={$chatStore.serverTool} />
 
 	<!-- Input -->
 	<ChatInput onsend={handleSend} disabled={$chatStore.isStreaming} />

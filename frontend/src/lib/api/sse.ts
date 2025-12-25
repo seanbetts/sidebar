@@ -18,6 +18,8 @@ export interface SSECallbacks {
 	onScratchpadUpdated?: () => void;
 	onScratchpadCleared?: () => void;
 	onPromptPreview?: (data: { system_prompt?: string; first_message_prompt?: string }) => void;
+	onServerToolStart?: (data: { name?: string; input?: Record<string, any> }) => void;
+	onServerToolEnd?: (data: { name?: string; error?: string | null }) => void;
 }
 
 export class SSEClient {
@@ -184,6 +186,12 @@ export class SSEClient {
 
 			case 'prompt_preview':
 				callbacks.onPromptPreview?.(data);
+				break;
+			case 'server_tool_start':
+				callbacks.onServerToolStart?.(data);
+				break;
+			case 'server_tool_end':
+				callbacks.onServerToolEnd?.(data);
 				break;
 
 			default:

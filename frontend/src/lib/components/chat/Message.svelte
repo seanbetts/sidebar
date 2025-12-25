@@ -8,12 +8,16 @@
 	import ToolCall from './ToolCall.svelte';
 
 	export let message: Message;
+	export let serverTool: { messageId: string; name: string; query?: string } | null = null;
 
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isCopied = false;
 
 	$: roleColor = message.role === 'user' ? 'bg-muted' : 'bg-card';
 	$: roleName = message.role === 'user' ? 'You' : 'sideBar';
+	$: isServerToolActive = serverTool?.messageId === message.id;
+	$: serverToolLabel =
+		serverTool?.name === 'web_search' ? 'Searching the web...' : 'Running a server tool...';
 
 	function formatTime(date: Date): string {
 		return new Date(date).toLocaleTimeString('en-US', {
@@ -49,6 +53,12 @@
 			<span class="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
 			{#if message.status === 'streaming'}
 				<span class="text-xs animate-pulse">●</span>
+			{/if}
+			{#if isServerToolActive}
+				<span class="server-tool-indicator">
+					<span class="server-tool-dot"></span>
+					<span>{serverToolLabel}</span>
+				</span>
 			{/if}
 		</div>
 		{#if message.content}
@@ -94,3 +104,36 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.server-tool-indicator {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.75rem;
+		color: var(--color-muted-foreground);
+	}
+
+	.server-tool-dot {
+		width: 0.45rem;
+		height: 0.45rem;
+		border-radius: 999px;
+		background: var(--color-muted-foreground);
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0% {
+			opacity: 0.3;
+			transform: scale(0.9);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1);
+		}
+		100% {
+			opacity: 0.3;
+			transform: scale(0.9);
+		}
+	}
+</style>
