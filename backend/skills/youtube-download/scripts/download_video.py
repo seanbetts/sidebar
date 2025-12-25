@@ -18,8 +18,8 @@ from typing import Dict, Any, Optional
 import yt_dlp
 
 
-# Default output directory (iCloud Downloads)
-DEFAULT_OUTPUT = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Downloads"
+# Default output directory (workspace Downloads)
+DEFAULT_OUTPUT = Path("/workspace") / "Downloads"
 
 
 def check_ffmpeg() -> bool:
@@ -181,7 +181,7 @@ def download_youtube(
         url: YouTube URL to download
         audio_only: If True, download audio only (MP3)
         is_playlist: If True, download entire playlist
-        output_dir: Custom output directory (default: iCloud Downloads)
+        output_dir: Custom output directory (default: workspace Downloads)
         quiet: If True, suppress progress output (for JSON mode)
 
     Returns:

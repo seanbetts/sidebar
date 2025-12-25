@@ -14,10 +14,21 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+# Add backend to sys.path for database mode.
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+try:
+    from api.db.session import SessionLocal
+    from api.services.notes_service import NotesService
+except Exception:
+    SessionLocal = None
+    NotesService = None
+
 
 # Default directories
-DEFAULT_TRANSCRIPT_DIR = Path.home() / "Documents" / "sideBar" / "Transcripts"
-DEFAULT_AUDIO_DIR = Path.home() / "Documents" / "sideBar" / ".tmp" / "youtube-transcribe"
+DEFAULT_TRANSCRIPT_DIR = Path("/workspace") / "Transcripts"
+DEFAULT_AUDIO_DIR = Path("/workspace") / "Downloads"
 
 # Script paths - dynamically locate based on this script's location
 SCRIPT_DIR = Path(__file__).parent.parent.parent  # Go up to skills/
@@ -109,7 +120,9 @@ def transcribe_youtube(
     model: str = "gpt-4o-transcribe",
     output_dir: Optional[str] = None,
     audio_dir: Optional[str] = None,
-    keep_audio: bool = False
+    keep_audio: bool = False,
+    database: bool = False,
+    folder: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Download YouTube audio and transcribe it.
@@ -118,8 +131,8 @@ def transcribe_youtube(
         url: YouTube video URL
         language: Language code for transcription
         model: Transcription model to use
-        output_dir: Directory for transcripts (default: ~/Documents/sideBar/Transcripts)
-        audio_dir: Directory for audio files (default: iCloud Downloads)
+        output_dir: Directory for transcripts (default: /workspace/Transcripts)
+        audio_dir: Directory for audio files (default: /workspace/Downloads)
         keep_audio: Keep audio file after transcription
 
     Returns:
@@ -186,12 +199,14 @@ def transcribe_youtube(
 
         transcribe_data = transcribe_result['data']
 
+        transcript_path = Path(transcribe_data['output_path'])
+
         print(f"File: {audio_file_path.name}")
-        print(f"Transcript: {transcribe_data['output_file']}")
+        print(f"Transcript: {transcript_path}")
 
         # Update transcript metadata with YouTube URL
         update_transcript_metadata(
-            transcribe_data['output_file'],
+            str(transcript_path),
             url,
             download_data['title']
         )
@@ -209,12 +224,35 @@ def transcribe_youtube(
                 print(f"Warning: Could not remove audio file: {e}")
                 audio_kept = True
 
-        return {
+        note_data = None
+        if database:
+            if SessionLocal is None or NotesService is None:
+                raise RuntimeError("Database dependencies are unavailable")
+            transcript_content = transcript_path.read_text(encoding="utf-8")
+            note_title = f"Transcript: {download_data['title']}"
+            note_folder = folder or "Transcripts/YouTube"
+            db = SessionLocal()
+            try:
+                note = NotesService.create_note(
+                    db,
+                    transcript_content,
+                    title=note_title,
+                    folder=note_folder,
+                )
+                note_data = {
+                    "id": str(note.id),
+                    "title": note.title,
+                    "folder": (note.metadata_ or {}).get("folder", ""),
+                }
+            finally:
+                db.close()
+
+        result = {
             'youtube_url': url,
             'title': download_data['title'],
             'audio_file': str(audio_file_path),
             'audio_kept': audio_kept,
-            'transcript_file': transcribe_data['output_file'],
+            'transcript_file': str(transcript_path),
             'language': language,
             'model': model,
             'download_duration_seconds': download_data['duration_seconds'],
@@ -222,6 +260,9 @@ def transcribe_youtube(
             'file_size': transcribe_data.get('file_size', 'Unknown'),
             'audio_duration': transcribe_data.get('duration', 'Unknown')
         }
+        if note_data:
+            result['note'] = note_data
+        return result
 
     except Exception as e:
         # On transcription error, try to cleanup audio file
@@ -350,6 +391,15 @@ Requirements:
         help='Keep audio file after transcription (default: remove)'
     )
     parser.add_argument(
+        '--database',
+        action='store_true',
+        help='Save transcript to the database'
+    )
+    parser.add_argument(
+        '--folder',
+        help='Database folder for transcript note (default: Transcripts/YouTube)'
+    )
+    parser.add_argument(
         '--json',
         action='store_true',
         help='Output results in JSON format'
@@ -365,7 +415,9 @@ Requirements:
             model=args.model,
             output_dir=args.output_dir,
             audio_dir=args.audio_dir,
-            keep_audio=args.keep_audio
+            keep_audio=args.keep_audio,
+            database=args.database,
+            folder=args.folder,
         )
 
         # Output results

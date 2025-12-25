@@ -44,12 +44,14 @@ python transcribe_audio.py FILE [--language LANG] [--model MODEL] [--output-dir 
 - `--language`: Language code (default: "en")
 - `--model`: Transcription model (default: "gpt-4o-transcribe")
   - Options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
-- `--output-dir`: Directory for transcripts (default: ~/Documents/sideBar/Transcripts)
+- `--output-dir`: Directory for transcripts (default: /workspace/Transcripts)
 - `--chunking-strategy`: Use "auto" for automatic VAD-based chunking
 - `--prompt`: Optional text to guide model's style
 - `--response-format`: Output format (json, text, srt, vtt, verbose_json)
 - `--temperature`: Sampling temperature 0-1 (default: 0.0)
 - `--json`: Output results in JSON format
+- `--database`: Save transcript to the notes database
+- `--folder`: Database folder for transcript note (default: Transcripts/Audio)
 
 **Features**:
 - Automatic chunking for files >25MB
@@ -106,7 +108,7 @@ meeting_20251220_143045_transcript.txt
 
 Transcripts are saved to:
 ```
-~/Documents/sideBar/Transcripts/
+/workspace/Transcripts/
 ```
 
 ## Supported Audio Formats

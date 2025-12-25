@@ -41,7 +41,7 @@ python download_video.py URL [--audio] [--playlist] [--output PATH] [--json]
 **Options**:
 - `--audio`: Download audio only (converts to MP3)
 - `--playlist`: Download entire playlist (default: single video only)
-- `--output`: Custom output directory (default: ~/Library/Mobile Documents/com~apple~CloudDocs/Downloads)
+- `--output`: Custom output directory (default: /workspace/Downloads)
 - `--json`: Output results in JSON format
 
 **Features**:
@@ -65,7 +65,7 @@ python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --audio
 python download_video.py "https://youtube.com/playlist?list=PLAYLIST_ID" --playlist
 
 # Custom output location
-python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --output ~/Downloads
+python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --output /workspace/Downloads
 
 # JSON output
 python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --json
@@ -86,9 +86,9 @@ python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --json
 
 ## Default Save Location
 
-Videos are saved to your iCloud Downloads folder:
+Videos are saved to your workspace Downloads folder:
 ```
-~/Library/Mobile Documents/com~apple~CloudDocs/Downloads/
+/workspace/Downloads/
 ```
 
 Filenames are sanitized and truncated to 100 characters:

@@ -2,17 +2,18 @@
 
 Analysis of all unexposed skills to determine if they need refactoring to fit the unified architecture model (service layer + database + SSE events).
 
-**Status**: Reviewing 11 remaining skills (removed list-skills and folder-config as redundant/deprecated).
+**Status**: Reviewing 11 remaining unexposed skills (removed list-skills and folder-config as redundant/deprecated).
 
 ## Current Findings (Dec 2025)
 
-**Discrepancy Identified:** The Skills UI now lists all installed skills (from `backend/skills/`) but only a subset are exposed to the model via `backend/api/services/tool_mapper.py`. This means toggling a skill in Settings does **not** guarantee it is available to the AI agent.
+**Current Behavior:** The Skills UI only lists skills that are exposed via `backend/api/services/tool_mapper.py` (see `SkillCatalogService`). Installed-but-unexposed skills are hidden and cannot be toggled yet.
 
 **Currently exposed via tool_mapper:**
 - fs
 - notes
 - web-save
 - ui-theme (special case for light/dark mode)
+- prompt-preview
 
 **Installed but NOT exposed via tool_mapper (still missing tool definitions):**
 - audio-transcribe
@@ -27,9 +28,9 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - youtube-download
 - youtube-transcribe
 
-**Impact:** The agent will tell the user it lacks media/doc/spreadsheet tools even when all skills are enabled.
+**Impact:** Users cannot toggle or use these installed skills yet, and the agent will still report missing capabilities.
 
-**Recommendation:** Add tool definitions for all missing skills (at least minimal entrypoints), then wire them into the model tool list so Settings toggles reflect real availability.
+**Recommendation:** Add tool definitions for the missing skills (at least minimal entrypoints), then expose them via `EXPOSED_SKILLS` so they appear in Settings and can be enabled.
 
 ## Architecture Model Summary
 
@@ -57,6 +58,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Calls OpenAI Whisper API for transcription
 - Saves transcript as `.txt` file to `~/Documents/sideBar/Transcripts/`
 - Returns file path in JSON output
+- Entrypoint: `scripts/transcribe_audio.py` (argparse CLI)
+- Requirements: OPENAI_API_KEY, ffmpeg, pydub, tqdm
 
 **Should it be database-backed?** 🟡 YES
 - Transcripts are text content similar to notes
@@ -82,6 +85,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Transcribes using audio-transcribe skill
 - Saves transcript to filesystem
 - Cleans up audio file unless `--keep-audio` specified
+- Entrypoint: `scripts/transcribe_youtube.py` (argparse CLI)
+- Requirements: OPENAI_API_KEY, ffmpeg, yt-dlp, pydub, tqdm
 
 **Should it be database-backed?** 🟡 YES
 - Same reasoning as audio-transcribe
@@ -106,6 +111,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Downloads YouTube videos/audio to filesystem
 - Saves to `~/Library/Mobile Documents/com~apple~CloudDocs/Downloads/` (iCloud)
 - Returns file path
+- Entrypoint: `scripts/download_video.py` (argparse CLI)
+- Requirements: ffmpeg, yt-dlp
 
 **Should it be database-backed?** 🔴 NO
 - Downloads are binary files (video/audio)
@@ -127,6 +134,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Creates, edits, analyzes Word documents
 - Works with `.docx` files in filesystem/workspace
 - Supports tracked changes, comments, formatting
+- Entrypoints: library-style `scripts/document.py` (no CLI); OOXML helpers in `ooxml/scripts/unpack.py` + `ooxml/scripts/pack.py`
+- Notes: SKILL.md relies on long reference docs (`docx-js.md`, `ooxml.md`) rather than runnable scripts
 
 **Should it be database-backed?** 🔴 NO
 - Documents are binary files, not searchable text
@@ -151,6 +160,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Extract text/tables, create, merge, split, fill forms
 - Multiple scripts for different PDF operations
 - Works with PDF files in filesystem
+- Entrypoints: CLI scripts in `scripts/` (e.g., `extract_form_field_info.py`, `fill_fillable_fields.py`, `fill_pdf_form_with_annotations.py`, `convert_pdf_to_images.py`)
+- Notes: No single “main” wrapper; scripts are task-specific
 
 **Should it be database-backed?** 🔴 NO
 - PDFs are binary files
@@ -174,6 +185,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Create, edit, analyze spreadsheets
 - Works with `.xlsx` files
 - Supports formulas, formatting, data analysis
+- Entrypoints: `recalc.py` (CLI recalculation helper)
+- Notes: No scripts/ wrappers for create/edit/read; SKILL.md is guidance for pandas/openpyxl usage
 
 **Should it be database-backed?** 🔴 NO
 - Spreadsheets are complex binary files
@@ -197,6 +210,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Create, edit, analyze presentations
 - Works with `.pptx` files
 - Supports layouts, formatting, charts
+- Entrypoints: CLI scripts in `scripts/` (`inventory.py`, `rearrange.py`, `replace.py`, `thumbnail.py`) plus `scripts/html2pptx.js`
+- OOXML helpers: `ooxml/scripts/unpack.py` + `ooxml/scripts/pack.py`
 
 **Should it be database-backed?** 🔴 NO
 - Presentations are binary files
@@ -219,6 +234,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Analyzes robots.txt and llms.txt files
 - Returns analysis results (CSV, JSON, markdown)
 - Optionally saves reports to `~/Documents/sideBar/Reports/`
+- Entrypoint: `scripts/analyze_policies.py` (argparse CLI)
+- Requirements: aiohttp, tabulate, OPENAI_API_KEY (optional for reports)
 
 **Should it be database-backed?** 🔴 NO
 - Analysis tool, not persistent content
@@ -239,6 +256,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Discovers subdomains using DNS, CT logs, sitemaps
 - Returns list of discovered domains (JSON)
 - No persistent storage
+- Entrypoint: `scripts/discover_subdomains.py` (argparse CLI)
+- Requirements: dnspython, aiohttp, lxml
 
 **Should it be database-backed?** 🔴 NO
 - Utility tool that returns results
@@ -259,6 +278,7 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - Creates new skill scaffolding
 - Initializes skill directory structure
 - Development tool
+- Entrypoints: `scripts/init_skill.py`, `scripts/package_skill.py`, `scripts/quick_validate.py` (CLI)
 
 **Should it be database-backed?** 🔴 NO
 - Meta tool for development
@@ -278,6 +298,8 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 **Current State:**
 - Builds MCP skill packages
 - Development tool
+- Entrypoints: `scripts/evaluation.py` (CLI) plus helpers in `scripts/connections.py`
+- Requirements: Anthropic API key for evaluation runs
 
 **Should it be database-backed?** 🔴 NO
 - Meta tool for packaging
