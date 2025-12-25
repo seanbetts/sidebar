@@ -27,6 +27,10 @@
   let newWebsiteUrl = '';
   let newWebsiteInput: HTMLInputElement | null = null;
   let isSavingWebsite = false;
+  let isCreatingNote = false;
+  let isCreatingFolder = false;
+  let isSaveChangesDialogOpen = false;
+  let pendingNotePath: string | null = null;
   let communicationStyle = '';
   let workingRelationship = '';
   let name = '';
@@ -97,6 +101,11 @@
   });
 
   onDestroy(() => {
+    // Clean up all timers
+    if (locationLookupTimer) clearTimeout(locationLookupTimer);
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+
+    // Clean up event listener
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', handleSectionShortcut);
     }
@@ -456,13 +465,16 @@
   }
 
   async function handleSettingsClose() {
-    if (settingsDirty) {
-      await saveSettings();
+    try {
+      if (settingsDirty) {
+        await saveSettings();
+      }
+    } finally {
+      settingsLoaded = false;
+      settingsError = '';
+      locationSuggestions = [];
+      profileImageError = '';
     }
-    settingsLoaded = false;
-    settingsError = '';
-    locationSuggestions = [];
-    profileImageError = '';
   }
 
   $: settingsDirty =
@@ -493,15 +505,40 @@
   $: wasSettingsOpen = isSettingsOpen;
 
   async function handleNoteClick(path: string) {
-    // Save current note if dirty
+    // Check if current note has unsaved changes
     if ($editorStore.isDirty && $editorStore.currentNoteId) {
-      const save = confirm('Save changes before switching notes?');
-      if (save) await editorStore.saveNote();
+      pendingNotePath = path;
+      isSaveChangesDialogOpen = true;
+      return;
     }
 
+    // Load the new note
     websitesStore.clearActive();
     currentNoteId.set(path);
     await editorStore.loadNote('notes', path, { source: 'user' });
+  }
+
+  async function confirmSaveAndSwitch() {
+    if ($editorStore.currentNoteId) {
+      await editorStore.saveNote();
+    }
+    isSaveChangesDialogOpen = false;
+    if (pendingNotePath) {
+      websitesStore.clearActive();
+      currentNoteId.set(pendingNotePath);
+      await editorStore.loadNote('notes', pendingNotePath, { source: 'user' });
+      pendingNotePath = null;
+    }
+  }
+
+  async function discardAndSwitch() {
+    isSaveChangesDialogOpen = false;
+    if (pendingNotePath) {
+      websitesStore.clearActive();
+      currentNoteId.set(pendingNotePath);
+      await editorStore.loadNote('notes', pendingNotePath, { source: 'user' });
+      pendingNotePath = null;
+    }
   }
 
   async function handleNewNote() {
@@ -561,9 +598,10 @@
 
   async function createNoteFromDialog() {
     const name = newNoteName.trim();
-    if (!name) return;
+    if (!name || isCreatingNote) return;
     const filename = name.endsWith('.md') ? name : `${name}.md`;
 
+    isCreatingNote = true;
     try {
       const response = await fetch('/api/notes', {
         method: 'POST',
@@ -579,7 +617,6 @@
       const noteId = data?.id || filename;
 
       // Reload the files tree and open the new note
-      const { filesStore } = await import('$lib/stores/files');
       await filesStore.load('notes');
       currentNoteId.set(noteId);
       await editorStore.loadNote('notes', noteId, { source: 'user' });
@@ -588,13 +625,16 @@
       console.error('Failed to create note:', error);
       errorMessage = 'Failed to create note. Please try again.';
       isErrorDialogOpen = true;
+    } finally {
+      isCreatingNote = false;
     }
   }
 
   async function createFolderFromDialog() {
     const name = newFolderName.trim().replace(/^\/+|\/+$/g, '');
-    if (!name) return;
+    if (!name || isCreatingFolder) return;
 
+    isCreatingFolder = true;
     try {
       const response = await fetch('/api/notes/folders', {
         method: 'POST',
@@ -603,13 +643,14 @@
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
-      const { filesStore } = await import('$lib/stores/files');
       await filesStore.load('notes');
       isNewFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
       errorMessage = 'Failed to create folder. Please try again.';
       isErrorDialogOpen = true;
+    } finally {
+      isCreatingFolder = false;
     }
   }
 
@@ -640,12 +681,19 @@
       />
     </div>
     <AlertDialog.Footer>
-      <AlertDialog.Cancel onclick={() => (isNewNoteDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Cancel disabled={isCreatingNote} onclick={() => (isNewNoteDialogOpen = false)}>Cancel</AlertDialog.Cancel>
       <AlertDialog.Action
-        disabled={!newNoteName.trim()}
+        disabled={!newNoteName.trim() || isCreatingNote}
         onclick={createNoteFromDialog}
       >
-        Create note
+        {#if isCreatingNote}
+          <span class="inline-flex items-center gap-2">
+            <Loader2 size={14} class="animate-spin" />
+            Creating...
+          </span>
+        {:else}
+          Create note
+        {/if}
       </AlertDialog.Action>
     </AlertDialog.Footer>
   </AlertDialog.Content>
@@ -676,12 +724,19 @@
       />
     </div>
     <AlertDialog.Footer>
-      <AlertDialog.Cancel onclick={() => (isNewFolderDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Cancel disabled={isCreatingFolder} onclick={() => (isNewFolderDialogOpen = false)}>Cancel</AlertDialog.Cancel>
       <AlertDialog.Action
-        disabled={!newFolderName.trim()}
+        disabled={!newFolderName.trim() || isCreatingFolder}
         onclick={createFolderFromDialog}
       >
-        Create folder
+        {#if isCreatingFolder}
+          <span class="inline-flex items-center gap-2">
+            <Loader2 size={14} class="animate-spin" />
+            Creating...
+          </span>
+        {:else}
+          Create folder
+        {/if}
       </AlertDialog.Action>
     </AlertDialog.Footer>
   </AlertDialog.Content>
@@ -752,6 +807,19 @@
   </AlertDialog.Content>
 </AlertDialog.Root>
 
+<AlertDialog.Root bind:open={isSaveChangesDialogOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>Save changes?</AlertDialog.Title>
+      <AlertDialog.Description>You have unsaved changes. Would you like to save them before switching notes?</AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={discardAndSwitch}>Don't save</AlertDialog.Cancel>
+      <AlertDialog.Action onclick={confirmSaveAndSwitch}>Save changes</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
 <AlertDialog.Root bind:open={isSettingsOpen}>
   <AlertDialog.Content class="settings-dialog !max-w-[1200px] !w-[96vw]">
     <AlertDialog.Header class="settings-header">
@@ -778,7 +846,10 @@
           <div class="settings-avatar">
             <div class="settings-avatar-preview">
               {#if profileImageSrc}
-                <img src={profileImageSrc} alt="Profile" on:error={() => (profileImageUrl = '')} />
+                <img src={profileImageSrc} alt="Profile" on:error={() => {
+                  profileImageUrl = '';
+                  profileImageError = 'Failed to load profile image.';
+                }} />
               {:else}
                 <div class="settings-avatar-placeholder" aria-hidden="true">
                   <User size={20} />
@@ -1043,7 +1114,10 @@
         title="Settings"
       >
         {#if profileImageSrc}
-          <img class="rail-avatar" src={profileImageSrc} alt="Profile" on:error={() => (profileImageUrl = '')} />
+          <img class="rail-avatar" src={profileImageSrc} alt="Profile" on:error={() => {
+            profileImageUrl = '';
+            profileImageError = 'Failed to load profile image.';
+          }} />
         {:else}
           <img class="rail-avatar rail-avatar-logo" src={sidebarLogoSrc} alt="App logo" />
         {/if}
@@ -1053,86 +1127,88 @@
 
   <div class="sidebar-panel" aria-hidden={isCollapsed}>
     <div class="panel-body">
-      {#if activeSection === 'notes'}
-        <div class="panel-section">
-          <div class="panel-section-header">
-            <div class="panel-section-header-row">
-              <div class="panel-section-title">Notes</div>
-              <div class="panel-section-actions">
-                <button class="panel-action" on:click={handleNewFolder} aria-label="New folder" title="New folder">
-                  <Folder size={16} />
-                </button>
-                <button class="panel-action" on:click={handleNewNote} aria-label="New note" title="New note">
-                  <Plus size={16} />
-                </button>
-              </div>
+      <!-- Notes Section -->
+      <div class="panel-section" class:hidden={activeSection !== 'notes'}>
+        <div class="panel-section-header">
+          <div class="panel-section-header-row">
+            <div class="panel-section-title">Notes</div>
+            <div class="panel-section-actions">
+              <button class="panel-action" on:click={handleNewFolder} aria-label="New folder" title="New folder">
+                <Folder size={16} />
+              </button>
+              <button class="panel-action" on:click={handleNewNote} aria-label="New note" title="New note">
+                <Plus size={16} />
+              </button>
             </div>
-            <SearchBar
-              onSearch={(query) => filesStore.searchNotes(query)}
-              onClear={() => filesStore.load('notes')}
-              placeholder="Search notes..."
-            />
           </div>
-          <div class="notes-content">
-            <NotesPanel basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
-          </div>
+          <SearchBar
+            onSearch={(query) => filesStore.searchNotes(query)}
+            onClear={() => filesStore.load('notes')}
+            placeholder="Search notes..."
+          />
         </div>
-      {:else if activeSection === 'websites'}
-        <div class="panel-section">
-          <div class="panel-section-header">
-            <div class="panel-section-header-row">
-              <div class="panel-section-title">Websites</div>
-              <div class="panel-section-actions">
-                <button class="panel-action" on:click={handleNewWebsite} aria-label="Save website" title="Save website">
-                  <Plus size={16} />
-                </button>
-              </div>
+        <div class="notes-content">
+          <NotesPanel basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
+        </div>
+      </div>
+
+      <!-- Websites Section -->
+      <div class="panel-section" class:hidden={activeSection !== 'websites'}>
+        <div class="panel-section-header">
+          <div class="panel-section-header-row">
+            <div class="panel-section-title">Websites</div>
+            <div class="panel-section-actions">
+              <button class="panel-action" on:click={handleNewWebsite} aria-label="Save website" title="Save website">
+                <Plus size={16} />
+              </button>
             </div>
-            <SearchBar
-              onSearch={(query) => websitesStore.search(query)}
-              onClear={() => websitesStore.load()}
-              placeholder="Search websites..."
-            />
           </div>
-          <div class="files-content">
-            <WebsitesPanel />
-          </div>
+          <SearchBar
+            onSearch={(query) => websitesStore.search(query)}
+            onClear={() => websitesStore.load()}
+            placeholder="Search websites..."
+          />
         </div>
-      {:else if activeSection === 'workspace'}
-        <div class="panel-section">
-          <div class="panel-section-header">
-            <div class="panel-section-header-row">
-              <div class="panel-section-title">Files</div>
-              <div class="panel-section-actions"></div>
-            </div>
-            <SearchBar
-              onSearch={(query) => filesStore.searchFiles('.', query)}
-              onClear={() => filesStore.load('.')}
-              placeholder="Search files..."
-            />
-          </div>
-          <div class="files-content">
-            <WorkspacePanel />
-          </div>
+        <div class="files-content">
+          <WebsitesPanel />
         </div>
-      {:else}
-        <div class="panel-section">
-          <div class="panel-section-header">
-            <div class="panel-section-header-row">
-              <div class="panel-section-title">Chat</div>
-              <div class="panel-section-actions"></div>
-            </div>
-            <SearchBar
-              onSearch={(query) => conversationListStore.search(query)}
-              onClear={() => conversationListStore.load()}
-              placeholder="Search conversations..."
-            />
+      </div>
+
+      <!-- Workspace Section -->
+      <div class="panel-section" class:hidden={activeSection !== 'workspace'}>
+        <div class="panel-section-header">
+          <div class="panel-section-header-row">
+            <div class="panel-section-title">Files</div>
+            <div class="panel-section-actions"></div>
           </div>
-          <div class="history-content">
-            <ConversationList />
-          </div>
+          <SearchBar
+            onSearch={(query) => filesStore.searchFiles('.', query)}
+            onClear={() => filesStore.load('.')}
+            placeholder="Search files..."
+          />
         </div>
-      {/if}
+        <div class="files-content">
+          <WorkspacePanel />
+        </div>
+      </div>
+
+      <!-- History Section -->
+      <div class="panel-section" class:hidden={activeSection !== 'history'}>
+        <div class="panel-section-header">
+          <div class="panel-section-header-row">
+            <div class="panel-section-title">Chat</div>
+            <div class="panel-section-actions"></div>
+          </div>
+          <SearchBar
+            onSearch={(query) => conversationListStore.search(query)}
+            onClear={() => conversationListStore.load()}
+            placeholder="Search conversations..."
+          />
+        </div>
+        <div class="history-content">
+          <ConversationList />
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1233,6 +1309,10 @@
     flex-direction: column;
     flex: 1;
     min-height: 0;
+  }
+
+  .panel-section.hidden {
+    display: none;
   }
 
   .panel-section-header {
