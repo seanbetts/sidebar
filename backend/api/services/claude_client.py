@@ -170,6 +170,8 @@ class ClaudeClient:
                     current_server_tool = None
                     web_search_pending_end = False
                     web_search_pending_status = None
+                    web_search_result_seen = False
+                    suppress_web_search_preamble = False
 
                     async for event in stream:
                         if event.type == "content_block_start":
@@ -209,9 +211,12 @@ class ClaudeClient:
                                                 "status": "running",
                                             },
                                         }
+                                        suppress_web_search_preamble = True
                                 elif event.content_block.type == "web_search_tool_result":
                                     web_search_pending_end = True
                                     web_search_pending_status = ClaudeClient._web_search_status(event.content_block)
+                                    web_search_result_seen = True
+                                    suppress_web_search_preamble = False
                                     content_blocks.append(
                                         ClaudeClient._serialize_web_search_result(event.content_block)
                                     )
@@ -220,6 +225,8 @@ class ClaudeClient:
                             if hasattr(event.delta, "type"):
                                 if event.delta.type == "text_delta":
                                     # Accumulate and stream text token
+                                    if suppress_web_search_preamble and not web_search_result_seen:
+                                        continue
                                     if web_search_pending_end:
                                         yield {
                                             "type": "tool_end",

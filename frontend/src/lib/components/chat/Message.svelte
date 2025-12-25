@@ -97,13 +97,7 @@
 	</div>
 
 	{#if message.content}
-		{#if message.status === 'streaming'}
-			<div class="text-sm whitespace-pre-wrap text-foreground">
-				{message.content}
-			</div>
-		{:else}
-			<ChatMarkdown content={message.content} />
-		{/if}
+		<ChatMarkdown content={message.content} />
 	{/if}
 
 	<div class="message-footer">
