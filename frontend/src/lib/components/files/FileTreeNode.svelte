@@ -337,7 +337,10 @@
         editorStore.reset();
       }
 
-      // Reload the tree
+      // Optimistically remove from the tree, then reload to sync
+      if (basePath !== 'notes') {
+        filesStore.removeNode(basePath, node.path);
+      }
       await filesStore.load(basePath);
       isDeleteDialogOpen = false;
     } catch (error) {

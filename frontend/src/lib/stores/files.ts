@@ -132,6 +132,35 @@ function createFilesStore() {
       });
     },
 
+    removeNode(basePath: string, path: string) {
+      update(state => {
+        const tree = state.trees[basePath];
+        if (!tree) return state;
+
+        const removeFromNodes = (nodes: FileNode[]): FileNode[] => {
+          return nodes
+            .filter(node => node.path !== path)
+            .map(node => {
+              if (!node.children) return node;
+              return {
+                ...node,
+                children: removeFromNodes(node.children)
+              };
+            });
+        };
+
+        return {
+          trees: {
+            ...state.trees,
+            [basePath]: {
+              ...tree,
+              children: removeFromNodes(tree.children || [])
+            }
+          }
+        };
+      });
+    },
+
     reset() {
       set({ trees: {} });
     },
