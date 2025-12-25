@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { ChevronRight, Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, Trash2 } from 'lucide-svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import { websitesStore } from '$lib/stores/websites';
@@ -9,11 +9,8 @@
 
   const ARCHIVED_FLAG = 'archived';
 
-  onMount(async () => {
-    if ($websitesStore.items.length === 0 && !$websitesStore.loading) {
-      await websitesStore.load();
-    }
-  });
+  // Data loading is now handled by parent Sidebar component
+  // onMount removed to prevent duplicate loads and initial flicker
 
   function isArchived(site: WebsiteItem) {
     return Boolean((site as WebsiteItem & Record<string, unknown>)[ARCHIVED_FLAG]);

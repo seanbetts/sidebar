@@ -94,9 +94,13 @@
     { key: 'skills', label: 'Skills', icon: Wrench }
   ];
   let activeSettingsSection = 'account';
+  let loadedSections = new Set<string>();
 
   onMount(() => {
-    conversationListStore.load();
+    // Load data for the initially active section only
+    loadSectionData(activeSection);
+
+    // Load settings and skills (non-blocking)
     loadSettings(true);
     loadSkills();
     if (typeof window !== 'undefined') {
@@ -379,6 +383,33 @@
   function openSection(section: typeof activeSection) {
     activeSection = section;
     isCollapsed = false;
+  }
+
+  // Lazy load section data when switching sections
+  $: if (activeSection) {
+    loadSectionData(activeSection);
+  }
+
+  function loadSectionData(section: typeof activeSection) {
+    // Only load each section once
+    if (loadedSections.has(section)) return;
+
+    loadedSections.add(section);
+
+    switch (section) {
+      case 'notes':
+        filesStore.load('notes');
+        break;
+      case 'websites':
+        websitesStore.load();
+        break;
+      case 'workspace':
+        filesStore.load('.');
+        break;
+      case 'history':
+        conversationListStore.load();
+        break;
+    }
   }
 
   $: if (isSettingsOpen && !settingsLoaded) {
