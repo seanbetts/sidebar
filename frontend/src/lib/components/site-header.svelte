@@ -187,8 +187,7 @@
 		weatherCode = typeof data.weather_code === "number" ? data.weather_code : null;
 		weatherIsDay = typeof data.is_day === "number" ? data.is_day : null;
 
-		const storedTheme = getStoredTheme();
-		if (!storedTheme && weatherIsDay !== null) {
+		if (weatherIsDay !== null) {
 			applyThemeMode(weatherIsDay === 1 ? "light" : "dark", false);
 		}
 	}

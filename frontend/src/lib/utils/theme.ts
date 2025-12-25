@@ -13,6 +13,7 @@ export function applyThemeMode(theme: ThemeMode, persist: boolean): void {
       localStorage.setItem("theme", "light");
     }
   }
+  window.dispatchEvent(new CustomEvent("themechange", { detail: { theme } }));
 }
 
 export function setThemeMode(theme: ThemeMode): void {
