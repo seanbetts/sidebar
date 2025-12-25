@@ -7,6 +7,9 @@
 	let cleanupThemeListener: (() => void) | null = null;
 
 	onMount(() => {
+		if (typeof window === 'undefined') {
+			return;
+		}
 		const stored = getStoredTheme();
 		isDark =
 			stored === 'dark' ||

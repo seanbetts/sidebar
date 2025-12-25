@@ -1,6 +1,9 @@
 export type ThemeMode = "light" | "dark";
 
 export function applyThemeMode(theme: ThemeMode, persist: boolean): void {
+  if (typeof document === "undefined") {
+    return;
+  }
   const root = document.documentElement;
   if (theme === "dark") {
     root.classList.add("dark");
@@ -13,7 +16,9 @@ export function applyThemeMode(theme: ThemeMode, persist: boolean): void {
       localStorage.setItem("theme", "light");
     }
   }
-  window.dispatchEvent(new CustomEvent("themechange", { detail: { theme } }));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("themechange", { detail: { theme } }));
+  }
 }
 
 export function setThemeMode(theme: ThemeMode): void {

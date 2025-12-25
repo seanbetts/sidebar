@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder, Loader2 } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
@@ -90,7 +90,34 @@
     conversationListStore.load();
     loadSettings(true);
     loadSkills();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', handleSectionShortcut);
+    }
   });
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', handleSectionShortcut);
+    }
+  });
+
+  function handleSectionShortcut(event: KeyboardEvent) {
+    const isModifier = event.metaKey || event.ctrlKey;
+    if (!isModifier || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    if (event.key === '1') {
+      event.preventDefault();
+      openSection('notes');
+    } else if (event.key === '2') {
+      event.preventDefault();
+      openSection('websites');
+    } else if (event.key === '3') {
+      event.preventDefault();
+      openSection('history');
+    }
+  }
 
   async function loadSkills() {
     if (isLoadingSkills) return;
