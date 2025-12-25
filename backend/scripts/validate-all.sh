@@ -9,7 +9,20 @@ echo ""
 
 FAILURES=0
 SUCCESSES=0
-SKILLS_DIR="skills"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SKILLS_DIR="$BACKEND_DIR/skills"
+REPO_DIR="$(cd "$BACKEND_DIR/.." && pwd)"
+SKILLS_REF_PY="$REPO_DIR/.venv/bin/python"
+SKILLS_REF_BIN="$REPO_DIR/.venv/bin/skills-ref"
+
+if [[ -x "$SKILLS_REF_PY" ]]; then
+    SKILLS_REF_CMD=("$SKILLS_REF_PY" -m skills_ref.cli)
+elif [[ -x "$SKILLS_REF_BIN" ]]; then
+    SKILLS_REF_CMD=("$SKILLS_REF_BIN")
+else
+    SKILLS_REF_CMD=("skills-ref")
+fi
 
 # Check if skills directory exists
 if [[ ! -d "$SKILLS_DIR" ]]; then
@@ -39,13 +52,13 @@ for SKILL_DIR in "$SKILLS_DIR"/*/ ; do
 
     echo -n "Validating $SKILL_NAME... "
 
-    if .venv/bin/skills-ref validate "$SKILL_DIR" > /dev/null 2>&1; then
+    if "${SKILLS_REF_CMD[@]}" validate "$SKILL_DIR" > /dev/null 2>&1; then
         echo "✓ PASS"
         ((SUCCESSES++))
     else
         echo "✗ FAIL"
         echo "  Error details:"
-        .venv/bin/skills-ref validate "$SKILL_DIR" 2>&1 | sed 's/^/    /'
+        "${SKILLS_REF_CMD[@]}" validate "$SKILL_DIR" 2>&1 | sed 's/^/    /'
         ((FAILURES++))
     fi
 done
@@ -62,4 +75,4 @@ echo "✓ All skills valid!"
 # Generate SKILLS.md catalog after successful validation
 echo ""
 echo "Generating SKILLS.md catalog..."
-python3 scripts/generate_skills_md.py
+python3 "$BACKEND_DIR/scripts/generate_skills_md.py"

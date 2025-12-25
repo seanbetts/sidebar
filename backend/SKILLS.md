@@ -1,7 +1,7 @@
 # sideBar Skills Catalog
 
-**Last Updated:** 2025-12-23 23:29:32
-**Total Skills:** 14
+**Last Updated:** 2025-12-25 20:50:57
+**Total Skills:** 15
 
 This file is auto-generated from skill frontmatter. Do not edit manually.
 
@@ -62,3 +62,8 @@ Guide for creating high-quality MCP (Model Context Protocol) servers that enable
 
 #### [skill-creator](./skills/skill-creator/SKILL.md)
 Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.
+
+### Other
+
+#### [prompt-preview](./skills/prompt-preview/SKILL.md)
+Generate the current system prompt output with injected variables for preview or debugging.

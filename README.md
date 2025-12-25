@@ -110,7 +110,7 @@ uv sync
 .venv/bin/skills-ref validate skills/skill-creator
 
 # Validate all skills
-./scripts/validate-all.sh
+./backend/scripts/validate-all.sh
 ```
 
 ### Local Development (Without Docker)
@@ -198,7 +198,7 @@ vim skills/my-new-skill/SKILL.md
 .venv/bin/skills-ref validate skills/my-new-skill
 
 # Or validate all skills
-./scripts/validate-all.sh
+./backend/scripts/validate-all.sh
 ```
 
 Skills are automatically discovered and loaded when the API starts. Enable/disable skills via the Settings API.
