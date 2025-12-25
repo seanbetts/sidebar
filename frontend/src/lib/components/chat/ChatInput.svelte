@@ -1,17 +1,38 @@
 <script lang="ts">
+	import { onMount, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Send } from 'lucide-svelte';
+	import { chatStore } from '$lib/stores/chat';
 
 	export let disabled = false;
 	export let onsend: ((message: string) => void) | undefined = undefined;
 
 	let inputValue = '';
+	let textarea: HTMLTextAreaElement;
+	let previousConversationId: string | null = null;
+
+	onMount(() => {
+		// Auto-focus the input when component mounts
+		textarea?.focus();
+	});
+
+	// Auto-focus when conversation changes (new chat)
+	$: if ($chatStore.conversationId !== previousConversationId) {
+		previousConversationId = $chatStore.conversationId;
+		tick().then(() => {
+			textarea?.focus();
+		});
+	}
 
 	function handleSubmit() {
 		const message = inputValue.trim();
 		if (message && !disabled) {
 			onsend?.(message);
 			inputValue = '';
+			// Re-focus after sending
+			tick().then(() => {
+				textarea?.focus();
+			});
 		}
 	}
 
@@ -26,6 +47,7 @@
 <div class="chat-input-bar">
 	<div class="chat-input-shell">
 		<textarea
+			bind:this={textarea}
 			bind:value={inputValue}
 			onkeydown={handleKeydown}
 			placeholder="Ask Anything..."

@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { websitesAPI } from '$lib/services/api';
 
 export interface WebsiteItem {
   id: string;
@@ -26,41 +27,40 @@ function createWebsitesStore() {
     error: string | null;
     active: WebsiteDetail | null;
     loadingDetail: boolean;
+    searchQuery: string;
   }>({
     items: [],
     loading: false,
     error: null,
     active: null,
-    loadingDetail: false
+    loadingDetail: false,
+    searchQuery: ''
   });
 
   return {
     subscribe,
 
     async load() {
-      update(state => ({ ...state, loading: true, error: null }));
+      update(state => ({ ...state, loading: true, error: null, searchQuery: '' }));
       try {
-        const response = await fetch('/api/websites');
-        if (!response.ok) throw new Error('Failed to load websites');
-        const data = await response.json();
+        const data = await websitesAPI.list();
         update(state => ({
           ...state,
           items: data.items || [],
           loading: false,
-          error: null
+          error: null,
+          searchQuery: ''
         }));
       } catch (error) {
         console.error('Failed to load websites:', error);
-        update(state => ({ ...state, loading: false, error: 'Failed to load websites' }));
+        update(state => ({ ...state, loading: false, error: 'Failed to load websites', searchQuery: '' }));
       }
     },
 
     async loadById(id: string) {
       update(state => ({ ...state, loadingDetail: true, error: null }));
       try {
-        const response = await fetch(`/api/websites/${id}`);
-        if (!response.ok) throw new Error('Failed to load website');
-        const data = await response.json();
+        const data = await websitesAPI.get(id);
         update(state => ({
           ...state,
           active: data,
@@ -73,12 +73,31 @@ function createWebsitesStore() {
       }
     },
 
+    async search(query: string) {
+      update(state => ({ ...state, loading: true, error: null, searchQuery: query }));
+      try {
+        const data = query
+          ? await websitesAPI.search(query)
+          : await websitesAPI.list();
+        update(state => ({
+          ...state,
+          items: data.items || [],
+          loading: false,
+          error: null,
+          searchQuery: query
+        }));
+      } catch (error) {
+        console.error('Failed to search websites:', error);
+        update(state => ({ ...state, loading: false, error: 'Failed to search websites', searchQuery: query }));
+      }
+    },
+
     clearActive() {
       update(state => ({ ...state, active: null }));
     },
 
     reset() {
-      set({ items: [], loading: false, error: null, active: null, loadingDetail: false });
+      set({ items: [], loading: false, error: null, active: null, loadingDetail: false, searchQuery: '' });
     }
   };
 }

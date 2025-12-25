@@ -4,6 +4,7 @@
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
+  import { filesStore } from '$lib/stores/files';
   import { websitesStore } from '$lib/stores/websites';
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
@@ -1027,7 +1028,11 @@
                 </button>
               </div>
             </div>
-            <SearchBar />
+            <SearchBar
+              onSearch={(query) => filesStore.searchNotes(query)}
+              onClear={() => filesStore.load('notes')}
+              placeholder="Search notes..."
+            />
           </div>
           <div class="notes-content">
             <NotesPanel basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
@@ -1044,7 +1049,11 @@
                 </button>
               </div>
             </div>
-            <SearchBar />
+            <SearchBar
+              onSearch={(query) => websitesStore.search(query)}
+              onClear={() => websitesStore.load()}
+              placeholder="Search websites..."
+            />
           </div>
           <div class="files-content">
             <WebsitesPanel />
@@ -1057,7 +1066,11 @@
               <div class="panel-section-title">Chat</div>
               <div class="panel-section-actions"></div>
             </div>
-            <SearchBar />
+            <SearchBar
+              onSearch={(query) => conversationListStore.search(query)}
+              onClear={() => conversationListStore.load()}
+              placeholder="Search conversations..."
+            />
           </div>
           <div class="history-content">
             <ConversationList />

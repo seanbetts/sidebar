@@ -4,6 +4,7 @@
 import { writable, get } from 'svelte/store';
 import type { FileNode, FileTreeState, SingleFileTree } from '$lib/types/file';
 import { editorStore } from '$lib/stores/editor';
+import { notesAPI } from '$lib/services/api';
 
 function hasFilePath(nodes: FileNode[] | undefined, targetPath: string): boolean {
   if (!nodes) return false;
@@ -29,7 +30,8 @@ function createFilesStore() {
           ...state.trees,
           [basePath]: {
             ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
-            loading: true
+            loading: true,
+            searchQuery: ''
           }
         }
       }));
@@ -49,7 +51,8 @@ function createFilesStore() {
             [basePath]: {
               ...state.trees[basePath],
               children,
-              loading: false
+              loading: false,
+              searchQuery: ''
             }
           }
         }));
@@ -67,7 +70,8 @@ function createFilesStore() {
             ...state.trees,
             [basePath]: {
               ...state.trees[basePath],
-              loading: false
+              loading: false,
+              searchQuery: ''
             }
           }
         }));
@@ -116,6 +120,48 @@ function createFilesStore() {
 
     reset() {
       set({ trees: {} });
+    },
+
+    async searchNotes(query: string) {
+      update(state => ({
+        trees: {
+          ...state.trees,
+          notes: {
+            ...(state.trees.notes || { children: [], expandedPaths: new Set() }),
+            loading: true,
+            searchQuery: query
+          }
+        }
+      }));
+
+      try {
+        const children = query
+          ? await notesAPI.search(query)
+          : (await notesAPI.listTree()).children;
+        update(state => ({
+          trees: {
+            ...state.trees,
+            notes: {
+              ...(state.trees.notes || { children: [], expandedPaths: new Set() }),
+              children,
+              loading: false,
+              searchQuery: query
+            }
+          }
+        }));
+      } catch (error) {
+        console.error('Failed to search notes:', error);
+        update(state => ({
+          trees: {
+            ...state.trees,
+            notes: {
+              ...(state.trees.notes || { children: [], expandedPaths: new Set() }),
+              loading: false,
+              searchQuery: query
+            }
+          }
+        }));
+      }
     }
   };
 }

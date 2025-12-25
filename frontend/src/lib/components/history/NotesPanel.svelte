@@ -83,6 +83,7 @@
     return archiveNode?.children || [];
   }
 
+  $: searchQuery = treeData?.searchQuery || '';
   $: pinnedNodes = collectPinned(children);
   $: mainNodes = filterNodes(children, { excludePinned: true, excludeArchive: true });
   $: archiveNodes = getArchiveChildren(children);
@@ -90,6 +91,28 @@
 
 {#if loading}
   <div class="notes-empty">Loading notes...</div>
+{:else if searchQuery}
+  <div class="notes-sections">
+    <div class="notes-block">
+      <div class="notes-block-title">Results</div>
+      {#if children.length > 0}
+        <div class="notes-block-content">
+          {#each children as node (node.path)}
+            <FileTreeNode
+              node={node}
+              level={0}
+              onToggle={handleToggle}
+              {basePath}
+              {hideExtensions}
+              {onFileClick}
+            />
+          {/each}
+        </div>
+      {:else}
+        <div class="notes-empty">No results</div>
+      {/if}
+    </div>
+  </div>
 {:else}
   <div class="notes-sections">
     <div class="notes-block">

@@ -77,3 +77,59 @@ class ConversationsAPI {
 }
 
 export const conversationsAPI = new ConversationsAPI();
+
+/**
+ * API service for notes
+ */
+class NotesAPI {
+  private get baseUrl(): string {
+    return browser ? '/api/notes' : 'http://skills-api:8001/api/notes';
+  }
+
+  async listTree(): Promise<{ children: unknown[] }> {
+    const response = await fetch(`${this.baseUrl}/tree`);
+    if (!response.ok) throw new Error('Failed to list notes tree');
+    return response.json();
+  }
+
+  async search(query: string, limit: number = 50): Promise<unknown[]> {
+    const response = await fetch(`${this.baseUrl}/search?query=${encodeURIComponent(query)}&limit=${limit}`, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to search notes');
+    const data = await response.json();
+    return data.items || [];
+  }
+}
+
+/**
+ * API service for websites
+ */
+class WebsitesAPI {
+  private get baseUrl(): string {
+    return browser ? '/api/websites' : 'http://skills-api:8001/api/websites';
+  }
+
+  async list(): Promise<{ items: unknown[] }> {
+    const response = await fetch(`${this.baseUrl}`);
+    if (!response.ok) throw new Error('Failed to list websites');
+    return response.json();
+  }
+
+  async get(id: string): Promise<unknown> {
+    const response = await fetch(`${this.baseUrl}/${id}`);
+    if (!response.ok) throw new Error('Failed to get website');
+    return response.json();
+  }
+
+  async search(query: string, limit: number = 50): Promise<{ items: unknown[] }> {
+    const response = await fetch(`${this.baseUrl}/search?query=${encodeURIComponent(query)}&limit=${limit}`, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to search websites');
+    return response.json();
+  }
+}
+
+export const notesAPI = new NotesAPI();
+export const websitesAPI = new WebsitesAPI();

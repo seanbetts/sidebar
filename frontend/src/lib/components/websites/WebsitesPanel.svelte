@@ -23,6 +23,7 @@
     return domain.replace(/^www\./i, '');
   }
 
+  $: searchQuery = $websitesStore.searchQuery;
   $: pinnedItems = $websitesStore.items.filter((site) => site.pinned && !isArchived(site));
   $: mainItems = $websitesStore.items.filter((site) => !site.pinned && !isArchived(site));
   $: archivedItems = $websitesStore.items.filter((site) => isArchived(site));
@@ -216,197 +217,246 @@
 />
 
 <div class="websites-sections">
-  <div class="websites-block">
-    <div class="websites-block-title">Pinned</div>
-    {#if $websitesStore.error}
-      <div class="websites-empty">{$websitesStore.error}</div>
-    {:else if $websitesStore.loading}
-      <div class="websites-empty">Loading websites...</div>
-    {:else if pinnedItems.length === 0}
-      <div class="websites-empty">No pinned websites</div>
-    {:else}
-      <div class="websites-list">
-        {#each pinnedItems as site (site.id)}
-          <div class="website-item">
-            <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
-            <span class="website-icon">
-              <Globe />
-            </span>
-            <div class="website-text">
-              <span class="website-title">{site.title}</span>
-          <span class="website-domain">{formatDomain(site.domain)}</span>
-            </div>
-            </button>
-            <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
-              <MoreVertical size={14} />
-            </button>
-            {#if activeMenuId === site.id}
-              <div class="website-menu">
-                <button class="menu-item" on:click={() => handlePin(site)}>
-                  {#if site.pinned}
-                    <PinOff size={14} />
-                    <span>Unpin</span>
-                  {:else}
-                    <Pin size={14} />
-                    <span>Pin</span>
-                  {/if}
-                </button>
-                <button class="menu-item" on:click={() => openRenameDialog(site)}>
-                  <Pencil size={14} />
-                  <span>Rename</span>
-                </button>
-                <button class="menu-item" on:click={() => handleDownload(site)}>
-                  <Download size={14} />
-                  <span>Download</span>
-                </button>
-                <button class="menu-item" on:click={() => handleArchive(site)}>
-                  <Archive size={14} />
-                  <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
-                </button>
-                <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
-                  <Trash2 size={14} />
-                  <span>Delete</span>
-                </button>
+  {#if $websitesStore.error}
+    <div class="websites-empty">{$websitesStore.error}</div>
+  {:else if $websitesStore.loading}
+    <div class="websites-empty">Loading websites...</div>
+  {:else if searchQuery}
+    <div class="websites-block">
+      <div class="websites-block-title">Results</div>
+      {#if $websitesStore.items.length === 0}
+        <div class="websites-empty">No results</div>
+      {:else}
+        <div class="websites-list">
+          {#each $websitesStore.items as site (site.id)}
+            <div class="website-item">
+              <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
+              <span class="website-icon">
+                <Globe />
+              </span>
+              <div class="website-text">
+                <span class="website-title">{site.title}</span>
+                <span class="website-domain">{formatDomain(site.domain)}</span>
               </div>
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
-  </div>
-
-  <div class="websites-block">
-    <div class="websites-block-title">Websites</div>
-    {#if $websitesStore.error}
-      <div class="websites-empty">{$websitesStore.error}</div>
-    {:else if $websitesStore.loading}
-      <div class="websites-empty">Loading websites...</div>
-    {:else if mainItems.length === 0}
-      <div class="websites-empty">No websites saved</div>
-    {:else}
-      <div class="websites-list">
-        {#each mainItems as site (site.id)}
-          <div class="website-item">
-            <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
-            <span class="website-icon">
-              <Globe />
-            </span>
-            <div class="website-text">
-              <span class="website-title">{site.title}</span>
-              <span class="website-domain">{formatDomain(site.domain)}</span>
-            </div>
-            </button>
-            <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
-              <MoreVertical size={14} />
-            </button>
-            {#if activeMenuId === site.id}
-              <div class="website-menu">
-                <button class="menu-item" on:click={() => handlePin(site)}>
-                  {#if site.pinned}
-                    <PinOff size={14} />
-                    <span>Unpin</span>
-                  {:else}
-                    <Pin size={14} />
-                    <span>Pin</span>
-                  {/if}
-                </button>
-                <button class="menu-item" on:click={() => openRenameDialog(site)}>
-                  <Pencil size={14} />
-                  <span>Rename</span>
-                </button>
-                <button class="menu-item" on:click={() => handleDownload(site)}>
-                  <Download size={14} />
-                  <span>Download</span>
-                </button>
-                <button class="menu-item" on:click={() => handleArchive(site)}>
-                  <Archive size={14} />
-                  <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
-                </button>
-                <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
-                  <Trash2 size={14} />
-                  <span>Delete</span>
-                </button>
-              </div>
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
-  </div>
-
-  <div class="websites-block websites-archive">
-    <Collapsible.Root defaultOpen={false} class="group/collapsible" data-collapsible-root>
-      <div data-slot="sidebar-group" data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
-        <Collapsible.Trigger
-          data-slot="sidebar-group-label"
-          data-sidebar="group-label"
-          class="archive-trigger"
-        >
-          <span class="websites-block-title archive-label">Archive</span>
-          <ChevronRight class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90" />
-        </Collapsible.Trigger>
-        <Collapsible.Content data-slot="collapsible-content" class="pt-1">
-          <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
-            {#if $websitesStore.error}
-              <div class="websites-empty">{$websitesStore.error}</div>
-            {:else if $websitesStore.loading}
-              <div class="websites-empty">Loading websites...</div>
-            {:else if archivedItems.length === 0}
-              <div class="websites-empty">No archived websites</div>
-            {:else}
-              <div class="websites-list">
-                {#each archivedItems as site (site.id)}
-                  <div class="website-item">
-                    <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
-                    <span class="website-icon">
-                      <Globe />
-                    </span>
-                    <div class="website-text">
-                      <span class="website-title">{site.title}</span>
-                      <span class="website-domain">{formatDomain(site.domain)}</span>
-                    </div>
-                    </button>
-                    <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
-                      <MoreVertical size={14} />
-                    </button>
-                    {#if activeMenuId === site.id}
-                      <div class="website-menu">
-                        <button class="menu-item" on:click={() => handlePin(site)}>
-                          {#if site.pinned}
-                            <PinOff size={14} />
-                            <span>Unpin</span>
-                          {:else}
-                            <Pin size={14} />
-                            <span>Pin</span>
-                          {/if}
-                        </button>
-                        <button class="menu-item" on:click={() => openRenameDialog(site)}>
-                          <Pencil size={14} />
-                          <span>Rename</span>
-                        </button>
-                        <button class="menu-item" on:click={() => handleDownload(site)}>
-                          <Download size={14} />
-                          <span>Download</span>
-                        </button>
-                        <button class="menu-item" on:click={() => handleArchive(site)}>
-                          <Archive size={14} />
-                          <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
-                        </button>
-                        <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
-                          <Trash2 size={14} />
-                          <span>Delete</span>
-                        </button>
-                      </div>
+              </button>
+              <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
+                <MoreVertical size={14} />
+              </button>
+              {#if activeMenuId === site.id}
+                <div class="website-menu">
+                  <button class="menu-item" on:click={() => handlePin(site)}>
+                    {#if site.pinned}
+                      <PinOff size={14} />
+                      <span>Unpin</span>
+                    {:else}
+                      <Pin size={14} />
+                      <span>Pin</span>
                     {/if}
-                  </div>
-                {/each}
+                  </button>
+                  <button class="menu-item" on:click={() => openRenameDialog(site)}>
+                    <Pencil size={14} />
+                    <span>Rename</span>
+                  </button>
+                  <button class="menu-item" on:click={() => handleDownload(site)}>
+                    <Download size={14} />
+                    <span>Download</span>
+                  </button>
+                  <button class="menu-item" on:click={() => handleArchive(site)}>
+                    <Archive size={14} />
+                    <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
+                  </button>
+                  <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
+                    <Trash2 size={14} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {:else}
+    <div class="websites-block">
+      <div class="websites-block-title">Pinned</div>
+      {#if pinnedItems.length === 0}
+        <div class="websites-empty">No pinned websites</div>
+      {:else}
+        <div class="websites-list">
+          {#each pinnedItems as site (site.id)}
+            <div class="website-item">
+              <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
+              <span class="website-icon">
+                <Globe />
+              </span>
+              <div class="website-text">
+                <span class="website-title">{site.title}</span>
+                <span class="website-domain">{formatDomain(site.domain)}</span>
               </div>
-            {/if}
-          </div>
-        </Collapsible.Content>
-      </div>
-    </Collapsible.Root>
-  </div>
+              </button>
+              <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
+                <MoreVertical size={14} />
+              </button>
+              {#if activeMenuId === site.id}
+                <div class="website-menu">
+                  <button class="menu-item" on:click={() => handlePin(site)}>
+                    {#if site.pinned}
+                      <PinOff size={14} />
+                      <span>Unpin</span>
+                    {:else}
+                      <Pin size={14} />
+                      <span>Pin</span>
+                    {/if}
+                  </button>
+                  <button class="menu-item" on:click={() => openRenameDialog(site)}>
+                    <Pencil size={14} />
+                    <span>Rename</span>
+                  </button>
+                  <button class="menu-item" on:click={() => handleDownload(site)}>
+                    <Download size={14} />
+                    <span>Download</span>
+                  </button>
+                  <button class="menu-item" on:click={() => handleArchive(site)}>
+                    <Archive size={14} />
+                    <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
+                  </button>
+                  <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
+                    <Trash2 size={14} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <div class="websites-block">
+      <div class="websites-block-title">Websites</div>
+      {#if mainItems.length === 0}
+        <div class="websites-empty">No websites saved</div>
+      {:else}
+        <div class="websites-list">
+          {#each mainItems as site (site.id)}
+            <div class="website-item">
+              <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
+              <span class="website-icon">
+                <Globe />
+              </span>
+              <div class="website-text">
+                <span class="website-title">{site.title}</span>
+                <span class="website-domain">{formatDomain(site.domain)}</span>
+              </div>
+              </button>
+              <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
+                <MoreVertical size={14} />
+              </button>
+              {#if activeMenuId === site.id}
+                <div class="website-menu">
+                  <button class="menu-item" on:click={() => handlePin(site)}>
+                    {#if site.pinned}
+                      <PinOff size={14} />
+                      <span>Unpin</span>
+                    {:else}
+                      <Pin size={14} />
+                      <span>Pin</span>
+                    {/if}
+                  </button>
+                  <button class="menu-item" on:click={() => openRenameDialog(site)}>
+                    <Pencil size={14} />
+                    <span>Rename</span>
+                  </button>
+                  <button class="menu-item" on:click={() => handleDownload(site)}>
+                    <Download size={14} />
+                    <span>Download</span>
+                  </button>
+                  <button class="menu-item" on:click={() => handleArchive(site)}>
+                    <Archive size={14} />
+                    <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
+                  </button>
+                  <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
+                    <Trash2 size={14} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <div class="websites-block websites-archive">
+      <Collapsible.Root defaultOpen={false} class="group/collapsible" data-collapsible-root>
+        <div data-slot="sidebar-group" data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
+          <Collapsible.Trigger
+            data-slot="sidebar-group-label"
+            data-sidebar="group-label"
+            class="archive-trigger"
+          >
+            <span class="websites-block-title archive-label">Archive</span>
+            <ChevronRight class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90" />
+          </Collapsible.Trigger>
+          <Collapsible.Content data-slot="collapsible-content" class="pt-1">
+            <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
+              {#if archivedItems.length === 0}
+                <div class="websites-empty">No archived websites</div>
+              {:else}
+                <div class="websites-list">
+                  {#each archivedItems as site (site.id)}
+                    <div class="website-item">
+                      <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
+                      <span class="website-icon">
+                        <Globe />
+                      </span>
+                      <div class="website-text">
+                        <span class="website-title">{site.title}</span>
+                        <span class="website-domain">{formatDomain(site.domain)}</span>
+                      </div>
+                      </button>
+                      <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
+                        <MoreVertical size={14} />
+                      </button>
+                      {#if activeMenuId === site.id}
+                        <div class="website-menu">
+                          <button class="menu-item" on:click={() => handlePin(site)}>
+                            {#if site.pinned}
+                              <PinOff size={14} />
+                              <span>Unpin</span>
+                            {:else}
+                              <Pin size={14} />
+                              <span>Pin</span>
+                            {/if}
+                          </button>
+                          <button class="menu-item" on:click={() => openRenameDialog(site)}>
+                            <Pencil size={14} />
+                            <span>Rename</span>
+                          </button>
+                          <button class="menu-item" on:click={() => handleDownload(site)}>
+                            <Download size={14} />
+                            <span>Download</span>
+                          </button>
+                          <button class="menu-item" on:click={() => handleArchive(site)}>
+                            <Archive size={14} />
+                            <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
+                          </button>
+                          <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
+                            <Trash2 size={14} />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </Collapsible.Content>
+        </div>
+      </Collapsible.Root>
+    </div>
+  {/if}
 </div>
 
 <style>

@@ -1,5 +1,6 @@
 """Websites router for archived web content in Postgres."""
 import uuid
+from sqlalchemy import or_
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -41,6 +42,32 @@ async def list_websites(
 ):
     websites = (
         WebsitesService.list_websites(db)
+    )
+    return {"items": [website_summary(site) for site in websites]}
+
+
+@router.post("/search")
+async def search_websites(
+    query: str,
+    limit: int = 50,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    if not query:
+        raise HTTPException(status_code=400, detail="query required")
+
+    websites = (
+        db.query(Website)
+        .filter(
+            Website.deleted_at.is_(None),
+            or_(
+                Website.title.ilike(f"%{query}%"),
+                Website.content.ilike(f"%{query}%"),
+            ),
+        )
+        .order_by(Website.updated_at.desc())
+        .limit(limit)
+        .all()
     )
     return {"items": [website_summary(site) for site in websites]}
 

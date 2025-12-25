@@ -1,6 +1,9 @@
 <script lang="ts">
   import { X } from 'lucide-svelte';
-  import { conversationListStore } from '$lib/stores/conversations';
+
+  export let onSearch: ((query: string) => void | Promise<void>) | undefined = undefined;
+  export let onClear: (() => void | Promise<void>) | undefined = undefined;
+  export let placeholder: string = 'Type to search...';
 
   let searchQuery = '';
   let debounceTimeout: ReturnType<typeof setTimeout>;
@@ -8,16 +11,20 @@
   function handleSearch() {
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(async () => {
-      await conversationListStore.search(searchQuery);
+      if (onSearch) {
+        await onSearch(searchQuery);
+      }
     }, 300); // 300ms debounce
   }
 
   function clearSearch() {
     searchQuery = '';
-    conversationListStore.load();
+    if (onClear) {
+      onClear();
+    }
   }
 
-  $: if (searchQuery !== undefined) handleSearch();
+  $: if (searchQuery !== undefined && onSearch) handleSearch();
 </script>
 
 <div class="search-bar">
@@ -25,7 +32,7 @@
     <input
       type="text"
       bind:value={searchQuery}
-      placeholder="Type to search..."
+      {placeholder}
       class="search-input"
     />
     {#if searchQuery}

@@ -20,6 +20,7 @@ export interface SingleFileTree {
   children: FileNode[];
   loading: boolean;
   expandedPaths: Set<string>;
+  searchQuery?: string;
 }
 
 export interface FileTreeState {

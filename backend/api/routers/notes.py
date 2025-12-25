@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -35,6 +36,46 @@ async def list_notes_tree(
     )
     tree = NotesService.build_notes_tree(notes)
     return {"children": tree.get("children", [])}
+
+
+@router.post("/search")
+async def search_notes(
+    query: str,
+    limit: int = 50,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    if not query:
+        raise HTTPException(status_code=400, detail="query required")
+
+    notes = (
+        db.query(Note)
+        .filter(
+            Note.deleted_at.is_(None),
+            or_(
+                Note.title.ilike(f"%{query}%"),
+                Note.content.ilike(f"%{query}%"),
+            ),
+        )
+        .order_by(Note.updated_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    items = []
+    for note in notes:
+        metadata = note.metadata_ or {}
+        folder = metadata.get("folder") or ""
+        items.append({
+            "name": f"{note.title}.md",
+            "path": str(note.id),
+            "type": "file",
+            "modified": note.updated_at.timestamp() if note.updated_at else None,
+            "pinned": bool(metadata.get("pinned")),
+            "archived": NotesService.is_archived_folder(folder)
+        })
+
+    return {"items": items}
 
 
 @router.post("/folders")
