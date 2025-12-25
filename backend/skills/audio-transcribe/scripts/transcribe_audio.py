@@ -18,12 +18,48 @@ from typing import Dict, Any, Optional
 import requests
 from tqdm import tqdm
 
+# Add backend to sys.path for database mode.
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+try:
+    from api.db.session import SessionLocal
+    from api.services.notes_service import NotesService
+except Exception:
+    SessionLocal = None
+    NotesService = None
+
 
 # Default output directory
-DEFAULT_OUTPUT = Path.home() / "Documents" / "sideBar" / "Transcripts"
+DEFAULT_OUTPUT = Path("/workspace") / "Transcripts"
 
 # API size limit (25MB with safety margin)
 MAX_SIZE = 25_000_000
+
+
+def save_transcript_database(
+    content: str,
+    title: str,
+    folder: str,
+) -> Dict[str, Any]:
+    if SessionLocal is None or NotesService is None:
+        raise RuntimeError("Database dependencies are unavailable")
+
+    db = SessionLocal()
+    try:
+        note = NotesService.create_note(
+            db,
+            content,
+            title=title,
+            folder=folder,
+        )
+        return {
+            "id": str(note.id),
+            "title": note.title,
+            "folder": (note.metadata_ or {}).get("folder", ""),
+        }
+    finally:
+        db.close()
 
 
 def save_transcript(
@@ -481,6 +517,11 @@ Requirements:
     parser.add_argument("--temperature", type=float, default=0.0, help="Sampling temperature")
     parser.add_argument("--timestamp-granularities", action="append", help="Timestamp granularities")
     parser.add_argument("--json", action="store_true", help="Output results in JSON format")
+    parser.add_argument("--database", action="store_true", help="Save transcript to the database")
+    parser.add_argument(
+        "--folder",
+        help="Database folder for transcript note (default: Transcripts/Audio)",
+    )
 
     args = parser.parse_args()
 
@@ -503,6 +544,14 @@ Requirements:
             timestamp_granularities=args.timestamp_granularities
         )
 
+        note_data = None
+        if args.database:
+            transcript_path = Path(result["output_path"])
+            transcript_content = transcript_path.read_text(encoding="utf-8")
+            note_title = f"Transcript: {Path(args.file).stem}"
+            note_folder = args.folder or "Transcripts/Audio"
+            note_data = save_transcript_database(transcript_content, note_title, note_folder)
+
         if args.json:
             # Don't include full transcript in JSON output (it's saved to file)
             output = {
@@ -512,11 +561,14 @@ Requirements:
                     'word_count': result['word_count'],
                     'chunks': result['chunks'],
                     'model': result['model'],
-                    'usage': result.get('usage')
+                    'usage': result.get('usage'),
+                    'note': note_data
                 }
             }
             print(json.dumps(output, indent=2))
         else:
+            if note_data:
+                print(f"🗒️ Note created: {note_data['id']}")
             print("\n" + result['transcript'])
 
         sys.exit(0)

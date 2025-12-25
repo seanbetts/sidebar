@@ -1,0 +1,216 @@
+Goal
+
+Single ingestion pipeline that, for every uploaded file, produces:
+	•	A stable stored original
+	•	A standardised PDF derivative for UI viewing (when applicable)
+	•	A structured ai.md companion file for your AI agent
+	•	Optional thumbnails and machine-friendly extractions (CSV/JSON per table)
+
+High-level architecture
+
+Svelte frontend
+	•	Upload UI
+	•	Universal viewer UI that selects the best available derivative (PDF or image) and falls back gracefully
+	•	Processing state indicators (queued, processing, ready, failed)
+
+FastAPI backend
+	•	Upload endpoints and authentication
+	•	Storage abstraction (local filesystem, S3-compatible, Google Drive, etc.)
+	•	Metadata persistence and indexing (Postgres)
+	•	Dispatches file-processing jobs to a worker queue
+
+Worker (separate process/container)
+	•	Converts Office formats to PDF
+	•	Extracts text, structure, tables, and slide content
+	•	Generates ai.md
+	•	Generates thumbnails
+	•	Writes derivatives back to storage and updates database state
+
+Storage model
+
+Use object-storage semantics even if implemented on local disk.
+
+Storage keys
+
+Namespace every file by a stable file_id (UUID):
+
+files/{file_id}/original/{original_filename}
+files/{file_id}/derivatives/viewer.pdf
+files/{file_id}/derivatives/thumb.png
+files/{file_id}/ai/ai.md
+files/{file_id}/ai/tables/{table_id}.csv
+files/{file_id}/ai/tables/{table_id}.json
+
+Rationale
+	•	Easy to add new derivatives later
+	•	Clean cache invalidation via versioning
+	•	Auditable, append-friendly storage
+
+Database schema
+
+files
+	•	id (uuid, pk)
+	•	owner_user_id (uuid)
+	•	filename_original (text)
+	•	mime_original (text)
+	•	size_bytes (bigint)
+	•	sha256 (text)
+	•	created_at (timestamp)
+	•	deleted_at (timestamp, nullable)
+
+file_derivatives
+	•	id (uuid, pk)
+	•	file_id (uuid, fk)
+	•	kind (enum: viewer_pdf, thumb_png, ai_md, table_csv, table_json, text_plain, etc.)
+	•	storage_key (text)
+	•	mime (text)
+	•	size_bytes (bigint)
+	•	sha256 (text, nullable)
+	•	created_at (timestamp)
+
+file_processing_jobs
+	•	id (uuid, pk)
+	•	file_id (uuid, fk)
+	•	status (enum: queued, processing, ready, failed)
+	•	stage (text, nullable)
+	•	error (text, nullable)
+	•	attempts (int)
+	•	extraction_version (text)
+	•	updated_at (timestamp)
+
+API endpoints
+
+Upload and metadata
+
+POST /api/files
+	•	Multipart upload
+	•	Creates DB record, stores original, enqueues processing job
+	•	Returns { file_id }
+
+GET /api/files/{file_id}/meta
+	•	Returns base metadata, processing status, available derivatives
+	•	Includes recommended viewer (for example viewer_pdf if present)
+
+File streaming
+
+GET /api/files/{file_id}/content?kind=original|viewer_pdf|thumb_png|ai_md|…
+	•	Streams bytes
+	•	Sets correct Content-Type
+	•	Uses Content-Disposition: inline for viewable assets
+	•	Optionally supports range requests for PDFs
+
+Processing control
+
+POST /api/files/{file_id}/reprocess
+	•	Enqueues a new job with the current extraction_version
+
+DELETE /api/files/{file_id}
+	•	Soft-deletes metadata
+	•	Optionally schedules storage cleanup after a retention window
+
+Worker pipeline
+
+Treat processing as a deterministic state machine per file.
+
+Stage 0: Validate and classify
+	•	Validate extension and MIME against allowlist
+	•	Compute sha256
+	•	Optional deduplication per user
+
+Stage 1: Generate viewer derivative
+
+Rules:
+	•	PDF input: reuse as viewer.pdf
+	•	Images: no PDF conversion, use original plus thumbnail
+	•	DOCX/XLSX/PPTX: convert to viewer.pdf via LibreOffice headless
+
+Implementation notes:
+	•	Install fonts in worker container for stable layout
+	•	Enforce per-file timeouts and memory limits
+
+Stage 2: Extract content for AI
+
+Prefer extracting from the source format rather than from the PDF.
+	•	PDF: extract text per page with page numbers
+	•	DOCX: headings, paragraphs, lists, tables, links
+	•	XLSX: workbook structure, per-sheet tables, headers, row counts
+	•	PPTX: slide titles, bullets, speaker notes, ordering
+
+Stage 3: Build ai.md
+
+The canonical agent-facing representation.
+
+Front matter example:
+
+file_id: <uuid>
+source_filename: <original>
+source_mime: <mime>
+created_at: <iso>
+sha256: <sha>
+extraction_version: vX.Y
+derivatives:
+  viewer_pdf: true
+  thumb_png: true
+
+Body conventions:
+	•	PDFs: ## Page 1, ## Page 2
+	•	PPTX: ## Slide 1, ## Slide 2
+	•	XLSX: ## Sheet: Sales Q4
+
+Tables:
+	•	Short natural-language summary
+	•	Optional markdown preview
+	•	Canonical machine block:
+	•	Embedded csv fenced block, or
+	•	Reference to stored table derivative
+
+Images and figures:
+	•	Include extracted alt text if present
+	•	Add references back to viewer PDF when possible
+
+Stage 4: Thumbnails
+	•	Render first page of viewer.pdf to thumb.png
+	•	For images, generate resized thumbnail
+
+Stage 5: Persist and finalise
+	•	Write derivatives to storage
+	•	Upsert derivative rows
+	•	Mark job ready or failed with error details
+
+Viewer strategy (Svelte)
+
+Derivative-first decision order:
+	1.	If viewer_pdf exists, render via PDF viewer
+	2.	Else if image, render image viewer
+	3.	Else show “No preview available” with download option
+
+UniversalViewer.svelte:
+	•	Fetches /meta
+	•	Selects best derivative
+	•	Streams content via /content
+
+Sharing with the AI agent
+
+Per file, optionally store external attachment IDs (if using a Files API):
+	•	ai_md as text/plain
+	•	viewer.pdf as a document attachment
+
+Policy:
+	•	Default to sharing ai.md for Q&A, summarisation, and extraction
+	•	Attach viewer.pdf when layout, charts, citations, or page references matter
+
+Operations and safety
+	•	Worker runs in a resource-limited container
+	•	Strict allowlist of file types
+	•	Timeouts per conversion stage
+	•	Structured logging with file_id correlation
+	•	Retention policies for internal and external storage
+
+Extensibility checklist
+
+To add a new file type:
+	1.	Add classifier rule (extension + MIME)
+	2.	Decide viewing derivative (prefer PDF)
+	3.	Implement extractor to intermediate representation
+	4.	Render into ai.md
+	5.	Add tests with golden outputs

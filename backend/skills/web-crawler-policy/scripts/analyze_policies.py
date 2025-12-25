@@ -39,7 +39,7 @@ except ImportError:
 
 
 # Default output directory
-DEFAULT_OUTPUT_DIR = Path.home() / "Documents" / "sideBar" / "Reports"
+DEFAULT_OUTPUT_DIR = Path("/workspace") / "Reports"
 
 
 def normalize_domain(domain: str) -> str:

@@ -50,7 +50,7 @@ python analyze_policies.py --domains DOMAIN1 DOMAIN2 ... [OPTIONS]
 - `--timeout SECONDS`: HTTP request timeout (default: 10.0)
 - `--no-llms`: Skip checking for llms.txt files
 - `--save-robots`: Save robots.txt and llms.txt files to disk
-- `--output-dir DIR`: Output directory for saved files (default: ~/Documents/sideBar/Reports)
+- `--output-dir DIR`: Output directory for saved files (default: /workspace/Reports)
 
 **Output Options**:
 - `--output FILE`: Export results to CSV
@@ -236,21 +236,21 @@ python analyze_policies.py example.com --report --llm-api-key "sk-..."
 
 **Reports and Analysis**:
 ```
-~/Documents/sideBar/Reports/{domain}/
+/workspace/Reports/{domain}/
 ```
 
 **Saved robots.txt files** (with `--save-robots`):
 ```
-~/Documents/sideBar/Reports/{domain}/robots_{subdomain}_{timestamp}.txt
-~/Documents/sideBar/Reports/{domain}/llms_{subdomain}_{timestamp}.txt
+/workspace/Reports/{domain}/robots_{subdomain}_{timestamp}.txt
+/workspace/Reports/{domain}/llms_{subdomain}_{timestamp}.txt
 ```
 
 **Output files** (with `--all`):
 ```
-~/Documents/sideBar/Reports/{domain}/crawler_analysis_{timestamp}.csv
-~/Documents/sideBar/Reports/{domain}/scan_results_{timestamp}.json
-~/Documents/sideBar/Reports/{domain}/analysis_report_{timestamp}.md
-~/Documents/sideBar/Reports/{domain}/analysis_report_{timestamp}_analysis.json
+/workspace/Reports/{domain}/crawler_analysis_{timestamp}.csv
+/workspace/Reports/{domain}/scan_results_{timestamp}.json
+/workspace/Reports/{domain}/analysis_report_{timestamp}.md
+/workspace/Reports/{domain}/analysis_report_{timestamp}_analysis.json
 ```
 
 ## Workflow
