@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
       return json({ error: 'Notes are served from /api/notes' }, { status: 400 });
     }
 
-    const response = await fetch(`${API_URL}/api/files/tree?basePath=${basePath}`, {
+    const response = await fetch(`${API_URL}/api/files/tree?basePath=${encodeURIComponent(basePath)}`, {
       headers: {
         'Authorization': `Bearer ${BEARER_TOKEN}`
       }

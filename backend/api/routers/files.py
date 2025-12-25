@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.session import get_db
@@ -44,7 +45,7 @@ def build_file_tree(path: Path, base_path: Path = None) -> Dict[str, Any]:
             # Skip hidden files and common excludes
             if item.name.startswith('.'):
                 continue
-            if item.name in ['__pycache__', 'node_modules', '.git']:
+            if item.name in ['__pycache__', 'node_modules', '.git', 'profile-images']:
                 continue
 
             children.append(build_file_tree(item, base_path))
@@ -90,6 +91,64 @@ async def get_file_tree(
 
     # Return the children directly, not the root folder itself
     return {"children": tree.get("children", [])}
+
+
+@router.post("/search")
+async def search_files(
+    query: str,
+    basePath: str = "documents",
+    limit: int = 50,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    if not query:
+        raise HTTPException(status_code=400, detail="query required")
+
+    workspace_path = Path(WORKSPACE_BASE) / basePath
+    if not workspace_path.exists():
+        return {"items": []}
+
+    query_lower = query.lower()
+    results = []
+
+    for root, dirs, files in os.walk(workspace_path):
+        dirs[:] = [
+            d for d in dirs
+            if not d.startswith('.') and d not in ['__pycache__', 'node_modules', '.git', 'profile-images']
+        ]
+        files = [f for f in files if not f.startswith('.')]
+
+        for filename in files:
+            full_path = Path(root) / filename
+            rel_path = str(full_path.relative_to(workspace_path))
+            match = query_lower in filename.lower()
+
+            if not match:
+                try:
+                    if full_path.stat().st_size <= 1_000_000:
+                        content = full_path.read_text(encoding="utf-8", errors="ignore")
+                        if query_lower in content.lower():
+                            match = True
+                except Exception:
+                    match = False
+
+            if match:
+                results.append({
+                    "name": filename,
+                    "path": rel_path,
+                    "type": "file",
+                    "modified": full_path.stat().st_mtime,
+                    "size": full_path.stat().st_size
+                })
+
+            if len(results) >= limit:
+                break
+
+        if len(results) >= limit:
+            break
+
+    results.sort(key=lambda item: item.get("modified") or 0, reverse=True)
+    return {"items": results[:limit]}
 
 
 @router.post("/folder")
@@ -167,6 +226,54 @@ async def rename_file_or_folder(
         raise HTTPException(status_code=500, detail=f"Failed to rename: {str(e)}")
 
 
+@router.post("/move")
+async def move_file_or_folder(
+    request: dict,
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    """
+    Move a file or folder within workspace.
+
+    Body:
+        {
+            "basePath": "documents",
+            "path": "relative/path/to/item",
+            "destination": "relative/path/to/folder"
+        }
+    """
+    base_path = request.get("basePath", "documents")
+    path = request.get("path", "")
+    destination = request.get("destination", "")
+
+    if not path:
+        raise HTTPException(status_code=400, detail="path required")
+
+    workspace_path = Path(WORKSPACE_BASE) / base_path
+    full_path = workspace_path / path
+    dest_path = (workspace_path / destination).resolve()
+
+    try:
+        full_path.relative_to(workspace_path)
+        dest_path.relative_to(workspace_path)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not full_path.exists():
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    target_path = dest_path / full_path.name
+    if target_path.exists():
+        raise HTTPException(status_code=400, detail="An item with that name already exists")
+
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        full_path.rename(target_path)
+        return {"success": True, "newPath": str(target_path.relative_to(workspace_path))}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to move: {str(e)}")
+
+
 @router.post("/delete")
 async def delete_file_or_folder(
     request: dict,
@@ -210,6 +317,44 @@ async def delete_file_or_folder(
         return {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
+
+
+@router.get("/download")
+async def download_file(
+    basePath: str = "documents",
+    path: str = "",
+    user_id: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db)
+):
+    if not path:
+        raise HTTPException(status_code=400, detail="path parameter required")
+
+    workspace_path = Path(WORKSPACE_BASE) / basePath
+    full_path = workspace_path / path
+
+    try:
+        full_path.relative_to(workspace_path)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not full_path.exists() or not full_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        content = full_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        content = full_path.read_bytes()
+        return Response(
+            content,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{full_path.name}"'}
+        )
+
+    return Response(
+        content,
+        media_type="text/plain",
+        headers={"Content-Disposition": f'attachment; filename="{full_path.name}"'}
+    )
 
 
 @router.get("/content")

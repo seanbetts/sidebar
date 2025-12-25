@@ -162,6 +162,55 @@ function createFilesStore() {
           }
         }));
       }
+    },
+
+    async searchFiles(basePath: string, query: string) {
+      update(state => ({
+        trees: {
+          ...state.trees,
+          [basePath]: {
+            ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
+            loading: true,
+            searchQuery: query
+          }
+        }
+      }));
+
+      try {
+        const response = query
+          ? await fetch(
+              `/api/files/search?basePath=${encodeURIComponent(basePath)}&query=${encodeURIComponent(query)}&limit=50`,
+              { method: 'POST' }
+            )
+          : await fetch(`/api/files?basePath=${encodeURIComponent(basePath)}`);
+        if (!response.ok) {
+          throw new Error('Failed to search files');
+        }
+        const data = await response.json();
+        update(state => ({
+          trees: {
+            ...state.trees,
+            [basePath]: {
+              ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
+              children: data.items || data.children || [],
+              loading: false,
+              searchQuery: query
+            }
+          }
+        }));
+      } catch (error) {
+        console.error('Failed to search files:', error);
+        update(state => ({
+          trees: {
+            ...state.trees,
+            [basePath]: {
+              ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
+              loading: false,
+              searchQuery: query
+            }
+          }
+        }));
+      }
     }
   };
 }

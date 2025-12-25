@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder, Loader2 } from 'lucide-svelte';
+  import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder, FolderOpen, Loader2 } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -9,6 +9,7 @@
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/history/NotesPanel.svelte';
+  import WorkspacePanel from '$lib/components/history/WorkspacePanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
@@ -114,6 +115,9 @@
       event.preventDefault();
       openSection('websites');
     } else if (event.key === '3') {
+      event.preventDefault();
+      openSection('workspace');
+    } else if (event.key === '4') {
       event.preventDefault();
       openSection('history');
     }
@@ -357,7 +361,7 @@
     isCollapsed = !isCollapsed;
   }
 
-  let activeSection: 'history' | 'notes' | 'websites' = 'notes';
+  let activeSection: 'history' | 'notes' | 'websites' | 'workspace' = 'notes';
 
   function openSection(section: typeof activeSection) {
     activeSection = section;
@@ -1014,6 +1018,14 @@
         <Globe size={18} />
       </button>
       <button
+        on:click={() => openSection('workspace')}
+        class="rail-btn"
+        aria-label="Files"
+        title="Files"
+      >
+        <FolderOpen size={18} />
+      </button>
+      <button
         on:click={() => openSection('history')}
         class="rail-btn"
         aria-label="Chat"
@@ -1084,6 +1096,23 @@
           </div>
           <div class="files-content">
             <WebsitesPanel />
+          </div>
+        </div>
+      {:else if activeSection === 'workspace'}
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <div class="panel-section-header-row">
+              <div class="panel-section-title">Files</div>
+              <div class="panel-section-actions"></div>
+            </div>
+            <SearchBar
+              onSearch={(query) => filesStore.searchFiles('.', query)}
+              onClear={() => filesStore.load('.')}
+              placeholder="Search files..."
+            />
+          </div>
+          <div class="files-content">
+            <WorkspacePanel />
           </div>
         </div>
       {:else}

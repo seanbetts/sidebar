@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
     }
 
     const response = await fetch(
-      `${API_URL}/api/files/content?basePath=${basePath}&path=${encodeURIComponent(path)}`,
+      `${API_URL}/api/files/content?basePath=${encodeURIComponent(basePath)}&path=${encodeURIComponent(path)}`,
       {
         headers: {
           'Authorization': `Bearer ${BEARER_TOKEN}`

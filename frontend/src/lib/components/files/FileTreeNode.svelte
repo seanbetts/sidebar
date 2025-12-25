@@ -27,6 +27,7 @@
   export let basePath: string = 'documents';
   export let hideExtensions: boolean = false;
   export let onFileClick: ((path: string) => void) | undefined = undefined;
+  export let showActions: boolean = true;
 
   let showMenu = false;
   let isEditing = false;
@@ -153,15 +154,16 @@
     const state = get(filesStore);
     const tree = state.trees[basePath];
     const rootChildren = tree?.children || [];
+    const rootLabel = basePath === 'notes' ? 'Notes' : 'Workspace';
     const options: { label: string; value: string; depth: number }[] = [
-      { label: 'Notes', value: '', depth: 0 }
+      { label: rootLabel, value: '', depth: 0 }
     ];
 
     const walk = (nodes: FileNode[], depth: number) => {
       for (const child of nodes) {
         if (child.type !== 'directory') continue;
         const folderName = child.name;
-        if (folderName === 'Archive') continue;
+        if (basePath === 'notes' && folderName === 'Archive') continue;
         const folderPath = child.path.replace(/^folder:/, '');
         if (excludePath && (folderPath === excludePath || folderPath.startsWith(`${excludePath}/`))) {
           if (child.children?.length) {
@@ -221,15 +223,25 @@
     event.stopPropagation();
     if (node.type !== 'file') return;
     try {
-      const response = await fetch(`/api/notes/${node.path}/move`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folder })
-      });
-      if (!response.ok) throw new Error('Failed to move note');
+      const response = basePath === 'notes'
+        ? await fetch(`/api/notes/${node.path}/move`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder })
+          })
+        : await fetch(`/api/files/move`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              basePath,
+              path: node.path,
+              destination: folder
+            })
+          });
+      if (!response.ok) throw new Error('Failed to move file');
       await filesStore.load(basePath);
     } catch (error) {
-      console.error('Failed to move note:', error);
+      console.error('Failed to move file:', error);
     } finally {
       closeMenu();
     }
@@ -239,14 +251,24 @@
     event.stopPropagation();
     if (node.type !== 'directory') return;
     try {
-      const response = await fetch('/api/notes/folders/move', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          oldPath: node.path.replace(/^folder:/, ''),
-          newParent
-        })
-      });
+      const response = basePath === 'notes'
+        ? await fetch('/api/notes/folders/move', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              oldPath: node.path.replace(/^folder:/, ''),
+              newParent
+            })
+          })
+        : await fetch('/api/files/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              basePath,
+              path: node.path,
+              destination: newParent
+            })
+          });
       if (!response.ok) throw new Error('Failed to move folder');
       await filesStore.load(basePath);
     } catch (error) {
@@ -270,20 +292,12 @@
         return;
       }
 
-      const response = await fetch(
-        `/api/files/content?basePath=${basePath}&path=${encodeURIComponent(node.path)}`
-      );
-      if (!response.ok) throw new Error('Failed to load note content');
-      const data = await response.json();
-      const blob = new Blob([data.content || ''], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
-      link.download = data.name || `${displayName}.md`;
+      link.href = `/api/files/download?basePath=${encodeURIComponent(basePath)}&path=${encodeURIComponent(node.path)}`;
+      link.download = displayName;
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download note:', error);
     } finally {
@@ -422,27 +436,30 @@
       {/if}
     </button>
 
-    <div class="actions">
-      <button class="menu-btn" on:click={toggleMenu} aria-label="More options" bind:this={menuButton}>
-        <MoreVertical size={16} />
-      </button>
+    {#if showActions}
+      <div class="actions">
+        <button class="menu-btn" on:click={toggleMenu} aria-label="More options" bind:this={menuButton}>
+          <MoreVertical size={16} />
+        </button>
 
-      {#if showMenu}
-        <div class="menu" bind:this={menuElement} on:click|stopPropagation>
-          <button class="menu-item" on:click={handleRename}>
-            <Pencil size={16} />
-            <span>Rename</span>
-          </button>
-          {#if node.type === 'file'}
-            <button class="menu-item" on:click={handlePinToggle}>
-              {#if node.pinned}
-                <PinOff size={16} />
-                <span>Unpin</span>
-              {:else}
-                <Pin size={16} />
-                <span>Pin</span>
-              {/if}
+        {#if showMenu}
+          <div class="menu" bind:this={menuElement} on:click|stopPropagation>
+            <button class="menu-item" on:click={handleRename}>
+              <Pencil size={16} />
+              <span>Rename</span>
             </button>
+            {#if node.type === 'file'}
+            {#if basePath === 'notes'}
+              <button class="menu-item" on:click={handlePinToggle}>
+                {#if node.pinned}
+                  <PinOff size={16} />
+                  <span>Unpin</span>
+                {:else}
+                  <Pin size={16} />
+                  <span>Pin</span>
+                {/if}
+              </button>
+            {/if}
             <button
               class="menu-item"
               on:click={(event) => {
@@ -454,20 +471,20 @@
               <FolderInput size={16} />
               <span>Move</span>
             </button>
-            {#if showMoveMenu}
-              <div class="menu-submenu">
-                {#each folderOptions as option (option.value)}
-                  <button
-                    class="menu-subitem"
-                    style={`padding-left: ${option.depth * 12 + 12}px`}
-                    on:click={(event) => handleMove(event, option.value)}
-                  >
-                    {option.label}
-                  </button>
-                {/each}
-              </div>
-            {/if}
-            {#if !node.archived}
+              {#if showMoveMenu}
+                <div class="menu-submenu">
+                  {#each folderOptions as option (option.value)}
+                    <button
+                      class="menu-subitem"
+                      style={`padding-left: ${option.depth * 12 + 12}px`}
+                      on:click={(event) => handleMove(event, option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            {#if basePath === 'notes' && !node.archived}
               <button class="menu-item" on:click={handleArchive}>
                 <Archive size={16} />
                 <span>Archive</span>
@@ -477,45 +494,54 @@
               <Download size={16} />
               <span>Download</span>
             </button>
-          {:else if node.type === 'directory'}
-            <button
-              class="menu-item"
-              on:click={(event) => {
-                event.stopPropagation();
-                showMoveMenu = !showMoveMenu;
-                buildFolderOptions(node.path.replace(/^folder:/, ''));
-              }}
-            >
-              <FolderInput size={16} />
-              <span>Move</span>
-            </button>
-            {#if showMoveMenu}
-              <div class="menu-submenu">
-                {#each folderOptions as option (option.value)}
-                  <button
-                    class="menu-subitem"
-                    style={`padding-left: ${option.depth * 12 + 12}px`}
-                    on:click={(event) => handleMoveFolder(event, option.value)}
-                  >
-                    {option.label}
-                  </button>
-                {/each}
-              </div>
+            {:else if node.type === 'directory'}
+              <button
+                class="menu-item"
+                on:click={(event) => {
+                  event.stopPropagation();
+                  showMoveMenu = !showMoveMenu;
+                  buildFolderOptions(node.path.replace(/^folder:/, ''));
+                }}
+              >
+                <FolderInput size={16} />
+                <span>Move</span>
+              </button>
+              {#if showMoveMenu}
+                <div class="menu-submenu">
+                  {#each folderOptions as option (option.value)}
+                    <button
+                      class="menu-subitem"
+                      style={`padding-left: ${option.depth * 12 + 12}px`}
+                      on:click={(event) => handleMoveFolder(event, option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
             {/if}
-          {/if}
-          <button class="menu-item delete" on:click={handleDelete}>
-            <Trash2 size={16} />
-            <span>Delete</span>
-          </button>
-        </div>
-      {/if}
-    </div>
+            <button class="menu-item delete" on:click={handleDelete}>
+              <Trash2 size={16} />
+              <span>Delete</span>
+            </button>
+          </div>
+        {/if}
+      </div>
+    {/if}
   </div>
 </div>
 
 {#if isExpanded && hasChildren}
   {#each node.children as child}
-    <svelte:self node={child} level={level + 1} {onToggle} {basePath} {hideExtensions} {onFileClick} />
+    <svelte:self
+      node={child}
+      level={level + 1}
+      {onToggle}
+      {basePath}
+      {hideExtensions}
+      {onFileClick}
+      {showActions}
+    />
   {/each}
 {/if}
 
