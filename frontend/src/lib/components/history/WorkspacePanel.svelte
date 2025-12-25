@@ -8,7 +8,8 @@
   $: treeData = $filesStore.trees[basePath];
   $: children = treeData?.children || [];
   $: searchQuery = treeData?.searchQuery || '';
-  $: loading = treeData?.loading || false;
+  // Show loading if explicitly loading OR if tree hasn't been initialized yet
+  $: loading = treeData?.loading ?? !treeData;
 
   // Data loading is now handled by parent Sidebar component
   // onMount removed to prevent duplicate loads and initial flicker

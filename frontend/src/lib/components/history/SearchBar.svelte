@@ -8,6 +8,7 @@
 
   let searchQuery = '';
   let debounceTimeout: ReturnType<typeof setTimeout>;
+  let previousQuery = '';
 
   function handleSearch() {
     if (!browser) {
@@ -15,6 +16,12 @@
     }
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(async () => {
+      // Skip if query hasn't actually changed
+      if (searchQuery === previousQuery) {
+        return;
+      }
+      previousQuery = searchQuery;
+
       if (onSearch) {
         await onSearch(searchQuery);
       }
@@ -27,12 +34,14 @@
       return;
     }
     searchQuery = '';
+    previousQuery = '';
     if (onClear) {
       onClear();
     }
   }
 
-  $: if (searchQuery !== undefined && onSearch) handleSearch();
+  // Only trigger search when query actually changes from previous value
+  $: if (searchQuery !== previousQuery && onSearch) handleSearch();
 </script>
 
 <div class="search-bar">

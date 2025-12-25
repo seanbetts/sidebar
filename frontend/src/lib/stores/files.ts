@@ -24,6 +24,20 @@ function createFilesStore() {
     subscribe,
 
     async load(basePath: string = 'documents') {
+      // Get current state
+      const currentState = get({ subscribe });
+      const currentTree = currentState.trees[basePath];
+
+      // Skip if already loading
+      if (currentTree?.loading) {
+        return;
+      }
+
+      // Skip if data already exists (prevent unnecessary reloads)
+      if (currentTree?.children && currentTree.children.length > 0) {
+        return;
+      }
+
       // Initialize tree if it doesn't exist
       update(state => ({
         trees: {
