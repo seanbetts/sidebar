@@ -46,8 +46,15 @@ class SkillExecutor:
         if skill_name not in self.allowed_skills:
             raise ValueError(f"Skill not allowed: {skill_name}")
 
-        # Construct path
-        script_path = (self.skills_dir / skill_name / "scripts" / script_name).resolve()
+        # Construct path (default scripts/; allow relative paths or root scripts)
+        if "/" in script_name or "\\" in script_name:
+            script_path = (self.skills_dir / skill_name / script_name).resolve()
+        else:
+            default_path = (self.skills_dir / skill_name / "scripts" / script_name).resolve()
+            if default_path.exists():
+                script_path = default_path
+            else:
+                script_path = (self.skills_dir / skill_name / script_name).resolve()
 
         # Validate path is within skills directory
         try:
@@ -84,7 +91,8 @@ class SkillExecutor:
         skill_name: str,
         script_name: str,
         args: List[str],
-        user_id: str = None
+        user_id: str = None,
+        expect_json: bool = True,
     ) -> Dict[str, Any]:
         """Execute skill script with resource limits and audit logging."""
         start_time = time.time()
@@ -99,7 +107,9 @@ class SkillExecutor:
                 self._validate_workspace_paths(args)
 
                 # Build command (no shell=True to prevent injection)
-                cmd = ["python", str(script_path)] + args + ["--json"]
+                cmd = ["python", str(script_path)] + args
+                if expect_json and "--json" not in args:
+                    cmd.append("--json")
 
                 # Minimal environment - only what's needed
                 pythonpath = os.environ.get("PYTHONPATH", "")
@@ -157,7 +167,16 @@ class SkillExecutor:
                 duration_ms = (time.time() - start_time) * 1000
 
                 if result.returncode == 0:
-                    output = json.loads(result.stdout)
+                    if expect_json:
+                        output = json.loads(result.stdout)
+                    else:
+                        output = {
+                            "success": True,
+                            "data": {
+                                "stdout": result.stdout,
+                                "stderr": result.stderr,
+                            },
+                        }
                     # Audit log success
                     AuditLogger.log_tool_call(
                         tool_name=f"{skill_name}.{script_name}",

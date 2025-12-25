@@ -2,7 +2,7 @@
 
 Analysis of all unexposed skills to determine if they need refactoring to fit the unified architecture model (service layer + database + SSE events).
 
-**Status**: Reviewing 11 remaining unexposed skills (removed list-skills and folder-config as redundant/deprecated).
+**Status**: All installed skills are now exposed (removed list-skills and folder-config as redundant/deprecated).
 
 ## Current Findings (Dec 2025)
 
@@ -14,19 +14,20 @@ Analysis of all unexposed skills to determine if they need refactoring to fit th
 - web-save
 - ui-theme (special case for light/dark mode)
 - prompt-preview
-
-**Installed but NOT exposed via tool_mapper (still missing tool definitions):**
 - audio-transcribe
-- docx
-- mcp-builder
-- pdf
-- pptx
-- skill-creator
-- subdomain-discover
-- web-crawler-policy
-- xlsx
 - youtube-download
 - youtube-transcribe
+- subdomain-discover
+- web-crawler-policy
+- docx
+- pdf
+- pptx
+- xlsx
+- skill-creator
+- mcp-builder
+
+**Installed but NOT exposed via tool_mapper (still missing tool definitions):**
+- (none)
 
 **Impact:** Users cannot toggle or use these installed skills yet, and the agent will still report missing capabilities.
 

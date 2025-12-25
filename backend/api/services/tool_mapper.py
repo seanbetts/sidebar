@@ -81,6 +81,17 @@ EXPOSED_SKILLS = {
     "web-save",
     "ui-theme",
     "prompt-preview",
+    "audio-transcribe",
+    "youtube-download",
+    "youtube-transcribe",
+    "subdomain-discover",
+    "web-crawler-policy",
+    "docx",
+    "pdf",
+    "pptx",
+    "xlsx",
+    "skill-creator",
+    "mcp-builder",
 }
 
 
@@ -156,6 +167,444 @@ class ToolMapper:
                 "script": "search.py",
                 "build_args": lambda p: self._build_fs_search_args(p),
                 "validate_read": True
+            },
+            "Unpack DOCX": {
+                "description": "Unpack a .docx file into an OOXML directory.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_file": {"type": "string", "description": "Path to .docx file"},
+                        "output_dir": {"type": "string", "description": "Output directory"}
+                    },
+                    "required": ["input_file", "output_dir"]
+                },
+                "skill": "docx",
+                "script": "ooxml/scripts/unpack.py",
+                "build_args": lambda p: [p["input_file"], p["output_dir"]],
+                "expect_json": False
+            },
+            "Pack DOCX": {
+                "description": "Pack an OOXML directory into a .docx file.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_dir": {"type": "string", "description": "Unpacked OOXML directory"},
+                        "output_file": {"type": "string", "description": "Output .docx path"}
+                    },
+                    "required": ["input_dir", "output_file"]
+                },
+                "skill": "docx",
+                "script": "ooxml/scripts/pack.py",
+                "build_args": lambda p: [p["input_dir"], p["output_file"]],
+                "expect_json": False
+            },
+            "Validate DOCX": {
+                "description": "Validate an unpacked .docx directory against the original file.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "unpacked_dir": {"type": "string", "description": "Unpacked OOXML directory"},
+                        "original_file": {"type": "string", "description": "Original .docx file"},
+                        "verbose": {"type": "boolean", "description": "Verbose output"}
+                    },
+                    "required": ["unpacked_dir", "original_file"]
+                },
+                "skill": "docx",
+                "script": "ooxml/scripts/validate.py",
+                "build_args": lambda p: self._build_docx_validate_args(p),
+                "expect_json": False
+            },
+            "Check PDF Fillable Fields": {
+                "description": "Check if a PDF contains fillable form fields.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_pdf": {"type": "string", "description": "Input PDF path"}
+                    },
+                    "required": ["input_pdf"]
+                },
+                "skill": "pdf",
+                "script": "check_fillable_fields.py",
+                "build_args": lambda p: [p["input_pdf"]],
+                "expect_json": False
+            },
+            "Extract PDF Form Fields": {
+                "description": "Extract PDF form field metadata to JSON.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_pdf": {"type": "string", "description": "Input PDF path"},
+                        "output_json": {"type": "string", "description": "Output JSON path"}
+                    },
+                    "required": ["input_pdf", "output_json"]
+                },
+                "skill": "pdf",
+                "script": "extract_form_field_info.py",
+                "build_args": lambda p: [p["input_pdf"], p["output_json"]],
+                "expect_json": False
+            },
+            "Fill PDF Form Fields": {
+                "description": "Fill a PDF's form fields using a fields JSON file.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_pdf": {"type": "string", "description": "Input PDF path"},
+                        "fields_json": {"type": "string", "description": "Fields JSON path"},
+                        "output_pdf": {"type": "string", "description": "Output PDF path"}
+                    },
+                    "required": ["input_pdf", "fields_json", "output_pdf"]
+                },
+                "skill": "pdf",
+                "script": "fill_fillable_fields.py",
+                "build_args": lambda p: [p["input_pdf"], p["fields_json"], p["output_pdf"]],
+                "expect_json": False
+            },
+            "Fill PDF Form Annotations": {
+                "description": "Fill a PDF using annotation-based fields JSON.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_pdf": {"type": "string", "description": "Input PDF path"},
+                        "fields_json": {"type": "string", "description": "Fields JSON path"},
+                        "output_pdf": {"type": "string", "description": "Output PDF path"}
+                    },
+                    "required": ["input_pdf", "fields_json", "output_pdf"]
+                },
+                "skill": "pdf",
+                "script": "fill_pdf_form_with_annotations.py",
+                "build_args": lambda p: [p["input_pdf"], p["fields_json"], p["output_pdf"]],
+                "expect_json": False
+            },
+            "Convert PDF To Images": {
+                "description": "Convert each PDF page to PNG images.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_pdf": {"type": "string", "description": "Input PDF path"},
+                        "output_dir": {"type": "string", "description": "Output directory"}
+                    },
+                    "required": ["input_pdf", "output_dir"]
+                },
+                "skill": "pdf",
+                "script": "convert_pdf_to_images.py",
+                "build_args": lambda p: [p["input_pdf"], p["output_dir"]],
+                "expect_json": False
+            },
+            "Create PDF Validation Image": {
+                "description": "Create a validation image with bounding boxes for PDF field placement.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "page_number": {"type": "integer", "description": "Page number (1-based)"},
+                        "fields_json": {"type": "string", "description": "Fields JSON path"},
+                        "input_image": {"type": "string", "description": "Input image path"},
+                        "output_image": {"type": "string", "description": "Output image path"}
+                    },
+                    "required": ["page_number", "fields_json", "input_image", "output_image"]
+                },
+                "skill": "pdf",
+                "script": "create_validation_image.py",
+                "build_args": lambda p: [
+                    str(p["page_number"]),
+                    p["fields_json"],
+                    p["input_image"],
+                    p["output_image"],
+                ],
+                "expect_json": False
+            },
+            "Check PDF Bounding Boxes": {
+                "description": "Validate that PDF bounding boxes do not overlap.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "fields_json": {"type": "string", "description": "Fields JSON path"}
+                    },
+                    "required": ["fields_json"]
+                },
+                "skill": "pdf",
+                "script": "check_bounding_boxes.py",
+                "build_args": lambda p: [p["fields_json"]],
+                "expect_json": False
+            },
+            "Extract PPTX Text Inventory": {
+                "description": "Extract structured text inventory from a PPTX to JSON.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_pptx": {"type": "string", "description": "Input PPTX path"},
+                        "output_json": {"type": "string", "description": "Output JSON path"},
+                        "issues_only": {"type": "boolean", "description": "Only include overflow/overlap issues"}
+                    },
+                    "required": ["input_pptx", "output_json"]
+                },
+                "skill": "pptx",
+                "script": "inventory.py",
+                "build_args": lambda p: self._build_pptx_inventory_args(p),
+                "expect_json": False
+            },
+            "Rearrange PPTX Slides": {
+                "description": "Rearrange slides in a PPTX by sequence.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "template_pptx": {"type": "string", "description": "Template PPTX path"},
+                        "output_pptx": {"type": "string", "description": "Output PPTX path"},
+                        "sequence": {"type": "string", "description": "Comma-separated slide indices (0-based)"}
+                    },
+                    "required": ["template_pptx", "output_pptx", "sequence"]
+                },
+                "skill": "pptx",
+                "script": "rearrange.py",
+                "build_args": lambda p: [p["template_pptx"], p["output_pptx"], p["sequence"]],
+                "expect_json": False
+            },
+            "Replace PPTX Text": {
+                "description": "Apply text replacements in a PPTX using an inventory JSON.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_pptx": {"type": "string", "description": "Input PPTX path"},
+                        "replacements_json": {"type": "string", "description": "Replacements JSON path"},
+                        "output_pptx": {"type": "string", "description": "Output PPTX path"}
+                    },
+                    "required": ["input_pptx", "replacements_json", "output_pptx"]
+                },
+                "skill": "pptx",
+                "script": "replace.py",
+                "build_args": lambda p: [p["input_pptx"], p["replacements_json"], p["output_pptx"]],
+                "expect_json": False
+            },
+            "Generate PPTX Thumbnails": {
+                "description": "Generate thumbnail grid images from a PPTX.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_pptx": {"type": "string", "description": "Input PPTX path"},
+                        "output_prefix": {"type": "string", "description": "Output prefix for images"},
+                        "cols": {"type": "integer", "description": "Number of columns"},
+                        "outline_placeholders": {"type": "boolean", "description": "Outline placeholders"}
+                    },
+                    "required": ["input_pptx"]
+                },
+                "skill": "pptx",
+                "script": "thumbnail.py",
+                "build_args": lambda p: self._build_pptx_thumbnail_args(p),
+                "expect_json": False
+            },
+            "Unpack PPTX": {
+                "description": "Unpack a .pptx file into an OOXML directory.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_file": {"type": "string", "description": "Path to .pptx file"},
+                        "output_dir": {"type": "string", "description": "Output directory"}
+                    },
+                    "required": ["input_file", "output_dir"]
+                },
+                "skill": "pptx",
+                "script": "ooxml/scripts/unpack.py",
+                "build_args": lambda p: [p["input_file"], p["output_dir"]],
+                "expect_json": False
+            },
+            "Pack PPTX": {
+                "description": "Pack an OOXML directory into a .pptx file.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "input_dir": {"type": "string", "description": "Unpacked OOXML directory"},
+                        "output_file": {"type": "string", "description": "Output .pptx path"}
+                    },
+                    "required": ["input_dir", "output_file"]
+                },
+                "skill": "pptx",
+                "script": "ooxml/scripts/pack.py",
+                "build_args": lambda p: [p["input_dir"], p["output_file"]],
+                "expect_json": False
+            },
+            "Validate PPTX": {
+                "description": "Validate an unpacked .pptx directory against the original file.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "unpacked_dir": {"type": "string", "description": "Unpacked OOXML directory"},
+                        "original_file": {"type": "string", "description": "Original .pptx file"},
+                        "verbose": {"type": "boolean", "description": "Verbose output"}
+                    },
+                    "required": ["unpacked_dir", "original_file"]
+                },
+                "skill": "pptx",
+                "script": "ooxml/scripts/validate.py",
+                "build_args": lambda p: self._build_docx_validate_args(p),
+                "expect_json": False
+            },
+            "Recalculate Spreadsheet": {
+                "description": "Recalculate formulas in a spreadsheet.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string", "description": "Spreadsheet file path"},
+                        "timeout_seconds": {"type": "integer", "description": "Timeout in seconds"}
+                    },
+                    "required": ["file_path"]
+                },
+                "skill": "xlsx",
+                "script": "recalc.py",
+                "build_args": lambda p: self._build_xlsx_recalc_args(p),
+                "expect_json": False
+            },
+            "Create Skill": {
+                "description": "Create a new skill scaffold at the specified path.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "skill_name": {"type": "string", "description": "Skill name"},
+                        "output_dir": {"type": "string", "description": "Parent directory for the skill"}
+                    },
+                    "required": ["skill_name", "output_dir"]
+                },
+                "skill": "skill-creator",
+                "script": "init_skill.py",
+                "build_args": lambda p: [p["skill_name"], "--path", p["output_dir"]],
+                "expect_json": False
+            },
+            "Package Skill": {
+                "description": "Package a skill directory into a .skill file.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "skill_dir": {"type": "string", "description": "Skill directory path"},
+                        "output_dir": {"type": "string", "description": "Output directory (optional)"}
+                    },
+                    "required": ["skill_dir"]
+                },
+                "skill": "skill-creator",
+                "script": "package_skill.py",
+                "build_args": lambda p: self._build_skill_package_args(p),
+                "expect_json": False
+            },
+            "Validate Skill": {
+                "description": "Validate a skill directory for correctness.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "skill_dir": {"type": "string", "description": "Skill directory path"}
+                    },
+                    "required": ["skill_dir"]
+                },
+                "skill": "skill-creator",
+                "script": "quick_validate.py",
+                "build_args": lambda p: [p["skill_dir"]],
+                "expect_json": False
+            },
+            "Evaluate MCP Server": {
+                "description": "Evaluate an MCP server using an XML evaluation file.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "eval_file": {"type": "string", "description": "Path to evaluation XML file"},
+                        "transport": {"type": "string", "description": "Transport type (stdio, sse, http)"},
+                        "command": {"type": "string", "description": "Command for stdio transport"},
+                        "args": {"type": "array", "items": {"type": "string"}, "description": "Args for stdio command"},
+                        "env": {"type": "array", "items": {"type": "string"}, "description": "Env vars KEY=VALUE"},
+                        "url": {"type": "string", "description": "MCP server URL (sse/http)"},
+                        "headers": {"type": "array", "items": {"type": "string"}, "description": "Headers 'Key: Value'"},
+                        "model": {"type": "string", "description": "Claude model for evaluation"},
+                        "output": {"type": "string", "description": "Output report file path"}
+                    },
+                    "required": ["eval_file"]
+                },
+                "skill": "mcp-builder",
+                "script": "evaluation.py",
+                "build_args": lambda p: self._build_mcp_evaluation_args(p),
+                "expect_json": False
+            },
+            "Discover Subdomains": {
+                "description": "Discover subdomains for a given domain.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "domain": {"type": "string", "description": "Domain to discover subdomains for"},
+                        "wordlist": {"type": "string", "description": "Custom wordlist path (optional)"},
+                        "timeout": {"type": "number", "description": "HTTP timeout seconds (optional)"},
+                        "dns_timeout": {"type": "number", "description": "DNS timeout seconds (optional)"},
+                        "no_filter": {"type": "boolean", "description": "Skip filtering internal/redirect domains"},
+                        "verbose": {"type": "boolean", "description": "Enable verbose output"}
+                    },
+                    "required": ["domain"]
+                },
+                "skill": "subdomain-discover",
+                "script": "discover_subdomains.py",
+                "build_args": lambda p: self._build_subdomain_discover_args(p)
+            },
+            "Analyze Crawler Policy": {
+                "description": "Analyze robots.txt and llms.txt policies for a domain.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "domain": {"type": "string", "description": "Target domain to analyze"},
+                        "no_discover": {"type": "boolean", "description": "Skip subdomain discovery"},
+                        "wordlist": {"type": "string", "description": "Custom wordlist path (optional)"},
+                        "timeout": {"type": "number", "description": "HTTP timeout seconds (optional)"},
+                        "dns_timeout": {"type": "number", "description": "DNS timeout seconds (optional)"},
+                        "no_llms": {"type": "boolean", "description": "Skip checking llms.txt files"}
+                    },
+                    "required": ["domain"]
+                },
+                "skill": "web-crawler-policy",
+                "script": "analyze_policies.py",
+                "build_args": lambda p: self._build_crawler_policy_args(p)
+            },
+            "Transcribe Audio": {
+                "description": "Transcribe an audio file into text and save it as a note.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string", "description": "Path to audio file"},
+                        "language": {"type": "string", "description": "Language code (optional)"},
+                        "model": {"type": "string", "description": "Transcription model (optional)"},
+                        "output_dir": {"type": "string", "description": "Transcript output directory (optional)"},
+                        "folder": {"type": "string", "description": "Notes folder for transcript (optional)"}
+                    },
+                    "required": ["file_path"]
+                },
+                "skill": "audio-transcribe",
+                "script": "transcribe_audio.py",
+                "build_args": lambda p: self._build_audio_transcribe_args(p)
+            },
+            "Download YouTube": {
+                "description": "Download YouTube video or audio to the workspace.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "YouTube URL"},
+                        "audio_only": {"type": "boolean", "description": "Download audio only"},
+                        "playlist": {"type": "boolean", "description": "Download entire playlist"},
+                        "output_dir": {"type": "string", "description": "Output directory (optional)"}
+                    },
+                    "required": ["url"]
+                },
+                "skill": "youtube-download",
+                "script": "download_video.py",
+                "build_args": lambda p: self._build_youtube_download_args(p)
+            },
+            "Transcribe YouTube": {
+                "description": "Download YouTube audio, transcribe it, and save it as a note.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "YouTube URL"},
+                        "language": {"type": "string", "description": "Language code (optional)"},
+                        "model": {"type": "string", "description": "Transcription model (optional)"},
+                        "output_dir": {"type": "string", "description": "Transcript output directory (optional)"},
+                        "audio_dir": {"type": "string", "description": "Audio output directory (optional)"},
+                        "keep_audio": {"type": "boolean", "description": "Keep audio file after transcription"},
+                        "folder": {"type": "string", "description": "Notes folder for transcript (optional)"}
+                    },
+                    "required": ["url"]
+                },
+                "skill": "youtube-transcribe",
+                "script": "transcribe_youtube.py",
+                "build_args": lambda p: self._build_youtube_transcribe_args(p)
             },
             "Create Note": {
                 "description": "Create a markdown note in the database (visible in UI).",
@@ -579,7 +1028,8 @@ class ToolMapper:
             result = await self.executor.execute(
                 tool_config["skill"],
                 tool_config["script"],
-                args
+                args,
+                expect_json=tool_config.get("expect_json", True),
             )
 
             # Log execution (redact sensitive content)
@@ -721,4 +1171,148 @@ class ToolMapper:
             value = params.get(key)
             if value is not None:
                 args.extend([flag, str(value)])
+        return args
+
+    def _build_audio_transcribe_args(self, params: dict) -> list:
+        args = [
+            params["file_path"],
+            "--json",
+            "--database",
+        ]
+        if params.get("language"):
+            args.extend(["--language", params["language"]])
+        if params.get("model"):
+            args.extend(["--model", params["model"]])
+        if params.get("output_dir"):
+            args.extend(["--output-dir", params["output_dir"]])
+        if params.get("folder"):
+            args.extend(["--folder", params["folder"]])
+        return args
+
+    def _build_youtube_download_args(self, params: dict) -> list:
+        args = [
+            params["url"],
+            "--json",
+        ]
+        if params.get("audio_only"):
+            args.append("--audio")
+        if params.get("playlist"):
+            args.append("--playlist")
+        if params.get("output_dir"):
+            args.extend(["--output", params["output_dir"]])
+        return args
+
+    def _build_youtube_transcribe_args(self, params: dict) -> list:
+        args = [
+            params["url"],
+            "--json",
+            "--database",
+        ]
+        if params.get("language"):
+            args.extend(["--language", params["language"]])
+        if params.get("model"):
+            args.extend(["--model", params["model"]])
+        if params.get("output_dir"):
+            args.extend(["--output-dir", params["output_dir"]])
+        if params.get("audio_dir"):
+            args.extend(["--audio-dir", params["audio_dir"]])
+        if params.get("keep_audio"):
+            args.append("--keep-audio")
+        if params.get("folder"):
+            args.extend(["--folder", params["folder"]])
+        return args
+
+    def _build_subdomain_discover_args(self, params: dict) -> list:
+        args = [
+            params["domain"],
+            "--json",
+        ]
+        if params.get("wordlist"):
+            args.extend(["--wordlist", params["wordlist"]])
+        if params.get("timeout") is not None:
+            args.extend(["--timeout", str(params["timeout"])])
+        if params.get("dns_timeout") is not None:
+            args.extend(["--dns-timeout", str(params["dns_timeout"])])
+        if params.get("no_filter"):
+            args.append("--no-filter")
+        if params.get("verbose"):
+            args.append("--verbose")
+        return args
+
+    def _build_crawler_policy_args(self, params: dict) -> list:
+        args = [
+            params["domain"],
+            "--json",
+        ]
+        if params.get("no_discover"):
+            args.append("--no-discover")
+        if params.get("wordlist"):
+            args.extend(["--wordlist", params["wordlist"]])
+        if params.get("timeout") is not None:
+            args.extend(["--timeout", str(params["timeout"])])
+        if params.get("dns_timeout") is not None:
+            args.extend(["--dns-timeout", str(params["dns_timeout"])])
+        if params.get("no_llms"):
+            args.append("--no-llms")
+        return args
+
+    def _build_docx_validate_args(self, params: dict) -> list:
+        args = [
+            params["unpacked_dir"],
+            "--original",
+            params["original_file"],
+        ]
+        if params.get("verbose"):
+            args.append("--verbose")
+        return args
+
+    def _build_pptx_inventory_args(self, params: dict) -> list:
+        args = [
+            params["input_pptx"],
+            params["output_json"],
+        ]
+        if params.get("issues_only"):
+            args.append("--issues-only")
+        return args
+
+    def _build_pptx_thumbnail_args(self, params: dict) -> list:
+        args = [params["input_pptx"]]
+        if params.get("output_prefix"):
+            args.append(params["output_prefix"])
+        if params.get("cols") is not None:
+            args.extend(["--cols", str(params["cols"])])
+        if params.get("outline_placeholders"):
+            args.append("--outline-placeholders")
+        return args
+
+    def _build_xlsx_recalc_args(self, params: dict) -> list:
+        args = [params["file_path"]]
+        if params.get("timeout_seconds") is not None:
+            args.append(str(params["timeout_seconds"]))
+        return args
+
+    def _build_skill_package_args(self, params: dict) -> list:
+        args = [params["skill_dir"]]
+        if params.get("output_dir"):
+            args.append(params["output_dir"])
+        return args
+
+    def _build_mcp_evaluation_args(self, params: dict) -> list:
+        args = [params["eval_file"]]
+        if params.get("transport"):
+            args.extend(["--transport", params["transport"]])
+        if params.get("model"):
+            args.extend(["--model", params["model"]])
+        if params.get("command"):
+            args.extend(["--command", params["command"]])
+        if params.get("args"):
+            args.extend(["--args", *params["args"]])
+        if params.get("env"):
+            args.extend(["--env", *params["env"]])
+        if params.get("url"):
+            args.extend(["--url", params["url"]])
+        if params.get("headers"):
+            args.extend(["--header", *params["headers"]])
+        if params.get("output"):
+            args.extend(["--output", params["output"]])
         return args

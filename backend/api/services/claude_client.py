@@ -196,6 +196,17 @@ class ClaudeClient:
                                                 "title": result_data.get("title")
                                             }
                                         }
+                                    elif display_name in {"Transcribe Audio", "Transcribe YouTube"}:
+                                        note_data = (result_data.get("note") or {})
+                                        if note_data.get("id"):
+                                            yield {
+                                                "type": "note_created",
+                                                "data": {
+                                                    "id": note_data.get("id"),
+                                                    "title": note_data.get("title"),
+                                                    "folder": note_data.get("folder"),
+                                                }
+                                            }
                                     elif display_name == "Save Website":
                                         yield {
                                             "type": "website_saved",

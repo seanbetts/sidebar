@@ -8,6 +8,7 @@ reports including optional LLM-powered marketing intelligence.
 """
 
 import sys
+import builtins
 import json
 import argparse
 import asyncio
@@ -939,6 +940,7 @@ Requirements:
     parser.add_argument('--output-dir', default=str(DEFAULT_OUTPUT_DIR), help=f'Output directory (default: {DEFAULT_OUTPUT_DIR})')
 
     # Output options
+    parser.add_argument('--json', action='store_true', help='Output results in JSON format to stdout')
     parser.add_argument('--output', '-o', help='Export results to CSV file')
     parser.add_argument('--json-output', help='Export raw data to JSON file')
     parser.add_argument('--no-table', action='store_true', help='Skip console table output')
@@ -952,11 +954,6 @@ Requirements:
 
     args = parser.parse_args()
 
-    # Validate report options
-    if args.report and not LLM_AVAILABLE:
-        print("Error: --report requires llm_report_generator.py module", file=sys.stderr)
-        sys.exit(1)
-
     # Handle --all option
     if args.all:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -968,6 +965,27 @@ Requirements:
             args.json_output = f"scan_results_{timestamp}.json"
         if not args.report_output:
             args.report_output = f"analysis_report_{timestamp}.md"
+
+    if args.json:
+        args.no_table = True
+        args.output = None
+        args.json_output = None
+        args.save_robots = False
+        args.report = False
+
+        original_print = builtins.print
+
+        def _print(*values, **kwargs):
+            if "file" not in kwargs:
+                kwargs["file"] = sys.stderr
+            return original_print(*values, **kwargs)
+
+        builtins.print = _print
+
+    # Validate report options
+    if args.report and not LLM_AVAILABLE:
+        print("Error: --report requires llm_report_generator.py module", file=sys.stderr)
+        sys.exit(1)
 
     # Determine main domain for output organization
     if args.domain:
@@ -1048,11 +1066,21 @@ Requirements:
         # Analyze crawler permissions
         permission_analyzer = CrawlerPermissionAnalyzer(robots_data, include_llms=not args.no_llms)
         permission_data = permission_analyzer.analyze_permissions()
+        output_data = {
+            'domain': main_domain,
+            'discovered_domains': sorted(domains_to_analyze),
+            'robots_data': robots_data,
+            'permission_analysis': permission_data
+        }
 
         # Output results
         if not args.no_table:
             print(create_output_summary(permission_data, domains_to_analyze))
             print(create_output_table(permission_data, domains_to_analyze, main_domain))
+
+        if args.json:
+            sys.stdout.write(json.dumps({"success": True, "data": output_data}, indent=2))
+            return
 
         # Export to CSV
         if args.output:
@@ -1071,12 +1099,6 @@ Requirements:
                 domain_folder.mkdir(parents=True, exist_ok=True)
                 json_output_path = str(domain_folder / args.json_output)
 
-            output_data = {
-                'domain': main_domain,
-                'discovered_domains': sorted(domains_to_analyze),
-                'robots_data': robots_data,
-                'permission_analysis': permission_data
-            }
             with open(json_output_path, 'w', encoding='utf-8') as f:
                 json.dump(output_data, f, indent=2)
             print(f"Raw data exported to: {json_output_path}")
