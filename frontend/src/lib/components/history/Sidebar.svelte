@@ -811,13 +811,13 @@
               </select>
             </label>
             <label class="settings-label">
-              <span>Location</span>
+              <span>Home</span>
               <div class="settings-autocomplete">
                 <input
                   class="settings-input"
                   type="text"
                   bind:value={location}
-                  placeholder="City, country"
+                  placeholder="City, region"
                   on:input={handleLocationInput}
                   on:focus={handleLocationInput}
                   on:keydown={handleLocationKeydown}
