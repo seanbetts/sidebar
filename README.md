@@ -24,6 +24,8 @@ sideBar is built as a modern, containerized full-stack application:
 - **Database**: PostgreSQL 16 with SQLAlchemy ORM (port 5432)
 - **Containerization**: Docker Compose orchestrating all services
 
+> **Deep Dive:** See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for design decisions, patterns, and learnings from building sideBar.
+
 ## Prerequisites
 
 - **Docker** & **Docker Compose** (required)
