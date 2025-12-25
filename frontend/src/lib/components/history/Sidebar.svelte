@@ -179,6 +179,8 @@
     if (isLoadingSettings || (settingsLoaded && !force)) return;
     isLoadingSettings = true;
     settingsError = '';
+    profileImageError = '';
+    locationSuggestions = [];
 
     try {
       const response = await fetch('/api/settings');
@@ -519,15 +521,28 @@
   }
 
   async function handleSettingsClose() {
+    // Clear autosave timer to prevent duplicate saves
+    if (autosaveTimer) {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = null;
+    }
+
     try {
       if (settingsDirty) {
         await saveSettings();
       }
-    } finally {
+
+      // Only reset state if save succeeded (or nothing to save)
       settingsLoaded = false;
       settingsError = '';
       locationSuggestions = [];
       profileImageError = '';
+    } catch (error) {
+      // Keep settingsLoaded = true so error is visible
+      // Don't clear settingsError - it was set by saveSettings()
+      console.error('Failed to save settings on close:', error);
+      // Re-throw to prevent settings from closing with unsaved changes
+      throw error;
     }
   }
 
@@ -553,7 +568,11 @@
   }
 
   $: if (wasSettingsOpen && !isSettingsOpen) {
-    handleSettingsClose();
+    handleSettingsClose().catch((error) => {
+      // If save fails, re-open settings so user can see error and retry
+      console.error('Settings close failed, reopening:', error);
+      isSettingsOpen = true;
+    });
   }
 
   $: wasSettingsOpen = isSettingsOpen;
