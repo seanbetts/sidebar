@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
@@ -20,6 +20,10 @@
 	let isSaving = false;
 	let saveError: string | null = null;
 	let lastSavedContent = '';
+
+	// Flag to prevent infinite loops:
+	// When we programmatically update the editor (e.g., loading scratchpad),
+	// we don't want that to trigger onUpdate which would mark it as dirty
 	let isUpdatingContent = false;
 	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	let isClosing = false;
@@ -58,12 +62,35 @@
 			const content = await ensureScratchpadExists();
 			lastSavedContent = content;
 			if (editor) {
-				isUpdatingContent = true;
-				hasUserEdits = false;
-				editor.commands.setContent(stripHeading(content) || '');
-				setTimeout(() => {
-					isUpdatingContent = false;
-				}, 0);
+				const newContent = stripHeading(content) || '';
+				const currentEditorContent = editor.storage.markdown.getMarkdown();
+
+				// Only update if content actually changed
+				if (currentEditorContent !== newContent) {
+					try {
+						isUpdatingContent = true;
+						hasUserEdits = false;
+
+						// Save cursor position before updating
+						const currentPosition = editor.state.selection.anchor;
+
+						// Update content
+						editor.commands.setContent(newContent);
+
+						// Wait for Svelte reactivity and browser render
+						await tick();
+						await new Promise(resolve => requestAnimationFrame(resolve));
+
+						// Restore cursor position if still valid
+						if (currentPosition <= newContent.length) {
+							editor.commands.setTextSelection(currentPosition);
+						}
+					} catch (error) {
+						console.error('Failed to update scratchpad content:', error);
+					} finally {
+						isUpdatingContent = false;
+					}
+				}
 			}
 		} catch (error) {
 			saveError = 'Failed to load scratchpad.';
@@ -138,11 +165,6 @@
 		});
 	}
 
-	onDestroy(() => {
-		if (saveTimeout) clearTimeout(saveTimeout);
-		if (editor) editor.destroy();
-	});
-
 	const unsubscribeScratchpad = scratchpadStore.subscribe(() => {
 		if (isOpen && !isLoading) {
 			loadScratchpad();
@@ -150,7 +172,13 @@
 	});
 
 	onDestroy(() => {
+		// Cleanup all timers and subscriptions
+		if (saveTimeout) clearTimeout(saveTimeout);
 		unsubscribeScratchpad();
+		if (editor) {
+			editor.destroy();
+			editor = null;  // Set to null to prevent double destruction
+		}
 	});
 
 	$: if (isOpen && editorElement && !editor) {
@@ -166,7 +194,8 @@
 			if (hasUserEdits) {
 				await saveScratchpadContent(markdown);
 			}
-			if (!isOpen && editor === currentEditor) {
+			// Only destroy if editor hasn't been destroyed already and popover is still closed
+			if (!isOpen && editor === currentEditor && editor !== null) {
 				currentEditor.destroy();
 				editor = null;
 			}
