@@ -37,6 +37,10 @@ SKILL_DISPLAY = {
         "name": "Web Save",
         "description": "Save web pages as clean markdown for later use."
     },
+    "web-search": {
+        "name": "Web Search",
+        "description": "Search the live web for up-to-date information."
+    },
     "subdomain-discover": {
         "name": "Subdomain Discovery",
         "description": "Find subdomains using DNS and certificate sources."
@@ -79,6 +83,7 @@ EXPOSED_SKILLS = {
     "fs",
     "notes",
     "web-save",
+    "web-search",
     "ui-theme",
     "prompt-preview",
     "audio-transcribe",

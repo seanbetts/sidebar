@@ -18,7 +18,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			open_context,
 			current_location,
 			current_location_levels,
-			current_weather
+			current_weather,
+			current_timezone
 		} = await request.json();
 
 		if (!message) {
@@ -41,7 +42,8 @@ export const POST: RequestHandler = async ({ request }) => {
 				open_context,
 				current_location,
 				current_location_levels,
-				current_weather
+				current_weather,
+				current_timezone
 			})
 		});
 

@@ -121,6 +121,10 @@
 					console.error('Failed to parse weather cache:', error);
 				}
 			}
+			const currentTimezone =
+				typeof window !== 'undefined'
+					? Intl.DateTimeFormat().resolvedOptions().timeZone
+					: undefined;
 
 			await sseClient.connect(
 				{
@@ -130,7 +134,8 @@
 					openContext,
 					currentLocation: currentLocation || undefined,
 					currentLocationLevels,
-					currentWeather
+					currentWeather,
+					currentTimezone
 				},
 				{
 					onToken: (content) => {

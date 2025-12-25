@@ -36,6 +36,7 @@ export class SSEClient {
 			currentLocation?: string;
 			currentLocationLevels?: Record<string, string>;
 			currentWeather?: Record<string, unknown>;
+			currentTimezone?: string;
 		},
 		callbacks: SSECallbacks
 	): Promise<void> {
@@ -56,7 +57,8 @@ export class SSEClient {
 					open_context: payload.openContext,
 					current_location: payload.currentLocation,
 					current_location_levels: payload.currentLocationLevels,
-					current_weather: payload.currentWeather
+					current_weather: payload.currentWeather,
+					current_timezone: payload.currentTimezone
 				}),
 				signal: this.abortController.signal
 			});

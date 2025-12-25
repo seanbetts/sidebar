@@ -11,6 +11,43 @@ from api.services.tool_mapper import ToolMapper
 class ClaudeClient:
     """Handles Claude API interactions with streaming and tool execution."""
 
+    @staticmethod
+    def _build_web_search_location(
+        current_location_levels: Any,
+        timezone: str | None,
+    ) -> Dict[str, str] | None:
+        if not isinstance(current_location_levels, dict):
+            return None
+        city = current_location_levels.get("locality") or current_location_levels.get("postal_town")
+        region = (
+            current_location_levels.get("administrative_area_level_1")
+            or current_location_levels.get("administrative_area_level_2")
+        )
+        country = current_location_levels.get("country")
+        if not (city or region or country):
+            return None
+        location: Dict[str, str] = {"type": "approximate"}
+        if city:
+            location["city"] = city
+        if region:
+            location["region"] = region
+        if country:
+            location["country"] = country
+        if timezone:
+            location["timezone"] = timezone
+        return location if len(location) > 1 else None
+
+    @staticmethod
+    def _serialize_web_search_result(content_block: Any) -> Dict[str, Any]:
+        if hasattr(content_block, "model_dump"):
+            return content_block.model_dump()
+        result = {"type": "web_search_tool_result"}
+        if hasattr(content_block, "tool_use_id"):
+            result["tool_use_id"] = content_block.tool_use_id
+        if hasattr(content_block, "content"):
+            result["content"] = content_block.content
+        return result
+
     def __init__(self, settings: Settings):
         # Create custom httpx client that bypasses SSL verification
         # TEMPORARY WORKAROUND for corporate SSL interception
@@ -56,6 +93,21 @@ class ClaudeClient:
 
         # Get Claude tools from mapper
         tools = self.tool_mapper.get_claude_tools(allowed_skills)
+        if allowed_skills is None or "web-search" in allowed_skills:
+            user_location = None
+            if tool_context:
+                user_location = ClaudeClient._build_web_search_location(
+                    tool_context.get("current_location_levels"),
+                    tool_context.get("current_timezone"),
+                )
+            web_search_tool: Dict[str, Any] = {
+                "type": "web_search_20250305",
+                "name": "web_search",
+                "max_uses": 5,
+            }
+            if user_location:
+                web_search_tool["user_location"] = user_location
+            tools.append(web_search_tool)
 
         # Allow up to 5 tool use rounds to prevent infinite loops
         max_rounds = 5
@@ -79,6 +131,7 @@ class ClaudeClient:
                     content_blocks = []
                     tool_uses = []
                     current_text = ""
+                    current_server_tool = None
 
                     async for event in stream:
                         if event.type == "content_block_start":
@@ -94,6 +147,17 @@ class ClaudeClient:
                                         "input": {},
                                         "input_partial": ""
                                     })
+                                elif event.content_block.type == "server_tool_use":
+                                    current_server_tool = {
+                                        "id": event.content_block.id,
+                                        "name": event.content_block.name,
+                                        "input": {},
+                                        "input_partial": "",
+                                    }
+                                elif event.content_block.type == "web_search_tool_result":
+                                    content_blocks.append(
+                                        ClaudeClient._serialize_web_search_result(event.content_block)
+                                    )
 
                         elif event.type == "content_block_delta":
                             if hasattr(event.delta, "type"):
@@ -108,6 +172,8 @@ class ClaudeClient:
                                     # Tool input being streamed
                                     if tool_uses:
                                         tool_uses[-1]["input_partial"] += event.delta.partial_json
+                                    elif current_server_tool:
+                                        current_server_tool["input_partial"] += event.delta.partial_json
 
                         elif event.type == "content_block_stop":
                             # Content block finished - save to content_blocks
@@ -117,6 +183,23 @@ class ClaudeClient:
                                     "text": current_text
                                 })
                                 current_text = ""
+                            elif current_server_tool:
+                                try:
+                                    if current_server_tool["input_partial"]:
+                                        current_server_tool["input"] = json.loads(
+                                            current_server_tool["input_partial"]
+                                        )
+                                except json.JSONDecodeError:
+                                    current_server_tool["input"] = {}
+                                content_blocks.append(
+                                    {
+                                        "type": "server_tool_use",
+                                        "id": current_server_tool["id"],
+                                        "name": current_server_tool["name"],
+                                        "input": current_server_tool["input"],
+                                    }
+                                )
+                                current_server_tool = None
 
                         elif event.type == "message_stop":
                             # Message complete - check if we have tools to execute

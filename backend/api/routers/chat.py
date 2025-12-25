@@ -98,6 +98,7 @@ async def stream_chat(
     current_location = data.get("current_location")
     current_location_levels = data.get("current_location_levels")
     current_weather = data.get("current_weather")
+    current_timezone = data.get("current_timezone")
 
     if not message:
         raise HTTPException(status_code=400, detail="Message required")
@@ -140,6 +141,7 @@ async def stream_chat(
         "current_location": current_location,
         "current_location_levels": current_location_levels,
         "current_weather": current_weather,
+        "current_timezone": current_timezone,
     }
 
     async def event_generator():

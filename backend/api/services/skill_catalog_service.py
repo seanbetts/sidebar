@@ -54,6 +54,20 @@ class SkillCatalogService:
                 }
             )
 
+        if "web-search" not in {skill["id"] for skill in skills}:
+            web_display = SKILL_DISPLAY.get("web-search", {})
+            skills.append(
+                {
+                    "id": "web-search",
+                    "name": web_display.get("name", "Web Search"),
+                    "description": web_display.get(
+                        "description",
+                        "Search the live web for up-to-date information.",
+                    ),
+                    "category": category_map.get("web-search", "Web"),
+                }
+            )
+
         return [skill for skill in skills if skill["id"] in EXPOSED_SKILLS]
 
     @staticmethod
@@ -88,6 +102,7 @@ class SkillCatalogService:
             "subdomain-discover": "Web",
             "web-crawler-policy": "Web",
             "web-save": "Web",
+            "web-search": "Web",
             "audio-transcribe": "Media",
             "youtube-download": "Media",
             "youtube-transcribe": "Media",
