@@ -51,7 +51,8 @@ def test_build_system_prompt_renders_variables() -> None:
     assert "Sam's personal AI assistant" in prompt
     assert "Current date: 2025-01-02" in prompt
     assert "Current time: 13:45 UTC" in prompt
-    assert "Location: London" in prompt
+    assert "Home location: Unknown" in prompt
+    assert "Current location: London" in prompt
 
 
 def test_build_first_message_prompt_includes_profile() -> None:

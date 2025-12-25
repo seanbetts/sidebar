@@ -5,7 +5,11 @@
 
 	let currentDate = "";
 	let currentTime = "";
+	let liveLocation = "";
 	let timeInterval: ReturnType<typeof setInterval> | undefined;
+	const locationCacheKey = "sidebar.liveLocation";
+	const locationCacheTimeKey = "sidebar.liveLocationTs";
+	const locationCacheTtlMs = 30 * 60 * 1000;
 
 	function updateDateTime() {
 		const now = new Date();
@@ -23,11 +27,55 @@
 	onMount(() => {
 		updateDateTime();
 		timeInterval = setInterval(updateDateTime, 60_000);
+		loadLocation();
 	});
 
 	onDestroy(() => {
 		if (timeInterval) clearInterval(timeInterval);
 	});
+
+	async function loadLocation() {
+		if (typeof window === "undefined" || !navigator.geolocation) {
+			return;
+		}
+
+		const cachedLabel = localStorage.getItem(locationCacheKey);
+		const cachedTime = localStorage.getItem(locationCacheTimeKey);
+		if (cachedLabel && cachedTime) {
+			const age = Date.now() - Number(cachedTime);
+			if (!Number.isNaN(age) && age < locationCacheTtlMs) {
+				liveLocation = cachedLabel;
+				return;
+			}
+		}
+
+		navigator.geolocation.getCurrentPosition(
+			async (position) => {
+				try {
+					const { latitude, longitude } = position.coords;
+					const response = await fetch(
+						`/api/places/reverse?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(longitude)}`
+					);
+					if (!response.ok) {
+						return;
+					}
+					const data = await response.json();
+					const label = data?.label;
+					if (label) {
+						liveLocation = label;
+						localStorage.setItem(locationCacheKey, label);
+						localStorage.setItem(locationCacheTimeKey, Date.now().toString());
+					}
+				} catch (error) {
+					console.error("Failed to load live location:", error);
+				}
+			},
+			() => {
+				// User denied or unavailable; do nothing.
+			},
+			{ enableHighAccuracy: false, maximumAge: locationCacheTtlMs, timeout: 8000 }
+		);
+	}
 </script>
 
 <header class="site-header">
@@ -40,9 +88,14 @@
 		</div>
 	</div>
 	<div class="actions">
-		<div class="datetime">
-			<span class="date">{currentDate}</span>
-			<span class="time">{currentTime}</span>
+		<div class="datetime-group">
+			{#if liveLocation}
+				<span class="location">{liveLocation}</span>
+			{/if}
+			<div class="datetime">
+				<span class="date">{currentDate}</span>
+				<span class="time">{currentTime}</span>
+			</div>
 		</div>
 		<ScratchpadPopover />
 		<ModeToggle />
@@ -112,12 +165,26 @@
 		gap: 0.5rem;
 	}
 
+	.datetime-group {
+		display: flex;
+		align-items: center;
+		gap: 1.25rem;
+		margin-right: 1.25rem;
+	}
+
 	.datetime {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
 		gap: 0.1rem;
-		margin-right: 1.25rem;
+	}
+
+	.location {
+		font-size: 0.75rem;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		color: var(--color-muted-foreground);
+		white-space: nowrap;
 	}
 
 	.date {
