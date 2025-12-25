@@ -20,7 +20,16 @@
 	$: roleColor = message.role === 'user' ? 'bg-muted' : 'bg-card';
 	$: roleName = message.role === 'user' ? 'You' : 'sideBar';
 	$: isToolActive = activeTool?.messageId === message.id;
-	$: toolLabel = activeTool?.name ? `Using ${activeTool.name}` : 'Using a tool';
+	$: toolLabel = (() => {
+		const name = activeTool?.name || 'a tool';
+		if (activeTool?.status === 'success') {
+			return `Used ${name}`;
+		}
+		if (activeTool?.status === 'error') {
+			return `Failed to use ${name}`;
+		}
+		return `Using ${name}`;
+	})();
 
 	function formatTime(date: Date): string {
 		return new Date(date).toLocaleTimeString('en-US', {
@@ -53,7 +62,6 @@
 	<div class="flex items-center justify-between gap-2 mb-2">
 		<div class="flex items-center gap-2">
 			<Badge variant={message.role === 'user' ? 'default' : 'outline'}>{roleName}</Badge>
-			<span class="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
 			{#if message.status === 'streaming'}
 				<span class="text-xs animate-pulse">●</span>
 			{/if}
@@ -98,6 +106,10 @@
 		{/if}
 	{/if}
 
+	<div class="message-footer">
+		<span class="timestamp">{formatTime(message.timestamp)}</span>
+	</div>
+
 	{#if message.error}
 		<div class="mt-3 p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
 			<strong>Error:</strong>
@@ -112,6 +124,17 @@
 		align-items: center;
 		gap: 0.35rem;
 		font-size: 0.75rem;
+		color: var(--color-muted-foreground);
+	}
+
+	.message-footer {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: 0.5rem;
+	}
+
+	.timestamp {
+		font-size: 0.7rem;
 		color: var(--color-muted-foreground);
 	}
 </style>

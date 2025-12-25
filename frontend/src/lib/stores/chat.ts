@@ -213,8 +213,7 @@ function createChatStore() {
 					msg.id === messageId ? { ...msg, status: 'complete' } : msg
 				),
 				isStreaming: false,
-				currentMessageId: null,
-				activeTool: state.activeTool?.messageId === messageId ? null : state.activeTool
+				currentMessageId: null
 			}));
 
 			// Persist assistant message to backend
@@ -315,8 +314,8 @@ function createChatStore() {
 			messageId: string,
 			name: string,
 			status: 'success' | 'error',
-			minRunningMs: number = 400,
-			displayMs: number = 3000
+			minRunningMs: number = 250,
+			displayMs: number = 4500
 		) {
 			if (toolClearTimeout) {
 				clearTimeout(toolClearTimeout);
@@ -340,14 +339,28 @@ function createChatStore() {
 				}));
 				toolUpdateTimeout = null;
 
-				toolClearTimeout = setTimeout(() => {
-					update((state) => ({
-						...state,
-						activeTool: state.activeTool?.messageId === messageId ? null : state.activeTool
-					}));
-					toolClearTimeout = null;
-				}, displayMs);
+				if (status === 'error') {
+					toolClearTimeout = setTimeout(() => {
+						update((state) => ({
+							...state,
+							messages: state.messages.map((msg) =>
+								msg.id === messageId ? { ...msg, needsNewline: true } : msg
+							),
+							activeTool: state.activeTool?.messageId === messageId ? null : state.activeTool
+						}));
+						toolClearTimeout = null;
+					}, displayMs);
+				}
 			}, updateDelay);
+		},
+
+		markNeedsNewline(messageId: string) {
+			update((state) => ({
+				...state,
+				messages: state.messages.map((msg) =>
+					msg.id === messageId ? { ...msg, needsNewline: true } : msg
+				)
+			}));
 		},
 
 		getActiveToolStartTime(messageId: string, name: string) {

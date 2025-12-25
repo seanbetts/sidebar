@@ -168,6 +168,8 @@ class ClaudeClient:
                     tool_uses = []
                     current_text = ""
                     current_server_tool = None
+                    web_search_pending_end = False
+                    web_search_pending_status = None
 
                     async for event in stream:
                         if event.type == "content_block_start":
@@ -183,6 +185,15 @@ class ClaudeClient:
                                         "input": {},
                                         "input_partial": ""
                                     })
+                                    yield {
+                                        "type": "tool_start",
+                                        "data": {
+                                            "name": self.tool_mapper.get_tool_display_name(
+                                                event.content_block.name
+                                            ),
+                                            "status": "running",
+                                        },
+                                    }
                                 elif event.content_block.type == "server_tool_use":
                                     current_server_tool = {
                                         "id": event.content_block.id,
@@ -190,14 +201,17 @@ class ClaudeClient:
                                         "input": {},
                                         "input_partial": "",
                                     }
+                                    if event.content_block.name == "web_search":
+                                        yield {
+                                            "type": "tool_start",
+                                            "data": {
+                                                "name": "Web Search",
+                                                "status": "running",
+                                            },
+                                        }
                                 elif event.content_block.type == "web_search_tool_result":
-                                    yield {
-                                        "type": "tool_end",
-                                        "data": {
-                                            "name": "Web Search",
-                                            "status": ClaudeClient._web_search_status(event.content_block),
-                                        },
-                                    }
+                                    web_search_pending_end = True
+                                    web_search_pending_status = ClaudeClient._web_search_status(event.content_block)
                                     content_blocks.append(
                                         ClaudeClient._serialize_web_search_result(event.content_block)
                                     )
@@ -206,6 +220,16 @@ class ClaudeClient:
                             if hasattr(event.delta, "type"):
                                 if event.delta.type == "text_delta":
                                     # Accumulate and stream text token
+                                    if web_search_pending_end:
+                                        yield {
+                                            "type": "tool_end",
+                                            "data": {
+                                                "name": "Web Search",
+                                                "status": web_search_pending_status or "success",
+                                            },
+                                        }
+                                        web_search_pending_end = False
+                                        web_search_pending_status = None
                                     current_text += event.delta.text
                                     yield {
                                         "type": "token",
@@ -234,15 +258,6 @@ class ClaudeClient:
                                         )
                                 except json.JSONDecodeError:
                                     current_server_tool["input"] = {}
-                                if current_server_tool["name"] == "web_search":
-                                    yield {
-                                        "type": "tool_start",
-                                        "data": {
-                                            "name": "Web Search",
-                                            "status": "running",
-                                            "input": current_server_tool["input"],
-                                        },
-                                    }
                                 content_blocks.append(
                                     {
                                         "type": "server_tool_use",
@@ -254,6 +269,16 @@ class ClaudeClient:
                                 current_server_tool = None
 
                         elif event.type == "message_stop":
+                            if web_search_pending_end:
+                                yield {
+                                    "type": "tool_end",
+                                    "data": {
+                                        "name": "Web Search",
+                                        "status": web_search_pending_status or "success",
+                                    },
+                                }
+                                web_search_pending_end = False
+                                web_search_pending_status = None
                             # Message complete - check if we have tools to execute
                             if not tool_uses:
                                 # No tools used - conversation complete
@@ -292,13 +317,6 @@ class ClaudeClient:
                                     "name": display_name,
                                     "parameters": tool_use["input"],
                                     "status": "pending"
-                                }
-                                yield {
-                                    "type": "tool_start",
-                                    "data": {
-                                        "name": display_name,
-                                        "status": "running",
-                                    },
                                 }
 
                                 # Execute tool

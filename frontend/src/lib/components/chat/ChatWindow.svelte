@@ -163,6 +163,9 @@
 						const status = event?.status === 'error' ? 'error' : 'success';
 						if (event?.name) {
 							chatStore.finalizeActiveTool(assistantMessageId, event.name, status);
+							if (event.name === 'Web Search') {
+								chatStore.markNeedsNewline(assistantMessageId);
+							}
 						} else {
 							chatStore.finalizeActiveTool(assistantMessageId, 'Tool', status);
 						}
