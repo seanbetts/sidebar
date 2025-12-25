@@ -33,6 +33,8 @@
   let renameValue = '';
   let renameInput: HTMLInputElement | null = null;
   let isDeleteDialogOpen = false;
+  let isSaveBeforeCloseDialogOpen = false;
+  let isSaveBeforeRenameDialogOpen = false;
   let folderOptions: { label: string; value: string; depth: number }[] = [];
   let copyTimeout: ReturnType<typeof setTimeout> | null = null;
   let isCopied = false;
@@ -92,16 +94,40 @@
 
   async function handleClose() {
     if (isDirty) {
-      const save = confirm('Save changes before closing this note?');
-      if (save) {
-        await editorStore.saveNote();
-      }
+      isSaveBeforeCloseDialogOpen = true;
+      return;
     }
+    editorStore.reset();
+  }
+
+  async function confirmSaveAndClose() {
+    await editorStore.saveNote();
+    isSaveBeforeCloseDialogOpen = false;
+    editorStore.reset();
+  }
+
+  function discardAndClose() {
+    isSaveBeforeCloseDialogOpen = false;
     editorStore.reset();
   }
 
   function openRenameDialog() {
     renameValue = displayTitle;
+    if (isDirty) {
+      isSaveBeforeRenameDialogOpen = true;
+      return;
+    }
+    isRenameDialogOpen = true;
+  }
+
+  async function confirmSaveAndRename() {
+    await editorStore.saveNote();
+    isSaveBeforeRenameDialogOpen = false;
+    isRenameDialogOpen = true;
+  }
+
+  function discardAndRename() {
+    isSaveBeforeRenameDialogOpen = false;
     isRenameDialogOpen = true;
   }
 
@@ -111,12 +137,6 @@
     if (!trimmed || trimmed === displayTitle) {
       isRenameDialogOpen = false;
       return;
-    }
-    if (isDirty) {
-      const save = confirm('Save changes before renaming this note?');
-      if (save) {
-        await editorStore.saveNote();
-      }
     }
     const response = await fetch(`/api/notes/${currentNoteId}/rename`, {
       method: 'PATCH',
@@ -442,6 +462,36 @@
   onConfirm={handleDelete}
   onCancel={() => (isDeleteDialogOpen = false)}
 />
+
+<AlertDialog.Root bind:open={isSaveBeforeCloseDialogOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>Save changes?</AlertDialog.Title>
+      <AlertDialog.Description>
+        Do you want to save changes before closing this note?
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={discardAndClose}>Don't Save</AlertDialog.Cancel>
+      <AlertDialog.Action onclick={confirmSaveAndClose}>Save</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={isSaveBeforeRenameDialogOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>Save changes?</AlertDialog.Title>
+      <AlertDialog.Description>
+        Do you want to save changes before renaming this note?
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel onclick={discardAndRename}>Don't Save</AlertDialog.Cancel>
+      <AlertDialog.Action onclick={confirmSaveAndRename}>Save</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
 
 <div class="editor-container">
   {#if currentNoteName}
