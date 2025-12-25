@@ -36,7 +36,7 @@ SUPPORTED_VARIABLES = {
     "name",
     "currentDate",
     "currentTime",
-    "currentLocation",
+    "currentLocationLevels",
     "timezone",
     "gender",
     "pronouns",
@@ -47,7 +47,7 @@ SUPPORTED_VARIABLES = {
     "operatingSystem",
     "current_date",
     "current_time",
-    "current_location",
+    "current_location_levels",
     "operating_system",
     "conversation_context",
     "communication_style",
@@ -63,7 +63,7 @@ Current time: {current_time}
 
 Home location: {homeLocation}
 
-Current location: {currentLocation}
+Current location levels: {currentLocationLevels}
 </message_context>
 
 <instruction_priority>
@@ -153,9 +153,33 @@ def calculate_age(date_of_birth: date | None, today: date) -> int | None:
     return years if birthday_passed else years - 1
 
 
+def _format_location_levels(levels: dict[str, Any] | str | None) -> str:
+    if not levels:
+        return "Unavailable"
+    if isinstance(levels, str):
+        return levels
+    order = [
+        "locality",
+        "postal_town",
+        "administrative_area_level_3",
+        "administrative_area_level_2",
+        "administrative_area_level_1",
+        "country",
+    ]
+    parts: list[str] = []
+    remaining = dict(levels)
+    for key in order:
+        if key in remaining:
+            parts.append(f"{key}: {remaining.pop(key)}")
+    for key in sorted(remaining):
+        parts.append(f"{key}: {remaining[key]}")
+    return " | ".join(parts) if parts else "Unavailable"
+
+
 def build_prompt_variables(
     settings_record: Any,
     current_location: str,
+    current_location_levels: dict[str, Any] | str | None,
     operating_system: str | None,
     now: datetime,
 ) -> dict[str, Any]:
@@ -171,14 +195,15 @@ def build_prompt_variables(
     timezone_label = now.tzname() or "UTC"
     current_date = now.strftime("%Y-%m-%d")
     current_time = f"{now.strftime('%H:%M')} {timezone_label}"
+    formatted_levels = _format_location_levels(current_location_levels)
 
     return {
         "owner": owner,
         "name": name or owner,
         "currentDate": current_date,
         "currentTime": current_time,
-        "currentLocation": current_location,
         "homeLocation": home_location or "Unknown",
+        "currentLocationLevels": formatted_levels,
         "timezone": timezone_label,
         "gender": gender,
         "pronouns": pronouns,
@@ -189,7 +214,7 @@ def build_prompt_variables(
         "operatingSystem": operating_system,
         "current_date": current_date,
         "current_time": current_time,
-        "current_location": current_location,
+        "current_location_levels": formatted_levels,
         "home_location": home_location,
         "operating_system": operating_system,
     }
@@ -290,8 +315,19 @@ def build_open_context_block(
     return "<current_open>\n" + "\n".join(lines) + "\n</current_open>"
 
 
-def build_system_prompt(settings_record: Any, current_location: str, now: datetime) -> str:
-    variables = build_prompt_variables(settings_record, current_location, None, now)
+def build_system_prompt(
+    settings_record: Any,
+    current_location: str,
+    current_location_levels: dict[str, Any] | str | None,
+    now: datetime,
+) -> str:
+    variables = build_prompt_variables(
+        settings_record,
+        current_location,
+        current_location_levels,
+        None,
+        now,
+    )
     return resolve_template(SYSTEM_PROMPT_TEMPLATE, variables)
 
 
@@ -308,7 +344,7 @@ def build_first_message_prompt(
         settings_record.working_relationship if settings_record else None,
         DEFAULT_WORKING_RELATIONSHIP,
     )
-    variables = build_prompt_variables(settings_record, "", operating_system, now)
+    variables = build_prompt_variables(settings_record, "", None, operating_system, now)
     age = variables.get("age")
     name = variables.get("name")
     gender = variables.get("gender")

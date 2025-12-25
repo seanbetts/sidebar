@@ -47,12 +47,12 @@ def test_resolve_template_blanks_unknown_tokens() -> None:
 def test_build_system_prompt_renders_variables() -> None:
     settings = DummySettings(name="Sam")
     now = datetime(2025, 1, 2, 13, 45, tzinfo=timezone.utc)
-    prompt = build_system_prompt(settings, "London", now)
+    prompt = build_system_prompt(settings, "London", None, now)
     assert "Sam's personal AI assistant" in prompt
     assert "Current date: 2025-01-02" in prompt
     assert "Current time: 13:45 UTC" in prompt
     assert "Home location: Unknown" in prompt
-    assert "Current location: London" in prompt
+    assert "Current location levels: Unavailable" in prompt
 
 
 def test_build_first_message_prompt_includes_profile() -> None:
