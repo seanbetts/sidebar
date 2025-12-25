@@ -178,6 +178,8 @@ async def stream_chat(
                     "scratchpad_updated",
                     "scratchpad_cleared",
                     "prompt_preview",
+                    "server_tool_start",
+                    "server_tool_end",
                 }:
                     yield f"event: {event_type}\ndata: {json.dumps(event.get('data', {}))}\n\n"
 

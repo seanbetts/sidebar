@@ -11,6 +11,11 @@ export interface ChatState {
 	isStreaming: boolean;
 	currentMessageId: string | null;
 	conversationId: string | null;
+	serverTool: {
+		messageId: string;
+		name: string;
+		query?: string;
+	} | null;
 }
 
 function createChatStore() {
@@ -18,7 +23,8 @@ function createChatStore() {
 		messages: [],
 		isStreaming: false,
 		currentMessageId: null,
-		conversationId: null
+		conversationId: null,
+		serverTool: null
 	});
 
 	return {
@@ -37,7 +43,8 @@ function createChatStore() {
 					timestamp: new Date(msg.timestamp)
 				})),
 				isStreaming: false,
-				currentMessageId: null
+				currentMessageId: null,
+				serverTool: null
 			});
 		},
 
@@ -51,7 +58,8 @@ function createChatStore() {
 				conversationId: conversation.id,
 				messages: [],
 				isStreaming: false,
-				currentMessageId: null
+				currentMessageId: null,
+				serverTool: null
 			});
 
 			// Mark as generating title from the start
@@ -103,7 +111,8 @@ function createChatStore() {
 					}
 				],
 				isStreaming: true,
-				currentMessageId: assistantMessageId
+				currentMessageId: assistantMessageId,
+				serverTool: null
 			}));
 
 			// Persist user message to backend
@@ -201,7 +210,8 @@ function createChatStore() {
 					msg.id === messageId ? { ...msg, status: 'complete' } : msg
 				),
 				isStreaming: false,
-				currentMessageId: null
+				currentMessageId: null,
+				serverTool: state.serverTool?.messageId === messageId ? null : state.serverTool
 			}));
 
 			// Persist assistant message to backend
@@ -252,7 +262,8 @@ function createChatStore() {
 					msg.id === messageId ? { ...msg, status: 'error', error } : msg
 				),
 				isStreaming: false,
-				currentMessageId: null
+				currentMessageId: null,
+				serverTool: null
 			}));
 		},
 
@@ -264,7 +275,8 @@ function createChatStore() {
 				conversationId: null,
 				messages: [],
 				isStreaming: false,
-				currentMessageId: null
+				currentMessageId: null,
+				serverTool: null
 			});
 		},
 
@@ -273,6 +285,24 @@ function createChatStore() {
 		 */
 		async clear() {
 			await this.startNewConversation();
+		},
+
+		setServerTool(messageId: string, name: string, query?: string) {
+			update((state) => ({
+				...state,
+				serverTool: {
+					messageId,
+					name,
+					query
+				}
+			}));
+		},
+
+		clearServerTool(messageId: string) {
+			update((state) => ({
+				...state,
+				serverTool: state.serverTool?.messageId === messageId ? null : state.serverTool
+			}));
 		}
 	};
 }
