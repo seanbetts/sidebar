@@ -203,7 +203,7 @@ async def update_settings(
                 status_code=400,
                 detail=f"Invalid skills: {', '.join(invalid)}",
             )
-    settings = UserSettingsService.upsert_settings(
+    user_settings = UserSettingsService.upsert_settings(
         db,
         user_id,
         **updates,
@@ -211,22 +211,22 @@ async def update_settings(
     return SettingsResponse(
         user_id=user_id,
         communication_style=_resolve_default(
-            settings.communication_style,
+            user_settings.communication_style,
             DEFAULT_COMMUNICATION_STYLE,
         ),
         working_relationship=_resolve_default(
-            settings.working_relationship,
+            user_settings.working_relationship,
             DEFAULT_WORKING_RELATIONSHIP,
         ),
-        name=settings.name,
-        job_title=settings.job_title,
-        employer=settings.employer,
-        date_of_birth=settings.date_of_birth,
-        gender=settings.gender,
-        pronouns=settings.pronouns,
-        location=settings.location,
-        profile_image_url=_profile_image_url(settings),
-        enabled_skills=_resolve_enabled_skills(settings),
+        name=user_settings.name,
+        job_title=user_settings.job_title,
+        employer=user_settings.employer,
+        date_of_birth=user_settings.date_of_birth,
+        gender=user_settings.gender,
+        pronouns=user_settings.pronouns,
+        location=user_settings.location,
+        profile_image_url=_profile_image_url(user_settings),
+        enabled_skills=_resolve_enabled_skills(user_settings),
     )
 
 

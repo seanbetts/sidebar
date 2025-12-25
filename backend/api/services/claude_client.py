@@ -24,6 +24,27 @@ class ClaudeClient:
             or current_location_levels.get("administrative_area_level_2")
         )
         country = current_location_levels.get("country")
+        country_code = None
+        if isinstance(country, str):
+            normalized = country.strip()
+            if len(normalized) == 2:
+                country_code = normalized.upper()
+            else:
+                country_map = {
+                    "united states": "US",
+                    "united states of america": "US",
+                    "usa": "US",
+                    "united kingdom": "GB",
+                    "uk": "GB",
+                    "great britain": "GB",
+                    "england": "GB",
+                    "scotland": "GB",
+                    "wales": "GB",
+                    "northern ireland": "GB",
+                }
+                mapped = country_map.get(normalized.lower())
+                if mapped:
+                    country_code = mapped
         if not (city or region or country):
             return None
         location: Dict[str, str] = {"type": "approximate"}
@@ -31,8 +52,8 @@ class ClaudeClient:
             location["city"] = city
         if region:
             location["region"] = region
-        if country:
-            location["country"] = country
+        if country_code:
+            location["country"] = country_code
         if timezone:
             location["timezone"] = timezone
         return location if len(location) > 1 else None

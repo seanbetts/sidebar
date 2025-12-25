@@ -226,28 +226,31 @@
     settingsError = '';
 
     try {
-      const response = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          communication_style: communicationStyle,
-          working_relationship: workingRelationship,
-          name,
-          job_title: jobTitle,
-          employer,
-          date_of_birth: dateOfBirth || null,
-          gender,
+      const payload = {
+        communication_style: communicationStyle,
+        working_relationship: workingRelationship,
+        name,
+        job_title: jobTitle,
+        employer,
+        date_of_birth: dateOfBirth || null,
+        gender,
         pronouns,
         location,
         enabled_skills: enabledSkills
-      })
-    });
+      };
+
+      const response = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
       if (!response.ok) {
         throw new Error('Failed to save settings');
       }
 
       const data = await response.json();
+
       communicationStyle = data?.communication_style ?? '';
       workingRelationship = data?.working_relationship ?? '';
       name = data?.name ?? '';
@@ -258,6 +261,7 @@
       pronouns = data?.pronouns ?? '';
       location = data?.location ?? '';
       enabledSkills = Array.isArray(data?.enabled_skills) ? data.enabled_skills : enabledSkills;
+
       initialCommunicationStyle = communicationStyle;
       initialWorkingRelationship = workingRelationship;
       initialName = name;
@@ -514,7 +518,9 @@
   }
 
   function scheduleAutosave() {
-    if (autosaveTimer) clearTimeout(autosaveTimer);
+    if (autosaveTimer) {
+      clearTimeout(autosaveTimer);
+    }
     autosaveTimer = setTimeout(() => {
       saveSettings();
     }, 800);
@@ -567,15 +573,19 @@
     scheduleAutosave();
   }
 
-  $: if (wasSettingsOpen && !isSettingsOpen) {
-    handleSettingsClose().catch((error) => {
-      // If save fails, re-open settings so user can see error and retry
-      console.error('Settings close failed, reopening:', error);
-      isSettingsOpen = true;
-    });
+  // Track settings close and handle save - combined to avoid reactive cycle
+  $: {
+    if (wasSettingsOpen && !isSettingsOpen) {
+      handleSettingsClose().catch((error) => {
+        // If save fails, re-open settings so user can see error and retry
+        console.error('Settings close failed, reopening:', error);
+        setTimeout(() => {
+          isSettingsOpen = true;
+        }, 0);
+      });
+    }
+    wasSettingsOpen = isSettingsOpen;
   }
-
-  $: wasSettingsOpen = isSettingsOpen;
 
   async function handleNoteClick(path: string) {
     // Check if current note has unsaved changes
