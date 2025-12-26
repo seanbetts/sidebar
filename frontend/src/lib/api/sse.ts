@@ -20,6 +20,9 @@ export interface SSECallbacks {
 	onPromptPreview?: (data: { system_prompt?: string; first_message_prompt?: string }) => void;
 	onToolStart?: (data: { name?: string; status?: string; input?: Record<string, any> }) => void;
 	onToolEnd?: (data: { name?: string; status?: string }) => void;
+	onMemoryCreated?: (data: { result?: any }) => void;
+	onMemoryUpdated?: (data: { result?: any }) => void;
+	onMemoryDeleted?: (data: { result?: any }) => void;
 }
 
 export class SSEClient {
@@ -192,6 +195,15 @@ export class SSEClient {
 				break;
 			case 'tool_end':
 				callbacks.onToolEnd?.(data);
+				break;
+			case 'memory_created':
+				callbacks.onMemoryCreated?.(data);
+				break;
+			case 'memory_updated':
+				callbacks.onMemoryUpdated?.(data);
+				break;
+			case 'memory_deleted':
+				callbacks.onMemoryDeleted?.(data);
 				break;
 
 			default:

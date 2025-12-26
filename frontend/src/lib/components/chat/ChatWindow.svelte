@@ -14,6 +14,7 @@
 	import { conversationListStore } from '$lib/stores/conversations';
 	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
+	import { memoriesStore } from '$lib/stores/memories';
 	import { MessageSquare, Plus, X } from 'lucide-svelte';
 
 	let sseClient = new SSEClient();
@@ -223,6 +224,18 @@
 							data?.first_message_prompt
 						);
 						editorStore.openPreview('Prompt Preview', content);
+					},
+
+					onMemoryCreated: async () => {
+						await memoriesStore.load();
+					},
+
+					onMemoryUpdated: async () => {
+						await memoriesStore.load();
+					},
+
+					onMemoryDeleted: async () => {
+						await memoriesStore.load();
 					},
 
 					onComplete: async () => {
