@@ -15,6 +15,7 @@ from api.models import conversation  # noqa: F401
 from api.models import note  # noqa: F401
 from api.models import website  # noqa: F401
 from api.models import user_settings  # noqa: F401
+from api.models import user_memory  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

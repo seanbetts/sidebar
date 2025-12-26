@@ -68,6 +68,20 @@ class SkillCatalogService:
                 }
             )
 
+        if "memory" not in {skill["id"] for skill in skills}:
+            memory_display = SKILL_DISPLAY.get("memory", {})
+            skills.append(
+                {
+                    "id": "memory",
+                    "name": memory_display.get("name", "Memory"),
+                    "description": memory_display.get(
+                        "description",
+                        "Store and manage persistent user memories.",
+                    ),
+                    "category": category_map.get("memory", "System"),
+                }
+            )
+
         return [skill for skill in skills if skill["id"] in EXPOSED_SKILLS]
 
     @staticmethod
@@ -103,6 +117,7 @@ class SkillCatalogService:
             "web-crawler-policy": "Web",
             "web-save": "Web",
             "web-search": "Web",
+            "memory": "System",
             "audio-transcribe": "Media",
             "youtube-download": "Media",
             "youtube-transcribe": "Media",

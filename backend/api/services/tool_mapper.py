@@ -77,6 +77,10 @@ SKILL_DISPLAY = {
         "name": "Prompt Preview",
         "description": "Generate the current system prompt output for preview."
     },
+    "memory": {
+        "name": "Memory",
+        "description": "Store and manage persistent user memories."
+    },
 }
 
 EXPOSED_SKILLS = {
@@ -84,6 +88,7 @@ EXPOSED_SKILLS = {
     "notes",
     "web-save",
     "web-search",
+    "memory",
     "ui-theme",
     "prompt-preview",
     "audio-transcribe",
@@ -862,6 +867,29 @@ class ToolMapper:
                 "skill": "prompt-preview",
                 "script": None,
                 "build_args": None
+            },
+            "Memory Tool": {
+                "description": "Create, update, and manage persistent memory files.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "enum": ["view", "create", "str_replace", "insert", "delete", "rename"]
+                        },
+                        "path": {"type": "string"},
+                        "content": {"type": "string"},
+                        "old_str": {"type": "string"},
+                        "new_str": {"type": "string"},
+                        "position": {"type": "string", "enum": ["start", "end"]},
+                        "old_path": {"type": "string"},
+                        "new_path": {"type": "string"}
+                    },
+                    "required": ["command"]
+                },
+                "skill": "memory",
+                "script": None,
+                "build_args": None
             }
         }
         self._build_tool_name_maps()
@@ -1016,6 +1044,26 @@ class ToolMapper:
                     success=True
                 )
 
+                return self._normalize_result(result)
+
+            # Special case: memory tool
+            if display_name == "Memory Tool":
+                if not context:
+                    return self._normalize_result({
+                        "success": False,
+                        "error": "Missing memory context"
+                    })
+                db = context.get("db")
+                user_id = context.get("user_id")
+                if not db or not user_id:
+                    return self._normalize_result({
+                        "success": False,
+                        "error": "Missing database or user context"
+                    })
+
+                from api.services.memory_tool_handler import MemoryToolHandler
+
+                result = MemoryToolHandler.execute_command(db, user_id, parameters)
                 return self._normalize_result(result)
 
             # Validate paths if needed

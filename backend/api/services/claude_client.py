@@ -159,6 +159,8 @@ class ClaudeClient:
                     "messages": messages,
                     "tools": tools,
                 }
+                if allowed_skills is None or "memory" in allowed_skills:
+                    stream_args["betas"] = ["context-management-2025-06-27"]
                 if system_prompt:
                     stream_args["system"] = system_prompt
 
@@ -433,6 +435,23 @@ class ClaudeClient:
                                                 "first_message_prompt": result_data.get("first_message_prompt"),
                                             }
                                         }
+                                    elif display_name == "Memory Tool":
+                                        command = result_data.get("command")
+                                        if command == "create":
+                                            event_type = "memory_created"
+                                        elif command == "delete":
+                                            event_type = "memory_deleted"
+                                        elif command in {"str_replace", "insert", "rename"}:
+                                            event_type = "memory_updated"
+                                        else:
+                                            event_type = None
+                                        if event_type:
+                                            yield {
+                                                "type": event_type,
+                                                "data": {
+                                                    "result": result_data
+                                                }
+                                            }
 
                                 # Add to tool results for next turn
                                 tool_results.append({
