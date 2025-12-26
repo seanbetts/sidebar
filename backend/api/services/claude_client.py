@@ -160,7 +160,9 @@ class ClaudeClient:
                     "tools": tools,
                 }
                 if allowed_skills is None or "memory" in allowed_skills:
-                    stream_args["betas"] = ["context-management-2025-06-27"]
+                    stream_args["extra_headers"] = {
+                        "anthropic-beta": "context-management-2025-06-27"
+                    }
                 if system_prompt:
                     stream_args["system"] = system_prompt
 

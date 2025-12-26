@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from api.routers import health, chat, conversations, files, websites, scratchpad, notes, settings as user_settings, places, skills, weather
+from api.routers import health, chat, conversations, files, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
 from api.executors.skill_executor import SkillExecutor
@@ -95,6 +95,7 @@ app.include_router(notes.router, prefix="/api", tags=["notes"])
 app.include_router(websites.router, prefix="/api", tags=["websites"])
 app.include_router(scratchpad.router, prefix="/api", tags=["scratchpad"])
 app.include_router(user_settings.router, prefix="/api", tags=["settings"])
+app.include_router(memories.router, prefix="/api", tags=["memories"])
 app.include_router(places.router, prefix="/api", tags=["places"])
 app.include_router(skills.router, prefix="/api", tags=["skills"])
 app.include_router(weather.router, prefix="/api", tags=["weather"])

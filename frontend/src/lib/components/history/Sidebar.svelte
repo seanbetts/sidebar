@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder, FolderOpen, Loader2 } from 'lucide-svelte';
+  import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder, FolderOpen, Loader2, Brain } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -11,6 +11,7 @@
   import NotesPanel from '$lib/components/history/NotesPanel.svelte';
   import WorkspacePanel from '$lib/components/history/WorkspacePanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
+  import MemorySettings from '$lib/components/settings/MemorySettings.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
   let isCollapsed = false;
@@ -91,6 +92,7 @@
   const settingsSections = [
     { key: 'account', label: 'Account', icon: User },
     { key: 'system', label: 'System', icon: Monitor },
+    { key: 'memory', label: 'Memory', icon: Brain },
     { key: 'skills', label: 'Skills', icon: Wrench }
   ];
   let activeSettingsSection = 'account';
@@ -1157,6 +1159,8 @@
               <div class="settings-error">{settingsError}</div>
             {/if}
           </div>
+        {:else if activeSettingsSection === 'memory'}
+          <MemorySettings />
         {:else}
           <h3>Skills</h3>
           <div class="skills-header">
