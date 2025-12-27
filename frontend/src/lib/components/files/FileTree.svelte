@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { filesStore } from '$lib/stores/files';
   import FileTreeNode from './FileTreeNode.svelte';
+  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
   import type { FileNode } from '$lib/types/file';
 
   export let basePath: string = 'documents';
@@ -25,7 +26,7 @@
 
 <div class="file-tree">
   {#if loading}
-    <div class="loading">Loading files...</div>
+    <SidebarLoading message="Loading files..." />
   {:else if children.length > 0}
     {#each children as child}
       <FileTreeNode node={child} level={0} onToggle={handleToggle} {basePath} {hideExtensions} {onFileClick} />
@@ -45,7 +46,6 @@
     padding-bottom: 80px;
   }
 
-  .loading,
   .empty {
     padding: 1rem;
     text-align: center;

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ChevronRight } from 'lucide-svelte';
   import { filesStore } from '$lib/stores/files';
+  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import type { FileNode } from '$lib/types/file';
@@ -89,7 +90,7 @@
 </script>
 
 {#if loading}
-  <div class="notes-empty">Loading notes...</div>
+  <SidebarLoading message="Loading notes..." />
 {:else if searchQuery}
   <div class="notes-sections">
     <div class="notes-block">

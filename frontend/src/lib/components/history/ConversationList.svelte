@@ -1,5 +1,6 @@
 <script lang="ts">
   import { groupedConversations, conversationListStore } from '$lib/stores/conversations';
+  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
   import ConversationItem from './ConversationItem.svelte';
 
   const groupLabels = {
@@ -13,7 +14,7 @@
 
 <div class="conversation-list">
   {#if $conversationListStore.loading}
-    <div class="loading">Loading conversations...</div>
+    <SidebarLoading message="Loading conversations..." />
   {:else if $conversationListStore.conversations.length === 0}
     <div class="empty">
       {#if $conversationListStore.searchQuery}
@@ -44,7 +45,6 @@
     overflow-x: hidden;
   }
 
-  .loading,
   .empty {
     padding: 2rem 1rem;
     text-align: center;

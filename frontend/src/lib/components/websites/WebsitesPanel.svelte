@@ -2,6 +2,7 @@
   import { onDestroy, tick } from 'svelte';
   import { ChevronRight, Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, Trash2 } from 'lucide-svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
+  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
   import { websitesStore } from '$lib/stores/websites';
   import type { WebsiteItem } from '$lib/stores/websites';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -217,7 +218,7 @@
   {#if $websitesStore.error}
     <div class="websites-empty">{$websitesStore.error}</div>
   {:else if $websitesStore.loading}
-    <div class="websites-empty">Loading websites...</div>
+    <SidebarLoading message="Loading websites..." />
   {:else if searchQuery}
     <div class="websites-block">
       <div class="websites-block-title">Results</div>
@@ -463,13 +464,17 @@
     gap: 1rem;
     flex: 1;
     min-height: 0;
-    padding-top: 0.5rem;
+    padding-top: 0;
   }
 
   .websites-block {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .websites-block:first-child {
+    margin-top: 0.5rem;
   }
 
   .websites-archive {

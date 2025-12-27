@@ -1,5 +1,6 @@
 <script lang="ts">
   import { filesStore } from '$lib/stores/files';
+  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import type { FileNode } from '$lib/types/file';
 
@@ -21,7 +22,7 @@
 </script>
 
 {#if loading}
-  <div class="workspace-empty">Loading files...</div>
+  <SidebarLoading message="Loading files..." />
 {:else if children.length === 0}
   <div class="workspace-empty">No files found</div>
 {:else}
