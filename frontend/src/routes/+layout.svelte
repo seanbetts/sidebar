@@ -2,24 +2,31 @@
 	import '../app.css';
 	import Sidebar from '$lib/components/history/Sidebar.svelte';
 	import SiteHeader from '$lib/components/site-header.svelte';
+	import HoldingPage from '$lib/components/HoldingPage.svelte';
 	import { Toaster } from 'svelte-sonner';
+
+	let { data } = $props();
 </script>
 
 <svelte:head>
 	<title>sideBar</title>
 </svelte:head>
 
-<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
-	<Sidebar />
-	<main class="main-content">
-		<SiteHeader />
-		<div class="page-content">
-			<slot />
-		</div>
-	</main>
-</div>
+{#if data.maintenanceMode}
+	<HoldingPage />
+{:else}
+	<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
+		<Sidebar />
+		<main class="main-content">
+			<SiteHeader />
+			<div class="page-content">
+				<slot />
+			</div>
+		</main>
+	</div>
 
-<Toaster richColors position="top-right" />
+	<Toaster richColors position="top-right" />
+{/if}
 
 <style>
 	.app {
