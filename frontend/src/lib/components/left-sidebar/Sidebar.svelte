@@ -12,6 +12,8 @@
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import MemorySettings from '$lib/components/settings/MemorySettings.svelte';
+  import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
+  import ConfirmDialog from '$lib/components/left-sidebar/dialogs/ConfirmDialog.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
   let isCollapsed = false;
@@ -19,17 +21,13 @@
   let errorMessage = 'Failed to create note. Please try again.';
   let isNewNoteDialogOpen = false;
   let newNoteName = '';
-  let newNoteInput: HTMLInputElement | null = null;
   let isNewFolderDialogOpen = false;
   let newFolderName = '';
-  let newFolderInput: HTMLInputElement | null = null;
   let isNewWorkspaceFolderDialogOpen = false;
   let newWorkspaceFolderName = '';
-  let newWorkspaceFolderInput: HTMLInputElement | null = null;
   let isSettingsOpen = false;
   let isNewWebsiteDialogOpen = false;
   let newWebsiteUrl = '';
-  let newWebsiteInput: HTMLInputElement | null = null;
   let isSavingWebsite = false;
   let isCreatingWorkspaceFolder = false;
   let isCreatingNote = false;
@@ -770,217 +768,76 @@
 
 </script>
 
-<AlertDialog.Root bind:open={isNewNoteDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      newNoteInput?.focus();
-      newNoteInput?.select();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Create a new note</AlertDialog.Title>
-      <AlertDialog.Description>Pick a name. We'll save it as a markdown file.</AlertDialog.Description>
-    </AlertDialog.Header>
-    <div class="py-2">
-      <input
-        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        type="text"
-        placeholder="Note name"
-        bind:this={newNoteInput}
-        bind:value={newNoteName}
-        on:keydown={(event) => {
-          if (event.key === 'Enter') createNoteFromDialog();
-        }}
-      />
-    </div>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel disabled={isCreatingNote} onclick={() => (isNewNoteDialogOpen = false)}>Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action
-        disabled={!newNoteName.trim() || isCreatingNote}
-        onclick={createNoteFromDialog}
-      >
-        {#if isCreatingNote}
-          <span class="inline-flex items-center gap-2">
-            <Loader2 size={14} class="animate-spin" />
-            Creating...
-          </span>
-        {:else}
-          Create note
-        {/if}
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<TextInputDialog
+  bind:open={isNewNoteDialogOpen}
+  title="Create a new note"
+  description="Pick a name. We'll save it as a markdown file."
+  placeholder="Note name"
+  bind:value={newNoteName}
+  isBusy={isCreatingNote}
+  busyLabel="Creating..."
+  confirmLabel="Create note"
+  onConfirm={createNoteFromDialog}
+  onCancel={() => (isNewNoteDialogOpen = false)}
+/>
 
-<AlertDialog.Root bind:open={isNewFolderDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      newFolderInput?.focus();
-      newFolderInput?.select();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Create a new folder</AlertDialog.Title>
-      <AlertDialog.Description>Folders help organize your notes.</AlertDialog.Description>
-    </AlertDialog.Header>
-    <div class="py-2">
-      <input
-        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        type="text"
-        placeholder="Folder name"
-        bind:this={newFolderInput}
-        bind:value={newFolderName}
-        on:keydown={(event) => {
-          if (event.key === 'Enter') createFolderFromDialog();
-        }}
-      />
-    </div>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel disabled={isCreatingFolder} onclick={() => (isNewFolderDialogOpen = false)}>Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action
-        disabled={!newFolderName.trim() || isCreatingFolder}
-        onclick={createFolderFromDialog}
-      >
-        {#if isCreatingFolder}
-          <span class="inline-flex items-center gap-2">
-            <Loader2 size={14} class="animate-spin" />
-            Creating...
-          </span>
-        {:else}
-          Create folder
-        {/if}
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<TextInputDialog
+  bind:open={isNewFolderDialogOpen}
+  title="Create a new folder"
+  description="Folders help organize your notes."
+  placeholder="Folder name"
+  bind:value={newFolderName}
+  isBusy={isCreatingFolder}
+  busyLabel="Creating..."
+  confirmLabel="Create folder"
+  onConfirm={createFolderFromDialog}
+  onCancel={() => (isNewFolderDialogOpen = false)}
+/>
 
-<AlertDialog.Root bind:open={isNewWorkspaceFolderDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      newWorkspaceFolderInput?.focus();
-      newWorkspaceFolderInput?.select();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Create a new folder</AlertDialog.Title>
-      <AlertDialog.Description>Folders help organize your workspace.</AlertDialog.Description>
-    </AlertDialog.Header>
-    <div class="py-2">
-      <input
-        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        type="text"
-        placeholder="Folder name"
-        bind:this={newWorkspaceFolderInput}
-        bind:value={newWorkspaceFolderName}
-        on:keydown={(event) => {
-          if (event.key === 'Enter') createWorkspaceFolderFromDialog();
-        }}
-      />
-    </div>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel
-        disabled={isCreatingWorkspaceFolder}
-        onclick={() => (isNewWorkspaceFolderDialogOpen = false)}
-      >
-        Cancel
-      </AlertDialog.Cancel>
-      <AlertDialog.Action
-        disabled={!newWorkspaceFolderName.trim() || isCreatingWorkspaceFolder}
-        onclick={createWorkspaceFolderFromDialog}
-      >
-        {#if isCreatingWorkspaceFolder}
-          <span class="inline-flex items-center gap-2">
-            <Loader2 size={14} class="animate-spin" />
-            Creating...
-          </span>
-        {:else}
-          Create folder
-        {/if}
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<TextInputDialog
+  bind:open={isNewWorkspaceFolderDialogOpen}
+  title="Create a new folder"
+  description="Folders help organize your files."
+  placeholder="Folder name"
+  bind:value={newWorkspaceFolderName}
+  isBusy={isCreatingWorkspaceFolder}
+  busyLabel="Creating..."
+  confirmLabel="Create folder"
+  onConfirm={createWorkspaceFolderFromDialog}
+  onCancel={() => (isNewWorkspaceFolderDialogOpen = false)}
+/>
 
-<AlertDialog.Root bind:open={isNewWebsiteDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      newWebsiteInput?.focus();
-      newWebsiteInput?.select();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Save a website</AlertDialog.Title>
-      <AlertDialog.Description>Paste a URL to save it to your archive.</AlertDialog.Description>
-    </AlertDialog.Header>
-    <div class="py-2">
-      <input
-        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        type="text"
-        placeholder="https://example.com"
-        bind:this={newWebsiteInput}
-        bind:value={newWebsiteUrl}
-        disabled={isSavingWebsite}
-        on:keydown={(event) => {
-          if (event.key === 'Enter') saveWebsiteFromDialog();
-        }}
-      />
-    </div>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel
-        disabled={isSavingWebsite}
-        onclick={() => (isNewWebsiteDialogOpen = false)}
-      >
-        Cancel
-      </AlertDialog.Cancel>
-      <AlertDialog.Action
-        disabled={!newWebsiteUrl.trim() || isSavingWebsite}
-        onclick={saveWebsiteFromDialog}
-      >
-        {#if isSavingWebsite}
-          <span class="inline-flex items-center gap-2">
-            <Loader2 size={14} class="animate-spin" />
-            Saving...
-          </span>
-        {:else}
-          Save website
-        {/if}
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<TextInputDialog
+  bind:open={isNewWebsiteDialogOpen}
+  title="Save a website"
+  description="Paste a URL to save it to your archive."
+  placeholder="https://example.com"
+  bind:value={newWebsiteUrl}
+  isBusy={isSavingWebsite}
+  busyLabel="Saving..."
+  confirmLabel="Save website"
+  onConfirm={saveWebsiteFromDialog}
+  onCancel={() => (isNewWebsiteDialogOpen = false)}
+/>
 
-<AlertDialog.Root bind:open={isErrorDialogOpen}>
-  <AlertDialog.Content>
-    <AlertDialog.Header>
-      <AlertDialog.Title>Unable to create note</AlertDialog.Title>
-      <AlertDialog.Description>{errorMessage}</AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Action
-        onclick={() => (isErrorDialogOpen = false)}
-      >
-        OK
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<ConfirmDialog
+  bind:open={isErrorDialogOpen}
+  title="Unable to create note"
+  description={errorMessage}
+  confirmLabel="OK"
+  showCancel={false}
+  onConfirm={() => (isErrorDialogOpen = false)}
+/>
 
-<AlertDialog.Root bind:open={isSaveChangesDialogOpen}>
-  <AlertDialog.Content>
-    <AlertDialog.Header>
-      <AlertDialog.Title>Save changes?</AlertDialog.Title>
-      <AlertDialog.Description>You have unsaved changes. Would you like to save them before switching notes?</AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel onclick={discardAndSwitch}>Don't save</AlertDialog.Cancel>
-      <AlertDialog.Action onclick={confirmSaveAndSwitch}>Save changes</AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<ConfirmDialog
+  bind:open={isSaveChangesDialogOpen}
+  title="Save changes?"
+  description="You have unsaved changes. Would you like to save them before switching notes?"
+  confirmLabel="Save changes"
+  cancelLabel="Don't save"
+  onConfirm={confirmSaveAndSwitch}
+  onCancel={discardAndSwitch}
+/>
 
 <AlertDialog.Root bind:open={isSettingsOpen}>
   <AlertDialog.Content class="settings-dialog !max-w-[1200px] !w-[96vw]">
