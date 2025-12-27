@@ -15,7 +15,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
-    from api.db.session import SessionLocal
+    from api.db.session import SessionLocal, set_session_user_id
     from api.services.websites_service import WebsitesService
 except Exception:
     SessionLocal = None
@@ -42,6 +42,8 @@ def list_websites_database(args: argparse.Namespace) -> dict:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
+
+    set_session_user_id(db, args.user_id)
     try:
         websites = WebsitesService.list_websites(
             db,

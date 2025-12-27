@@ -19,7 +19,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
-    from api.db.session import SessionLocal
+    from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -235,6 +235,7 @@ def transcribe_youtube(
             note_title = f"Transcript: {download_data['title']}"
             note_folder = folder or "Transcripts/YouTube"
             db = SessionLocal()
+            set_session_user_id(db, user_id)
             try:
                 note = NotesService.create_note(
                     db,

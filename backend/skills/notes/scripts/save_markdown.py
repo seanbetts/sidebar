@@ -17,7 +17,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
-    from api.db.session import SessionLocal
+    from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -36,6 +36,8 @@ def save_markdown_database(
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
+
+    set_session_user_id(db, user_id)
     try:
         if mode == "update":
             if not note_id:

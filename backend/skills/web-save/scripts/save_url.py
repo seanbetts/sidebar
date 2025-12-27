@@ -21,7 +21,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
-    from api.db.session import SessionLocal
+    from api.db.session import SessionLocal, set_session_user_id
     from api.services.websites_service import WebsitesService
 except Exception:
     SessionLocal = None
@@ -162,6 +162,8 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
     published_at = parse_published_at(parsed_metadata.get("published_time"))
 
     db = SessionLocal()
+
+    set_session_user_id(db, user_id)
     try:
         website = WebsitesService.upsert_website(
             db,

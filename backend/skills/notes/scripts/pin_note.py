@@ -15,7 +15,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
-    from api.db.session import SessionLocal
+    from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
@@ -31,6 +31,8 @@ def pin_note_database(user_id: str, note_id: str, pinned: bool) -> dict:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
+
+    set_session_user_id(db, user_id)
     try:
         note = NotesService.update_pinned(db, user_id, uuid.UUID(note_id), pinned)
         return {"id": str(note.id), "pinned": pinned}

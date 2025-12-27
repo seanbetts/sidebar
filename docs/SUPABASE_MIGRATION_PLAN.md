@@ -39,7 +39,7 @@
 - Policy model:
   - `USING (user_id = current_setting('app.user_id', true))`
   - `WITH CHECK (user_id = current_setting('app.user_id', true))`
-- App role should not have `bypassrls`.
+- App role should not have `bypassrls` (avoid `postgres` for runtime if you want strict enforcement).
 
 ## App Changes
 1) Models

@@ -15,7 +15,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
-    from api.db.session import SessionLocal
+    from api.db.session import SessionLocal, set_session_user_id
     from api.services.websites_service import WebsitesService
 except Exception:
     SessionLocal = None
@@ -31,6 +31,8 @@ def archive_website_database(user_id: str, website_id: str, archived: bool) -> d
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
+
+    set_session_user_id(db, user_id)
     try:
         website = WebsitesService.update_archived(db, user_id, uuid.UUID(website_id), archived)
         return {"id": str(website.id), "archived": archived}
