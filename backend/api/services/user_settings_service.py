@@ -88,6 +88,6 @@ class UserSettingsService:
             )
             db.add(settings)
 
+        db.flush()
         db.commit()
-        db.refresh(settings)
         return settings

@@ -338,7 +338,7 @@ async def move_file_or_folder(
     for item in records:
         if item.category == "folder":
             item.path = item.path.replace(full_path, new_full_path, 1)
-            item.bucket_key = _bucket_key(user_id, f\"{item.path}/\")
+            item.bucket_key = _bucket_key(user_id, f"{item.path}/")
             item.updated_at = datetime.now(timezone.utc)
             continue
         old_key = item.bucket_key
