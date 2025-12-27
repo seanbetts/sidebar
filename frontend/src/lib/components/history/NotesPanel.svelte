@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { ChevronRight } from 'lucide-svelte';
+  import { ChevronRight, FileText, Search } from 'lucide-svelte';
   import { filesStore } from '$lib/stores/files';
   import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
+  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import type { FileNode } from '$lib/types/file';
@@ -91,6 +92,12 @@
 
 {#if loading}
   <SidebarLoading message="Loading notes..." />
+{:else if children.length === 0 && !searchQuery}
+  <SidebarEmptyState
+    icon={FileText}
+    title="No notes yet"
+    subtitle="Create a note to get started."
+  />
 {:else if searchQuery}
   <div class="notes-sections">
     <div class="notes-block">
@@ -109,7 +116,11 @@
           {/each}
         </div>
       {:else}
-        <div class="notes-empty">No results</div>
+        <SidebarEmptyState
+          icon={Search}
+          title="No results"
+          subtitle="Try a different search."
+        />
       {/if}
     </div>
   </div>

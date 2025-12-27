@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { Folder } from 'lucide-svelte';
   import { filesStore } from '$lib/stores/files';
   import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
+  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import type { FileNode } from '$lib/types/file';
 
@@ -24,7 +26,11 @@
 {#if loading}
   <SidebarLoading message="Loading files..." />
 {:else if children.length === 0}
-  <div class="workspace-empty">No files found</div>
+  <SidebarEmptyState
+    icon={Folder}
+    title="No files yet"
+    subtitle="Upload or create a file to get started."
+  />
 {:else}
   <div class="workspace-list">
     {#if searchQuery}
@@ -60,9 +66,5 @@
     padding: 0 0.25rem;
   }
 
-  .workspace-empty {
-    padding: 0.5rem 0.25rem;
-    color: var(--color-muted-foreground);
-    font-size: 0.8rem;
-  }
+  /* Empty state handled by SidebarEmptyState */
 </style>
