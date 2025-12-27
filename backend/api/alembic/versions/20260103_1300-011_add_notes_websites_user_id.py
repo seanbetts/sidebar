@@ -5,7 +5,7 @@ import sqlalchemy as sa
 
 
 revision = "011_add_notes_websites_user_id"
-down_revision = "010_add_user_memories_table"
+down_revision = "010"
 branch_labels = None
 depends_on = None
 

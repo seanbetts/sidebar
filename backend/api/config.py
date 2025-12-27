@@ -27,6 +27,8 @@ def _build_database_url() -> str:
         host = os.getenv("SUPABASE_POOLER_HOST")
         if host:
             user = os.getenv("SUPABASE_POOLER_USER", f"postgres.{project_id}")
+            if user == "sidebar_app" or user.startswith("sidebar_app."):
+                supabase_password = os.getenv("SUPABASE_APP_PSWD", supabase_password)
         else:
             use_pooler = False
 
