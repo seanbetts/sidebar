@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Iterable, Optional
 from urllib.parse import urlparse
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from api.models.website import Website
 
@@ -301,7 +301,17 @@ class WebsitesService:
         published_before: Optional[datetime] = None,
         title_search: Optional[str] = None,
     ) -> Iterable[Website]:
-        query = db.query(Website).filter(
+        query = db.query(Website).options(load_only(
+            Website.id,
+            Website.title,
+            Website.url,
+            Website.domain,
+            Website.saved_at,
+            Website.published_at,
+            Website.metadata_,
+            Website.updated_at,
+            Website.last_opened_at,
+        )).filter(
             Website.user_id == user_id,
             Website.deleted_at.is_(None),
         )

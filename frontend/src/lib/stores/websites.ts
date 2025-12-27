@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { websitesAPI } from '$lib/services/api';
 
 export interface WebsiteItem {
@@ -28,19 +28,27 @@ function createWebsitesStore() {
     active: WebsiteDetail | null;
     loadingDetail: boolean;
     searchQuery: string;
+    loaded: boolean;
   }>({
     items: [],
     loading: false,
     error: null,
     active: null,
     loadingDetail: false,
-    searchQuery: ''
+    searchQuery: '',
+    loaded: false
   });
 
   return {
     subscribe,
 
-    async load() {
+    async load(force: boolean = false) {
+      if (!force) {
+        const currentState = get({ subscribe });
+        if (currentState.loaded && !currentState.searchQuery) {
+          return;
+        }
+      }
       update(state => ({ ...state, loading: true, error: null, searchQuery: '' }));
       try {
         const data = await websitesAPI.list();
@@ -49,11 +57,12 @@ function createWebsitesStore() {
           items: data.items || [],
           loading: false,
           error: null,
-          searchQuery: ''
+          searchQuery: '',
+          loaded: true
         }));
       } catch (error) {
         console.error('Failed to load websites:', error);
-        update(state => ({ ...state, loading: false, error: 'Failed to load websites', searchQuery: '' }));
+        update(state => ({ ...state, loading: false, error: 'Failed to load websites', searchQuery: '', loaded: false }));
       }
     },
 
@@ -84,11 +93,12 @@ function createWebsitesStore() {
           items: data.items || [],
           loading: false,
           error: null,
-          searchQuery: query
+          searchQuery: query,
+          loaded: true
         }));
       } catch (error) {
         console.error('Failed to search websites:', error);
-        update(state => ({ ...state, loading: false, error: 'Failed to search websites', searchQuery: query }));
+        update(state => ({ ...state, loading: false, error: 'Failed to search websites', searchQuery: query, loaded: false }));
       }
     },
 
@@ -97,7 +107,7 @@ function createWebsitesStore() {
     },
 
     reset() {
-      set({ items: [], loading: false, error: null, active: null, loadingDetail: false, searchQuery: '' });
+      set({ items: [], loading: false, error: null, active: null, loadingDetail: false, searchQuery: '', loaded: false });
     }
   };
 }

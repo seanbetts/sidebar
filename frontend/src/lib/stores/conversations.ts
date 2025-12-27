@@ -1,7 +1,7 @@
 /**
  * Conversation list store with timeline grouping
  */
-import { writable, derived } from 'svelte/store';
+import { get, writable, derived } from 'svelte/store';
 import type { Conversation } from '$lib/types/history';
 import { conversationsAPI } from '$lib/services/api';
 
@@ -10,6 +10,7 @@ interface ConversationListState {
   loading: boolean;
   searchQuery: string;
   generatingTitleIds: Set<string>;
+  loaded: boolean;
 }
 
 function createConversationListStore() {
@@ -17,25 +18,32 @@ function createConversationListStore() {
     conversations: [],
     loading: false,
     searchQuery: '',
-    generatingTitleIds: new Set()
+    generatingTitleIds: new Set(),
+    loaded: false
   });
 
   return {
     subscribe,
 
-    async load() {
+    async load(force: boolean = false) {
+      if (!force) {
+        const currentState = get({ subscribe });
+        if (currentState.loaded && !currentState.searchQuery) {
+          return;
+        }
+      }
       update(state => ({ ...state, loading: true }));
       try {
         const conversations = await conversationsAPI.list();
-        update(state => ({ ...state, conversations, loading: false }));
+        update(state => ({ ...state, conversations, loading: false, loaded: true }));
       } catch (error) {
         console.error('Failed to load conversations:', error);
-        update(state => ({ ...state, loading: false }));
+        update(state => ({ ...state, loading: false, loaded: false }));
       }
     },
 
     async refresh() {
-      await this.load();
+      await this.load(true);
     },
 
     async search(query: string) {
@@ -44,10 +52,10 @@ function createConversationListStore() {
         const conversations = query
           ? await conversationsAPI.search(query)
           : await conversationsAPI.list();
-        update(state => ({ ...state, conversations, loading: false }));
+        update(state => ({ ...state, conversations, loading: false, loaded: true }));
       } catch (error) {
         console.error('Failed to search conversations:', error);
-        update(state => ({ ...state, loading: false }));
+        update(state => ({ ...state, loading: false, loaded: false }));
       }
     },
 

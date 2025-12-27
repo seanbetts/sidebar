@@ -23,7 +23,7 @@ function createFilesStore() {
   return {
     subscribe,
 
-    async load(basePath: string = 'documents') {
+    async load(basePath: string = 'documents', force: boolean = false) {
       // Get current state
       const currentState = get({ subscribe });
       const currentTree = currentState.trees[basePath];
@@ -33,9 +33,16 @@ function createFilesStore() {
         return;
       }
 
-      // Skip if data already exists (prevent unnecessary reloads)
-      if (currentTree?.children && currentTree.children.length > 0) {
-        return;
+      if (!force) {
+        // Skip if data already exists (prevent unnecessary reloads)
+        if (currentTree?.children && currentTree.children.length > 0) {
+          return;
+        }
+
+        // Skip if we've loaded before, even if empty
+        if (currentTree?.loaded) {
+          return;
+        }
       }
 
       // Initialize tree if it doesn't exist
@@ -45,7 +52,8 @@ function createFilesStore() {
           [basePath]: {
             ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
             loading: true,
-            searchQuery: ''
+            searchQuery: '',
+            loaded: state.trees[basePath]?.loaded ?? false
           }
         }
       }));
@@ -66,7 +74,8 @@ function createFilesStore() {
               ...state.trees[basePath],
               children,
               loading: false,
-              searchQuery: ''
+              searchQuery: '',
+              loaded: true
             }
           }
         }));
@@ -85,7 +94,8 @@ function createFilesStore() {
             [basePath]: {
               ...state.trees[basePath],
               loading: false,
-              searchQuery: ''
+              searchQuery: '',
+              loaded: false
             }
           }
         }));
@@ -188,7 +198,8 @@ function createFilesStore() {
               ...(state.trees.notes || { children: [], expandedPaths: new Set() }),
               children,
               loading: false,
-              searchQuery: query
+              searchQuery: query,
+              loaded: true
             }
           }
         }));
@@ -200,7 +211,8 @@ function createFilesStore() {
             notes: {
               ...(state.trees.notes || { children: [], expandedPaths: new Set() }),
               loading: false,
-              searchQuery: query
+              searchQuery: query,
+              loaded: false
             }
           }
         }));
@@ -237,7 +249,8 @@ function createFilesStore() {
               ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
               children: data.items || data.children || [],
               loading: false,
-              searchQuery: query
+              searchQuery: query,
+              loaded: true
             }
           }
         }));
@@ -249,7 +262,8 @@ function createFilesStore() {
             [basePath]: {
               ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
               loading: false,
-              searchQuery: query
+              searchQuery: query,
+              loaded: false
             }
           }
         }));

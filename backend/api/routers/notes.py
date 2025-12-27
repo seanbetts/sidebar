@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
@@ -32,6 +32,7 @@ async def list_notes_tree(
 ):
     notes = (
         db.query(Note)
+        .options(load_only(Note.id, Note.title, Note.metadata_, Note.updated_at))
         .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
         .order_by(Note.updated_at.desc())
         .all()

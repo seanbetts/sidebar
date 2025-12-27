@@ -407,10 +407,10 @@
 
     // Check if data already exists to prevent unnecessary reloads
     const hasData = {
-      'notes': $filesStore.trees?.['notes']?.children?.length > 0,
-      'websites': $websitesStore.items?.length > 0,
-      'workspace': $filesStore.trees?.['.']?.children?.length > 0,
-      'history': $conversationListStore.conversations?.length > 0
+      'notes': $filesStore.trees?.['notes']?.loaded ?? false,
+      'websites': $websitesStore.loaded ?? false,
+      'workspace': $filesStore.trees?.['.']?.loaded ?? false,
+      'history': $conversationListStore.loaded ?? false
     }[section];
 
     // If data already exists, mark as loaded and skip
@@ -669,7 +669,7 @@
 
       const websiteId = data?.data?.id;
 
-      await websitesStore.load();
+      await websitesStore.load(true);
       if (websiteId) {
         await websitesStore.loadById(websiteId);
       }
@@ -707,7 +707,7 @@
       const noteId = data?.id || filename;
 
       // Reload the files tree and open the new note
-      await filesStore.load('notes');
+      await filesStore.load('notes', true);
       currentNoteId.set(noteId);
       await editorStore.loadNote('notes', noteId, { source: 'user' });
       isNewNoteDialogOpen = false;
@@ -733,7 +733,7 @@
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
-      await filesStore.load('notes');
+      await filesStore.load('notes', true);
       isNewFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
@@ -757,7 +757,7 @@
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
-      await filesStore.load('.');
+      await filesStore.load('.', true);
       isNewWorkspaceFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
@@ -1315,7 +1315,7 @@
           </div>
           <SearchBar
             onSearch={(query) => filesStore.searchNotes(query)}
-            onClear={() => filesStore.load('notes')}
+            onClear={() => filesStore.load('notes', true)}
             placeholder="Search notes..."
           />
         </div>
@@ -1337,7 +1337,7 @@
           </div>
           <SearchBar
             onSearch={(query) => websitesStore.search(query)}
-            onClear={() => websitesStore.load()}
+            onClear={() => websitesStore.load(true)}
             placeholder="Search websites..."
           />
         </div>
@@ -1359,7 +1359,7 @@
           </div>
           <SearchBar
             onSearch={(query) => filesStore.searchFiles('.', query)}
-            onClear={() => filesStore.load('.')}
+            onClear={() => filesStore.load('.', true)}
             placeholder="Search files..."
           />
         </div>
@@ -1377,7 +1377,7 @@
           </div>
           <SearchBar
             onSearch={(query) => conversationListStore.search(query)}
-            onClear={() => conversationListStore.load()}
+            onClear={() => conversationListStore.load(true)}
             placeholder="Search conversations..."
           />
         </div>

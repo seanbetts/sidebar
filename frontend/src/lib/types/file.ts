@@ -21,6 +21,7 @@ export interface SingleFileTree {
   loading: boolean;
   expandedPaths: Set<string>;
   searchQuery?: string;
+  loaded?: boolean;
 }
 
 export interface FileTreeState {

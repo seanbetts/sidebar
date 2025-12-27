@@ -103,7 +103,7 @@
       console.error('Failed to rename website');
       return;
     }
-    await websitesStore.load();
+    await websitesStore.load(true);
     isRenameDialogOpen = false;
   }
 
@@ -117,7 +117,7 @@
       console.error('Failed to update pin');
       return;
     }
-    await websitesStore.load();
+    await websitesStore.load(true);
     closeMenu();
   }
 
@@ -131,7 +131,7 @@
       console.error('Failed to archive website');
       return;
     }
-    await websitesStore.load();
+    await websitesStore.load(true);
     closeMenu();
   }
 
@@ -160,7 +160,7 @@
       console.error('Failed to delete website');
       return;
     }
-    await websitesStore.load();
+    await websitesStore.load(true);
     isDeleteDialogOpen = false;
     selectedSite = null;
   }

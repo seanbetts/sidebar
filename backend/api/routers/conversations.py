@@ -1,6 +1,6 @@
 """Conversations API router with JSONB message storage."""
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import or_, func, cast, String
 from typing import List
@@ -90,6 +90,15 @@ async def list_conversations(
 ):
     """List all conversations for the current user."""
     conversations = db.query(Conversation)\
+        .options(load_only(
+            Conversation.id,
+            Conversation.title,
+            Conversation.title_generated,
+            Conversation.created_at,
+            Conversation.updated_at,
+            Conversation.message_count,
+            Conversation.first_message,
+        ))\
         .filter(Conversation.user_id == user_id, Conversation.is_archived == False)\
         .order_by(Conversation.updated_at.desc())\
         .all()
