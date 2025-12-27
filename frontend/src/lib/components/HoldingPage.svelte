@@ -16,30 +16,15 @@
   <div class="content">
     <div class="logo">
       <div class="logo-icon">
-        <svg
-          width="48"
-          height="48"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="3" y="3" width="7" height="7" />
-          <rect x="14" y="3" width="7" height="7" />
-          <rect x="14" y="14" width="7" height="7" />
-          <rect x="3" y="14" width="7" height="7" />
-        </svg>
+        <img src="/images/logo.svg" alt="sideBar" />
       </div>
       <h1>sideBar</h1>
     </div>
 
     <div class="message">
-      <h2>We're preparing something special</h2>
+      <h2>I'm preparing something special</h2>
       <p>
-        sideBar is currently under development. We're working hard to bring you a powerful new way
-        to organize your thoughts, notes, and conversations.
+        I'm working hard to bring you a powerful new way to organise your thoughts, notes, and conversations.
       </p>
     </div>
 
@@ -106,7 +91,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #ffffff;
     padding: 2rem;
     opacity: 0;
     transition: opacity 0.6s ease-out;
@@ -119,36 +104,32 @@
   .content {
     max-width: 600px;
     text-align: center;
-    color: white;
+    color: #000000;
   }
 
   .logo {
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
   }
 
   .logo-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 80px;
-    height: 80px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    margin-bottom: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 120px;
+    height: 120px;
+    margin-bottom: 0;
   }
 
-  .logo-icon svg {
-    width: 48px;
-    height: 48px;
-    color: white;
+  .logo-icon img {
+    width: 100%;
+    height: 100%;
   }
 
   h1 {
     font-size: 3rem;
     font-weight: 700;
     margin: 0;
+    line-height: 1;
     letter-spacing: -0.02em;
   }
 
@@ -160,13 +141,13 @@
     font-size: 1.5rem;
     font-weight: 600;
     margin: 0 0 1rem 0;
-    color: rgba(255, 255, 255, 0.95);
+    color: #000000;
   }
 
   .message p {
     font-size: 1.125rem;
     line-height: 1.7;
-    color: rgba(255, 255, 255, 0.85);
+    color: #333333;
     margin: 0;
   }
 
@@ -183,37 +164,38 @@
     justify-content: center;
     gap: 0.75rem;
     padding: 1rem 1.5rem;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    background: #f5f5f5;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid #e0e0e0;
     transition: transform 0.2s ease, background 0.2s ease;
   }
 
   .feature:hover {
     transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.15);
+    background: #eeeeee;
   }
 
   .feature svg {
     flex-shrink: 0;
+    color: #000000;
   }
 
   .feature span {
     font-size: 1rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.95);
+    color: #000000;
   }
 
   .footer {
     margin-top: 3rem;
     padding-top: 2rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-top: 1px solid #e0e0e0;
   }
 
   .footer p {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #000000;
     margin: 0;
   }
 
