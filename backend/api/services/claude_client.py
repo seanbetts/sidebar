@@ -456,10 +456,17 @@ class ClaudeClient:
                                             }
 
                                 # Add to tool results for next turn
+                                content_value = json.dumps(result)
+                                if display_name == "Memory Tool":
+                                    if result.get("success"):
+                                        result_data = result.get("data") or {}
+                                        content_value = result_data.get("content") or ""
+                                    else:
+                                        content_value = result.get("error") or "Unknown error"
                                 tool_results.append({
                                     "type": "tool_result",
                                     "tool_use_id": tool_use["id"],
-                                    "content": json.dumps(result)
+                                    "content": content_value
                                 })
 
                             # Add tool results as user message for next turn

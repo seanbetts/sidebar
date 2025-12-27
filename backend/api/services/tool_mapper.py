@@ -869,7 +869,7 @@ class ToolMapper:
                 "build_args": None
             },
             "Memory Tool": {
-                "description": "Create, update, and manage persistent memory files.",
+                "description": "Create, update, and manage persistent memory files. Paths should start with /memories.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -878,10 +878,18 @@ class ToolMapper:
                             "enum": ["view", "create", "str_replace", "insert", "delete", "rename"]
                         },
                         "path": {"type": "string"},
+                        "view_range": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "minItems": 2,
+                            "maxItems": 2
+                        },
+                        "file_text": {"type": "string"},
                         "content": {"type": "string"},
                         "old_str": {"type": "string"},
                         "new_str": {"type": "string"},
-                        "position": {"type": "string", "enum": ["start", "end"]},
+                        "insert_line": {"type": "integer"},
+                        "insert_text": {"type": "string"},
                         "old_path": {"type": "string"},
                         "new_path": {"type": "string"}
                     },
