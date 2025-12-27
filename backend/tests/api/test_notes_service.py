@@ -38,10 +38,10 @@ def db_session():
 
 def test_create_and_read_note(db_session):
     content = "# Test Note\n\nBody"
-    note = NotesService.create_note(db_session, content, folder="Work")
+    note = NotesService.create_note(db_session, "test_user", content, folder="Work")
 
     assert note.title == "Test Note"
-    fetched = NotesService.get_note(db_session, note.id, mark_opened=True)
+    fetched = NotesService.get_note(db_session, "test_user", note.id, mark_opened=True)
     assert fetched is not None
     assert fetched.title == "Test Note"
     assert fetched.content == content
@@ -49,17 +49,17 @@ def test_create_and_read_note(db_session):
 
 
 def test_update_note_title(db_session):
-    note = NotesService.create_note(db_session, "# Old Title\n\nBody")
-    updated = NotesService.update_note(db_session, note.id, "# New Title\n\nBody")
+    note = NotesService.create_note(db_session, "test_user", "# Old Title\n\nBody")
+    updated = NotesService.update_note(db_session, "test_user", note.id, "# New Title\n\nBody")
 
     assert updated.title == "New Title"
     assert "New Title" in updated.content
 
 
 def test_update_folder_and_pinned(db_session):
-    note = NotesService.create_note(db_session, "# Folder Note\n\nBody")
-    moved = NotesService.update_folder(db_session, note.id, "Projects/Alpha")
-    pinned = NotesService.update_pinned(db_session, note.id, True)
+    note = NotesService.create_note(db_session, "test_user", "# Folder Note\n\nBody")
+    moved = NotesService.update_folder(db_session, "test_user", note.id, "Projects/Alpha")
+    pinned = NotesService.update_pinned(db_session, "test_user", note.id, True)
 
     assert (moved.metadata_ or {}).get("folder") == "Projects/Alpha"
     assert (pinned.metadata_ or {}).get("pinned") is True
@@ -69,9 +69,9 @@ def test_list_notes_filters(db_session):
     now = datetime.now(timezone.utc)
     earlier = now - timedelta(days=2)
 
-    note_a = NotesService.create_note(db_session, "# Alpha\n\nBody", folder="Work")
-    note_b = NotesService.create_note(db_session, "# Beta\n\nBody", folder="Archive/Old")
-    NotesService.update_pinned(db_session, note_a.id, True)
+    note_a = NotesService.create_note(db_session, "test_user", "# Alpha\n\nBody", folder="Work")
+    note_b = NotesService.create_note(db_session, "test_user", "# Beta\n\nBody", folder="Archive/Old")
+    NotesService.update_pinned(db_session, "test_user", note_a.id, True)
 
     note_a.created_at = earlier
     note_a.updated_at = earlier
@@ -79,15 +79,15 @@ def test_list_notes_filters(db_session):
     note_b.updated_at = now
     db_session.commit()
 
-    pinned_notes = NotesService.list_notes(db_session, pinned=True)
+    pinned_notes = NotesService.list_notes(db_session, "test_user", pinned=True)
     assert any(n.id == note_a.id for n in pinned_notes)
 
-    archived_notes = NotesService.list_notes(db_session, archived=True)
+    archived_notes = NotesService.list_notes(db_session, "test_user", archived=True)
     assert any(n.id == note_b.id for n in archived_notes)
 
-    active_notes = NotesService.list_notes(db_session, archived=False)
+    active_notes = NotesService.list_notes(db_session, "test_user", archived=False)
     assert all(n.id != note_b.id for n in active_notes)
 
-    filtered = NotesService.list_notes(db_session, folder="Work", title_search="Alpha")
+    filtered = NotesService.list_notes(db_session, "test_user", folder="Work", title_search="Alpha")
     assert len(filtered) == 1
     assert filtered[0].id == note_a.id

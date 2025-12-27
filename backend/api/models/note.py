@@ -12,6 +12,7 @@ class Note(Base):
     __tablename__ = "notes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Text, nullable=False, index=True)
     title = Column(Text, nullable=False)
     content = Column(Text, nullable=False)
     metadata_ = Column("metadata", JSONB, nullable=False, default=dict)

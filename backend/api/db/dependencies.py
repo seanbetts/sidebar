@@ -3,6 +3,9 @@ from fastapi import Header, HTTPException, status
 from typing import Annotated
 
 
+DEFAULT_USER_ID = "81326b53-b7eb-42e2-b645-0c03cb5d5dd4"
+
+
 def get_current_user_id(
     x_user_id: Annotated[str | None, Header()] = None
 ) -> str:
@@ -13,7 +16,7 @@ def get_current_user_id(
     In production, this would validate JWT tokens and extract user_id.
     """
     if not x_user_id:
-        # Default to 'default_user' for development
-        return "default_user"
+        # Default to a stable UUID for development
+        return DEFAULT_USER_ID
 
     return x_user_id

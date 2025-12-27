@@ -658,7 +658,7 @@ class ToolMapper:
                 },
                 "skill": "notes",
                 "script": "delete_note.py",
-                "build_args": lambda p: [p["note_id"], "--database"]
+                "build_args": lambda p: [p["note_id"], "--database", "--user-id", p["user_id"]]
             },
             "Pin Note": {
                 "description": "Pin or unpin a note in the database.",
@@ -672,7 +672,14 @@ class ToolMapper:
                 },
                 "skill": "notes",
                 "script": "pin_note.py",
-                "build_args": lambda p: [p["note_id"], "--pinned", str(p["pinned"]).lower(), "--database"]
+                "build_args": lambda p: [
+                    p["note_id"],
+                    "--pinned",
+                    str(p["pinned"]).lower(),
+                    "--database",
+                    "--user-id",
+                    p["user_id"],
+                ]
             },
             "Move Note": {
                 "description": "Move a note to a folder by ID.",
@@ -686,7 +693,14 @@ class ToolMapper:
                 },
                 "skill": "notes",
                 "script": "move_note.py",
-                "build_args": lambda p: [p["note_id"], "--folder", p["folder"], "--database"]
+                "build_args": lambda p: [
+                    p["note_id"],
+                    "--folder",
+                    p["folder"],
+                    "--database",
+                    "--user-id",
+                    p["user_id"],
+                ]
             },
             "Get Note": {
                 "description": "Fetch a note by ID.",
@@ -699,7 +713,7 @@ class ToolMapper:
                 },
                 "skill": "notes",
                 "script": "read_note.py",
-                "build_args": lambda p: [p["note_id"], "--database"]
+                "build_args": lambda p: [p["note_id"], "--database", "--user-id", p["user_id"]]
             },
             "List Notes": {
                 "description": "List notes with optional filters.",
@@ -730,7 +744,7 @@ class ToolMapper:
                 },
                 "skill": "notes",
                 "script": "scratchpad_get.py",
-                "build_args": lambda p: ["--database"]
+                "build_args": lambda p: ["--database", "--user-id", p["user_id"]]
             },
             "Update Scratchpad": {
                 "description": "Update the scratchpad content.",
@@ -743,7 +757,13 @@ class ToolMapper:
                 },
                 "skill": "notes",
                 "script": "scratchpad_update.py",
-                "build_args": lambda p: ["--content", p["content"], "--database"]
+                "build_args": lambda p: [
+                    "--content",
+                    p["content"],
+                    "--database",
+                    "--user-id",
+                    p["user_id"],
+                ]
             },
             "Clear Scratchpad": {
                 "description": "Clear the scratchpad content.",
@@ -753,7 +773,7 @@ class ToolMapper:
                 },
                 "skill": "notes",
                 "script": "scratchpad_clear.py",
-                "build_args": lambda p: ["--database"]
+                "build_args": lambda p: ["--database", "--user-id", p["user_id"]]
             },
             "Save Website": {
                 "description": "Save a website to the database (visible in UI).",
@@ -766,7 +786,7 @@ class ToolMapper:
                 },
                 "skill": "web-save",
                 "script": "save_url.py",
-                "build_args": lambda p: [p["url"], "--database"]
+                "build_args": lambda p: [p["url"], "--database", "--user-id", p["user_id"]]
             },
             "Delete Website": {
                 "description": "Delete a website in the database by ID.",
@@ -779,7 +799,7 @@ class ToolMapper:
                 },
                 "skill": "web-save",
                 "script": "delete_website.py",
-                "build_args": lambda p: [p["website_id"], "--database"]
+                "build_args": lambda p: [p["website_id"], "--database", "--user-id", p["user_id"]]
             },
             "Pin Website": {
                 "description": "Pin or unpin a website in the database.",
@@ -793,7 +813,14 @@ class ToolMapper:
                 },
                 "skill": "web-save",
                 "script": "pin_website.py",
-                "build_args": lambda p: [p["website_id"], "--pinned", str(p["pinned"]).lower(), "--database"]
+                "build_args": lambda p: [
+                    p["website_id"],
+                    "--pinned",
+                    str(p["pinned"]).lower(),
+                    "--database",
+                    "--user-id",
+                    p["user_id"],
+                ]
             },
             "Archive Website": {
                 "description": "Archive or unarchive a website in the database.",
@@ -807,7 +834,14 @@ class ToolMapper:
                 },
                 "skill": "web-save",
                 "script": "archive_website.py",
-                "build_args": lambda p: [p["website_id"], "--archived", str(p["archived"]).lower(), "--database"]
+                "build_args": lambda p: [
+                    p["website_id"],
+                    "--archived",
+                    str(p["archived"]).lower(),
+                    "--database",
+                    "--user-id",
+                    p["user_id"],
+                ]
             },
             "Read Website": {
                 "description": "Fetch a website by ID.",
@@ -820,7 +854,7 @@ class ToolMapper:
                 },
                 "skill": "web-save",
                 "script": "read_website.py",
-                "build_args": lambda p: [p["website_id"], "--database"]
+                "build_args": lambda p: [p["website_id"], "--database", "--user-id", p["user_id"]]
             },
             "List Websites": {
                 "description": "List websites with optional filters.",
@@ -1082,6 +1116,16 @@ class ToolMapper:
                 path_to_validate = parameters.get("path") or parameters.get("directory", ".")
                 self.path_validator.validate_read_path(path_to_validate)
 
+            if context and tool_config.get("skill") in {
+                "notes",
+                "web-save",
+                "audio-transcribe",
+                "youtube-transcribe",
+            }:
+                user_id = context.get("user_id")
+                if user_id:
+                    parameters = {**parameters, "user_id": user_id}
+
             # Build arguments using the tool's build function
             args = tool_config["build_args"](parameters)
 
@@ -1171,6 +1215,7 @@ class ToolMapper:
         title = params.get("title")
         if not title:
             title = self._derive_title_from_content(params.get("content", ""))
+        user_id = params.get("user_id", "")
         args = [
             title,
             "--content",
@@ -1179,6 +1224,8 @@ class ToolMapper:
             "create",
             "--database"
         ]
+        if user_id:
+            args.extend(["--user-id", user_id])
         if "folder" in params:
             args.extend(["--folder", params["folder"]])
         if "tags" in params:
@@ -1189,7 +1236,8 @@ class ToolMapper:
         title = params.get("title")
         if not title:
             title = self._derive_title_from_content(params.get("content", ""))
-        return [
+        user_id = params.get("user_id", "")
+        args = [
             title,
             "--content",
             params["content"],
@@ -1197,8 +1245,11 @@ class ToolMapper:
             "update",
             "--note-id",
             params["note_id"],
-            "--database"
+            "--database",
         ]
+        if user_id:
+            args.extend(["--user-id", user_id])
+        return args
 
     @staticmethod
     def _derive_title_from_content(content: str) -> str:
@@ -1212,6 +1263,9 @@ class ToolMapper:
 
     def _build_notes_list_args(self, params: dict) -> list:
         args = ["--database"]
+        user_id = params.get("user_id")
+        if user_id:
+            args.extend(["--user-id", user_id])
         for key, flag in [
             ("folder", "--folder"),
             ("pinned", "--pinned"),
@@ -1231,6 +1285,9 @@ class ToolMapper:
 
     def _build_website_list_args(self, params: dict) -> list:
         args = ["--database"]
+        user_id = params.get("user_id")
+        if user_id:
+            args.extend(["--user-id", user_id])
         for key, flag in [
             ("domain", "--domain"),
             ("pinned", "--pinned"),
@@ -1256,6 +1313,8 @@ class ToolMapper:
             "--json",
             "--database",
         ]
+        if params.get("user_id"):
+            args.extend(["--user-id", params["user_id"]])
         if params.get("language"):
             args.extend(["--language", params["language"]])
         if params.get("model"):
@@ -1285,6 +1344,8 @@ class ToolMapper:
             "--json",
             "--database",
         ]
+        if params.get("user_id"):
+            args.extend(["--user-id", params["user_id"]])
         if params.get("language"):
             args.extend(["--language", params["language"]])
         if params.get("model"):

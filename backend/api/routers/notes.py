@@ -9,6 +9,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
+from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.models.note import Note
 from api.services.notes_service import NotesService, NoteNotFoundError
@@ -25,12 +26,13 @@ def require_note_id(value: str):
 
 @router.get("/tree")
 async def list_notes_tree(
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     notes = (
         db.query(Note)
-        .filter(Note.deleted_at.is_(None))
+        .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
         .order_by(Note.updated_at.desc())
         .all()
     )
@@ -42,7 +44,8 @@ async def list_notes_tree(
 async def search_notes(
     query: str,
     limit: int = 50,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     if not query:
@@ -51,6 +54,7 @@ async def search_notes(
     notes = (
         db.query(Note)
         .filter(
+            Note.user_id == user_id,
             Note.deleted_at.is_(None),
             or_(
                 Note.title.ilike(f"%{query}%"),
@@ -81,14 +85,15 @@ async def search_notes(
 @router.post("/folders")
 async def create_folder(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     path = (request.get("path") or "").strip("/")
     if not path:
         raise HTTPException(status_code=400, detail="path required")
 
-    notes = db.query(Note).filter(Note.deleted_at.is_(None)).all()
+    notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
     for note in notes:
         note_folder = (note.metadata_ or {}).get("folder") or ""
         if note_folder == path or note_folder.startswith(f"{path}/"):
@@ -96,6 +101,7 @@ async def create_folder(
 
     now = datetime.now(timezone.utc)
     note = Note(
+        user_id=user_id,
         title="__folder__",
         content="",
         metadata_={"folder": path, "pinned": False, "folder_marker": True},
@@ -112,7 +118,8 @@ async def create_folder(
 @router.patch("/folders/rename")
 async def rename_folder(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     old_path = (request.get("oldPath") or "").strip("/")
@@ -123,7 +130,7 @@ async def rename_folder(
     parent = "/".join(old_path.split("/")[:-1])
     new_folder = f"{parent}/{new_name}".strip("/") if parent else new_name
 
-    notes = db.query(Note).filter(Note.deleted_at.is_(None)).all()
+    notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
     for note in notes:
         folder = (note.metadata_ or {}).get("folder") or ""
         if folder == old_path or folder.startswith(f"{old_path}/"):
@@ -137,7 +144,8 @@ async def rename_folder(
 @router.patch("/folders/move")
 async def move_folder(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     old_path = (request.get("oldPath") or "").strip("/")
@@ -151,7 +159,7 @@ async def move_folder(
     basename = old_path.split("/")[-1]
     new_folder = f"{new_parent}/{basename}".strip("/") if new_parent else basename
 
-    notes = db.query(Note).filter(Note.deleted_at.is_(None)).all()
+    notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
     for note in notes:
         folder = (note.metadata_ or {}).get("folder") or ""
         if folder == old_path or folder.startswith(f"{old_path}/"):
@@ -165,14 +173,15 @@ async def move_folder(
 @router.delete("/folders")
 async def delete_folder(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     path = (request.get("path") or "").strip("/")
     if not path:
         raise HTTPException(status_code=400, detail="path required")
 
-    notes = db.query(Note).filter(Note.deleted_at.is_(None)).all()
+    notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
     now = datetime.now(timezone.utc)
     for note in notes:
         note_folder = (note.metadata_ or {}).get("folder") or ""
@@ -186,11 +195,16 @@ async def delete_folder(
 @router.get("/{note_id}")
 async def get_note(
     note_id: str,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     note_uuid = require_note_id(note_id)
-    note = db.query(Note).filter(Note.id == note_uuid, Note.deleted_at.is_(None)).first()
+    note = (
+        db.query(Note)
+        .filter(Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None))
+        .first()
+    )
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
@@ -207,7 +221,8 @@ async def get_note(
 @router.post("")
 async def create_note(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     content = request.get("content")
@@ -222,7 +237,7 @@ async def create_note(
         folder_path = Path(path).parent.as_posix()
         resolved_folder = "" if folder_path == "." else folder_path
 
-    created = NotesService.create_note(db, content, folder=resolved_folder)
+    created = NotesService.create_note(db, user_id, content, folder=resolved_folder)
     return {"success": True, "modified": created.updated_at.timestamp(), "id": str(created.id)}
 
 
@@ -230,7 +245,8 @@ async def create_note(
 async def update_note(
     note_id: str,
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     content = request.get("content")
@@ -239,7 +255,7 @@ async def update_note(
 
     note_uuid = require_note_id(note_id)
     try:
-        updated = NotesService.update_note(db, note_uuid, content)
+        updated = NotesService.update_note(db, user_id, note_uuid, content)
     except NoteNotFoundError:
         raise HTTPException(status_code=404, detail="Note not found")
 
@@ -250,7 +266,8 @@ async def update_note(
 async def rename_note(
     note_id: str,
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     new_name = request.get("newName", "")
@@ -258,7 +275,11 @@ async def rename_note(
         raise HTTPException(status_code=400, detail="newName required")
 
     note_uuid = require_note_id(note_id)
-    note = db.query(Note).filter(Note.id == note_uuid, Note.deleted_at.is_(None)).first()
+    note = (
+        db.query(Note)
+        .filter(Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None))
+        .first()
+    )
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
@@ -273,11 +294,12 @@ async def rename_note(
 @router.delete("/{note_id}")
 async def delete_note(
     note_id: str,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     note_uuid = require_note_id(note_id)
-    deleted = NotesService.delete_note(db, note_uuid)
+    deleted = NotesService.delete_note(db, user_id, note_uuid)
     if not deleted:
         raise HTTPException(status_code=404, detail="Note not found")
     return {"success": True}
@@ -286,11 +308,16 @@ async def delete_note(
 @router.get("/{note_id}/download")
 async def download_note(
     note_id: str,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     note_uuid = require_note_id(note_id)
-    note = db.query(Note).filter(Note.id == note_uuid, Note.deleted_at.is_(None)).first()
+    note = (
+        db.query(Note)
+        .filter(Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None))
+        .first()
+    )
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
@@ -303,7 +330,8 @@ async def download_note(
 async def update_pin(
     note_id: str,
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     pinned = bool(request.get("pinned", False))
@@ -311,7 +339,7 @@ async def update_pin(
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
             raise HTTPException(status_code=400, detail="Invalid note id")
-        NotesService.update_pinned(db, note_uuid, pinned)
+        NotesService.update_pinned(db, user_id, note_uuid, pinned)
     except NoteNotFoundError:
         raise HTTPException(status_code=404, detail="Note not found")
     return {"success": True}
@@ -321,7 +349,8 @@ async def update_pin(
 async def update_folder(
     note_id: str,
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     folder = request.get("folder", "") or ""
@@ -329,7 +358,7 @@ async def update_folder(
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
             raise HTTPException(status_code=400, detail="Invalid note id")
-        NotesService.update_folder(db, note_uuid, folder)
+        NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
         raise HTTPException(status_code=404, detail="Note not found")
     return {"success": True}
@@ -339,7 +368,8 @@ async def update_folder(
 async def update_archive(
     note_id: str,
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     archived = bool(request.get("archived", False))
@@ -348,7 +378,7 @@ async def update_archive(
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
             raise HTTPException(status_code=400, detail="Invalid note id")
-        NotesService.update_folder(db, note_uuid, folder)
+        NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
         raise HTTPException(status_code=404, detail="Note not found")
     return {"success": True}

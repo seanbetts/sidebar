@@ -22,13 +22,13 @@ except Exception:
     NotesService = None
 
 
-def move_note_database(note_id: str, folder: str) -> dict:
+def move_note_database(user_id: str, note_id: str, folder: str) -> dict:
     if SessionLocal is None or NotesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
     try:
-        note = NotesService.update_folder(db, uuid.UUID(note_id), folder.strip("/"))
+        note = NotesService.update_folder(db, user_id, uuid.UUID(note_id), folder.strip("/"))
         return {"id": str(note.id), "folder": (note.metadata_ or {}).get("folder", "")}
     finally:
         db.close()
@@ -40,6 +40,7 @@ def main() -> None:
     parser.add_argument("--folder", required=True, help="Destination folder path")
     parser.add_argument("--database", action="store_true", help="Use database mode")
     parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--user-id", help="User id for database access")
 
     args = parser.parse_args()
 
@@ -47,7 +48,10 @@ def main() -> None:
         if not args.database:
             raise ValueError("Database mode required")
 
-        result = move_note_database(args.note_id, args.folder)
+        if not args.user_id:
+            raise ValueError("user_id is required for database mode")
+
+        result = move_note_database(args.user_id, args.note_id, args.folder)
         output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)

@@ -25,6 +25,7 @@ except Exception:
 
 
 def save_markdown_database(
+    user_id: str,
     title: str,
     content: str,
     mode: str = "create",
@@ -39,7 +40,13 @@ def save_markdown_database(
         if mode == "update":
             if not note_id:
                 raise ValueError("note_id is required for update mode")
-            note = NotesService.update_note(db, uuid.UUID(note_id), content, title=title)
+            note = NotesService.update_note(
+                db,
+                user_id,
+                uuid.UUID(note_id),
+                content,
+                title=title,
+            )
             return {"id": str(note.id), "title": note.title}
 
         if mode != "create":
@@ -47,6 +54,7 @@ def save_markdown_database(
 
         note = NotesService.create_note(
             db,
+            user_id,
             content,
             title=title,
             folder=folder or "",
@@ -111,6 +119,10 @@ Examples:
         action='store_true',
         help='Save to database'
     )
+    parser.add_argument(
+        '--user-id',
+        help='User id for database access'
+    )
 
     args = parser.parse_args()
 
@@ -118,7 +130,11 @@ Examples:
         if not args.database:
             raise ValueError("Database mode required")
 
+        if not args.user_id:
+            raise ValueError("user_id is required for database mode")
+
         result = save_markdown_database(
+            args.user_id,
             args.title,
             args.content,
             args.mode,

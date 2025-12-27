@@ -147,7 +147,7 @@ def get_markdown_content(url: str, api_key: str) -> str:
         ) from e
 
 
-def save_url_database(url: str) -> Dict[str, Any]:
+def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
     if SessionLocal is None or WebsitesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
@@ -165,6 +165,7 @@ def save_url_database(url: str) -> Dict[str, Any]:
     try:
         website = WebsitesService.upsert_website(
             db,
+            user_id,
             url=url,
             title=title,
             content=cleaned_content,
@@ -220,6 +221,10 @@ Environment Variables:
         action='store_true',
         help='Save to database instead of filesystem'
     )
+    parser.add_argument(
+        '--user-id',
+        help='User id for database access'
+    )
 
     args = parser.parse_args()
 
@@ -228,7 +233,10 @@ Environment Variables:
         if not args.database:
             raise ValueError("Database mode required")
 
-        result = save_url_database(url=args.url)
+        if not args.user_id:
+            raise ValueError("user_id is required for database mode")
+
+        result = save_url_database(url=args.url, user_id=args.user_id)
 
         # Output results
         output = {

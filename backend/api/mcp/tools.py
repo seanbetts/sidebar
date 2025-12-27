@@ -2,6 +2,7 @@
 from fastmcp import FastMCP
 from api.config import settings
 from api.executors.skill_executor import SkillExecutor
+from api.db.dependencies import DEFAULT_USER_ID
 from api.security.path_validator import PathValidator
 from api.security.audit_logger import AuditLogger
 import json
@@ -202,7 +203,7 @@ def register_mcp_tools(mcp: FastMCP):
         start_time = time.time()
 
         # Build args
-        args = [title, "--content", content, "--mode", "create"]
+        args = [title, "--content", content, "--mode", "create", "--database", "--user-id", DEFAULT_USER_ID]
         if folder:
             args.extend(["--folder", folder])
         if tags:
@@ -235,7 +236,7 @@ def register_mcp_tools(mcp: FastMCP):
         """
         start_time = time.time()
 
-        args = [title, "--content", content, "--mode", "update"]
+        args = [title, "--content", content, "--mode", "update", "--database", "--user-id", DEFAULT_USER_ID]
         if folder:
             args.extend(["--folder", folder])
 
@@ -266,7 +267,7 @@ def register_mcp_tools(mcp: FastMCP):
         """
         start_time = time.time()
 
-        args = [title, "--content", content, "--mode", "append"]
+        args = [title, "--content", content, "--mode", "append", "--database", "--user-id", DEFAULT_USER_ID]
         if folder:
             args.extend(["--folder", folder])
 

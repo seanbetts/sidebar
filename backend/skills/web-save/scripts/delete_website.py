@@ -22,13 +22,13 @@ except Exception:
     WebsitesService = None
 
 
-def delete_website_database(website_id: str) -> dict:
+def delete_website_database(user_id: str, website_id: str) -> dict:
     if SessionLocal is None or WebsitesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
     try:
-        deleted = WebsitesService.delete_website(db, uuid.UUID(website_id))
+        deleted = WebsitesService.delete_website(db, user_id, uuid.UUID(website_id))
         if not deleted:
             raise ValueError("Website not found")
         return {"id": website_id}
@@ -49,6 +49,7 @@ def main() -> None:
         action="store_true",
         help="Output results in JSON format"
     )
+    parser.add_argument("--user-id", help="User id for database access")
 
     args = parser.parse_args()
 
@@ -56,7 +57,10 @@ def main() -> None:
         if not args.database:
             raise ValueError("Database mode required")
 
-        result = delete_website_database(args.website_id)
+        if not args.user_id:
+            raise ValueError("user_id is required for database mode")
+
+        result = delete_website_database(args.user_id, args.website_id)
 
         output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))

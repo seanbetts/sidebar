@@ -45,6 +45,7 @@ def list_websites_database(args: argparse.Namespace) -> dict:
     try:
         websites = WebsitesService.list_websites(
             db,
+            args.user_id,
             domain=args.domain,
             pinned=parse_bool(args.pinned),
             archived=parse_bool(args.archived),
@@ -96,12 +97,16 @@ def main() -> None:
     parser.add_argument("--title", help="Search by title")
     parser.add_argument("--database", action="store_true", help="Use database mode")
     parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--user-id", help="User id for database access")
 
     args = parser.parse_args()
 
     try:
         if not args.database:
             raise ValueError("Database mode required")
+
+        if not args.user_id:
+            raise ValueError("user_id is required for database mode")
 
         result = list_websites_database(args)
         output = {"success": True, "data": result}

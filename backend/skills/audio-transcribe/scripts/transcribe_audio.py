@@ -38,6 +38,7 @@ MAX_SIZE = 25_000_000
 
 
 def save_transcript_database(
+    user_id: str,
     content: str,
     title: str,
     folder: str,
@@ -49,6 +50,7 @@ def save_transcript_database(
     try:
         note = NotesService.create_note(
             db,
+            user_id,
             content,
             title=title,
             folder=folder,
@@ -518,6 +520,7 @@ Requirements:
     parser.add_argument("--timestamp-granularities", action="append", help="Timestamp granularities")
     parser.add_argument("--json", action="store_true", help="Output results in JSON format")
     parser.add_argument("--database", action="store_true", help="Save transcript to the database")
+    parser.add_argument("--user-id", help="User id for database access")
     parser.add_argument(
         "--folder",
         help="Database folder for transcript note (default: Transcripts/Audio)",
@@ -546,11 +549,18 @@ Requirements:
 
         note_data = None
         if args.database:
+            if not args.user_id:
+                raise ValueError("user_id is required for database mode")
             transcript_path = Path(result["output_path"])
             transcript_content = transcript_path.read_text(encoding="utf-8")
             note_title = f"Transcript: {Path(args.file).stem}"
             note_folder = args.folder or "Transcripts/Audio"
-            note_data = save_transcript_database(transcript_content, note_title, note_folder)
+            note_data = save_transcript_database(
+                args.user_id,
+                transcript_content,
+                note_title,
+                note_folder,
+            )
 
         if args.json:
             # Don't include full transcript in JSON output (it's saved to file)

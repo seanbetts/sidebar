@@ -26,13 +26,13 @@ def parse_bool(value: str) -> bool:
     return value.lower() in {"true", "1", "yes", "y"}
 
 
-def archive_website_database(website_id: str, archived: bool) -> dict:
+def archive_website_database(user_id: str, website_id: str, archived: bool) -> dict:
     if SessionLocal is None or WebsitesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
     try:
-        website = WebsitesService.update_archived(db, uuid.UUID(website_id), archived)
+        website = WebsitesService.update_archived(db, user_id, uuid.UUID(website_id), archived)
         return {"id": str(website.id), "archived": archived}
     finally:
         db.close()
@@ -44,6 +44,7 @@ def main() -> None:
     parser.add_argument("--archived", default="true", help="true or false")
     parser.add_argument("--database", action="store_true", help="Use database mode")
     parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--user-id", help="User id for database access")
 
     args = parser.parse_args()
 
@@ -51,7 +52,10 @@ def main() -> None:
         if not args.database:
             raise ValueError("Database mode required")
 
-        result = archive_website_database(args.website_id, parse_bool(args.archived))
+        if not args.user_id:
+            raise ValueError("user_id is required for database mode")
+
+        result = archive_website_database(args.user_id, args.website_id, parse_bool(args.archived))
         output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)

@@ -22,13 +22,13 @@ except Exception:
     WebsitesService = None
 
 
-def read_website_database(website_id: str) -> dict:
+def read_website_database(user_id: str, website_id: str) -> dict:
     if SessionLocal is None or WebsitesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
     try:
-        website = WebsitesService.get_website(db, uuid.UUID(website_id), mark_opened=True)
+        website = WebsitesService.get_website(db, user_id, uuid.UUID(website_id), mark_opened=True)
         if not website:
             raise ValueError("Website not found")
         metadata = website.metadata_ or {}
@@ -57,6 +57,7 @@ def main() -> None:
     parser.add_argument("website_id", help="Website UUID")
     parser.add_argument("--database", action="store_true", help="Use database mode")
     parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--user-id", help="User id for database access")
 
     args = parser.parse_args()
 
@@ -64,7 +65,10 @@ def main() -> None:
         if not args.database:
             raise ValueError("Database mode required")
 
-        result = read_website_database(args.website_id)
+        if not args.user_id:
+            raise ValueError("user_id is required for database mode")
+
+        result = read_website_database(args.user_id, args.website_id)
         output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)

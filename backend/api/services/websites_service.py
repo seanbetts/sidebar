@@ -32,12 +32,16 @@ class WebsitesService:
     @staticmethod
     def get_by_url(
         db: Session,
+        user_id: str,
         url: str,
         *,
         include_deleted: bool = False
     ) -> Optional[Website]:
         normalized_url = WebsitesService.normalize_url(url)
-        query = db.query(Website).filter(Website.url == normalized_url)
+        query = db.query(Website).filter(
+            Website.user_id == user_id,
+            Website.url == normalized_url,
+        )
         if not include_deleted:
             query = query.filter(Website.deleted_at.is_(None))
         return query.first()
@@ -45,6 +49,7 @@ class WebsitesService:
     @staticmethod
     def save_website(
         db: Session,
+        user_id: str,
         *,
         url: str,
         title: str,
@@ -62,6 +67,7 @@ class WebsitesService:
         metadata = {"pinned": pinned, "archived": archived}
 
         website = Website(
+            user_id=user_id,
             url=normalized_url,
             url_full=url_full,
             domain=domain,
@@ -84,6 +90,7 @@ class WebsitesService:
     @staticmethod
     def upsert_website(
         db: Session,
+        user_id: str,
         *,
         url: str,
         title: str,
@@ -99,7 +106,7 @@ class WebsitesService:
         normalized_url = WebsitesService.normalize_url(url)
         domain = WebsitesService.extract_domain(normalized_url)
 
-        website = WebsitesService.get_by_url(db, normalized_url, include_deleted=True)
+        website = WebsitesService.get_by_url(db, user_id, normalized_url, include_deleted=True)
         if website:
             website.url_full = url_full or website.url_full
             website.domain = domain
@@ -121,6 +128,7 @@ class WebsitesService:
 
         metadata = {"pinned": pinned, "archived": archived}
         website = Website(
+            user_id=user_id,
             url=normalized_url,
             url_full=url_full,
             domain=domain,
@@ -143,6 +151,7 @@ class WebsitesService:
     @staticmethod
     def update_website(
         db: Session,
+        user_id: str,
         website_id: uuid.UUID,
         *,
         title: Optional[str] = None,
@@ -153,7 +162,11 @@ class WebsitesService:
     ) -> Website:
         website = (
             db.query(Website)
-            .filter(Website.id == website_id, Website.deleted_at.is_(None))
+            .filter(
+                Website.user_id == user_id,
+                Website.id == website_id,
+                Website.deleted_at.is_(None),
+            )
             .first()
         )
         if not website:
@@ -178,12 +191,17 @@ class WebsitesService:
     @staticmethod
     def update_pinned(
         db: Session,
+        user_id: str,
         website_id: uuid.UUID,
         pinned: bool,
     ) -> Website:
         website = (
             db.query(Website)
-            .filter(Website.id == website_id, Website.deleted_at.is_(None))
+            .filter(
+                Website.user_id == user_id,
+                Website.id == website_id,
+                Website.deleted_at.is_(None),
+            )
             .first()
         )
         if not website:
@@ -198,12 +216,17 @@ class WebsitesService:
     @staticmethod
     def update_archived(
         db: Session,
+        user_id: str,
         website_id: uuid.UUID,
         archived: bool,
     ) -> Website:
         website = (
             db.query(Website)
-            .filter(Website.id == website_id, Website.deleted_at.is_(None))
+            .filter(
+                Website.user_id == user_id,
+                Website.id == website_id,
+                Website.deleted_at.is_(None),
+            )
             .first()
         )
         if not website:
@@ -216,10 +239,14 @@ class WebsitesService:
         return website
 
     @staticmethod
-    def delete_website(db: Session, website_id: uuid.UUID) -> bool:
+    def delete_website(db: Session, user_id: str, website_id: uuid.UUID) -> bool:
         website = (
             db.query(Website)
-            .filter(Website.id == website_id, Website.deleted_at.is_(None))
+            .filter(
+                Website.user_id == user_id,
+                Website.id == website_id,
+                Website.deleted_at.is_(None),
+            )
             .first()
         )
         if not website:
@@ -234,13 +261,18 @@ class WebsitesService:
     @staticmethod
     def get_website(
         db: Session,
+        user_id: str,
         website_id: uuid.UUID,
         *,
         mark_opened: bool = True,
     ) -> Optional[Website]:
         website = (
             db.query(Website)
-            .filter(Website.id == website_id, Website.deleted_at.is_(None))
+            .filter(
+                Website.user_id == user_id,
+                Website.id == website_id,
+                Website.deleted_at.is_(None),
+            )
             .first()
         )
         if not website:
@@ -255,6 +287,7 @@ class WebsitesService:
     @staticmethod
     def list_websites(
         db: Session,
+        user_id: str,
         *,
         domain: Optional[str] = None,
         pinned: Optional[bool] = None,
@@ -269,7 +302,10 @@ class WebsitesService:
         published_before: Optional[datetime] = None,
         title_search: Optional[str] = None,
     ) -> Iterable[Website]:
-        query = db.query(Website).filter(Website.deleted_at.is_(None))
+        query = db.query(Website).filter(
+            Website.user_id == user_id,
+            Website.deleted_at.is_(None),
+        )
 
         if domain is not None:
             query = query.filter(Website.domain == domain)

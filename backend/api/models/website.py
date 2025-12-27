@@ -1,5 +1,5 @@
 """Website model for archived markdown content."""
-from sqlalchemy import Column, DateTime, Text
+from sqlalchemy import Column, DateTime, Text, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from datetime import datetime, timezone
 import uuid
@@ -10,9 +10,14 @@ class Website(Base):
     """Website model with normalized URL and markdown content."""
 
     __tablename__ = "websites"
+    __table_args__ = (
+        UniqueConstraint("user_id", "url", name="uq_websites_user_id_url"),
+        Index("idx_websites_user_id", "user_id"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    url = Column(Text, nullable=False, unique=True)
+    user_id = Column(Text, nullable=False)
+    url = Column(Text, nullable=False)
     url_full = Column(Text, nullable=True)
     domain = Column(Text, nullable=False)
     title = Column(Text, nullable=False)

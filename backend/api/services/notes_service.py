@@ -99,6 +99,7 @@ class NotesService:
     @staticmethod
     def create_note(
         db: Session,
+        user_id: str,
         content: str,
         *,
         title: Optional[str] = None,
@@ -110,6 +111,7 @@ class NotesService:
         metadata = {"folder": folder, "pinned": pinned}
 
         note = Note(
+            user_id=user_id,
             title=resolved_title,
             content=content,
             metadata_=metadata,
@@ -126,6 +128,7 @@ class NotesService:
     @staticmethod
     def update_note(
         db: Session,
+        user_id: str,
         note_id: uuid.UUID,
         content: str,
         *,
@@ -133,7 +136,11 @@ class NotesService:
     ) -> Note:
         note = (
             db.query(Note)
-            .filter(Note.id == note_id, Note.deleted_at.is_(None))
+            .filter(
+                Note.user_id == user_id,
+                Note.id == note_id,
+                Note.deleted_at.is_(None),
+            )
             .first()
         )
         if not note:
@@ -150,12 +157,17 @@ class NotesService:
     @staticmethod
     def update_folder(
         db: Session,
+        user_id: str,
         note_id: uuid.UUID,
         folder: str,
     ) -> Note:
         note = (
             db.query(Note)
-            .filter(Note.id == note_id, Note.deleted_at.is_(None))
+            .filter(
+                Note.user_id == user_id,
+                Note.id == note_id,
+                Note.deleted_at.is_(None),
+            )
             .first()
         )
         if not note:
@@ -170,12 +182,17 @@ class NotesService:
     @staticmethod
     def update_pinned(
         db: Session,
+        user_id: str,
         note_id: uuid.UUID,
         pinned: bool,
     ) -> Note:
         note = (
             db.query(Note)
-            .filter(Note.id == note_id, Note.deleted_at.is_(None))
+            .filter(
+                Note.user_id == user_id,
+                Note.id == note_id,
+                Note.deleted_at.is_(None),
+            )
             .first()
         )
         if not note:
@@ -188,10 +205,14 @@ class NotesService:
         return note
 
     @staticmethod
-    def delete_note(db: Session, note_id: uuid.UUID) -> bool:
+    def delete_note(db: Session, user_id: str, note_id: uuid.UUID) -> bool:
         note = (
             db.query(Note)
-            .filter(Note.id == note_id, Note.deleted_at.is_(None))
+            .filter(
+                Note.user_id == user_id,
+                Note.id == note_id,
+                Note.deleted_at.is_(None),
+            )
             .first()
         )
         if not note:
@@ -206,13 +227,18 @@ class NotesService:
     @staticmethod
     def get_note(
         db: Session,
+        user_id: str,
         note_id: uuid.UUID,
         *,
         mark_opened: bool = True,
     ) -> Optional[Note]:
         note = (
             db.query(Note)
-            .filter(Note.id == note_id, Note.deleted_at.is_(None))
+            .filter(
+                Note.user_id == user_id,
+                Note.id == note_id,
+                Note.deleted_at.is_(None),
+            )
             .first()
         )
         if not note:
@@ -227,13 +253,18 @@ class NotesService:
     @staticmethod
     def get_note_by_title(
         db: Session,
+        user_id: str,
         title: str,
         *,
         mark_opened: bool = True,
     ) -> Optional[Note]:
         note = (
             db.query(Note)
-            .filter(Note.title == title, Note.deleted_at.is_(None))
+            .filter(
+                Note.user_id == user_id,
+                Note.title == title,
+                Note.deleted_at.is_(None),
+            )
             .first()
         )
         if not note:
@@ -248,6 +279,7 @@ class NotesService:
     @staticmethod
     def list_notes(
         db: Session,
+        user_id: str,
         *,
         folder: Optional[str] = None,
         pinned: Optional[bool] = None,
@@ -260,7 +292,10 @@ class NotesService:
         opened_before: Optional[datetime] = None,
         title_search: Optional[str] = None,
     ) -> Iterable[Note]:
-        query = db.query(Note).filter(Note.deleted_at.is_(None))
+        query = db.query(Note).filter(
+            Note.user_id == user_id,
+            Note.deleted_at.is_(None),
+        )
 
         if folder is not None:
             query = query.filter(Note.metadata_["folder"].astext == folder)

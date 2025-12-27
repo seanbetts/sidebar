@@ -23,16 +23,17 @@ except Exception:
 SCRATCHPAD_TITLE = "✏️ Scratchpad"
 
 
-def clear_scratchpad() -> dict:
+def clear_scratchpad(user_id: str) -> dict:
     if SessionLocal is None or NotesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
     try:
-        note = NotesService.get_note_by_title(db, SCRATCHPAD_TITLE, mark_opened=False)
+        note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=False)
         if not note:
             note = NotesService.create_note(
                 db,
+                user_id,
                 content=f"# {SCRATCHPAD_TITLE}\n\n",
                 title=SCRATCHPAD_TITLE,
                 folder="",
@@ -40,6 +41,7 @@ def clear_scratchpad() -> dict:
         else:
             NotesService.update_note(
                 db,
+                user_id,
                 note.id,
                 f"# {SCRATCHPAD_TITLE}\n\n",
                 title=SCRATCHPAD_TITLE,
@@ -54,6 +56,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Clear scratchpad content")
     parser.add_argument("--database", action="store_true", help="Use database mode")
     parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--user-id", help="User id for database access")
 
     args = parser.parse_args()
 
@@ -61,7 +64,10 @@ def main() -> None:
         if not args.database:
             raise ValueError("Database mode required")
 
-        result = clear_scratchpad()
+        if not args.user_id:
+            raise ValueError("user_id is required for database mode")
+
+        result = clear_scratchpad(args.user_id)
         output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)

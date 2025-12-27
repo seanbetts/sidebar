@@ -123,6 +123,7 @@ def transcribe_youtube(
     keep_audio: bool = False,
     database: bool = False,
     folder: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Download YouTube audio and transcribe it.
@@ -228,6 +229,8 @@ def transcribe_youtube(
         if database:
             if SessionLocal is None or NotesService is None:
                 raise RuntimeError("Database dependencies are unavailable")
+            if not user_id:
+                raise ValueError("user_id is required for database mode")
             transcript_content = transcript_path.read_text(encoding="utf-8")
             note_title = f"Transcript: {download_data['title']}"
             note_folder = folder or "Transcripts/YouTube"
@@ -235,6 +238,7 @@ def transcribe_youtube(
             try:
                 note = NotesService.create_note(
                     db,
+                    user_id,
                     transcript_content,
                     title=note_title,
                     folder=note_folder,
@@ -396,6 +400,10 @@ Requirements:
         help='Save transcript to the database'
     )
     parser.add_argument(
+        '--user-id',
+        help='User id for database access'
+    )
+    parser.add_argument(
         '--folder',
         help='Database folder for transcript note (default: Transcripts/YouTube)'
     )
@@ -418,6 +426,7 @@ Requirements:
             keep_audio=args.keep_audio,
             database=args.database,
             folder=args.folder,
+            user_id=args.user_id,
         )
 
         # Output results

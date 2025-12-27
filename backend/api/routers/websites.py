@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
+from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.models.website import Website
 from api.services.websites_service import WebsitesService, WebsiteNotFoundError
@@ -37,11 +38,12 @@ def website_summary(website: Website) -> dict:
 
 @router.get("")
 async def list_websites(
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
     websites = (
-        WebsitesService.list_websites(db)
+        WebsitesService.list_websites(db, user_id)
     )
     return {"items": [website_summary(site) for site in websites]}
 
@@ -50,7 +52,8 @@ async def list_websites(
 async def search_websites(
     query: str,
     limit: int = 50,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
     if not query:
@@ -59,6 +62,7 @@ async def search_websites(
     websites = (
         db.query(Website)
         .filter(
+            Website.user_id == user_id,
             Website.deleted_at.is_(None),
             or_(
                 Website.title.ilike(f"%{query}%"),
@@ -76,7 +80,8 @@ async def search_websites(
 async def save_website(
     request: Request,
     payload: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
     url = payload.get("url", "")
@@ -84,7 +89,7 @@ async def save_website(
         raise HTTPException(status_code=400, detail="url required")
 
     executor = request.app.state.executor
-    result = await executor.execute("web-save", "save_url.py", [url, "--database"])
+    result = await executor.execute("web-save", "save_url.py", [url, "--database", "--user-id", user_id])
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Failed to save website"))
 
@@ -94,10 +99,11 @@ async def save_website(
 @router.get("/{website_id}")
 async def get_website(
     website_id: str,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
-    website = WebsitesService.get_website(db, website_id, mark_opened=True)
+    website = WebsitesService.get_website(db, user_id, website_id, mark_opened=True)
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
 
@@ -113,13 +119,14 @@ async def get_website(
 async def update_pin(
     website_id: str,
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
     pinned = bool(request.get("pinned", False))
     try:
         website_uuid = parse_website_id(website_id)
-        WebsitesService.update_pinned(db, website_uuid, pinned)
+        WebsitesService.update_pinned(db, user_id, website_uuid, pinned)
     except WebsiteNotFoundError:
         raise HTTPException(status_code=404, detail="Website not found")
 
@@ -130,7 +137,8 @@ async def update_pin(
 async def update_title(
     website_id: str,
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
     title = request.get("title", "")
@@ -138,7 +146,7 @@ async def update_title(
         raise HTTPException(status_code=400, detail="title required")
     try:
         website_uuid = parse_website_id(website_id)
-        WebsitesService.update_website(db, website_uuid, title=title)
+        WebsitesService.update_website(db, user_id, website_uuid, title=title)
     except WebsiteNotFoundError:
         raise HTTPException(status_code=404, detail="Website not found")
 
@@ -149,13 +157,14 @@ async def update_title(
 async def update_archive(
     website_id: str,
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
     archived = bool(request.get("archived", False))
     try:
         website_uuid = parse_website_id(website_id)
-        WebsitesService.update_archived(db, website_uuid, archived)
+        WebsitesService.update_archived(db, user_id, website_uuid, archived)
     except WebsiteNotFoundError:
         raise HTTPException(status_code=404, detail="Website not found")
 
@@ -165,11 +174,12 @@ async def update_archive(
 @router.get("/{website_id}/download")
 async def download_website(
     website_id: str,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
     website_uuid = parse_website_id(website_id)
-    website = WebsitesService.get_website(db, website_uuid, mark_opened=False)
+    website = WebsitesService.get_website(db, user_id, website_uuid, mark_opened=False)
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
 
@@ -181,10 +191,11 @@ async def download_website(
 @router.delete("/{website_id}")
 async def delete_website(
     website_id: str,
-    user_id: str = Depends(verify_bearer_token),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
-    deleted = WebsitesService.delete_website(db, website_id)
+    deleted = WebsitesService.delete_website(db, user_id, website_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Website not found")
 

@@ -116,12 +116,14 @@ class PromptContextService:
         notes = (
             db.query(Note)
             .filter(Note.last_opened_at >= start_of_day)
+            .filter(Note.user_id == user_id)
             .order_by(Note.last_opened_at.desc())
             .all()
         )
         websites = (
             db.query(Website)
             .filter(Website.last_opened_at >= start_of_day)
+            .filter(Website.user_id == user_id)
             .order_by(Website.last_opened_at.desc())
             .all()
         )

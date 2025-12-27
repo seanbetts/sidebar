@@ -39,6 +39,7 @@ def db_session():
 def test_save_and_read_website(db_session):
     website = WebsitesService.save_website(
         db_session,
+        "test_user",
         url="https://example.com/path?query=1",
         title="Example",
         content="Content",
@@ -48,7 +49,7 @@ def test_save_and_read_website(db_session):
     assert website.url == "https://example.com/path"
     assert website.domain == "example.com"
 
-    fetched = WebsitesService.get_website(db_session, website.id, mark_opened=True)
+    fetched = WebsitesService.get_website(db_session, "test_user", website.id, mark_opened=True)
     assert fetched is not None
     assert fetched.title == "Example"
     assert fetched.last_opened_at is not None
@@ -57,14 +58,15 @@ def test_save_and_read_website(db_session):
 def test_update_pinned_and_archived(db_session):
     website = WebsitesService.save_website(
         db_session,
+        "test_user",
         url="https://example.com/a",
         title="A",
         content="Content",
         source="https://example.com/a",
     )
 
-    pinned = WebsitesService.update_pinned(db_session, website.id, True)
-    archived = WebsitesService.update_archived(db_session, website.id, True)
+    pinned = WebsitesService.update_pinned(db_session, "test_user", website.id, True)
+    archived = WebsitesService.update_archived(db_session, "test_user", website.id, True)
 
     assert (pinned.metadata_ or {}).get("pinned") is True
     assert (archived.metadata_ or {}).get("archived") is True
@@ -76,6 +78,7 @@ def test_list_websites_filters(db_session):
 
     site_a = WebsitesService.save_website(
         db_session,
+        "test_user",
         url="https://example.com/a",
         title="Alpha",
         content="Content",
@@ -84,6 +87,7 @@ def test_list_websites_filters(db_session):
     )
     site_b = WebsitesService.save_website(
         db_session,
+        "test_user",
         url="https://example.org/b",
         title="Beta",
         content="Content",
@@ -91,25 +95,26 @@ def test_list_websites_filters(db_session):
         published_at=now,
     )
 
-    WebsitesService.update_pinned(db_session, site_a.id, True)
-    WebsitesService.update_archived(db_session, site_b.id, True)
+    WebsitesService.update_pinned(db_session, "test_user", site_a.id, True)
+    WebsitesService.update_archived(db_session, "test_user", site_b.id, True)
 
-    pinned = WebsitesService.list_websites(db_session, pinned=True)
+    pinned = WebsitesService.list_websites(db_session, "test_user", pinned=True)
     assert any(site.id == site_a.id for site in pinned)
 
-    archived = WebsitesService.list_websites(db_session, archived=True)
+    archived = WebsitesService.list_websites(db_session, "test_user", archived=True)
     assert any(site.id == site_b.id for site in archived)
 
-    domain_filtered = WebsitesService.list_websites(db_session, domain="example.com")
+    domain_filtered = WebsitesService.list_websites(db_session, "test_user", domain="example.com")
     assert all(site.domain == "example.com" for site in domain_filtered)
 
     published_filtered = WebsitesService.list_websites(
         db_session,
+        "test_user",
         published_after=earlier + timedelta(hours=1),
         published_before=now + timedelta(hours=1),
     )
     assert any(site.id == site_b.id for site in published_filtered)
 
-    title_filtered = WebsitesService.list_websites(db_session, title_search="Alpha")
+    title_filtered = WebsitesService.list_websites(db_session, "test_user", title_search="Alpha")
     assert len(title_filtered) == 1
     assert title_filtered[0].id == site_a.id
