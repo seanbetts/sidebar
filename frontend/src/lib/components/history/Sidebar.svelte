@@ -1002,6 +1002,14 @@
         {/each}
       </aside>
       <div class="settings-content">
+        {#if isLoadingSettings}
+          <div class="settings-loading-mask" aria-live="polite">
+            <div class="settings-loading-card">
+              <Loader2 size={18} class="spin" />
+              <span>Loading settings...</span>
+            </div>
+          </div>
+        {/if}
         {#if activeSettingsSection === 'account'}
           <h3>Account</h3>
           <p>Basic details used to personalise prompts.</p>
@@ -2039,9 +2047,33 @@
   }
 
   .settings-content {
+    position: relative;
     height: 100%;
     overflow: auto;
     padding-right: 0.5rem;
+  }
+
+  .settings-loading-mask {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.35);
+    backdrop-filter: blur(2px);
+    display: grid;
+    place-items: center;
+    z-index: 5;
+  }
+
+  .settings-loading-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    background: var(--color-card);
+    color: var(--color-card-foreground);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    font-size: 0.85rem;
   }
 
 </style>
