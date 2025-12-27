@@ -208,13 +208,16 @@ async def get_note(
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
+    content = note.content
+    title = note.title
+    modified = note.updated_at.timestamp() if note.updated_at else None
     note.last_opened_at = datetime.now(timezone.utc)
     db.commit()
     return {
-        "content": note.content,
-        "name": f"{note.title}.md",
+        "content": content,
+        "name": f"{title}.md",
         "path": str(note.id),
-        "modified": note.updated_at.timestamp() if note.updated_at else None
+        "modified": modified
     }
 
 

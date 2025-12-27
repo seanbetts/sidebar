@@ -281,7 +281,6 @@ class WebsitesService:
         if mark_opened:
             website.last_opened_at = datetime.now(timezone.utc)
             db.commit()
-            db.refresh(website)
         return website
 
     @staticmethod
