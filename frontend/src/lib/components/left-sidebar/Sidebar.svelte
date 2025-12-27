@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder, FolderOpen, Loader2, Brain } from 'lucide-svelte';
+  import { MessageSquare, FileText, Globe, Settings, User, Monitor, Wrench, Menu, Plus, Folder, FolderOpen, Brain } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -11,10 +11,9 @@
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
-  import MemorySettings from '$lib/components/settings/MemorySettings.svelte';
+  import SettingsDialog from '$lib/components/left-sidebar/panels/SettingsDialog.svelte';
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import ConfirmDialog from '$lib/components/left-sidebar/dialogs/ConfirmDialog.svelte';
-  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -839,255 +838,49 @@
   onCancel={discardAndSwitch}
 />
 
-<AlertDialog.Root bind:open={isSettingsOpen}>
-  <AlertDialog.Content class="settings-dialog !max-w-[1200px] !w-[96vw]">
-    <AlertDialog.Header class="settings-header">
-      <AlertDialog.Title>Settings</AlertDialog.Title>
-      <AlertDialog.Description>Configure your workspace.</AlertDialog.Description>
-    </AlertDialog.Header>
-    <div class="settings-layout">
-      <aside class="settings-nav">
-        {#each settingsSections as section (section.key)}
-          <button
-            class="settings-nav-item"
-            class:active={activeSettingsSection === section.key}
-            on:click={() => (activeSettingsSection = section.key)}
-          >
-            <svelte:component this={section.icon} size={16} />
-            <span>{section.label}</span>
-          </button>
-        {/each}
-      </aside>
-      <div class="settings-content">
-        {#if isLoadingSettings}
-          <div class="settings-loading-mask" aria-live="polite">
-            <div class="settings-loading-card">
-              <Loader2 size={18} class="spin" />
-              <span>Loading settings...</span>
-            </div>
-          </div>
-        {/if}
-        {#if activeSettingsSection === 'account'}
-          <h3>Account</h3>
-          <p>Basic details used to personalise prompts.</p>
-          <div class="settings-avatar">
-            <div class="settings-avatar-preview">
-              {#if profileImageSrc}
-                <img src={profileImageSrc} alt="Profile" on:error={() => {
-                  profileImageUrl = '';
-                  profileImageError = 'Failed to load profile image.';
-                }} />
-              {:else}
-                <div class="settings-avatar-placeholder" aria-hidden="true">
-                  <User size={20} />
-                </div>
-              {/if}
-            </div>
-            <label class="settings-avatar-upload">
-              <input
-                type="file"
-                accept="image/*"
-                on:change={handleProfileImageChange}
-                disabled={isUploadingProfileImage}
-              />
-              {#if isUploadingProfileImage}
-                Uploading...
-              {:else}
-                Upload photo
-              {/if}
-            </label>
-            {#if profileImageError}
-              <div class="settings-error">{profileImageError}</div>
-            {/if}
-            {#if profileImageSrc}
-              <button
-                type="button"
-                class="settings-avatar-remove"
-                on:click={deleteProfileImage}
-                disabled={isUploadingProfileImage}
-              >
-                Remove photo
-              </button>
-            {/if}
-          </div>
-          <div class="settings-form settings-grid">
-            <label class="settings-label">
-              <span>Name</span>
-              <input class="settings-input" type="text" bind:value={name} placeholder="Name" />
-            </label>
-            <label class="settings-label">
-              <span>Job title</span>
-              <input class="settings-input" type="text" bind:value={jobTitle} placeholder="Job title" />
-            </label>
-            <label class="settings-label">
-              <span>Employer</span>
-              <input class="settings-input" type="text" bind:value={employer} placeholder="Employer" />
-            </label>
-            <label class="settings-label">
-              <span>Date of birth</span>
-              <input class="settings-input" type="date" bind:value={dateOfBirth} />
-            </label>
-            <label class="settings-label">
-              <span>Gender</span>
-              <input class="settings-input" type="text" bind:value={gender} placeholder="Gender" />
-            </label>
-            <label class="settings-label">
-              <span>Pronouns</span>
-              <select class="settings-input" bind:value={pronouns}>
-                <option value="">Select pronouns</option>
-                {#each pronounOptions as option}
-                  <option value={option}>{option}</option>
-                {/each}
-              </select>
-            </label>
-            <label class="settings-label">
-              <span>Home</span>
-              <div class="settings-autocomplete">
-                <input
-                  class="settings-input"
-                  type="text"
-                  bind:value={location}
-                  placeholder="City, region"
-                  on:input={handleLocationInput}
-                  on:focus={handleLocationInput}
-                  on:keydown={handleLocationKeydown}
-                  on:blur={handleLocationBlur}
-                />
-                {#if isLoadingLocations}
-                  <div class="settings-suggestions">
-                    <div class="settings-suggestion muted">Loading...</div>
-                  </div>
-                {:else if locationLookupError}
-                  <div class="settings-suggestions">
-                    <div class="settings-suggestion muted">{locationLookupError}</div>
-                  </div>
-                {:else if locationSuggestions.length}
-                  <div class="settings-suggestions">
-                    {#each locationSuggestions as suggestion, index}
-                      <button
-                        class="settings-suggestion"
-                        class:active={index === activeLocationIndex}
-                        type="button"
-                        on:mouseenter={() => (activeLocationIndex = index)}
-                        on:click={() => selectLocation(suggestion.description)}
-                      >
-                        {suggestion.description}
-                      </button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            </label>
-          </div>
-          <div class="settings-actions">
-            {#if isLoadingSettings}
-              <div class="settings-meta">
-                <Loader2 size={16} class="spin" />
-                Loading...
-              </div>
-            {/if}
-            {#if settingsError}
-              <div class="settings-error">{settingsError}</div>
-            {/if}
-          </div>
-        {:else if activeSettingsSection === 'system'}
-          <h3>System</h3>
-          <p>Customize the prompts that guide your assistant.</p>
-          <div class="settings-form">
-            <label class="settings-label">
-              <span>Communication style</span>
-              <textarea
-                class="settings-textarea"
-                bind:value={communicationStyle}
-                placeholder="Style, tone, and formatting rules."
-                rows="8"
-              ></textarea>
-            </label>
-            <label class="settings-label">
-              <span>Working relationship</span>
-              <textarea
-                class="settings-textarea"
-                bind:value={workingRelationship}
-                placeholder="How the assistant should challenge and collaborate with you."
-                rows="8"
-              ></textarea>
-            </label>
-            <div class="settings-actions">
-              {#if isLoadingSettings}
-                <div class="settings-meta">
-                  <Loader2 size={16} class="spin" />
-                  Loading...
-                </div>
-              {/if}
-            </div>
-            {#if settingsError}
-              <div class="settings-error">{settingsError}</div>
-            {/if}
-          </div>
-        {:else if activeSettingsSection === 'memory'}
-          <MemorySettings />
-        {:else}
-          <h3>Skills</h3>
-          <div class="skills-header">
-            <p>Manage installed skills and permissions here.</p>
-            <label class="skill-toggle">
-              <input
-                type="checkbox"
-                checked={allSkillsEnabled}
-                on:change={(event) =>
-                  toggleAllSkills((event.currentTarget as HTMLInputElement).checked)
-                }
-              />
-              <span class="skill-switch" aria-hidden="true"></span>
-              <span class="skill-toggle-label">Enable all</span>
-            </label>
-          </div>
-          <div class="skills-panel">
-            {#if isLoadingSkills}
-              <div class="settings-meta">
-                <Loader2 size={16} class="spin" />
-                Loading skills...
-              </div>
-            {:else if skillsError}
-              <div class="settings-error">{skillsError}</div>
-            {:else if skills.length === 0}
-              <div class="settings-meta">No skills found.</div>
-            {:else}
-              {#each groupSkills(skills) as [category, categorySkills]}
-                <div class="skills-category">
-                  <div class="skills-category-title">{category}</div>
-                  <div class="skills-grid">
-                    {#each categorySkills as skill}
-                      <div class="skill-row">
-                        <div class="skill-row-header">
-                          <div class="skill-name">{skill.name}</div>
-                          <label class="skill-toggle">
-                            <input
-                              type="checkbox"
-                              checked={enabledSkills.includes(skill.id)}
-                              on:change={(event) =>
-                                toggleSkill(skill.id, (event.currentTarget as HTMLInputElement).checked)
-                              }
-                            />
-                            <span class="skill-switch" aria-hidden="true"></span>
-                          </label>
-                        </div>
-                        <div class="skill-description">{skill.description}</div>
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-              {/each}
-            {/if}
-          </div>
-        {/if}
-      </div>
-    </div>
-    <AlertDialog.Footer>
-      <AlertDialog.Action onclick={() => (isSettingsOpen = false)}>Close</AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<SettingsDialog
+  bind:open={isSettingsOpen}
+  {isLoadingSettings}
+  {settingsSections}
+  {activeSettingsSection}
+  setActiveSection={(section) => (activeSettingsSection = section)}
+  {profileImageSrc}
+  {profileImageError}
+  {isUploadingProfileImage}
+  {handleProfileImageChange}
+  {deleteProfileImage}
+  handleProfileImageError={() => {
+    profileImageUrl = '';
+    profileImageError = 'Failed to load profile image.';
+  }}
+  bind:name
+  bind:jobTitle
+  bind:employer
+  bind:dateOfBirth
+  bind:gender
+  bind:pronouns
+  {pronounOptions}
+  bind:location
+  {isLoadingLocations}
+  {locationLookupError}
+  {locationSuggestions}
+  {activeLocationIndex}
+  {handleLocationInput}
+  {handleLocationKeydown}
+  {handleLocationBlur}
+  {selectLocation}
+  {settingsError}
+  bind:communicationStyle
+  bind:workingRelationship
+  {isLoadingSkills}
+  {skillsError}
+  {skills}
+  {groupSkills}
+  {enabledSkills}
+  {allSkillsEnabled}
+  {toggleAllSkills}
+  {toggleSkill}
+/>
 
 <div class="sidebar-shell" class:collapsed={isCollapsed}>
   <div class="sidebar-rail">
@@ -1418,252 +1211,6 @@
   }
 
 
-  .settings-layout {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 1.5rem;
-    min-height: 420px;
-    padding: 0.75rem 0 0;
-  }
-
-  .settings-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    border-right: 1px solid var(--color-border);
-    padding-right: 0.75rem;
-  }
-
-  .settings-nav-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.6rem;
-    border-radius: 0.5rem;
-    background: transparent;
-    border: none;
-    color: var(--color-muted-foreground);
-    font-size: 0.85rem;
-    cursor: pointer;
-    text-align: left;
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-
-  .settings-nav-item:hover {
-    background-color: var(--color-sidebar-accent);
-    color: var(--color-foreground);
-  }
-
-  .settings-nav-item.active {
-    background-color: var(--color-sidebar-accent);
-    color: var(--color-foreground);
-    font-weight: 600;
-  }
-
-  .settings-content h3 {
-    margin: 0 0 0.35rem 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-foreground);
-  }
-
-  .settings-content p {
-    margin: 0;
-    color: var(--color-muted-foreground);
-    font-size: 0.85rem;
-    line-height: 1.5;
-  }
-
-  .settings-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-top: 1.25rem;
-  }
-
-  .settings-label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    color: var(--color-foreground);
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
-
-  .settings-textarea {
-    width: 100%;
-    min-height: 120px;
-    padding: 0.65rem 0.75rem;
-    border-radius: 0.6rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-foreground);
-    font-size: 0.85rem;
-    line-height: 1.5;
-    resize: vertical;
-  }
-
-  .settings-input {
-    width: 100%;
-    padding: 0.55rem 0.75rem;
-    border-radius: 0.6rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-foreground);
-    font-size: 0.85rem;
-    line-height: 1.4;
-  }
-
-  .settings-textarea:focus {
-    outline: 2px solid rgba(94, 140, 255, 0.35);
-    border-color: rgba(94, 140, 255, 0.45);
-  }
-
-  .settings-input:focus {
-    outline: 2px solid rgba(94, 140, 255, 0.35);
-    border-color: rgba(94, 140, 255, 0.45);
-  }
-
-  .settings-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .settings-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.45rem 0.9rem;
-    border-radius: 0.55rem;
-    border: none;
-    background: var(--color-primary);
-    color: var(--color-primary-foreground);
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s ease;
-  }
-
-  .settings-button.secondary {
-    background: var(--color-secondary);
-    border: 1px solid var(--color-border);
-    color: var(--color-secondary-foreground);
-  }
-
-  .settings-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .settings-meta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--color-muted-foreground);
-    font-size: 0.8rem;
-  }
-
-  .settings-success {
-    color: #2f8a4d;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-
-  .settings-error {
-    color: #c0392b;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-
-  .settings-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem 1.25rem;
-  }
-
-  .settings-grid .settings-actions,
-  .settings-grid .settings-error,
-  .settings-grid .settings-success,
-  .settings-grid .settings-meta {
-    grid-column: 1 / -1;
-  }
-
-  @media (max-width: 900px) {
-    .settings-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .settings-avatar {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin: 1rem 0 1.5rem;
-  }
-
-  .settings-avatar-preview {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background: var(--color-sidebar-accent);
-    color: var(--color-foreground);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    overflow: hidden;
-  }
-
-  .settings-avatar-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .settings-avatar-placeholder {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(148, 163, 184, 0.18);
-    color: rgba(71, 85, 105, 0.9);
-  }
-
-  .settings-avatar-upload {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.85rem;
-    border-radius: 0.55rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-secondary);
-    color: var(--color-secondary-foreground);
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .settings-avatar-upload input {
-    display: none;
-  }
-
-  .settings-avatar-remove {
-    border: 0;
-    background: transparent;
-    color: var(--color-muted-foreground);
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .settings-avatar-remove:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
 
   .rail-btn-avatar {
     padding: 0.35rem;
@@ -1681,256 +1228,8 @@
     object-fit: contain;
   }
 
-  :global(.dark) .settings-avatar-placeholder {
-    background: rgba(148, 163, 184, 0.26);
-    color: rgba(226, 232, 240, 0.9);
-  }
-
   :global(.dark) .rail-avatar-logo {
     filter: invert(1);
-  }
-
-  .settings-autocomplete {
-    position: relative;
-  }
-
-  .skills-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-    margin-top: 1rem;
-    max-height: 56vh;
-    overflow: auto;
-    padding-right: 0.25rem;
-  }
-
-  .skills-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .skills-header p {
-    margin: 0;
-  }
-
-  .skill-toggle-label {
-    font-size: 0.85rem;
-    color: var(--color-muted-foreground);
-  }
-
-  .skills-category {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .skills-category-title {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-muted-foreground);
-  }
-
-  .skills-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.85rem;
-  }
-
-  .skill-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.9rem 1rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
-    background: var(--color-card);
-  }
-
-  .skill-row-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .skill-name {
-    font-weight: 600;
-    color: var(--color-foreground);
-  }
-
-  .skill-description {
-    font-size: 0.85rem;
-    color: var(--color-muted-foreground);
-    line-height: 1.4;
-  }
-
-  @media (max-width: 1100px) {
-    .skills-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 700px) {
-    .skills-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .skill-toggle {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
-    gap: 0.5rem;
-  }
-
-  .skill-toggle input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .skill-switch {
-    width: 42px;
-    height: 24px;
-    border-radius: 999px;
-    background: var(--color-border);
-    position: relative;
-    transition: background 0.2s ease;
-  }
-
-  .skill-switch::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--color-background);
-    transition: transform 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  }
-
-  .skill-toggle input:checked + .skill-switch {
-    background: var(--color-foreground);
-  }
-
-  .skill-toggle input:checked + .skill-switch::after {
-    transform: translateX(18px);
-  }
-
-  .settings-suggestions {
-    position: absolute;
-    z-index: 40;
-    top: calc(100% + 6px);
-    left: 0;
-    right: 0;
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: 0.6rem;
-    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
-    max-height: 360px;
-    overflow-y: auto;
-    padding: 0.25rem 0;
-  }
-
-  .settings-suggestion {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 0.5rem 0.75rem;
-    background: transparent;
-    border: none;
-    color: var(--color-card-foreground);
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-
-  .settings-suggestion:hover {
-    background: var(--color-sidebar-accent);
-  }
-
-  .settings-suggestion.active {
-    background: var(--color-sidebar-accent);
-    font-weight: 600;
-  }
-
-  .settings-suggestion.muted {
-    color: var(--color-muted-foreground);
-    cursor: default;
-  }
-
-  :global(.spin) {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .settings-dialog {
-    max-width: 1200px;
-    width: min(96vw, 1200px);
-    height: min(85vh, 680px);
-    max-height: min(85vh, 680px);
-    min-height: min(85vh, 680px);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .settings-header {
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: 0.75rem;
-  }
-
-  .settings-layout {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .settings-nav {
-    overflow-y: auto;
-  }
-
-  .settings-content {
-    position: relative;
-    height: 100%;
-    overflow: auto;
-    padding-right: 0.5rem;
-  }
-
-  .settings-loading-mask {
-    position: absolute;
-    inset: 0;
-    background: rgba(10, 10, 10, 0.35);
-    backdrop-filter: blur(2px);
-    display: grid;
-    place-items: center;
-    z-index: 5;
-  }
-
-  .settings-loading-card {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.65rem 1rem;
-    border-radius: 999px;
-    background: var(--color-card);
-    color: var(--color-card-foreground);
-    border: 1px solid var(--color-border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    font-size: 0.85rem;
   }
 
 </style>
