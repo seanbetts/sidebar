@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     skill_max_output_bytes: int = 10 * 1024 * 1024  # 10MB
     skill_max_concurrent: int = 5
 
+    # Storage
+    storage_backend: str = "local"  # local or r2
+    r2_endpoint: str = ""
+    r2_bucket: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+
     # Future JWT config (Phase 2)
     # jwt_secret: str = None
     # jwt_algorithm: str = "HS256"

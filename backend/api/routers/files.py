@@ -1,64 +1,130 @@
 """Files router for browsing workspace files."""
-import os
+from __future__ import annotations
+
+import mimetypes
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict, Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
+
 from api.auth import verify_bearer_token
+from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
-from typing import Dict, Any
+from api.services.files_service import FilesService
+from api.services.storage.service import get_storage_backend
 
 router = APIRouter(prefix="/files", tags=["files"])
 
-WORKSPACE_BASE = os.getenv("WORKSPACE_BASE", "/workspace")
+storage_backend = get_storage_backend()
 
 
-def build_file_tree(path: Path, base_path: Path = None) -> Dict[str, Any]:
-    """Recursively build a file tree structure."""
-    if base_path is None:
-        base_path = path
+def _normalize_base_path(base_path: str) -> str:
+    return (base_path or "").strip("/")
 
-    if not path.exists():
-        return {
-            "name": path.name or base_path.name,
-            "path": str(path),
-            "type": "directory",
-            "children": []
-        }
 
-    name = path.name or base_path.name
-    relative_path = str(path.relative_to(base_path)) if path != base_path else "/"
+def _full_path(base_path: str, relative_path: str) -> str:
+    base = _normalize_base_path(base_path)
+    relative = (relative_path or "").strip("/")
+    if not base:
+        return relative
+    return f"{base}/{relative}" if relative else base
 
-    if path.is_file():
-        return {
-            "name": name,
-            "path": relative_path,
-            "type": "file",
-            "size": path.stat().st_size,
-            "modified": path.stat().st_mtime
-        }
 
-    # Directory
-    children = []
-    try:
-        for item in sorted(path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
-            # Skip hidden files and common excludes
-            if item.name.startswith('.'):
-                continue
-            if item.name in ['__pycache__', 'node_modules', '.git', 'profile-images']:
-                continue
+def _relative_path(base_path: str, full_path: str) -> str:
+    base = _normalize_base_path(base_path)
+    path = (full_path or "").strip("/")
+    if not base:
+        return path
+    if path == base:
+        return ""
+    if path.startswith(f"{base}/"):
+        return path[len(base) + 1 :]
+    return ""
 
-            children.append(build_file_tree(item, base_path))
-    except PermissionError:
-        pass
 
-    return {
-        "name": name,
-        "path": relative_path,
+def _bucket_key(user_id: str, full_path: str) -> str:
+    return f"{user_id}/{full_path.strip('/')}"
+
+
+def _build_tree_from_records(records: list, base_path: str) -> Dict[str, Any]:
+    root = {
+        "name": base_path or "files",
+        "path": "/",
         "type": "directory",
-        "children": children,
-        "expanded": False
+        "children": [],
+        "expanded": False,
     }
+    index: Dict[str, Dict[str, Any]] = {"": root}
+
+    for record in records:
+        if record.deleted_at is not None:
+            continue
+        rel_path = _relative_path(base_path, record.path)
+        if rel_path == "" and record.category != "folder":
+            continue
+
+        parts = [part for part in rel_path.split("/") if part]
+        if record.category == "folder" and not parts:
+            continue
+
+        current = ""
+        parent_node = root
+        for part in parts[:-1]:
+            current = f"{current}/{part}" if current else part
+            if current not in index:
+                node = {
+                    "name": part,
+                    "path": current,
+                    "type": "directory",
+                    "children": [],
+                    "expanded": False,
+                }
+                index[current] = node
+                parent_node["children"].append(node)
+            parent_node = index[current]
+
+        if record.category == "folder":
+            folder_path = "/".join(parts)
+            if folder_path and folder_path not in index:
+                node = {
+                    "name": parts[-1],
+                    "path": folder_path,
+                    "type": "directory",
+                    "children": [],
+                    "expanded": False,
+                }
+                index[folder_path] = node
+                parent_node["children"].append(node)
+            continue
+
+        if not parts:
+            continue
+
+        filename = parts[-1]
+        parent = parent_node
+        parent["children"].append(
+            {
+                "name": filename,
+                "path": "/".join(parts),
+                "type": "file",
+                "size": record.size,
+                "modified": record.updated_at.timestamp() if record.updated_at else None,
+            }
+        )
+
+    def sort_children(node: Dict[str, Any]) -> None:
+        node["children"].sort(
+            key=lambda item: (item.get("type") != "directory", item.get("name", "").lower())
+        )
+        for child in node["children"]:
+            if child.get("type") == "directory":
+                sort_children(child)
+
+    sort_children(root)
+    return root
 
 
 
@@ -66,8 +132,9 @@ def build_file_tree(path: Path, base_path: Path = None) -> Dict[str, Any]:
 @router.get("/tree")
 async def get_file_tree(
     basePath: str = "documents",
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     """
     Get the file tree for a subdirectory within workspace.
@@ -80,16 +147,9 @@ async def get_file_tree(
             "children": [...]  # Direct children of the base_path folder
         }
     """
-    # Construct the full path
-    workspace_path = Path(WORKSPACE_BASE) / basePath
-
-    # Create directory if it doesn't exist
-    if not workspace_path.exists():
-        workspace_path.mkdir(parents=True, exist_ok=True)
-
-    tree = build_file_tree(workspace_path)
-
-    # Return the children directly, not the root folder itself
+    base_path = _normalize_base_path(basePath)
+    records = FilesService.list_by_prefix(db, user_id, base_path)
+    tree = _build_tree_from_records(records, base_path)
     return {"children": tree.get("children", [])}
 
 
@@ -98,64 +158,33 @@ async def search_files(
     query: str,
     basePath: str = "documents",
     limit: int = 50,
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     if not query:
         raise HTTPException(status_code=400, detail="query required")
-
-    workspace_path = Path(WORKSPACE_BASE) / basePath
-    if not workspace_path.exists():
-        return {"items": []}
-
-    query_lower = query.lower()
-    results = []
-
-    for root, dirs, files in os.walk(workspace_path):
-        dirs[:] = [
-            d for d in dirs
-            if not d.startswith('.') and d not in ['__pycache__', 'node_modules', '.git', 'profile-images']
-        ]
-        files = [f for f in files if not f.startswith('.')]
-
-        for filename in files:
-            full_path = Path(root) / filename
-            rel_path = str(full_path.relative_to(workspace_path))
-            match = query_lower in filename.lower()
-
-            if not match:
-                try:
-                    if full_path.stat().st_size <= 1_000_000:
-                        content = full_path.read_text(encoding="utf-8", errors="ignore")
-                        if query_lower in content.lower():
-                            match = True
-                except Exception:
-                    match = False
-
-            if match:
-                results.append({
-                    "name": filename,
-                    "path": rel_path,
-                    "type": "file",
-                    "modified": full_path.stat().st_mtime,
-                    "size": full_path.stat().st_size
-                })
-
-            if len(results) >= limit:
-                break
-
-        if len(results) >= limit:
-            break
-
-    results.sort(key=lambda item: item.get("modified") or 0, reverse=True)
-    return {"items": results[:limit]}
+    base_path = _normalize_base_path(basePath)
+    records = FilesService.search_by_name(db, user_id, query, base_path, limit=limit)
+    items = []
+    for record in records:
+        rel_path = _relative_path(base_path, record.path)
+        items.append({
+            "name": Path(rel_path).name,
+            "path": rel_path,
+            "type": "file",
+            "modified": record.updated_at.timestamp() if record.updated_at else None,
+            "size": record.size,
+        })
+    return {"items": items}
 
 
 @router.post("/folder")
 async def create_folder(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     """
     Create a folder within workspace.
@@ -172,23 +201,27 @@ async def create_folder(
     if not path:
         raise HTTPException(status_code=400, detail="path required")
 
-    workspace_path = Path(WORKSPACE_BASE) / base_path
-    full_path = workspace_path / path
-
-    try:
-        full_path.relative_to(workspace_path)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    full_path.mkdir(parents=True, exist_ok=True)
+    full_path = _full_path(base_path, path)
+    bucket_key = _bucket_key(user_id, f"{full_path}/")
+    FilesService.upsert_file(
+        db,
+        user_id,
+        full_path,
+        bucket_key=bucket_key,
+        size=0,
+        content_type=None,
+        etag=None,
+        category="folder",
+    )
     return {"success": True}
 
 
 @router.post("/rename")
 async def rename_file_or_folder(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     """
     Rename a file or folder within workspace.
@@ -207,30 +240,55 @@ async def rename_file_or_folder(
     if not old_path or not new_name:
         raise HTTPException(status_code=400, detail="oldPath and newName required")
 
-    workspace_path = Path(WORKSPACE_BASE) / base_path
-    old_full_path = workspace_path / old_path
+    old_full_path = _full_path(base_path, old_path)
+    parent = str(Path(old_path).parent) if Path(old_path).parent != Path(".") else ""
+    new_rel = f"{parent}/{new_name}".strip("/")
+    new_full_path = _full_path(base_path, new_rel)
 
-    if not old_full_path.exists():
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    # Construct new path (same parent directory, new name)
-    new_full_path = old_full_path.parent / new_name
-
-    if new_full_path.exists():
+    if FilesService.get_by_path(db, user_id, new_full_path):
         raise HTTPException(status_code=400, detail="An item with that name already exists")
 
-    try:
-        old_full_path.rename(new_full_path)
-        return {"success": True, "newPath": str(new_full_path.relative_to(workspace_path))}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to rename: {str(e)}")
+    record = FilesService.get_by_path(db, user_id, old_full_path)
+    if record:
+        is_folder = record.category == "folder"
+    else:
+        prefix_records = FilesService.list_by_prefix(db, user_id, f"{old_full_path}/")
+        if not prefix_records:
+            raise HTTPException(status_code=404, detail="Item not found")
+        is_folder = True
+
+    if not is_folder:
+        old_key = record.bucket_key
+        new_key = _bucket_key(user_id, new_full_path)
+        storage_backend.move_object(old_key, new_key)
+        record.path = new_full_path
+        record.bucket_key = new_key
+        record.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        return {"success": True, "newPath": new_rel}
+
+    records = FilesService.list_by_prefix(db, user_id, f"{old_full_path}/")
+    for item in records:
+        if item.category == "folder":
+            item.path = item.path.replace(old_full_path, new_full_path, 1)
+            item.bucket_key = _bucket_key(user_id, f"{item.path}/")
+            item.updated_at = datetime.now(timezone.utc)
+            continue
+        old_key = item.bucket_key
+        item.path = item.path.replace(old_full_path, new_full_path, 1)
+        item.bucket_key = _bucket_key(user_id, item.path)
+        item.updated_at = datetime.now(timezone.utc)
+        storage_backend.move_object(old_key, item.bucket_key)
+    db.commit()
+    return {"success": True, "newPath": new_rel}
 
 
 @router.post("/move")
 async def move_file_or_folder(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     """
     Move a file or folder within workspace.
@@ -249,36 +307,55 @@ async def move_file_or_folder(
     if not path:
         raise HTTPException(status_code=400, detail="path required")
 
-    workspace_path = Path(WORKSPACE_BASE) / base_path
-    full_path = workspace_path / path
-    dest_path = (workspace_path / destination).resolve()
+    full_path = _full_path(base_path, path)
+    destination_path = _full_path(base_path, destination)
+    filename = Path(path).name
+    new_full_path = _full_path(base_path, f"{destination}/{filename}")
 
-    try:
-        full_path.relative_to(workspace_path)
-        dest_path.relative_to(workspace_path)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    if not full_path.exists():
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    target_path = dest_path / full_path.name
-    if target_path.exists():
+    if FilesService.get_by_path(db, user_id, new_full_path):
         raise HTTPException(status_code=400, detail="An item with that name already exists")
 
-    try:
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        full_path.rename(target_path)
-        return {"success": True, "newPath": str(target_path.relative_to(workspace_path))}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to move: {str(e)}")
+    record = FilesService.get_by_path(db, user_id, full_path)
+    if record:
+        is_folder = record.category == "folder"
+    else:
+        prefix_records = FilesService.list_by_prefix(db, user_id, f"{full_path}/")
+        if not prefix_records:
+            raise HTTPException(status_code=404, detail="Item not found")
+        is_folder = True
+
+    if not is_folder:
+        old_key = record.bucket_key
+        new_key = _bucket_key(user_id, new_full_path)
+        storage_backend.move_object(old_key, new_key)
+        record.path = new_full_path
+        record.bucket_key = new_key
+        record.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        return {"success": True, "newPath": _relative_path(base_path, new_full_path)}
+
+    records = FilesService.list_by_prefix(db, user_id, f"{full_path}/")
+    for item in records:
+        if item.category == "folder":
+            item.path = item.path.replace(full_path, new_full_path, 1)
+            item.bucket_key = _bucket_key(user_id, f\"{item.path}/\")
+            item.updated_at = datetime.now(timezone.utc)
+            continue
+        old_key = item.bucket_key
+        item.path = item.path.replace(full_path, new_full_path, 1)
+        item.bucket_key = _bucket_key(user_id, item.path)
+        item.updated_at = datetime.now(timezone.utc)
+        storage_backend.move_object(old_key, item.bucket_key)
+    db.commit()
+    return {"success": True, "newPath": _relative_path(base_path, new_full_path)}
 
 
 @router.post("/delete")
 async def delete_file_or_folder(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     """
     Delete a file or folder within workspace.
@@ -289,71 +366,51 @@ async def delete_file_or_folder(
             "path": "relative/path/to/item"
         }
     """
-    import shutil
-
     base_path = request.get("basePath", "documents")
     path = request.get("path", "")
 
     if not path or path == "/":
         raise HTTPException(status_code=400, detail="Cannot delete root directory")
 
-    workspace_path = Path(WORKSPACE_BASE) / base_path
-    full_path = workspace_path / path
+    full_path = _full_path(base_path, path)
+    record = FilesService.get_by_path(db, user_id, full_path)
+    if record:
+        storage_backend.delete_object(record.bucket_key)
+        FilesService.mark_deleted(db, user_id, full_path)
+        return {"success": True}
 
-    if not full_path.exists():
+    records = FilesService.list_by_prefix(db, user_id, f"{full_path}/")
+    if not records:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    # Ensure we're not deleting outside workspace
-    try:
-        full_path.relative_to(workspace_path)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    try:
-        if full_path.is_dir():
-            shutil.rmtree(full_path)
-        else:
-            full_path.unlink()
-        return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
+    for item in records:
+        if item.category != "folder":
+            storage_backend.delete_object(item.bucket_key)
+        FilesService.mark_deleted(db, user_id, item.path)
+    return {"success": True}
 
 
 @router.get("/download")
 async def download_file(
     basePath: str = "documents",
     path: str = "",
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     if not path:
         raise HTTPException(status_code=400, detail="path parameter required")
-
-    workspace_path = Path(WORKSPACE_BASE) / basePath
-    full_path = workspace_path / path
-
-    try:
-        full_path.relative_to(workspace_path)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    if not full_path.exists() or not full_path.is_file():
+    full_path = _full_path(basePath, path)
+    record = FilesService.get_by_path(db, user_id, full_path)
+    if not record or record.category == "folder":
         raise HTTPException(status_code=404, detail="File not found")
 
-    try:
-        content = full_path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        content = full_path.read_bytes()
-        return Response(
-            content,
-            media_type="application/octet-stream",
-            headers={"Content-Disposition": f'attachment; filename="{full_path.name}"'}
-        )
-
+    content = storage_backend.get_object(record.bucket_key)
+    content_type = record.content_type or mimetypes.guess_type(path)[0] or "application/octet-stream"
     return Response(
         content,
-        media_type="text/plain",
-        headers={"Content-Disposition": f'attachment; filename="{full_path.name}"'}
+        media_type=content_type,
+        headers={"Content-Disposition": f'attachment; filename="{Path(path).name}"'},
     )
 
 
@@ -361,8 +418,9 @@ async def download_file(
 async def get_file_content(
     basePath: str = "documents",
     path: str = "",
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     """
     Get the content of a file.
@@ -382,38 +440,38 @@ async def get_file_content(
     if not path:
         raise HTTPException(status_code=400, detail="path parameter required")
 
-    workspace_path = Path(WORKSPACE_BASE) / basePath
-    full_path = workspace_path / path
-
-    # Security: Ensure path is within workspace
-    try:
-        full_path.relative_to(workspace_path)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    if not full_path.exists():
+    full_path = _full_path(basePath, path)
+    record = FilesService.get_by_path(db, user_id, full_path)
+    if not record or record.category == "folder":
         raise HTTPException(status_code=404, detail="File not found")
 
-    if not full_path.is_file():
-        raise HTTPException(status_code=400, detail="Path is not a file")
+    content = storage_backend.get_object(record.bucket_key)
+    if record.content_type and record.content_type.startswith("text/"):
+        return {
+            "content": content.decode("utf-8"),
+            "name": Path(path).name,
+            "path": path,
+            "modified": record.updated_at.timestamp() if record.updated_at else None,
+        }
 
     try:
-        content = full_path.read_text(encoding='utf-8')
+        decoded = content.decode("utf-8")
         return {
-            "content": content,
-            "name": full_path.name,
-            "path": str(full_path.relative_to(workspace_path)),
-            "modified": full_path.stat().st_mtime
+            "content": decoded,
+            "name": Path(path).name,
+            "path": path,
+            "modified": record.updated_at.timestamp() if record.updated_at else None,
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="File is not a text file")
 
 
 @router.post("/content")
 async def update_file_content(
     request: dict,
-    user_id: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
 ):
     """
     Update the content of a file.
@@ -438,23 +496,21 @@ async def update_file_content(
     if not path:
         raise HTTPException(status_code=400, detail="path required")
 
-    workspace_path = Path(WORKSPACE_BASE) / base_path
-    full_path = workspace_path / path
-
-    # Security: Ensure path is within workspace
-    try:
-        full_path.relative_to(workspace_path)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    # Create parent directories if needed
-    full_path.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        full_path.write_text(content, encoding='utf-8')
-        return {
-            "success": True,
-            "modified": full_path.stat().st_mtime
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
+    full_path = _full_path(base_path, path)
+    bucket_key = _bucket_key(user_id, full_path)
+    data = content.encode("utf-8")
+    storage_backend.put_object(bucket_key, data, content_type="text/plain")
+    record = FilesService.upsert_file(
+        db,
+        user_id,
+        full_path,
+        bucket_key=bucket_key,
+        size=len(data),
+        content_type="text/plain",
+        etag=None,
+        category="file",
+    )
+    return {
+        "success": True,
+        "modified": record.updated_at.timestamp() if record.updated_at else None,
+    }

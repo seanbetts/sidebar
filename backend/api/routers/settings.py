@@ -2,9 +2,8 @@
 from datetime import date
 from typing import Optional
 
-from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -13,10 +12,12 @@ from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.services.user_settings_service import UserSettingsService
 from api.services.skill_catalog_service import SkillCatalogService
+from api.services.storage.service import get_storage_backend
 from api.config import settings
 
 
 router = APIRouter(prefix="/settings", tags=["settings"])
+storage_backend = get_storage_backend()
 
 
 class SettingsResponse(BaseModel):
@@ -273,16 +274,13 @@ async def upload_profile_image(
     elif filename and "." in filename:
         extension = filename.rsplit(".", 1)[-1].lower()
 
-    base_dir = Path("/workspace/profile-images")
-    base_dir.mkdir(parents=True, exist_ok=True)
-    file_path = base_dir / f"{user_id}.{extension}"
-
-    file_path.write_bytes(contents)
+    object_key = f"{user_id}/profile-images/{user_id}.{extension}"
+    storage_backend.put_object(object_key, contents, content_type=content_type)
 
     settings = UserSettingsService.upsert_settings(
         db,
         user_id,
-        profile_image_path=str(file_path),
+        profile_image_path=object_key,
     )
     return {"profile_image_url": _profile_image_url(settings)}
 
@@ -297,11 +295,8 @@ async def get_profile_image(
     if not settings or not settings.profile_image_path:
         raise HTTPException(status_code=404, detail="Profile image not found")
 
-    file_path = Path(settings.profile_image_path)
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Profile image not found")
-
-    return FileResponse(file_path)
+    content = storage_backend.get_object(settings.profile_image_path)
+    return Response(content, media_type="application/octet-stream")
 
 
 @router.delete("/profile-image")
@@ -314,12 +309,10 @@ async def delete_profile_image(
     if not settings or not settings.profile_image_path:
         raise HTTPException(status_code=404, detail="Profile image not found")
 
-    file_path = Path(settings.profile_image_path)
-    if file_path.exists():
-        try:
-            file_path.unlink()
-        except OSError:
-            raise HTTPException(status_code=500, detail="Failed to delete profile image")
+    try:
+        storage_backend.delete_object(settings.profile_image_path)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to delete profile image")
 
     UserSettingsService.upsert_settings(
         db,

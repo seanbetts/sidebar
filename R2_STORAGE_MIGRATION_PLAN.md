@@ -47,6 +47,7 @@
 - Create scoped API token with read/write for the bucket.
 - Capture S3-compatible endpoint, access key, secret key, and bucket name.
 - Add env vars (example names):
+  - `STORAGE_BACKEND` (`r2` for cutover)
   - `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`
 
 ## Migration Steps (Suggested Order)
@@ -69,6 +70,7 @@
 5) **Data Migration**
    - Sync `/workspace` contents into R2 using a one-off script.
    - Populate metadata table with paths, sizes, etags, and timestamps.
+   - Script: `python backend/scripts/sync_workspace_to_r2.py --workspace /workspace --user-id <uuid>`
 6) **Cutover**
    - Set storage backend to R2 in config.
    - Keep local filesystem backend available for tests/dev fallback.

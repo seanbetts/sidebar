@@ -137,6 +137,7 @@ class SkillExecutor:
                     "SUPABASE_DB_PORT",
                     "SUPABASE_DB_USER",
                     "SUPABASE_SSLMODE",
+                    "SUPABASE_APP_PSWD",
                     "OPENAI_API_KEY",
                     "GOOGLE_API_KEY",
                     "JINA_API_KEY",
@@ -144,6 +145,11 @@ class SkillExecutor:
                     "JINA_CA_BUNDLE",
                     "REQUESTS_CA_BUNDLE",
                     "SSL_CERT_FILE",
+                    "R2_ENDPOINT",
+                    "R2_BUCKET",
+                    "R2_ACCESS_KEY_ID",
+                    "R2_SECRET_ACCESS_KEY",
+                    "STORAGE_BACKEND",
                 ):
                     if key in os.environ:
                         env[key] = os.environ[key]
