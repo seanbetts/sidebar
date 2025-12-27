@@ -60,6 +60,16 @@
   - Pooler (for app runtime `DATABASE_URL`).
 - Ensure SSL is required (`sslmode=require`).
 
+## Runtime Connection Config (no full URLs in Doppler)
+- Store only `SUPABASE_POSTGRES_PSWD` in Doppler.
+- Provide the rest via environment variables or local `.env`:
+  - `SUPABASE_PROJECT_ID` (e.g. `your-supabase-project-ref`)
+  - `SUPABASE_USE_POOLER` (`true` for runtime, `false` for local direct)
+  - `SUPABASE_POOLER_HOST` (required when pooler is on)
+  - Optional: `SUPABASE_POOLER_USER`, `SUPABASE_DB_USER`, `SUPABASE_DB_NAME`, `SUPABASE_DB_PORT`
+  - Optional: `SUPABASE_SSLMODE` (defaults to `require`)
+- For migrations, set `DATABASE_URL_DIRECT` to the direct connection string in your shell.
+
 ## Migration Steps (Suggested Order)
 1) Create and run Alembic migration locally for schema changes.
 2) Apply migration to Supabase using direct connection string.

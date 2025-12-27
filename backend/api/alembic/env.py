@@ -1,4 +1,5 @@
 """Alembic environment configuration."""
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -26,8 +27,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Set sqlalchemy.url from settings (prefer direct URL if provided)
+config.set_main_option(
+    "sqlalchemy.url",
+    os.getenv("DATABASE_URL_DIRECT", settings.database_url),
+)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

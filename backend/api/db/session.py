@@ -1,8 +1,11 @@
 """Database session management."""
-from sqlalchemy import create_engine
+from fastapi import Depends
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
-from api.config import settings
 from typing import Generator
+
+from api.config import settings
+from api.db.dependencies import get_current_user_id
 
 # Create engine - Always use PostgreSQL
 engine = create_engine(
@@ -16,10 +19,14 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db(
+    user_id: str = Depends(get_current_user_id),
+) -> Generator[Session, None, None]:
     """Dependency for getting database session."""
     db = SessionLocal()
     try:
+        if user_id:
+            db.execute(text("SET LOCAL app.user_id = :user_id"), {"user_id": user_id})
         yield db
     finally:
         db.close()

@@ -1,7 +1,41 @@
 """Configuration settings for sideBar Skills API."""
 import os
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
+from urllib.parse import quote_plus
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _build_database_url() -> str:
+    explicit_url = os.getenv("DATABASE_URL")
+    if explicit_url:
+        return explicit_url
+
+    supabase_password = os.getenv("SUPABASE_POSTGRES_PSWD")
+    project_id = os.getenv("SUPABASE_PROJECT_ID")
+    if not supabase_password or not project_id:
+        return "postgresql://sidebar:sidebar_dev@postgres:5432/sidebar"
+
+    db_name = os.getenv("SUPABASE_DB_NAME", "postgres")
+    port = os.getenv("SUPABASE_DB_PORT", "5432")
+    sslmode = os.getenv("SUPABASE_SSLMODE", "require")
+    use_pooler = os.getenv("SUPABASE_USE_POOLER", "true").lower() in {"1", "true", "yes", "on"}
+
+    host = None
+    user = None
+    if use_pooler:
+        host = os.getenv("SUPABASE_POOLER_HOST")
+        if host:
+            user = os.getenv("SUPABASE_POOLER_USER", f"postgres.{project_id}")
+        else:
+            use_pooler = False
+
+    if not use_pooler:
+        host = f"db.{project_id}.supabase.co"
+        user = os.getenv("SUPABASE_DB_USER", "postgres")
+
+    password = quote_plus(supabase_password)
+    return f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode={sslmode}"
 
 
 class Settings(BaseSettings):
@@ -15,7 +49,7 @@ class Settings(BaseSettings):
     bearer_token: str
 
     # Database
-    database_url: str = "postgresql://sidebar:sidebar_dev@postgres:5432/sidebar"
+    database_url: str = _build_database_url()
 
     # Claude API configuration
     anthropic_api_key: str  # Loaded from Doppler or environment
