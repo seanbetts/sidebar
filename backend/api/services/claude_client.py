@@ -2,87 +2,21 @@
 import json
 import ssl
 from typing import AsyncIterator, Dict, Any, List
-from anthropic import AsyncAnthropic
+
 import httpx
+from anthropic import AsyncAnthropic
+
 from api.config import Settings
 from api.services.tool_mapper import ToolMapper
+from api.services.web_search_builder import (
+    build_web_search_location,
+    serialize_web_search_result,
+    web_search_status,
+)
 
 
 class ClaudeClient:
     """Handles Claude API interactions with streaming and tool execution."""
-
-    @staticmethod
-    def _build_web_search_location(
-        current_location_levels: Any,
-        timezone: str | None,
-    ) -> Dict[str, str] | None:
-        if not isinstance(current_location_levels, dict):
-            return None
-        city = current_location_levels.get("locality") or current_location_levels.get("postal_town")
-        region = (
-            current_location_levels.get("administrative_area_level_1")
-            or current_location_levels.get("administrative_area_level_2")
-        )
-        country = current_location_levels.get("country")
-        country_code = None
-        if isinstance(country, str):
-            normalized = country.strip()
-            if len(normalized) == 2:
-                country_code = normalized.upper()
-            else:
-                country_map = {
-                    "united states": "US",
-                    "united states of america": "US",
-                    "usa": "US",
-                    "united kingdom": "GB",
-                    "uk": "GB",
-                    "great britain": "GB",
-                    "england": "GB",
-                    "scotland": "GB",
-                    "wales": "GB",
-                    "northern ireland": "GB",
-                }
-                mapped = country_map.get(normalized.lower())
-                if mapped:
-                    country_code = mapped
-        if not (city or region or country):
-            return None
-        location: Dict[str, str] = {"type": "approximate"}
-        if city:
-            location["city"] = city
-        if region:
-            location["region"] = region
-        if country_code:
-            location["country"] = country_code
-        if timezone:
-            location["timezone"] = timezone
-        return location if len(location) > 1 else None
-
-    @staticmethod
-    def _serialize_web_search_result(content_block: Any) -> Dict[str, Any]:
-        if hasattr(content_block, "model_dump"):
-            return content_block.model_dump()
-        result = {"type": "web_search_tool_result"}
-        if hasattr(content_block, "tool_use_id"):
-            result["tool_use_id"] = content_block.tool_use_id
-        if hasattr(content_block, "content"):
-            result["content"] = content_block.content
-        return result
-
-    @staticmethod
-    def _web_search_error(content_block: Any) -> str | None:
-        content = getattr(content_block, "content", None)
-        if isinstance(content, dict) and content.get("type") == "web_search_tool_result_error":
-            return content.get("error_code")
-        if isinstance(content, list):
-            for item in content:
-                if isinstance(item, dict) and item.get("type") == "web_search_tool_result_error":
-                    return item.get("error_code")
-        return None
-
-    @staticmethod
-    def _web_search_status(content_block: Any) -> str:
-        return "error" if ClaudeClient._web_search_error(content_block) else "success"
 
     def __init__(self, settings: Settings):
         # Create custom httpx client that bypasses SSL verification
@@ -132,7 +66,7 @@ class ClaudeClient:
         if allowed_skills is None or "web-search" in allowed_skills:
             user_location = None
             if tool_context:
-                user_location = ClaudeClient._build_web_search_location(
+                user_location = build_web_search_location(
                     tool_context.get("current_location_levels"),
                     tool_context.get("current_timezone"),
                 )
@@ -218,12 +152,10 @@ class ClaudeClient:
                                         suppress_web_search_preamble = True
                                 elif event.content_block.type == "web_search_tool_result":
                                     web_search_pending_end = True
-                                    web_search_pending_status = ClaudeClient._web_search_status(event.content_block)
+                                    web_search_pending_status = web_search_status(event.content_block)
                                     web_search_result_seen = True
                                     suppress_web_search_preamble = False
-                                    content_blocks.append(
-                                        ClaudeClient._serialize_web_search_result(event.content_block)
-                                    )
+                                    content_blocks.append(serialize_web_search_result(event.content_block))
 
                         elif event.type == "content_block_delta":
                             if hasattr(event.delta, "type"):

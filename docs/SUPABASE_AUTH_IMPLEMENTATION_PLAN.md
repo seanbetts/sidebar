@@ -133,6 +133,50 @@ async def verify_supabase_jwt(
 - Service layer files - already filter by `user_id` parameter
 - Tool execution - already accepts `--user-id` flag
 
+#### 1.6 Understanding the Authentication Flow (No Code Changes)
+
+**How JWT authentication connects to PostgreSQL RLS:**
+
+1. **Request arrives** with JWT in `Authorization: Bearer {token}` header
+
+2. **JWT validation** (`get_current_user_id` dependency):
+   ```python
+   # Extracts user_id from JWT 'sub' claim
+   user_id = "81326b53-b7eb-42e2-b645-0c03cb5d5dd4"  # UUID from token
+   ```
+
+3. **Database session initialization** (`get_db` dependency):
+   ```python
+   def get_db(user_id: str = Depends(get_current_user_id)):
+       db = SessionLocal()
+       set_session_user_id(db, user_id)  # Sets PostgreSQL session variable
+       yield db
+   ```
+
+4. **PostgreSQL session variable set** (`set_session_user_id` function):
+   ```python
+   def set_session_user_id(db: Session, user_id: str):
+       db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+   ```
+   This executes: `SET app.user_id = '81326b53-b7eb-42e2-b645-0c03cb5d5dd4'`
+
+5. **RLS policies enforce isolation** (already configured in migration 012):
+   ```sql
+   CREATE POLICY user_isolation ON notes
+   FOR ALL
+   USING (user_id = current_setting('app.user_id', true));
+   ```
+   Every query automatically filters: `WHERE user_id = current_setting('app.user_id')`
+
+6. **SQLAlchemy queries inherit RLS** - all queries through this session are automatically scoped:
+   ```python
+   # This query only returns notes for authenticated user
+   notes = db.query(Note).filter(Note.deleted_at.is_(None)).all()
+   # PostgreSQL enforces: WHERE user_id = '81326b53-...' AND deleted_at IS NULL
+   ```
+
+**Key insight**: By switching from header-based to JWT-based extraction in `get_current_user_id`, the entire downstream flow (session variable → RLS → query scoping) continues to work identically. The RLS policies don't care WHERE the user_id came from, only that it's set in the session.
+
 ### Phase 2: Frontend Session Management
 
 Add Supabase client and session handling to SvelteKit.
