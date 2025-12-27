@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, afterUpdate } from 'svelte';
+	import { onMount, afterUpdate, tick } from 'svelte';
 	import type { Message as MessageType } from '$lib/types/chat';
 	import Message from './Message.svelte';
 
@@ -13,6 +13,7 @@
 
 	let containerElement: HTMLDivElement;
 	let shouldAutoScroll = true;
+	let lastMessageCount = 0;
 
 	function scrollToBottom() {
 		if (containerElement && shouldAutoScroll) {
@@ -33,12 +34,21 @@
 
 	// Auto-scroll when messages update
 	afterUpdate(() => {
+		if (shouldAutoScroll) {
+			scrollToBottom();
+		}
+	});
+
+	onMount(async () => {
+		await tick();
 		scrollToBottom();
 	});
 
-	onMount(() => {
-		scrollToBottom();
-	});
+	$: if (messages.length !== lastMessageCount) {
+		lastMessageCount = messages.length;
+		shouldAutoScroll = true;
+		tick().then(scrollToBottom);
+	}
 </script>
 
 <div
@@ -49,6 +59,7 @@
 	{#if messages.length === 0}
 		<div class="flex items-center justify-center h-full text-muted-foreground">
 			<div class="text-center">
+				<img class="welcome-logo" src="/images/logo.svg" alt="sideBar" />
 				<p class="text-xl mb-2 font-semibold">Welcome to sideBar</p>
 				<p class="text-sm">Start a conversation by typing a message below</p>
 			</div>
@@ -59,3 +70,16 @@
 		{/each}
 	{/if}
 </div>
+
+<style>
+	.welcome-logo {
+		height: 4rem;
+		width: auto;
+		margin: 0 auto 0.75rem;
+		opacity: 0.7;
+	}
+
+	:global(.dark) .welcome-logo {
+		filter: invert(1);
+	}
+</style>
