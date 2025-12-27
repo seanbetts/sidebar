@@ -9,7 +9,7 @@
 	<title>sideBar</title>
 </svelte:head>
 
-<div class="app">
+<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
 	<Sidebar />
 	<main class="main-content">
 		<SiteHeader />
