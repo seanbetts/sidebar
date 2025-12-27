@@ -22,10 +22,10 @@ def register_mcp_tools(mcp: FastMCP):
         pattern: str = "*",
         recursive: bool = False
     ) -> str:
-        """List files in workspace directory.
+        """List files in storage directory.
 
         Args:
-            path: Directory path relative to workspace (default: ".")
+            path: Directory path relative to storage (default: ".")
             pattern: Glob pattern to filter files (default: "*")
             recursive: List files recursively (default: false)
         """
@@ -58,10 +58,10 @@ def register_mcp_tools(mcp: FastMCP):
         start_line: int = None,
         end_line: int = None
     ) -> str:
-        """Read file content from workspace.
+        """Read file content from storage.
 
         Args:
-            path: File path relative to workspace
+            path: File path relative to storage
             start_line: Optional starting line number (1-indexed)
             end_line: Optional ending line number (inclusive)
         """
@@ -97,10 +97,10 @@ def register_mcp_tools(mcp: FastMCP):
         content: str,
         dry_run: bool = False
     ) -> str:
-        """Write content to file in workspace.
+        """Write content to file in storage.
 
         Args:
-            path: File path relative to workspace
+            path: File path relative to storage
             content: Content to write (replaces existing)
             dry_run: If true, validate but don't actually write
         """
@@ -144,10 +144,10 @@ def register_mcp_tools(mcp: FastMCP):
         path: str,
         dry_run: bool = False
     ) -> str:
-        """Delete file or directory from workspace.
+        """Delete file or directory from storage.
 
         Args:
-            path: File/directory path relative to workspace
+            path: File/directory path relative to storage
             dry_run: If true, validate but don't actually delete
         """
         start_time = time.time()
@@ -289,11 +289,11 @@ def register_mcp_tools(mcp: FastMCP):
         destination: str,
         dry_run: bool = False
     ) -> str:
-        """Move file or directory to a new location in workspace.
+        """Move file or directory to a new location in storage.
 
         Args:
-            source: Source path relative to workspace
-            destination: Destination path relative to workspace
+            source: Source path relative to storage
+            destination: Destination path relative to storage
             dry_run: If true, validate but don't actually move
         """
         start_time = time.time()
@@ -341,7 +341,7 @@ def register_mcp_tools(mcp: FastMCP):
         """Rename file or directory (stays in same directory).
 
         Args:
-            path: Path to file/directory relative to workspace
+        path: Path to file/directory relative to storage
             new_name: New name (just the name, not a full path)
             dry_run: If true, validate but don't actually rename
         """
@@ -386,11 +386,11 @@ def register_mcp_tools(mcp: FastMCP):
         destination: str,
         dry_run: bool = False
     ) -> str:
-        """Copy file or directory to a new location in workspace.
+        """Copy file or directory to a new location in storage.
 
         Args:
-            source: Source path relative to workspace
-            destination: Destination path relative to workspace
+            source: Source path relative to storage
+            destination: Destination path relative to storage
             dry_run: If true, validate but don't actually copy
         """
         start_time = time.time()
@@ -437,7 +437,7 @@ def register_mcp_tools(mcp: FastMCP):
         case_sensitive: bool = False,
         max_results: int = 100
     ) -> str:
-        """Search for files by name or content in workspace.
+        """Search for files by name or content in storage.
 
         Args:
             directory: Directory to search in (default: ".")

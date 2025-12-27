@@ -11,7 +11,7 @@ from api.security.audit_logger import AuditLogger
 SKILL_DISPLAY = {
     "fs": {
         "name": "Files",
-        "description": "Browse, read, search, and write files in your workspace."
+        "description": "Browse, read, search, and write files in R2-backed storage."
     },
     "notes": {
         "name": "Notes",
@@ -35,7 +35,7 @@ SKILL_DISPLAY = {
     },
     "web-save": {
         "name": "Web Save",
-        "description": "Save web pages as clean markdown for later use."
+        "description": "Save web pages as clean markdown in the database for later use."
     },
     "web-search": {
         "name": "Web Search",
@@ -51,15 +51,15 @@ SKILL_DISPLAY = {
     },
     "audio-transcribe": {
         "name": "Audio Transcription",
-        "description": "Transcribe audio files into text."
+        "description": "Transcribe audio files into text and store transcripts in R2."
     },
     "youtube-download": {
         "name": "YouTube Download",
-        "description": "Download YouTube video or audio."
+        "description": "Download YouTube video or audio to R2 (Videos folder by default)."
     },
     "youtube-transcribe": {
         "name": "YouTube Transcription",
-        "description": "Transcribe YouTube videos into text."
+        "description": "Transcribe YouTube videos into text and store transcripts in R2."
     },
     "mcp-builder": {
         "name": "MCP Builder",
@@ -115,7 +115,7 @@ class ToolMapper:
         # Single source of truth for all tools
         self.tools = {
             "Browse Files": {
-                "description": "List files and directories in workspace with glob pattern support",
+                "description": "List files and directories in R2-backed storage with glob pattern support",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -131,7 +131,7 @@ class ToolMapper:
                 "validate_read": True
             },
             "Read File": {
-                "description": "Read file content from workspace",
+                "description": "Read file content from R2-backed storage",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -147,7 +147,7 @@ class ToolMapper:
                 "validate_read": True
             },
             "Write File": {
-                "description": "Write content to file in workspace for project files and documents (writable paths: documents/). For persistent, searchable notes use Create Note instead.",
+                "description": "Write content to file in R2-backed storage for project files and documents. For persistent, searchable notes use Create Note instead.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -163,7 +163,7 @@ class ToolMapper:
                 "validate_write": True
             },
             "Search Files": {
-                "description": "Search for files by name pattern or content in workspace",
+                "description": "Search for files by name pattern or content in R2-backed storage",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -582,7 +582,7 @@ class ToolMapper:
                 "build_args": lambda p: self._build_audio_transcribe_args(p)
             },
             "Download YouTube": {
-                "description": "Download YouTube video or audio to the workspace.",
+                "description": "Download YouTube video or audio to R2 (Videos folder by default).",
                 "input_schema": {
                     "type": "object",
                     "properties": {
