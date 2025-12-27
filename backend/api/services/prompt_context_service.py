@@ -19,7 +19,6 @@ from api.prompts import (
     CONTEXT_GUIDANCE_TEMPLATE,
 )
 from api.services.user_settings_service import UserSettingsService
-from api.services.memory_tool_handler import MemoryToolHandler
 
 
 class PromptContextService:
@@ -54,9 +53,6 @@ class PromptContextService:
             current_weather,
             timestamp,
         )
-        memory_items = MemoryToolHandler.get_all_memories_for_prompt(db, user_id)
-        memory_block = MemoryToolHandler.build_memory_block(memory_items)
-
         context_guidance = resolve_template(
             CONTEXT_GUIDANCE_TEMPLATE,
             {"name": settings_record.name.strip() if settings_record and settings_record.name else "the user"},
@@ -77,7 +73,6 @@ class PromptContextService:
         system_prompt = "\n\n".join(
             [
                 system_prompt,
-                memory_block,
                 context_guidance,
                 open_block,
                 recent_activity_block,
