@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Sync /workspace contents to R2 and backfill file metadata.
+Sync workspace contents to R2 and backfill file metadata.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import mimetypes
 from pathlib import Path
 
@@ -88,8 +89,12 @@ def sync_workspace(workspace: Path, user_id: str, dry_run: bool = False) -> None
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Sync /workspace to R2 and backfill files table.")
-    parser.add_argument("--workspace", default="/workspace", help="Workspace root path")
+    parser = argparse.ArgumentParser(description="Sync workspace contents to R2 and backfill files table.")
+    parser.add_argument(
+        "--workspace",
+        default=os.getenv("WORKSPACE_BASE", "/tmp/skills"),
+        help="Workspace root path",
+    )
     parser.add_argument("--user-id", default=DEFAULT_USER_ID, help="User id for metadata")
     parser.add_argument("--dry-run", action="store_true", help="Skip uploads and DB writes")
     args = parser.parse_args()

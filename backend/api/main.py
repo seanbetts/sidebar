@@ -120,7 +120,7 @@ async def root():
         },
         "security": {
             "auth": "Unified bearer token for all endpoints",
-            "path_jailing": "All paths restricted to /workspace",
+            "path_jailing": "All paths restricted to the configured storage root",
             "write_allowlist": settings.writable_paths
         }
     }

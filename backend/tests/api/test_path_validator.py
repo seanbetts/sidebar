@@ -146,7 +146,7 @@ class TestPathValidatorEdgeCases:
         traversal_attempts = [
             "notes/../../../etc/passwd",
             "notes/./../../etc/passwd",
-            "../workspace/notes/test.md",  # Trying to go up then back
+            "../tmp/skills/notes/test.md",  # Trying to go up then back
         ]
 
         for attempt in traversal_attempts:

@@ -20,7 +20,7 @@ class TestAuditLogger:
         AuditLogger.log_tool_call(
             tool_name="fs_list",
             parameters={"path": ".", "pattern": "*.txt"},
-            resolved_path=Path("/workspace/documents"),
+            resolved_path=Path("/tmp/skills/documents"),
             duration_ms=125.5,
             success=True
         )
@@ -127,7 +127,7 @@ class TestAuditLogger:
         AuditLogger.log_tool_call(
             tool_name="test_tool",
             parameters={"key": "value"},
-            resolved_path=Path("/workspace/test"),
+            resolved_path=Path("/tmp/skills/test"),
             duration_ms=100.0,
             success=True,
             user_id="user-1"
@@ -144,7 +144,7 @@ class TestAuditLogger:
         # Verify structure
         assert data["tool_name"] == "test_tool"
         assert data["parameters"] == {"key": "value"}
-        assert data["resolved_path"] == "/workspace/test"
+        assert data["resolved_path"] == "/tmp/skills/test"
         assert data["duration_ms"] == 100.0
         assert data["success"] is True
         assert data["user_id"] == "user-1"

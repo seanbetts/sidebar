@@ -13,10 +13,9 @@ services:
       - ./backend/skills:/skills:ro  # Read-only mount - skills are untrusted code
       - ./backend/api:/app/api
       - ./backend/scripts:/app/scripts:ro
-      - workspace:/workspace
     environment:
       - PYTHONUNBUFFERED=1
-      - WORKSPACE_BASE=/workspace
+      - WORKSPACE_BASE=/tmp/skills
       - BEARER_TOKEN=${BEARER_TOKEN}
       - DOPPLER_TOKEN=${DOPPLER_TOKEN}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -51,6 +50,7 @@ services:
     read_only: true  # Root filesystem is read-only
     tmpfs:
       - /tmp:noexec,nosuid,nodev
+      - /tmp/skills:exec,nosuid,nodev
     networks:
       - sidebar-network
     healthcheck:
@@ -76,9 +76,6 @@ services:
     depends_on:
       skills-api:
         condition: service_healthy
-
-volumes:
-  workspace:
 
 networks:
   sidebar-network:

@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
     # Base directories
-    workspace_base: Path = Path("/workspace")
+    workspace_base: Path = Path(os.getenv("WORKSPACE_BASE", "/tmp/skills"))
     skills_dir: Path = Path("/skills")
 
     # Authentication
@@ -61,7 +61,10 @@ class Settings(BaseSettings):
     google_places_api_key: str | None = None
 
     # Write allowlist - only these paths can be written
-    writable_paths: list[str] = ["/workspace/notes", "/workspace/documents"]
+    writable_paths: list[str] = [
+        str(Path(os.getenv("WORKSPACE_BASE", "/tmp/skills")) / "notes"),
+        str(Path(os.getenv("WORKSPACE_BASE", "/tmp/skills")) / "documents"),
+    ]
 
     # Resource limits
     skill_timeout_seconds: int = 30

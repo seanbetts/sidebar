@@ -134,8 +134,8 @@ def transcribe_youtube(
         url: YouTube video URL
         language: Language code for transcription
         model: Transcription model to use
-        output_dir: Directory for transcripts (default: /workspace/Transcripts)
-        audio_dir: Directory for audio files (default: /workspace/Downloads)
+        output_dir: R2 folder for transcripts (default: Transcripts)
+        audio_dir: R2 folder for audio files (default: Videos)
         keep_audio: Keep audio file after transcription
 
     Returns:

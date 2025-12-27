@@ -9,7 +9,7 @@ Save web pages as markdown files using Jina.ai Reader API.
 
 ## Description
 
-Fetches web page content, converts it to markdown using Jina.ai's Reader API, and saves it to the Websites folder with metadata (source URL and date). Automatically extracts and uses the page title as the filename.
+Fetches web page content, converts it to markdown using Jina.ai's Reader API, and saves it to the database with metadata (source URL and date). Automatically extracts and uses the page title as the filename.
 
 ## When to Use
 
@@ -26,7 +26,7 @@ Fetches web page content, converts it to markdown using Jina.ai's Reader API, an
 ## Scripts
 
 ### save_url.py
-Fetches a URL and saves it as a markdown file in the Websites folder.
+Fetches a URL and saves it as a markdown entry in the database.
 
 ```bash
 python save_url.py URL [--folder FOLDER] [--filename FILENAME] [--json]
@@ -76,7 +76,7 @@ date: 2025-12-20
 ## Configuration
 
 The skill uses:
-- **Base folder**: `/workspace/websites/` (Docker) or `~/sideBar/websites/` (local fallback)
+- **Storage**: Database (websites table)
 - **API**: Jina.ai Reader API (https://r.jina.ai/)
 - **API Key**: From `JINA_API_KEY` environment variable
 

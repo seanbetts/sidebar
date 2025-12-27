@@ -12,7 +12,7 @@ This file is auto-generated from skill frontmatter. Do not edit manually.
 ### Filesystem
 
 #### [fs](./skills/fs/SKILL.md) `[reads, writes]`
-Comprehensive filesystem operations for workspace - list, read, write, delete, move, search files. Use for all file management tasks in /workspace.
+Comprehensive filesystem operations for storage - list, read, write, delete, move, search files. Use for all file management tasks in R2-backed storage.
 
 ### Notes
 

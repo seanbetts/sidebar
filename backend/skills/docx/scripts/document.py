@@ -6,8 +6,8 @@ Usage:
     from skills.docx.scripts.document import Document
 
     # Initialize
-    doc = Document('workspace/unpacked')
-    doc = Document('workspace/unpacked', author="John Doe", initials="JD")
+    doc = Document('tmp/unpacked')
+    doc = Document('tmp/unpacked', author="John Doe", initials="JD")
 
     # Find nodes
     node = doc["word/document.xml"].get_node(tag="w:del", attrs={"w:id": "1"})

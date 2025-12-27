@@ -183,15 +183,15 @@ JSON output combines results from both stages:
 
 ## Default Save Locations
 
-**Audio Files (Temporary)**:
+**Audio Files (R2, temporary unless `--keep-audio`)**:
 ```
-/workspace/Downloads/
+Videos/
 ```
 Audio files are automatically deleted after transcription unless `--keep-audio` is specified.
 
-**Transcripts**:
+**Transcripts (R2)**:
 ```
-/workspace/Transcripts/
+Transcripts/
 ```
 
 ## Model Comparison
