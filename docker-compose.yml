@@ -1,27 +1,7 @@
 name: sidebar
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: sidebar-postgres
-    environment:
-      - POSTGRES_USER=sidebar
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sidebar_dev}
-      - POSTGRES_DB=sidebar
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - sidebar-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sidebar"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # NEW: Skills API (FastAPI + MCP)
+  # Skills API (FastAPI + MCP)
   skills-api:
     build:
       context: ./backend
@@ -66,9 +46,6 @@ services:
       - /tmp:noexec,nosuid,nodev
     networks:
       - sidebar-network
-    depends_on:
-      postgres:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/api/health')"]
       interval: 30s
@@ -95,7 +72,6 @@ services:
 
 volumes:
   workspace:
-  postgres_data:
 
 networks:
   sidebar-network:
