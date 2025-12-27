@@ -72,6 +72,7 @@ Current weather at current location: {currentWeather}
 
 <memory_guidance>
 Only write to memory when something is durable and likely to matter later; avoid ephemeral or sensitive details.
+When storing durable information, prefer Create Note for persistent, searchable notes in the database. Use Write File only for project files or documents in the workspace.
 </memory_guidance>
 
 <instruction_priority>
