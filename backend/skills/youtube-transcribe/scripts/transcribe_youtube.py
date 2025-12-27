@@ -11,6 +11,7 @@ import json
 import argparse
 import subprocess
 import time
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -21,14 +22,15 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
+    from api.services.skill_file_ops import upload_file
 except Exception:
     SessionLocal = None
     NotesService = None
+    upload_file = None
 
 
-# Default directories
-DEFAULT_TRANSCRIPT_DIR = Path("/workspace") / "Transcripts"
-DEFAULT_AUDIO_DIR = Path("/workspace") / "Downloads"
+# Default directories (R2)
+DEFAULT_TRANSCRIPT_DIR = "Transcripts"
 
 # Script paths - dynamically locate based on this script's location
 SCRIPT_DIR = Path(__file__).parent.parent.parent  # Go up to skills/
@@ -144,8 +146,12 @@ def transcribe_youtube(
     """
     start_time = time.time()
 
-    # Determine audio directory and create it if needed
-    target_audio_dir = Path(audio_dir).expanduser() if audio_dir else DEFAULT_AUDIO_DIR
+    if not user_id:
+        raise ValueError("user_id is required for storage")
+
+    transcript_dir = (output_dir or DEFAULT_TRANSCRIPT_DIR).strip("/")
+    temp_root = Path(tempfile.mkdtemp(prefix="yt-transcribe-"))
+    target_audio_dir = temp_root / "audio"
     target_audio_dir.mkdir(parents=True, exist_ok=True)
 
     # Stage 1: Download audio
@@ -159,7 +165,10 @@ def transcribe_youtube(
         url,
         "--audio",
         "--json",
-        "--output", str(target_audio_dir)
+        "--output", audio_dir or "Videos",
+        "--user-id", user_id,
+        "--temp-dir", str(target_audio_dir),
+        "--keep-local",
     ]
 
     download_result = run_command(download_cmd, "download")
@@ -168,10 +177,10 @@ def transcribe_youtube(
         raise RuntimeError(f"Download failed: {download_result.get('error', {}).get('message', 'Unknown error')}")
 
     download_data = download_result['data']
-    audio_file_path = Path(download_data['output_dir']) / download_data['filename']
+    audio_file_path = Path(download_data.get("local_path") or (Path(download_data['output_dir']) / download_data['filename']))
 
     print(f"Title: {download_data['title']}")
-    print(f"Saved to: {download_data['output_dir']}")
+    print(f"Saved to: {download_data.get('r2_path') or download_data['output_dir']}")
     print(f"Filename: {download_data['filename']}")
     print()
 
@@ -186,11 +195,12 @@ def transcribe_youtube(
         str(audio_file_path),
         "--language", language,
         "--model", model,
-        "--json"
+        "--json",
+        "--user-id", user_id,
+        "--output-dir", transcript_dir,
+        "--temp-dir", str(temp_root / "transcripts"),
+        "--keep-local",
     ]
-
-    if output_dir:
-        transcribe_cmd.extend(["--output-dir", output_dir])
 
     try:
         transcribe_result = run_command(transcribe_cmd, "transcription")
@@ -200,7 +210,7 @@ def transcribe_youtube(
 
         transcribe_data = transcribe_result['data']
 
-        transcript_path = Path(transcribe_data['output_path'])
+        transcript_path = Path(transcribe_data.get("local_path") or transcribe_data['output_path'])
 
         print(f"File: {audio_file_path.name}")
         print(f"Transcript: {transcript_path}")
@@ -211,6 +221,8 @@ def transcribe_youtube(
             url,
             download_data['title']
         )
+        if upload_file is not None and transcribe_data.get("output_path"):
+            upload_file(user_id, transcribe_data["output_path"], transcript_path, content_type="text/plain")
 
         # Calculate transcription duration
         transcription_duration = int(time.time() - start_time) - download_data['duration_seconds']
@@ -255,9 +267,9 @@ def transcribe_youtube(
         result = {
             'youtube_url': url,
             'title': download_data['title'],
-            'audio_file': str(audio_file_path),
+            'audio_file': download_data.get('r2_path') or str(audio_file_path),
             'audio_kept': audio_kept,
-            'transcript_file': str(transcript_path),
+            'transcript_file': transcribe_data.get('output_path') or str(transcript_path),
             'language': language,
             'model': model,
             'download_duration_seconds': download_data['duration_seconds'],
@@ -334,8 +346,7 @@ def main():
         description='Download YouTube audio and transcribe it',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"""
-Default Transcript Directory: {DEFAULT_TRANSCRIPT_DIR}
-Default Audio Directory: {DEFAULT_AUDIO_DIR}
+Default Transcript Directory (R2): {DEFAULT_TRANSCRIPT_DIR}
 
 Examples:
   # Basic transcription
@@ -352,8 +363,8 @@ Examples:
 
   # Custom output locations
   %(prog)s "https://youtube.com/watch?v=VIDEO_ID" \\
-    --output-dir ~/my-transcripts \\
-    --audio-dir ~/my-audio
+    --output-dir Transcripts \\
+    --audio-dir Videos
 
   # JSON output
   %(prog)s "https://youtube.com/watch?v=VIDEO_ID" --json
@@ -384,11 +395,11 @@ Requirements:
     )
     parser.add_argument(
         '--output-dir',
-        help=f'Directory for transcripts (default: {DEFAULT_TRANSCRIPT_DIR})'
+        help=f'R2 folder for transcripts (default: {DEFAULT_TRANSCRIPT_DIR})'
     )
     parser.add_argument(
         '--audio-dir',
-        help=f'Directory for audio files (default: {DEFAULT_AUDIO_DIR})'
+        help='R2 folder for audio (default: Videos)'
     )
     parser.add_argument(
         '--keep-audio',
@@ -402,7 +413,8 @@ Requirements:
     )
     parser.add_argument(
         '--user-id',
-        help='User id for database access'
+        required=True,
+        help='User id for storage access'
     )
     parser.add_argument(
         '--folder',

@@ -7,77 +7,25 @@ Get metadata about a file or directory in workspace.
 
 import sys
 import json
-import os
 import argparse
 from pathlib import Path
-from datetime import datetime
 from typing import Dict, Any
 
-# Base workspace directory
-WORKSPACE_BASE = Path(os.getenv("WORKSPACE_BASE", "/workspace"))
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_ops import info as fetch_info
 
 
-def validate_path(relative_path: str) -> Path:
-    """Validate that the path is safe and within workspace folder."""
-    if ".." in relative_path:
-        raise ValueError(f"Path traversal not allowed: {relative_path}")
-
-    full_path = (WORKSPACE_BASE / relative_path).resolve()
-
-    try:
-        full_path.relative_to(WORKSPACE_BASE.resolve())
-    except ValueError:
-        raise ValueError(
-            f"Path '{relative_path}' resolves to a location outside workspace"
-        )
-
-    if Path(relative_path).is_absolute():
-        raise ValueError("Absolute paths not allowed")
-
-    return full_path
-
-
-def get_info(path: str) -> Dict[str, Any]:
-    """
-    Get file or directory metadata.
-
-    Args:
-        path: Path relative to workspace
-
-    Returns:
-        Dictionary with metadata
-
-    Raises:
-        ValueError: If path is invalid
-        FileNotFoundError: If path doesn't exist
-    """
-    file_path = validate_path(path)
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"Path not found: {path}")
-
-    stats = file_path.stat()
-
-    info = {
-        'path': str(file_path.relative_to(WORKSPACE_BASE)),
-        'name': file_path.name,
-        'is_file': file_path.is_file(),
-        'is_directory': file_path.is_dir(),
-        'size': stats.st_size,
-        'created': datetime.fromtimestamp(stats.st_ctime).isoformat(),
-        'modified': datetime.fromtimestamp(stats.st_mtime).isoformat(),
-        'accessed': datetime.fromtimestamp(stats.st_atime).isoformat(),
-    }
-
-    if file_path.is_file():
-        info['extension'] = file_path.suffix
-        # Try to read line count for text files
-        try:
-            content = file_path.read_text(encoding='utf-8')
-            info['lines'] = len(content.splitlines())
-        except:
-            info['lines'] = None
-
+def get_info(user_id: str, path: str) -> Dict[str, Any]:
+    """Get file or directory metadata."""
+    info = fetch_info(user_id, path)
+    info["name"] = Path(info["path"]).name
+    if info["is_file"]:
+        info["extension"] = Path(info["path"]).suffix
+    info["created"] = info["modified"]
+    info["accessed"] = info["modified"]
+    info["lines"] = None
     return info
 
 
@@ -96,11 +44,16 @@ def main():
         action='store_true',
         help='Output results in JSON format'
     )
+    parser.add_argument(
+        "--user-id",
+        required=True,
+        help="User id for storage access",
+    )
 
     args = parser.parse_args()
 
     try:
-        result = get_info(args.path)
+        result = get_info(args.user_id, args.path)
 
         output = {
             'success': True,

@@ -7,104 +7,24 @@ Create or update files in workspace with multiple modes.
 
 import sys
 import json
-import os
 import argparse
 from pathlib import Path
 from typing import Dict, Any
 
-# Base workspace directory
-WORKSPACE_BASE = Path(os.getenv("WORKSPACE_BASE", "/workspace"))
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
 
-
-def validate_path(relative_path: str) -> Path:
-    """
-    Validate that the path is safe and within workspace folder.
-
-    Args:
-        relative_path: Relative path from workspace base
-
-    Returns:
-        Absolute Path object
-
-    Raises:
-        ValueError: If path is invalid or escapes workspace folder
-    """
-    # Reject path traversal attempts
-    if ".." in relative_path:
-        raise ValueError(f"Path traversal not allowed: {relative_path}")
-
-    # Convert to Path and resolve
-    full_path = (WORKSPACE_BASE / relative_path).resolve()
-
-    # Check that resolved path is within workspace base
-    try:
-        full_path.relative_to(WORKSPACE_BASE.resolve())
-    except ValueError:
-        raise ValueError(
-            f"Path '{relative_path}' resolves to a location outside workspace"
-        )
-
-    # Reject absolute paths in the original input
-    if Path(relative_path).is_absolute():
-        raise ValueError("Absolute paths not allowed")
-
-    return full_path
+from api.services.skill_file_ops import write_text
 
 
 def write_file(
+    user_id: str,
     filename: str,
     content: str,
-    mode: str = "replace"
+    mode: str = "replace",
 ) -> Dict[str, Any]:
-    """
-    Write content to a file.
-
-    Args:
-        filename: File path relative to workspace
-        content: Content to write
-        mode: Write mode - "create", "replace", or "append"
-
-    Returns:
-        Dictionary with operation result
-
-    Raises:
-        ValueError: If path is invalid or mode is invalid
-        FileExistsError: If mode is "create" and file exists
-        FileNotFoundError: If mode is "append" and file doesn't exist
-    """
-    file_path = validate_path(filename)
-
-    # Validate mode
-    if mode not in ["create", "replace", "append"]:
-        raise ValueError(f"Invalid mode: {mode}. Must be create, replace, or append")
-
-    # Check file existence based on mode
-    exists = file_path.exists()
-
-    if mode == "create" and exists:
-        raise FileExistsError(f"File already exists: {filename}")
-
-    # Create parent directories if needed
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Write content based on mode
-    if mode == "append":
-        # Append to existing file or create new
-        with open(file_path, 'a', encoding='utf-8') as f:
-            f.write(content)
-        action = "appended" if exists else "created"
-    else:
-        # Create or replace
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        action = "created" if not exists else "updated"
-
-    return {
-        'path': str(file_path.relative_to(WORKSPACE_BASE)),
-        'action': action,
-        'size': file_path.stat().st_size,
-        'lines': len(content.splitlines())
-    }
+    """Write content to a file."""
+    return write_text(user_id, filename, content, mode=mode)
 
 
 def main():
@@ -133,11 +53,16 @@ def main():
         action='store_true',
         help='Output results in JSON format'
     )
+    parser.add_argument(
+        "--user-id",
+        required=True,
+        help="User id for storage access",
+    )
 
     args = parser.parse_args()
 
     try:
-        result = write_file(args.filename, args.content, args.mode)
+        result = write_file(args.user_id, args.filename, args.content, args.mode)
 
         output = {
             'success': True,

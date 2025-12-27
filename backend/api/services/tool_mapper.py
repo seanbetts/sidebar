@@ -1117,10 +1117,17 @@ class ToolMapper:
                 self.path_validator.validate_read_path(path_to_validate)
 
             if context and tool_config.get("skill") in {
+                "fs",
                 "notes",
                 "web-save",
                 "audio-transcribe",
                 "youtube-transcribe",
+                "youtube-download",
+                "web-crawler-policy",
+                "docx",
+                "pdf",
+                "pptx",
+                "xlsx",
             }:
                 user_id = context.get("user_id")
                 if user_id:
@@ -1128,6 +1135,19 @@ class ToolMapper:
 
             # Build arguments using the tool's build function
             args = tool_config["build_args"](parameters)
+            if parameters.get("user_id") and tool_config.get("skill") in {
+                "fs",
+                "pdf",
+                "pptx",
+                "docx",
+                "xlsx",
+                "youtube-download",
+                "youtube-transcribe",
+                "audio-transcribe",
+                "web-crawler-policy",
+            }:
+                if "--user-id" not in args:
+                    args.extend(["--user-id", parameters["user_id"]])
 
             # Execute skill
             result = await self.executor.execute(
@@ -1180,6 +1200,8 @@ class ToolMapper:
         args = [path, "--pattern", pattern]
         if recursive:
             args.append("--recursive")
+        if params.get("user_id"):
+            args.extend(["--user-id", params["user_id"]])
         return args
 
     def _build_fs_read_args(self, params: dict) -> list:
@@ -1188,12 +1210,16 @@ class ToolMapper:
             args.extend(["--start-line", str(params["start_line"])])
         if "end_line" in params:
             args.extend(["--end-line", str(params["end_line"])])
+        if params.get("user_id"):
+            args.extend(["--user-id", params["user_id"]])
         return args
 
     def _build_fs_write_args(self, params: dict) -> list:
         args = [params["path"], "--content", params["content"]]
         if params.get("dry_run"):
             args.append("--dry-run")
+        if params.get("user_id"):
+            args.extend(["--user-id", params["user_id"]])
         return args
 
     def _build_fs_search_args(self, params: dict) -> list:
@@ -1209,6 +1235,8 @@ class ToolMapper:
             args.extend(["--content", content_pattern])
         if case_sensitive:
             args.append("--case-sensitive")
+        if params.get("user_id"):
+            args.extend(["--user-id", params["user_id"]])
         return args
 
     def _build_notes_create_args(self, params: dict) -> list:
@@ -1330,6 +1358,8 @@ class ToolMapper:
             params["url"],
             "--json",
         ]
+        if params.get("user_id"):
+            args.extend(["--user-id", params["user_id"]])
         if params.get("audio_only"):
             args.append("--audio")
         if params.get("playlist"):
@@ -1382,6 +1412,8 @@ class ToolMapper:
             params["domain"],
             "--json",
         ]
+        if params.get("user_id"):
+            args.extend(["--user-id", params["user_id"]])
         if params.get("no_discover"):
             args.append("--no-discover")
         if params.get("wordlist"):

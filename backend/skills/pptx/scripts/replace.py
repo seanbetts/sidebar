@@ -22,6 +22,17 @@ from pptx.enum.text import PP_ALIGN
 from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Pt
 
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    prepare_output_path,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
+
 
 def clear_paragraph_bullets(paragraph):
     """Clear bullet formatting from a paragraph."""
@@ -355,24 +366,38 @@ def apply_replacements(pptx_file: str, json_file: str, output_file: str):
 
 def main():
     """Main entry point for command-line usage."""
-    if len(sys.argv) != 4:
+    args = sys.argv[1:]
+    user_id = None
+    if "--user-id" in args:
+        idx = args.index("--user-id")
+        user_id = args[idx + 1]
+        del args[idx:idx + 2]
+
+    if len(args) != 3:
         print(__doc__)
         sys.exit(1)
 
-    input_pptx = Path(sys.argv[1])
-    replacements_json = Path(sys.argv[2])
-    output_pptx = Path(sys.argv[3])
+    input_pptx = args[0]
+    replacements_json = args[1]
+    output_pptx = args[2]
 
-    if not input_pptx.exists():
+    local_root = temp_root("pptx-replace-") if storage_is_r2() else Path(".")
+    local_input = prepare_input_path(user_id, input_pptx, local_root) if storage_is_r2() else Path(input_pptx)
+    local_json = prepare_input_path(user_id, replacements_json, local_root) if storage_is_r2() else Path(replacements_json)
+    local_output, r2_output = prepare_output_path(user_id, output_pptx, local_root)
+
+    if not local_input.exists():
         print(f"Error: Input file '{input_pptx}' not found")
         sys.exit(1)
 
-    if not replacements_json.exists():
+    if not local_json.exists():
         print(f"Error: Replacements JSON file '{replacements_json}' not found")
         sys.exit(1)
 
     try:
-        apply_replacements(str(input_pptx), str(replacements_json), str(output_pptx))
+        apply_replacements(str(local_input), str(local_json), str(local_output))
+        if storage_is_r2():
+            upload_output_path(user_id, r2_output, local_output)
     except Exception as e:
         print(f"Error applying replacements: {e}")
         import traceback

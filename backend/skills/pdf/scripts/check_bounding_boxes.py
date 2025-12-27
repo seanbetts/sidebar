@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 import json
 import sys
+from pathlib import Path
+
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import prepare_input_path, storage_is_r2, temp_root
 
 
 # Script to check that the `fields.json` file that Claude creates when analyzing PDFs
@@ -60,11 +66,20 @@ def get_bounding_box_messages(fields_json_stream) -> list[str]:
     return messages
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: check_bounding_boxes.py [fields.json]")
+    args = sys.argv[1:]
+    user_id = None
+    if "--user-id" in args:
+        idx = args.index("--user-id")
+        user_id = args[idx + 1]
+        del args[idx:idx + 2]
+
+    if len(args) != 1:
+        print("Usage: check_bounding_boxes.py [fields.json] [--user-id USER]")
         sys.exit(1)
-    # Input file should be in the `fields.json` format described in forms.md.
-    with open(sys.argv[1]) as f:
+    input_path = args[0]
+    local_root = temp_root("pdf-bounds-") if storage_is_r2() else Path(".")
+    local_input = prepare_input_path(user_id, input_path, local_root) if storage_is_r2() else Path(input_path)
+    with open(local_input) as f:
         messages = get_bounding_box_messages(f)
     for msg in messages:
         print(msg)

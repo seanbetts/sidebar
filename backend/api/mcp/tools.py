@@ -35,7 +35,7 @@ def register_mcp_tools(mcp: FastMCP):
         validated_path = path_validator.validate_read_path(path)
 
         # Execute via skill script
-        args = [path, "--pattern", pattern]
+        args = [path, "--pattern", pattern, "--user-id", DEFAULT_USER_ID]
         if recursive:
             args.append("--recursive")
 
@@ -71,7 +71,7 @@ def register_mcp_tools(mcp: FastMCP):
         validated_path = path_validator.validate_read_path(path)
 
         # Build args - semantic params mapped to script options
-        args = [path]
+        args = [path, "--user-id", DEFAULT_USER_ID]
         if start_line and end_line:
             num_lines = end_line - start_line + 1
             args.extend(["--offset", str(start_line - 1), "--lines", str(num_lines)])
@@ -125,7 +125,7 @@ def register_mcp_tools(mcp: FastMCP):
             })
 
         # Execute write
-        args = [path, "--content", content, "--mode", "replace"]
+        args = [path, "--content", content, "--mode", "replace", "--user-id", DEFAULT_USER_ID]
         result = await executor.execute("fs", "write.py", args)
 
         # Audit log
@@ -171,7 +171,7 @@ def register_mcp_tools(mcp: FastMCP):
             })
 
         # Execute delete
-        args = [path]
+        args = [path, "--user-id", DEFAULT_USER_ID]
         result = await executor.execute("fs", "delete.py", args)
 
         # Audit log
@@ -452,7 +452,7 @@ def register_mcp_tools(mcp: FastMCP):
         validated_path = path_validator.validate_read_path(directory)
 
         # Build args
-        args = ["--directory", directory]
+        args = ["--directory", directory, "--user-id", DEFAULT_USER_ID]
         if name_pattern:
             args.extend(["--name", name_pattern])
         if content_pattern:

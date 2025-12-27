@@ -18,6 +18,17 @@ from pathlib import Path
 import six
 from pptx import Presentation
 
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    prepare_output_path,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -40,6 +51,7 @@ Note: Slide indices are 0-based (first slide is 0, second is 1, etc.)
     parser.add_argument(
         "sequence", help="Comma-separated sequence of slide indices (0-based)"
     )
+    parser.add_argument("--user-id", help="User id for storage access")
 
     args = parser.parse_args()
 
@@ -53,17 +65,20 @@ Note: Slide indices are 0-based (first slide is 0, second is 1, etc.)
         sys.exit(1)
 
     # Check template exists
-    template_path = Path(args.template)
+    local_root = temp_root("pptx-rearrange-") if storage_is_r2() else Path(".")
+    template_path = prepare_input_path(args.user_id, args.template, local_root) if storage_is_r2() else Path(args.template)
+    output_path, r2_output = prepare_output_path(args.user_id, args.output, local_root)
     if not template_path.exists():
         print(f"Error: Template file not found: {args.template}")
         sys.exit(1)
 
     # Create output directory if needed
-    output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
         rearrange_presentation(template_path, output_path, slide_sequence)
+        if storage_is_r2():
+            upload_output_path(args.user_id, r2_output, output_path)
     except ValueError as e:
         print(f"Error: {e}")
         sys.exit(1)

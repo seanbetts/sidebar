@@ -7,57 +7,26 @@ Search for files by name pattern or content within workspace.
 
 import sys
 import json
-import os
 import argparse
 import re
 from pathlib import Path
 from typing import Dict, Any, List
 
-# Base workspace directory
-WORKSPACE_BASE = Path(os.getenv("WORKSPACE_BASE", "/workspace"))
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
 
-
-def validate_path(relative_path: str) -> Path:
-    """
-    Validate that the path is safe and within workspace folder.
-
-    Args:
-        relative_path: Relative path from workspace base
-
-    Returns:
-        Absolute Path object
-
-    Raises:
-        ValueError: If path is invalid or escapes workspace folder
-    """
-    # Reject path traversal attempts
-    if ".." in relative_path:
-        raise ValueError(f"Path traversal not allowed: {relative_path}")
-
-    # Convert to Path and resolve
-    full_path = (WORKSPACE_BASE / relative_path).resolve()
-
-    # Check that resolved path is within workspace base
-    try:
-        full_path.relative_to(WORKSPACE_BASE.resolve())
-    except ValueError:
-        raise ValueError(
-            f"Path '{relative_path}' resolves to a location outside workspace"
-        )
-
-    # Reject absolute paths in the original input
-    if Path(relative_path).is_absolute():
-        raise ValueError("Absolute paths not allowed")
-
-    return full_path
+from api.services.files_service import FilesService
+from api.services.storage.service import get_storage_backend
+from api.services.skill_file_ops import normalize_path, ensure_allowed_path, session_for_user
 
 
 def search_files(
+    user_id: str,
     directory: str = ".",
     name_pattern: str = None,
     content_pattern: str = None,
     case_sensitive: bool = False,
-    max_results: int = 100
+    max_results: int = 100,
 ) -> Dict[str, Any]:
     """
     Search for files by name or content.
@@ -78,13 +47,9 @@ def search_files(
     if not name_pattern and not content_pattern:
         raise ValueError("Must provide either name_pattern or content_pattern")
 
-    search_dir = validate_path(directory)
-
-    if not search_dir.exists():
-        raise FileNotFoundError(f"Directory not found: {directory}")
-
-    if not search_dir.is_dir():
-        raise ValueError(f"Path is not a directory: {directory}")
+    base_path = normalize_path(directory)
+    if base_path:
+        ensure_allowed_path(base_path)
 
     results = []
 
@@ -108,66 +73,69 @@ def search_files(
         flags = 0 if case_sensitive else re.IGNORECASE
         name_regex = re.compile(pattern_str, flags)
 
-    # Search through files
-    for file_path in search_dir.rglob('*'):
-        if not file_path.is_file():
+    with session_for_user(user_id) as db:
+        records = FilesService.list_by_prefix(db, user_id, base_path)
+
+    storage = get_storage_backend()
+
+    for record in records:
+        if record.deleted_at is not None:
+            continue
+        if record.category == "folder":
+            continue
+        if record.path.startswith("profile-images/") or record.path == "profile-images":
             continue
 
-        # Check if we've hit max results
-        if len(results) >= max_results:
-            break
+        rel_path = record.path[len(base_path) + 1 :] if base_path and record.path.startswith(f"{base_path}/") else record.path
+        if not rel_path:
+            continue
+        name = Path(rel_path).name
 
-        # Get relative path for display
-        relative_path = str(file_path.relative_to(WORKSPACE_BASE))
-
-        # Check name pattern
-        if name_regex and not name_regex.match(file_path.name):
+        if name_regex and not name_regex.match(name):
             continue
 
-        # If only searching by name, add and continue
         if not content_regex:
             results.append({
-                "path": relative_path,
-                "name": file_path.name,
-                "size": file_path.stat().st_size,
-                "match_type": "name"
+                "path": record.path,
+                "name": name,
+                "size": record.size,
+                "match_type": "name",
             })
+            if len(results) >= max_results:
+                break
             continue
 
-        # Search file content
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-                matches = list(content_regex.finditer(content))
-
-                if matches:
-                    # Get line numbers for matches
-                    lines = content.split('\n')
-                    match_lines = []
-
-                    for match in matches[:5]:  # Limit to first 5 matches per file
-                        # Find which line the match is on
-                        line_num = content[:match.start()].count('\n') + 1
-                        # Get the line content
-                        if line_num <= len(lines):
-                            line_content = lines[line_num - 1].strip()
-                            match_lines.append({
-                                "line": line_num,
-                                "content": line_content[:100]  # Limit line length
-                            })
-
-                    results.append({
-                        "path": relative_path,
-                        "name": file_path.name,
-                        "size": file_path.stat().st_size,
-                        "match_type": "content",
-                        "match_count": len(matches),
-                        "matches": match_lines
-                    })
-
-        except (UnicodeDecodeError, PermissionError):
-            # Skip binary files or files we can't read
+            content = storage.get_object(record.bucket_key).decode("utf-8", errors="ignore")
+        except Exception:
             continue
+
+        matches = list(content_regex.finditer(content))
+        if not matches:
+            continue
+
+        lines = content.split('\n')
+        match_lines = []
+        for match in matches[:5]:
+            line_num = content[:match.start()].count('\n') + 1
+            if line_num <= len(lines):
+                line_content = lines[line_num - 1].strip()
+                match_lines.append({
+                    "line": line_num,
+                    "content": line_content[:100],
+                })
+
+        results.append({
+            "path": record.path,
+            "name": name,
+            "size": record.size,
+            "match_type": "content",
+            "match_count": len(matches),
+            "matches": match_lines,
+        })
+
+        if len(results) >= max_results:
+            break
 
     return {
         "success": True,
@@ -217,16 +185,22 @@ def main():
         action="store_true",
         help="Output result as JSON"
     )
+    parser.add_argument(
+        "--user-id",
+        required=True,
+        help="User id for storage access",
+    )
 
     args = parser.parse_args()
 
     try:
         result = search_files(
+            user_id=args.user_id,
             directory=args.directory,
             name_pattern=args.name,
             content_pattern=args.content,
             case_sensitive=args.case_sensitive,
-            max_results=args.max_results
+            max_results=args.max_results,
         )
 
         if args.json:

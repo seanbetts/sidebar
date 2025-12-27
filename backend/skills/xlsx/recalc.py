@@ -12,6 +12,16 @@ import platform
 from pathlib import Path
 from openpyxl import load_workbook
 
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
+
 
 def setup_libreoffice_macro():
     """Setup LibreOffice macro for recalculation if not already configured"""
@@ -167,10 +177,22 @@ def main():
         print("    - #VALUE!, #DIV/0!, #REF!, #NAME?, #NULL!, #NUM!, #N/A")
         sys.exit(1)
     
-    filename = sys.argv[1]
-    timeout = int(sys.argv[2]) if len(sys.argv) > 2 else 30
-    
-    result = recalc(filename, timeout)
+    args = sys.argv[1:]
+    user_id = None
+    if "--user-id" in args:
+        idx = args.index("--user-id")
+        user_id = args[idx + 1]
+        del args[idx:idx + 2]
+
+    filename = args[0]
+    timeout = int(args[1]) if len(args) > 1 else 30
+
+    local_root = temp_root("xlsx-recalc-") if storage_is_r2() else Path(".")
+    local_input = prepare_input_path(user_id, filename, local_root) if storage_is_r2() else Path(filename)
+
+    result = recalc(str(local_input), timeout)
+    if storage_is_r2():
+        upload_output_path(user_id, filename, Path(local_input))
     print(json.dumps(result, indent=2))
 
 

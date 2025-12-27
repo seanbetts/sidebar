@@ -1,6 +1,6 @@
 ---
 name: fs
-description: Comprehensive filesystem operations for workspace - list, read, write, delete, move, search files. Use for all file management tasks in /workspace.
+description: Comprehensive filesystem operations for R2-backed storage - list, read, write, delete, move, search files. Use for all file management tasks in storage.
 metadata:
   capabilities:
     reads: true
@@ -11,11 +11,11 @@ metadata:
 
 # Filesystem Operations (fs)
 
-Complete filesystem CRUD operations for sideBar workspace.
+Complete filesystem CRUD operations for sideBar storage.
 
 ## Base Directory
 
-All operations relative to `/workspace` (Docker volume).
+All operations are relative to the storage root (R2-backed).
 
 ## Scripts
 
@@ -34,6 +34,6 @@ All scripts support `--json` flag for structured output.
 
 ## Security
 
-- Path validation prevents traversal outside /workspace
-- Write operations restricted to allowlist paths
-- All paths are relative to WORKSPACE_BASE environment variable
+- Path validation prevents traversal outside storage root
+- Access to profile-images is blocked
+- All paths are relative to the storage root

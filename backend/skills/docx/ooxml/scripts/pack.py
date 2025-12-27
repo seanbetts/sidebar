@@ -15,18 +15,39 @@ import defusedxml.minidom
 import zipfile
 from pathlib import Path
 
+BACKEND_ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_output_path,
+    download_input_dir,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Pack a directory into an Office file")
     parser.add_argument("input_directory", help="Unpacked Office document directory")
     parser.add_argument("output_file", help="Output Office file (.docx/.pptx/.xlsx)")
     parser.add_argument("--force", action="store_true", help="Skip validation")
+    parser.add_argument("--user-id", help="User id for storage access")
     args = parser.parse_args()
 
     try:
-        success = pack_document(
-            args.input_directory, args.output_file, validate=not args.force
+        local_root = temp_root("ooxml-pack-") if storage_is_r2() else Path(".")
+        input_dir = (
+            download_input_dir(args.user_id, args.input_directory, local_root / "input")
+            if storage_is_r2()
+            else Path(args.input_directory)
         )
+        output_file, r2_output = prepare_output_path(args.user_id, args.output_file, local_root)
+        success = pack_document(
+            input_dir, output_file, validate=not args.force
+        )
+        if storage_is_r2():
+            upload_output_path(args.user_id, r2_output, output_file)
 
         # Show warning if validation was skipped
         if args.force:

@@ -7,80 +7,32 @@ Delete a file or directory from workspace.
 
 import sys
 import json
-import os
 import argparse
-import shutil
 from pathlib import Path
 from typing import Dict, Any
 
-# Base workspace directory
-WORKSPACE_BASE = Path(os.getenv("WORKSPACE_BASE", "/workspace"))
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_ops import delete_path
 
 
-def validate_path(relative_path: str) -> Path:
-    """Validate that the path is safe and within workspace folder."""
-    if ".." in relative_path:
-        raise ValueError(f"Path traversal not allowed: {relative_path}")
-
-    full_path = (WORKSPACE_BASE / relative_path).resolve()
-
-    try:
-        full_path.relative_to(WORKSPACE_BASE.resolve())
-    except ValueError:
-        raise ValueError(
-            f"Path '{relative_path}' resolves to a location outside workspace"
-        )
-
-    if Path(relative_path).is_absolute():
-        raise ValueError("Absolute paths not allowed")
-
-    return full_path
-
-
-def delete_path(
+def delete_entry(
+    user_id: str,
     path: str,
-    recursive: bool = False
+    recursive: bool = False,
 ) -> Dict[str, Any]:
-    """
-    Delete a file or directory.
-
-    Args:
-        path: Path relative to workspace
-        recursive: If True, delete directories recursively
-
-    Returns:
-        Dictionary with operation result
-
-    Raises:
-        ValueError: If path is invalid
-        FileNotFoundError: If path doesn't exist
-        OSError: If trying to delete non-empty directory without recursive
-    """
-    file_path = validate_path(path)
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"Path not found: {path}")
-
-    is_file = file_path.is_file()
-    is_dir = file_path.is_dir()
-
-    # Delete based on type
-    if is_file:
-        file_path.unlink()
-        item_type = "file"
-    elif is_dir:
-        if recursive:
-            shutil.rmtree(file_path)
-        else:
-            file_path.rmdir()  # This will fail if directory is not empty
-        item_type = "directory"
-    else:
-        raise ValueError(f"Unknown path type: {path}")
-
+    """Delete a file or directory."""
+    if not recursive and path.endswith("/"):
+        raise ValueError("Directory delete requires --recursive")
+    result = delete_path(user_id, path)
+    deleted = result.get("deleted", [])
+    item_type = "directory" if len(deleted) > 1 else "file"
     return {
-        'path': str(file_path.relative_to(WORKSPACE_BASE)),
-        'type': item_type,
-        'action': 'deleted'
+        "path": path,
+        "type": item_type,
+        "action": "deleted",
+        "deleted": deleted,
     }
 
 
@@ -104,11 +56,16 @@ def main():
         action='store_true',
         help='Output results in JSON format'
     )
+    parser.add_argument(
+        "--user-id",
+        required=True,
+        help="User id for storage access",
+    )
 
     args = parser.parse_args()
 
     try:
-        result = delete_path(args.path, args.recursive)
+        result = delete_entry(args.user_id, args.path, args.recursive)
 
         output = {
             'success': True,

@@ -35,6 +35,17 @@ from pptx import Presentation
 from pptx.enum.text import PP_ALIGN
 from pptx.shapes.base import BaseShape
 
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    prepare_output_path,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
+
 # Type aliases for cleaner signatures
 JsonValue = Union[str, int, float, bool, None]
 ParagraphDict = Dict[str, JsonValue]
@@ -76,10 +87,14 @@ The output JSON includes:
         action="store_true",
         help="Include only text shapes that have overflow or overlap issues",
     )
+    parser.add_argument("--user-id", help="User id for storage access")
 
     args = parser.parse_args()
 
-    input_path = Path(args.input)
+    local_root = temp_root("pptx-inventory-") if storage_is_r2() else Path(".")
+    input_path = prepare_input_path(args.user_id, args.input, local_root) if storage_is_r2() else Path(args.input)
+    output_path, r2_output = prepare_output_path(args.user_id, args.output, local_root)
+
     if not input_path.exists():
         print(f"Error: Input file not found: {args.input}")
         sys.exit(1)
@@ -96,11 +111,14 @@ The output JSON includes:
             )
         inventory = extract_text_inventory(input_path, issues_only=args.issues_only)
 
-        output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         save_inventory(inventory, output_path)
 
-        print(f"Output saved to: {args.output}")
+        if storage_is_r2():
+            upload_output_path(args.user_id, r2_output, output_path)
+            print(f"Output saved to: {r2_output}")
+        else:
+            print(f"Output saved to: {args.output}")
 
         # Report statistics
         total_slides = len(inventory)

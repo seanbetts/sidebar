@@ -34,7 +34,7 @@ Transcribes audio files to text using OpenAI's gpt-4o-transcribe, gpt-4o-mini-tr
 Transcribes audio files with automatic chunking and progress tracking.
 
 ```bash
-python transcribe_audio.py FILE [--language LANG] [--model MODEL] [--output-dir DIR] [--json]
+python transcribe_audio.py FILE [--language LANG] [--model MODEL] [--output-dir DIR] [--user-id USER] [--json]
 ```
 
 **Arguments**:
@@ -44,13 +44,14 @@ python transcribe_audio.py FILE [--language LANG] [--model MODEL] [--output-dir 
 - `--language`: Language code (default: "en")
 - `--model`: Transcription model (default: "gpt-4o-transcribe")
   - Options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
-- `--output-dir`: Directory for transcripts (default: /workspace/Transcripts)
+- `--output-dir`: R2 folder for transcripts (default: Transcripts)
 - `--chunking-strategy`: Use "auto" for automatic VAD-based chunking
 - `--prompt`: Optional text to guide model's style
 - `--response-format`: Output format (json, text, srt, vtt, verbose_json)
 - `--temperature`: Sampling temperature 0-1 (default: 0.0)
 - `--json`: Output results in JSON format
 - `--database`: Save transcript to the notes database
+- `--user-id`: User id for storage/database access (required)
 - `--folder`: Database folder for transcript note (default: Transcripts/Audio)
 
 **Features**:
@@ -73,7 +74,7 @@ python transcribe_audio.py interview.mp3 --language es
 python transcribe_audio.py podcast.wav --model whisper-1
 
 # Custom output location
-python transcribe_audio.py audio.mp4 --output-dir ~/my-transcripts
+python transcribe_audio.py audio.mp4 --output-dir Transcripts
 
 # Automatic VAD chunking
 python transcribe_audio.py large-file.m4a --chunking-strategy auto
@@ -108,7 +109,7 @@ meeting_20251220_143045_transcript.txt
 
 Transcripts are saved to:
 ```
-/workspace/Transcripts/
+R2/Transcripts/
 ```
 
 ## Supported Audio Formats

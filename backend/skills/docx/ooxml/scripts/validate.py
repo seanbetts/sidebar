@@ -12,6 +12,16 @@ from pathlib import Path
 
 from validation import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
 
+BACKEND_ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    download_input_dir,
+    storage_is_r2,
+    temp_root,
+)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Validate Office document XML files")
@@ -30,11 +40,21 @@ def main():
         action="store_true",
         help="Enable verbose output",
     )
+    parser.add_argument("--user-id", help="User id for storage access")
     args = parser.parse_args()
 
     # Validate paths
-    unpacked_dir = Path(args.unpacked_dir)
-    original_file = Path(args.original)
+    local_root = temp_root("ooxml-validate-") if storage_is_r2() else Path(".")
+    unpacked_dir = (
+        download_input_dir(args.user_id, args.unpacked_dir, local_root / "unpacked")
+        if storage_is_r2()
+        else Path(args.unpacked_dir)
+    )
+    original_file = (
+        prepare_input_path(args.user_id, args.original, local_root)
+        if storage_is_r2()
+        else Path(args.original)
+    )
     file_extension = original_file.suffix.lower()
     assert unpacked_dir.is_dir(), f"Error: {unpacked_dir} is not a directory"
     assert original_file.is_file(), f"Error: {original_file} is not a file"

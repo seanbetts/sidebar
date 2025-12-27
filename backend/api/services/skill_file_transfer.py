@@ -1,0 +1,98 @@
+"""R2-aware file transfer helpers for skills."""
+from __future__ import annotations
+
+import mimetypes
+import tempfile
+from pathlib import Path
+from typing import Tuple
+
+from api.config import settings
+from api.services.skill_file_ops import (
+    download_file,
+    upload_file,
+    normalize_path,
+    ensure_allowed_path,
+    session_for_user,
+)
+from api.services.files_service import FilesService
+from api.services.storage.service import get_storage_backend
+
+
+def storage_is_r2() -> bool:
+    return settings.storage_backend.lower() == "r2"
+
+
+def temp_root(prefix: str) -> Path:
+    return Path(tempfile.mkdtemp(prefix=prefix))
+
+
+def prepare_input_path(user_id: str, path: str, root: Path) -> Path:
+    """Download an R2 path to a local temp path if needed."""
+    if not storage_is_r2():
+        return Path(path)
+    if not user_id:
+        raise ValueError("user_id is required for storage access")
+
+    normalized = normalize_path(path, allow_root=False)
+    ensure_allowed_path(normalized)
+    local_path = root / normalized
+    download_file(user_id, normalized, local_path)
+    return local_path
+
+
+def prepare_output_path(user_id: str, path: str, root: Path) -> Tuple[Path, str]:
+    """Return local output path and R2 target path."""
+    if not storage_is_r2():
+        return Path(path), path
+    if not user_id:
+        raise ValueError("user_id is required for storage access")
+
+    normalized = normalize_path(path, allow_root=False)
+    ensure_allowed_path(normalized)
+    local_path = root / normalized
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    return local_path, normalized
+
+
+def upload_output_path(user_id: str, r2_path: str, local_path: Path) -> str:
+    content_type = mimetypes.guess_type(local_path.name)[0] or "application/octet-stream"
+    record = upload_file(user_id, r2_path, local_path, content_type=content_type)
+    return record.path
+
+
+def upload_output_dir(user_id: str, r2_prefix: str, local_dir: Path) -> list[str]:
+    uploaded: list[str] = []
+    base_prefix = r2_prefix.strip("/")
+    for file_path in local_dir.rglob("*"):
+        if not file_path.is_file():
+            continue
+        rel = file_path.relative_to(local_dir).as_posix()
+        r2_path = f"{base_prefix}/{rel}".strip("/")
+        uploaded.append(upload_output_path(user_id, r2_path, file_path))
+    return uploaded
+
+
+def download_input_dir(user_id: str, r2_prefix: str, local_dir: Path) -> Path:
+    if not storage_is_r2():
+        return Path(r2_prefix)
+    if not user_id:
+        raise ValueError("user_id is required for storage access")
+
+    prefix = normalize_path(r2_prefix, allow_root=False)
+    ensure_allowed_path(prefix)
+
+    storage = get_storage_backend()
+    with session_for_user(user_id) as db:
+        records = FilesService.list_by_prefix(db, user_id, f"{prefix}/")
+
+    for record in records:
+        if record.deleted_at is not None or record.category == "folder":
+            continue
+        if record.path.startswith("profile-images/") or record.path == "profile-images":
+            continue
+        rel = record.path[len(prefix) + 1 :]
+        local_path = local_dir / rel
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        local_path.write_bytes(storage.get_object(record.bucket_key))
+
+    return local_dir

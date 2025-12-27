@@ -7,97 +7,39 @@ Read file content with optional line range support.
 
 import sys
 import json
-import os
 import argparse
 from pathlib import Path
 from typing import Dict, Any
 
-# Base workspace directory
-WORKSPACE_BASE = Path(os.getenv("WORKSPACE_BASE", "/workspace"))
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
 
-
-def validate_path(relative_path: str) -> Path:
-    """
-    Validate that the path is safe and within workspace folder.
-
-    Args:
-        relative_path: Relative path from workspace base
-
-    Returns:
-        Absolute Path object
-
-    Raises:
-        ValueError: If path is invalid or escapes workspace folder
-    """
-    # Reject path traversal attempts
-    if ".." in relative_path:
-        raise ValueError(f"Path traversal not allowed: {relative_path}")
-
-    # Convert to Path and resolve
-    full_path = (WORKSPACE_BASE / relative_path).resolve()
-
-    # Check that resolved path is within workspace base
-    try:
-        full_path.relative_to(WORKSPACE_BASE.resolve())
-    except ValueError:
-        raise ValueError(
-            f"Path '{relative_path}' resolves to a location outside workspace"
-        )
-
-    # Reject absolute paths in the original input
-    if Path(relative_path).is_absolute():
-        raise ValueError("Absolute paths not allowed")
-
-    return full_path
+from api.services.skill_file_ops import read_text
 
 
 def read_file(
+    user_id: str,
     filename: str,
     offset: int = 0,
-    lines: int = None
+    lines: int | None = None,
 ) -> Dict[str, Any]:
-    """
-    Read file content with optional line range.
-
-    Args:
-        filename: File path relative to workspace
-        offset: Starting line number (0-indexed)
-        lines: Number of lines to read (None = all)
-
-    Returns:
-        Dictionary with file content and metadata
-
-    Raises:
-        ValueError: If path is invalid
-        FileNotFoundError: If file doesn't exist
-    """
-    file_path = validate_path(filename)
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {filename}")
-
-    if not file_path.is_file():
-        raise ValueError(f"Path is not a file: {filename}")
-
-    # Read file content
-    content = file_path.read_text(encoding='utf-8')
+    """Read file content with optional line range."""
+    content, record = read_text(user_id, filename)
     content_lines = content.splitlines(keepends=True)
 
-    # Apply offset and line limit
     if offset > 0:
         content_lines = content_lines[offset:]
-
     if lines is not None:
         content_lines = content_lines[:lines]
 
     filtered_content = ''.join(content_lines)
 
     return {
-        'path': str(file_path.relative_to(WORKSPACE_BASE)),
+        'path': record.path,
         'content': filtered_content,
-        'size': file_path.stat().st_size,
+        'size': record.size,
         'total_lines': len(content.splitlines()),
-        'returned_lines': len(filtered_content.splitlines())
+        'returned_lines': len(filtered_content.splitlines()),
     }
 
 
@@ -118,20 +60,44 @@ def main():
         help='Starting line number (0-indexed, default: 0)'
     )
     parser.add_argument(
+        '--start-line',
+        type=int,
+        help='Starting line number (1-indexed, overrides --offset)'
+    )
+    parser.add_argument(
         '--lines',
         type=int,
         help='Number of lines to read (default: all)'
+    )
+    parser.add_argument(
+        '--end-line',
+        type=int,
+        help='Ending line number (1-indexed)'
     )
     parser.add_argument(
         '--json',
         action='store_true',
         help='Output results in JSON format'
     )
+    parser.add_argument(
+        "--user-id",
+        required=True,
+        help="User id for storage access",
+    )
 
     args = parser.parse_args()
 
     try:
-        result = read_file(args.filename, args.offset, args.lines)
+        offset = args.offset
+        lines = args.lines
+        if args.start_line is not None:
+            offset = max(args.start_line - 1, 0)
+        if args.end_line is not None and args.start_line is not None:
+            lines = max(args.end_line - args.start_line + 1, 0)
+        elif args.end_line is not None:
+            lines = max(args.end_line, 0)
+
+        result = read_file(args.user_id, args.filename, offset, lines)
 
         output = {
             'success': True,

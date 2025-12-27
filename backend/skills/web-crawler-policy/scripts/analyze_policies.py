@@ -15,6 +15,7 @@ import asyncio
 import csv
 import os
 import time
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 from collections import defaultdict
@@ -23,6 +24,14 @@ from datetime import datetime
 import aiohttp
 from tabulate import tabulate
 
+# Add backend root for storage helpers
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+try:
+    from api.services.skill_file_ops import upload_file
+except Exception:
+    upload_file = None
 # Try to import subdomain scanner if available
 try:
     sys.path.insert(0, str(Path(__file__).parent.parent.parent / "subdomain-discover" / "scripts"))
@@ -39,8 +48,8 @@ except ImportError:
     LLM_AVAILABLE = False
 
 
-# Default output directory
-DEFAULT_OUTPUT_DIR = Path("/workspace") / "Reports"
+# Default output directory (R2)
+DEFAULT_OUTPUT_DIR = "Reports"
 
 
 def normalize_domain(domain: str) -> str:
@@ -937,7 +946,7 @@ Requirements:
     parser.add_argument('--timeout', type=float, default=10.0, help='HTTP timeout in seconds (default: 10.0)')
     parser.add_argument('--no-llms', action='store_true', help='Skip checking llms.txt files')
     parser.add_argument('--save-robots', action='store_true', help='Save robots.txt and llms.txt files to disk')
-    parser.add_argument('--output-dir', default=str(DEFAULT_OUTPUT_DIR), help=f'Output directory (default: {DEFAULT_OUTPUT_DIR})')
+    parser.add_argument('--output-dir', default=DEFAULT_OUTPUT_DIR, help=f'R2 output folder (default: {DEFAULT_OUTPUT_DIR})')
 
     # Output options
     parser.add_argument('--json', action='store_true', help='Output results in JSON format to stdout')
@@ -951,6 +960,7 @@ Requirements:
     parser.add_argument('--llm-model', default='gpt-4o', help='LLM model to use (default: gpt-4o)')
     parser.add_argument('--llm-api-key', help='OpenAI API key (or use OPENAI_API_KEY from Doppler/env)')
     parser.add_argument('--report-output', help='Output path for markdown report')
+    parser.add_argument('--user-id', required=True, help='User id for storage access')
 
     args = parser.parse_args()
 
@@ -997,6 +1007,9 @@ Requirements:
         print("Error: Must specify either domain or --domains", file=sys.stderr)
         sys.exit(1)
 
+    r2_base = (args.output_dir or DEFAULT_OUTPUT_DIR).strip("/")
+    local_output_dir = Path(tempfile.mkdtemp(prefix="crawler-reports-"))
+
     try:
         # Determine which domains to analyze
         if args.domains:
@@ -1038,10 +1051,10 @@ Requirements:
             print("Also checking for llms.txt files...")
         if args.save_robots:
             file_types = "robots.txt and llms.txt files" if not args.no_llms else "robots.txt files"
-            print(f"{file_types} will be saved to: {args.output_dir}/{main_domain}/")
+            print(f"{file_types} will be saved to: {r2_base}/{main_domain}/")
 
         # Analyze robots.txt files
-        output_dir = Path(args.output_dir)
+        output_dir = local_output_dir
         analyzer = RobotsAnalyzer(
             timeout=args.timeout,
             save_robots=args.save_robots,
@@ -1086,7 +1099,7 @@ Requirements:
         if args.output:
             export_to_csv(permission_data, domains_to_analyze, args.output, output_dir, main_domain)
             if not os.path.dirname(args.output):
-                actual_output_path = f"{args.output_dir}/{main_domain}/{args.output}"
+                actual_output_path = f"{r2_base}/{main_domain}/{args.output}"
             else:
                 actual_output_path = args.output
             print(f"\nResults exported to: {actual_output_path}")
@@ -1101,7 +1114,10 @@ Requirements:
 
             with open(json_output_path, 'w', encoding='utf-8') as f:
                 json.dump(output_data, f, indent=2)
-            print(f"Raw data exported to: {json_output_path}")
+            if not os.path.dirname(args.json_output):
+                print(f"Raw data exported to: {r2_base}/{main_domain}/{args.json_output}")
+            else:
+                print(f"Raw data exported to: {json_output_path}")
 
         # Generate LLM-powered report if requested
         if args.report:
@@ -1150,17 +1166,32 @@ Requirements:
                     analysis_json_path = str(domain_folder / Path(report_output_path).stem) + '_analysis.json'
                     with open(analysis_json_path, 'w', encoding='utf-8') as f:
                         json.dump(analysis_result, f, indent=2)
-                    print(f"Analysis data saved to: {analysis_json_path}")
+                    print(f"Analysis data saved to: {r2_base}/{main_domain}/{Path(analysis_json_path).name}")
 
                 # Save markdown report
                 with open(report_output_path, 'w', encoding='utf-8') as f:
                     f.write(markdown_report)
 
-                print(f"Intelligence report generated: {report_output_path}")
+                if not os.path.dirname(report_output_path):
+                    print(f"Intelligence report generated: {r2_base}/{main_domain}/{Path(report_output_path).name}")
+                else:
+                    print(f"Intelligence report generated: {report_output_path}")
 
             except Exception as e:
                 print(f"Error generating report: {e}", file=sys.stderr)
                 print("Continuing with standard output...")
+
+        # Upload outputs to R2
+        if upload_file is None:
+            raise RuntimeError("Storage dependencies are unavailable")
+        domain_folder = output_dir / main_domain
+        if domain_folder.exists():
+            for file_path in domain_folder.rglob("*"):
+                if not file_path.is_file():
+                    continue
+                rel_path = file_path.relative_to(domain_folder).as_posix()
+                r2_path = f"{r2_base}/{main_domain}/{rel_path}".strip("/")
+                upload_file(args.user_id, r2_path, file_path)
 
         print(f"\nScan complete. Analyzed {len(domains_to_analyze)} domains.")
         sys.exit(0)

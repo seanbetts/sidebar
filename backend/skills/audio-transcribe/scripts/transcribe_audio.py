@@ -11,6 +11,7 @@ import argparse
 import io
 import os
 import time
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -25,13 +26,16 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
+    from api.services.skill_file_ops import upload_file, download_file
 except Exception:
     SessionLocal = None
     NotesService = None
+    upload_file = None
+    download_file = None
 
 
-# Default output directory
-DEFAULT_OUTPUT = Path("/workspace") / "Transcripts"
+# Default R2 output directory
+DEFAULT_R2_DIR = "Transcripts"
 
 # API size limit (25MB with safety margin)
 MAX_SIZE = 25_000_000
@@ -116,6 +120,24 @@ def save_transcript(
     output_path.write_text(metadata + transcript, encoding='utf-8')
 
     return output_path
+
+
+def save_transcript_to_r2(
+    user_id: str,
+    transcript_path: Path,
+    r2_dir: str,
+) -> str:
+    if upload_file is None:
+        raise RuntimeError("Storage dependencies are unavailable")
+    r2_dir = (r2_dir or "").strip("/")
+    r2_path = f"{r2_dir}/{transcript_path.name}" if r2_dir else transcript_path.name
+    record = upload_file(
+        user_id,
+        r2_path,
+        transcript_path,
+        content_type="text/plain",
+    )
+    return record.path
 
 
 def post_to_api(
@@ -358,6 +380,10 @@ def transcribe_audio(
     language: Optional[str] = None,
     model: str = "gpt-4o-transcribe",
     output_dir: Optional[str] = None,
+    *,
+    user_id: Optional[str] = None,
+    temp_dir: Optional[str] = None,
+    keep_local: bool = False,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -381,16 +407,23 @@ def transcribe_audio(
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY environment variable is not set")
+    if not user_id:
+        raise ValueError("user_id is required for transcript storage")
 
     path = Path(file_path)
-    if not path.exists() or not path.is_file():
-        raise FileNotFoundError(f"Audio file not found: {file_path}")
+    temp_root = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="audio-input-"))
+    cleanup_temp = temp_dir is None
 
-    # Determine output directory
-    if output_dir:
-        out_dir = Path(output_dir).expanduser()
-    else:
-        out_dir = DEFAULT_OUTPUT
+    if not path.exists() or not path.is_file():
+        if not user_id or download_file is None:
+            raise FileNotFoundError(f"Audio file not found: {file_path}")
+        local_input = temp_root / Path(file_path).name
+        download_file(user_id, file_path, local_input)
+        path = local_input
+
+    # Local output directory (always temp)
+    out_dir = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="transcripts-"))
+    r2_dir = (output_dir or DEFAULT_R2_DIR).strip("/")
 
     file_size_mb = path.stat().st_size / (1024 * 1024)
     print(f"📁 Processing {path.name} ({file_size_mb:.1f}MB) with model {model}")
@@ -444,9 +477,14 @@ def transcribe_audio(
         output_path = save_transcript(combined_transcript, path, model, out_dir, last_usage)
         print(f"💾 Transcript saved to: {output_path}")
 
+        r2_path = None
+        if user_id:
+            r2_path = save_transcript_to_r2(user_id, output_path, r2_dir)
+
         return {
             'transcript': combined_transcript,
-            'output_path': str(output_path),
+            'output_path': r2_path or str(output_path),
+            'local_path': str(output_path) if keep_local else None,
             'word_count': len(combined_transcript.split()),
             'chunks': len(transcripts),
             'model': model,
@@ -465,9 +503,14 @@ def transcribe_audio(
         output_path = save_transcript(transcript, path, model, out_dir, usage_info)
         print(f"💾 Transcript saved to: {output_path}")
 
+        r2_path = None
+        if user_id:
+            r2_path = save_transcript_to_r2(user_id, output_path, r2_dir)
+
         return {
             'transcript': transcript,
-            'output_path': str(output_path),
+            'output_path': r2_path or str(output_path),
+            'local_path': str(output_path) if keep_local else None,
             'word_count': len(transcript.split()),
             'chunks': 1,
             'model': model,
@@ -481,7 +524,7 @@ def main() -> None:
         description='Transcribe audio using OpenAI API',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"""
-Default Output: {DEFAULT_OUTPUT}
+Default Output (R2): {DEFAULT_R2_DIR}
 
 Examples:
   # Basic transcription
@@ -494,7 +537,7 @@ Examples:
   %(prog)s podcast.wav --model whisper-1
 
   # Custom output directory
-  %(prog)s audio.mp4 --output-dir ~/my-transcripts
+  %(prog)s audio.mp4 --output-dir Transcripts
 
   # Automatic VAD chunking
   %(prog)s large-file.m4a --chunking-strategy auto
@@ -513,7 +556,7 @@ Requirements:
     parser.add_argument("file", help="Path to audio file")
     parser.add_argument("--language", default="en", help="Language hint (default: en)")
     parser.add_argument("--model", default="gpt-4o-transcribe", help="Transcription model")
-    parser.add_argument("--output-dir", help="Directory to save transcripts")
+    parser.add_argument("--output-dir", help="R2 folder for transcripts (default: Transcripts)")
     parser.add_argument("--chunking-strategy", help="Use 'auto' for automatic VAD-based chunking")
     parser.add_argument("--include", action="append", help="Additional info to include")
     parser.add_argument("--prompt", help="Optional text to guide the model's style")
@@ -522,7 +565,13 @@ Requirements:
     parser.add_argument("--timestamp-granularities", action="append", help="Timestamp granularities")
     parser.add_argument("--json", action="store_true", help="Output results in JSON format")
     parser.add_argument("--database", action="store_true", help="Save transcript to the database")
-    parser.add_argument("--user-id", help="User id for database access")
+    parser.add_argument("--user-id", help="User id for storage/database access")
+    parser.add_argument("--temp-dir", help="Temporary working directory")
+    parser.add_argument(
+        "--keep-local",
+        action="store_true",
+        help="Keep local transcript file (for chaining)",
+    )
     parser.add_argument(
         "--folder",
         help="Database folder for transcript note (default: Transcripts/Audio)",
@@ -541,6 +590,9 @@ Requirements:
             language=args.language,
             model=args.model,
             output_dir=args.output_dir,
+            user_id=args.user_id,
+            temp_dir=args.temp_dir,
+            keep_local=args.keep_local,
             chunking_strategy=chunking_strategy,
             include=args.include,
             prompt=args.prompt,
@@ -553,8 +605,7 @@ Requirements:
         if args.database:
             if not args.user_id:
                 raise ValueError("user_id is required for database mode")
-            transcript_path = Path(result["output_path"])
-            transcript_content = transcript_path.read_text(encoding="utf-8")
+            transcript_content = result["transcript"]
             note_title = f"Transcript: {Path(args.file).stem}"
             note_folder = args.folder or "Transcripts/Audio"
             note_data = save_transcript_database(

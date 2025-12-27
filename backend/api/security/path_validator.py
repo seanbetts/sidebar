@@ -27,6 +27,31 @@ class PathValidator:
 
     def _validate_path(self, path: str, check_writable: bool) -> Path:
         """Core path validation logic."""
+        # In R2 mode, enforce string-level path rules only.
+        try:
+            from api.config import settings
+        except Exception:
+            settings = None
+
+        if settings and settings.storage_backend.lower() == "r2":
+            if ".." in path:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Path traversal not allowed: {path}"
+                )
+            if Path(path).is_absolute():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Absolute paths not allowed: {path}"
+                )
+            normalized = path.replace("\\", "/").strip("/")
+            if normalized == "profile-images" or normalized.startswith("profile-images/"):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Path not writable: profile-images"
+                )
+            return (self.workspace_base / normalized).resolve()
+
         # Reject obvious traversal attempts
         if ".." in path:
             raise HTTPException(

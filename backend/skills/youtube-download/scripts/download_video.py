@@ -12,14 +12,23 @@ import os
 import subprocess
 import time
 import urllib.parse
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional
 
 import yt_dlp
 
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
 
-# Default output directory (workspace Downloads)
-DEFAULT_OUTPUT = Path("/workspace") / "Downloads"
+try:
+    from api.services.skill_file_ops import upload_file
+except Exception:
+    upload_file = None
+
+
+# Default output directory (R2 Videos)
+DEFAULT_R2_DIR = "Videos"
 
 
 def check_ffmpeg() -> bool:
@@ -172,7 +181,11 @@ def download_youtube(
     audio_only: bool = False,
     is_playlist: bool = False,
     output_dir: Optional[str] = None,
-    quiet: bool = False
+    quiet: bool = False,
+    *,
+    user_id: Optional[str] = None,
+    temp_dir: Optional[str] = None,
+    keep_local: bool = False,
 ) -> Dict[str, Any]:
     """
     Download YouTube video or audio.
@@ -202,14 +215,15 @@ def download_youtube(
     # Normalize URL
     processed_url = normalize_url(url)
 
-    # Determine output directory
-    if output_dir:
-        save_path = Path(output_dir).expanduser()
-    else:
-        save_path = DEFAULT_OUTPUT
+    if not user_id:
+        raise ValueError("user_id is required for storage")
+    if upload_file is None:
+        raise RuntimeError("Storage dependencies are unavailable")
 
-    # Create directory if needed
-    save_path.mkdir(parents=True, exist_ok=True)
+    r2_dir = (output_dir or DEFAULT_R2_DIR).strip("/")
+    local_root = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="yt-download-"))
+    local_root.mkdir(parents=True, exist_ok=True)
+    save_path = local_root
 
     # Configure yt-dlp options
     ydl_opts = {
@@ -296,11 +310,24 @@ def download_youtube(
             # FFmpegExtractAudio changes extension to .mp3
             final_filename = Path(filename).stem + '.mp3'
 
+        local_output = save_path / final_filename
+        if not local_output.exists():
+            raise FileNotFoundError(f"Download output not found: {local_output}")
+
+        content_type = "audio/mpeg" if audio_only else "video/mp4"
+        r2_path = f"{r2_dir}/{final_filename}" if r2_dir else final_filename
+        record = upload_file(user_id, r2_path, local_output, content_type=content_type)
+
+        if not keep_local and temp_dir is None:
+            local_output.unlink(missing_ok=True)
+
         return {
             'url': processed_url,
             'title': title,
-            'output_dir': str(save_path),
+            'output_dir': r2_dir or ".",
             'filename': final_filename,
+            'r2_path': record.path,
+            'local_path': str(local_output) if keep_local else None,
             'audio_only': audio_only,
             'is_playlist': is_playlist,
             'duration_seconds': int(duration),
@@ -338,7 +365,7 @@ def format_human_readable(result: Dict[str, Any]) -> str:
     lines.append(f"URL: {result['url']}")
     lines.append(f"Type: {'Audio (MP3)' if result['audio_only'] else 'Video (MP4)'}")
     lines.append(f"Playlist: {'Yes' if result['is_playlist'] else 'No'}")
-    lines.append(f"Saved to: {result['output_dir']}")
+    lines.append(f"Saved to: {result.get('r2_path') or result['output_dir']}")
     lines.append(f"Filename: {result['filename']}")
 
     minutes = result['duration_seconds'] // 60
@@ -356,7 +383,7 @@ def main():
         description='Download YouTube videos or audio using yt-dlp',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"""
-Default Output: {DEFAULT_OUTPUT}
+Default Output (R2): {DEFAULT_R2_DIR}
 
 Examples:
   # Download video
@@ -369,7 +396,7 @@ Examples:
   %(prog)s "https://youtube.com/playlist?list=PLAYLIST_ID" --playlist
 
   # Custom output directory
-  %(prog)s "https://youtube.com/watch?v=VIDEO_ID" --output ~/Downloads
+  %(prog)s "https://youtube.com/watch?v=VIDEO_ID" --output Videos
 
 Requirements:
   - ffmpeg must be installed (brew install ffmpeg on macOS)
@@ -395,7 +422,21 @@ Requirements:
     )
     parser.add_argument(
         '--output',
-        help='Custom output directory'
+        help='R2 folder to save output (default: Videos)'
+    )
+    parser.add_argument(
+        '--user-id',
+        required=True,
+        help='User id for storage access'
+    )
+    parser.add_argument(
+        '--temp-dir',
+        help='Temporary working directory'
+    )
+    parser.add_argument(
+        '--keep-local',
+        action='store_true',
+        help='Keep local file (for chaining)'
     )
     parser.add_argument(
         '--json',
@@ -412,7 +453,10 @@ Requirements:
             audio_only=args.audio,
             is_playlist=args.playlist,
             output_dir=args.output,
-            quiet=args.json
+            quiet=args.json,
+            user_id=args.user_id,
+            temp_dir=args.temp_dir,
+            keep_local=args.keep_local,
         )
 
         # Output results

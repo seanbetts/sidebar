@@ -1,8 +1,20 @@
 import json
 import sys
+from pathlib import Path
 
 from pypdf import PdfReader, PdfWriter
 from pypdf.annotations import FreeText
+
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    prepare_output_path,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
 
 
 # Fills a PDF by adding text annotations defined in `fields.json`. See forms.md.
@@ -25,7 +37,7 @@ def transform_coordinates(bbox, image_width, image_height, pdf_width, pdf_height
     return left, bottom, right, top
 
 
-def fill_pdf_form(input_pdf_path, fields_json_path, output_pdf_path):
+def fill_pdf_form(input_pdf_path: Path, fields_json_path: Path, output_pdf_path: Path):
     """Fill the PDF form with data from fields.json"""
     
     # `fields.json` format described in forms.md.
@@ -33,7 +45,7 @@ def fill_pdf_form(input_pdf_path, fields_json_path, output_pdf_path):
         fields_data = json.load(f)
     
     # Open the PDF
-    reader = PdfReader(input_pdf_path)
+    reader = PdfReader(str(input_pdf_path))
     writer = PdfWriter()
     
     # Copy all pages to writer
@@ -98,11 +110,22 @@ def fill_pdf_form(input_pdf_path, fields_json_path, output_pdf_path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: fill_pdf_form_with_annotations.py [input pdf] [fields.json] [output pdf]")
+    args = sys.argv[1:]
+    user_id = None
+    if "--user-id" in args:
+        idx = args.index("--user-id")
+        user_id = args[idx + 1]
+        del args[idx:idx + 2]
+
+    if len(args) != 3:
+        print("Usage: fill_pdf_form_with_annotations.py [input pdf] [fields.json] [output pdf] [--user-id USER]")
         sys.exit(1)
-    input_pdf = sys.argv[1]
-    fields_json = sys.argv[2]
-    output_pdf = sys.argv[3]
-    
-    fill_pdf_form(input_pdf, fields_json, output_pdf)
+    input_pdf, fields_json, output_pdf = args
+
+    local_root = temp_root("pdf-annotate-") if storage_is_r2() else Path(".")
+    local_input = prepare_input_path(user_id, input_pdf, local_root) if storage_is_r2() else Path(input_pdf)
+    local_fields = prepare_input_path(user_id, fields_json, local_root) if storage_is_r2() else Path(fields_json)
+    local_output, r2_output = prepare_output_path(user_id, output_pdf, local_root)
+    fill_pdf_form(local_input, local_fields, local_output)
+    if storage_is_r2():
+        upload_output_path(user_id, r2_output, local_output)

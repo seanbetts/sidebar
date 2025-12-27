@@ -7,90 +7,23 @@ Copy files or directories within workspace with optional dry-run support.
 
 import sys
 import json
-import os
 import argparse
-import shutil
 from pathlib import Path
 from typing import Dict, Any
 
-# Base workspace directory
-WORKSPACE_BASE = Path(os.getenv("WORKSPACE_BASE", "/workspace"))
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_ops import copy_path
 
 
-def validate_path(relative_path: str) -> Path:
-    """
-    Validate that the path is safe and within workspace folder.
-
-    Args:
-        relative_path: Relative path from workspace base
-
-    Returns:
-        Absolute Path object
-
-    Raises:
-        ValueError: If path is invalid or escapes workspace folder
-    """
-    # Reject path traversal attempts
-    if ".." in relative_path:
-        raise ValueError(f"Path traversal not allowed: {relative_path}")
-
-    # Convert to Path and resolve
-    full_path = (WORKSPACE_BASE / relative_path).resolve()
-
-    # Check that resolved path is within workspace base
-    try:
-        full_path.relative_to(WORKSPACE_BASE.resolve())
-    except ValueError:
-        raise ValueError(
-            f"Path '{relative_path}' resolves to a location outside workspace"
-        )
-
-    # Reject absolute paths in the original input
-    if Path(relative_path).is_absolute():
-        raise ValueError("Absolute paths not allowed")
-
-    return full_path
-
-
-def copy_path(
+def copy_entry(
+    user_id: str,
     source: str,
     destination: str,
-    dry_run: bool = False
+    dry_run: bool = False,
 ) -> Dict[str, Any]:
-    """
-    Copy a file or directory to a new location.
-
-    Args:
-        source: Source path relative to workspace
-        destination: Destination path relative to workspace
-        dry_run: If True, validate but don't actually copy
-
-    Returns:
-        Dictionary with operation result
-
-    Raises:
-        ValueError: If paths are invalid
-        FileNotFoundError: If source doesn't exist
-        FileExistsError: If destination already exists
-    """
-    source_path = validate_path(source)
-    dest_path = validate_path(destination)
-
-    if not source_path.exists():
-        raise FileNotFoundError(f"Source not found: {source}")
-
-    if dest_path.exists():
-        raise FileExistsError(f"Destination already exists: {destination}")
-
-    # Get file/directory type and size
-    is_directory = source_path.is_dir()
-    if is_directory:
-        # Count items in directory
-        item_count = sum(1 for _ in source_path.rglob('*'))
-        size_info = f"{item_count} items"
-    else:
-        size_info = f"{source_path.stat().st_size} bytes"
-
+    """Copy a file or directory to a new location."""
     if dry_run:
         return {
             "success": True,
@@ -98,31 +31,13 @@ def copy_path(
             "data": {
                 "source": source,
                 "destination": destination,
-                "type": "directory" if is_directory else "file",
-                "size": size_info,
-                "message": f"Would copy {source} to {destination}"
-            }
+                "message": f"Would copy {source} to {destination}",
+            },
         }
 
-    # Create parent directory if needed
-    dest_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Copy the file or directory
-    if is_directory:
-        shutil.copytree(source_path, dest_path)
-    else:
-        shutil.copy2(source_path, dest_path)
-
-    return {
-        "success": True,
-        "data": {
-            "source": source,
-            "destination": destination,
-            "type": "directory" if is_directory else "file",
-            "size": size_info,
-            "message": f"Copied {source} to {destination}"
-        }
-    }
+    result = copy_path(user_id, source, destination)
+    result["message"] = f"Copied {source} to {destination}"
+    return {"success": True, "data": result}
 
 
 def main():
@@ -142,11 +57,16 @@ def main():
         action="store_true",
         help="Output result as JSON"
     )
+    parser.add_argument(
+        "--user-id",
+        required=True,
+        help="User id for storage access",
+    )
 
     args = parser.parse_args()
 
     try:
-        result = copy_path(args.source, args.destination, args.dry_run)
+        result = copy_entry(args.user_id, args.source, args.destination, args.dry_run)
 
         if args.json:
             print(json.dumps(result, indent=2))

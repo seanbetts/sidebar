@@ -1,14 +1,25 @@
 import json
 import sys
+from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    prepare_output_path,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
 
 # Creates "validation" images with rectangles for the bounding box information that
 # Claude creates when determining where to add text annotations in PDFs. See forms.md.
 
 
-def create_validation_image(page_number, fields_json_path, input_path, output_path):
+def create_validation_image(page_number, fields_json_path: Path, input_path: Path, output_path: Path):
     # Input file should be in the `fields.json` format described in forms.md.
     with open(fields_json_path, 'r') as f:
         data = json.load(f)
@@ -31,11 +42,25 @@ def create_validation_image(page_number, fields_json_path, input_path, output_pa
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        print("Usage: create_validation_image.py [page number] [fields.json file] [input image path] [output image path]")
+    args = sys.argv[1:]
+    user_id = None
+    if "--user-id" in args:
+        idx = args.index("--user-id")
+        user_id = args[idx + 1]
+        del args[idx:idx + 2]
+
+    if len(args) != 4:
+        print("Usage: create_validation_image.py [page number] [fields.json file] [input image path] [output image path] [--user-id USER]")
         sys.exit(1)
-    page_number = int(sys.argv[1])
-    fields_json_path = sys.argv[2]
-    input_image_path = sys.argv[3]
-    output_image_path = sys.argv[4]
-    create_validation_image(page_number, fields_json_path, input_image_path, output_image_path)
+    page_number = int(args[0])
+    fields_json_path = args[1]
+    input_image_path = args[2]
+    output_image_path = args[3]
+
+    local_root = temp_root("pdf-validate-") if storage_is_r2() else Path(".")
+    local_fields = prepare_input_path(user_id, fields_json_path, local_root) if storage_is_r2() else Path(fields_json_path)
+    local_input = prepare_input_path(user_id, input_image_path, local_root) if storage_is_r2() else Path(input_image_path)
+    local_output, r2_output = prepare_output_path(user_id, output_image_path, local_root)
+    create_validation_image(page_number, local_fields, local_input, local_output)
+    if storage_is_r2():
+        upload_output_path(user_id, r2_output, local_output)

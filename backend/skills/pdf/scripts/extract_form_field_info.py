@@ -1,7 +1,19 @@
 import json
 import sys
+from pathlib import Path
 
 from pypdf import PdfReader
+
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    prepare_output_path,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
 
 
 # Extracts data for the fillable form fields in a PDF and outputs JSON that
@@ -137,8 +149,8 @@ def get_field_info(reader: PdfReader):
     return sorted_fields
 
 
-def write_field_info(pdf_path: str, json_output_path: str):
-    reader = PdfReader(pdf_path)
+def write_field_info(pdf_path: Path, json_output_path: Path):
+    reader = PdfReader(str(pdf_path))
     field_info = get_field_info(reader)
     with open(json_output_path, "w") as f:
         json.dump(field_info, f, indent=2)
@@ -146,7 +158,21 @@ def write_field_info(pdf_path: str, json_output_path: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: extract_form_field_info.py [input pdf] [output json]")
+    args = sys.argv[1:]
+    user_id = None
+    if "--user-id" in args:
+        idx = args.index("--user-id")
+        user_id = args[idx + 1]
+        del args[idx:idx + 2]
+
+    if len(args) != 2:
+        print("Usage: extract_form_field_info.py [input pdf] [output json] [--user-id USER]")
         sys.exit(1)
-    write_field_info(sys.argv[1], sys.argv[2])
+
+    input_path, output_path = args
+    local_root = temp_root("pdf-fields-") if storage_is_r2() else Path(".")
+    pdf_path = prepare_input_path(user_id, input_path, local_root) if storage_is_r2() else Path(input_path)
+    local_output, r2_output = prepare_output_path(user_id, output_path, local_root)
+    write_field_info(pdf_path, local_output)
+    if storage_is_r2():
+        upload_output_path(user_id, r2_output, local_output)

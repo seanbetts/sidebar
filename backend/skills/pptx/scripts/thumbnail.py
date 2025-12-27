@@ -50,6 +50,17 @@ from inventory import extract_text_inventory
 from PIL import Image, ImageDraw, ImageFont
 from pptx import Presentation
 
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from api.services.skill_file_transfer import (
+    prepare_input_path,
+    prepare_output_path,
+    upload_output_path,
+    storage_is_r2,
+    temp_root,
+)
+
 # Constants
 THUMBNAIL_WIDTH = 300  # Fixed thumbnail width in pixels
 CONVERSION_DPI = 100  # DPI for PDF to image conversion
@@ -86,6 +97,7 @@ def main():
         action="store_true",
         help="Outline text placeholders with a colored border",
     )
+    parser.add_argument("--user-id", help="User id for storage access")
 
     args = parser.parse_args()
 
@@ -95,13 +107,14 @@ def main():
         print(f"Warning: Columns limited to {MAX_COLS} (requested {args.cols})")
 
     # Validate input
-    input_path = Path(args.input)
+    local_root = temp_root("pptx-thumbs-") if storage_is_r2() else Path(".")
+    input_path = prepare_input_path(args.user_id, args.input, local_root) if storage_is_r2() else Path(args.input)
     if not input_path.exists() or input_path.suffix.lower() != ".pptx":
         print(f"Error: Invalid PowerPoint file: {args.input}")
         sys.exit(1)
 
-    # Construct output path (always JPG)
-    output_path = Path(f"{args.output_prefix}.jpg")
+    output_prefix_local, _r2_prefix = prepare_output_path(args.user_id, args.output_prefix, local_root)
+    output_path = Path(f"{output_prefix_local}.jpg")
 
     print(f"Processing: {args.input}")
 
@@ -140,6 +153,11 @@ def main():
             print(f"Created {len(grid_files)} grid(s):")
             for grid_file in grid_files:
                 print(f"  - {grid_file}")
+
+            if storage_is_r2():
+                for grid_file in grid_files:
+                    rel_path = Path(grid_file).relative_to(local_root).as_posix()
+                    upload_output_path(args.user_id, rel_path, Path(grid_file))
 
     except Exception as e:
         print(f"Error: {e}")
