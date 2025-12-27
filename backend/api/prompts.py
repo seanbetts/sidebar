@@ -70,6 +70,10 @@ Current location: {currentLocationLevels}
 Current weather at current location: {currentWeather}
 </message_context>
 
+<memory_guidance>
+Only write to memory when something is durable and likely to matter later; avoid ephemeral or sensitive details.
+</memory_guidance>
+
 <instruction_priority>
 1. System messages (this prompt)
 2. User messages
