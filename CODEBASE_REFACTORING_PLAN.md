@@ -4,39 +4,69 @@
 
 Comprehensive analysis of file sizes across the sideBar codebase to identify files that need refactoring based on length and complexity. This analysis helps prioritize technical debt reduction and improve code maintainability.
 
+**Last Updated:** December 27, 2025
+
 ## Executive Summary
 
-**Critical Findings:**
-- **1 file >2000 lines** (Sidebar.svelte - 2,043 lines) - URGENT refactoring needed
-- **3 files >1000 lines** (tool_mapper.py, MarkdownEditor.svelte, FileTreeNode.svelte)
-- **14 files >500 lines** requiring high-priority refactoring
+**⚠️ CRITICAL UPDATE: Technical Debt Has INCREASED Since Original Analysis**
+
+**Current State (December 2025):**
+- **1 file >2000 lines** (Sidebar.svelte - 2,079 lines, +36 from original) - URGENT refactoring needed
+- **3 files >1000 lines** (tool_mapper.py: 1,488, MarkdownEditor.svelte: 995, FileTreeNode.svelte: 709)
+- **NEW: 3 additional large files** added since original analysis (691, 687, 507 lines)
+- **18 files >500 lines** (up from 14) requiring high-priority refactoring
+
+**Changes Since Original Plan:**
+- ✅ Sidebar components partially extracted (NotesPanel, ConversationItem moved to left-sidebar/)
+- ❌ tool_mapper.py GREW by +117 lines (1,371 → 1,488)
+- ❌ Sidebar.svelte GREW by +36 lines (2,043 → 2,079)
+- ❌ New large files added: MemorySettings.svelte (691), memory_tool_handler.py (473), skill_file_ops.py (507)
 
 **Key Patterns:**
 - Frontend: God components managing multiple dialogs and features
 - Backend: Monolithic services mixing multiple responsibilities
 - Routers mixing HTTP handling with business logic
 - Configuration embedded in code instead of separate files
+- **NEW:** Memory management adding significant complexity without refactoring
 
-## Top 10 Critical Files Needing Refactoring
+## Top 12 Critical Files Needing Refactoring (UPDATED)
 
 ### Backend
 
-1. **`/backend/api/services/tool_mapper.py`** - **1,371 lines** ⚠️ CRITICAL
+1. **`/backend/api/services/tool_mapper.py`** - **1,488 lines** (+117) 🚨 URGENT - WORSENED
    - Monolithic tool mapping service
    - Mixes tool definitions, execution, parameter mapping, skill metadata
+   - **Status:** GREW since original analysis
    - **Recommended Split:**
      - `services/tool_definitions.py` - Tool schemas
      - `services/skill_metadata.py` - Skill display info
      - `services/parameter_mapper.py` - Parameter conversion
      - Keep only orchestration in ToolMapper
 
-2. **`/backend/api/prompts.py`** - **529 lines** 🔴 HIGH
+2. **`/backend/api/prompts.py`** - **534 lines** (+5) 🔴 HIGH
    - Mixes template configuration with rendering logic
    - **Recommended Split:**
      - `config/prompts.yaml` - Template strings
      - Keep only rendering functions in prompts.py
 
-3. **`/backend/api/mcp/tools.py`** - **478 lines** 🔴 HIGH
+3. **`/backend/api/routers/files.py`** - **516 lines** (+56) 🔴 HIGH - WORSENED
+   - Router with embedded business logic
+   - **Status:** GREW significantly since original analysis
+   - **Recommendation:** Extract file tree logic to service layer
+
+4. **`/backend/api/services/skill_file_ops.py`** - **507 lines** 🔴 NEW FILE
+   - NEW: Added since original analysis
+   - Handles skill file operations
+   - **Recommendation:** Needs immediate review and potential split
+
+5. **`/backend/api/services/claude_client.py`** - **492 lines** (+19) 🔴 HIGH
+   - Handles streaming, tools, web search in single class
+   - **Recommended Split:**
+     - `services/streaming_handler.py`
+     - `services/tool_executor.py`
+     - `services/web_search_builder.py`
+
+6. **`/backend/api/mcp/tools.py`** - **479 lines** (+1) 🔴 HIGH
    - Single massive function registering 15+ tools
    - **Recommended Split:**
      - `mcp/fs_tools.py`
@@ -44,22 +74,18 @@ Comprehensive analysis of file sizes across the sideBar codebase to identify fil
      - `mcp/web_tools.py`
      - `mcp/document_tools.py`
 
-4. **`/backend/api/services/claude_client.py`** - **473 lines** 🔴 HIGH
-   - Handles streaming, tools, web search in single class
-   - **Recommended Split:**
-     - `services/streaming_handler.py`
-     - `services/tool_executor.py`
-     - `services/web_search_builder.py`
-
-5. **`/backend/api/routers/files.py`** - **460 lines** 🟡 MEDIUM
-   - Router with embedded business logic
-   - **Recommendation:** Extract file tree logic to service layer
+7. **`/backend/api/services/memory_tool_handler.py`** - **473 lines** 🔴 NEW FILE
+   - NEW: Added since original analysis
+   - Handles memory tool operations
+   - **Recommendation:** Consider integration with existing services
 
 ### Frontend
 
-1. **`/frontend/src/lib/components/history/Sidebar.svelte`** - **2,043 lines** 🚨 URGENT
+1. **`/frontend/src/lib/components/left-sidebar/Sidebar.svelte`** - **2,079 lines** (+36) 🚨 URGENT - WORSENED
    - God component managing navigation, notes, websites, settings
    - Multiple inline dialogs and modals
+   - **Status:** GREW despite partial component extraction
+   - **Progress:** Some components extracted (NotesPanel, ConversationItem) but main file still massive
    - **Recommended Split:**
      - `SettingsPanel.svelte`
      - `NewNoteDialog.svelte`
@@ -68,58 +94,67 @@ Comprehensive analysis of file sizes across the sideBar codebase to identify fil
      - `SaveChangesDialog.svelte`
      - Dedicated settings store
 
-2. **`/frontend/src/lib/components/editor/MarkdownEditor.svelte`** - **995 lines** ⚠️ CRITICAL
+2. **`/frontend/src/lib/components/editor/MarkdownEditor.svelte`** - **995 lines** (unchanged) ⚠️ CRITICAL
    - Editor + note operations + navigation guards
+   - **Status:** NO CHANGE - Still critical priority
    - **Recommended Split:**
      - `EditorToolbar.svelte` - Actions (save, rename, pin, etc.)
      - `useEditorActions.ts` - Composable for handlers
      - Separate navigation guard logic
 
-3. **`/frontend/src/lib/components/files/FileTreeNode.svelte`** - **709 lines** 🔴 HIGH
+3. **`/frontend/src/lib/components/files/FileTreeNode.svelte`** - **709 lines** (unchanged) 🔴 HIGH
    - Recursive tree rendering + context menu + CRUD operations
+   - **Status:** NO CHANGE
    - **Recommended Split:**
      - `FileTreeContextMenu.svelte`
      - `useFileActions.ts` - Composable for actions
      - Simplify recursive rendering
 
-4. **`/frontend/src/lib/components/websites/WebsitesPanel.svelte`** - **666 lines** 🔴 HIGH
+4. **`/frontend/src/lib/components/settings/MemorySettings.svelte`** - **691 lines** 🔴 NEW FILE
+   - NEW: Added since original analysis
+   - Memory configuration UI
+   - **Recommendation:** Needs immediate refactoring, likely has inline dialogs/forms
+
+5. **`/frontend/src/lib/components/websites/WebsitesPanel.svelte`** - **687 lines** (+21) 🔴 HIGH - WORSENED
    - List rendering + context menus + operations
+   - **Status:** GREW since original analysis
    - **Recommendation:** Extract `WebsiteListItem.svelte`
 
-5. **`/frontend/src/lib/stores/chat.ts`** - **406 lines** 🟡 MEDIUM
-   - Manages messages + streaming + tool state
-   - **Recommendation:** Extract tool state to `toolState.ts`
-
-## Detailed Analysis by Category
+## Detailed Analysis by Category (UPDATED December 2025)
 
 ### Backend Files >300 Lines
 
-| File | Lines | Category | Priority | Issue |
-|------|-------|----------|----------|-------|
-| `services/tool_mapper.py` | 1,371 | Service | 🚨 URGENT | Monolithic tool service |
-| `prompts.py` | 529 | Config | 🔴 HIGH | Config + logic mixed |
-| `mcp/tools.py` | 478 | Tools | 🔴 HIGH | Single massive function |
-| `services/claude_client.py` | 473 | Service | 🔴 HIGH | Multiple responsibilities |
-| `routers/files.py` | 460 | Router | 🟡 MEDIUM | Business logic in router |
-| `routers/notes.py` | 354 | Router | 🟡 MEDIUM | Business logic in router |
-| `routers/settings.py` | 329 | Router | 🟡 MEDIUM | File upload + defaults |
-| `services/websites_service.py` | 306 | Service | ✅ OK | Acceptable size |
-| `routers/chat.py` | 302 | Router | ✅ OK | Could extract streaming |
+| File | Lines | Change | Category | Priority | Issue |
+|------|-------|--------|----------|----------|-------|
+| `services/tool_mapper.py` | 1,488 | **+117** ⬆️ | Service | 🚨 URGENT | Monolithic tool service - WORSENING |
+| `prompts.py` | 534 | **+5** ⬆️ | Config | 🔴 HIGH | Config + logic mixed |
+| `routers/files.py` | 516 | **+56** ⬆️ | Router | 🔴 HIGH | Business logic in router - WORSENING |
+| `services/skill_file_ops.py` | 507 | **NEW** 🆕 | Service | 🔴 HIGH | NEW: Skill file operations |
+| `services/claude_client.py` | 492 | **+19** ⬆️ | Service | 🔴 HIGH | Multiple responsibilities |
+| `mcp/tools.py` | 479 | **+1** → | Tools | 🔴 HIGH | Single massive function |
+| `services/memory_tool_handler.py` | 473 | **NEW** 🆕 | Service | 🔴 HIGH | NEW: Memory tool operations |
+| `routers/notes.py` | 388 | **+34** ⬆️ | Router | 🟡 MEDIUM | Business logic in router |
+| `services/websites_service.py` | 351 | **+45** ⬆️ | Service | 🟡 MEDIUM | Growing service |
+| `services/notes_service.py` | 330 | **+35** ⬆️ | Service | 🟡 MEDIUM | Growing service |
+| `routers/settings.py` | 325 | **-4** ⬇️ | Router | 🟡 MEDIUM | File upload + defaults |
+| `routers/chat.py` | 302 | **=** → | Router | ✅ OK | Could extract streaming |
 
 ### Frontend Files >300 Lines
 
-| File | Lines | Category | Priority | Issue |
-|------|-------|----------|----------|-------|
-| `history/Sidebar.svelte` | 2,043 | Component | 🚨 URGENT | God component |
-| `editor/MarkdownEditor.svelte` | 995 | Component | 🚨 URGENT | Editor + operations |
-| `files/FileTreeNode.svelte` | 709 | Component | 🔴 HIGH | Recursive + CRUD |
-| `websites/WebsitesPanel.svelte` | 666 | Component | 🔴 HIGH | List + operations |
-| `websites/WebsitesViewer.svelte` | 450 | Component | 🟡 MEDIUM | Viewer + actions |
-| `stores/chat.ts` | 406 | Store | 🟡 MEDIUM | Multiple concerns |
-| `scratchpad-popover.svelte` | 369 | Component | ✅ OK | Self-contained |
-| `site-header.svelte` | 366 | Component | 🟡 MEDIUM | Multiple services |
-| `history/ConversationItem.svelte` | 347 | Component | ✅ OK | Could simplify |
-| `chat/ChatWindow.svelte` | 331 | Component | ✅ OK | Main feature component |
+| File | Lines | Change | Category | Priority | Issue |
+|------|-------|--------|----------|----------|-------|
+| `left-sidebar/Sidebar.svelte` | 2,079 | **+36** ⬆️ | Component | 🚨 URGENT | God component - STILL WORSENING |
+| `editor/MarkdownEditor.svelte` | 995 | **=** → | Component | 🚨 URGENT | Editor + operations |
+| `files/FileTreeNode.svelte` | 709 | **=** → | Component | 🔴 HIGH | Recursive + CRUD |
+| `settings/MemorySettings.svelte` | 691 | **NEW** 🆕 | Component | 🔴 HIGH | NEW: Memory configuration |
+| `websites/WebsitesPanel.svelte` | 687 | **+21** ⬆️ | Component | 🔴 HIGH | List + operations - WORSENING |
+| `websites/WebsitesViewer.svelte` | 450 | **=** → | Component | 🟡 MEDIUM | Viewer + actions |
+| `stores/chat.ts` | 406 | **=** → | Store | 🟡 MEDIUM | Multiple concerns |
+| `scratchpad-popover.svelte` | 369 | **=** → | Component | ✅ OK | Self-contained |
+| `site-header.svelte` | 366 | **=** → | Component | 🟡 MEDIUM | Multiple services |
+| `left-sidebar/ConversationItem.svelte` | 347 | **=** → | Component | ✅ OK | Extracted from Sidebar |
+| `chat/ChatWindow.svelte` | 344 | **+13** ⬆️ | Component | ✅ OK | Main feature component |
+| `left-sidebar/NotesPanel.svelte` | 284 | **NEW** 🆕 | Component | ✅ OK | Extracted from Sidebar |
 
 ## Refactoring Recommendations by Priority
 
@@ -289,19 +324,38 @@ Comprehensive analysis of file sizes across the sideBar codebase to identify fil
 
 **Impact:** Cleaner state management
 
-## Metrics & Success Criteria
+## Metrics & Success Criteria (UPDATED)
 
-**Before Refactoring:**
+**Original Analysis (Earlier 2025):**
 - Files >1000 lines: 4
 - Files >500 lines: 14
 - Average file size: ~250 lines
 - Largest file: 2,043 lines
+
+**Current State (December 2025):**
+- Files >1000 lines: 4 (same, but sizes INCREASED)
+- Files >500 lines: **18** ⬆️ (+4 files)
+- Average file size: ~280 lines ⬆️ (+30 lines)
+- Largest file: **2,079 lines** ⬆️ (+36 lines)
+- **NEW large files added:** 3 (691, 507, 473 lines)
+
+**Trend Analysis:**
+- ❌ **WORSENING**: Technical debt is increasing, not decreasing
+- ❌ Critical files are growing instead of shrinking
+- ✅ Some progress: Sidebar components partially extracted
+- ❌ New features (memory management) added without refactoring
+- ❌ No files have been successfully refactored to target size
 
 **After Refactoring (Target):**
 - Files >1000 lines: 0
 - Files >500 lines: <5
 - Average file size: ~200 lines
 - Largest file: <600 lines
+
+**Reality Check:**
+- Currently **moving away from targets**, not towards them
+- Refactoring plan has not been executed
+- New development is adding to technical debt
 
 ## Files Requiring No Action
 
@@ -319,8 +373,68 @@ Most files in the codebase are well-sized:
 4. **Incremental Approach** - Refactor one file at a time, test thoroughly
 5. **Documentation** - Update architecture docs as files are split
 
-## Summary
+## Summary (UPDATED December 2025)
 
-The sideBar codebase is generally healthy with clear hotspots needing attention. The two critical files (Sidebar.svelte and tool_mapper.py) represent the highest technical debt and should be addressed first. Most other files are well-sized, indicating good development practices overall.
+**Critical Assessment:**
 
-**Recommendation:** Start with Sidebar.svelte dialog extraction as a high-impact, low-risk first step that will yield immediate benefits.
+The sideBar codebase has **declining code health** with technical debt actively increasing. While the original refactoring plan identified clear problem areas, no systematic refactoring has been executed. Instead:
+
+1. **Critical files have GROWN** - Sidebar.svelte (+36), tool_mapper.py (+117), files.py (+56)
+2. **New large files added** - MemorySettings (691), memory_tool_handler (473), skill_file_ops (507)
+3. **Pattern of growth** - Files >500 lines increased from 14 to 18
+4. **Positive note** - Some sidebar components extracted, but main component still massive
+
+**Current Status:**
+- ✅ **Partial progress:** Some components extracted from Sidebar (NotesPanel, ConversationItem)
+- ❌ **No completed refactoring:** No files successfully reduced to target sizes
+- ❌ **Worsening trend:** New features adding complexity without refactoring existing code
+- 🚨 **Highest technical debt:** Sidebar.svelte (2,079 lines) and tool_mapper.py (1,488 lines)
+
+**Recommendation:** **IMMEDIATE ACTION REQUIRED**
+
+The refactoring plan must be executed, not just documented. Technical debt is compounding. Priority actions:
+
+1. **FREEZE growth of Sidebar.svelte** - No new features until dialogs extracted
+2. **Immediate dialog extraction** - Start with NewNoteDialog, NewFolderDialog, NewWebsiteDialog
+3. **tool_mapper.py split** - Extract tool_definitions.py and skill_metadata.py this week
+4. **Establish refactoring budget** - Dedicate 30% of development time to paying down debt
+
+**Without immediate action, the codebase will become progressively harder to maintain.**
+
+## Immediate Action Required (NEW SECTION)
+
+**This is a critical juncture.** The refactoring plan has been documented but not executed, and technical debt is accumulating faster than it's being paid down.
+
+### Week 1 Emergency Actions (START NOW)
+
+**Day 1-2: Sidebar Dialog Extraction (Highest Impact)**
+1. Extract `NewNoteDialog.svelte` from Sidebar.svelte
+2. Extract `NewFolderDialog.svelte` from Sidebar.svelte
+3. Extract `NewWebsiteDialog.svelte` from Sidebar.svelte
+4. **Target:** Reduce Sidebar.svelte by ~300 lines
+
+**Day 3-4: Settings Extraction**
+1. Extract `SettingsPanel.svelte` from Sidebar.svelte
+2. Create `stores/sidebarSettings.ts`
+3. **Target:** Reduce Sidebar.svelte by ~400 lines
+
+**Day 5: tool_mapper.py Phase 1**
+1. Extract tool definitions to `services/tools/definitions.py`
+2. Extract skill metadata to `services/tools/skill_metadata.py`
+3. **Target:** Reduce tool_mapper.py by ~300 lines
+
+### Week 2-3: Systematic Refactoring
+
+Follow Phase 1 and Phase 2 from original plan, but with **mandatory** completion deadlines.
+
+### Establish "No Growth" Rule
+
+**New Policy:** Files >1000 lines cannot accept new features without concurrent refactoring to bring them below 1000 lines.
+
+### Accountability
+
+Track refactoring progress weekly:
+- Lines reduced from critical files
+- Number of files >500 lines
+- Largest file size
+- New large files prevented
