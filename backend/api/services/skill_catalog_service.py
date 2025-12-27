@@ -6,7 +6,7 @@ from typing import Dict, List
 
 import yaml
 
-from api.services.tool_mapper import SKILL_DISPLAY, EXPOSED_SKILLS
+from api.services.tools.skill_metadata import SKILL_DISPLAY, EXPOSED_SKILLS
 
 
 class SkillCatalogService:
