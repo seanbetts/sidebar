@@ -13,7 +13,8 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.models.user_memory import UserMemory
-from api.services.memory_tool_handler import MemoryToolHandler
+from api.services.memory_tools.path_utils import normalize_path
+from api.services.memory_tools.operations import validate_content
 
 
 router = APIRouter(prefix="/memories", tags=["memories"])
@@ -92,8 +93,8 @@ async def create_memory(
     _: str = Depends(verify_bearer_token),
 ):
     try:
-        normalized_path = MemoryToolHandler._normalize_path(payload.path)
-        MemoryToolHandler._validate_content(payload.content)
+        normalized_path = normalize_path(payload.path)
+        validate_content(payload.content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     existing = (
@@ -142,7 +143,7 @@ async def update_memory(
 
     if payload.path is not None:
         try:
-            normalized_path = MemoryToolHandler._normalize_path(payload.path)
+            normalized_path = normalize_path(payload.path)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         if normalized_path != memory.path:
@@ -157,7 +158,7 @@ async def update_memory(
 
     if payload.content is not None:
         try:
-            MemoryToolHandler._validate_content(payload.content)
+            validate_content(payload.content)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         memory.content = payload.content
