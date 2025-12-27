@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import { ChevronRight, Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, Trash2 } from 'lucide-svelte';
+  import { ChevronRight, Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, Trash2, Search } from 'lucide-svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
+  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
   import { websitesStore } from '$lib/stores/websites';
   import type { WebsiteItem } from '$lib/stores/websites';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -25,6 +26,7 @@
   $: pinnedItems = $websitesStore.items.filter((site) => site.pinned && !isArchived(site));
   $: mainItems = $websitesStore.items.filter((site) => !site.pinned && !isArchived(site));
   $: archivedItems = $websitesStore.items.filter((site) => isArchived(site));
+  $: totalItems = $websitesStore.items.length;
 
   let activeMenuId: string | null = null;
   let menuTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -216,14 +218,28 @@
 
 <div class="websites-sections">
   {#if $websitesStore.error}
-    <div class="websites-empty">{$websitesStore.error}</div>
+    <SidebarEmptyState
+      icon={Globe}
+      title="Unable to load websites"
+      subtitle={$websitesStore.error}
+    />
   {:else if $websitesStore.loading}
     <SidebarLoading message="Loading websites..." />
+  {:else if !searchQuery && totalItems === 0}
+    <SidebarEmptyState
+      icon={Globe}
+      title="No websites yet"
+      subtitle="Save a link to start building your library."
+    />
   {:else if searchQuery}
     <div class="websites-block">
       <div class="websites-block-title">Results</div>
       {#if $websitesStore.items.length === 0}
-        <div class="websites-empty">No results</div>
+        <SidebarEmptyState
+          icon={Search}
+          title="No results"
+          subtitle="Try a different search."
+        />
       {:else}
         <div class="websites-list">
           {#each $websitesStore.items as site (site.id)}

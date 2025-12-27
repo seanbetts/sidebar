@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { MessageSquare, Search } from 'lucide-svelte';
   import { groupedConversations, conversationListStore } from '$lib/stores/conversations';
+  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
   import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
   import ConversationItem from './ConversationItem.svelte';
 
@@ -16,14 +18,19 @@
   {#if $conversationListStore.loading}
     <SidebarLoading message="Loading conversations..." />
   {:else if $conversationListStore.conversations.length === 0}
-    <div class="empty">
-      {#if $conversationListStore.searchQuery}
-        <p>No conversations found matching "{$conversationListStore.searchQuery}"</p>
-      {:else}
-        <p>No conversations yet</p>
-        <p class="hint">Start a new chat to begin</p>
-      {/if}
-    </div>
+    {#if $conversationListStore.searchQuery}
+      <SidebarEmptyState
+        icon={Search}
+        title="No results"
+        subtitle="Try a different search."
+      />
+    {:else}
+      <SidebarEmptyState
+        icon={MessageSquare}
+        title="No conversations yet"
+        subtitle="Start a new chat to begin."
+      />
+    {/if}
   {:else}
     {#each Object.entries($groupedConversations) as [groupKey, conversations]}
       {#if conversations.length > 0}
@@ -45,23 +52,7 @@
     overflow-x: hidden;
   }
 
-  .empty {
-    padding: 2rem 1rem;
-    text-align: center;
-    color: var(--color-muted-foreground);
-    font-size: 0.875rem;
-  }
-
-  .empty p {
-    margin: 0.5rem 0;
-    color: var(--color-sidebar-foreground);
-  }
-
-  .empty .hint {
-    font-size: 0.75rem;
-    color: var(--color-muted-foreground);
-    opacity: 0.7;
-  }
+  /* Empty state handled by SidebarEmptyState */
 
   .group {
     margin-bottom: 1rem;

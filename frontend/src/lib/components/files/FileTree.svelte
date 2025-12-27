@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { Folder } from 'lucide-svelte';
   import { filesStore } from '$lib/stores/files';
   import FileTreeNode from './FileTreeNode.svelte';
   import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
+  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
   import type { FileNode } from '$lib/types/file';
 
   export let basePath: string = 'documents';
@@ -32,7 +34,7 @@
       <FileTreeNode node={child} level={0} onToggle={handleToggle} {basePath} {hideExtensions} {onFileClick} />
     {/each}
   {:else}
-    <div class="empty">{emptyMessage}</div>
+    <SidebarEmptyState icon={Folder} title={emptyMessage} />
   {/if}
 </div>
 
@@ -46,10 +48,5 @@
     padding-bottom: 80px;
   }
 
-  .empty {
-    padding: 1rem;
-    text-align: center;
-    color: var(--color-muted-foreground);
-    font-size: 0.875rem;
-  }
+  /* Empty state handled by SidebarEmptyState */
 </style>
