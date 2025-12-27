@@ -53,8 +53,8 @@ class FilesService:
             )
             db.add(record)
 
+        db.flush()
         db.commit()
-        db.refresh(record)
         return record
 
     @staticmethod
@@ -73,7 +73,7 @@ class FilesService:
     def list_by_prefix(db: Session, user_id: str, prefix: str) -> list[FileObject]:
         prefix_norm = prefix.strip("/")
         if prefix_norm:
-            match = f\"{prefix_norm}%\"
+            match = f"{prefix_norm}%"
             query = db.query(FileObject).filter(
                 FileObject.user_id == user_id,
                 FileObject.deleted_at.is_(None),

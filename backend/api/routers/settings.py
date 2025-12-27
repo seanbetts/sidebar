@@ -295,7 +295,10 @@ async def get_profile_image(
     if not settings or not settings.profile_image_path:
         raise HTTPException(status_code=404, detail="Profile image not found")
 
-    content = storage_backend.get_object(settings.profile_image_path)
+    try:
+        content = storage_backend.get_object(settings.profile_image_path)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Profile image not found")
     return Response(content, media_type="application/octet-stream")
 
 

@@ -8,6 +8,8 @@ import argparse
 import mimetypes
 from pathlib import Path
 
+from sqlalchemy import text
+
 from api.db.session import SessionLocal, set_session_user_id
 from api.db.dependencies import DEFAULT_USER_ID
 from api.services.files_service import FilesService
@@ -35,6 +37,7 @@ def sync_workspace(workspace: Path, user_id: str, dry_run: bool = False) -> None
     storage = get_storage_backend()
     db = SessionLocal()
     set_session_user_id(db, user_id)
+    db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
 
     try:
         for path in sorted(workspace.rglob("*")):
