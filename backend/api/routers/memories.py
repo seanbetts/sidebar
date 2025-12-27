@@ -91,11 +91,14 @@ async def create_memory(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
-    MemoryToolHandler._validate_path(payload.path)
-    MemoryToolHandler._validate_content(payload.content)
+    try:
+        normalized_path = MemoryToolHandler._normalize_path(payload.path)
+        MemoryToolHandler._validate_content(payload.content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     existing = (
         db.query(UserMemory)
-        .filter(UserMemory.user_id == user_id, UserMemory.path == payload.path)
+        .filter(UserMemory.user_id == user_id, UserMemory.path == normalized_path)
         .first()
     )
     if existing:
@@ -104,7 +107,7 @@ async def create_memory(
     now = datetime.now(timezone.utc)
     memory = UserMemory(
         user_id=user_id,
-        path=payload.path,
+        path=normalized_path,
         content=payload.content,
         created_at=now,
         updated_at=now,
@@ -138,19 +141,25 @@ async def update_memory(
         raise HTTPException(status_code=404, detail="Memory not found")
 
     if payload.path is not None:
-        MemoryToolHandler._validate_path(payload.path)
-        if payload.path != memory.path:
+        try:
+            normalized_path = MemoryToolHandler._normalize_path(payload.path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if normalized_path != memory.path:
             conflict = (
                 db.query(UserMemory)
-                .filter(UserMemory.user_id == user_id, UserMemory.path == payload.path)
+                .filter(UserMemory.user_id == user_id, UserMemory.path == normalized_path)
                 .first()
             )
             if conflict:
                 raise HTTPException(status_code=409, detail="Memory already exists")
-            memory.path = payload.path
+            memory.path = normalized_path
 
     if payload.content is not None:
-        MemoryToolHandler._validate_content(payload.content)
+        try:
+            MemoryToolHandler._validate_content(payload.content)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         memory.content = payload.content
 
     memory.updated_at = datetime.now(timezone.utc)
