@@ -147,7 +147,7 @@ class ToolMapper:
                 "validate_read": True
             },
             "Write File": {
-                "description": "Write content to file in workspace (writable paths: notes/, documents/)",
+                "description": "Write content to file in workspace for project files and documents (writable paths: documents/). For persistent, searchable notes use Create Note instead.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -617,11 +617,11 @@ class ToolMapper:
                 "build_args": lambda p: self._build_youtube_transcribe_args(p)
             },
             "Create Note": {
-                "description": "Create a markdown note in the database (visible in UI).",
+                "description": "Create a searchable, persistent markdown note in the database with metadata. Notes are visible in the UI and fully searchable. Preferred for remembering information across sessions.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "title": {"type": "string", "description": "Optional note title"},
+                        "title": {"type": "string", "description": "Optional note title (defaults to first line of content)"},
                         "content": {"type": "string", "description": "Markdown content"},
                         "folder": {"type": "string", "description": "Optional folder path"},
                         "tags": {"type": "array", "items": {"type": "string"}}
@@ -1168,8 +1168,11 @@ class ToolMapper:
         return args
 
     def _build_notes_create_args(self, params: dict) -> list:
+        title = params.get("title")
+        if not title:
+            title = self._derive_title_from_content(params.get("content", ""))
         args = [
-            params.get("title", ""),
+            title,
             "--content",
             params["content"],
             "--mode",
@@ -1183,8 +1186,11 @@ class ToolMapper:
         return args
 
     def _build_notes_update_args(self, params: dict) -> list:
+        title = params.get("title")
+        if not title:
+            title = self._derive_title_from_content(params.get("content", ""))
         return [
-            params.get("title", ""),
+            title,
             "--content",
             params["content"],
             "--mode",
@@ -1193,6 +1199,16 @@ class ToolMapper:
             params["note_id"],
             "--database"
         ]
+
+    @staticmethod
+    def _derive_title_from_content(content: str) -> str:
+        if not isinstance(content, str):
+            return "Untitled Note"
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped:
+                return stripped[:120]
+        return "Untitled Note"
 
     def _build_notes_list_args(self, params: dict) -> list:
         args = ["--database"]
