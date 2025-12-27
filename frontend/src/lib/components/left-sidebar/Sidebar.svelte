@@ -8,8 +8,8 @@
   import { websitesStore } from '$lib/stores/websites';
   import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
-  import NotesPanel from '$lib/components/history/NotesPanel.svelte';
-  import WorkspacePanel from '$lib/components/history/WorkspacePanel.svelte';
+  import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
+  import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import MemorySettings from '$lib/components/settings/MemorySettings.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -1364,7 +1364,7 @@
           />
         </div>
         <div class="files-content">
-          <WorkspacePanel />
+          <FilesPanel />
         </div>
       </div>
 

@@ -3,8 +3,8 @@
   import { Folder } from 'lucide-svelte';
   import { filesStore } from '$lib/stores/files';
   import FileTreeNode from './FileTreeNode.svelte';
-  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
-  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
+  import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
+  import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import type { FileNode } from '$lib/types/file';
 
   export let basePath: string = 'documents';

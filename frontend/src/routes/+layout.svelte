@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import Sidebar from '$lib/components/history/Sidebar.svelte';
+	import Sidebar from '$lib/components/left-sidebar/Sidebar.svelte';
 	import SiteHeader from '$lib/components/site-header.svelte';
 	import HoldingPage from '$lib/components/HoldingPage.svelte';
 	import { Toaster } from 'svelte-sonner';

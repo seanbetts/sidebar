@@ -2,8 +2,8 @@
   import { onDestroy, tick } from 'svelte';
   import { ChevronRight, Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, Trash2, Search } from 'lucide-svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
-  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
+  import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
+  import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import { websitesStore } from '$lib/stores/websites';
   import type { WebsiteItem } from '$lib/stores/websites';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';

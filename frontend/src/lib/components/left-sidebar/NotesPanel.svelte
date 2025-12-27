@@ -1,8 +1,8 @@
 <script lang="ts">
   import { ChevronRight, FileText, Search } from 'lucide-svelte';
   import { filesStore } from '$lib/stores/files';
-  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
-  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
+  import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
+  import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import type { FileNode } from '$lib/types/file';
