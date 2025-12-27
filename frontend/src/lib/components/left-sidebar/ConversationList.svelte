@@ -1,8 +1,8 @@
 <script lang="ts">
   import { MessageSquare, Search } from 'lucide-svelte';
   import { groupedConversations, conversationListStore } from '$lib/stores/conversations';
-  import SidebarEmptyState from '$lib/components/history/SidebarEmptyState.svelte';
-  import SidebarLoading from '$lib/components/history/SidebarLoading.svelte';
+  import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
+  import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import ConversationItem from './ConversationItem.svelte';
 
   const groupLabels = {
