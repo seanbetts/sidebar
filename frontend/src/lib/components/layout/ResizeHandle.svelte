@@ -86,30 +86,28 @@
     justify-content: center;
     background: transparent;
     transition: background-color 0.15s ease;
-    z-index: 0;
+    border-right: 1px solid var(--color-border);
   }
 
   .resize-handle::after {
     content: '';
     width: 2px;
-    height: calc(100% - var(--panel-header-offset, 56px));
-    margin-top: var(--panel-header-offset, 56px);
+    height: 40px;
     background-color: var(--color-border);
     border-radius: 1px;
-    transition: background-color 0.15s ease, height 0.15s ease;
+    transition: background-color 0.15s ease;
   }
 
   .resize-handle:hover {
-    background-color: var(--color-card);
+    background-color: var(--color-accent);
   }
 
   .resize-handle:hover::after,
   .resize-handle.dragging::after {
-    background-color: var(--color-foreground);
-    height: 52px;
+    background-color: var(--color-primary);
   }
 
   .resize-handle.dragging {
-    background-color: var(--color-card);
+    background-color: var(--color-primary);
   }
 </style>

@@ -52,7 +52,7 @@
 			onkeydown={handleKeydown}
 			placeholder="Ask Anything..."
 			{disabled}
-			rows="2"
+			rows="1"
 			class="chat-input-textarea"
 		></textarea>
 		<div class="chat-input-actions">
@@ -83,13 +83,13 @@
 		border-radius: 0.9rem;
 		padding: 0.75rem 0.75rem 0.6rem;
 		background-color: var(--color-card);
-		max-width: 720px;
+		max-width: 860px;
 		margin: 0 auto;
 	}
 
 	.chat-input-textarea {
 		width: 100%;
-		min-height: 48px;
+		min-height: 38px;
 		border: none;
 		outline: none;
 		resize: none;
