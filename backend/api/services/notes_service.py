@@ -247,7 +247,6 @@ class NotesService:
         if mark_opened:
             note.last_opened_at = datetime.now(timezone.utc)
             db.commit()
-            db.refresh(note)
         return note
 
     @staticmethod
@@ -273,7 +272,6 @@ class NotesService:
         if mark_opened:
             note.last_opened_at = datetime.now(timezone.utc)
             db.commit()
-            db.refresh(note)
         return note
 
     @staticmethod
