@@ -1,32 +1,20 @@
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 /**
  * SvelteKit server route for proxying profile image uploads to backend
  */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN;
+const API_URL = getApiUrl();
 
 export const config = {
 	csrf: false
 };
 
-function resolveBearerToken(): string {
-	const token = (BEARER_TOKEN || '').trim();
-	if (!token || token === 'undefined' || token === 'null') {
-		throw error(500, 'BEARER_TOKEN not configured');
-	}
-	return token;
-}
-
-export const GET: RequestHandler = async ({ request, fetch }) => {
+export const GET: RequestHandler = async ({ locals, request, fetch }) => {
 	try {
-		const authHeader = request.headers.get('authorization');
-		const bearerToken = resolveBearerToken();
 		const response = await fetch(`${API_URL}/api/settings/profile-image`, {
-			headers: {
-				Authorization: authHeader || `Bearer ${bearerToken}`
-			}
+			headers: buildAuthHeaders(locals)
 		});
 
 		if (!response.ok) {
@@ -46,11 +34,9 @@ export const GET: RequestHandler = async ({ request, fetch }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
+export const POST: RequestHandler = async ({ locals, request, fetch }) => {
 	try {
 		const contentType = request.headers.get('content-type') || '';
-		const authHeader = request.headers.get('authorization');
-		const bearerToken = resolveBearerToken();
 		const filename = request.headers.get('x-filename') || 'profile-image';
 
 		let response: Response;
@@ -58,21 +44,19 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			const buffer = await request.arrayBuffer();
 			response = await fetch(`${API_URL}/api/settings/profile-image`, {
 				method: 'POST',
-				headers: {
-					Authorization: authHeader || `Bearer ${bearerToken}`,
+				headers: buildAuthHeaders(locals, {
 					'Content-Type': contentType || 'application/octet-stream',
 					'X-Filename': filename
-				},
+				}),
 				body: buffer
 			});
 		} else {
 			const formData = await request.formData();
 			response = await fetch(`${API_URL}/api/settings/profile-image`, {
 				method: 'POST',
-				headers: {
-					Authorization: authHeader || `Bearer ${bearerToken}`,
+				headers: buildAuthHeaders(locals, {
 					'X-Filename': filename
-				},
+				}),
 				body: formData
 			});
 		}
@@ -94,16 +78,11 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ request, fetch }) => {
+export const DELETE: RequestHandler = async ({ locals, request, fetch }) => {
 	try {
-		const authHeader = request.headers.get('authorization');
-		const bearerToken = resolveBearerToken();
-
 		const response = await fetch(`${API_URL}/api/settings/profile-image`, {
 			method: 'DELETE',
-			headers: {
-				Authorization: authHeader || `Bearer ${bearerToken}`
-			}
+			headers: buildAuthHeaders(locals)
 		});
 
 		if (!response.ok) {

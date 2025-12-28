@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
+const API_URL = getApiUrl();
 
-export const POST: RequestHandler = async ({ fetch, url }) => {
+export const POST: RequestHandler = async ({ locals, fetch, url }) => {
   const query = url.searchParams.get('query') || '';
   const limit = url.searchParams.get('limit') || '50';
 
@@ -13,9 +13,7 @@ export const POST: RequestHandler = async ({ fetch, url }) => {
       `${API_URL}/api/websites/search?query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`,
       {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${BEARER_TOKEN}`
-        }
+        headers: buildAuthHeaders(locals)
       }
     );
 

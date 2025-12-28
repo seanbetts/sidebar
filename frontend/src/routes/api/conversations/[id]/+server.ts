@@ -1,20 +1,18 @@
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 /**
  * SvelteKit server route for individual conversation operations
  */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN;
+const API_URL = getApiUrl();
 
 // GET /api/conversations/[id] - Get conversation with messages
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ locals, params }) => {
 	try {
 		const response = await fetch(`${API_URL}/api/conversations/${params.id}`, {
 			method: 'GET',
-			headers: {
-				Authorization: `Bearer ${BEARER_TOKEN}`
-			}
+			headers: buildAuthHeaders(locals)
 		});
 
 		if (!response.ok) {
@@ -35,16 +33,15 @@ export const GET: RequestHandler = async ({ params }) => {
 };
 
 // PUT /api/conversations/[id] - Update conversation
-export const PUT: RequestHandler = async ({ params, request }) => {
+export const PUT: RequestHandler = async ({ locals, params, request }) => {
 	try {
 		const body = await request.json();
 
 		const response = await fetch(`${API_URL}/api/conversations/${params.id}`, {
 			method: 'PUT',
-			headers: {
-				Authorization: `Bearer ${BEARER_TOKEN}`,
+			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json'
-			},
+			}),
 			body: JSON.stringify(body)
 		});
 
@@ -66,13 +63,11 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 };
 
 // DELETE /api/conversations/[id] - Archive conversation
-export const DELETE: RequestHandler = async ({ params }) => {
+export const DELETE: RequestHandler = async ({ locals, params }) => {
 	try {
 		const response = await fetch(`${API_URL}/api/conversations/${params.id}`, {
 			method: 'DELETE',
-			headers: {
-				Authorization: `Bearer ${BEARER_TOKEN}`
-			}
+			headers: buildAuthHeaders(locals)
 		});
 
 		if (!response.ok) {

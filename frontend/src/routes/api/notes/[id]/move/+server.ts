@@ -1,18 +1,17 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
+const API_URL = getApiUrl();
 
-export const PATCH: RequestHandler = async ({ request, fetch, params }) => {
+export const PATCH: RequestHandler = async ({ locals, request, fetch, params }) => {
   try {
     const body = await request.json();
     const response = await fetch(`${API_URL}/api/notes/${params.id}/move`, {
       method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`,
+      headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'
-      },
+      }),
       body: JSON.stringify(body)
     });
 

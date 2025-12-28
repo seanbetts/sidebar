@@ -4,8 +4,16 @@
 	import SiteHeader from '$lib/components/site-header.svelte';
 	import HoldingPage from '$lib/components/HoldingPage.svelte';
 	import { Toaster } from 'svelte-sonner';
+	import { initAuth } from '$lib/stores/auth';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
+
+	onMount(() => {
+		if (data.session || data.user) {
+			initAuth(data.session, data.user);
+		}
+	});
 </script>
 
 <svelte:head>
@@ -14,6 +22,8 @@
 
 {#if data.maintenanceMode}
 	<HoldingPage />
+{:else if !data.session}
+	<slot />
 {:else}
 	<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
 		<Sidebar />

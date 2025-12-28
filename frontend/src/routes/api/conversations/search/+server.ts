@@ -1,14 +1,14 @@
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 /**
  * SvelteKit server route for searching conversations
  */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN;
+const API_URL = getApiUrl();
 
 // POST /api/conversations/search - Search conversations
-export const POST: RequestHandler = async ({ url }) => {
+export const POST: RequestHandler = async ({ locals, url }) => {
 	try {
 		const query = url.searchParams.get('query') || '';
 		const limit = url.searchParams.get('limit') || '10';
@@ -17,9 +17,7 @@ export const POST: RequestHandler = async ({ url }) => {
 			`${API_URL}/api/conversations/search?query=${encodeURIComponent(query)}&limit=${limit}`,
 			{
 				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${BEARER_TOKEN}`
-				}
+				headers: buildAuthHeaders(locals)
 			}
 		);
 

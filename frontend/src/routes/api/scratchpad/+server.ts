@@ -1,15 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
+const API_URL = getApiUrl();
 
-export const GET: RequestHandler = async ({ fetch }) => {
+export const GET: RequestHandler = async ({ locals, fetch }) => {
   try {
     const response = await fetch(`${API_URL}/api/scratchpad`, {
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`
-      }
+      headers: buildAuthHeaders(locals)
     });
 
     if (!response.ok) {
@@ -24,15 +22,14 @@ export const GET: RequestHandler = async ({ fetch }) => {
   }
 };
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
+export const POST: RequestHandler = async ({ locals, request, fetch }) => {
   try {
     const body = await request.json();
     const response = await fetch(`${API_URL}/api/scratchpad`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`,
+      headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'
-      },
+      }),
       body: JSON.stringify(body)
     });
 
@@ -48,13 +45,11 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
   }
 };
 
-export const DELETE: RequestHandler = async ({ fetch }) => {
+export const DELETE: RequestHandler = async ({ locals, fetch }) => {
   try {
     const response = await fetch(`${API_URL}/api/scratchpad`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`
-      }
+      headers: buildAuthHeaders(locals)
     });
 
     if (!response.ok) {
