@@ -17,9 +17,38 @@ export default [
         ecmaVersion: 2022,
         sourceType: 'module',
         project: './tsconfig.json'
+      },
+      globals: {
+        // Browser globals
+        console: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        crypto: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        // Node globals (for SSR)
+        process: 'readonly',
+        Buffer: 'readonly'
       }
     },
     rules: {
+      // Allow unused vars in function params (common in TypeScript interfaces)
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          args: 'none' // Don't check function parameters
+        }
+      ],
+
       // JSDoc rules
       'jsdoc/check-alignment': 'warn',
       'jsdoc/check-param-names': 'warn',
