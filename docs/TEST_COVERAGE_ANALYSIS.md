@@ -4,7 +4,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 **Date**: 2025-12-28 (Refreshed)
 **Test Files**: 48 (backend)
-**Test Count**: 218 (196 passed, 22 skipped in latest run)
+**Test Count**: 218 (218 passed, 0 skipped in latest run)
 
 ---
 
@@ -27,8 +27,8 @@ Current coverage snapshot and gaps for the sideBar backend.
 - Chat router has baseline coverage.
 
 ### Current Gaps
-- Router-level integration coverage is still light on end-to-end workflows.
-- Some storage integration paths are untested (e.g., error handling).
+- Deeper storage error handling paths are still light (explicit failure cases).
+- Broader end-to-end router workflows could be expanded beyond CRUD.
 
 ### ✅ Storage + Workspace (PARTIAL)
 
@@ -81,14 +81,14 @@ Current coverage snapshot and gaps for the sideBar backend.
 |-----------|-----------|--------|-------|
 | Auth middleware | `tests/api/test_auth.py` | ✅ | FastMCP lifespan handled |
 
-### ⚠️ MCP Integration (PARTIAL)
+### ✅ MCP Integration (WELL TESTED)
 
 | Component | Test File | Status | Notes |
 |-----------|-----------|--------|-------|
 | MCP client | `tests/test_mcp_client.py` | ✅ | Basic client coverage |
-| MCP integration | `tests/test_mcp_integration.py` | ⚠️ | Skips unless `MCP_BASE_URL` set |
+| MCP integration | `tests/test_mcp_integration.py` | ✅ | Runs locally with in-process FastMCP |
 
-### ✅ API Endpoints (PARTIAL)
+### ✅ API Endpoints (WELL TESTED)
 
 | Component | Test File | Status |
 |-----------|-----------|--------|
@@ -112,17 +112,13 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 ---
 
-## Missing Coverage (High Priority)
-
-### Critical Path
-
-| Component | Location | Priority | Notes |
-|-----------|----------|----------|-------|
+## Remaining Coverage Opportunities
 
 ### Storage + Workspace
 
 | Component | Location | Priority | Notes |
 |-----------|----------|----------|-------|
+| Storage error handling | `api/services/storage/*` | 🟡 MEDIUM | Add failure-mode coverage (missing keys, retries) |
 
 ### Memory Tool
 
@@ -151,7 +147,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 ### ✅ Environment Mocking
 
-`conftest.py` mocks critical env vars and skips DB tests when `DATABASE_URL` is not available:
+`conftest.py` mocks critical env vars and provides a test DB connection:
 
 ```python
 os.environ.setdefault("BEARER_TOKEN", "test-bearer-token-12345")
@@ -173,18 +169,12 @@ Async marker registered in `backend/pyproject.toml`. Async tests collect and run
 ## Recommended Test Plan
 
 ### Phase 1: Critical Path
-1. Add deeper storage error handling and remaining router integration coverage.
+1. Expand storage error handling coverage.
 
-### Phase 2: Storage + Workspace
-1. Add tests for R2 storage service.
-2. Add tests for `file_tree_service.py` and workspace services.
+### Phase 2: End-to-End Workflows
+1. Add multi-step router workflows that span multiple services.
 
-### Phase 3: Router Integration
-1. Add tests for chat + conversation endpoints.
-2. Add tests for files/notes/websites/memories CRUD.
-3. Add health, places, weather, scratchpad tests.
-
-### Phase 4: Coverage Reporting
+### Phase 3: Coverage Reporting
 Pytest-cov enabled (term-missing only).
 
 ```toml
