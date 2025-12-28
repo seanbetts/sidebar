@@ -220,8 +220,13 @@
       const data = await response.json();
       const noteId = data?.id || filename;
 
-      // Reload the files tree and open the new note
-      await filesStore.load('notes', true);
+      const folder = filename.includes('/') ? filename.split('/').slice(0, -1).join('/') : '';
+      filesStore.addNoteNode?.({
+        id: noteId,
+        name: filename,
+        folder,
+        modified: data?.modified
+      });
       currentNoteId.set(noteId);
       await editorStore.loadNote('notes', noteId, { source: 'user' });
       isNewNoteDialogOpen = false;

@@ -171,6 +171,79 @@ function createFilesStore() {
       });
     },
 
+    addNoteNode(payload: { id: string; name: string; folder?: string; modified?: number }) {
+      update(state => {
+        const tree = state.trees['notes'] || { children: [], expandedPaths: new Set(), loading: false };
+        const searchQuery = tree.searchQuery || '';
+        if (searchQuery) {
+          return state;
+        }
+
+        const folder = payload.folder || '';
+        const parts = folder.split('/').filter(Boolean);
+        const children = tree.children || [];
+        let current = children;
+        let currentPath = '';
+
+        for (const part of parts) {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          let folderNode = current.find(
+            node => node.type === 'directory' && node.path === `folder:${currentPath}`
+          );
+          if (!folderNode) {
+            folderNode = {
+              name: part,
+              path: `folder:${currentPath}`,
+              type: 'directory',
+              children: [],
+              expanded: false
+            };
+            current.push(folderNode);
+          }
+          if (!folderNode.children) {
+            folderNode.children = [];
+          }
+          current = folderNode.children;
+        }
+
+        const fileNode: FileNode = {
+          name: payload.name,
+          path: payload.id,
+          type: 'file',
+          modified: payload.modified ? new Date(payload.modified * 1000).toISOString() : undefined
+        };
+
+        const existingIndex = current.findIndex(node => node.type === 'file' && node.path === payload.id);
+        if (existingIndex >= 0) {
+          current.splice(existingIndex, 1);
+        }
+        current.push(fileNode);
+
+        const sortChildren = (node: { children?: FileNode[] }) => {
+          if (!node.children) return;
+          node.children.sort(
+            (a, b) => Number(a.type !== 'directory') - Number(b.type !== 'directory') || a.name.localeCompare(b.name)
+          );
+          node.children.forEach(child => {
+            if (child.type === 'directory') {
+              sortChildren(child);
+            }
+          });
+        };
+        sortChildren({ children });
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children
+            }
+          }
+        };
+      });
+    },
+
     reset() {
       set({ trees: {} });
     },

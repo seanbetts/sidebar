@@ -9,6 +9,7 @@ type EditorActionsContext = {
     load: (tree: string, force?: boolean) => Promise<void>;
     trees: Record<string, any>;
     removeNode?: (basePath: string, path: string) => void;
+    addNoteNode?: (payload: { id: string; name: string; folder?: string; modified?: number }) => void;
   };
   getCurrentNoteId: () => string | null;
   getDisplayTitle: () => string;
