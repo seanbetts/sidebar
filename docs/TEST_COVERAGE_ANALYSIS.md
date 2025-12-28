@@ -4,7 +4,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 **Date**: 2025-12-28 (Refreshed)
 **Test Files**: 48 (backend)
-**Test Count**: 209 (latest local run may differ; re-run to confirm)
+**Test Count**: 213 (latest local run may differ; re-run to confirm)
 
 ---
 
@@ -27,7 +27,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 - Chat router has baseline coverage.
 
 ### Current Gaps
-- Router-level integration coverage remains minimal (beyond basic validation).
+- Router-level integration coverage is still light on end-to-end workflows.
 - Some storage integration paths are untested (e.g., error handling).
 
 ### ✅ Storage + Workspace (PARTIAL)
@@ -185,7 +185,7 @@ Async marker registered in `backend/pyproject.toml`. Async tests collect and run
 3. Add health, places, weather, scratchpad tests.
 
 ### Phase 4: Coverage Reporting
-Pytest-cov enabled (HTML output to `backend/htmlcov`).
+Pytest-cov enabled (term-missing only).
 
 ```toml
 addopts = [
@@ -194,7 +194,6 @@ addopts = [
     "--tb=short",
     "--cov=api",
     "--cov-report=term-missing",
-    "--cov-report=html",
     "--cov-fail-under=80",
 ]
 ```
