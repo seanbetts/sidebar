@@ -15,12 +15,14 @@ def test_prompt_context_service_order_and_truncation(test_db):
     test_db.add(settings)
 
     note = Note(
+        user_id=user_id,
         title="Daily Log",
         content="Note body",
         metadata_={"folder": "work"},
         last_opened_at=now,
     )
     website = Website(
+        user_id=user_id,
         url="https://example.com",
         url_full="https://example.com/docs",
         domain="example.com",
