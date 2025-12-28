@@ -8,6 +8,17 @@ from api.services.memory_tools.constants import HIDDEN_PATTERN, MAX_PATH_LENGTH
 
 
 def normalize_path(path: Any) -> str:
+    """Normalize and validate a memory path.
+
+    Args:
+        path: Raw path input.
+
+    Returns:
+        Normalized memory path starting with /memories.
+
+    Raises:
+        ValueError: If the path is invalid or unsafe.
+    """
     if not isinstance(path, str):
         raise ValueError("Invalid path")
     path = path.strip()
@@ -44,6 +55,7 @@ def normalize_path(path: Any) -> str:
 
 
 def is_visible_path(path: str) -> bool:
+    """Return True if the path should be visible in listings."""
     if not path.startswith("/memories"):
         return False
     parts = path[len("/memories"):].split("/")
