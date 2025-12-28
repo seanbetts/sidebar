@@ -82,3 +82,31 @@ def test_memory_insert_invalid_line(test_db):
     )
     assert result["success"] is False
     assert "Invalid `insert_line`" in result["error"]
+
+
+def test_memory_rename_and_delete(test_db):
+    memory = UserMemory(user_id="user-1", path="/memories/old.md", content="hello")
+    test_db.add(memory)
+    test_db.commit()
+
+    rename = operations.handle_rename(
+        test_db,
+        "user-1",
+        {"old_path": "/memories/old.md", "new_path": "/memories/new.md"},
+    )
+    assert rename["success"] is True
+
+    updated = (
+        test_db.query(UserMemory)
+        .filter(UserMemory.user_id == "user-1", UserMemory.path == "/memories/new.md")
+        .first()
+    )
+    assert updated is not None
+
+    delete = operations.handle_delete(
+        test_db,
+        "user-1",
+        {"path": "/memories/new.md"},
+    )
+    assert delete["success"] is True
+    assert test_db.query(UserMemory).filter(UserMemory.user_id == "user-1").count() == 0
