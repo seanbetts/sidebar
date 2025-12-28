@@ -5,6 +5,7 @@ import { writable, get } from 'svelte/store';
 import type { Message, ToolCall } from '$lib/types/chat';
 import { conversationsAPI } from '$lib/services/api';
 import { conversationListStore, currentConversationId } from './conversations';
+import { generateConversationTitle } from './chat/generateTitle';
 
 export interface ChatState {
 	messages: Message[];
@@ -238,7 +239,7 @@ function createChatStore() {
 						});
 
 						// Trigger title generation (generating state was set when conversation was created)
-						generateTitle(state.conversationId).catch(err => {
+						generateConversationTitle(state.conversationId).catch(err => {
 							console.error('Title generation failed:', err);
 						});
 					} else {
@@ -374,33 +375,3 @@ function createChatStore() {
 }
 
 export const chatStore = createChatStore();
-
-/**
- * Generate a title for a conversation using Gemini Flash
- */
-async function generateTitle(conversationId: string): Promise<void> {
-	// Mark as generating
-	conversationListStore.setGeneratingTitle(conversationId, true);
-
-	try {
-		const response = await fetch('/api/chat/generate-title', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ conversation_id: conversationId })
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to generate title: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-		console.log(`Title generated: ${data.title}${data.fallback ? ' (fallback)' : ''}`);
-
-		// Update just this conversation's title in the sidebar (no full refresh)
-		conversationListStore.updateConversationTitle(conversationId, data.title);
-	} catch (error) {
-		// Silent fail - title generation is not critical
-		console.error('Title generation error:', error);
-		conversationListStore.setGeneratingTitle(conversationId, false);
-	}
-}
