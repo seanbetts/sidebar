@@ -8,6 +8,14 @@ from api.security.audit_logger import AuditLogger
 
 
 def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> None:
+    """Register filesystem tools with the MCP server.
+
+    Args:
+        mcp: FastMCP instance to register tools on.
+        executor: Skill executor used to run scripts.
+        path_validator: Validator for read/write paths.
+        default_user_id: Default user ID for tool execution.
+    """
     @mcp.tool()
     async def fs_list(
         path: str = ".",

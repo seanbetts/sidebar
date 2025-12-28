@@ -14,6 +14,11 @@ class ClaudeClient:
     """Handles Claude API interactions with streaming and tool execution."""
 
     def __init__(self, settings: Settings):
+        """Initialize the client with model settings and HTTP configuration.
+
+        Args:
+            settings: Application settings object.
+        """
         # Create custom httpx client that bypasses SSL verification
         # TEMPORARY WORKAROUND for corporate SSL interception
         # TODO: Replace with proper CA certificate installation
@@ -41,6 +46,18 @@ class ClaudeClient:
         allowed_skills: List[str] | None = None,
         tool_context: Dict[str, Any] | None = None,
     ) -> AsyncIterator[Dict[str, Any]]:
+        """Stream model responses while handling tool calls.
+
+        Args:
+            message: User message text.
+            conversation_history: Prior chat messages.
+            system_prompt: Optional system prompt.
+            allowed_skills: Optional list of enabled skills.
+            tool_context: Optional tool execution context.
+
+        Yields:
+            Streaming events from the Claude client.
+        """
         async for event in stream_with_tools(
             client=self.client,
             tool_mapper=self.tool_mapper,

@@ -8,6 +8,13 @@ from api.security.audit_logger import AuditLogger
 
 
 def register_notes_tools(mcp, executor, default_user_id: str) -> None:
+    """Register note tools with the MCP server.
+
+    Args:
+        mcp: FastMCP instance to register tools on.
+        executor: Skill executor used to run scripts.
+        default_user_id: Default user ID for tool execution.
+    """
     @mcp.tool()
     async def notes_create(
         title: str,

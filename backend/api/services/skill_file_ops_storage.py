@@ -57,6 +57,7 @@ def list_entries(
     dir_meta: dict[str, datetime] = {}
 
     def register_dir(path: str, updated_at: Optional[datetime]) -> None:
+        """Track directory update timestamps for listing output."""
         if not path:
             return
         existing = dir_meta.get(path)

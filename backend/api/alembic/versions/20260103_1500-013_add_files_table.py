@@ -12,6 +12,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Create files table with RLS policies and indexes."""
     op.create_table(
         "files",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -46,6 +47,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Drop files table, indexes, and policies."""
     op.execute("DROP POLICY IF EXISTS files_user_isolation ON files")
     op.execute("ALTER TABLE files DISABLE ROW LEVEL SECURITY")
 

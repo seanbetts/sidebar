@@ -19,6 +19,7 @@ POLICY_DEFS = [
 
 
 def upgrade() -> None:
+    """Enable RLS and create user isolation policies."""
     for table_name, policy_name in POLICY_DEFS:
         op.execute(f"ALTER TABLE {table_name} ENABLE ROW LEVEL SECURITY")
         op.execute(f"DROP POLICY IF EXISTS {policy_name} ON {table_name}")
@@ -33,6 +34,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Drop policies and disable RLS on user-scoped tables."""
     for table_name, policy_name in POLICY_DEFS:
         op.execute(f"DROP POLICY IF EXISTS {policy_name} ON {table_name}")
         op.execute(f"ALTER TABLE {table_name} DISABLE ROW LEVEL SECURITY")

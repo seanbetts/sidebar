@@ -10,6 +10,7 @@ from api.models.file_object import FileObject
 
 
 class FilesService:
+    """CRUD helpers for file metadata records."""
     @staticmethod
     def upsert_file(
         db: Session,
