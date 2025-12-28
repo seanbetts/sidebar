@@ -5,6 +5,7 @@ from api.services.tools import parameter_mapper as pm
 
 
 def get_docx_definitions() -> dict:
+    """Return DOCX tool definitions."""
     return {
         "Unpack DOCX": {
             "description": "Unpack a .docx file into an OOXML directory.",

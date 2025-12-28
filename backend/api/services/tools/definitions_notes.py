@@ -5,6 +5,7 @@ from api.services.tools import parameter_mapper as pm
 
 
 def get_notes_definitions() -> dict:
+    """Return notes tool definitions."""
     return {
         "Create Note": {
             "description": "Create a searchable, persistent markdown note in the database with metadata. Notes are visible in the UI and fully searchable. Preferred for remembering information across sessions.",

@@ -14,6 +14,11 @@ from api.services.tools.definitions_xlsx import get_xlsx_definitions
 
 
 def get_tool_definitions() -> dict:
+    """Aggregate tool definitions for ToolMapper.
+
+    Returns:
+        Dictionary of tool definitions keyed by tool name.
+    """
     return {
         **get_fs_definitions(),
         **get_docx_definitions(),

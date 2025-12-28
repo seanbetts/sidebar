@@ -5,6 +5,7 @@ from api.services.tools import parameter_mapper as pm
 
 
 def get_pptx_definitions() -> dict:
+    """Return PPTX tool definitions."""
     return {
         "Inventory PPTX": {
             "description": "Generate an inventory report for a PowerPoint file.",

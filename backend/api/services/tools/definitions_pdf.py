@@ -3,6 +3,7 @@ from __future__ import annotations
 
 
 def get_pdf_definitions() -> dict:
+    """Return PDF tool definitions."""
     return {
         "Validate PDF": {
             "description": "Validate a PDF file with pdfcpu.",
