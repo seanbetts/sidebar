@@ -12,8 +12,19 @@ from api.services.notes_service import NotesService, NoteNotFoundError
 
 
 class NotesWorkspaceService:
+    """Workspace-facing note operations for the API layer."""
+
     @staticmethod
     def list_tree(db: Session, user_id: str) -> dict:
+        """Return a notes tree for the UI.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+
+        Returns:
+            Notes tree payload with children.
+        """
         notes = (
             db.query(Note)
             .options(load_only(Note.id, Note.title, Note.metadata_, Note.updated_at))
@@ -26,6 +37,17 @@ class NotesWorkspaceService:
 
     @staticmethod
     def search(db: Session, user_id: str, query: str, *, limit: int = 50) -> dict:
+        """Search notes and return UI-friendly results.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            query: Search query string.
+            limit: Max results to return. Defaults to 50.
+
+        Returns:
+            Search results payload.
+        """
         notes = (
             db.query(Note)
             .filter(
@@ -60,6 +82,16 @@ class NotesWorkspaceService:
 
     @staticmethod
     def create_folder(db: Session, user_id: str, path: str) -> dict:
+        """Create a logical folder marker for notes.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            path: Folder path to create.
+
+        Returns:
+            Folder creation result.
+        """
         notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
         for note in notes:
             note_folder = (note.metadata_ or {}).get("folder") or ""
@@ -83,6 +115,17 @@ class NotesWorkspaceService:
 
     @staticmethod
     def rename_folder(db: Session, user_id: str, old_path: str, new_name: str) -> dict:
+        """Rename a folder and update note metadata paths.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            old_path: Existing folder path.
+            new_name: New folder name.
+
+        Returns:
+            Folder rename result.
+        """
         parent = "/".join(old_path.split("/")[:-1])
         new_folder = f"{parent}/{new_name}".strip("/") if parent else new_name
 
@@ -98,6 +141,20 @@ class NotesWorkspaceService:
 
     @staticmethod
     def move_folder(db: Session, user_id: str, old_path: str, new_parent: str) -> dict:
+        """Move a folder to a new parent location.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            old_path: Existing folder path.
+            new_parent: Destination parent folder.
+
+        Returns:
+            Folder move result.
+
+        Raises:
+            ValueError: If destination is within the source.
+        """
         if new_parent and (new_parent == old_path or new_parent.startswith(f"{old_path}/")):
             raise ValueError("Invalid destination folder")
 
@@ -116,6 +173,16 @@ class NotesWorkspaceService:
 
     @staticmethod
     def delete_folder(db: Session, user_id: str, path: str) -> dict:
+        """Soft delete all notes in a folder.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            path: Folder path to delete.
+
+        Returns:
+            Folder deletion result.
+        """
         notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
         now = datetime.now(timezone.utc)
         for note in notes:
@@ -128,6 +195,20 @@ class NotesWorkspaceService:
 
     @staticmethod
     def get_note(db: Session, user_id: str, note_id: str) -> dict:
+        """Fetch a note and format it for the API response.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note ID (UUID string).
+
+        Returns:
+            Note payload with content and metadata.
+
+        Raises:
+            ValueError: If note_id is invalid.
+            NoteNotFoundError: If note is not found.
+        """
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
             raise ValueError("Invalid note id")
@@ -152,6 +233,18 @@ class NotesWorkspaceService:
         path: str = "",
         folder: str = "",
     ) -> dict:
+        """Create a note using workspace request data.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            content: Markdown content.
+            path: Optional file path hint.
+            folder: Optional folder override.
+
+        Returns:
+            Creation result payload.
+        """
         resolved_folder = folder
         if not resolved_folder and path:
             folder_path = Path(path).parent.as_posix()
@@ -162,6 +255,17 @@ class NotesWorkspaceService:
 
     @staticmethod
     def update_note(db: Session, user_id: str, note_id: str, content: str) -> dict:
+        """Update note content using workspace request data.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note ID (UUID string).
+            content: Updated markdown content.
+
+        Returns:
+            Update result payload.
+        """
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
             raise ValueError("Invalid note id")
@@ -171,6 +275,21 @@ class NotesWorkspaceService:
 
     @staticmethod
     def rename_note(db: Session, user_id: str, note_id: str, new_name: str) -> dict:
+        """Rename a note and update its content title.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note ID (UUID string).
+            new_name: New filename or title.
+
+        Returns:
+            Rename result payload.
+
+        Raises:
+            ValueError: If note_id is invalid.
+            NoteNotFoundError: If note is not found.
+        """
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
             raise ValueError("Invalid note id")
@@ -192,6 +311,20 @@ class NotesWorkspaceService:
 
     @staticmethod
     def download_note(db: Session, user_id: str, note_id: str) -> dict:
+        """Prepare a note for download.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note ID (UUID string).
+
+        Returns:
+            Download payload with content and filename.
+
+        Raises:
+            ValueError: If note_id is invalid.
+            NoteNotFoundError: If note is not found.
+        """
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
             raise ValueError("Invalid note id")
