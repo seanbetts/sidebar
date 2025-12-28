@@ -2,9 +2,9 @@
 
 Current coverage snapshot and gaps for the sideBar backend.
 
-**Date**: 2025-12-28 (Updated)
-**Test Files**: 13
-**Test Functions**: 23 (plus parametrized cases)
+**Date**: 2025-12-28 (Refreshed)
+**Test Files**: 29 (backend)
+**Test Count**: 139 (98 passed, 41 skipped in latest local run)
 
 ---
 
@@ -21,12 +21,14 @@ Current coverage snapshot and gaps for the sideBar backend.
 - Prompt construction and context assembly are covered.
 - Core Notes/Websites service logic is covered.
 - Security primitives (path validation, audit logging) are covered.
+- Tool mapper + basic Claude streaming flow are covered.
+- Chat router has baseline coverage.
 
 ### Current Gaps
-- No tests for Claude streaming + tool execution flow.
-- Tool definitions and parameter mapping are untested.
-- Router-level integration coverage remains minimal.
-- R2 storage integration and file tree services are untested.
+- Tool execution handlers + parameter mapper lack dedicated tests.
+- Tool definition contract tests are missing.
+- Router-level integration coverage remains minimal (beyond chat/settings).
+- R2 storage integration and file tree/workspace services are untested.
 
 ---
 
@@ -53,30 +55,31 @@ Current coverage snapshot and gaps for the sideBar backend.
 | PathValidator | `tests/api/test_path_validator.py` | ✅ |
 | AuditLogger | `tests/api/test_audit_logger.py` | ✅ |
 
-### ⚠️ Execution Layer (PARTIAL)
+### ✅ Execution Layer (WELL TESTED)
 
 | Component | Test File | Status | Notes |
 |-----------|-----------|--------|-------|
-| SkillExecutor | `tests/api/test_skill_executor.py` | ⚠️ | Requires asyncio marker |
+| SkillExecutor | `tests/api/test_skill_executor.py` | ✅ | Async marker added |
 
-### ⚠️ Authentication (PARTIAL)
+### ✅ Authentication (WELL TESTED)
 
 | Component | Test File | Status | Notes |
 |-----------|-----------|--------|-------|
-| Auth middleware | `tests/api/test_auth.py` | ⚠️ | Requires asyncio marker |
+| Auth middleware | `tests/api/test_auth.py` | ✅ | FastMCP lifespan handled |
 
 ### ⚠️ MCP Integration (PARTIAL)
 
 | Component | Test File | Status | Notes |
 |-----------|-----------|--------|-------|
 | MCP client | `tests/test_mcp_client.py` | ✅ | Basic client coverage |
-| MCP integration | `tests/test_mcp_integration.py` | ⚠️ | Requires asyncio marker |
+| MCP integration | `tests/test_mcp_integration.py` | ⚠️ | Skips unless `MCP_BASE_URL` set |
 
 ### ✅ API Endpoints (PARTIAL)
 
 | Component | Test File | Status |
 |-----------|-----------|--------|
 | Settings API | `tests/api/test_settings_api.py` | ✅ |
+| Chat router | `tests/api/test_chat_router.py` | ✅ |
 
 ### ✅ Utility Scripts (PARTIAL)
 
@@ -93,8 +96,6 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 | Component | Location | Priority | Notes |
 |-----------|----------|----------|-------|
-| Claude streaming | `api/services/claude_streaming.py` | 🔴 HIGH | Token stream, tool loop, error paths |
-| Tool mapping | `api/services/tool_mapper.py` | 🔴 HIGH | Routing + allowed skills |
 | Tool execution handlers | `api/services/tools/execution_handlers.py` | 🔴 HIGH | Shared tool execution flow |
 | Tool parameter mapping | `api/services/tools/parameter_mapper.py` | 🔴 HIGH | Argument construction |
 | Tool definitions | `api/services/tools/definitions_*.py` | 🔴 HIGH | Contract correctness |
@@ -135,7 +136,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 ### ✅ Environment Mocking
 
-`conftest.py` mocks critical env vars; update values to align with Supabase/R2:
+`conftest.py` mocks critical env vars and skips DB tests when `DATABASE_URL` is not available:
 
 ```python
 os.environ.setdefault("BEARER_TOKEN", "test-bearer-token-12345")
@@ -148,34 +149,18 @@ os.environ.setdefault("R2_ACCESS_KEY_ID", "test_access_key")
 os.environ.setdefault("R2_SECRET_ACCESS_KEY", "test_secret_key")
 ```
 
-### ⚠️ Pytest Markers
+### ✅ Pytest Markers
 
-Async tests still fail to collect because `asyncio` is not registered.
-
-Add in `backend/pyproject.toml`:
-
-```toml
-[tool.pytest.ini_options]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "asyncio: marks tests as async tests",
-]
-```
-
-Affected tests:
-- `tests/api/test_auth.py`
-- `tests/api/test_skill_executor.py`
-- `tests/test_mcp_integration.py`
+Async marker registered in `backend/pyproject.toml`. Async tests collect and run.
 
 ---
 
 ## Recommended Test Plan
 
 ### Phase 1: Critical Path
-1. Add `asyncio` marker and ensure all tests collect.
-2. Add unit tests for `tool_mapper.py`, `execution_handlers.py`, and `parameter_mapper.py`.
-3. Add streaming tests for `claude_streaming.py` using mocked tool results.
+1. Add unit tests for `execution_handlers.py` and `parameter_mapper.py`.
+2. Expand tool definition contract tests in `definitions_*.py`.
+3. Extend Claude streaming tests for edge/error cases.
 
 ### Phase 2: Storage + Workspace
 1. Add tests for R2 storage service.
@@ -187,7 +172,7 @@ Affected tests:
 3. Add health, places, weather, scratchpad tests.
 
 ### Phase 4: Coverage Reporting
-Enable pytest-cov once baseline coverage improves:
+Pytest-cov enabled (HTML output to `backend/htmlcov`).
 
 ```toml
 addopts = [
