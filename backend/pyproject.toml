@@ -81,7 +81,6 @@ addopts = [
     "--tb=short",           # Shorter traceback format
     "--cov=api",            # Coverage for backend API
     "--cov-report=term-missing",  # Show missing lines
-    "--cov-report=html",    # HTML coverage report
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
