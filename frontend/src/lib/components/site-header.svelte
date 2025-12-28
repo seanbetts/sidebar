@@ -2,7 +2,10 @@
 	import { useSiteHeaderData } from "$lib/hooks/useSiteHeaderData";
 	import ModeToggle from "$lib/components/mode-toggle.svelte";
 	import ScratchpadPopover from "$lib/components/scratchpad-popover.svelte";
+	import { Button } from "$lib/components/ui/button";
+	import { layoutStore } from "$lib/stores/layout";
 	import { resolveWeatherIcon } from "$lib/utils/weatherIcons";
+	import { ArrowLeftRight } from "lucide-svelte";
 
 	const siteHeaderData = useSiteHeaderData();
 	let currentDate = "";
@@ -13,6 +16,10 @@
 	let weatherIsDay: number | null = null;
 
 	$: ({ currentDate, currentTime, liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
+
+	function handleLayoutSwap() {
+		layoutStore.toggleMode();
+	}
 </script>
 
 <header class="site-header">
@@ -44,6 +51,16 @@
 				<span class="time">{currentTime}</span>
 			</div>
 		</div>
+		<Button
+			size="icon"
+			variant="outline"
+			onclick={handleLayoutSwap}
+			aria-label="Swap layout"
+			title="Swap chat and workspace positions"
+			class="swap-button border-border"
+		>
+			<ArrowLeftRight size={20} />
+		</Button>
 		<ScratchpadPopover />
 		<ModeToggle />
 	</div>
@@ -153,6 +170,21 @@
 	.weather :global(svg) {
 		width: 16px;
 		height: 16px;
+	}
+
+	:global(.swap-button) {
+		color: var(--color-muted-foreground);
+		transition: color 0.2s ease;
+	}
+
+	:global(.swap-button:hover) {
+		color: var(--color-foreground);
+	}
+
+	@media (max-width: 900px) {
+		:global(.swap-button) {
+			display: none;
+		}
 	}
 
 

@@ -275,7 +275,7 @@
 	}
 </script>
 
-<div class="flex flex-col h-full min-h-0 max-w-6xl mx-auto bg-background">
+<div class="flex flex-col h-full min-h-0 w-full bg-background">
 	<div class="chat-header">
 		<div class="header-left">
 			<MessageSquare size={20} />
