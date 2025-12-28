@@ -12,8 +12,13 @@
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import SettingsDialogContainer from '$lib/components/left-sidebar/panels/SettingsDialogContainer.svelte';
-  import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
-  import ConfirmDialog from '$lib/components/left-sidebar/dialogs/ConfirmDialog.svelte';
+  import { useSidebarSectionLoader, type SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
+  import NewNoteDialog from '$lib/components/left-sidebar/dialogs/NewNoteDialog.svelte';
+  import NewFolderDialog from '$lib/components/left-sidebar/dialogs/NewFolderDialog.svelte';
+  import NewWorkspaceFolderDialog from '$lib/components/left-sidebar/dialogs/NewWorkspaceFolderDialog.svelte';
+  import NewWebsiteDialog from '$lib/components/left-sidebar/dialogs/NewWebsiteDialog.svelte';
+  import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
+  import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -36,8 +41,8 @@
   let settingsDialog: { handleProfileImageError: () => void } | null = null;
   let profileImageSrc = '';
   const sidebarLogoSrc = '/images/logo.svg';
-  let loadedSections = new Set<string>();
   let isMounted = false;
+  const { loadSectionData } = useSidebarSectionLoader();
 
   onMount(() => {
     // Mark as mounted to enable reactive data loading
@@ -85,9 +90,9 @@
     isCollapsed = !isCollapsed;
   }
 
-  let activeSection: 'history' | 'notes' | 'websites' | 'workspace' = 'notes';
+  let activeSection: SidebarSection = 'notes';
 
-  function openSection(section: typeof activeSection) {
+  function openSection(section: SidebarSection) {
     activeSection = section;
     isCollapsed = false;
   }
@@ -95,46 +100,6 @@
   // Lazy load section data when switching sections (only after mount to ensure stores are ready)
   $: if (isMounted && activeSection) {
     loadSectionData(activeSection);
-  }
-
-  function loadSectionData(section: typeof activeSection) {
-    // Only load each section once (track by Set to prevent duplicates)
-    if (loadedSections.has(section)) {
-      return;
-    }
-
-    // Check if data already exists to prevent unnecessary reloads
-    const hasData = {
-      'notes': $filesStore.trees?.['notes']?.loaded ?? false,
-      'websites': $websitesStore.loaded ?? false,
-      'workspace': $filesStore.trees?.['.']?.loaded ?? false,
-      'history': $conversationListStore.loaded ?? false
-    }[section];
-
-    // If data already exists, mark as loaded and skip
-    if (hasData) {
-      loadedSections.add(section);
-      return;
-    }
-
-    // Mark as loading before calling load to prevent race conditions
-    loadedSections.add(section);
-
-    // Load data based on section
-    switch (section) {
-      case 'notes':
-        filesStore.load('notes');
-        break;
-      case 'websites':
-        websitesStore.load();
-        break;
-      case 'workspace':
-        filesStore.load('.');
-        break;
-      case 'history':
-        conversationListStore.load();
-        break;
-    }
   }
 
   async function handleNoteClick(path: string) {
@@ -318,73 +283,46 @@
 
 </script>
 
-<TextInputDialog
+<NewNoteDialog
   bind:open={isNewNoteDialogOpen}
-  title="Create a new note"
-  description="Pick a name. We'll save it as a markdown file."
-  placeholder="Note name"
   bind:value={newNoteName}
   isBusy={isCreatingNote}
-  busyLabel="Creating..."
-  confirmLabel="Create note"
   onConfirm={createNoteFromDialog}
   onCancel={() => (isNewNoteDialogOpen = false)}
 />
 
-<TextInputDialog
+<NewFolderDialog
   bind:open={isNewFolderDialogOpen}
-  title="Create a new folder"
-  description="Folders help organize your notes."
-  placeholder="Folder name"
   bind:value={newFolderName}
   isBusy={isCreatingFolder}
-  busyLabel="Creating..."
-  confirmLabel="Create folder"
   onConfirm={createFolderFromDialog}
   onCancel={() => (isNewFolderDialogOpen = false)}
 />
 
-<TextInputDialog
+<NewWorkspaceFolderDialog
   bind:open={isNewWorkspaceFolderDialogOpen}
-  title="Create a new folder"
-  description="Folders help organize your files."
-  placeholder="Folder name"
   bind:value={newWorkspaceFolderName}
   isBusy={isCreatingWorkspaceFolder}
-  busyLabel="Creating..."
-  confirmLabel="Create folder"
   onConfirm={createWorkspaceFolderFromDialog}
   onCancel={() => (isNewWorkspaceFolderDialogOpen = false)}
 />
 
-<TextInputDialog
+<NewWebsiteDialog
   bind:open={isNewWebsiteDialogOpen}
-  title="Save a website"
-  description="Paste a URL to save it to your archive."
-  placeholder="https://example.com"
   bind:value={newWebsiteUrl}
   isBusy={isSavingWebsite}
-  busyLabel="Saving..."
-  confirmLabel="Save website"
   onConfirm={saveWebsiteFromDialog}
   onCancel={() => (isNewWebsiteDialogOpen = false)}
 />
 
-<ConfirmDialog
+<SidebarErrorDialog
   bind:open={isErrorDialogOpen}
-  title="Unable to create note"
-  description={errorMessage}
-  confirmLabel="OK"
-  showCancel={false}
+  message={errorMessage}
   onConfirm={() => (isErrorDialogOpen = false)}
 />
 
-<ConfirmDialog
+<SaveChangesDialog
   bind:open={isSaveChangesDialogOpen}
-  title="Save changes?"
-  description="You have unsaved changes. Would you like to save them before switching notes?"
-  confirmLabel="Save changes"
-  cancelLabel="Don't save"
   onConfirm={confirmSaveAndSwitch}
   onCancel={discardAndSwitch}
 />

@@ -1,27 +1,17 @@
 """Notes router for database-backed note operations."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from sqlalchemy import or_
-from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
-from api.models.note import Note
 from api.services.notes_service import NotesService, NoteNotFoundError
+from api.services.notes_workspace_service import NotesWorkspaceService
 
 router = APIRouter(prefix="/notes", tags=["notes"])
-
-
-def require_note_id(value: str):
-    note_id = NotesService.parse_note_id(value)
-    if not note_id:
-        raise HTTPException(status_code=400, detail="Invalid note id")
-    return note_id
 
 
 @router.get("/tree")
@@ -30,15 +20,7 @@ async def list_notes_tree(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    notes = (
-        db.query(Note)
-        .options(load_only(Note.id, Note.title, Note.metadata_, Note.updated_at))
-        .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
-        .order_by(Note.updated_at.desc())
-        .all()
-    )
-    tree = NotesService.build_notes_tree(notes)
-    return {"children": tree.get("children", [])}
+    return NotesWorkspaceService.list_tree(db, user_id)
 
 
 @router.post("/search")
@@ -52,35 +34,7 @@ async def search_notes(
     if not query:
         raise HTTPException(status_code=400, detail="query required")
 
-    notes = (
-        db.query(Note)
-        .filter(
-            Note.user_id == user_id,
-            Note.deleted_at.is_(None),
-            or_(
-                Note.title.ilike(f"%{query}%"),
-                Note.content.ilike(f"%{query}%"),
-            ),
-        )
-        .order_by(Note.updated_at.desc())
-        .limit(limit)
-        .all()
-    )
-
-    items = []
-    for note in notes:
-        metadata = note.metadata_ or {}
-        folder = metadata.get("folder") or ""
-        items.append({
-            "name": f"{note.title}.md",
-            "path": str(note.id),
-            "type": "file",
-            "modified": note.updated_at.timestamp() if note.updated_at else None,
-            "pinned": bool(metadata.get("pinned")),
-            "archived": NotesService.is_archived_folder(folder)
-        })
-
-    return {"items": items}
+    return NotesWorkspaceService.search(db, user_id, query, limit=limit)
 
 
 @router.post("/folders")
@@ -94,26 +48,7 @@ async def create_folder(
     if not path:
         raise HTTPException(status_code=400, detail="path required")
 
-    notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
-    for note in notes:
-        note_folder = (note.metadata_ or {}).get("folder") or ""
-        if note_folder == path or note_folder.startswith(f"{path}/"):
-            return {"success": True, "exists": True}
-
-    now = datetime.now(timezone.utc)
-    note = Note(
-        user_id=user_id,
-        title="__folder__",
-        content="",
-        metadata_={"folder": path, "pinned": False, "folder_marker": True},
-        created_at=now,
-        updated_at=now,
-        last_opened_at=None,
-        deleted_at=None
-    )
-    db.add(note)
-    db.commit()
-    return {"success": True, "id": str(note.id)}
+    return NotesWorkspaceService.create_folder(db, user_id, path)
 
 
 @router.patch("/folders/rename")
@@ -128,18 +63,7 @@ async def rename_folder(
     if not old_path or not new_name:
         raise HTTPException(status_code=400, detail="oldPath and newName required")
 
-    parent = "/".join(old_path.split("/")[:-1])
-    new_folder = f"{parent}/{new_name}".strip("/") if parent else new_name
-
-    notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
-    for note in notes:
-        folder = (note.metadata_ or {}).get("folder") or ""
-        if folder == old_path or folder.startswith(f"{old_path}/"):
-            updated_folder = folder.replace(old_path, new_folder, 1)
-            note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
-            note.updated_at = datetime.now(timezone.utc)
-    db.commit()
-    return {"success": True, "newPath": f"folder:{new_folder}"}
+    return NotesWorkspaceService.rename_folder(db, user_id, old_path, new_name)
 
 
 @router.patch("/folders/move")
@@ -154,21 +78,10 @@ async def move_folder(
     if not old_path:
         raise HTTPException(status_code=400, detail="oldPath required")
 
-    if new_parent and (new_parent == old_path or new_parent.startswith(f"{old_path}/")):
-        raise HTTPException(status_code=400, detail="Invalid destination folder")
-
-    basename = old_path.split("/")[-1]
-    new_folder = f"{new_parent}/{basename}".strip("/") if new_parent else basename
-
-    notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
-    for note in notes:
-        folder = (note.metadata_ or {}).get("folder") or ""
-        if folder == old_path or folder.startswith(f"{old_path}/"):
-            updated_folder = folder.replace(old_path, new_folder, 1)
-            note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
-            note.updated_at = datetime.now(timezone.utc)
-    db.commit()
-    return {"success": True, "newPath": f"folder:{new_folder}"}
+    try:
+        return NotesWorkspaceService.move_folder(db, user_id, old_path, new_parent)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.delete("/folders")
@@ -182,15 +95,7 @@ async def delete_folder(
     if not path:
         raise HTTPException(status_code=400, detail="path required")
 
-    notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
-    now = datetime.now(timezone.utc)
-    for note in notes:
-        note_folder = (note.metadata_ or {}).get("folder") or ""
-        if note_folder == path or note_folder.startswith(f"{path}/"):
-            note.deleted_at = now
-            note.updated_at = now
-    db.commit()
-    return {"success": True}
+    return NotesWorkspaceService.delete_folder(db, user_id, path)
 
 
 @router.get("/{note_id}")
@@ -200,26 +105,12 @@ async def get_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    note_uuid = require_note_id(note_id)
-    note = (
-        db.query(Note)
-        .filter(Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None))
-        .first()
-    )
-    if not note:
+    try:
+        return NotesWorkspaceService.get_note(db, user_id, note_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NoteNotFoundError:
         raise HTTPException(status_code=404, detail="Note not found")
-
-    content = note.content
-    title = note.title
-    modified = note.updated_at.timestamp() if note.updated_at else None
-    note.last_opened_at = datetime.now(timezone.utc)
-    db.commit()
-    return {
-        "content": content,
-        "name": f"{title}.md",
-        "path": str(note.id),
-        "modified": modified
-    }
 
 
 @router.post("")
@@ -236,13 +127,7 @@ async def create_note(
     if content is None:
         raise HTTPException(status_code=400, detail="content required")
 
-    resolved_folder = folder
-    if not resolved_folder and path:
-        folder_path = Path(path).parent.as_posix()
-        resolved_folder = "" if folder_path == "." else folder_path
-
-    created = NotesService.create_note(db, user_id, content, folder=resolved_folder)
-    return {"success": True, "modified": created.updated_at.timestamp(), "id": str(created.id)}
+    return NotesWorkspaceService.create_note(db, user_id, content, path=path, folder=folder)
 
 
 @router.patch("/{note_id}")
@@ -257,13 +142,12 @@ async def update_note(
     if content is None:
         raise HTTPException(status_code=400, detail="content required")
 
-    note_uuid = require_note_id(note_id)
     try:
-        updated = NotesService.update_note(db, user_id, note_uuid, content)
+        return NotesWorkspaceService.update_note(db, user_id, note_id, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except NoteNotFoundError:
         raise HTTPException(status_code=404, detail="Note not found")
-
-    return {"success": True, "modified": updated.updated_at.timestamp(), "id": str(updated.id)}
 
 
 @router.patch("/{note_id}/rename")
@@ -278,21 +162,12 @@ async def rename_note(
     if not new_name:
         raise HTTPException(status_code=400, detail="newName required")
 
-    note_uuid = require_note_id(note_id)
-    note = (
-        db.query(Note)
-        .filter(Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None))
-        .first()
-    )
-    if not note:
+    try:
+        return NotesWorkspaceService.rename_note(db, user_id, note_id, new_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NoteNotFoundError:
         raise HTTPException(status_code=404, detail="Note not found")
-
-    title = Path(new_name).stem
-    note.title = title
-    note.content = NotesService.update_content_title(note.content, title)
-    note.updated_at = datetime.now(timezone.utc)
-    db.commit()
-    return {"success": True, "newPath": str(note.id)}
 
 
 @router.delete("/{note_id}")
@@ -302,7 +177,9 @@ async def delete_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    note_uuid = require_note_id(note_id)
+    note_uuid = NotesService.parse_note_id(note_id)
+    if not note_uuid:
+        raise HTTPException(status_code=400, detail="Invalid note id")
     deleted = NotesService.delete_note(db, user_id, note_uuid)
     if not deleted:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -316,18 +193,15 @@ async def download_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    note_uuid = require_note_id(note_id)
-    note = (
-        db.query(Note)
-        .filter(Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None))
-        .first()
-    )
-    if not note:
+    try:
+        result = NotesWorkspaceService.download_note(db, user_id, note_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NoteNotFoundError:
         raise HTTPException(status_code=404, detail="Note not found")
 
-    filename = f"{note.title}.md"
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return Response(note.content or "", media_type="text/markdown", headers=headers)
+    headers = {"Content-Disposition": f'attachment; filename="{result["filename"]}"'}
+    return Response(result["content"], media_type="text/markdown", headers=headers)
 
 
 @router.patch("/{note_id}/pin")

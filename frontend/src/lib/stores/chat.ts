@@ -6,6 +6,7 @@ import type { Message, ToolCall } from '$lib/types/chat';
 import { conversationsAPI } from '$lib/services/api';
 import { conversationListStore, currentConversationId } from './conversations';
 import { generateConversationTitle } from './chat/generateTitle';
+import { createToolStateHandlers } from './chat/toolState';
 
 export interface ChatState {
 	messages: Message[];
@@ -28,8 +29,8 @@ function createChatStore() {
 		conversationId: null,
 		activeTool: null
 	});
-	let toolClearTimeout: ReturnType<typeof setTimeout> | null = null;
-	let toolUpdateTimeout: ReturnType<typeof setTimeout> | null = null;
+	const getState = () => get({ subscribe });
+	const toolState = createToolStateHandlers(update, getState);
 
 	return {
 		subscribe,
@@ -38,6 +39,7 @@ function createChatStore() {
 		 * Load an existing conversation
 		 */
 		async loadConversation(conversationId: string) {
+			toolState.clearToolTimers();
 			const conversation = await conversationsAPI.get(conversationId);
 			currentConversationId.set(conversationId);
 			set({
@@ -56,6 +58,7 @@ function createChatStore() {
 		 * Start a new conversation
 		 */
 		async startNewConversation() {
+			toolState.clearToolTimers();
 			const conversation = await conversationsAPI.create();
 			currentConversationId.set(conversation.id);
 			set({
@@ -274,6 +277,7 @@ function createChatStore() {
 		 * Reset to empty state without creating a conversation
 		 */
 		reset() {
+			toolState.clearToolTimers();
 			set({
 				conversationId: null,
 				messages: [],
@@ -290,87 +294,10 @@ function createChatStore() {
 			await this.startNewConversation();
 		},
 
-		setActiveTool(messageId: string, name: string, status: 'running' | 'success' | 'error') {
-			if (toolClearTimeout) {
-				clearTimeout(toolClearTimeout);
-				toolClearTimeout = null;
-			}
-			if (toolUpdateTimeout) {
-				clearTimeout(toolUpdateTimeout);
-				toolUpdateTimeout = null;
-			}
-			const startedAt = Date.now();
-			update((state) => ({
-				...state,
-				activeTool: {
-					messageId,
-					name,
-					status,
-					startedAt
-				}
-			}));
-		},
-
-		finalizeActiveTool(
-			messageId: string,
-			name: string,
-			status: 'success' | 'error',
-			minRunningMs: number = 250,
-			displayMs: number = 4500
-		) {
-			if (toolClearTimeout) {
-				clearTimeout(toolClearTimeout);
-				toolClearTimeout = null;
-			}
-			if (toolUpdateTimeout) {
-				clearTimeout(toolUpdateTimeout);
-				toolUpdateTimeout = null;
-			}
-			const now = Date.now();
-			const startedAt = this.getActiveToolStartTime(messageId, name) ?? now;
-			const elapsed = now - startedAt;
-			const updateDelay = Math.max(0, minRunningMs - elapsed);
-
-			toolUpdateTimeout = setTimeout(() => {
-				update((state) => ({
-					...state,
-					activeTool: state.activeTool?.messageId === messageId
-						? { ...state.activeTool, status, startedAt }
-						: state.activeTool
-				}));
-				toolUpdateTimeout = null;
-
-				if (status === 'error') {
-					toolClearTimeout = setTimeout(() => {
-						update((state) => ({
-							...state,
-							messages: state.messages.map((msg) =>
-								msg.id === messageId ? { ...msg, needsNewline: true } : msg
-							),
-							activeTool: state.activeTool?.messageId === messageId ? null : state.activeTool
-						}));
-						toolClearTimeout = null;
-					}, displayMs);
-				}
-			}, updateDelay);
-		},
-
-		markNeedsNewline(messageId: string) {
-			update((state) => ({
-				...state,
-				messages: state.messages.map((msg) =>
-					msg.id === messageId ? { ...msg, needsNewline: true } : msg
-				)
-			}));
-		},
-
-		getActiveToolStartTime(messageId: string, name: string) {
-			const state = get({ subscribe });
-			if (!state.activeTool) return null;
-			if (state.activeTool.messageId !== messageId) return null;
-			if (state.activeTool.name !== name) return null;
-			return state.activeTool.startedAt;
-		}
+		setActiveTool: toolState.setActiveTool,
+		finalizeActiveTool: toolState.finalizeActiveTool,
+		markNeedsNewline: toolState.markNeedsNewline,
+		getActiveToolStartTime: toolState.getActiveToolStartTime
 	};
 }
 
