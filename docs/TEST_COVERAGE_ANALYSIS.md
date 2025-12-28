@@ -3,8 +3,8 @@
 Current coverage snapshot and gaps for the sideBar backend.
 
 **Date**: 2025-12-28 (Refreshed)
-**Test Files**: 37 (backend)
-**Test Count**: 178 (latest local run may differ; re-run to confirm)
+**Test Files**: 41 (backend)
+**Test Count**: 186 (latest local run may differ; re-run to confirm)
 
 ---
 
@@ -27,7 +27,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 - Chat router has baseline coverage.
 
 ### Current Gaps
-- Router-level integration coverage remains minimal (beyond chat/settings).
+- Router-level integration coverage remains minimal (beyond basic validation).
 - Some storage integration paths are untested.
 
 ### ✅ Storage + Workspace (PARTIAL)
@@ -93,6 +93,10 @@ Current coverage snapshot and gaps for the sideBar backend.
 |-----------|-----------|--------|
 | Settings API | `tests/api/test_settings_api.py` | ✅ |
 | Chat router | `tests/api/test_chat_router.py` | ✅ |
+| Notes router | `tests/api/test_notes_router.py` | ✅ |
+| Files router | `tests/api/test_files_router.py` | ✅ |
+| Websites router | `tests/api/test_websites_router.py` | ✅ |
+| Memories router | `tests/api/test_memories_router.py` | ✅ |
 
 ### ✅ Utility Scripts (PARTIAL)
 
@@ -164,7 +168,7 @@ Async marker registered in `backend/pyproject.toml`. Async tests collect and run
 ## Recommended Test Plan
 
 ### Phase 1: Critical Path
-1. Expand router-level integration coverage (notes/websites/files/memories).
+1. Expand router-level integration coverage (conversations/places/weather/scratchpad).
 
 ### Phase 2: Storage + Workspace
 1. Add tests for R2 storage service.
