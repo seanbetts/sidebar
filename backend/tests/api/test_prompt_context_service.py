@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from api.db.base import Base
 from api.models.conversation import Conversation
 from api.models.note import Note
 from api.models.user_settings import UserSettings
@@ -8,6 +9,7 @@ from api.services.prompt_context_service import PromptContextService
 
 
 def test_prompt_context_service_order_and_truncation(test_db):
+    Base.metadata.create_all(bind=test_db.connection())
     now = datetime(2025, 1, 2, 12, 0, tzinfo=timezone.utc)
     user_id = "user-1"
 

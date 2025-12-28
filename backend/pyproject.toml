@@ -65,6 +65,10 @@ dev = [
     "pytest-xdist>=3.5.0",  # Parallel test execution
     "pytest-asyncio>=0.24.0",
     "pytest-env>=1.1.3",
+    # Docstring linting and coverage
+    "interrogate>=1.7.0",  # Docstring coverage
+    "pydocstyle>=6.3.0",   # Docstring style checking (Google style)
+    "darglint>=1.8.1",     # Docstring/signature validation
 ]
 
 [tool.pytest.ini_options]
@@ -87,3 +91,28 @@ markers = [
     "integration: marks tests as integration tests",
     "asyncio: marks tests as async tests",
 ]
+
+[tool.interrogate]
+# Docstring coverage configuration
+ignore-init-method = true         # Don't require docstrings for __init__ methods
+ignore-init-module = false        # Require module docstrings (we have 100% coverage)
+ignore-magic = true               # Don't require docstrings for magic methods (__str__, etc.)
+ignore-module = false             # Check module docstrings
+ignore-nested-functions = false   # Check nested functions
+ignore-nested-classes = true      # Don't check nested classes
+ignore-private = true             # Don't require docstrings for _private methods
+ignore-property-decorators = false
+ignore-semiprivate = false        # Don't ignore __semiprivate (useful)
+ignore-setters = false
+fail-under = 80                   # Fail if coverage drops below 80%
+exclude = ["setup.py", "docs", "tests", "alembic"]
+verbose = 2                       # Detailed output
+quiet = false
+color = true
+generate-badge = "."              # Generate badge in current directory
+badge-format = "svg"
+
+[tool.pydocstyle]
+# Pydocstyle configuration (also reads from .pydocstyle file)
+convention = "google"             # Use Google-style docstrings
+add_ignore = ["D104"]             # Ignore: Missing docstring in public package

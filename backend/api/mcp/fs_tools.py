@@ -189,7 +189,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
                 "message": f"Would move {source} to {destination}",
             })
 
-        args = [source, destination]
+        args = [source, destination, "--user-id", default_user_id]
         result = await executor.execute("fs", "move.py", args)
 
         AuditLogger.log_tool_call(
@@ -227,7 +227,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
                 "message": f"Would rename to {new_name}",
             })
 
-        args = [path, new_name]
+        args = [path, new_name, "--user-id", default_user_id]
         result = await executor.execute("fs", "rename.py", args)
 
         AuditLogger.log_tool_call(
@@ -266,7 +266,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
                 "message": f"Would copy {source} to {destination}",
             })
 
-        args = [source, destination]
+        args = [source, destination, "--user-id", default_user_id]
         result = await executor.execute("fs", "copy.py", args)
 
         AuditLogger.log_tool_call(

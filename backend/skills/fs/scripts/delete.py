@@ -11,6 +11,12 @@ import argparse
 from pathlib import Path
 from typing import Dict, Any
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if sys.path and sys.path[0] == str(SCRIPT_DIR):
+    sys.path.pop(0)
+elif str(SCRIPT_DIR) in sys.path:
+    sys.path.remove(str(SCRIPT_DIR))
+
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 

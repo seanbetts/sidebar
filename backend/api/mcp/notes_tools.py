@@ -40,6 +40,7 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         title: str,
         content: str,
         folder: str = None,
+        note_id: str = None,
     ) -> str:
         """Update existing note (replace content)."""
         start_time = time.time()
@@ -47,6 +48,8 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         args = [title, "--content", content, "--mode", "update", "--database", "--user-id", default_user_id]
         if folder:
             args.extend(["--folder", folder])
+        if note_id:
+            args.extend(["--note-id", note_id])
 
         result = await executor.execute("notes", "save_markdown.py", args)
 
@@ -64,6 +67,7 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         title: str,
         content: str,
         folder: str = None,
+        note_id: str = None,
     ) -> str:
         """Append content to existing note."""
         start_time = time.time()
@@ -71,6 +75,8 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         args = [title, "--content", content, "--mode", "append", "--database", "--user-id", default_user_id]
         if folder:
             args.extend(["--folder", folder])
+        if note_id:
+            args.extend(["--note-id", note_id])
 
         result = await executor.execute("notes", "save_markdown.py", args)
 

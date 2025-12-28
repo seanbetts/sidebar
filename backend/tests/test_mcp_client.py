@@ -4,16 +4,24 @@ import asyncio
 import httpx
 import json
 import os
-from typing import AsyncIterator, Dict, Any
+from typing import Dict, Any, Optional
+
+from fastapi.testclient import TestClient
 
 
 class MCPClient:
     """Simple MCP Streamable HTTP client for testing."""
 
-    def __init__(self, base_url: str, bearer_token: str):
+    def __init__(
+        self,
+        base_url: str,
+        bearer_token: str,
+        http_client: Optional[httpx.AsyncClient] = None,
+    ):
         self.base_url = base_url.rstrip('/')
         self.bearer_token = bearer_token
         self.session_id = None
+        self.http_client = http_client
 
     def _get_headers(self, accept: str = "application/json") -> Dict[str, str]:
         """Get headers with authentication."""
@@ -35,84 +43,167 @@ class MCPClient:
             return json.loads(data_lines[0])
         return {}
 
-    async def initialize_session(self) -> Dict[str, Any]:
-        """Initialize an MCP session."""
-        async with httpx.AsyncClient() as client:
-            # Try to initialize with POST to /mcp
-            response = await client.post(
+    async def _post(self, payload: Dict[str, Any], accept: str) -> httpx.Response:
+        """Post MCP requests with either a shared or ad-hoc client."""
+        if self.http_client is not None:
+            return await self.http_client.post(
                 f"{self.base_url}/mcp",
-                headers=self._get_headers("application/json, text/event-stream"),
-                json={
-                    "jsonrpc": "2.0",
-                    "method": "initialize",
-                    "params": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {},
-                        "clientInfo": {
-                            "name": "test-client",
-                            "version": "1.0.0"
-                        }
-                    },
-                    "id": 1
-                }
+                headers=self._get_headers(accept),
+                json=payload,
             )
 
-            print(f"Initialize response status: {response.status_code}")
+        async with httpx.AsyncClient() as client:
+            return await client.post(
+                f"{self.base_url}/mcp",
+                headers=self._get_headers(accept),
+                json=payload,
+            )
 
-            if response.status_code == 200:
-                # Extract session ID from headers
-                self.session_id = response.headers.get("mcp-session-id")
-                print(f"Session ID: {self.session_id}")
+    async def initialize_session(self) -> Dict[str, Any]:
+        """Initialize an MCP session."""
+        response = await self._post(
+            {
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "test-client",
+                        "version": "1.0.0"
+                    }
+                },
+                "id": 1
+            },
+            "application/json, text/event-stream",
+        )
 
-                # Parse SSE response
-                result = self._parse_sse_response(response.text)
-                return result
-            else:
-                raise Exception(f"Failed to initialize: {response.text}")
+        print(f"Initialize response status: {response.status_code}")
+
+        if response.status_code == 200:
+            # Extract session ID from headers
+            self.session_id = response.headers.get("mcp-session-id")
+            print(f"Session ID: {self.session_id}")
+
+            # Parse SSE response
+            result = self._parse_sse_response(response.text)
+            return result
+        raise Exception(f"Failed to initialize: {response.text}")
 
     async def list_tools(self) -> Dict[str, Any]:
         """List all available tools."""
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/mcp",
-                headers=self._get_headers("application/json, text/event-stream"),
-                json={
-                    "jsonrpc": "2.0",
-                    "method": "tools/list",
-                    "id": 2
-                }
-            )
+        response = await self._post(
+            {
+                "jsonrpc": "2.0",
+                "method": "tools/list",
+                "id": 2
+            },
+            "application/json, text/event-stream",
+        )
 
-            print(f"\nList tools response status: {response.status_code}")
+        print(f"\nList tools response status: {response.status_code}")
 
-            if response.status_code == 200:
-                return self._parse_sse_response(response.text)
-            else:
-                raise Exception(f"Failed to list tools: {response.text}")
+        if response.status_code == 200:
+            return self._parse_sse_response(response.text)
+        raise Exception(f"Failed to list tools: {response.text}")
 
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Call a specific tool."""
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/mcp",
-                headers=self._get_headers("application/json, text/event-stream"),
-                json={
-                    "jsonrpc": "2.0",
-                    "method": "tools/call",
-                    "params": {
-                        "name": tool_name,
-                        "arguments": arguments
+        response = await self._post(
+            {
+                "jsonrpc": "2.0",
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": arguments
+                },
+                "id": 3
+            },
+            "application/json, text/event-stream",
+        )
+
+        print(f"\nCall tool response status: {response.status_code}")
+
+        if response.status_code == 200:
+            return self._parse_sse_response(response.text)
+        raise Exception(f"Failed to call tool: {response.text}")
+
+
+class SyncMCPClient:
+    """Synchronous MCP Streamable HTTP client for tests."""
+
+    def __init__(self, client: TestClient, bearer_token: str):
+        self.client = client
+        self.bearer_token = bearer_token
+        self.session_id = None
+
+    def _get_headers(self, accept: str = "application/json") -> Dict[str, str]:
+        headers = {
+            "Authorization": f"Bearer {self.bearer_token}",
+            "Content-Type": "application/json",
+            "Accept": accept,
+        }
+        if self.session_id:
+            headers["mcp-session-id"] = self.session_id
+        return headers
+
+    def _parse_sse_response(self, text: str) -> Dict[str, Any]:
+        lines = text.strip().split('\n')
+        data_lines = [line[6:] for line in lines if line.startswith('data: ')]
+        if data_lines:
+            return json.loads(data_lines[0])
+        return {}
+
+    def initialize_session(self) -> Dict[str, Any]:
+        response = self.client.post(
+            "/mcp",
+            headers=self._get_headers("application/json, text/event-stream"),
+            json={
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "test-client",
+                        "version": "1.0.0",
                     },
-                    "id": 3
-                }
-            )
+                },
+                "id": 1,
+            },
+        )
 
-            print(f"\nCall tool response status: {response.status_code}")
+        if response.status_code == 200:
+            self.session_id = response.headers.get("mcp-session-id")
+            return self._parse_sse_response(response.text)
+        raise Exception(f"Failed to initialize: {response.text}")
 
-            if response.status_code == 200:
-                return self._parse_sse_response(response.text)
-            else:
-                raise Exception(f"Failed to call tool: {response.text}")
+    def list_tools(self) -> Dict[str, Any]:
+        response = self.client.post(
+            "/mcp",
+            headers=self._get_headers("application/json, text/event-stream"),
+            json={"jsonrpc": "2.0", "method": "tools/list", "id": 2},
+        )
+
+        if response.status_code == 200:
+            return self._parse_sse_response(response.text)
+        raise Exception(f"Failed to list tools: {response.text}")
+
+    def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        response = self.client.post(
+            "/mcp",
+            headers=self._get_headers("application/json, text/event-stream"),
+            json={
+                "jsonrpc": "2.0",
+                "method": "tools/call",
+                "params": {"name": tool_name, "arguments": arguments},
+                "id": 3,
+            },
+        )
+
+        if response.status_code == 200:
+            return self._parse_sse_response(response.text)
+        raise Exception(f"Failed to call tool: {response.text}")
 
 
 async def main():
