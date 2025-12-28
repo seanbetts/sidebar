@@ -10,8 +10,7 @@
 	let pageContainerRef: HTMLElement;
 
 	$: isChatFocused = $layoutStore.mode === 'chat-focused';
-	$: chatRatio = $layoutStore.chatPanelRatio;
-	$: sidebarRatio = isChatFocused ? 1 - chatRatio : chatRatio;
+	$: sidebarRatio = $layoutStore.sidebarRatio;
 	$: containerWidth = pageContainerRef?.getBoundingClientRect().width ?? 0;
 	$: minSidebarPx = isChatFocused ? 480 : 320;
 	$: maxRatio = 0.5;
@@ -27,7 +26,7 @@
 
 	const defaultChatWidth = 550;
 	const defaultContainerWidth = 1200;
-	const snapPoints = [0.25, 0.333, 0.4, 0.45, 0.5];
+	const snapPoints = [0.33, 0.4, 0.5];
 
 	function handleResize(width: number) {
 		if (!containerWidth) return;
@@ -41,19 +40,17 @@
 				break;
 			}
 		}
-		const nextChatRatio = isChatFocused ? 1 - ratio : ratio;
-		layoutStore.setChatPanelRatio(nextChatRatio);
+		layoutStore.setSidebarRatio(ratio);
 	}
 
 	function handleReset() {
 		if (!containerWidth) return;
 		const maxRatio = 0.5;
-		const defaultChatRatio = Math.min(maxRatio, defaultChatWidth / containerWidth);
+		const defaultSidebarRatio = Math.min(maxRatio, defaultChatWidth / containerWidth);
 		const currentSidebarRatio = effectiveRatio;
 		const nextSidebarRatio =
-			Math.abs(currentSidebarRatio - maxRatio) < 0.01 ? defaultChatRatio : maxRatio;
-		const nextChatRatio = isChatFocused ? 1 - nextSidebarRatio : nextSidebarRatio;
-		layoutStore.setChatPanelRatio(nextChatRatio);
+			Math.abs(currentSidebarRatio - maxRatio) < 0.01 ? defaultSidebarRatio : maxRatio;
+		layoutStore.setSidebarRatio(nextSidebarRatio);
 	}
 </script>
 
@@ -102,6 +99,7 @@
 		width: 100%;
 		overflow: hidden;
 		min-height: 0;
+		--panel-header-offset: 56px;
 	}
 
 	.panel {
@@ -117,7 +115,6 @@
 
 	.sidebar-panel {
 		flex-shrink: 0;
-		border-left: 1px solid var(--color-border);
 		transition: width 0.15s ease;
 		background-color: var(--color-background);
 	}

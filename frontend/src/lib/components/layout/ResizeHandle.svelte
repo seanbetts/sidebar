@@ -92,7 +92,8 @@
   .resize-handle::after {
     content: '';
     width: 2px;
-    height: 44px;
+    height: calc(100% - var(--panel-header-offset, 56px));
+    margin-top: var(--panel-header-offset, 56px);
     background-color: var(--color-border);
     border-radius: 1px;
     transition: background-color 0.15s ease, height 0.15s ease;
