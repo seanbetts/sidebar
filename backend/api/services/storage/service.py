@@ -10,6 +10,11 @@ from api.services.storage.r2 import R2Storage
 
 
 def get_storage_backend() -> StorageBackend:
+    """Return the configured storage backend.
+
+    Returns:
+        StorageBackend implementation based on settings.
+    """
     backend = settings.storage_backend.lower()
     if backend == "r2":
         access_key_id = settings.r2_access_key_id or settings.r2_access_key
