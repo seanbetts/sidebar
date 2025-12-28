@@ -12,6 +12,14 @@ SCRATCHPAD_TITLE = "✏️ Scratchpad"
 
 
 def ensure_title(content: str) -> str:
+    """Ensure scratchpad content starts with the scratchpad H1 title.
+
+    Args:
+        content: Scratchpad content.
+
+    Returns:
+        Content with the scratchpad title prepended when missing.
+    """
     trimmed = (content or "").lstrip()
     if trimmed.startswith("#"):
         return content
@@ -24,6 +32,16 @@ async def get_scratchpad(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Fetch or create the scratchpad note.
+
+    Args:
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Scratchpad note payload.
+    """
     note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=True)
     if not note:
         note = NotesService.create_note(
@@ -49,6 +67,17 @@ async def update_scratchpad(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Update scratchpad content.
+
+    Args:
+        request: Request payload with content.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Update result payload.
+    """
     content = request.get("content", "")
     note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=False)
     if not note:
@@ -77,6 +106,16 @@ async def clear_scratchpad(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Clear the scratchpad content.
+
+    Args:
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Clear result payload.
+    """
     note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=False)
     if not note:
         note = NotesService.create_note(
