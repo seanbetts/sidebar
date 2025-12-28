@@ -1,9 +1,8 @@
-import os
 import uuid
 from datetime import datetime, timezone, timedelta
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
 from api.db.base import Base
@@ -11,13 +10,8 @@ from api.services.notes_service import NotesService
 
 
 @pytest.fixture
-def db_session():
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        pytest.skip("DATABASE_URL not set")
-
-    engine = create_engine(database_url)
-    connection = engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+def db_session(test_db_engine):
+    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
     schema = f"test_{uuid.uuid4().hex}"
 
     connection.execute(text(f'CREATE SCHEMA "{schema}"'))
@@ -33,7 +27,6 @@ def db_session():
         session.close()
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
         connection.close()
-        engine.dispose()
 
 
 def test_create_and_read_note(db_session):

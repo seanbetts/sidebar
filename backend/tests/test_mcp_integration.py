@@ -4,14 +4,22 @@ Integration tests for MCP tools.
 
 Tests end-to-end workflows through the actual MCP API.
 """
-import pytest
-import asyncio
+import json
 import os
 from pathlib import Path
-from tests.test_mcp_client import MCPClient
+
+import pytest
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.testclient import TestClient
+from fastmcp import FastMCP
+
+from api.config import settings
+from api.mcp.tools import register_mcp_tools
+from tests.test_mcp_client import SyncMCPClient
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def bearer_token():
     """Get bearer token from environment."""
     token = os.getenv("BEARER_TOKEN")
@@ -20,183 +28,230 @@ def bearer_token():
     return token
 
 
-@pytest.fixture
-def base_url():
-    """Get base URL for API."""
-    url = os.getenv("MCP_BASE_URL")
-    if not url:
-        pytest.skip("MCP_BASE_URL not set; skipping MCP integration tests.")
-    return url
+@pytest.fixture(scope="session")
+def mcp_http_client():
+    mcp = FastMCP("sidebar-tests")
+    register_mcp_tools(mcp)
+    mcp_app = mcp.http_app()
+
+    test_app = FastAPI(lifespan=mcp_app.lifespan)
+
+    @test_app.middleware("http")
+    async def auth_middleware(request: Request, call_next):
+        if request.url.path == "/api/health":
+            return await call_next(request)
+
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Missing Authorization header"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        try:
+            scheme, token = auth_header.split()
+            if scheme.lower() != "bearer":
+                raise ValueError("Invalid scheme")
+            if token != settings.bearer_token:
+                raise ValueError("Invalid token")
+        except (ValueError, AttributeError):
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid Authorization header"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return await call_next(request)
+
+    test_app.mount("", mcp_app)
+
+    with TestClient(test_app) as client:
+        yield client
 
 
-async def get_initialized_client(base_url: str, bearer_token: str):
-    """Create and initialize an MCP client."""
-    client = MCPClient(base_url, bearer_token)
+@pytest.fixture(scope="session")
+def mcp_client(mcp_http_client, bearer_token):
+    client = SyncMCPClient(mcp_http_client, bearer_token)
     try:
-        await client.initialize_session()
+        client.initialize_session()
     except Exception:
-        # Continue if session init not required
         pass
     return client
 
 
-@pytest.mark.asyncio
+def _assert_success(data):
+    if not data.get("success"):
+        pytest.fail(f"Tool failed: {data}")
+    return data
+
+
+
+
 class TestFilesystemOperations:
     """Test filesystem MCP tools end-to-end."""
 
-    async def test_fs_list_basic(self, base_url, bearer_token):
+    def test_fs_list_basic(self, mcp_client):
         """Test listing files in workspace."""
-        client = await get_initialized_client(base_url, bearer_token)
-        result = await client.call_tool("fs_list", {
+        result = mcp_client.call_tool("fs_list", {
             "path": ".",
             "pattern": "*"
         })
 
+        if result["result"]["isError"]:
+            pytest.fail(f"fs_list failed: {result}")
         assert result["result"]["isError"] is False
         content = result["result"]["content"][0]["text"]
-        import json
         data = json.loads(content)
 
-        assert data["success"] is True
+        _assert_success(data)
         assert "data" in data
         assert "files" in data["data"]
         assert isinstance(data["data"]["files"], list)
 
-    async def test_fs_write_and_read(self, base_url, bearer_token):
+    def test_fs_write_and_read(self, mcp_client):
         """Test writing and reading a file."""
-        client = await get_initialized_client(base_url, bearer_token)
         # Write a test file
         test_content = "# Test Document\n\nThis is a test file."
-        write_result = await client.call_tool("fs_write", {
+        write_result = mcp_client.call_tool("fs_write", {
             "path": "documents/test-integration.md",
             "content": test_content
         })
 
         content = write_result["result"]["content"][0]["text"]
-        import json
         write_data = json.loads(content)
-        assert write_data["success"] is True
+        _assert_success(write_data)
 
         # Read it back
-        read_result = await client.call_tool("fs_read", {
+        read_result = mcp_client.call_tool("fs_read", {
             "path": "documents/test-integration.md"
         })
 
         read_content = read_result["result"]["content"][0]["text"]
         read_data = json.loads(read_content)
 
-        assert read_data["success"] is True
+        _assert_success(read_data)
         assert test_content in read_data["data"]["content"]
 
-    async def test_fs_copy(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_fs_copy(self, mcp_client):
         """Test copying a file."""
-        import json
 
         # Cleanup any existing test files
         try:
-            await client.call_tool("fs_delete", {"path": "documents/copy.txt"})
+            mcp_client.call_tool("fs_delete", {"path": "documents/copy.txt"})
         except:
             pass
 
         # Create source file
-        await client.call_tool("fs_write", {
+        write_result = mcp_client.call_tool("fs_write", {
             "path": "documents/source.txt",
             "content": "Source content"
         })
+        write_content = write_result["result"]["content"][0]["text"]
+        write_data = json.loads(write_content)
+        _assert_success(write_data)
 
         # Copy it
-        copy_result = await client.call_tool("fs_copy", {
+        copy_result = mcp_client.call_tool("fs_copy", {
             "source": "documents/source.txt",
             "destination": "documents/copy.txt"
         })
 
         content = copy_result["result"]["content"][0]["text"]
         data = json.loads(content)
-        assert data["success"] is True
+        _assert_success(data)
 
         # Verify copy exists and has same content
-        read_result = await client.call_tool("fs_read", {
+        read_result = mcp_client.call_tool("fs_read", {
             "path": "documents/copy.txt"
         })
 
         read_content = read_result["result"]["content"][0]["text"]
         read_data = json.loads(read_content)
+        _assert_success(read_data)
         assert "Source content" in read_data["data"]["content"]
 
-    async def test_fs_rename(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_fs_rename(self, mcp_client):
         """Test renaming a file."""
-        import json
 
         # Cleanup any existing test files
         try:
-            await client.call_tool("fs_delete", {"path": "documents/old-name.txt"})
+            mcp_client.call_tool("fs_delete", {"path": "documents/old-name.txt"})
         except:
             pass
         try:
-            await client.call_tool("fs_delete", {"path": "documents/new-name.txt"})
+            mcp_client.call_tool("fs_delete", {"path": "documents/new-name.txt"})
         except:
             pass
 
         # Create a file to rename
-        await client.call_tool("fs_write", {
+        write_result = mcp_client.call_tool("fs_write", {
             "path": "documents/old-name.txt",
             "content": "Content to rename"
         })
+        write_content = write_result["result"]["content"][0]["text"]
+        write_data = json.loads(write_content)
+        _assert_success(write_data)
+        read_check = mcp_client.call_tool("fs_read", {
+            "path": "documents/old-name.txt"
+        })
+        read_check_content = read_check["result"]["content"][0]["text"]
+        read_check_data = json.loads(read_check_content)
+        _assert_success(read_check_data)
 
         # Rename it
-        rename_result = await client.call_tool("fs_rename", {
+        rename_result = mcp_client.call_tool("fs_rename", {
             "path": "documents/old-name.txt",
             "new_name": "new-name.txt"
         })
 
         content = rename_result["result"]["content"][0]["text"]
         data = json.loads(content)
-        assert data["success"] is True
+        _assert_success(data)
 
         # Verify new name exists
-        read_result = await client.call_tool("fs_read", {
+        read_result = mcp_client.call_tool("fs_read", {
             "path": "documents/new-name.txt"
         })
 
         read_content = read_result["result"]["content"][0]["text"]
         read_data = json.loads(read_content)
-        assert read_data["success"] is True
+        _assert_success(read_data)
 
-    async def test_fs_move(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_fs_move(self, mcp_client):
         """Test moving a file to a different directory."""
-        import json
 
         # Cleanup any existing test files
         try:
-            await client.call_tool("fs_delete", {"path": "documents/to-move.txt"})
+            mcp_client.call_tool("fs_delete", {"path": "documents/to-move.txt"})
         except:
             pass
         try:
-            await client.call_tool("fs_delete", {"path": "notes/moved-file.txt"})
+            mcp_client.call_tool("fs_delete", {"path": "notes/moved-file.txt"})
         except:
             pass
 
         # Create source file
-        await client.call_tool("fs_write", {
+        write_result = mcp_client.call_tool("fs_write", {
             "path": "documents/to-move.txt",
             "content": "Moving this file"
         })
+        write_content = write_result["result"]["content"][0]["text"]
+        write_data = json.loads(write_content)
+        _assert_success(write_data)
 
         # Move it to notes
-        move_result = await client.call_tool("fs_move", {
+        move_result = mcp_client.call_tool("fs_move", {
             "source": "documents/to-move.txt",
             "destination": "notes/moved-file.txt"
         })
 
         content = move_result["result"]["content"][0]["text"]
         data = json.loads(content)
-        assert data["success"] is True
+        _assert_success(data)
 
         # Verify file is in new location
-        read_result = await client.call_tool("fs_read", {
+        read_result = mcp_client.call_tool("fs_read", {
             "path": "notes/moved-file.txt"
         })
 
@@ -204,27 +259,25 @@ class TestFilesystemOperations:
         read_data = json.loads(read_content)
         assert "Moving this file" in read_data["data"]["content"]
 
-    async def test_fs_search_by_name(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_fs_search_by_name(self, mcp_client):
         """Test searching files by name pattern."""
-        import json
 
         # Create some test files
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/search-test-1.md",
             "content": "Test content 1"
         })
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/search-test-2.md",
             "content": "Test content 2"
         })
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/other-file.txt",
             "content": "Other content"
         })
 
         # Search for files matching pattern
-        search_result = await client.call_tool("fs_search", {
+        search_result = mcp_client.call_tool("fs_search", {
             "directory": "documents",
             "name_pattern": "search-test-*.md"
         })
@@ -232,34 +285,32 @@ class TestFilesystemOperations:
         content = search_result["result"]["content"][0]["text"]
         data = json.loads(content)
 
-        assert data["success"] is True
+        _assert_success(data)
         assert data["data"]["count"] >= 2
         # Check that results contain our test files
         result_paths = [r["path"] for r in data["data"]["results"]]
         assert any("search-test-1.md" in p for p in result_paths)
         assert any("search-test-2.md" in p for p in result_paths)
 
-    async def test_fs_search_by_content(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_fs_search_by_content(self, mcp_client):
         """Test searching files by content."""
-        import json
 
         # Create files with searchable content
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/content-search-1.txt",
             "content": "This file contains the special keyword FINDME"
         })
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/content-search-2.txt",
             "content": "This file also has FINDME in it"
         })
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/content-search-3.txt",
             "content": "This file has nothing special"
         })
 
         # Search for content
-        search_result = await client.call_tool("fs_search", {
+        search_result = mcp_client.call_tool("fs_search", {
             "directory": "documents",
             "content_pattern": "FINDME"
         })
@@ -267,75 +318,68 @@ class TestFilesystemOperations:
         content = search_result["result"]["content"][0]["text"]
         data = json.loads(content)
 
-        assert data["success"] is True
+        _assert_success(data)
         assert data["data"]["count"] >= 2
         # Verify search found files with the keyword
         for result in data["data"]["results"]:
             assert result["match_type"] == "content"
             assert result["match_count"] >= 1
 
-    async def test_fs_delete(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_fs_delete(self, mcp_client):
         """Test deleting a file."""
-        import json
 
         # Create a file to delete
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/to-delete.txt",
             "content": "This will be deleted"
         })
 
         # Delete it
-        delete_result = await client.call_tool("fs_delete", {
+        delete_result = mcp_client.call_tool("fs_delete", {
             "path": "documents/to-delete.txt"
         })
 
         content = delete_result["result"]["content"][0]["text"]
         data = json.loads(content)
-        assert data["success"] is True
+        _assert_success(data)
 
-    async def test_dry_run_operations(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_dry_run_operations(self, mcp_client):
         """Test dry-run mode for destructive operations."""
-        import json
 
         # Create a test file
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/dry-run-test.txt",
             "content": "Testing dry run"
         })
 
         # Try to delete with dry-run
-        delete_result = await client.call_tool("fs_delete", {
+        delete_result = mcp_client.call_tool("fs_delete", {
             "path": "documents/dry-run-test.txt",
             "dry_run": True
         })
 
         content = delete_result["result"]["content"][0]["text"]
         data = json.loads(content)
-        assert data["success"] is True
+        _assert_success(data)
         assert data["dry_run"] is True
 
         # Verify file still exists
-        read_result = await client.call_tool("fs_read", {
+        read_result = mcp_client.call_tool("fs_read", {
             "path": "documents/dry-run-test.txt"
         })
 
         read_content = read_result["result"]["content"][0]["text"]
         read_data = json.loads(read_content)
-        assert read_data["success"] is True  # File should still exist
+        _assert_success(read_data)  # File should still exist
 
 
-@pytest.mark.asyncio
 class TestNotesOperations:
     """Test notes MCP tools end-to-end."""
 
-    async def test_notes_create(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_notes_create(self, mcp_client):
         """Test creating a new note."""
-        import json
 
-        result = await client.call_tool("notes_create", {
+        result = mcp_client.call_tool("notes_create", {
             "title": "Integration Test Note",
             "content": "This is a test note created during integration testing.",
             "tags": ["test", "integration"]
@@ -344,64 +388,63 @@ class TestNotesOperations:
         content = result["result"]["content"][0]["text"]
         data = json.loads(content)
 
-        assert data["success"] is True
-        assert "path" in data["data"]
-        assert "integration-test-note.md" in data["data"]["path"]
+        _assert_success(data)
+        assert "id" in data["data"]
+        assert data["data"]["title"] == "Integration Test Note"
 
-    async def test_notes_update(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_notes_update(self, mcp_client):
         """Test updating an existing note."""
-        import json
 
         # Create a note first
-        await client.call_tool("notes_create", {
+        create_result = mcp_client.call_tool("notes_create", {
             "title": "Update Test Note",
             "content": "Original content"
         })
+        create_content = create_result["result"]["content"][0]["text"]
+        create_data = json.loads(create_content)
+        _assert_success(create_data)
 
         # Update it
-        result = await client.call_tool("notes_update", {
+        result = mcp_client.call_tool("notes_update", {
             "title": "Update Test Note",
             "content": "Updated content"
         })
 
         content = result["result"]["content"][0]["text"]
         data = json.loads(content)
-        assert data["success"] is True
+        _assert_success(data)
 
-    async def test_notes_append(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_notes_append(self, mcp_client):
         """Test appending to an existing note."""
-        import json
 
         # Create a note
-        await client.call_tool("notes_create", {
+        create_result = mcp_client.call_tool("notes_create", {
             "title": "Append Test Note",
             "content": "Initial content"
         })
+        create_content = create_result["result"]["content"][0]["text"]
+        create_data = json.loads(create_content)
+        _assert_success(create_data)
 
         # Append to it
-        result = await client.call_tool("notes_append", {
+        result = mcp_client.call_tool("notes_append", {
             "title": "Append Test Note",
             "content": "\n\nAppended content"
         })
 
         content = result["result"]["content"][0]["text"]
         data = json.loads(content)
-        assert data["success"] is True
+        _assert_success(data)
 
 
-@pytest.mark.asyncio
 class TestSecurityAndValidation:
     """Test security features and validation."""
 
-    async def test_path_traversal_rejected(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_path_traversal_rejected(self, mcp_client):
         """Test that path traversal attempts are rejected."""
-        import json
 
         # Try to read outside workspace
-        result = await client.call_tool("fs_read", {
+        result = mcp_client.call_tool("fs_read", {
             "path": "../../../etc/passwd"
         })
 
@@ -416,13 +459,11 @@ class TestSecurityAndValidation:
             # Error returned as plain text
             assert "traversal" in content.lower() or "Path traversal" in content
 
-    async def test_write_to_non_writable_path_rejected(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_write_to_non_writable_path_rejected(self, mcp_client):
         """Test that writes to non-allowlisted paths are rejected."""
-        import json
 
         # Try to write to workspace root (not in allowlist)
-        result = await client.call_tool("fs_write", {
+        result = mcp_client.call_tool("fs_write", {
             "path": "forbidden.txt",
             "content": "This should fail"
         })
@@ -439,50 +480,57 @@ class TestSecurityAndValidation:
             assert "not writable" in content.lower() or "allowlist" in content.lower()
 
 
-@pytest.mark.asyncio
 class TestComplexWorkflows:
     """Test complex multi-step workflows."""
 
-    async def test_document_workflow(self, base_url, bearer_token):
-        client = await get_initialized_client(base_url, bearer_token)
+    def test_document_workflow(self, mcp_client):
         """Test a complete document workflow."""
-        import json
 
         # 1. Create a document
-        await client.call_tool("fs_write", {
+        mcp_client.call_tool("fs_write", {
             "path": "documents/workflow-test.md",
             "content": "# Workflow Test\n\nInitial version"
         })
 
         # 2. Copy it as a backup
-        await client.call_tool("fs_copy", {
+        copy_result = mcp_client.call_tool("fs_copy", {
             "source": "documents/workflow-test.md",
             "destination": "documents/workflow-test-backup.md"
         })
+        copy_content = copy_result["result"]["content"][0]["text"]
+        copy_data = json.loads(copy_content)
+        _assert_success(copy_data)
 
         # 3. Update the original
-        await client.call_tool("fs_write", {
+        write_result = mcp_client.call_tool("fs_write", {
             "path": "documents/workflow-test.md",
             "content": "# Workflow Test\n\nUpdated version"
         })
+        write_content = write_result["result"]["content"][0]["text"]
+        write_data = json.loads(write_content)
+        _assert_success(write_data)
 
         # 4. Search to find both versions
-        search_result = await client.call_tool("fs_search", {
+        search_result = mcp_client.call_tool("fs_search", {
             "directory": "documents",
             "name_pattern": "workflow-test*.md"
         })
 
         content = search_result["result"]["content"][0]["text"]
         data = json.loads(content)
+        _assert_success(data)
         assert data["data"]["count"] >= 2
 
         # 5. Clean up - delete the backup
-        await client.call_tool("fs_delete", {
+        delete_result = mcp_client.call_tool("fs_delete", {
             "path": "documents/workflow-test-backup.md"
         })
+        delete_content = delete_result["result"]["content"][0]["text"]
+        delete_data = json.loads(delete_content)
+        _assert_success(delete_data)
 
         # Verify workflow completed successfully
-        assert data["success"] is True
+        _assert_success(data)
 
 
 def main():

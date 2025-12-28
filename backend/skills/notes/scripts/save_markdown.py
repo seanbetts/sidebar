@@ -31,6 +31,7 @@ def save_markdown_database(
     mode: str = "create",
     folder: str | None = None,
     note_id: str | None = None,
+    tags: list[str] | None = None,
 ) -> Dict[str, Any]:
     if SessionLocal is None or NotesService is None:
         raise RuntimeError("Database dependencies are unavailable")
@@ -39,20 +40,34 @@ def save_markdown_database(
 
     set_session_user_id(db, user_id)
     try:
-        if mode == "update":
-            if not note_id:
+        if mode in {"update", "append"}:
+            resolved_id = note_id
+            if not resolved_id:
+                note = NotesService.get_note_by_title(db, user_id, title, mark_opened=False)
+                if not note:
+                    raise ValueError("note_id is required for update mode")
+                resolved_id = str(note.id)
+            else:
+                note = NotesService.get_note(db, user_id, uuid.UUID(resolved_id), mark_opened=False)
+
+            if not note:
                 raise ValueError("note_id is required for update mode")
+
+            updated_content = content
+            if mode == "append":
+                updated_content = f"{note.content}{content}"
+
             note = NotesService.update_note(
                 db,
                 user_id,
-                uuid.UUID(note_id),
-                content,
+                uuid.UUID(resolved_id),
+                updated_content,
                 title=title,
             )
             return {"id": str(note.id), "title": note.title}
 
         if mode != "create":
-            raise ValueError("Database mode supports create or update only")
+            raise ValueError("Database mode supports create, update, or append only")
 
         note = NotesService.create_note(
             db,
@@ -60,6 +75,7 @@ def save_markdown_database(
             content,
             title=title,
             folder=folder or "",
+            tags=tags,
         )
         return {
             "id": str(note.id),
@@ -100,12 +116,16 @@ Examples:
     parser.add_argument(
         '--mode',
         default='create',
-        choices=['create', 'update'],
+        choices=['create', 'update', 'append'],
         help='Operation mode (default: create)'
     )
     parser.add_argument(
         '--folder',
         help='Subfolder in notes/ (default: YYYY/Month)'
+    )
+    parser.add_argument(
+        '--tags',
+        help='Comma-separated tag list'
     )
     parser.add_argument(
         '--note-id',
@@ -142,6 +162,7 @@ Examples:
             args.mode,
             args.folder,
             args.note_id,
+            args.tags.split(",") if args.tags else None,
         )
 
         output = {

@@ -37,6 +37,7 @@ class FilesService:
             record.content_type = content_type
             record.etag = etag
             record.category = category
+            record.deleted_at = None
             record.updated_at = now
         else:
             record = FileObject(
@@ -68,6 +69,32 @@ class FilesService:
             )
             .first()
         )
+
+    @staticmethod
+    def get_any_by_path(db: Session, user_id: str, path: str) -> Optional[FileObject]:
+        return (
+            db.query(FileObject)
+            .filter(
+                FileObject.user_id == user_id,
+                FileObject.path == path,
+            )
+            .first()
+        )
+
+    @staticmethod
+    def delete_any_by_path(db: Session, user_id: str, path: str) -> bool:
+        deleted = (
+            db.query(FileObject)
+            .filter(
+                FileObject.user_id == user_id,
+                FileObject.path == path,
+            )
+            .delete(synchronize_session=False)
+        )
+        if not deleted:
+            return False
+        db.commit()
+        return True
 
     @staticmethod
     def list_by_prefix(db: Session, user_id: str, prefix: str) -> list[FileObject]:

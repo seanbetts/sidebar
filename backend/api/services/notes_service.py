@@ -105,10 +105,13 @@ class NotesService:
         title: Optional[str] = None,
         folder: str = "",
         pinned: bool = False,
+        tags: Optional[list[str]] = None,
     ) -> Note:
         now = datetime.now(timezone.utc)
         resolved_title = title or NotesService.extract_title(content, "Untitled Note")
         metadata = {"folder": folder, "pinned": pinned}
+        if tags:
+            metadata["tags"] = tags
 
         note = Note(
             user_id=user_id,

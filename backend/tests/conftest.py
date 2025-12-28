@@ -17,12 +17,23 @@ os.environ["TESTING"] = "1"
 os.environ.setdefault("BEARER_TOKEN", "test-bearer-token-12345")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-12345")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key-12345")
-# DATABASE_URL is optional in tests; DB tests will skip if not provided.
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test",
+)
 os.environ.setdefault("WORKSPACE_BASE", "/tmp/test-workspace")
 os.environ.setdefault(
     "SKILLS_DIR",
     str(Path(__file__).resolve().parents[1] / "skills"),
 )
+
+# Ensure all SQLAlchemy models are registered before metadata operations.
+from api.models.conversation import Conversation  # noqa: F401
+from api.models.note import Note  # noqa: F401
+from api.models.website import Website  # noqa: F401
+from api.models.user_settings import UserSettings  # noqa: F401
+from api.models.user_memory import UserMemory  # noqa: F401
+from api.models.file_object import FileObject  # noqa: F401
 
 
 @pytest.fixture
@@ -241,6 +252,14 @@ def test_db_engine():
     """
     from sqlalchemy import create_engine, text
     from api.db.base import Base
+    from api.models import (
+        conversation,
+        note,
+        website,
+        user_settings,
+        user_memory,
+        file_object,
+    )
 
     # Use the test database URL
     test_db_url = os.getenv("DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test")
@@ -280,6 +299,8 @@ def test_db(test_db_engine):
     # Create session
     TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
     db = TestSessionLocal()
+    db.execute(text("SET search_path TO public"))
+    Base.metadata.create_all(bind=db.connection())
 
     try:
         yield db

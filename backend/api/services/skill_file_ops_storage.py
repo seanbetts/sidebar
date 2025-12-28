@@ -300,8 +300,11 @@ def move_path(user_id: str, source: str, destination: str) -> dict:
     ensure_allowed_path(dest)
 
     with session_for_user(user_id) as db:
-        if FilesService.get_by_path(db, user_id, dest):
-            raise FileExistsError(f"Destination already exists: {destination}")
+        dest_record = FilesService.get_any_by_path(db, user_id, dest)
+        if dest_record:
+            if dest_record.deleted_at is None:
+                raise FileExistsError(f"Destination already exists: {destination}")
+            FilesService.delete_any_by_path(db, user_id, dest)
 
         record = FilesService.get_by_path(db, user_id, src)
         storage = get_storage_backend()
@@ -353,8 +356,11 @@ def copy_path(user_id: str, source: str, destination: str) -> dict:
     storage = get_storage_backend()
 
     with session_for_user(user_id) as db:
-        if FilesService.get_by_path(db, user_id, dest):
-            raise FileExistsError(f"Destination already exists: {destination}")
+        dest_record = FilesService.get_any_by_path(db, user_id, dest)
+        if dest_record:
+            if dest_record.deleted_at is None:
+                raise FileExistsError(f"Destination already exists: {destination}")
+            FilesService.delete_any_by_path(db, user_id, dest)
 
         record = FilesService.get_by_path(db, user_id, src)
         if record and record.category != "folder":

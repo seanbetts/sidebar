@@ -1,0 +1,14 @@
+[pydocstyle]
+# Use Google-style docstrings
+convention = google
+
+# Ignore specific error codes
+# D100: Missing docstring in public module (we already have 100% module coverage)
+# D104: Missing docstring in public package (not critical for __init__.py files)
+add-ignore = D104
+
+# Match Python files
+match = .*\.py
+
+# Exclude these directories
+match-dir = ^(?!(__pycache__|\.git|\.pytest_cache|alembic)).*
