@@ -5,6 +5,14 @@ from typing import Any, Dict
 
 
 def handle_ui_theme(parameters: dict) -> Dict[str, Any]:
+    """Handle UI theme tool execution.
+
+    Args:
+        parameters: Tool parameters including theme.
+
+    Returns:
+        Tool result payload with success or error.
+    """
     theme = parameters.get("theme")
     if theme not in {"light", "dark"}:
         return {"success": False, "error": "Invalid theme"}
@@ -12,6 +20,14 @@ def handle_ui_theme(parameters: dict) -> Dict[str, Any]:
 
 
 def handle_prompt_preview(context: Dict[str, Any] | None) -> Dict[str, Any]:
+    """Handle prompt preview tool execution.
+
+    Args:
+        context: Tool execution context with db/user info.
+
+    Returns:
+        Tool result payload containing prompts.
+    """
     if not context:
         return {"success": False, "error": "Missing prompt context"}
     db = context.get("db")
@@ -40,6 +56,15 @@ def handle_prompt_preview(context: Dict[str, Any] | None) -> Dict[str, Any]:
 
 
 def handle_memory_tool(context: Dict[str, Any] | None, parameters: dict) -> Dict[str, Any]:
+    """Handle memory tool execution.
+
+    Args:
+        context: Tool execution context with db/user info.
+        parameters: Memory tool parameters.
+
+    Returns:
+        Tool result payload from MemoryToolHandler.
+    """
     if not context:
         return {"success": False, "error": "Missing memory context"}
     db = context.get("db")
