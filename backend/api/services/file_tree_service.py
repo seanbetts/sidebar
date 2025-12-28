@@ -139,6 +139,7 @@ class FileTreeService:
             )
 
         def sort_children(node: Dict[str, Any]) -> None:
+            """Sort children nodes with directories first, then by name."""
             node["children"].sort(
                 key=lambda item: (item.get("type") != "directory", item.get("name", "").lower())
             )

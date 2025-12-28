@@ -12,6 +12,7 @@ from api.services.storage.base import StorageBackend, StorageObject
 
 
 class R2Storage(StorageBackend):
+    """R2-backed storage adapter using the S3 API."""
     def __init__(
         self,
         *,

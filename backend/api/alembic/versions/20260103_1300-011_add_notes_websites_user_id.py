@@ -14,6 +14,7 @@ BACKFILL_USER_ID = "81326b53-b7eb-42e2-b645-0c03cb5d5dd4"
 
 
 def upgrade() -> None:
+    """Add user_id columns, backfill, and update indexes."""
     op.add_column("notes", sa.Column("user_id", sa.Text(), nullable=True))
     op.add_column("websites", sa.Column("user_id", sa.Text(), nullable=True))
 
@@ -39,6 +40,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Drop user_id columns and restore indexes."""
     op.drop_constraint("uq_websites_user_id_url", "websites", type_="unique")
     op.create_unique_constraint("websites_url_key", "websites", ["url"])
 

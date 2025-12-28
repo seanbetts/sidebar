@@ -44,6 +44,7 @@ storage_backend = get_storage_backend()
 
 
 class SettingsService:
+    """High-level settings operations for the API layer."""
     @staticmethod
     def _resolve_default(value: Optional[str], default: str) -> Optional[str]:
         """Return a trimmed value or the default.

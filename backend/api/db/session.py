@@ -32,5 +32,11 @@ def get_db(
 
 
 def set_session_user_id(db: Session, user_id: str | None) -> None:
+    """Set the PostgreSQL session user_id for row-level security.
+
+    Args:
+        db: Active database session.
+        user_id: User ID to set, or None to skip.
+    """
     if user_id:
         db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})

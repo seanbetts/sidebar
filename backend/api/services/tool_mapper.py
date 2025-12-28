@@ -20,6 +20,7 @@ class ToolMapper:
     """Maps MCP tools to Claude tool definitions."""
 
     def __init__(self):
+        """Initialize tool registry and path validation."""
         self.executor = SkillExecutor(settings.skills_dir, settings.workspace_base)
         self.path_validator = PathValidator(settings.workspace_base, settings.writable_paths)
 
@@ -28,6 +29,7 @@ class ToolMapper:
         self._build_tool_name_maps()
 
     def _build_tool_name_maps(self) -> None:
+        """Build mappings between safe tool names and display names."""
         self.tool_name_map = {}
         self.tool_name_reverse = {}
         for display_name in self.tools.keys():
@@ -44,16 +46,19 @@ class ToolMapper:
 
     @staticmethod
     def _normalize_tool_name(name: str) -> str:
+        """Normalize a display name into a safe tool name."""
         safe = re.sub(r"[^a-zA-Z0-9_-]+", "_", name).strip("_")
         if not safe:
             safe = "tool"
         return safe[:128]
 
     def get_tool_display_name(self, tool_name: str) -> str:
+        """Resolve a tool name to its display name."""
         return self.tool_name_map.get(tool_name, tool_name)
 
     @staticmethod
     def _normalize_result(result: Any) -> Dict[str, Any]:
+        """Normalize execution results into a standard payload."""
         if isinstance(result, dict):
             success = bool(result.get("success", False))
             data = result.get("data")
@@ -225,6 +230,7 @@ class ToolMapper:
 
     @staticmethod
     def _is_skill_enabled(skill_name: str | None, allowed_skills: List[str] | None) -> bool:
+        """Return True when a skill is enabled for execution."""
         if not skill_name:
             return True
         if allowed_skills is None:

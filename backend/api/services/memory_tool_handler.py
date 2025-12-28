@@ -16,6 +16,16 @@ class MemoryToolHandler:
 
     @staticmethod
     def execute_command(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Execute a memory tool command and log the result.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            payload: Tool payload containing command and inputs.
+
+        Returns:
+            Normalized tool result payload.
+        """
         start = datetime.now(timezone.utc)
         command = (payload.get("command") or "").strip()
         try:
@@ -68,6 +78,15 @@ class MemoryToolHandler:
 
     @staticmethod
     def get_all_memories_for_prompt(db: Session, user_id: str) -> list[dict[str, str]]:
+        """Fetch all memories for prompt injection.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+
+        Returns:
+            List of memory dicts with path and content.
+        """
         memories = (
             db.query(UserMemory)
             .filter(UserMemory.user_id == user_id)
@@ -78,6 +97,14 @@ class MemoryToolHandler:
 
     @staticmethod
     def build_memory_block(memories: list[dict[str, str]]) -> str:
+        """Build a memory block string for prompt inclusion.
+
+        Args:
+            memories: Memory entries with path and content.
+
+        Returns:
+            Formatted memory block string.
+        """
         if not memories:
             return "<memory>\nNo stored memories.\n</memory>"
         lines = ["<memory>", "The following entries are persistent user memories:"]

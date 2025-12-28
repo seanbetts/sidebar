@@ -7,6 +7,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _build_database_url() -> str:
+    """Build database URL from environment configuration.
+
+    Returns:
+        Database URL string suitable for SQLAlchemy.
+    """
     explicit_url = os.getenv("DATABASE_URL")
     if explicit_url:
         return explicit_url

@@ -12,6 +12,15 @@ _PROMPT_CONFIG_PATH = Path(__file__).resolve().parent / "config" / "prompts.yaml
 
 
 def _load_prompt_config() -> dict[str, Any]:
+    """Load prompt configuration from YAML.
+
+    Returns:
+        Parsed prompt config mapping.
+
+    Raises:
+        FileNotFoundError: If the config file is missing.
+        ValueError: If the config file is not a mapping.
+    """
     if not _PROMPT_CONFIG_PATH.exists():
         raise FileNotFoundError(f"Prompt config not found at {_PROMPT_CONFIG_PATH}")
     data = yaml.safe_load(_PROMPT_CONFIG_PATH.read_text(encoding="utf-8")) or {}
@@ -43,7 +52,18 @@ _TOKEN_PATTERN = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
 
 def resolve_template(template: str, variables: dict[str, Any], keep_unknown: bool = True) -> str:
+    """Resolve template variables into a string.
+
+    Args:
+        template: Template string with {tokens}.
+        variables: Mapping of token to value.
+        keep_unknown: Keep unknown tokens when True. Defaults to True.
+
+    Returns:
+        Resolved template string.
+    """
     def replace(match: re.Match[str]) -> str:
+        """Replace a matched token with its resolved value."""
         key = match.group(1)
         if key in variables and variables[key] is not None:
             return str(variables[key])
@@ -53,6 +73,7 @@ def resolve_template(template: str, variables: dict[str, Any], keep_unknown: boo
 
 
 def resolve_default(value: str | None, default: str) -> str:
+    """Return a trimmed value or the default."""
     if value is None:
         return default
     trimmed = value.strip()
@@ -60,6 +81,7 @@ def resolve_default(value: str | None, default: str) -> str:
 
 
 def detect_operating_system(user_agent: str | None) -> str | None:
+    """Infer operating system from a user agent string."""
     if not user_agent:
         return None
     agent = user_agent.lower()
@@ -77,6 +99,7 @@ def detect_operating_system(user_agent: str | None) -> str | None:
 
 
 def calculate_age(date_of_birth: date | None, today: date) -> int | None:
+    """Calculate age from a date of birth."""
     if not date_of_birth:
         return None
     years = today.year - date_of_birth.year
@@ -85,6 +108,7 @@ def calculate_age(date_of_birth: date | None, today: date) -> int | None:
 
 
 def _format_location_levels(levels: dict[str, Any] | str | None) -> str:
+    """Format location levels into a readable string."""
     if not levels:
         return "Unavailable"
     if isinstance(levels, str):
@@ -108,6 +132,7 @@ def _format_location_levels(levels: dict[str, Any] | str | None) -> str:
 
 
 def _weather_description(code: int) -> str:
+    """Map a weather code to a textual description."""
     if code == 0:
         return "clear sky"
     if code == 1:
@@ -168,12 +193,14 @@ def _weather_description(code: int) -> str:
 
 
 def _wind_direction_label(degrees: float) -> str:
+    """Return a compass direction label for a degree value."""
     directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     index = int((degrees + 22.5) // 45) % 8
     return directions[index]
 
 
 def _format_weather(weather: dict[str, Any] | str | None) -> str:
+    """Format weather payload into a readable sentence."""
     if not weather:
         return "Unavailable"
     if isinstance(weather, str):
@@ -246,6 +273,19 @@ def build_prompt_variables(
     operating_system: str | None,
     now: datetime,
 ) -> dict[str, Any]:
+    """Build template variables for prompt rendering.
+
+    Args:
+        settings_record: User settings record or None.
+        current_location: Current location label.
+        current_location_levels: Structured location levels.
+        current_weather: Weather payload.
+        operating_system: Detected operating system label.
+        now: Current timestamp.
+
+    Returns:
+        Variables mapping for prompt templates.
+    """
     name = settings_record.name.strip() if settings_record and settings_record.name else None
     owner = name or "the user"
     gender = settings_record.gender.strip() if settings_record and settings_record.gender else None
@@ -291,6 +331,16 @@ def build_recent_activity_block(
     websites: list[dict[str, Any]],
     conversations: list[dict[str, Any]],
 ) -> str:
+    """Render the recent activity block for prompts.
+
+    Args:
+        notes: Recent note items.
+        websites: Recent website items.
+        conversations: Recent conversation items.
+
+    Returns:
+        Rendered recent activity block string.
+    """
     lines: list[str] = []
 
     if notes:
@@ -341,6 +391,7 @@ def build_recent_activity_block(
 
 
 def _truncate_content(value: str | None, limit: int) -> str | None:
+    """Truncate content to a maximum character limit."""
     if value is None:
         return None
     if len(value) <= limit:
@@ -353,6 +404,16 @@ def build_open_context_block(
     website: dict[str, Any] | None,
     max_chars: int = 20000,
 ) -> str:
+    """Render the currently open note/website block.
+
+    Args:
+        note: Open note payload.
+        website: Open website payload.
+        max_chars: Max characters to include for content. Defaults to 20000.
+
+    Returns:
+        Rendered open context block string.
+    """
     lines: list[str] = []
 
     if note:
@@ -404,6 +465,7 @@ def build_system_prompt(
     current_weather: dict[str, Any] | str | None,
     now: datetime,
 ) -> str:
+    """Build the system prompt for the chat model."""
     variables = build_prompt_variables(
         settings_record,
         current_location,
@@ -420,6 +482,7 @@ def build_first_message_prompt(
     operating_system: str | None,
     now: datetime,
 ) -> str:
+    """Build the initial user message prompt."""
     communication_style = resolve_default(
         settings_record.communication_style if settings_record else None,
         DEFAULT_COMMUNICATION_STYLE,
