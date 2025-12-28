@@ -23,13 +23,13 @@ Replace bearer token auth with Supabase JWT validation.
 
 #### 1.1 Add Dependencies
 
-**File**: `/Users/sean/Coding/sideBar/backend/requirements.txt`
+**File**: `/Users/sean/Coding/sideBar/backend/pyproject.toml`
 
 Add:
 ```
 PyJWT[crypto]>=2.8.0
 cryptography>=41.0.0
-requests>=2.31.0
+httpx>=0.27.0
 ```
 
 #### 1.2 Create JWT Validator
@@ -37,7 +37,7 @@ requests>=2.31.0
 **New file**: `/Users/sean/Coding/sideBar/backend/api/auth/supabase_jwt.py`
 
 Implement Supabase JWT validator that:
-- Fetches JWKS from Supabase with caching (1 hour TTL)
+- Fetches JWKS from Supabase with caching (1 hour TTL) using `httpx`
 - Validates JWT signature using RS256 algorithm
 - Verifies token expiry, issuer, and audience
 - Extracts user ID from `sub` claim
@@ -55,7 +55,7 @@ Key functions:
 Add Supabase Auth settings:
 ```python
 # Supabase Auth
-supabase_url: str = ""  # Computed from project_id
+supabase_url: str  # Full Supabase URL, not computed
 supabase_anon_key: str  # Public key for client-side
 supabase_service_role_key: str | None = None  # Admin operations
 
@@ -63,6 +63,7 @@ supabase_service_role_key: str | None = None  # Admin operations
 jwt_audience: str = "authenticated"
 jwt_algorithm: str = "RS256"
 jwks_cache_ttl_seconds: int = 3600
+jwt_issuer: str = ""  # Computed from SUPABASE_URL + "/auth/v1"
 
 # Development mode
 auth_dev_mode: bool = False  # Bypass JWT for testing
@@ -358,7 +359,8 @@ Replace static `BEARER_TOKEN` with user's JWT:
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
+import { env } from '$env/dynamic/private';
+const API_URL = env.API_URL || 'http://skills-api:8001';
 
 export const GET: RequestHandler = async ({ locals }) => {
   if (!locals.session) {
@@ -613,45 +615,13 @@ Since you have production data associated with the default user ID, create a Sup
 4. After user is created, note the UUID
 5. You'll need to migrate data to this UUID OR use Method 2 below
 
-**Method 2: SQL with Service Role** (Preserves existing data)
+**Method 2: Admin API with Service Role** (Preserves existing data)
 
-Use Supabase SQL Editor or service role to insert with specific UUID:
-```sql
--- Run this in Supabase SQL Editor
-INSERT INTO auth.users (
-  instance_id,
-  id,
-  aud,
-  role,
-  email,
-  encrypted_password,
-  email_confirmed_at,
-  raw_app_meta_data,
-  raw_user_meta_data,
-  created_at,
-  updated_at,
-  confirmation_token,
-  recovery_token,
-  email_change_token_new,
-  email_change
-) VALUES (
-  '00000000-0000-0000-0000-000000000000',
-  '81326b53-b7eb-42e2-b645-0c03cb5d5dd4',
-  'authenticated',
-  'authenticated',
-  'your-admin@email.com',
-  crypt('your-secure-password', gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{}',
-  now(),
-  now(),
-  '',
-  '',
-  '',
-  ''
-);
-```
+Use the Supabase Admin API (service role) to create a user with a fixed UUID.
+This avoids manual SQL inserts that can miss `auth.identities` rows or triggers.
+
+If you *do* choose SQL later, ensure you also create a matching `auth.identities`
+row and handle `raw_user_meta_data` and triggers correctly.
 
 This preserves all existing data without migration.
 
@@ -701,7 +671,7 @@ finally:
     db.close()
 ```
 
-**Recommendation**: Use Option 1 (create user with matching UUID) for simplicity.
+**Recommendation**: Use Admin API to create user with matching UUID for simplicity and correctness.
 
 ### Phase 6: Testing & Rollout
 
