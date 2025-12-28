@@ -17,6 +17,8 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 
 class SettingsResponse(BaseModel):
+    """Response payload for user settings."""
+
     user_id: str
     communication_style: Optional[str] = None
     working_relationship: Optional[str] = None
@@ -32,6 +34,8 @@ class SettingsResponse(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
+    """Request payload for updating user settings."""
+
     communication_style: Optional[str] = None
     working_relationship: Optional[str] = None
     name: Optional[str] = None
@@ -50,6 +54,16 @@ async def get_settings(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Fetch settings for the current user.
+
+    Args:
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Current settings payload.
+    """
     return SettingsResponse(**SettingsService.get_settings(db, user_id))
 
 
@@ -60,6 +74,17 @@ async def update_settings(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Update settings for the current user.
+
+    Args:
+        payload: Settings updates.
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Updated settings payload.
+    """
     updates = payload.dict(exclude_unset=True)
     return SettingsResponse(**SettingsService.update_settings(db, user_id, updates))
 
@@ -72,6 +97,21 @@ async def upload_profile_image(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Upload or replace the user's profile image.
+
+    Args:
+        request: Incoming request, possibly with raw image body.
+        file: Uploaded image file (optional).
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Upload result payload.
+
+    Raises:
+        HTTPException: 400 if content type is not an image.
+    """
     contents: bytes
     content_type = ""
     filename = request.headers.get("x-filename") or "profile-image"
@@ -101,6 +141,16 @@ async def get_profile_image(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Return the user's profile image content.
+
+    Args:
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Raw image bytes.
+    """
     content = SettingsService.get_profile_image(db, user_id)
     return Response(content, media_type="application/octet-stream")
 
@@ -111,4 +161,14 @@ async def delete_profile_image(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Delete the user's profile image.
+
+    Args:
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Delete result payload.
+    """
     return SettingsService.delete_profile_image(db, user_id)
