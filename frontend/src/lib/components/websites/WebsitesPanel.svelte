@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import { ChevronRight, Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, Trash2, Search } from 'lucide-svelte';
+  import { ChevronRight, Globe, Search } from 'lucide-svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
@@ -8,6 +8,7 @@
   import type { WebsiteItem } from '$lib/stores/websites';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
 
   const ARCHIVED_FLAG = 'archived';
 
@@ -243,49 +244,19 @@
       {:else}
         <div class="websites-list">
           {#each $websitesStore.items as site (site.id)}
-            <div class="website-item">
-              <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
-              <span class="website-icon">
-                <Globe />
-              </span>
-              <div class="website-text">
-                <span class="website-title">{site.title}</span>
-                <span class="website-domain">{formatDomain(site.domain)}</span>
-              </div>
-              </button>
-              <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
-                <MoreVertical size={14} />
-              </button>
-              {#if activeMenuId === site.id}
-                <div class="website-menu">
-                  <button class="menu-item" on:click={() => handlePin(site)}>
-                    {#if site.pinned}
-                      <PinOff size={14} />
-                      <span>Unpin</span>
-                    {:else}
-                      <Pin size={14} />
-                      <span>Pin</span>
-                    {/if}
-                  </button>
-                  <button class="menu-item" on:click={() => openRenameDialog(site)}>
-                    <Pencil size={14} />
-                    <span>Rename</span>
-                  </button>
-                  <button class="menu-item" on:click={() => handleDownload(site)}>
-                    <Download size={14} />
-                    <span>Download</span>
-                  </button>
-                  <button class="menu-item" on:click={() => handleArchive(site)}>
-                    <Archive size={14} />
-                    <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
-                  </button>
-                  <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
-                    <Trash2 size={14} />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              {/if}
-            </div>
+            <WebsiteRow
+              {site}
+              archived={isArchived(site)}
+              isMenuOpen={activeMenuId === site.id}
+              formatDomain={formatDomain}
+              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpenMenu={openMenu}
+              onPin={handlePin}
+              onRename={openRenameDialog}
+              onDownload={handleDownload}
+              onArchive={handleArchive}
+              onDelete={openDeleteDialog}
+            />
           {/each}
         </div>
       {/if}
@@ -298,49 +269,19 @@
       {:else}
         <div class="websites-list">
           {#each pinnedItems as site (site.id)}
-            <div class="website-item">
-              <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
-              <span class="website-icon">
-                <Globe />
-              </span>
-              <div class="website-text">
-                <span class="website-title">{site.title}</span>
-                <span class="website-domain">{formatDomain(site.domain)}</span>
-              </div>
-              </button>
-              <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
-                <MoreVertical size={14} />
-              </button>
-              {#if activeMenuId === site.id}
-                <div class="website-menu">
-                  <button class="menu-item" on:click={() => handlePin(site)}>
-                    {#if site.pinned}
-                      <PinOff size={14} />
-                      <span>Unpin</span>
-                    {:else}
-                      <Pin size={14} />
-                      <span>Pin</span>
-                    {/if}
-                  </button>
-                  <button class="menu-item" on:click={() => openRenameDialog(site)}>
-                    <Pencil size={14} />
-                    <span>Rename</span>
-                  </button>
-                  <button class="menu-item" on:click={() => handleDownload(site)}>
-                    <Download size={14} />
-                    <span>Download</span>
-                  </button>
-                  <button class="menu-item" on:click={() => handleArchive(site)}>
-                    <Archive size={14} />
-                    <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
-                  </button>
-                  <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
-                    <Trash2 size={14} />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              {/if}
-            </div>
+            <WebsiteRow
+              {site}
+              archived={isArchived(site)}
+              isMenuOpen={activeMenuId === site.id}
+              formatDomain={formatDomain}
+              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpenMenu={openMenu}
+              onPin={handlePin}
+              onRename={openRenameDialog}
+              onDownload={handleDownload}
+              onArchive={handleArchive}
+              onDelete={openDeleteDialog}
+            />
           {/each}
         </div>
       {/if}
@@ -353,49 +294,19 @@
       {:else}
         <div class="websites-list">
           {#each mainItems as site (site.id)}
-            <div class="website-item">
-              <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
-              <span class="website-icon">
-                <Globe />
-              </span>
-              <div class="website-text">
-                <span class="website-title">{site.title}</span>
-                <span class="website-domain">{formatDomain(site.domain)}</span>
-              </div>
-              </button>
-              <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
-                <MoreVertical size={14} />
-              </button>
-              {#if activeMenuId === site.id}
-                <div class="website-menu">
-                  <button class="menu-item" on:click={() => handlePin(site)}>
-                    {#if site.pinned}
-                      <PinOff size={14} />
-                      <span>Unpin</span>
-                    {:else}
-                      <Pin size={14} />
-                      <span>Pin</span>
-                    {/if}
-                  </button>
-                  <button class="menu-item" on:click={() => openRenameDialog(site)}>
-                    <Pencil size={14} />
-                    <span>Rename</span>
-                  </button>
-                  <button class="menu-item" on:click={() => handleDownload(site)}>
-                    <Download size={14} />
-                    <span>Download</span>
-                  </button>
-                  <button class="menu-item" on:click={() => handleArchive(site)}>
-                    <Archive size={14} />
-                    <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
-                  </button>
-                  <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
-                    <Trash2 size={14} />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              {/if}
-            </div>
+            <WebsiteRow
+              {site}
+              archived={isArchived(site)}
+              isMenuOpen={activeMenuId === site.id}
+              formatDomain={formatDomain}
+              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpenMenu={openMenu}
+              onPin={handlePin}
+              onRename={openRenameDialog}
+              onDownload={handleDownload}
+              onArchive={handleArchive}
+              onDelete={openDeleteDialog}
+            />
           {/each}
         </div>
       {/if}
@@ -419,49 +330,19 @@
               {:else}
                 <div class="websites-list">
                   {#each archivedItems as site (site.id)}
-                    <div class="website-item">
-                      <button class="website-main" on:click={() => websitesStore.loadById(site.id)}>
-                      <span class="website-icon">
-                        <Globe />
-                      </span>
-                      <div class="website-text">
-                        <span class="website-title">{site.title}</span>
-                        <span class="website-domain">{formatDomain(site.domain)}</span>
-                      </div>
-                      </button>
-                      <button class="website-menu-btn" on:click={(event) => openMenu(event, site)} aria-label="More options">
-                        <MoreVertical size={14} />
-                      </button>
-                      {#if activeMenuId === site.id}
-                        <div class="website-menu">
-                          <button class="menu-item" on:click={() => handlePin(site)}>
-                            {#if site.pinned}
-                              <PinOff size={14} />
-                              <span>Unpin</span>
-                            {:else}
-                              <Pin size={14} />
-                              <span>Pin</span>
-                            {/if}
-                          </button>
-                          <button class="menu-item" on:click={() => openRenameDialog(site)}>
-                            <Pencil size={14} />
-                            <span>Rename</span>
-                          </button>
-                          <button class="menu-item" on:click={() => handleDownload(site)}>
-                            <Download size={14} />
-                            <span>Download</span>
-                          </button>
-                          <button class="menu-item" on:click={() => handleArchive(site)}>
-                            <Archive size={14} />
-                            <span>{isArchived(site) ? 'Unarchive' : 'Archive'}</span>
-                          </button>
-                          <button class="menu-item delete" on:click={() => openDeleteDialog(site)}>
-                            <Trash2 size={14} />
-                            <span>Delete</span>
-                          </button>
-                        </div>
-                      {/if}
-                    </div>
+                    <WebsiteRow
+                      {site}
+                      archived={isArchived(site)}
+                      isMenuOpen={activeMenuId === site.id}
+                      formatDomain={formatDomain}
+                      onOpen={(item) => websitesStore.loadById(item.id)}
+                      onOpenMenu={openMenu}
+                      onPin={handlePin}
+                      onRename={openRenameDialog}
+                      onDownload={handleDownload}
+                      onArchive={handleArchive}
+                      onDelete={openDeleteDialog}
+                    />
                   {/each}
                 </div>
               {/if}
@@ -511,135 +392,6 @@
     flex-direction: column;
     gap: 0.35rem;
     padding: 0 0.25rem;
-  }
-
-  .website-item {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.5rem;
-    border-radius: 0.5rem;
-    color: var(--color-sidebar-foreground);
-    background: transparent;
-    border: none;
-    width: 100%;
-    text-align: left;
-    transition: background-color 0.2s ease;
-  }
-
-  .website-item:hover {
-    background-color: var(--color-sidebar-accent);
-  }
-
-  .website-main {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    flex: 1;
-    min-width: 0;
-    text-align: left;
-    padding: 0;
-    color: inherit;
-  }
-
-  .website-menu-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    border-radius: 0.25rem;
-    color: var(--color-muted-foreground);
-    opacity: 0;
-    transition: all 0.2s;
-  }
-
-  .website-item:hover .website-menu-btn {
-    opacity: 1;
-  }
-
-  .website-menu-btn:hover {
-    background-color: var(--color-accent);
-  }
-
-  .website-menu {
-    position: absolute;
-    top: 100%;
-    right: 0.25rem;
-    margin-top: 0.25rem;
-    background-color: var(--color-popover);
-    border: 1px solid var(--color-border);
-    border-radius: 0.375rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    z-index: 9999;
-    min-width: 150px;
-  }
-
-  .menu-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 0.8rem;
-    text-align: left;
-    transition: background-color 0.2s;
-    color: var(--color-popover-foreground);
-  }
-
-  .menu-item:hover {
-    background-color: var(--color-accent);
-  }
-
-  .menu-item.delete {
-    color: var(--color-destructive);
-  }
-
-  .website-icon {
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .website-icon :global(svg) {
-    width: 16px;
-    height: 16px;
-  }
-
-  .website-text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .website-title {
-    font-size: 0.85rem;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-
-  .website-domain {
-    font-size: 0.7rem;
-    color: var(--color-muted-foreground);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .websites-empty {
