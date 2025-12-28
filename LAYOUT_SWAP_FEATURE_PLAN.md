@@ -83,6 +83,13 @@ This provides flexibility for users who want to prioritize either workspace or c
 
 Create a centralized store to manage layout mode and sidebar widths.
 
+**Plan Updates (Pre-Implementation Adjustments)**
+- **Swap actual panel content, not only flex order**: In chat-focused mode, render the chat UI inside the main area and render the workspace (notes/websites) in the sidebar. This avoids keeping ChatSidebar permanently in the sidebar container and matches the intended UX.
+- **Use pointer events for resize**: Prefer `pointerdown/move/up` for resize handles to work across mouse, trackpad, and touch.
+- **Guard localStorage parsing**: Wrap stored JSON parsing in `try/catch` to avoid crashes on corrupt entries.
+- **Responsive safety**: Optionally disable or hide the swap toggle on small screens (e.g., < 900px) to avoid cramped layouts.
+- **Dynamic borders**: Adjust border placement based on which panel sits on the right to keep separators consistent.
+
 #### Files to Create
 
 **`/lib/stores/layout.ts`**
@@ -106,7 +113,14 @@ const DEFAULT_STATE: LayoutState = {
 };
 
 const stored = browser ? localStorage.getItem('sideBar.layout') : null;
-const initial: LayoutState = stored ? JSON.parse(stored) : DEFAULT_STATE;
+let initial: LayoutState = DEFAULT_STATE;
+if (stored) {
+  try {
+    initial = JSON.parse(stored) as LayoutState;
+  } catch {
+    initial = DEFAULT_STATE;
+  }
+}
 
 function createLayoutStore() {
   const { subscribe, update } = writable<LayoutState>(initial);
@@ -164,7 +178,7 @@ Create a reusable resize handle that users can drag to adjust panel widths.
   let startX = 0;
   let startWidth = 0;
 
-  function handleMouseDown(e: MouseEvent) {
+  function handlePointerDown(e: PointerEvent) {
     isDragging = true;
     startX = e.clientX;
 
@@ -174,11 +188,11 @@ Create a reusable resize handle that users can drag to adjust panel widths.
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
   }
 
-  function handleMouseMove(e: MouseEvent) {
+  function handlePointerMove(e: PointerEvent) {
     if (!isDragging) return;
 
     const delta = side === 'right'
@@ -189,25 +203,25 @@ Create a reusable resize handle that users can drag to adjust panel widths.
     onResize(newWidth);
   }
 
-  function handleMouseUp() {
+  function handlePointerUp() {
     isDragging = false;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
 
-    window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup', handleMouseUp);
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
   }
 
   onDestroy(() => {
-    window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup', handleMouseUp);
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
   });
 </script>
 
 <div
   class="resize-handle"
   class:dragging={isDragging}
-  on:mousedown={handleMouseDown}
+  on:pointerdown={handlePointerDown}
   role="separator"
   aria-orientation="vertical"
   aria-label="Resize sidebar"
