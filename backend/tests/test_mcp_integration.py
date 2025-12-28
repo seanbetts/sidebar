@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from fastmcp import FastMCP
 
 from api.config import settings
+from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
 from api.mcp.tools import register_mcp_tools
 from tests.test_mcp_client import SyncMCPClient
 
@@ -22,10 +23,7 @@ from tests.test_mcp_client import SyncMCPClient
 @pytest.fixture(scope="session")
 def bearer_token():
     """Get bearer token from environment."""
-    token = os.getenv("BEARER_TOKEN")
-    if not token:
-        pytest.skip("BEARER_TOKEN not set in environment")
-    return token
+    return os.getenv("BEARER_TOKEN", "test-token")
 
 
 @pytest.fixture(scope="session")
@@ -41,6 +39,9 @@ def mcp_http_client():
         if request.url.path == "/api/health":
             return await call_next(request)
 
+        if settings.auth_dev_mode:
+            return await call_next(request)
+
         auth_header = request.headers.get("Authorization")
         if not auth_header:
             return JSONResponse(
@@ -53,9 +54,9 @@ def mcp_http_client():
             scheme, token = auth_header.split()
             if scheme.lower() != "bearer":
                 raise ValueError("Invalid scheme")
-            if token != settings.bearer_token:
-                raise ValueError("Invalid token")
-        except (ValueError, AttributeError):
+            validator = SupabaseJWTValidator()
+            await validator.validate_token(token)
+        except (ValueError, AttributeError, JWTValidationError):
             return JSONResponse(
                 status_code=401,
                 content={"error": "Invalid Authorization header"},

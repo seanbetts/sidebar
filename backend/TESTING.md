@@ -50,7 +50,7 @@ Tests use a separate PostgreSQL database to ensure isolation from development da
 Tests automatically load from `.env.test`:
 - `TESTING=1` - Enables test mode
 - `DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test`
-- `BEARER_TOKEN=test-bearer-token-12345` - Mock auth token
+- `AUTH_DEV_MODE=true` - Bypass JWT validation in tests
 - `ANTHROPIC_API_KEY=test-anthropic-key-12345` - Mock API key
 
 **IMPORTANT**: Never use real secrets in `.env.test`!
@@ -180,7 +180,7 @@ steps:
     env:
       TESTING: 1
       DATABASE_URL: postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test
-      BEARER_TOKEN: test-bearer-token-12345
+      AUTH_DEV_MODE: true
       ANTHROPIC_API_KEY: test-anthropic-key-12345
 ```
 

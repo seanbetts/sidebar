@@ -14,7 +14,8 @@ os.environ["TESTING"] = "1"
 
 # Also set individual env vars as a fallback
 # These are mock values - never use real secrets in tests
-os.environ.setdefault("BEARER_TOKEN", "test-bearer-token-12345")
+os.environ.setdefault("AUTH_DEV_MODE", "true")
+os.environ.setdefault("DEFAULT_USER_ID", "81326b53-b7eb-42e2-b645-0c03cb5d5dd4")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-12345")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key-12345")
 os.environ.setdefault(
