@@ -3,8 +3,8 @@
 Current coverage snapshot and gaps for the sideBar backend.
 
 **Date**: 2025-12-28 (Refreshed)
-**Test Files**: 36 (backend)
-**Test Count**: 173 (latest local run may differ; re-run to confirm)
+**Test Files**: 37 (backend)
+**Test Count**: 178 (latest local run may differ; re-run to confirm)
 
 ---
 
@@ -28,7 +28,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 ### Current Gaps
 - Router-level integration coverage remains minimal (beyond chat/settings).
-- Notes workspace service and some storage integration paths are untested.
+- Some storage integration paths are untested.
 
 ### ✅ Storage + Workspace (PARTIAL)
 
@@ -38,6 +38,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 | Storage backend factory | `tests/api/test_storage_service.py` | ✅ |
 | File tree service | `tests/api/test_file_tree_service.py` | ✅ |
 | Files workspace service | `tests/api/test_files_workspace_service.py` | ✅ |
+| Notes workspace service | `tests/api/test_notes_workspace_service.py` | ✅ |
 
 ---
 
@@ -113,7 +114,6 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 | Component | Location | Priority | Notes |
 |-----------|----------|----------|-------|
-| Notes workspace service | `api/services/notes_workspace_service.py` | 🟡 MEDIUM | Tree/rename/update |
 
 ### Memory Tool
 
@@ -164,7 +164,7 @@ Async marker registered in `backend/pyproject.toml`. Async tests collect and run
 ## Recommended Test Plan
 
 ### Phase 1: Critical Path
-1. Add Notes workspace service coverage.
+1. Expand router-level integration coverage (notes/websites/files/memories).
 
 ### Phase 2: Storage + Workspace
 1. Add tests for R2 storage service.
