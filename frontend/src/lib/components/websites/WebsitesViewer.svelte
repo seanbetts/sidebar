@@ -1,22 +1,20 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
   import { Image } from '@tiptap/extension-image';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
-  import { Globe, Pin, PinOff, Pencil, Copy, Check, Download, Archive, Trash2, X } from 'lucide-svelte';
   import { websitesStore } from '$lib/stores/websites';
-  import { Button } from '$lib/components/ui/button';
-  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
+  import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
   let isRenameDialogOpen = false;
   let renameValue = '';
-  let renameInput: HTMLInputElement | null = null;
   let isDeleteDialogOpen = false;
   let copyTimeout: ReturnType<typeof setTimeout> | null = null;
   let isCopied = false;
@@ -181,46 +179,14 @@
     websitesStore.clearActive();
   }
 
-  $: if (isRenameDialogOpen) {
-    tick().then(() => {
-      renameInput?.focus();
-      renameInput?.select();
-    });
-  }
 </script>
 
-<AlertDialog.Root bind:open={isRenameDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      renameInput?.focus();
-      renameInput?.select();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Rename website</AlertDialog.Title>
-      <AlertDialog.Description>Update the website title.</AlertDialog.Description>
-    </AlertDialog.Header>
-    <div class="py-2">
-      <input
-        class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        type="text"
-        placeholder="Website title"
-        bind:this={renameInput}
-        bind:value={renameValue}
-        on:keydown={(event) => {
-          if (event.key === 'Enter') handleRename();
-        }}
-      />
-    </div>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel onclick={() => (isRenameDialogOpen = false)}>Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action disabled={!renameValue.trim()} onclick={handleRename}>
-        Rename
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<WebsiteRenameDialog
+  bind:open={isRenameDialogOpen}
+  bind:value={renameValue}
+  onConfirm={handleRename}
+  onCancel={() => (isRenameDialogOpen = false)}
+/>
 
 <NoteDeleteDialog
   bind:open={isDeleteDialogOpen}
@@ -231,102 +197,19 @@
 />
 
 <div class="website-pane">
-  <div class="website-header">
-    {#if $websitesStore.active}
-      <div class="website-meta">
-        <div class="title-row">
-          <Globe size={18} />
-          <span class="title-text">{$websitesStore.active.title}</span>
-        </div>
-        <div class="website-meta-row">
-          <span class="subtitle">
-            <a class="source" href={$websitesStore.active.url} target="_blank" rel="noopener noreferrer">
-              <span>{formatDomain($websitesStore.active.domain)}</span>
-            </a>
-            {#if $websitesStore.active.published_at}
-              <span class="pipe">|</span>
-              <span class="published-date">
-                {formatDateWithOrdinal(new Date($websitesStore.active.published_at))}
-              </span>
-            {/if}
-          </span>
-          <div class="website-actions">
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handlePinToggle}
-            aria-label="Pin website"
-            title="Pin website"
-          >
-            {#if $websitesStore.active.pinned}
-              <PinOff size={16} />
-            {:else}
-              <Pin size={16} />
-            {/if}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={openRenameDialog}
-            aria-label="Rename website"
-            title="Rename website"
-          >
-            <Pencil size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handleCopy}
-            aria-label={isCopied ? 'Copied website' : 'Copy website'}
-            title={isCopied ? 'Copied' : 'Copy website'}
-          >
-            {#if isCopied}
-              <Check size={16} />
-            {:else}
-              <Copy size={16} />
-            {/if}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handleDownload}
-            aria-label="Download website"
-            title="Download website"
-          >
-            <Download size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handleArchive}
-            aria-label={$websitesStore.active.archived ? 'Unarchive website' : 'Archive website'}
-            title={$websitesStore.active.archived ? 'Unarchive website' : 'Archive website'}
-          >
-            <Archive size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={() => (isDeleteDialogOpen = true)}
-            aria-label="Delete website"
-            title="Delete website"
-          >
-            <Trash2 size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={handleClose}
-            aria-label="Close website"
-            title="Close website"
-          >
-            <X size={16} />
-          </Button>
-          </div>
-        </div>
-      </div>
-    {/if}
-  </div>
+  <WebsiteHeader
+    website={$websitesStore.active}
+    {isCopied}
+    {formatDomain}
+    formatDate={formatDateWithOrdinal}
+    onPinToggle={handlePinToggle}
+    onRename={openRenameDialog}
+    onCopy={handleCopy}
+    onDownload={handleDownload}
+    onArchive={handleArchive}
+    onDelete={() => (isDeleteDialogOpen = true)}
+    onClose={handleClose}
+  />
   <div class="website-body">
     <div bind:this={editorElement} class="website-content"></div>
   </div>
@@ -338,74 +221,6 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-  }
-
-  .website-header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 1rem;
-    padding: 0.5rem 1.5rem;
-    min-height: 57px;
-    border-bottom: 1px solid var(--color-border);
-    background-color: var(--color-card);
-  }
-
-  .website-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    width: 100%;
-  }
-
-  .title-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .website-meta-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .subtitle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
-    color: var(--color-muted-foreground);
-  }
-
-  .website-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .pipe {
-    color: var(--color-muted-foreground);
-  }
-
-  .title-text {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-foreground);
-  }
-
-  .published-date {
-    color: var(--color-muted-foreground);
-  }
-
-  .website-meta .source {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: var(--color-muted-foreground);
-    text-decoration: none;
   }
 
   .website-body {
