@@ -229,22 +229,23 @@ Skills are automatically discovered and loaded when the API starts. Enable/disab
 
 ## Testing
 
-sideBar uses pytest for testing critical scripts and utilities.
+sideBar uses pytest for backend tests and vitest for frontend unit/component tests.
 
-### Running Tests
+### Backend Tests
 
 ```bash
-# On your local machine
-python scripts/run_tests.py
+# Start the test DB, reset it, and run the full backend suite
+./backend/scripts/run_tests.sh
 
-# Run with coverage report
-python scripts/run_tests.py --cov
+# Optional cleanup (stops the test DB)
+CLEANUP_TEST_DB=1 ./backend/scripts/run_tests.sh
+```
 
-# Run specific test file
-python scripts/run_tests.py tests/scripts/test_add_skill_dependencies.py
+### Frontend Tests
 
-# In Docker container
-./scripts/run_tests_docker.sh
+```bash
+cd frontend
+npm run test
 ```
 
 ### Test-Driven Development
@@ -266,7 +267,7 @@ See [AGENTS.md](./AGENTS.md#testing-tdd-workflow) for detailed TDD workflow.
 - ✅ Helper modules (XMLEditor, utilities)
 - ✅ Complex domain logic (text extraction, document manipulation)
 
-All tests live in the `tests/` directory at project root.
+Backend tests live in `backend/tests/`. Frontend tests live in `frontend/src/tests/`.
 
 ## Project Structure
 
