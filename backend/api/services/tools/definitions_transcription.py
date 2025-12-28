@@ -5,6 +5,7 @@ from api.services.tools import parameter_mapper as pm
 
 
 def get_transcription_definitions() -> dict:
+    """Return transcription tool definitions."""
     return {
         "Transcribe Audio": {
             "description": "Transcribe an audio file into text and save it as a note.",

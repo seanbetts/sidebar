@@ -3,6 +3,7 @@ from __future__ import annotations
 
 
 def get_misc_definitions() -> dict:
+    """Return miscellaneous tool definitions."""
     return {
         "Set UI Theme": {
             "description": "Set the UI theme to light or dark.",

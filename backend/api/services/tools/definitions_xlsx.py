@@ -5,6 +5,7 @@ from api.services.tools import parameter_mapper as pm
 
 
 def get_xlsx_definitions() -> dict:
+    """Return XLSX tool definitions."""
     return {
         "Recalculate XLSX": {
             "description": "Recalculate formulas in an .xlsx file.",

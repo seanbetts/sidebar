@@ -5,6 +5,7 @@ from api.services.tools import parameter_mapper as pm
 
 
 def get_skills_definitions() -> dict:
+    """Return skill tooling definitions."""
     return {
         "Package Skill": {
             "description": "Package a skill folder into a zip archive.",

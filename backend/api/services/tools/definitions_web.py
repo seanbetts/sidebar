@@ -5,6 +5,7 @@ from api.services.tools import parameter_mapper as pm
 
 
 def get_web_definitions() -> dict:
+    """Return web tool definitions."""
     return {
         "Discover Subdomains": {
             "description": "Discover subdomains for a given domain.",

@@ -5,6 +5,7 @@ from api.services.tools import parameter_mapper as pm
 
 
 def get_fs_definitions() -> dict:
+    """Return filesystem tool definitions."""
     return {
         "Browse Files": {
             "description": "List files and directories in R2-backed storage with glob pattern support",
