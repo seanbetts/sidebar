@@ -14,6 +14,14 @@ router = APIRouter(prefix="/places", tags=["places"])
 
 
 def _fetch_autocomplete(input_text: str) -> dict:
+    """Fetch autocomplete predictions from Google Places.
+
+    Args:
+        input_text: User input string.
+
+    Returns:
+        Parsed JSON response payload.
+    """
     query = urlencode(
         {
             "input": input_text,
@@ -29,6 +37,15 @@ def _fetch_autocomplete(input_text: str) -> dict:
 
 
 def _fetch_nearby_place(lat: float, lng: float) -> dict:
+    """Fetch nearby place results for coordinates.
+
+    Args:
+        lat: Latitude.
+        lng: Longitude.
+
+    Returns:
+        Parsed JSON response payload.
+    """
     query = urlencode(
         {
             "location": f"{lat},{lng}",
@@ -45,6 +62,14 @@ def _fetch_nearby_place(lat: float, lng: float) -> dict:
 
 
 def _fetch_place_details(place_id: str) -> dict:
+    """Fetch detailed place info by place ID.
+
+    Args:
+        place_id: Google Places place ID.
+
+    Returns:
+        Parsed JSON response payload.
+    """
     query = urlencode(
         {
             "place_id": place_id,
@@ -60,6 +85,15 @@ def _fetch_place_details(place_id: str) -> dict:
 
 
 def _extract_component(components: list[dict], component_type: str) -> str | None:
+    """Extract a named address component from Google Places data.
+
+    Args:
+        components: List of address components.
+        component_type: Component type to match.
+
+    Returns:
+        Component long name or None.
+    """
     for component in components:
         if component_type in component.get("types", []):
             return component.get("long_name")
@@ -67,6 +101,14 @@ def _extract_component(components: list[dict], component_type: str) -> str | Non
 
 
 def _collect_levels(components: list[dict]) -> dict[str, str]:
+    """Collect administrative levels from address components.
+
+    Args:
+        components: List of address components.
+
+    Returns:
+        Mapping of component type to name.
+    """
     levels: dict[str, str] = {}
     for component in components:
         name = component.get("long_name")
@@ -88,6 +130,18 @@ async def autocomplete_places(
     input: str,
     _: str = Depends(verify_bearer_token),
 ):
+    """Return place autocomplete predictions.
+
+    Args:
+        input: User input string.
+        _: Authorization token (validated).
+
+    Returns:
+        Predictions list payload.
+
+    Raises:
+        HTTPException: 503 if API key missing, 502 on upstream failure.
+    """
     if not settings.google_places_api_key:
         raise HTTPException(status_code=503, detail="Google Places API key not configured")
     trimmed = input.strip()
@@ -118,6 +172,19 @@ async def reverse_geocode(
     lng: float,
     _: str = Depends(verify_bearer_token),
 ):
+    """Reverse geocode coordinates into a locality label.
+
+    Args:
+        lat: Latitude.
+        lng: Longitude.
+        _: Authorization token (validated).
+
+    Returns:
+        Label and administrative levels payload.
+
+    Raises:
+        HTTPException: 503 if API key missing, 502 on upstream failure.
+    """
     if not settings.google_places_api_key:
         raise HTTPException(status_code=503, detail="Google Places API key not configured")
 
