@@ -64,7 +64,10 @@ class SupabaseJWTValidator:
             raise JWTValidationError("Missing token.")
 
         jwks = await self._fetch_jwks()
-        header = jwt.get_unverified_header(token)
+        try:
+            header = jwt.get_unverified_header(token)
+        except jwt.PyJWTError as exc:
+            raise JWTValidationError(str(exc)) from exc
         kid = header.get("kid")
         alg = header.get("alg") or settings.jwt_algorithm
         if alg not in settings.jwt_algorithms:
