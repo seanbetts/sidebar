@@ -171,7 +171,25 @@ Example: Chat works without location, but becomes location-aware when provided.
 
 **Implementation:** `backend/api/executors/skill_executor.py:20`
 
-### 4. Doppler for Secrets Management
+### 4. Supabase + R2 for Persistence
+
+**Decision:** Use Supabase Postgres for relational data and Cloudflare R2 for object storage.
+
+**Rationale:**
+- Managed Postgres with built-in pooling and RLS
+- Object storage for workspace files and assets
+- Clear separation between structured data and blobs
+- Scales independently of the API layer
+
+**Trade-offs:**
+- ✅ Managed infrastructure and backups
+- ✅ RLS for user scoping
+- ❌ External dependency on Supabase/R2 availability
+- ❌ Requires careful credential management
+
+**Implementation:** `backend/api/config.py` (Supabase settings), `backend/api/services/storage/`
+
+### 5. Doppler for Secrets Management
 
 **Decision:** Use Doppler for centralized secrets management rather than .env files.
 
@@ -209,23 +227,22 @@ Example: Chat works without location, but becomes location-aware when provided.
 - ❌ Additional deployment complexity
 - ❌ CORS and authentication coordination
 
-### 6. Path Jailing with Allowlists
+### 6. Storage Abstraction + Tmpfs
 
-**Decision:** Implement strict path validation with workspace jailing and write allowlists.
+**Decision:** Route file operations through a storage abstraction (R2) and keep skill scratch space on tmpfs.
 
 **Rationale:**
-- Security-first approach for untrusted skill execution
-- Prevent directory traversal attacks
-- Limit blast radius of potential exploits
-- Clear boundaries for file operations
+- Avoid persistent local workspace volumes
+- Centralized storage for files across containers
+- Ephemeral local data reduces risk and cleanup burden
 
 **Trade-offs:**
-- ✅ Strong security guarantees
-- ✅ Predictable file system access
-- ❌ Less flexibility for advanced use cases
-- ❌ Additional validation overhead
+- ✅ Consistent storage across environments
+- ✅ Reduced local state
+- ❌ Network dependency for file access
+- ❌ Slightly higher latency for large file operations
 
-**Implementation:** `backend/api/security/path_validator.py:10`
+**Implementation:** `backend/api/services/storage/`, `docker-compose.yml` tmpfs config
 
 ---
 
@@ -290,10 +307,10 @@ Example: Chat works without location, but becomes location-aware when provided.
        - Builds arguments
 
 3. Security Validation
-   └─> PathValidator.validate()
-       - Checks path within workspace
-       - Validates against write allowlist
-       - Prevents directory traversal
+   └─> Storage path validation
+       - Scopes paths by user ID and category
+       - Normalizes paths to prevent traversal
+       - Restricts writes to configured storage backend
 
 4. Skill Execution
    └─> SkillExecutor.execute()
@@ -332,21 +349,12 @@ sideBar implements multiple security layers:
 
 **Implementation:** `docker-compose.yml:49-58`
 
-#### 2. Path Jailing
-- All operations restricted to `/workspace`
-- Absolute path resolution prevents `../` traversal
-- Symlink validation
+#### 2. Storage Scoping
+- File operations routed through R2-backed storage service
+- Workspace access scoped by user ID and category
+- Path normalization to prevent traversal
 
-**Implementation:** `backend/api/security/path_validator.py`
-
-#### 3. Write Allowlists
-Only specific directories writable:
-- `/workspace/notes`
-- `/workspace/documents`
-
-Prevents accidental or malicious overwrites.
-
-#### 4. Resource Limits
+#### 3. Resource Limits
 - **Execution timeout:** 30 seconds per skill
 - **Output size:** 10MB maximum
 - **Concurrency:** 5 simultaneous skill executions
@@ -354,19 +362,26 @@ Prevents accidental or malicious overwrites.
 
 **Implementation:** `backend/api/config.py:31-33`
 
-#### 5. Skill Sandboxing
+#### 4. Skill Sandboxing
 - Subprocess isolation
 - Minimal environment variables
 - No inherited file descriptors
 - Read-only skill directory mount
+- Tmpfs working directory for ephemeral writes
 
 **Implementation:** `backend/api/executors/skill_executor.py:45-70`
 
-#### 6. Authentication
+#### 5. Authentication
 - Bearer token for all API endpoints
 - Future: JWT with expiry and refresh tokens
 
 **Implementation:** `backend/api/auth.py`
+
+#### 6. Row-Level Security (RLS)
+- Supabase policies enforce per-user access
+- Session user ID propagated via `SET app.user_id`
+
+**Implementation:** `backend/api/db/session.py`, Supabase policies
 
 ### Security Trade-offs
 
@@ -454,8 +469,8 @@ Much simpler than WebSockets for unidirectional streaming. Reconnection handled 
 #### 4. Doppler Integration
 Eliminated .env file sharing in team. Environment separation became trivial.
 
-#### 5. Path Jailing
-Sleep well knowing skills can't escape `/workspace`. Zero security incidents.
+#### 5. Storage Scoping
+Sleep well knowing skills cannot escape their scoped storage prefixes. Zero security incidents.
 
 ### What We'd Do Differently
 
@@ -517,7 +532,7 @@ Current architecture allows horizontal scaling of:
 
 Would require:
 - Redis for distributed caching and locking
-- Shared storage for workspace (S3, NFS, etc.)
+- Shared storage for files (R2 already supports this)
 - Database connection pooling
 
 #### 4. Real-time Collaboration

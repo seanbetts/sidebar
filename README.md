@@ -1,6 +1,6 @@
 # sideBar
 
-A full-stack AI assistant platform featuring real-time streaming chat with Claude, integrated note-taking, website archival, and an extensible agent skills system.
+A full-stack AI assistant platform featuring real-time streaming chat with Claude, integrated note-taking, website archival, and an extensible agent skills system backed by Supabase and R2.
 
 > **For AI Agents:** See [AGENTS.md](./AGENTS.md) for detailed development instructions.
 
@@ -9,11 +9,12 @@ A full-stack AI assistant platform featuring real-time streaming chat with Claud
 - **AI Chat** - Real-time streaming conversations with Claude (Anthropic) with multi-turn tool use
 - **Note Taking** - Rich markdown editor with TipTap for organizing thoughts and knowledge
 - **Website Archival** - Save and archive web pages for later reference
+- **Memory Tool** - Persistent user memories stored in the database
 - **User Profiles** - Personalized communication styles and custom prompts
 - **Agent Skills** - Extensible system for file operations, web scraping, and document processing
 - **Location-Aware** - Context-aware prompts with current location and weather
 - **Theme Support** - Dark/light mode toggle
-- **Secure Execution** - Sandboxed skill execution with path jailing and resource limits
+- **Secure Execution** - Sandboxed skill execution with tmpfs isolation and resource limits
 
 ## Architecture
 
@@ -21,7 +22,8 @@ sideBar is built as a modern, containerized full-stack application:
 
 - **Frontend**: SvelteKit 5 with TypeScript, Tailwind CSS, and TipTap editor (port 3000)
 - **Backend**: FastAPI with AsyncAnthropic for Claude streaming (port 8001)
-- **Database**: PostgreSQL 16 with SQLAlchemy ORM (port 5432)
+- **Database**: Supabase Postgres (SQLAlchemy ORM)
+- **Object Storage**: Cloudflare R2 for workspace files and assets
 - **Containerization**: Docker Compose orchestrating all services
 
 > **Deep Dive:** See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for design decisions, patterns, and learnings from building sideBar.
@@ -29,7 +31,7 @@ sideBar is built as a modern, containerized full-stack application:
 ## Prerequisites
 
 - **Docker** & **Docker Compose** (required)
-- **Node.js 18+** (for local frontend development)
+- **Node.js 20.19+** (for local frontend development)
 - **Python 3.11+** (for local backend development)
 - **uv** (Python package manager - for skill validation)
 
@@ -47,14 +49,22 @@ cp .env.example .env
 Required environment variables:
 
 ```bash
-# Secrets Management
+# Secrets Management (optional if using Doppler)
 DOPPLER_TOKEN=your_doppler_token_here
 
 # Authentication (generate a secure random token)
 BEARER_TOKEN=your_secure_bearer_token
 
-# Database
-POSTGRES_PASSWORD=your_postgres_password
+# Supabase Database
+SUPABASE_PROJECT_ID=your_project_id
+SUPABASE_USE_POOLER=true
+SUPABASE_POOLER_HOST=aws-1-<region>.pooler.supabase.com
+SUPABASE_POOLER_USER=postgres.<project_id>
+SUPABASE_DB_NAME=postgres
+SUPABASE_DB_PORT=5432
+SUPABASE_SSLMODE=require
+SUPABASE_POSTGRES_PSWD=your_postgres_password
+SUPABASE_APP_PSWD=your_app_password_optional
 
 # AI APIs (loaded via Doppler or set directly)
 ANTHROPIC_API_KEY=sk-ant-...
@@ -66,6 +76,14 @@ GOOGLE_PLACES_API_KEY=...
 
 # Web Scraping
 JINA_API_KEY=...
+
+# Storage (R2)
+STORAGE_BACKEND=r2
+R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+R2_BUCKET=sidebar
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_ACCESS_KEY=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
 ```
 
 ### 2. Start the Application
@@ -164,6 +182,12 @@ Authorization: Bearer <your_bearer_token>
 - `GET /api/websites/{id}` - Get website by ID
 - `POST /api/websites` - Save new website
 - `DELETE /api/websites/{id}` - Delete website
+
+**Memories**
+- `GET /api/memories` - List stored memories
+- `POST /api/memories` - Create memory
+- `PATCH /api/memories/{id}` - Update memory
+- `DELETE /api/memories/{id}` - Delete memory
 
 **Settings**
 - `GET /api/settings` - Fetch current user settings
@@ -298,13 +322,14 @@ sideBar/
 
 sideBar implements multiple security layers:
 
-- **Path Jailing** - All file operations restricted to `/workspace` directory
-- **Write Allowlists** - Only specific directories writable (`/workspace/notes`, `/workspace/documents`)
+- **Workspace Isolation** - Skill file operations run against R2-backed storage
+- **Tmpfs Sandboxing** - Skills use ephemeral tmpfs working directories
 - **Resource Limits** - Skill execution timeouts (30s), output size limits (10MB), concurrency control (5 max)
 - **Sandboxed Execution** - Skills run in isolated subprocesses with minimal environment
 - **Audit Logging** - All tool executions logged with parameters and duration
 - **Container Security** - Non-root user, dropped capabilities, read-only filesystem
 - **Bearer Token Auth** - API authentication for all endpoints
+- **RLS Policies** - Supabase row-level security for user-scoped tables
 
 ## External Services & APIs
 
