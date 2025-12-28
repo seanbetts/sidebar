@@ -209,8 +209,8 @@ import { env } from '$env/dynamic/private';
 
 export function createSupabaseServerClient(cookies: any) {
   return createServerClient(
-    env.PUBLIC_SUPABASE_URL,
-    env.PUBLIC_SUPABASE_ANON_KEY,
+    env.SUPABASE_URL,
+    env.SUPABASE_ANON_KEY,
     {
       cookies: {
         get: (key: string) => cookies.get(key),
@@ -228,15 +228,26 @@ export function createSupabaseServerClient(cookies: any) {
 
 **New file**: `/Users/sean/Coding/sideBar/frontend/src/lib/supabase.ts`
 
-Browser-side client:
+Browser-side client (initialized from load data):
 ```typescript
 import { createBrowserClient } from '@supabase/ssr';
-import { env } from '$env/dynamic/public';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export const supabase = createBrowserClient(
-  env.PUBLIC_SUPABASE_URL,
-  env.PUBLIC_SUPABASE_ANON_KEY
-);
+let supabaseClient: SupabaseClient | null = null;
+
+export function initSupabaseClient(url: string, anonKey: string): SupabaseClient {
+  if (!supabaseClient) {
+    supabaseClient = createBrowserClient(url, anonKey);
+  }
+  return supabaseClient;
+}
+
+export function getSupabaseClient(): SupabaseClient {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not initialized');
+  }
+  return supabaseClient;
+}
 ```
 
 #### 2.3 Session Hooks
@@ -292,6 +303,8 @@ import type { LayoutServerLoad } from './$types';
 export const load: LayoutServerLoad = async ({ locals }) => {
   return {
     maintenanceMode: env.MAINTENANCE_MODE === 'true',
+    supabaseUrl: env.SUPABASE_URL,
+    supabaseAnonKey: env.SUPABASE_ANON_KEY,
     session: locals.session,
     user: locals.user
   };
@@ -309,7 +322,7 @@ Initialize auth store:
   let { data } = $props();
 
   onMount(() => {
-    initAuth(data.session, data.user);
+    initAuth(data.session, data.user, data.supabaseUrl, data.supabaseAnonKey);
   });
 </script>
 
@@ -333,12 +346,18 @@ Reactive auth state:
 ```typescript
 import { writable } from 'svelte/store';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '$lib/supabase';
+import { initSupabaseClient } from '$lib/supabase';
 
 export const session = writable<Session | null>(null);
 export const user = writable<User | null>(null);
 
-export function initAuth(initialSession: Session | null, initialUser: User | null) {
+export function initAuth(
+  initialSession: Session | null,
+  initialUser: User | null,
+  supabaseUrl: string,
+  supabaseAnonKey: string
+) {
+  const supabase = initSupabaseClient(supabaseUrl, supabaseAnonKey);
   session.set(initialSession);
   user.set(initialUser);
 
@@ -586,11 +605,11 @@ SUPABASE_POSTGRES_PSWD=[password]
 # ... rest unchanged
 ```
 
-**Frontend** (`/Users/sean/Coding/sideBar/frontend/.env`):
+**Frontend** (`/Users/sean/Coding/sideBar/.env`):
 ```bash
-# Public vars (NEW)
-PUBLIC_SUPABASE_URL=https://[project_id].supabase.co
-PUBLIC_SUPABASE_ANON_KEY=eyJ...
+# Supabase Auth (shared with frontend via load)
+SUPABASE_URL=https://[project_id].supabase.co
+SUPABASE_ANON_KEY=eyJ...
 
 # Existing vars
 API_URL=http://skills-api:8001
@@ -599,7 +618,7 @@ MAINTENANCE_MODE=false
 
 **Get keys from**:
 - Supabase Dashboard → Project Settings → API
-- `anon` key = SUPABASE_ANON_KEY / PUBLIC_SUPABASE_ANON_KEY
+- `anon` key = SUPABASE_ANON_KEY
 - `service_role` key = SUPABASE_SERVICE_ROLE_KEY
 
 ### Phase 5: Create Admin User

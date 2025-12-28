@@ -10,9 +10,12 @@
 	let { data } = $props();
 
 	onMount(() => {
-		if (data.session || data.user) {
-			initAuth(data.session, data.user);
-		}
+		initAuth(
+			data.session,
+			data.user,
+			data.supabaseUrl,
+			data.supabaseAnonKey
+		);
 	});
 </script>
 

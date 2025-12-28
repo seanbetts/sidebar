@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/private';
 import type { Cookies } from '@sveltejs/kit';
 
 export function createSupabaseServerClient(cookies: Cookies) {
-  return createServerClient(env.PUBLIC_SUPABASE_URL, env.PUBLIC_SUPABASE_ANON_KEY, {
+  return createServerClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
     cookies: {
       get: (key: string) => cookies.get(key),
       set: (key: string, value: string, options: CookieOptions) => {
