@@ -5,7 +5,11 @@ type NoteNode = { pinned?: boolean } | null;
 
 type EditorActionsContext = {
   editorStore: Writable<any>;
-  filesStore: { load: (tree: string) => Promise<void>; trees: Record<string, any> };
+  filesStore: {
+    load: (tree: string, force?: boolean) => Promise<void>;
+    trees: Record<string, any>;
+    removeNode?: (basePath: string, path: string) => void;
+  };
   getCurrentNoteId: () => string | null;
   getDisplayTitle: () => string;
   getNoteNode: () => NoteNode;
@@ -202,7 +206,8 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to delete note');
       return;
     }
-    await ctx.filesStore.load('notes');
+    ctx.filesStore.removeNode?.('notes', currentNoteId);
+    await ctx.filesStore.load('notes', true);
     ctx.editorStore.reset();
     ctx.setIsDeleteDialogOpen(false);
   };

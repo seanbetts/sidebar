@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, load_only
 
 from api.models.note import Note
 from api.services.notes_service import NotesService, NoteNotFoundError
+from sqlalchemy.orm.exc import ObjectDeletedError
 
 
 class NotesWorkspaceService:
@@ -251,7 +252,15 @@ class NotesWorkspaceService:
             resolved_folder = "" if folder_path == "." else folder_path
 
         created = NotesService.create_note(db, user_id, content, folder=resolved_folder)
-        return {"success": True, "modified": created.updated_at.timestamp(), "id": str(created.id)}
+        try:
+            note_id = getattr(created, "_snapshot_id", created.id)
+            updated_at = getattr(created, "_snapshot_updated_at", created.updated_at)
+            modified = updated_at.timestamp() if updated_at else None
+        except ObjectDeletedError:
+            note_id = getattr(created, "_snapshot_id", None)
+            updated_at = getattr(created, "_snapshot_updated_at", None)
+            modified = updated_at.timestamp() if updated_at else None
+        return {"success": True, "modified": modified, "id": str(note_id)}
 
     @staticmethod
     def update_note(db: Session, user_id: str, note_id: str, content: str) -> dict:

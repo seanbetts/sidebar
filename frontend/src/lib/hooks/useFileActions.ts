@@ -275,10 +275,10 @@ export function useFileActions(ctx: FileActionsContext) {
         ctx.editorStore.reset();
       }
 
+      ctx.filesStore.removeNode(ctx.getBasePath(), node.path);
       if (ctx.getBasePath() !== 'notes') {
-        ctx.filesStore.removeNode(ctx.getBasePath(), node.path);
+        await ctx.filesStore.load(ctx.getBasePath(), true);
       }
-      await ctx.filesStore.load(ctx.getBasePath());
       ctx.setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error('Failed to delete:', error);
