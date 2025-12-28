@@ -21,6 +21,8 @@ router = APIRouter(prefix="/memories", tags=["memories"])
 
 
 class MemoryResponse(BaseModel):
+    """Response payload for a memory record."""
+
     id: str
     path: str
     content: str
@@ -29,11 +31,15 @@ class MemoryResponse(BaseModel):
 
 
 class MemoryCreate(BaseModel):
+    """Request payload for creating a memory record."""
+
     path: str
     content: str
 
 
 class MemoryUpdate(BaseModel):
+    """Request payload for updating a memory record."""
+
     path: Optional[str] = None
     content: Optional[str] = None
 
@@ -44,6 +50,16 @@ async def list_memories(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """List all memories for the current user.
+
+    Args:
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        List of memory records for the user.
+    """
     memories = (
         db.query(UserMemory)
         .filter(UserMemory.user_id == user_id)
@@ -69,6 +85,20 @@ async def get_memory(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Fetch a single memory by ID.
+
+    Args:
+        memory_id: Memory UUID.
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Memory record if found.
+
+    Raises:
+        HTTPException: 404 if memory is not found.
+    """
     memory = (
         db.query(UserMemory)
         .filter(UserMemory.user_id == user_id, UserMemory.id == memory_id)
@@ -92,6 +122,20 @@ async def create_memory(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Create a new memory record.
+
+    Args:
+        payload: Memory create payload.
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Created memory record.
+
+    Raises:
+        HTTPException: 400 for invalid path/content, 409 if duplicate exists.
+    """
     try:
         normalized_path = normalize_path(payload.path)
         validate_content(payload.content)
@@ -133,6 +177,22 @@ async def update_memory(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Update a memory record by ID.
+
+    Args:
+        memory_id: Memory UUID.
+        payload: Memory update payload.
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Updated memory record.
+
+    Raises:
+        HTTPException: 400 for invalid path/content, 404 if not found,
+            409 if path conflicts.
+    """
     memory = (
         db.query(UserMemory)
         .filter(UserMemory.user_id == user_id, UserMemory.id == memory_id)
@@ -182,6 +242,20 @@ async def delete_memory(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
+    """Delete a memory record by ID.
+
+    Args:
+        memory_id: Memory UUID.
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 404 if memory is not found.
+    """
     memory = (
         db.query(UserMemory)
         .filter(UserMemory.user_id == user_id, UserMemory.id == memory_id)
