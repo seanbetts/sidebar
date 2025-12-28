@@ -4,7 +4,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 **Date**: 2025-12-28 (Refreshed)
 **Test Files**: 46 (backend)
-**Test Count**: 191 (latest local run may differ; re-run to confirm)
+**Test Count**: 195 (latest local run may differ; re-run to confirm)
 
 ---
 
