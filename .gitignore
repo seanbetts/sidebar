@@ -44,6 +44,8 @@ uv.lock
 .pytest_cache/
 .coverage
 htmlcov/
+coverage/
+frontend/coverage/
 
 # Logs
 *.log
