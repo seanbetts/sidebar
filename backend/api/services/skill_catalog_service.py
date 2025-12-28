@@ -14,6 +14,14 @@ class SkillCatalogService:
 
     @staticmethod
     def list_skills(skills_dir: Path) -> List[Dict[str, str]]:
+        """List available skills with display metadata.
+
+        Args:
+            skills_dir: Root directory containing skills.
+
+        Returns:
+            List of skill metadata dicts.
+        """
         skills: List[Dict[str, str]] = []
         category_map = SkillCatalogService._category_map()
 
@@ -86,6 +94,14 @@ class SkillCatalogService:
 
     @staticmethod
     def _read_frontmatter(skill_md: Path) -> Dict[str, str]:
+        """Read YAML frontmatter from a SKILL.md file.
+
+        Args:
+            skill_md: Path to SKILL.md.
+
+        Returns:
+            Parsed frontmatter dict or empty dict.
+        """
         text = skill_md.read_text(encoding="utf-8")
         if not text.startswith("---"):
             return {}
@@ -106,6 +122,7 @@ class SkillCatalogService:
 
     @staticmethod
     def _category_map() -> Dict[str, str]:
+        """Return the static skill category map."""
         return {
             "fs": "Documents",
             "notes": "Documents",
