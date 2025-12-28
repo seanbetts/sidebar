@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { supabase } from '$lib/supabase';
+  import { getSupabaseClient } from '$lib/supabase';
   import { Button } from '$lib/components/ui/button';
 
   let email = '';
@@ -15,6 +15,7 @@
     loading = true;
     error = '';
 
+    const supabase = getSupabaseClient();
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password

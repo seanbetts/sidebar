@@ -1,11 +1,17 @@
 import { writable } from 'svelte/store';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '$lib/supabase';
+import { initSupabaseClient } from '$lib/supabase';
 
 export const session = writable<Session | null>(null);
 export const user = writable<User | null>(null);
 
-export function initAuth(initialSession: Session | null, initialUser: User | null) {
+export function initAuth(
+  initialSession: Session | null,
+  initialUser: User | null,
+  supabaseUrl: string,
+  supabaseAnonKey: string
+) {
+  const supabase = initSupabaseClient(supabaseUrl, supabaseAnonKey);
   session.set(initialSession);
   user.set(initialUser);
 

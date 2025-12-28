@@ -1,7 +1,18 @@
 import { createBrowserClient } from '@supabase/ssr';
-import { env } from '$env/dynamic/public';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export const supabase = createBrowserClient(
-  env.PUBLIC_SUPABASE_URL,
-  env.PUBLIC_SUPABASE_ANON_KEY
-);
+let supabaseClient: SupabaseClient | null = null;
+
+export function initSupabaseClient(url: string, anonKey: string): SupabaseClient {
+  if (!supabaseClient) {
+    supabaseClient = createBrowserClient(url, anonKey);
+  }
+  return supabaseClient;
+}
+
+export function getSupabaseClient(): SupabaseClient {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not initialized');
+  }
+  return supabaseClient;
+}
