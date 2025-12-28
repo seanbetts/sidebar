@@ -38,4 +38,5 @@ class UserSettings(Base):
     )
 
     def __repr__(self) -> str:
+        """Return a readable representation for debugging."""
         return f"<UserSettings(user_id={self.user_id})>"

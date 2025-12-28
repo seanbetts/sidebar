@@ -9,8 +9,7 @@ DEFAULT_USER_ID = "81326b53-b7eb-42e2-b645-0c03cb5d5dd4"
 def get_current_user_id(
     x_user_id: Annotated[str | None, Header()] = None
 ) -> str:
-    """
-    Get current user ID from X-User-ID header.
+    """Get current user ID from X-User-ID header.
 
     For now, this is a simple header-based auth.
     In production, this would validate JWT tokens and extract user_id.

@@ -11,8 +11,7 @@ from api.security.audit_logger import AuditLogger
 
 
 class SkillExecutor:
-    """
-    Execute skill scripts with security hardening and resource limits.
+    """Execute skill scripts with security hardening and resource limits.
 
     Security measures:
     - Validates script paths to prevent path traversal
@@ -29,6 +28,12 @@ class SkillExecutor:
     """
 
     def __init__(self, skills_dir: Path, workspace_base: Path):
+        """Initialize executor with skill and workspace roots.
+
+        Args:
+            skills_dir: Base directory for installed skills.
+            workspace_base: Base workspace path for tool executions.
+        """
         self.skills_dir = skills_dir.resolve()
         self.workspace_base = workspace_base.resolve()
 

@@ -34,4 +34,5 @@ class UserMemory(Base):
     )
 
     def __repr__(self) -> str:
+        """Return a readable representation for debugging."""
         return f"<UserMemory(user_id={self.user_id}, path={self.path})>"

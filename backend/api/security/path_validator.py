@@ -5,15 +5,22 @@ from fastapi import HTTPException, status
 
 
 class PathValidator:
-    """
-    Centralized path validation to prevent:
-    - Path traversal (..)
-    - Symlink escapes
-    - Access outside workspace
-    - Writes to non-writable paths
+    """Centralized path validation for workspace safety.
+
+    Enforces:
+    - Path traversal rejection (..)
+    - Symlink escapes rejection
+    - Access outside workspace rejection
+    - Writes restricted to allowlisted paths
     """
 
     def __init__(self, workspace_base: Path, writable_paths: list[str]):
+        """Initialize a path validator.
+
+        Args:
+            workspace_base: Base workspace path to jail accesses.
+            writable_paths: Allowlisted writable paths.
+        """
         self.workspace_base = workspace_base.resolve()
         self.writable_paths = [Path(p).resolve() for p in writable_paths]
 
