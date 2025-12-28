@@ -9,6 +9,19 @@ from api.models.user_memory import UserMemory
 
 
 def format_file_view(path: str, content: str, view_range: Any) -> str:
+    """Format file content with line numbers.
+
+    Args:
+        path: Memory file path.
+        content: File content.
+        view_range: Optional [start, end] line range.
+
+    Returns:
+        Formatted string with line numbers.
+
+    Raises:
+        ValueError: If the file exceeds the line limit or view_range is invalid.
+    """
     lines = content.splitlines()
     if len(lines) > LINE_LIMIT:
         raise ValueError(
@@ -39,6 +52,15 @@ def format_file_view(path: str, content: str, view_range: Any) -> str:
 
 
 def format_directory_listing(path: str, memories: list[UserMemory]) -> str:
+    """Format a directory listing for memory paths.
+
+    Args:
+        path: Base directory path.
+        memories: Memory records to include.
+
+    Returns:
+        Formatted directory listing string.
+    """
     visible_memories = [
         memory
         for memory in memories
@@ -74,6 +96,15 @@ def format_directory_listing(path: str, memories: list[UserMemory]) -> str:
 
 
 def directory_size(path: str, memories: list[UserMemory]) -> int:
+    """Compute the total size for a directory path.
+
+    Args:
+        path: Directory path.
+        memories: Memory records to include.
+
+    Returns:
+        Total size in bytes.
+    """
     if path == "/memories":
         prefix = "/memories/"
     else:
@@ -86,10 +117,12 @@ def directory_size(path: str, memories: list[UserMemory]) -> int:
 
 
 def content_size(content: str) -> int:
+    """Return the UTF-8 byte size of content."""
     return len(content.encode("utf-8"))
 
 
 def format_size(size: int) -> str:
+    """Format a byte size using human-readable units."""
     if size < 1024:
         return f"{size}B"
     units = ["K", "M", "G", "T"]
