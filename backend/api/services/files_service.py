@@ -22,6 +22,21 @@ class FilesService:
         etag: Optional[str] = None,
         category: Optional[str] = None,
     ) -> FileObject:
+        """Create or update a file metadata record.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            path: Logical file path.
+            bucket_key: Storage bucket key.
+            size: File size in bytes.
+            content_type: Optional MIME type.
+            etag: Optional storage etag.
+            category: Optional category label.
+
+        Returns:
+            Upserted FileObject record.
+        """
         now = datetime.now(timezone.utc)
         record = (
             db.query(FileObject)
@@ -60,6 +75,16 @@ class FilesService:
 
     @staticmethod
     def get_by_path(db: Session, user_id: str, path: str) -> Optional[FileObject]:
+        """Fetch a non-deleted file record by path.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            path: Logical file path.
+
+        Returns:
+            FileObject if found, otherwise None.
+        """
         return (
             db.query(FileObject)
             .filter(
@@ -72,6 +97,16 @@ class FilesService:
 
     @staticmethod
     def get_any_by_path(db: Session, user_id: str, path: str) -> Optional[FileObject]:
+        """Fetch a file record by path, including deleted.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            path: Logical file path.
+
+        Returns:
+            FileObject if found, otherwise None.
+        """
         return (
             db.query(FileObject)
             .filter(
@@ -83,6 +118,16 @@ class FilesService:
 
     @staticmethod
     def delete_any_by_path(db: Session, user_id: str, path: str) -> bool:
+        """Hard delete a file record by path.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            path: Logical file path.
+
+        Returns:
+            True if a record was deleted, False otherwise.
+        """
         deleted = (
             db.query(FileObject)
             .filter(
@@ -98,6 +143,16 @@ class FilesService:
 
     @staticmethod
     def list_by_prefix(db: Session, user_id: str, prefix: str) -> list[FileObject]:
+        """List files under a prefix.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            prefix: Prefix path to list under.
+
+        Returns:
+            Sorted list of FileObject records.
+        """
         prefix_norm = prefix.strip("/")
         if prefix_norm:
             match = f"{prefix_norm}%"
@@ -122,6 +177,18 @@ class FilesService:
         *,
         limit: int = 50,
     ) -> list[FileObject]:
+        """Search files by name substring.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            query: Substring to match.
+            base_prefix: Optional prefix filter.
+            limit: Max results to return. Defaults to 50.
+
+        Returns:
+            List of matching FileObject records.
+        """
         prefix_norm = base_prefix.strip("/")
         like_pattern = f"%{query}%"
         q = (
@@ -140,6 +207,16 @@ class FilesService:
 
     @staticmethod
     def mark_deleted(db: Session, user_id: str, path: str) -> bool:
+        """Soft delete a file record by path.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            path: Logical file path.
+
+        Returns:
+            True if the record was marked deleted, False otherwise.
+        """
         record = (
             db.query(FileObject)
             .filter(
@@ -158,6 +235,17 @@ class FilesService:
 
     @staticmethod
     def move_path(db: Session, user_id: str, old_path: str, new_path: str) -> bool:
+        """Update a file record's path.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            old_path: Existing file path.
+            new_path: New file path.
+
+        Returns:
+            True if updated, False if not found.
+        """
         record = (
             db.query(FileObject)
             .filter(
