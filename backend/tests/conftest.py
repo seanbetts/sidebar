@@ -296,7 +296,7 @@ def test_db(test_db_engine):
         db.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def test_client(test_db_engine):
     """
     Create a FastAPI test client.
