@@ -9,10 +9,20 @@ class FileTreeService:
 
     @staticmethod
     def normalize_base_path(base_path: str) -> str:
+        """Normalize a base path by stripping slashes."""
         return (base_path or "").strip("/")
 
     @staticmethod
     def full_path(base_path: str, relative_path: str) -> str:
+        """Build a full path from base and relative paths.
+
+        Args:
+            base_path: Base folder path.
+            relative_path: Relative file or folder path.
+
+        Returns:
+            Full path string.
+        """
         base = FileTreeService.normalize_base_path(base_path)
         relative = (relative_path or "").strip("/")
         if not base:
@@ -21,6 +31,15 @@ class FileTreeService:
 
     @staticmethod
     def relative_path(base_path: str, full_path: str) -> str:
+        """Return a relative path from a full path and base.
+
+        Args:
+            base_path: Base folder path.
+            full_path: Full path including base.
+
+        Returns:
+            Relative path string.
+        """
         base = FileTreeService.normalize_base_path(base_path)
         path = (full_path or "").strip("/")
         if not base:
@@ -33,10 +52,28 @@ class FileTreeService:
 
     @staticmethod
     def bucket_key(user_id: str, full_path: str) -> str:
+        """Build a storage bucket key for a user and path.
+
+        Args:
+            user_id: Current user ID.
+            full_path: Full path to store.
+
+        Returns:
+            Bucket key string.
+        """
         return f"{user_id}/{full_path.strip('/')}"
 
     @staticmethod
     def build_tree(records: list, base_path: str) -> Dict[str, Any]:
+        """Build a directory tree from file records.
+
+        Args:
+            records: File records to include.
+            base_path: Base folder path.
+
+        Returns:
+            Tree dict suitable for UI rendering.
+        """
         root = {
             "name": base_path or "files",
             "path": "/",
