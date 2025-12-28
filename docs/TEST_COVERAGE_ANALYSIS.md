@@ -3,8 +3,8 @@
 Current coverage snapshot and gaps for the sideBar backend.
 
 **Date**: 2025-12-28 (Refreshed)
-**Test Files**: 46 (backend)
-**Test Count**: 195 (latest local run may differ; re-run to confirm)
+**Test Files**: 48 (backend)
+**Test Count**: 205 (latest local run may differ; re-run to confirm)
 
 ---
 
@@ -28,7 +28,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 ### Current Gaps
 - Router-level integration coverage remains minimal (beyond basic validation).
-- Some storage integration paths are untested.
+- Some storage integration paths are untested (e.g., error handling).
 
 ### ✅ Storage + Workspace (PARTIAL)
 
@@ -39,6 +39,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 | File tree service | `tests/api/test_file_tree_service.py` | ✅ |
 | Files workspace service | `tests/api/test_files_workspace_service.py` | ✅ |
 | Notes workspace service | `tests/api/test_notes_workspace_service.py` | ✅ |
+| Local storage backend | `tests/api/test_local_storage.py` | ✅ |
 
 ---
 
@@ -127,7 +128,7 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 | Component | Location | Priority | Notes |
 |-----------|----------|----------|-------|
-| Memory operations | `api/services/memory_tools/*` | 🟡 MEDIUM | View/create/insert/rename/delete |
+| Memory operations | `api/services/memory_tools/*` | ✅ | `tests/api/test_memory_tools.py` |
 
 ### Routers (Integration)
 
@@ -172,7 +173,7 @@ Async marker registered in `backend/pyproject.toml`. Async tests collect and run
 ## Recommended Test Plan
 
 ### Phase 1: Critical Path
-1. Add deeper router integration coverage (success paths for more endpoints).
+1. Add deeper storage error handling and remaining router integration coverage.
 
 ### Phase 2: Storage + Workspace
 1. Add tests for R2 storage service.
