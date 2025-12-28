@@ -67,19 +67,6 @@
             <span>{section.label}</span>
           </button>
         {/each}
-        <div class="settings-nav-footer">
-          <form method="post" action="/auth/logout">
-            <Button
-              type="submit"
-              variant="outline"
-              class="settings-logout"
-              aria-label="Sign out"
-            >
-              <LogOut size={16} />
-              <span>Sign out</span>
-            </Button>
-          </form>
-        </div>
       </aside>
       <div class="settings-content">
         {#if isLoadingSettings}
@@ -140,7 +127,18 @@
         {/if}
       </div>
     </div>
-    <AlertDialog.Footer>
+    <AlertDialog.Footer class="settings-footer">
+      <form method="post" action="/auth/logout">
+        <Button
+          type="submit"
+          variant="outline"
+          class="settings-logout"
+          aria-label="Sign out"
+        >
+          <LogOut size={16} />
+          <span>Sign out</span>
+        </Button>
+      </form>
       <AlertDialog.Action onclick={() => (open = false)}>Close</AlertDialog.Action>
     </AlertDialog.Footer>
   </AlertDialog.Content>
@@ -163,16 +161,22 @@
     height: 100%;
   }
 
-  .settings-nav-footer {
-    margin-top: auto;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border);
-  }
-
   .settings-logout {
-    width: 100%;
     justify-content: flex-start;
     gap: 0.5rem;
+  }
+
+  :global([data-slot='alert-dialog-footer'].settings-footer) {
+    width: 100%;
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between !important;
+    gap: 0.75rem;
+  }
+
+  :global([data-slot='alert-dialog-footer'].settings-footer form) {
+    margin: 0;
   }
 
   .settings-nav-item {
@@ -440,6 +444,15 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    transform-origin: bottom left;
+  }
+
+  :global([data-slot='alert-dialog-content'].settings-dialog-container[data-state='open']) {
+    animation: settings-dialog-in 0.2s ease-out !important;
+  }
+
+  :global([data-slot='alert-dialog-content'].settings-dialog-container[data-state='closed']) {
+    animation: settings-dialog-out 0.15s ease-in !important;
   }
 
   .settings-header {
@@ -495,6 +508,28 @@
     }
     to {
       transform: rotate(360deg);
+    }
+  }
+
+  @keyframes settings-dialog-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes settings-dialog-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.97);
     }
   }
 </style>
