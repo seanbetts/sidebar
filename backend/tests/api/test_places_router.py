@@ -10,3 +10,10 @@ def test_places_autocomplete_requires_api_key(test_client, monkeypatch):
     response = test_client.get("/api/places/autocomplete", params={"input": "Lo"}, headers=_auth_headers())
     assert response.status_code == 503
     assert response.json()["detail"] == "Google Places API key not configured"
+
+
+def test_places_autocomplete_short_input_returns_empty(test_client, monkeypatch):
+    monkeypatch.setattr(settings, "google_places_api_key", "test-key")
+    response = test_client.get("/api/places/autocomplete", params={"input": "A"}, headers=_auth_headers())
+    assert response.status_code == 200
+    assert response.json()["predictions"] == []
