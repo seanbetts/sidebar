@@ -1,0 +1,110 @@
+import pytest
+from types import SimpleNamespace
+
+from api.services.claude_streaming import stream_with_tools
+
+
+class FakeStream:
+    def __init__(self, events):
+        self._events = events
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    def __aiter__(self):
+        async def _gen():
+            for event in self._events:
+                yield event
+        return _gen()
+
+
+class FakeMessages:
+    def __init__(self, events):
+        self._events = events
+        self.called_args = None
+
+    def stream(self, **kwargs):
+        self.called_args = kwargs
+        return FakeStream(self._events)
+
+
+class FakeClient:
+    def __init__(self, events):
+        self.messages = FakeMessages(events)
+
+
+class DummyToolMapper:
+    def __init__(self):
+        self.calls = []
+
+    def get_claude_tools(self, allowed_skills=None):
+        return []
+
+    def get_tool_display_name(self, name):
+        return "Test Tool"
+
+    async def execute_tool(self, name, input, allowed_skills=None, context=None):
+        self.calls.append((name, input))
+        return {"success": True, "data": {"id": "note-1"}}
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_tokens():
+    events = [
+        SimpleNamespace(type="content_block_start", content_block=SimpleNamespace(type="text")),
+        SimpleNamespace(type="content_block_delta", delta=SimpleNamespace(type="text_delta", text="Hello")),
+        SimpleNamespace(type="message_stop"),
+    ]
+    client = FakeClient(events)
+    tool_mapper = DummyToolMapper()
+
+    output = []
+    async for event in stream_with_tools(
+        client=client,
+        tool_mapper=tool_mapper,
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    tokens = [item for item in output if item.get("type") == "token"]
+    assert tokens == [{"type": "token", "content": "Hello"}]
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_handles_tool_use():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(type="tool_use", id="tool-1", name="test_tool"),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="input_json_delta", partial_json='{"foo": "bar"}'),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+    client = FakeClient(events)
+    tool_mapper = DummyToolMapper()
+
+    output = []
+    async for event in stream_with_tools(
+        client=client,
+        tool_mapper=tool_mapper,
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    event_types = [item["type"] for item in output]
+    assert "tool_call" in event_types
+    assert "tool_result" in event_types
+    assert tool_mapper.calls
+    assert tool_mapper.calls[-1] == ("test_tool", {"foo": "bar"})

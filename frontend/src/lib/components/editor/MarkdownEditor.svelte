@@ -29,6 +29,8 @@
   let folderOptions: { label: string; value: string; depth: number }[] = [];
   let copyTimeout: ReturnType<typeof setTimeout> | null = null;
   let isCopied = false;
+  let savedIndicatorTimeout: ReturnType<typeof setTimeout> | null = null;
+  let showSavedIndicator = true;
 
   $: isDirty = $editorStore.isDirty;
   $: isSaving = $editorStore.isSaving;
@@ -114,6 +116,7 @@
     // Cleanup all timers and subscriptions
     clearTimeout(saveTimeout);
     if (copyTimeout) clearTimeout(copyTimeout);
+    if (savedIndicatorTimeout) clearTimeout(savedIndicatorTimeout);
     if (destroyEditor) destroyEditor();
   });
 
@@ -126,8 +129,8 @@
     }
   }
 
-  function formatLastSaved(date: Date | null): string {
-    if (!date) return '';
+  function formatLastSaved(date: Date | null, show: boolean): string {
+    if (!date || !show) return '';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
@@ -137,7 +140,40 @@
     return date.toLocaleTimeString();
   }
 
-  $: lastSavedLabel = formatLastSaved(lastSaved);
+  // Track the timestamp (not the Date object) to detect actual changes
+  let hideScheduledForTimestamp: number = 0;
+
+  $: {
+    const currentTimestamp = lastSaved?.getTime() || 0;
+
+    // Only trigger auto-hide when we have a new save timestamp
+    if (currentTimestamp > 0 && currentTimestamp !== hideScheduledForTimestamp && !isDirty && !isSaving) {
+      hideScheduledForTimestamp = currentTimestamp;
+      showSavedIndicator = true;
+
+      // Clear any existing timeout
+      if (savedIndicatorTimeout) {
+        clearTimeout(savedIndicatorTimeout);
+        savedIndicatorTimeout = null;
+      }
+
+      // Schedule auto-hide after 2 seconds
+      savedIndicatorTimeout = setTimeout(() => {
+        showSavedIndicator = false;
+      }, 2000);
+    }
+
+    // If user starts editing, hide the saved indicator immediately
+    if (isDirty) {
+      showSavedIndicator = false;
+      if (savedIndicatorTimeout) {
+        clearTimeout(savedIndicatorTimeout);
+        savedIndicatorTimeout = null;
+      }
+    }
+  }
+
+  $: lastSavedLabel = formatLastSaved(lastSaved, showSavedIndicator);
 </script>
 
 <AlertDialog.Root bind:open={isLeaveDialogOpen}>

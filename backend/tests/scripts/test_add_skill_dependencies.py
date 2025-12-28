@@ -248,10 +248,10 @@ class TestGetSkillDirectory:
         """Test resolving skill name to directory path."""
         monkeypatch.chdir(fixtures_dir.parent.parent)
 
-        skill_dir = get_skill_directory("skills/list-skills")
+        skill_dir = get_skill_directory(str(fixtures_dir / "skills" / "valid-skill"))
 
         assert skill_dir.exists()
-        assert skill_dir.name == "list-skills"
+        assert skill_dir.name == "valid-skill"
 
     def test_skill_not_found(self):
         """Test error handling when skill directory doesn't exist."""
