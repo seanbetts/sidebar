@@ -7,6 +7,7 @@
 	import { websitesStore } from '$lib/stores/websites';
 
 	let sidebarRef: HTMLElement;
+	let pageContainerRef: HTMLElement;
 
 	$: isChatFocused = $layoutStore.mode === 'chat-focused';
 	$: sidebarWidth = isChatFocused
@@ -14,15 +15,17 @@
 		: $layoutStore.chatSidebarWidth;
 
 	function handleResize(width: number) {
+		const containerWidth = pageContainerRef?.getBoundingClientRect().width;
+		const maxWidth = containerWidth ? Math.floor(containerWidth / 2) : undefined;
 		if (isChatFocused) {
-			layoutStore.setWorkspaceSidebarWidth(width);
+			layoutStore.setWorkspaceSidebarWidth(width, maxWidth);
 		} else {
-			layoutStore.setChatSidebarWidth(width);
+			layoutStore.setChatSidebarWidth(width, maxWidth);
 		}
 	}
 </script>
 
-<div class="page-container" class:chat-focused={isChatFocused}>
+<div class="page-container" class:chat-focused={isChatFocused} bind:this={pageContainerRef}>
 	<div class="panel main-panel">
 		{#if isChatFocused}
 			<ChatSidebar />
@@ -76,6 +79,7 @@
 		flex-shrink: 0;
 		border-left: 1px solid var(--color-border);
 		transition: width 0.15s ease;
+		background-color: var(--color-background);
 	}
 
 	@media (max-width: 900px) {

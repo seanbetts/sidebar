@@ -296,9 +296,9 @@
   <!-- Empty state - shown when no note selected -->
   {#if !currentNoteName}
     <div class="empty-state">
-      <FileText size={64} />
-      <h2>No note selected</h2>
-      <p>Select a note from the sidebar to start editing</p>
+      <img class="welcome-logo" src="/images/logo.svg" alt="sideBar" />
+      <h2>Welcome to sideBar</h2>
+      <p>Select a note or send a message to get started</p>
     </div>
   {/if}
 </div>
@@ -338,15 +338,25 @@
     text-align: center;
   }
 
+  .welcome-logo {
+    height: 4rem;
+    width: auto;
+    margin: 0 auto 0.75rem;
+    opacity: 0.7;
+  }
+
+  :global(.dark) .welcome-logo {
+    filter: invert(1);
+  }
+
   .empty-state h2 {
-    margin-top: 1rem;
     margin-bottom: 0.5rem;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 600;
   }
 
   .empty-state p {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   /* TipTap prose styling */

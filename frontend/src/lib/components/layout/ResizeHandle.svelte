@@ -78,21 +78,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
+    background: var(--color-background);
     transition: background-color 0.15s ease;
   }
 
   .resize-handle::after {
     content: '';
     width: 2px;
-    height: 40px;
+    height: 44px;
     background-color: var(--color-border);
     border-radius: 1px;
     transition: background-color 0.15s ease;
   }
 
   .resize-handle:hover {
-    background-color: var(--color-accent);
+    background-color: var(--color-card);
   }
 
   .resize-handle:hover::after,
