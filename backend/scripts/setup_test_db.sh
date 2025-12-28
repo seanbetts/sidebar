@@ -22,14 +22,30 @@ if ! docker compose -f $COMPOSE_FILE ps $SERVICE_NAME | grep -q "Up"; then
     exit 1
 fi
 
+# Wait for PostgreSQL to accept connections
+echo "Waiting for PostgreSQL to be ready..."
+ready=false
+for i in {1..30}; do
+    if docker exec $CONTAINER_NAME pg_isready -U $DB_USER -d postgres >/dev/null 2>&1; then
+        ready=true
+        break
+    fi
+    sleep 1
+done
+
+if [ "$ready" != "true" ]; then
+    echo "ERROR: PostgreSQL did not become ready in time"
+    exit 1
+fi
+
 # Drop test database if it exists (clean slate)
 echo "Dropping test database if it exists..."
-docker exec $CONTAINER_NAME psql -U $DB_USER -d postgres \
+docker exec $CONTAINER_NAME psql -h localhost -U $DB_USER -d postgres \
     -c "DROP DATABASE IF EXISTS $DB_NAME;" 2>/dev/null || true
 
 # Create test database
 echo "Creating test database: $DB_NAME"
-docker exec $CONTAINER_NAME psql -U $DB_USER -d postgres \
+docker exec $CONTAINER_NAME psql -h localhost -U $DB_USER -d postgres \
     -c "CREATE DATABASE $DB_NAME;"
 
 echo "✓ Test database created successfully!"
