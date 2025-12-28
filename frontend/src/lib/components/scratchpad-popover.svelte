@@ -10,8 +10,12 @@
 	import { Pencil } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
-
-	const scratchpadHeading = '# ✏️ Scratchpad';
+	import ScratchpadHeader from '$lib/components/scratchpad/ScratchpadHeader.svelte';
+	import {
+		removeEmptyTaskItems,
+		stripHeading,
+		withHeading
+	} from '$lib/utils/scratchpad';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -29,22 +33,6 @@
 	let isClosing = false;
 	let hasUserEdits = false;
 
-	function stripHeading(markdown: string): string {
-		const trimmed = markdown.trim();
-		if (!trimmed.startsWith(scratchpadHeading)) return markdown;
-		const withoutHeading = trimmed.slice(scratchpadHeading.length).trimStart();
-		return withoutHeading.replace(/^\n+/, '');
-	}
-
-	function withHeading(markdown: string): string {
-		const body = markdown.trim();
-		if (!body) return `${scratchpadHeading}\n`;
-		return `${scratchpadHeading}\n\n${body}\n`;
-	}
-
-	function removeEmptyTaskItems(markdown: string): string {
-		return markdown.replace(/^\s*[-*]\s+\[ \]\s*$/gm, '').trim();
-	}
 
 	async function ensureScratchpadExists() {
 		const response = await fetch('/api/scratchpad');
@@ -209,16 +197,7 @@
 		<Pencil size={18} />
 	</Popover.Trigger>
 	<Popover.Content class="scratchpad-popover w-[840px] max-w-[95vw]" align="end" sideOffset={8}>
-		<div class="scratchpad-header">
-			<h2>✏️ Scratchpad</h2>
-			{#if isSaving}
-				<span class="status">Saving...</span>
-			{:else if saveError}
-				<span class="status error">{saveError}</span>
-			{:else}
-				<span class="status">Auto-save</span>
-			{/if}
-		</div>
+		<ScratchpadHeader {isSaving} {saveError} />
 		<div class="scratchpad-body">
 			<div bind:this={editorElement} class="scratchpad-editor"></div>
 			{#if isLoading}
@@ -239,30 +218,6 @@
 		gap: 0.75rem;
 	}
 
-	.scratchpad-header {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 1rem;
-		border-bottom: 1px solid var(--color-border);
-		padding-bottom: 0.5rem;
-	}
-
-	.scratchpad-header h2 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-foreground);
-	}
-
-	.status {
-		font-size: 0.75rem;
-		color: var(--color-muted-foreground);
-	}
-
-	.status.error {
-		color: var(--color-destructive);
-	}
 
 	.scratchpad-body {
 		flex: 1;
