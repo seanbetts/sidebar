@@ -22,6 +22,16 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 def _build_history(messages, user_message_id, latest_message):
+    """Build sanitized chat history from stored messages.
+
+    Args:
+        messages: Conversation message list from the database.
+        user_message_id: Optional message ID to exclude from history.
+        latest_message: Latest user message to de-duplicate.
+
+    Returns:
+        List of history messages suitable for model input.
+    """
     history = []
     if not messages:
         return history
@@ -49,6 +59,14 @@ def _build_history(messages, user_message_id, latest_message):
 
 
 def _resolve_enabled_skills(settings_record):
+    """Resolve enabled skills from settings against the skill catalog.
+
+    Args:
+        settings_record: User settings record or None.
+
+    Returns:
+        List of enabled skill IDs.
+    """
     catalog = SkillCatalogService.list_skills(settings.skills_dir)
     all_ids = [skill["id"] for skill in catalog]
     if not settings_record or settings_record.enabled_skills is None:
@@ -68,26 +86,19 @@ async def stream_chat(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
 ):
-    """
-    Stream chat response with tool calls via SSE.
+    """Stream a chat response with SSE and tool events.
 
-    Headers:
-        Authorization: Bearer {token}
+    Args:
+        request: Incoming request with JSON payload.
+        db: Database session.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
 
-    Body:
-        {
-            "message": "User message",
-            "conversation_id": "uuid",  # Optional conversation id
-            "user_message_id": "uuid",  # Optional message id to avoid duplicates
-            "history": [...]            # Optional conversation history
-        }
+    Returns:
+        StreamingResponse emitting SSE events.
 
-    SSE Events:
-        - token: Streaming text tokens
-        - tool_call: Tool execution started
-        - tool_result: Tool execution completed
-        - complete: Stream finished
-        - error: Error occurred
+    Raises:
+        HTTPException: 400 for missing message, 404 for invalid conversation ID.
     """
     data = await request.json()
     message = data.get("message")
@@ -212,19 +223,18 @@ async def generate_title(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
 ):
-    """
-    Generate a concise title for a conversation using Gemini Flash.
+    """Generate a concise title for a conversation using Gemini.
 
-    Body:
-        {
-            "conversation_id": "uuid"
-        }
+    Args:
+        request: Incoming request with conversation_id.
+        db: Database session.
+        user_id: Current authenticated user ID.
 
     Returns:
-        {
-            "title": "Generated title",
-            "fallback": false  # true if fallback was used
-        }
+        Title payload with fallback flag.
+
+    Raises:
+        HTTPException: 400 for missing conversation_id, 404 if not found.
     """
     data = await request.json()
     conversation_id = data.get("conversation_id")
