@@ -33,16 +33,16 @@ export class SSEClient {
 
 	/**
 	 * Connect to SSE endpoint and stream chat response
-	 * @param payload
-	 * @param payload.message
-	 * @param payload.conversationId
-	 * @param payload.userMessageId
-	 * @param payload.openContext
-	 * @param payload.currentLocation
-	 * @param payload.currentLocationLevels
-	 * @param payload.currentWeather
-	 * @param payload.currentTimezone
-	 * @param callbacks
+	 * @param payload Request payload for the chat stream.
+	 * @param payload.message User message content.
+	 * @param payload.conversationId Conversation id to append to.
+	 * @param payload.userMessageId Client-side message id.
+	 * @param payload.openContext Optional context blob from UI.
+	 * @param payload.currentLocation User location string.
+	 * @param payload.currentLocationLevels Location hierarchy map.
+	 * @param payload.currentWeather Current weather metadata.
+	 * @param payload.currentTimezone Timezone identifier.
+	 * @param callbacks Event handlers for stream events.
 	 */
 	async connect(
 		payload: {

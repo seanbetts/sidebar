@@ -37,7 +37,7 @@ function createChatStore() {
 
 		/**
 		 * Load an existing conversation
-		 * @param conversationId
+		 * @param conversationId Conversation id to load.
 		 */
 		async loadConversation(conversationId: string) {
 			toolState.clearToolTimers();
@@ -57,6 +57,7 @@ function createChatStore() {
 
 		/**
 		 * Start a new conversation
+		 * @returns New conversation id.
 		 */
 		async startNewConversation() {
 			toolState.clearToolTimers();
@@ -81,7 +82,8 @@ function createChatStore() {
 
 		/**
 		 * Add a user message and start streaming assistant response
-		 * @param content
+		 * @param content User message content.
+		 * @returns Assistant/user message ids for the streaming pair.
 		 */
 		async sendMessage(content: string): Promise<{
 			assistantMessageId: string;
@@ -139,8 +141,8 @@ function createChatStore() {
 
 		/**
 		 * Append token to current streaming message
-		 * @param messageId
-		 * @param token
+		 * @param messageId Message id to append to.
+		 * @param token Streamed token content.
 		 */
 		appendToken(messageId: string, token: string) {
 			update((state) => ({
@@ -166,8 +168,8 @@ function createChatStore() {
 
 		/**
 		 * Add or update tool call in current message
-		 * @param messageId
-		 * @param toolCall
+		 * @param messageId Message id to update.
+		 * @param toolCall Tool call data.
 		 */
 		addToolCall(messageId: string, toolCall: ToolCall) {
 			update((state) => ({
@@ -195,10 +197,10 @@ function createChatStore() {
 
 		/**
 		 * Update tool call result
-		 * @param messageId
-		 * @param toolCallId
-		 * @param result
-		 * @param status
+		 * @param messageId Message id to update.
+		 * @param toolCallId Tool call id to update.
+		 * @param result Tool result payload.
+		 * @param status Tool result status.
 		 */
 		updateToolResult(messageId: string, toolCallId: string, result: any, status: 'success' | 'error') {
 			update((state) => ({
@@ -219,7 +221,7 @@ function createChatStore() {
 
 		/**
 		 * Mark streaming as complete
-		 * @param messageId
+		 * @param messageId Message id to finalize.
 		 */
 		async finishStreaming(messageId: string) {
 			update((state) => ({
@@ -271,8 +273,8 @@ function createChatStore() {
 
 		/**
 		 * Set error on current message
-		 * @param messageId
-		 * @param error
+		 * @param messageId Message id to mark as error.
+		 * @param error Error message to attach.
 		 */
 		setError(messageId: string, error: string) {
 			update((state) => ({
