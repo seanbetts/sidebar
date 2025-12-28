@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 from api.routers import health, chat, conversations, files, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
+from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
 from api.executors.skill_executor import SkillExecutor
 from api.security.path_validator import PathValidator
 import logging
@@ -53,9 +54,13 @@ app = FastAPI(
 # Unified authentication middleware
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    """Apply bearer token auth to all endpoints except /api/health."""
+    """Apply JWT auth to all endpoints except /api/health."""
     # Skip auth for health check
     if request.url.path == "/api/health":
+        response = await call_next(request)
+        return response
+
+    if settings.auth_dev_mode:
         response = await call_next(request)
         return response
 
@@ -65,17 +70,20 @@ async def auth_middleware(request: Request, call_next):
         return JSONResponse(
             status_code=401,
             content={"error": "Missing Authorization header"},
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Verify bearer token
+    # Verify JWT token
     try:
         scheme, token = auth_header.split()
         if scheme.lower() != "bearer":
             raise ValueError("Invalid scheme")
-        if token != settings.bearer_token:
-            raise ValueError("Invalid token")
-    except (ValueError, AttributeError):
+        validator = SupabaseJWTValidator()
+        payload = await validator.validate_token(token)
+        request.state.user_id = payload.get("sub")
+        if not request.state.user_id:
+            raise JWTValidationError("Missing user ID")
+    except (ValueError, AttributeError, JWTValidationError):
         return JSONResponse(
             status_code=401,
             content={"error": "Invalid Authorization header"},

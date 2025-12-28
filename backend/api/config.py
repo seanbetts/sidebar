@@ -53,7 +53,20 @@ class Settings(BaseSettings):
     skills_dir: Path = Path("/skills")
 
     # Authentication
-    bearer_token: str
+    bearer_token: str | None = None
+    auth_dev_mode: bool = False
+    default_user_id: str = "81326b53-b7eb-42e2-b645-0c03cb5d5dd4"
+
+    # Supabase Auth
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str | None = None
+
+    # JWT validation
+    jwt_audience: str = "authenticated"
+    jwt_algorithm: str = "RS256"
+    jwks_cache_ttl_seconds: int = 3600
+    jwt_issuer: str = ""
 
     # Database
     database_url: str = _build_database_url()
