@@ -3,8 +3,8 @@
 Current coverage snapshot and gaps for the sideBar backend.
 
 **Date**: 2025-12-28 (Refreshed)
-**Test Files**: 29 (backend)
-**Test Count**: 139 (98 passed, 41 skipped in latest local run)
+**Test Files**: 32 (backend)
+**Test Count**: 160 (latest local run may differ; re-run to confirm)
 
 ---
 
@@ -22,11 +22,10 @@ Current coverage snapshot and gaps for the sideBar backend.
 - Core Notes/Websites service logic is covered.
 - Security primitives (path validation, audit logging) are covered.
 - Tool mapper + basic Claude streaming flow are covered.
+- Tool definition contracts are covered.
 - Chat router has baseline coverage.
 
 ### Current Gaps
-- Tool execution handlers + parameter mapper lack dedicated tests.
-- Tool definition contract tests are missing.
 - Router-level integration coverage remains minimal (beyond chat/settings).
 - R2 storage integration and file tree/workspace services are untested.
 
@@ -60,6 +59,9 @@ Current coverage snapshot and gaps for the sideBar backend.
 | Component | Test File | Status | Notes |
 |-----------|-----------|--------|-------|
 | SkillExecutor | `tests/api/test_skill_executor.py` | ✅ | Async marker added |
+| Tool execution handlers | `tests/api/test_execution_handlers.py` | ✅ | Prompt preview + memory tool handlers |
+| Tool parameter mapper | `tests/api/test_parameter_mapper.py` | ✅ | CLI argument construction |
+| Tool definitions | `tests/api/test_tool_definitions.py` | ✅ | Contract coverage across definitions |
 
 ### ✅ Authentication (WELL TESTED)
 
@@ -96,9 +98,6 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 | Component | Location | Priority | Notes |
 |-----------|----------|----------|-------|
-| Tool execution handlers | `api/services/tools/execution_handlers.py` | 🔴 HIGH | Shared tool execution flow |
-| Tool parameter mapping | `api/services/tools/parameter_mapper.py` | 🔴 HIGH | Argument construction |
-| Tool definitions | `api/services/tools/definitions_*.py` | 🔴 HIGH | Contract correctness |
 
 ### Storage + Workspace
 
@@ -158,9 +157,7 @@ Async marker registered in `backend/pyproject.toml`. Async tests collect and run
 ## Recommended Test Plan
 
 ### Phase 1: Critical Path
-1. Add unit tests for `execution_handlers.py` and `parameter_mapper.py`.
-2. Expand tool definition contract tests in `definitions_*.py`.
-3. Extend Claude streaming tests for edge/error cases.
+1. Continue storage + workspace coverage (R2 + file tree + workspace services).
 
 ### Phase 2: Storage + Workspace
 1. Add tests for R2 storage service.
