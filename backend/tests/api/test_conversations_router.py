@@ -55,3 +55,45 @@ def test_conversation_update_and_search(test_client, test_db):
     )
     assert search_response.status_code == 200
     assert any(item["id"] == str(conversation_id) for item in search_response.json())
+
+
+def test_conversation_messages_and_delete(test_client, test_db):
+    conversation_id = uuid.uuid4()
+    conversation = Conversation(
+        id=conversation_id,
+        user_id=DEFAULT_USER_ID,
+        title="Chat",
+        messages=[],
+        message_count=0,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    test_db.add(conversation)
+    test_db.commit()
+
+    message = {
+        "id": "msg-1",
+        "role": "user",
+        "content": "Hello",
+        "status": None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "toolCalls": None,
+        "error": None,
+    }
+    response = test_client.post(
+        f"/api/conversations/{conversation_id}/messages",
+        json=message,
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+    assert response.json()["messageCount"] == 1
+
+    delete_response = test_client.delete(
+        f"/api/conversations/{conversation_id}",
+        headers=_auth_headers(),
+    )
+    assert delete_response.status_code == 200
+
+    list_response = test_client.get("/api/conversations/", headers=_auth_headers())
+    assert list_response.status_code == 200
+    assert all(item["id"] != str(conversation_id) for item in list_response.json())

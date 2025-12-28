@@ -130,3 +130,29 @@ def test_object_exists_handles_missing(fake_client):
 
     fake_client.head_object = head_object
     assert storage.object_exists("missing.txt") is False
+
+
+def test_object_exists_returns_true(fake_client):
+    storage = R2Storage(
+        endpoint="https://example",
+        bucket="bucket",
+        access_key_id="key",
+        secret_access_key="secret",
+    )
+    assert storage.object_exists("exists.txt") is True
+
+
+def test_object_exists_handles_other_errors(fake_client):
+    storage = R2Storage(
+        endpoint="https://example",
+        bucket="bucket",
+        access_key_id="key",
+        secret_access_key="secret",
+    )
+
+    def head_object(**_):
+        error = {"Error": {"Code": "500"}, "ResponseMetadata": {"HTTPStatusCode": 500}}
+        raise ClientError(error, "HeadObject")
+
+    fake_client.head_object = head_object
+    assert storage.object_exists("error.txt") is False
