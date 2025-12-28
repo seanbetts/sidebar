@@ -73,7 +73,7 @@ function createConversationListStore() {
 
     /**
      * Add a new conversation to the list without full refresh
-     * @param conversation
+     * @param conversation Conversation to prepend.
      */
     addConversation(conversation: Conversation) {
       update(state => ({
@@ -84,11 +84,11 @@ function createConversationListStore() {
 
     /**
      * Update conversation metadata (message count, preview) without full refresh
-     * @param id
-     * @param updates
-     * @param updates.messageCount
-     * @param updates.firstMessage
-     * @param updates.updatedAt
+     * @param id Conversation id to update.
+     * @param updates Partial metadata updates.
+     * @param updates.messageCount Message count value.
+     * @param updates.firstMessage Preview snippet.
+     * @param updates.updatedAt Updated timestamp (ISO).
      */
     updateConversationMetadata(id: string, updates: { messageCount?: number; firstMessage?: string; updatedAt?: string }) {
       update(state => ({
@@ -101,8 +101,8 @@ function createConversationListStore() {
 
     /**
      * Mark a conversation as generating title
-     * @param id
-     * @param generating
+     * @param id Conversation id to update.
+     * @param generating Whether title generation is in progress.
      */
     setGeneratingTitle(id: string, generating: boolean) {
       update(state => {
@@ -121,8 +121,8 @@ function createConversationListStore() {
 
     /**
      * Update a single conversation's title without refreshing the entire list
-     * @param id
-     * @param title
+     * @param id Conversation id to update.
+     * @param title New title value.
      */
     updateConversationTitle(id: string, title: string) {
       update(state => {
