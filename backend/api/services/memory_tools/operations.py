@@ -12,6 +12,16 @@ from api.services.memory_tools.path_utils import normalize_path
 
 
 def handle_view(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Handle a memory view command for files or directories.
+
+    Args:
+        db: Database session.
+        user_id: Current user ID.
+        payload: Memory tool payload with path and optional view_range.
+
+    Returns:
+        Result dict with formatted content or error message.
+    """
     path = payload.get("path") or "/memories"
     path = normalize_path(path)
     view_range = payload.get("view_range")
@@ -32,6 +42,16 @@ def handle_view(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str,
 
 
 def handle_create(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Handle a memory create command.
+
+    Args:
+        db: Database session.
+        user_id: Current user ID.
+        payload: Memory tool payload with path and file_text/content.
+
+    Returns:
+        Result dict with success message or error message.
+    """
     path = normalize_path(payload.get("path"))
     if path == "/memories":
         return error("Error: File /memories already exists")
@@ -59,6 +79,16 @@ def handle_create(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
 
 
 def handle_str_replace(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Handle a memory string replacement command.
+
+    Args:
+        db: Database session.
+        user_id: Current user ID.
+        payload: Memory tool payload with path, old_str, new_str.
+
+    Returns:
+        Result dict with edited content or error message.
+    """
     path = normalize_path(payload.get("path"))
     old_str = payload.get("old_str")
     new_str = payload.get("new_str")
@@ -95,6 +125,16 @@ def handle_str_replace(db: Session, user_id: str, payload: dict[str, Any]) -> di
 
 
 def handle_insert(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Handle a memory insert command.
+
+    Args:
+        db: Database session.
+        user_id: Current user ID.
+        payload: Memory tool payload with path, insert_line, insert_text/content.
+
+    Returns:
+        Result dict with success message or error message.
+    """
     path = normalize_path(payload.get("path"))
     insert_line = payload.get("insert_line")
     insert_text = payload.get("insert_text")
@@ -129,6 +169,16 @@ def handle_insert(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
 
 
 def handle_delete(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Handle a memory delete command.
+
+    Args:
+        db: Database session.
+        user_id: Current user ID.
+        payload: Memory tool payload with path.
+
+    Returns:
+        Result dict with success message or error message.
+    """
     path = normalize_path(payload.get("path"))
     memories = list_memories(db, user_id)
     if not is_file(path, memories) and not is_directory(path, memories):
@@ -149,6 +199,16 @@ def handle_delete(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
 
 
 def handle_rename(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Handle a memory rename command.
+
+    Args:
+        db: Database session.
+        user_id: Current user ID.
+        payload: Memory tool payload with old_path and new_path.
+
+    Returns:
+        Result dict with success message or error message.
+    """
     old_path = normalize_path(payload.get("old_path"))
     new_path = normalize_path(payload.get("new_path"))
     if old_path == "/memories":
@@ -177,11 +237,28 @@ def handle_rename(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
 
 
 def validate_content(content: Any) -> None:
+    """Validate memory content is a string.
+
+    Args:
+        content: Content to validate.
+
+    Raises:
+        ValueError: If content is not a string.
+    """
     if not isinstance(content, str):
         raise ValueError("Invalid content")
 
 
 def list_memories(db: Session, user_id: str) -> list[UserMemory]:
+    """List all memories for a user.
+
+    Args:
+        db: Database session.
+        user_id: Current user ID.
+
+    Returns:
+        Sorted list of UserMemory records.
+    """
     return (
         db.query(UserMemory)
         .filter(UserMemory.user_id == user_id)
@@ -191,6 +268,16 @@ def list_memories(db: Session, user_id: str) -> list[UserMemory]:
 
 
 def get_memory(db: Session, user_id: str, path: str) -> UserMemory | None:
+    """Fetch a memory record by path.
+
+    Args:
+        db: Database session.
+        user_id: Current user ID.
+        path: Normalized memory path.
+
+    Returns:
+        Matching UserMemory or None if not found.
+    """
     return (
         db.query(UserMemory)
         .filter(UserMemory.user_id == user_id, UserMemory.path == path)
@@ -199,12 +286,30 @@ def get_memory(db: Session, user_id: str, path: str) -> UserMemory | None:
 
 
 def is_file(path: str, memories: list[UserMemory]) -> bool:
+    """Return True if the path matches a memory file.
+
+    Args:
+        path: Normalized memory path.
+        memories: List of UserMemory records.
+
+    Returns:
+        True if the path is a file, False otherwise.
+    """
     if path == "/memories":
         return False
     return any(memory.path == path for memory in memories)
 
 
 def is_directory(path: str, memories: list[UserMemory]) -> bool:
+    """Return True if the path represents a memory directory.
+
+    Args:
+        path: Normalized memory path.
+        memories: List of UserMemory records.
+
+    Returns:
+        True if the path has children or is /memories.
+    """
     if path == "/memories":
         return True
     prefix = f"{path}/"
@@ -212,6 +317,15 @@ def is_directory(path: str, memories: list[UserMemory]) -> bool:
 
 
 def find_occurrences(content: str, old_str: str) -> list[int]:
+    """Find line numbers containing an exact substring match.
+
+    Args:
+        content: File content to scan.
+        old_str: Substring to locate.
+
+    Returns:
+        Line numbers (1-indexed) where the substring appears.
+    """
     if not old_str:
         return []
     lines = content.splitlines()
@@ -228,8 +342,24 @@ def find_occurrences(content: str, old_str: str) -> list[int]:
 
 
 def success(data: dict[str, Any]) -> dict[str, Any]:
+    """Build a success result payload for memory tool commands.
+
+    Args:
+        data: Response payload.
+
+    Returns:
+        Success result envelope.
+    """
     return {"success": True, "data": data, "error": None}
 
 
 def error(message: str) -> dict[str, Any]:
+    """Build an error result payload for memory tool commands.
+
+    Args:
+        message: Error message.
+
+    Returns:
+        Error result envelope.
+    """
     return {"success": False, "data": None, "error": message}
