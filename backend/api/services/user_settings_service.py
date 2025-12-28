@@ -16,6 +16,15 @@ class UserSettingsService:
 
     @staticmethod
     def get_settings(db: Session, user_id: str) -> Optional[UserSettings]:
+        """Fetch settings for a user.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+
+        Returns:
+            UserSettings record or None.
+        """
         return db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
 
     @staticmethod
@@ -37,6 +46,28 @@ class UserSettingsService:
         profile_image_path: Any = UNSET,
         enabled_skills: Any = UNSET,
     ) -> UserSettings:
+        """Create or update a user's settings.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            system_prompt: Optional system prompt override.
+            first_message_prompt: Optional first-message prompt override.
+            communication_style: Optional communication style.
+            working_relationship: Optional working relationship text.
+            name: Optional name.
+            job_title: Optional job title.
+            employer: Optional employer.
+            date_of_birth: Optional date of birth.
+            gender: Optional gender.
+            pronouns: Optional pronouns.
+            location: Optional location.
+            profile_image_path: Optional profile image path.
+            enabled_skills: Optional list of enabled skills.
+
+        Returns:
+            Upserted UserSettings record.
+        """
         now = datetime.now(timezone.utc)
         settings = UserSettingsService.get_settings(db, user_id)
         if settings:
