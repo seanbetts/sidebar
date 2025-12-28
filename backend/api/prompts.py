@@ -27,6 +27,16 @@ DEFAULT_WORKING_RELATIONSHIP = _PROMPT_CONFIG["default_working_relationship"]
 SYSTEM_PROMPT_TEMPLATE = _PROMPT_CONFIG["system_prompt_template"]
 CONTEXT_GUIDANCE_TEMPLATE = _PROMPT_CONFIG["context_guidance_template"]
 FIRST_MESSAGE_TEMPLATE = _PROMPT_CONFIG["first_message_template"]
+RECENT_ACTIVITY_WRAPPER_TEMPLATE = _PROMPT_CONFIG["recent_activity_wrapper_template"]
+RECENT_ACTIVITY_EMPTY_TEXT = _PROMPT_CONFIG["recent_activity_empty_text"]
+RECENT_ACTIVITY_NOTES_HEADER = _PROMPT_CONFIG["recent_activity_notes_header"]
+RECENT_ACTIVITY_WEBSITES_HEADER = _PROMPT_CONFIG["recent_activity_websites_header"]
+RECENT_ACTIVITY_CHATS_HEADER = _PROMPT_CONFIG["recent_activity_chats_header"]
+CURRENT_OPEN_WRAPPER_TEMPLATE = _PROMPT_CONFIG["current_open_wrapper_template"]
+CURRENT_OPEN_EMPTY_TEXT = _PROMPT_CONFIG["current_open_empty_text"]
+CURRENT_OPEN_NOTE_HEADER = _PROMPT_CONFIG["current_open_note_header"]
+CURRENT_OPEN_WEBSITE_HEADER = _PROMPT_CONFIG["current_open_website_header"]
+CURRENT_OPEN_CONTENT_HEADER = _PROMPT_CONFIG["current_open_content_header"]
 SUPPORTED_VARIABLES = set(_PROMPT_CONFIG.get("supported_variables", []))
 
 _TOKEN_PATTERN = re.compile(r"\{([a-zA-Z0-9_]+)\}")
@@ -284,7 +294,7 @@ def build_recent_activity_block(
     lines: list[str] = []
 
     if notes:
-        lines.append("Notes opened today:")
+        lines.append(RECENT_ACTIVITY_NOTES_HEADER)
         for note in notes:
             folder = f", folder: {note['folder']}" if note.get("folder") else ""
             lines.append(
@@ -294,7 +304,7 @@ def build_recent_activity_block(
     if websites:
         if lines:
             lines.append("")
-        lines.append("Websites opened today:")
+        lines.append(RECENT_ACTIVITY_WEBSITES_HEADER)
         for website in websites:
             domain = f", domain: {website['domain']}" if website.get("domain") else ""
             url = f", url: {website['url']}" if website.get("url") else ""
@@ -305,7 +315,7 @@ def build_recent_activity_block(
     if conversations:
         if lines:
             lines.append("")
-        lines.append("Chats active today:")
+        lines.append(RECENT_ACTIVITY_CHATS_HEADER)
         for conversation in conversations:
             message_count = (
                 f", messages: {conversation['message_count']}"
@@ -317,9 +327,17 @@ def build_recent_activity_block(
             )
 
     if not lines:
-        return "<recent_activity>\nNo items have been opened today.\n</recent_activity>"
+        return resolve_template(
+            RECENT_ACTIVITY_WRAPPER_TEMPLATE,
+            {"content": RECENT_ACTIVITY_EMPTY_TEXT},
+            keep_unknown=False,
+        )
 
-    return "<recent_activity>\n" + "\n".join(lines) + "\n</recent_activity>"
+    return resolve_template(
+        RECENT_ACTIVITY_WRAPPER_TEMPLATE,
+        {"content": "\n".join(lines)},
+        keep_unknown=False,
+    )
 
 
 def _truncate_content(value: str | None, limit: int) -> str | None:
@@ -338,7 +356,7 @@ def build_open_context_block(
     lines: list[str] = []
 
     if note:
-        lines.append("Note currently open:")
+        lines.append(CURRENT_OPEN_NOTE_HEADER)
         title = note.get("title") or "Untitled"
         note_id = note.get("id") or "unknown"
         path = note.get("path") or note.get("folder")
@@ -346,13 +364,13 @@ def build_open_context_block(
         lines.append(f"- {title} (id: {note_id}{path_text})")
         content = _truncate_content(note.get("content"), max_chars)
         if content:
-            lines.append("Content:")
+            lines.append(CURRENT_OPEN_CONTENT_HEADER)
             lines.append(content)
 
     if website:
         if lines:
             lines.append("")
-        lines.append("Website currently open:")
+        lines.append(CURRENT_OPEN_WEBSITE_HEADER)
         title = website.get("title") or "Untitled"
         website_id = website.get("id") or "unknown"
         domain = website.get("domain")
@@ -362,13 +380,21 @@ def build_open_context_block(
         lines.append(f"- {title} (id: {website_id}{domain_text}{url_text})")
         content = _truncate_content(website.get("content"), max_chars)
         if content:
-            lines.append("Content:")
+            lines.append(CURRENT_OPEN_CONTENT_HEADER)
             lines.append(content)
 
     if not lines:
-        return "<current_open>\nNo items are currently open.\n</current_open>"
+        return resolve_template(
+            CURRENT_OPEN_WRAPPER_TEMPLATE,
+            {"content": CURRENT_OPEN_EMPTY_TEXT},
+            keep_unknown=False,
+        )
 
-    return "<current_open>\n" + "\n".join(lines) + "\n</current_open>"
+    return resolve_template(
+        CURRENT_OPEN_WRAPPER_TEMPLATE,
+        {"content": "\n".join(lines)},
+        keep_unknown=False,
+    )
 
 
 def build_system_prompt(
