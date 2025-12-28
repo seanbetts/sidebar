@@ -582,6 +582,10 @@ Add logout button to header/sidebar.
    - This prevents new user registration while keeping login working
 4. **Skip OAuth setup** for now (can add Google/GitHub later when ready)
 
+**JWT Keys**:
+- Keep **Current Key** as **ECC (P-256)** (default)
+- Backend validates **ES256** via JWKS; no JWT secret is required
+
 **URL Configuration**:
 - Site URL: `https://sidebar.seanbetts.com`
 - Redirect URLs not needed initially (no OAuth or email verification flows)
