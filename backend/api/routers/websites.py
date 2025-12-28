@@ -14,6 +14,17 @@ router = APIRouter(prefix="/websites", tags=["websites"])
 
 
 def parse_website_id(value: str):
+    """Parse a website UUID from a string.
+
+    Args:
+        value: UUID string.
+
+    Returns:
+        Parsed UUID.
+
+    Raises:
+        HTTPException: 400 if the value is not a valid UUID.
+    """
     try:
         return uuid.UUID(value)
     except (ValueError, TypeError):
@@ -21,6 +32,14 @@ def parse_website_id(value: str):
 
 
 def website_summary(website: Website) -> dict:
+    """Build a summary payload for a website record.
+
+    Args:
+        website: Website ORM object.
+
+    Returns:
+        Summary dict for list/detail responses.
+    """
     metadata = website.metadata_ or {}
     return {
         "id": str(website.id),
@@ -42,6 +61,16 @@ async def list_websites(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """List websites for the current user.
+
+    Args:
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        List of website summaries.
+    """
     websites = (
         WebsitesService.list_websites(db, user_id)
     )
@@ -56,6 +85,21 @@ async def search_websites(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Search websites by title or content.
+
+    Args:
+        query: Search query string.
+        limit: Max results to return. Defaults to 50.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        List of matching website summaries.
+
+    Raises:
+        HTTPException: 400 if query is missing.
+    """
     if not query:
         raise HTTPException(status_code=400, detail="query required")
 
@@ -84,6 +128,21 @@ async def save_website(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Save a website using the web-save skill.
+
+    Args:
+        request: FastAPI request with executor state.
+        payload: Request payload with url.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Skill execution result payload.
+
+    Raises:
+        HTTPException: 400 for missing url or skill errors.
+    """
     url = payload.get("url", "")
     if not url:
         raise HTTPException(status_code=400, detail="url required")
@@ -103,6 +162,20 @@ async def get_website(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Fetch a website by ID.
+
+    Args:
+        website_id: Website ID (UUID string).
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Website detail payload with content.
+
+    Raises:
+        HTTPException: 404 if not found.
+    """
     website = WebsitesService.get_website(db, user_id, website_id, mark_opened=True)
     if not website:
         raise HTTPException(status_code=404, detail="Website not found")
@@ -123,6 +196,21 @@ async def update_pin(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Pin or unpin a website.
+
+    Args:
+        website_id: Website ID (UUID string).
+        request: Request payload with pinned.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 404 if not found.
+    """
     pinned = bool(request.get("pinned", False))
     try:
         website_uuid = parse_website_id(website_id)
@@ -141,6 +229,21 @@ async def update_title(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Rename a website.
+
+    Args:
+        website_id: Website ID (UUID string).
+        request: Request payload with title.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 400 if title is missing, 404 if not found.
+    """
     title = request.get("title", "")
     if not title:
         raise HTTPException(status_code=400, detail="title required")
@@ -161,6 +264,21 @@ async def update_archive(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Archive or unarchive a website.
+
+    Args:
+        website_id: Website ID (UUID string).
+        request: Request payload with archived.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 404 if not found.
+    """
     archived = bool(request.get("archived", False))
     try:
         website_uuid = parse_website_id(website_id)
@@ -178,6 +296,20 @@ async def download_website(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Download a website as a markdown attachment.
+
+    Args:
+        website_id: Website ID (UUID string).
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Markdown response with attachment headers.
+
+    Raises:
+        HTTPException: 404 if not found.
+    """
     website_uuid = parse_website_id(website_id)
     website = WebsitesService.get_website(db, user_id, website_uuid, mark_opened=False)
     if not website:
@@ -195,6 +327,20 @@ async def delete_website(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
 ):
+    """Delete a website by ID.
+
+    Args:
+        website_id: Website ID (UUID string).
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 404 if not found.
+    """
     deleted = WebsitesService.delete_website(db, user_id, website_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Website not found")
