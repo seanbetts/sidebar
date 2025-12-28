@@ -8,9 +8,8 @@
 
 <style>
   .chat-sidebar {
-    width: 480px;
+    width: 100%;
     height: 100%;
-    border-left: 1px solid var(--color-border);
     background-color: var(--color-background);
     overflow: hidden;
     min-height: 0;
