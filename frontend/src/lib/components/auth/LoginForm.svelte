@@ -54,8 +54,8 @@
         <div class="feature">
           <MessageSquare size={18} strokeWidth={2} />
           <div class="feature-content">
-            <span class="feature-title">AI Chat with Full Context</span>
-            <span class="feature-desc">Chat with sideBar while it accesses your notes, files, and research</span>
+            <span class="feature-title">Chat with Full Context</span>
+            <span class="feature-desc">Work with sideBar while it accesses your notes, files, and research</span>
           </div>
         </div>
         <div class="feature">
@@ -143,7 +143,7 @@
   }
 
   .login-wordmark {
-    font-size: 1.5rem;
+    font-size: 2rem;
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--color-foreground);
@@ -267,8 +267,8 @@
   }
 
   .panel-logo {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
   }
 
   :global(.dark) .panel-logo {
