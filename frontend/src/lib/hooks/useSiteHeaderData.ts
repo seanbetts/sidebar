@@ -24,6 +24,11 @@ type SiteHeaderState = {
   weatherIsDay: number | null;
 };
 
+/**
+ * Manage live date/time, location, and weather state for the header.
+ *
+ * @returns Writable store with live header data.
+ */
 export function useSiteHeaderData() {
   const state = writable<SiteHeaderState>({
     currentDate: '',

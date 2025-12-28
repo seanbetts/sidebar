@@ -14,6 +14,13 @@ import {
   Sun
 } from 'lucide-svelte';
 
+/**
+ * Resolve a weather code into the corresponding icon component.
+ *
+ * @param code - Weather code or null.
+ * @param isDay - Daytime flag from the API.
+ * @returns Icon component for the weather conditions.
+ */
 export function resolveWeatherIcon(code: number | null, isDay: number | null) {
   if (code === null) return Cloud;
   const isDaytime = isDay === 1;

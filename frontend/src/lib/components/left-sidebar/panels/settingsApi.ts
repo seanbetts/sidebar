@@ -1,3 +1,9 @@
+/**
+ * Fetch the current user settings payload.
+ *
+ * @returns Settings payload from the API.
+ * @throws Error when the request fails.
+ */
 export async function fetchSettings() {
   const response = await fetch('/api/settings');
   if (!response.ok) {
@@ -6,6 +12,13 @@ export async function fetchSettings() {
   return response.json();
 }
 
+/**
+ * Save user settings updates.
+ *
+ * @param payload - Partial settings updates.
+ * @returns Updated settings payload.
+ * @throws Error when the request fails.
+ */
 export async function saveSettings(payload: Record<string, unknown>) {
   const response = await fetch('/api/settings', {
     method: 'PATCH',
@@ -20,6 +33,12 @@ export async function saveSettings(payload: Record<string, unknown>) {
   return response.json();
 }
 
+/**
+ * Fetch available skills from the API.
+ *
+ * @returns Array of skill objects.
+ * @throws Error when the request fails.
+ */
 export async function fetchSkills() {
   const response = await fetch('/api/skills');
   if (!response.ok) {
@@ -29,6 +48,13 @@ export async function fetchSkills() {
   return Array.isArray(data?.skills) ? data.skills : [];
 }
 
+/**
+ * Fetch location autocomplete suggestions.
+ *
+ * @param query - Location query string.
+ * @returns Array of prediction objects.
+ * @throws Error when the request fails.
+ */
 export async function fetchLocationSuggestions(query: string) {
   const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(query)}`);
   if (!response.ok) {
@@ -38,6 +64,13 @@ export async function fetchLocationSuggestions(query: string) {
   return Array.isArray(data?.predictions) ? data.predictions : [];
 }
 
+/**
+ * Upload a profile image to the server.
+ *
+ * @param file - Image file to upload.
+ * @returns Upload response payload.
+ * @throws Error when the request fails.
+ */
 export async function uploadProfileImage(file: File) {
   const response = await fetch('/api/settings/profile-image', {
     method: 'POST',
@@ -53,6 +86,11 @@ export async function uploadProfileImage(file: File) {
   return response.json();
 }
 
+/**
+ * Delete the current profile image.
+ *
+ * @throws Error when the request fails.
+ */
 export async function deleteProfileImage() {
   const response = await fetch('/api/settings/profile-image', {
     method: 'DELETE'

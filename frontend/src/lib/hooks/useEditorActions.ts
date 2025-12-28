@@ -22,6 +22,12 @@ type EditorActionsContext = {
   setIsCopied: (value: boolean) => void;
 };
 
+/**
+ * Build editor-side action handlers for note operations.
+ *
+ * @param ctx - Context with editor state and UI setters.
+ * @returns Action handlers for editor UI interactions.
+ */
 export function useEditorActions(ctx: EditorActionsContext) {
   const buildFolderOptions = () => {
     const tree = ctx.filesStore.trees['notes'];

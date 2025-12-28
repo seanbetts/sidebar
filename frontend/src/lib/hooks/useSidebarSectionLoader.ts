@@ -5,6 +5,11 @@ import { websitesStore } from '$lib/stores/websites';
 
 export type SidebarSection = 'history' | 'notes' | 'websites' | 'workspace';
 
+/**
+ * Lazily load sidebar section data on first open.
+ *
+ * @returns Loader for section data.
+ */
 export function useSidebarSectionLoader() {
 	const loadedSections = new Set<SidebarSection>();
 

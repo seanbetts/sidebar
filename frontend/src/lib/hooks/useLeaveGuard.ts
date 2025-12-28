@@ -9,6 +9,12 @@ type LeaveGuardOptions = {
   setAllowNavigateOnce: (value: boolean) => void;
 };
 
+/**
+ * Build navigation guards for unsaved changes.
+ *
+ * @param options - State accessors and setters for guard flow.
+ * @returns Helpers to stay or confirm navigation.
+ */
 export function useLeaveGuard(options: LeaveGuardOptions) {
   beforeNavigate(({ cancel, to }) => {
     if (options.getAllowNavigateOnce()) {

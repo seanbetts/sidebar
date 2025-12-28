@@ -1,5 +1,11 @@
 import { conversationListStore } from '$lib/stores/conversations';
 
+/**
+ * Trigger title generation for a conversation.
+ *
+ * @param conversationId - Conversation ID to update.
+ * @throws Error when the API request fails.
+ */
 export async function generateConversationTitle(conversationId: string): Promise<void> {
   conversationListStore.setGeneratingTitle(conversationId, true);
 

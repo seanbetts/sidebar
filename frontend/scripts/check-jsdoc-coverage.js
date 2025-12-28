@@ -27,6 +27,26 @@ const stats = {
   fileDetails: []
 };
 
+const RESERVED_METHOD_NAMES = new Set([
+  'if',
+  'for',
+  'while',
+  'switch',
+  'case',
+  'default',
+  'break',
+  'continue',
+  'return',
+  'throw',
+  'try',
+  'catch',
+  'finally',
+  'do',
+  'else',
+  'await',
+  'yield'
+]);
+
 /**
  * Check if a line has JSDoc comment above it
  */
@@ -111,7 +131,11 @@ function analyzeFile(filePath) {
         const methodName = match ? match[1] : 'Unknown';
 
         // Skip constructors and private methods
-        if (methodName !== 'constructor' && !methodName.startsWith('_')) {
+        if (
+          methodName !== 'constructor' &&
+          !methodName.startsWith('_') &&
+          !RESERVED_METHOD_NAMES.has(methodName)
+        ) {
           fileStats.methods.total++;
           stats.totalMethods++;
 

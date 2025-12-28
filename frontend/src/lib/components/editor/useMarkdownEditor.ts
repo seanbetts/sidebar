@@ -18,6 +18,12 @@ interface MarkdownEditorOptions {
   onExternalUpdate: () => void;
 }
 
+/**
+ * Create and wire a Tiptap markdown editor instance.
+ *
+ * @param options - DOM element, store hooks, and callbacks.
+ * @returns Editor instance and destroy function.
+ */
 export function createMarkdownEditor({
   element,
   editorStore,
