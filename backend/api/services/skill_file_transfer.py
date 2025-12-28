@@ -19,15 +19,26 @@ from api.services.storage.service import get_storage_backend
 
 
 def storage_is_r2() -> bool:
+    """Return True if the configured storage backend is R2."""
     return settings.storage_backend.lower() == "r2"
 
 
 def temp_root(prefix: str) -> Path:
+    """Create a temporary root directory."""
     return Path(tempfile.mkdtemp(prefix=prefix))
 
 
 def prepare_input_path(user_id: str, path: str, root: Path) -> Path:
-    """Download an R2 path to a local temp path if needed."""
+    """Resolve an input path to a local file.
+
+    Args:
+        user_id: Current user ID.
+        path: R2 or local path.
+        root: Local temp root.
+
+    Returns:
+        Local filesystem path to the input.
+    """
     if not storage_is_r2():
         return Path(path)
     if not user_id:
@@ -41,7 +52,16 @@ def prepare_input_path(user_id: str, path: str, root: Path) -> Path:
 
 
 def prepare_output_path(user_id: str, path: str, root: Path) -> Tuple[Path, str]:
-    """Return local output path and R2 target path."""
+    """Return local output path and R2 target path.
+
+    Args:
+        user_id: Current user ID.
+        path: Desired output path.
+        root: Local temp root.
+
+    Returns:
+        Tuple of (local_path, r2_path).
+    """
     if not storage_is_r2():
         return Path(path), path
     if not user_id:
@@ -55,12 +75,23 @@ def prepare_output_path(user_id: str, path: str, root: Path) -> Tuple[Path, str]
 
 
 def upload_output_path(user_id: str, r2_path: str, local_path: Path) -> str:
+    """Upload a local file to R2 and return its stored path."""
     content_type = mimetypes.guess_type(local_path.name)[0] or "application/octet-stream"
     record = upload_file(user_id, r2_path, local_path, content_type=content_type)
     return record.path
 
 
 def upload_output_dir(user_id: str, r2_prefix: str, local_dir: Path) -> list[str]:
+    """Upload all files in a local directory to R2.
+
+    Args:
+        user_id: Current user ID.
+        r2_prefix: R2 prefix to upload under.
+        local_dir: Local directory to upload from.
+
+    Returns:
+        List of uploaded R2 paths.
+    """
     uploaded: list[str] = []
     base_prefix = r2_prefix.strip("/")
     for file_path in local_dir.rglob("*"):
@@ -73,6 +104,16 @@ def upload_output_dir(user_id: str, r2_prefix: str, local_dir: Path) -> list[str
 
 
 def download_input_dir(user_id: str, r2_prefix: str, local_dir: Path) -> Path:
+    """Download an R2 directory to a local directory.
+
+    Args:
+        user_id: Current user ID.
+        r2_prefix: R2 prefix to download.
+        local_dir: Local directory destination.
+
+    Returns:
+        Local directory path containing downloaded files.
+    """
     if not storage_is_r2():
         return Path(r2_prefix)
     if not user_id:
