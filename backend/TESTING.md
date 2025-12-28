@@ -4,9 +4,9 @@ Guide for running tests in the sideBar backend.
 
 ## Prerequisites
 
-1. **PostgreSQL must be running**
+1. **PostgreSQL test container must be running**
    ```bash
-   docker compose up -d postgres
+   docker compose -f ../docker-compose.test.yml up -d postgres-test
    ```
 
 2. **Test database must be created**
@@ -49,7 +49,7 @@ Tests use a separate PostgreSQL database to ensure isolation from development da
 
 Tests automatically load from `.env.test`:
 - `TESTING=1` - Enables test mode
-- `DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5432/sidebar_test`
+- `DATABASE_URL=postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test`
 - `BEARER_TOKEN=test-bearer-token-12345` - Mock auth token
 - `ANTHROPIC_API_KEY=test-anthropic-key-12345` - Mock API key
 
@@ -126,9 +126,9 @@ def test_list_notes_endpoint(test_client, test_db):
 
 ### PostgreSQL not running
 ```
-ERROR: PostgreSQL is not running on localhost:5432
+ERROR: PostgreSQL is not running on localhost:5433
 ```
-**Solution**: Start PostgreSQL with `docker compose up -d postgres`
+**Solution**: Start PostgreSQL with `docker compose -f ../docker-compose.test.yml up -d postgres-test`
 
 ### Test database doesn't exist
 ```
@@ -140,7 +140,7 @@ sqlalchemy.exc.OperationalError: database "sidebar_test" does not exist
 ```
 ERROR: permission denied to create database
 ```
-**Solution**: The postgres user needs createdb permission. Check docker-compose.yml.
+**Solution**: The postgres user needs createdb permission. Check `docker-compose.test.yml`.
 
 ### Tests fail with "No module named 'api'"
 ```
@@ -179,7 +179,7 @@ steps:
     run: pytest tests/
     env:
       TESTING: 1
-      DATABASE_URL: postgresql://sidebar:sidebar_dev@localhost:5432/sidebar_test
+      DATABASE_URL: postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test
       BEARER_TOKEN: test-bearer-token-12345
       ANTHROPIC_API_KEY: test-anthropic-key-12345
 ```

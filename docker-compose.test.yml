@@ -1,0 +1,17 @@
+name: sidebar-tests
+
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: sidebar-test-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: sidebar
+      POSTGRES_PASSWORD: sidebar_dev
+      POSTGRES_DB: sidebar_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sidebar -d sidebar_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
