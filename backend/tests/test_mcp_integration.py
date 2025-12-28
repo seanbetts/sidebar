@@ -23,7 +23,10 @@ def bearer_token():
 @pytest.fixture
 def base_url():
     """Get base URL for API."""
-    return "http://localhost:8001"
+    url = os.getenv("MCP_BASE_URL")
+    if not url:
+        pytest.skip("MCP_BASE_URL not set; skipping MCP integration tests.")
+    return url
 
 
 async def get_initialized_client(base_url: str, bearer_token: str):

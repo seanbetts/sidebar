@@ -21,6 +21,7 @@ class DummySettings:
         date_of_birth: date | None = None,
         communication_style: str | None = None,
         working_relationship: str | None = None,
+        location: str | None = None,
     ):
         self.name = name
         self.gender = gender
@@ -30,6 +31,7 @@ class DummySettings:
         self.date_of_birth = date_of_birth
         self.communication_style = communication_style
         self.working_relationship = working_relationship
+        self.location = location
 
 
 def test_resolve_template_keeps_unknown_tokens() -> None:
@@ -52,8 +54,8 @@ def test_build_system_prompt_renders_variables() -> None:
     assert "Current date: 2025-01-02" in prompt
     assert "Current time: 13:45 UTC" in prompt
     assert "Home location: Unknown" in prompt
-    assert "Current location levels: Unavailable" in prompt
-    assert "Current weather: Unavailable" in prompt
+    assert "Current location: Unavailable" in prompt
+    assert "Current weather at current location: Unavailable" in prompt
 
 
 def test_build_first_message_prompt_includes_profile() -> None:

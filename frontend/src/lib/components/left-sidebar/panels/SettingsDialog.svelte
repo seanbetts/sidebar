@@ -49,7 +49,7 @@
 </script>
 
 <AlertDialog.Root bind:open>
-  <AlertDialog.Content class="settings-dialog !max-w-[1200px] !w-[96vw]">
+  <AlertDialog.Content class="settings-dialog-container">
     <AlertDialog.Header class="settings-header">
       <AlertDialog.Title>Settings</AlertDialog.Title>
       <AlertDialog.Description>Configure your workspace.</AlertDialog.Description>
@@ -403,12 +403,13 @@
     cursor: default;
   }
 
-  .settings-dialog {
-    max-width: 1200px;
-    width: min(96vw, 1200px);
-    height: min(85vh, 680px);
-    max-height: min(85vh, 680px);
-    min-height: min(85vh, 680px);
+  /* Target the actual rendered dialog element */
+  :global([data-slot='alert-dialog-content'].settings-dialog-container) {
+    max-width: 1200px !important;
+    width: min(96vw, 1200px) !important;
+    height: min(85vh, 680px) !important;
+    max-height: min(85vh, 680px) !important;
+    min-height: min(85vh, 680px) !important;
     overflow: hidden;
     display: flex;
     flex-direction: column;

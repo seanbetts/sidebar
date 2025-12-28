@@ -17,8 +17,12 @@ os.environ["TESTING"] = "1"
 os.environ.setdefault("BEARER_TOKEN", "test-bearer-token-12345")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-12345")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key-12345")
-os.environ.setdefault("DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5432/sidebar_test")
+# DATABASE_URL is optional in tests; DB tests will skip if not provided.
 os.environ.setdefault("WORKSPACE_BASE", "/tmp/test-workspace")
+os.environ.setdefault(
+    "SKILLS_DIR",
+    str(Path(__file__).resolve().parents[1] / "skills"),
+)
 
 
 @pytest.fixture
@@ -244,6 +248,13 @@ def test_db_engine():
     # Create engine
     engine = create_engine(test_db_url, pool_pre_ping=True)
 
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception as exc:
+        engine.dispose()
+        pytest.skip(f"Test database unavailable: {exc}")
+
     # Create all tables
     Base.metadata.create_all(engine)
 
@@ -264,6 +275,7 @@ def test_db(test_db_engine):
     """
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy import text
+    from api.db.base import Base
 
     # Create session
     TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
@@ -285,7 +297,7 @@ def test_db(test_db_engine):
 
 
 @pytest.fixture
-def test_client():
+def test_client(test_db_engine):
     """
     Create a FastAPI test client.
 
@@ -295,4 +307,5 @@ def test_client():
     from fastapi.testclient import TestClient
     from api.main import app
 
-    return TestClient(app)
+    with TestClient(app) as client:
+        yield client

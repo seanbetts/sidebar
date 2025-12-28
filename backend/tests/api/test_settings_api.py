@@ -1,5 +1,5 @@
 from api.config import settings
-from api.routers import settings as settings_router
+from api.services import settings_service
 
 
 def _auth_headers() -> dict[str, str]:
@@ -18,7 +18,7 @@ def test_update_settings_trims_fields(test_client):
 
 
 def test_update_settings_rejects_long_style(test_client):
-    long_value = "a" * (settings_router.MAX_STYLE_CHARS + 1)
+    long_value = "a" * (settings_service.MAX_STYLE_CHARS + 1)
     response = test_client.patch(
         "/api/settings",
         headers=_auth_headers(),
