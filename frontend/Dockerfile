@@ -6,13 +6,15 @@ WORKDIR /app
 # TEMPORARY WORKAROUND for corporate SSL interception
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 RUN npm config set strict-ssl false
+ENV NPM_CONFIG_PRODUCTION=false
+ENV NPM_CONFIG_OMIT=
 
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies with cache mount to speed up rebuilds
 RUN --mount=type=cache,target=/root/.npm \
-    npm install
+    npm install --include=dev
 
 # Copy source code
 COPY . .
@@ -20,8 +22,8 @@ COPY . .
 # Allow larger heap during build to avoid OOM in Docker
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# Build the app using npx to ensure vite is found
-RUN npx vite build
+# Build the app with Vite (SvelteKit plugin handles SSR + adapter)
+RUN npm run build
 
 # Production image
 FROM node:20-slim

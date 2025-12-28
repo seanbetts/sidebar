@@ -355,24 +355,24 @@
           onSearch={(query) => filesStore.searchNotes(query)}
           onClear={() => filesStore.load('notes', true)}
         >
-          <button
-            class="panel-action"
-            on:click={handleNewFolder}
-            aria-label="New folder"
-            title="New folder"
-            slot="actions"
-          >
-            <Folder size={16} />
-          </button>
-          <button
-            class="panel-action"
-            on:click={handleNewNote}
-            aria-label="New note"
-            title="New note"
-            slot="actions"
-          >
-            <Plus size={16} />
-          </button>
+          <svelte:fragment slot="actions">
+            <button
+              class="panel-action"
+              on:click={handleNewFolder}
+              aria-label="New folder"
+              title="New folder"
+            >
+              <Folder size={16} />
+            </button>
+            <button
+              class="panel-action"
+              on:click={handleNewNote}
+              aria-label="New note"
+              title="New note"
+            >
+              <Plus size={16} />
+            </button>
+          </svelte:fragment>
         </SidebarSectionHeader>
         <div class="notes-content">
           <NotesPanel basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
@@ -387,15 +387,16 @@
           onSearch={(query) => websitesStore.search(query)}
           onClear={() => websitesStore.load(true)}
         >
-          <button
-            class="panel-action"
-            on:click={handleNewWebsite}
-            aria-label="Save website"
-            title="Save website"
-            slot="actions"
-          >
-            <Plus size={16} />
-          </button>
+          <svelte:fragment slot="actions">
+            <button
+              class="panel-action"
+              on:click={handleNewWebsite}
+              aria-label="Save website"
+              title="Save website"
+            >
+              <Plus size={16} />
+            </button>
+          </svelte:fragment>
         </SidebarSectionHeader>
         <div class="files-content">
           <WebsitesPanel />
@@ -410,15 +411,16 @@
           onSearch={(query) => filesStore.searchFiles('.', query)}
           onClear={() => filesStore.load('.', true)}
         >
-          <button
-            class="panel-action"
-            on:click={handleNewWorkspaceFolder}
-            aria-label="New folder"
-            title="New folder"
-            slot="actions"
-          >
-            <Folder size={16} />
-          </button>
+          <svelte:fragment slot="actions">
+            <button
+              class="panel-action"
+              on:click={handleNewWorkspaceFolder}
+              aria-label="New folder"
+              title="New folder"
+            >
+              <Folder size={16} />
+            </button>
+          </svelte:fragment>
         </SidebarSectionHeader>
         <div class="files-content">
           <FilesPanel />
