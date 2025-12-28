@@ -11,6 +11,8 @@ router = APIRouter(prefix="/skills", tags=["skills"])
 
 
 class SkillItem(BaseModel):
+    """Response payload for a single skill."""
+
     id: str
     name: str
     description: str
@@ -18,10 +20,20 @@ class SkillItem(BaseModel):
 
 
 class SkillsResponse(BaseModel):
+    """Response payload for skills list."""
+
     skills: list[SkillItem]
 
 
 @router.get("", response_model=SkillsResponse)
 async def list_skills(_: str = Depends(verify_bearer_token)):
+    """List available skills from the skills directory.
+
+    Args:
+        _: Authorization token (validated).
+
+    Returns:
+        Skills list payload.
+    """
     skills = SkillCatalogService.list_skills(settings.skills_dir)
     return SkillsResponse(skills=skills)
