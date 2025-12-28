@@ -14,7 +14,7 @@ interface ConversationListState {
 }
 
 function createConversationListStore() {
-  const { subscribe, set, update } = writable<ConversationListState>({
+  const { subscribe, update } = writable<ConversationListState>({
     conversations: [],
     loading: false,
     searchQuery: '',

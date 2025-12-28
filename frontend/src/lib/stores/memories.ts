@@ -13,7 +13,7 @@ function sortMemories(items: Memory[]): Memory[] {
 }
 
 function createMemoriesStore() {
-  const { subscribe, set, update } = writable<MemoryState>({
+  const { subscribe, update } = writable<MemoryState>({
     memories: [],
     isLoading: false,
     error: null

@@ -1,7 +1,6 @@
 /**
  * SSE (Server-Sent Events) client for streaming chat
  */
-import type { SSEEvent } from '$lib/types/chat';
 
 export interface SSECallbacks {
 	onToken?: (content: string) => void;
