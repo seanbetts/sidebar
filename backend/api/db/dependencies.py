@@ -1,21 +1,43 @@
 """FastAPI dependencies for database and auth."""
-from fastapi import Header, HTTPException, status
-from typing import Annotated
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials
+
+from api.auth import bearer_scheme
+from api.config import settings
+from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
 
 
-DEFAULT_USER_ID = "81326b53-b7eb-42e2-b645-0c03cb5d5dd4"
+DEFAULT_USER_ID = settings.default_user_id
 
 
-def get_current_user_id(
-    x_user_id: Annotated[str | None, Header()] = None
+async def get_current_user_id(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> str:
-    """Get current user ID from X-User-ID header.
+    """Extract user ID from Supabase JWT token."""
+    if settings.auth_dev_mode:
+        return settings.default_user_id
 
-    For now, this is a simple header-based auth.
-    In production, this would validate JWT tokens and extract user_id.
-    """
-    if not x_user_id:
-        # Default to a stable UUID for development
-        return DEFAULT_USER_ID
+    user_id = getattr(request.state, "user_id", None)
+    if user_id:
+        return user_id
 
-    return x_user_id
+    validator = SupabaseJWTValidator()
+    try:
+        payload = await validator.validate_token(credentials.credentials)
+    except JWTValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid JWT: {exc}",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing user ID",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user_id
