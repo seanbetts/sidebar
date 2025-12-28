@@ -3,8 +3,8 @@
 Current coverage snapshot and gaps for the sideBar backend.
 
 **Date**: 2025-12-28 (Refreshed)
-**Test Files**: 32 (backend)
-**Test Count**: 160 (latest local run may differ; re-run to confirm)
+**Test Files**: 36 (backend)
+**Test Count**: 173 (latest local run may differ; re-run to confirm)
 
 ---
 
@@ -23,11 +23,21 @@ Current coverage snapshot and gaps for the sideBar backend.
 - Security primitives (path validation, audit logging) are covered.
 - Tool mapper + basic Claude streaming flow are covered.
 - Tool definition contracts are covered.
+- R2 storage + file tree + files workspace behaviors are covered.
 - Chat router has baseline coverage.
 
 ### Current Gaps
 - Router-level integration coverage remains minimal (beyond chat/settings).
-- R2 storage integration and file tree/workspace services are untested.
+- Notes workspace service and some storage integration paths are untested.
+
+### ✅ Storage + Workspace (PARTIAL)
+
+| Component | Test File | Status |
+|-----------|-----------|--------|
+| R2 storage backend | `tests/api/test_r2_storage.py` | ✅ |
+| Storage backend factory | `tests/api/test_storage_service.py` | ✅ |
+| File tree service | `tests/api/test_file_tree_service.py` | ✅ |
+| Files workspace service | `tests/api/test_files_workspace_service.py` | ✅ |
 
 ---
 
@@ -103,9 +113,6 @@ Current coverage snapshot and gaps for the sideBar backend.
 
 | Component | Location | Priority | Notes |
 |-----------|----------|----------|-------|
-| R2 storage backend | `api/services/storage/` | 🔴 HIGH | Upload/download paths |
-| File tree service | `api/services/file_tree_service.py` | 🟡 MEDIUM | Listing + filters |
-| Files workspace service | `api/services/files_workspace_service.py` | 🟡 MEDIUM | CRUD + indexing |
 | Notes workspace service | `api/services/notes_workspace_service.py` | 🟡 MEDIUM | Tree/rename/update |
 
 ### Memory Tool
@@ -157,7 +164,7 @@ Async marker registered in `backend/pyproject.toml`. Async tests collect and run
 ## Recommended Test Plan
 
 ### Phase 1: Critical Path
-1. Continue storage + workspace coverage (R2 + file tree + workspace services).
+1. Add Notes workspace service coverage.
 
 ### Phase 2: Storage + Workspace
 1. Add tests for R2 storage service.
