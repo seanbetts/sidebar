@@ -3,6 +3,13 @@ import type { ChatState } from '../chat';
 type UpdateFn = (updater: (state: ChatState) => ChatState) => void;
 type GetStateFn = () => ChatState;
 
+/**
+ * Create helpers for managing tool status state in the chat store.
+ *
+ * @param update - Store update function.
+ * @param getState - Store state getter.
+ * @returns Tool state handler helpers.
+ */
 export function createToolStateHandlers(update: UpdateFn, getState: GetStateFn) {
 	let toolClearTimeout: ReturnType<typeof setTimeout> | null = null;
 	let toolUpdateTimeout: ReturnType<typeof setTimeout> | null = null;

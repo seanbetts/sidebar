@@ -25,6 +25,9 @@ export interface SSECallbacks {
 	onMemoryDeleted?: (data: { result?: any }) => void;
 }
 
+/**
+ * SSE client for streaming chat events.
+ */
 export class SSEClient {
 	private abortController: AbortController | null = null;
 	private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -133,6 +136,13 @@ export class SSEClient {
 		}
 	}
 
+	/**
+	 * Dispatch a parsed SSE event to callbacks.
+	 *
+	 * @param eventType - SSE event type string.
+	 * @param data - Parsed event payload.
+	 * @param callbacks - Callback handlers for events.
+	 */
 	private handleEvent(eventType: string, data: any, callbacks: SSECallbacks): void {
 		switch (eventType) {
 			case 'token':
@@ -212,7 +222,7 @@ export class SSEClient {
 	}
 
 	/**
-	 * Disconnect from SSE stream
+	 * Disconnect from the SSE stream.
 	 */
 	disconnect(): void {
 		// Abort the fetch request

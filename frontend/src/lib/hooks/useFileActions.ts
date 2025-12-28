@@ -23,6 +23,12 @@ type FileActionsContext = {
 
 const toFolderPath = (path: string) => path.replace(/^folder:/, '');
 
+/**
+ * Build file tree action handlers for rename, move, and delete flows.
+ *
+ * @param ctx - Context with file tree state and UI setters.
+ * @returns Action handlers for file tree interactions.
+ */
 export function useFileActions(ctx: FileActionsContext) {
   const buildFolderOptions = (excludePath?: string) => {
     const basePath = ctx.getBasePath();

@@ -1,5 +1,11 @@
 export type ThemeMode = "light" | "dark";
 
+/**
+ * Apply a theme mode and optionally persist to localStorage.
+ *
+ * @param theme - Theme mode to apply.
+ * @param persist - Whether to store the choice in localStorage.
+ */
 export function applyThemeMode(theme: ThemeMode, persist: boolean): void {
   if (typeof document === "undefined") {
     return;
@@ -21,10 +27,20 @@ export function applyThemeMode(theme: ThemeMode, persist: boolean): void {
   }
 }
 
+/**
+ * Set and persist a theme mode.
+ *
+ * @param theme - Theme mode to apply.
+ */
 export function setThemeMode(theme: ThemeMode): void {
   applyThemeMode(theme, true);
 }
 
+/**
+ * Read the stored theme preference from localStorage.
+ *
+ * @returns Stored theme mode or null when unset.
+ */
 export function getStoredTheme(): ThemeMode | null {
   const stored = localStorage.getItem("theme");
   if (stored === "light" || stored === "dark") {
