@@ -243,7 +243,7 @@ def test_db_engine():
     from api.db.base import Base
 
     # Use the test database URL
-    test_db_url = os.getenv("DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5432/sidebar_test")
+    test_db_url = os.getenv("DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test")
 
     # Create engine
     engine = create_engine(test_db_url, pool_pre_ping=True)

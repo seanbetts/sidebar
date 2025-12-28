@@ -10,12 +10,15 @@ echo "Setting up test database..."
 DB_USER="sidebar"
 DB_PASSWORD="sidebar_dev"
 DB_NAME="sidebar_test"
-CONTAINER_NAME="sidebar-postgres"
+CONTAINER_NAME="sidebar-test-postgres"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_FILE="${SCRIPT_DIR}/../../docker-compose.test.yml"
+SERVICE_NAME="postgres-test"
 
 # Check if PostgreSQL container is running
-if ! docker compose ps postgres | grep -q "Up"; then
+if ! docker compose -f $COMPOSE_FILE ps $SERVICE_NAME | grep -q "Up"; then
     echo "ERROR: PostgreSQL container is not running"
-    echo "Start it with: docker compose up -d postgres"
+    echo "Start it with: docker compose -f $COMPOSE_FILE up -d $SERVICE_NAME"
     exit 1
 fi
 
