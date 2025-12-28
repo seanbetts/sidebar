@@ -20,6 +20,16 @@ async def list_notes_tree(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Return the hierarchical notes tree for the current user.
+
+    Args:
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Tree structure of folders and notes.
+    """
     return NotesWorkspaceService.list_tree(db, user_id)
 
 
@@ -31,6 +41,21 @@ async def search_notes(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Search notes by content and metadata.
+
+    Args:
+        query: Search query string.
+        limit: Max results to return. Defaults to 50.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        List of matching notes.
+
+    Raises:
+        HTTPException: 400 if query is missing.
+    """
     if not query:
         raise HTTPException(status_code=400, detail="query required")
 
@@ -44,6 +69,20 @@ async def create_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Create a notes folder.
+
+    Args:
+        request: Request payload with path.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Folder creation result.
+
+    Raises:
+        HTTPException: 400 if path is missing.
+    """
     path = (request.get("path") or "").strip("/")
     if not path:
         raise HTTPException(status_code=400, detail="path required")
@@ -58,6 +97,20 @@ async def rename_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Rename a notes folder.
+
+    Args:
+        request: Request payload with oldPath and newName.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Folder rename result.
+
+    Raises:
+        HTTPException: 400 if required fields are missing.
+    """
     old_path = (request.get("oldPath") or "").strip("/")
     new_name = (request.get("newName") or "").strip("/")
     if not old_path or not new_name:
@@ -73,6 +126,20 @@ async def move_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Move a notes folder to a new parent.
+
+    Args:
+        request: Request payload with oldPath and newParent.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Folder move result.
+
+    Raises:
+        HTTPException: 400 for missing or invalid paths.
+    """
     old_path = (request.get("oldPath") or "").strip("/")
     new_parent = (request.get("newParent") or "").strip("/")
     if not old_path:
@@ -91,6 +158,20 @@ async def delete_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Delete a notes folder.
+
+    Args:
+        request: Request payload with path.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Folder deletion result.
+
+    Raises:
+        HTTPException: 400 if path is missing.
+    """
     path = (request.get("path") or "").strip("/")
     if not path:
         raise HTTPException(status_code=400, detail="path required")
@@ -105,6 +186,20 @@ async def get_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Fetch a note by ID.
+
+    Args:
+        note_id: Note ID (UUID string).
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Note record and content.
+
+    Raises:
+        HTTPException: 400 for invalid ID, 404 if not found.
+    """
     try:
         return NotesWorkspaceService.get_note(db, user_id, note_id)
     except ValueError as exc:
@@ -120,6 +215,20 @@ async def create_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Create a new note.
+
+    Args:
+        request: Request payload with content and optional path/folder.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Created note record.
+
+    Raises:
+        HTTPException: 400 if content is missing.
+    """
     content = request.get("content")
     path = request.get("path", "")
     folder = (request.get("folder") or "").strip("/")
@@ -138,6 +247,21 @@ async def update_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Update a note's content.
+
+    Args:
+        note_id: Note ID (UUID string).
+        request: Request payload with content.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Updated note record.
+
+    Raises:
+        HTTPException: 400 for invalid request, 404 if not found.
+    """
     content = request.get("content")
     if content is None:
         raise HTTPException(status_code=400, detail="content required")
@@ -158,6 +282,21 @@ async def rename_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Rename a note.
+
+    Args:
+        note_id: Note ID (UUID string).
+        request: Request payload with newName.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Rename result.
+
+    Raises:
+        HTTPException: 400 for invalid request, 404 if not found.
+    """
     new_name = request.get("newName", "")
     if not new_name:
         raise HTTPException(status_code=400, detail="newName required")
@@ -177,6 +316,20 @@ async def delete_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Delete a note by ID.
+
+    Args:
+        note_id: Note ID (UUID string).
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 400 for invalid ID, 404 if not found.
+    """
     note_uuid = NotesService.parse_note_id(note_id)
     if not note_uuid:
         raise HTTPException(status_code=400, detail="Invalid note id")
@@ -193,6 +346,20 @@ async def download_note(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Download a note as a markdown attachment.
+
+    Args:
+        note_id: Note ID (UUID string).
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Markdown response with attachment headers.
+
+    Raises:
+        HTTPException: 400 for invalid ID, 404 if not found.
+    """
     try:
         result = NotesWorkspaceService.download_note(db, user_id, note_id)
     except ValueError as exc:
@@ -212,6 +379,21 @@ async def update_pin(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Pin or unpin a note.
+
+    Args:
+        note_id: Note ID (UUID string).
+        request: Request payload with pinned.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 400 for invalid ID, 404 if not found.
+    """
     pinned = bool(request.get("pinned", False))
     try:
         note_uuid = NotesService.parse_note_id(note_id)
@@ -231,6 +413,21 @@ async def update_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Move a note to a different folder.
+
+    Args:
+        note_id: Note ID (UUID string).
+        request: Request payload with folder.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 400 for invalid ID, 404 if not found.
+    """
     folder = request.get("folder", "") or ""
     try:
         note_uuid = NotesService.parse_note_id(note_id)
@@ -250,6 +447,21 @@ async def update_archive(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Archive or unarchive a note.
+
+    Args:
+        note_id: Note ID (UUID string).
+        request: Request payload with archived.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+
+    Raises:
+        HTTPException: 400 for invalid ID, 404 if not found.
+    """
     archived = bool(request.get("archived", False))
     folder = "Archive" if archived else ""
     try:
