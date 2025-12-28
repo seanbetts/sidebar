@@ -1,18 +1,19 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { MessageSquare, FileText, Globe, Menu, Plus, Folder, FolderOpen } from 'lucide-svelte';
+  import { Plus, Folder } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import { filesStore } from '$lib/stores/files';
   import { websitesStore } from '$lib/stores/websites';
-  import SearchBar from './SearchBar.svelte';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import SettingsDialogContainer from '$lib/components/left-sidebar/panels/SettingsDialogContainer.svelte';
   import { useSidebarSectionLoader, type SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
+  import SidebarRail from '$lib/components/left-sidebar/SidebarRail.svelte';
+  import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
   import NewNoteDialog from '$lib/components/left-sidebar/dialogs/NewNoteDialog.svelte';
   import NewFolderDialog from '$lib/components/left-sidebar/dialogs/NewFolderDialog.svelte';
   import NewWorkspaceFolderDialog from '$lib/components/left-sidebar/dialogs/NewWorkspaceFolderDialog.svelte';
@@ -334,94 +335,45 @@
 />
 
 <div class="sidebar-shell" class:collapsed={isCollapsed}>
-  <div class="sidebar-rail">
-    <button
-      class="rail-toggle"
-      on:click={toggleSidebar}
-      aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-    >
-      <Menu size={20} />
-    </button>
-
-    <div class="rail-actions">
-      <button
-        on:click={() => openSection('notes')}
-        class="rail-btn"
-        aria-label="Notes"
-        title="Notes"
-      >
-        <FileText size={18} />
-      </button>
-      <button
-        on:click={() => openSection('websites')}
-        class="rail-btn"
-        aria-label="Websites"
-        title="Websites"
-      >
-        <Globe size={18} />
-      </button>
-      <button
-        on:click={() => openSection('workspace')}
-        class="rail-btn"
-        aria-label="Files"
-        title="Files"
-      >
-        <FolderOpen size={18} />
-      </button>
-      <button
-        on:click={() => openSection('history')}
-        class="rail-btn"
-        aria-label="Chat"
-        title="Chat"
-      >
-        <MessageSquare size={18} />
-      </button>
-    </div>
-
-    <div class="rail-footer">
-      <button
-        on:click={() => (isSettingsOpen = true)}
-        class="rail-btn rail-btn-avatar"
-        aria-label="Open settings"
-        title="Settings"
-      >
-        {#if profileImageSrc}
-          <img
-            class="rail-avatar"
-            src={profileImageSrc}
-            alt="Profile"
-            on:error={() => settingsDialog?.handleProfileImageError()}
-          />
-        {:else}
-          <img class="rail-avatar rail-avatar-logo" src={sidebarLogoSrc} alt="App logo" />
-        {/if}
-      </button>
-    </div>
-  </div>
+  <SidebarRail
+    {isCollapsed}
+    {profileImageSrc}
+    {sidebarLogoSrc}
+    onToggle={toggleSidebar}
+    onOpenSection={openSection}
+    onOpenSettings={() => (isSettingsOpen = true)}
+    onProfileImageError={() => settingsDialog?.handleProfileImageError()}
+  />
 
   <div class="sidebar-panel" aria-hidden={isCollapsed}>
     <div class="panel-body">
       <!-- Notes Section -->
       <div class="panel-section" class:hidden={activeSection !== 'notes'}>
-        <div class="panel-section-header">
-          <div class="panel-section-header-row">
-            <div class="panel-section-title">Notes</div>
-            <div class="panel-section-actions">
-              <button class="panel-action" on:click={handleNewFolder} aria-label="New folder" title="New folder">
-                <Folder size={16} />
-              </button>
-              <button class="panel-action" on:click={handleNewNote} aria-label="New note" title="New note">
-                <Plus size={16} />
-              </button>
-            </div>
-          </div>
-          <SearchBar
-            onSearch={(query) => filesStore.searchNotes(query)}
-            onClear={() => filesStore.load('notes', true)}
-            placeholder="Search notes..."
-          />
-        </div>
+        <SidebarSectionHeader
+          title="Notes"
+          searchPlaceholder="Search notes..."
+          onSearch={(query) => filesStore.searchNotes(query)}
+          onClear={() => filesStore.load('notes', true)}
+        >
+          <button
+            class="panel-action"
+            on:click={handleNewFolder}
+            aria-label="New folder"
+            title="New folder"
+            slot="actions"
+          >
+            <Folder size={16} />
+          </button>
+          <button
+            class="panel-action"
+            on:click={handleNewNote}
+            aria-label="New note"
+            title="New note"
+            slot="actions"
+          >
+            <Plus size={16} />
+          </button>
+        </SidebarSectionHeader>
         <div class="notes-content">
           <NotesPanel basePath="notes" emptyMessage="No notes found" hideExtensions={true} onFileClick={handleNoteClick} />
         </div>
@@ -429,21 +381,22 @@
 
       <!-- Websites Section -->
       <div class="panel-section" class:hidden={activeSection !== 'websites'}>
-        <div class="panel-section-header">
-          <div class="panel-section-header-row">
-            <div class="panel-section-title">Websites</div>
-            <div class="panel-section-actions">
-              <button class="panel-action" on:click={handleNewWebsite} aria-label="Save website" title="Save website">
-                <Plus size={16} />
-              </button>
-            </div>
-          </div>
-          <SearchBar
-            onSearch={(query) => websitesStore.search(query)}
-            onClear={() => websitesStore.load(true)}
-            placeholder="Search websites..."
-          />
-        </div>
+        <SidebarSectionHeader
+          title="Websites"
+          searchPlaceholder="Search websites..."
+          onSearch={(query) => websitesStore.search(query)}
+          onClear={() => websitesStore.load(true)}
+        >
+          <button
+            class="panel-action"
+            on:click={handleNewWebsite}
+            aria-label="Save website"
+            title="Save website"
+            slot="actions"
+          >
+            <Plus size={16} />
+          </button>
+        </SidebarSectionHeader>
         <div class="files-content">
           <WebsitesPanel />
         </div>
@@ -451,21 +404,22 @@
 
       <!-- Workspace Section -->
       <div class="panel-section" class:hidden={activeSection !== 'workspace'}>
-        <div class="panel-section-header">
-          <div class="panel-section-header-row">
-            <div class="panel-section-title">Files</div>
-            <div class="panel-section-actions">
-              <button class="panel-action" on:click={handleNewWorkspaceFolder} aria-label="New folder" title="New folder">
-                <Folder size={16} />
-              </button>
-            </div>
-          </div>
-          <SearchBar
-            onSearch={(query) => filesStore.searchFiles('.', query)}
-            onClear={() => filesStore.load('.', true)}
-            placeholder="Search files..."
-          />
-        </div>
+        <SidebarSectionHeader
+          title="Files"
+          searchPlaceholder="Search files..."
+          onSearch={(query) => filesStore.searchFiles('.', query)}
+          onClear={() => filesStore.load('.', true)}
+        >
+          <button
+            class="panel-action"
+            on:click={handleNewWorkspaceFolder}
+            aria-label="New folder"
+            title="New folder"
+            slot="actions"
+          >
+            <Folder size={16} />
+          </button>
+        </SidebarSectionHeader>
         <div class="files-content">
           <FilesPanel />
         </div>
@@ -473,17 +427,12 @@
 
       <!-- History Section -->
       <div class="panel-section" class:hidden={activeSection !== 'history'}>
-        <div class="panel-section-header">
-          <div class="panel-section-header-row">
-            <div class="panel-section-title">Chat</div>
-            <div class="panel-section-actions"></div>
-          </div>
-          <SearchBar
-            onSearch={(query) => conversationListStore.search(query)}
-            onClear={() => conversationListStore.load(true)}
-            placeholder="Search conversations..."
-          />
-        </div>
+        <SidebarSectionHeader
+          title="Chat"
+          searchPlaceholder="Search conversations..."
+          onSearch={(query) => conversationListStore.search(query)}
+          onClear={() => conversationListStore.load(true)}
+        />
         <div class="history-content">
           <ConversationList />
         </div>
@@ -498,67 +447,6 @@
     height: 100vh;
     background-color: var(--color-sidebar);
     border-right: 1px solid var(--color-sidebar-border);
-  }
-
-  .sidebar-rail {
-    width: 56px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0.75rem 0.5rem;
-    border-right: 1px solid var(--color-sidebar-border);
-    background-color: var(--color-sidebar);
-    gap: 0.75rem;
-  }
-
-  .rail-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 0.5rem;
-    border: 1px solid var(--color-sidebar-border);
-    background-color: transparent;
-    color: var(--color-sidebar-foreground);
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-
-  .rail-toggle:hover {
-    background-color: var(--color-sidebar-accent);
-  }
-
-  .rail-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: center;
-    flex: 1;
-    width: 100%;
-  }
-
-  .rail-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 0.5rem;
-    border: 1px solid transparent;
-    background-color: transparent;
-    color: var(--color-sidebar-foreground);
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-
-  .rail-btn:hover {
-    background-color: var(--color-sidebar-accent);
-  }
-
-  .rail-footer {
-    display: flex;
-    justify-content: center;
   }
 
   .sidebar-panel {
@@ -594,54 +482,6 @@
     display: none;
   }
 
-  .panel-section-header {
-    display: flex;
-    flex-direction: column;
-    padding: 1rem;
-    gap: 0.75rem;
-    border-bottom: 1px solid var(--color-sidebar-border);
-  }
-
-  .panel-section-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  .panel-section-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: var(--color-sidebar-foreground);
-  }
-
-  .panel-section-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .panel-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.25rem;
-    border-radius: 0.5rem;
-    border: 1px solid transparent;
-    background-color: transparent;
-    color: var(--color-sidebar-foreground);
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-
-  .panel-action:hover {
-    background-color: var(--color-sidebar-accent);
-  }
-
   .history-content {
     display: flex;
     flex-direction: column;
@@ -664,25 +504,5 @@
   }
 
 
-
-  .rail-btn-avatar {
-    padding: 0.35rem;
-  }
-
-  .rail-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  .rail-avatar-logo {
-    padding: 3px;
-    object-fit: contain;
-  }
-
-  :global(.dark) .rail-avatar-logo {
-    filter: invert(1);
-  }
 
 </style>
