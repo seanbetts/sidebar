@@ -151,7 +151,6 @@ class NotesService:
         note.content = content
         note.updated_at = datetime.now(timezone.utc)
         db.commit()
-        db.refresh(note)
         return note
 
     @staticmethod
@@ -176,7 +175,6 @@ class NotesService:
         note.metadata_ = {**(note.metadata_ or {}), "folder": folder}
         note.updated_at = datetime.now(timezone.utc)
         db.commit()
-        db.refresh(note)
         return note
 
     @staticmethod
