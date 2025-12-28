@@ -11,7 +11,18 @@ PROFILE_IMAGES_PREFIX = "profile-images"
 
 
 def normalize_path(raw_path: str, *, allow_root: bool = True) -> str:
-    """Normalize a user-provided path to a clean, relative POSIX path."""
+    """Normalize a user-provided path to a relative POSIX path.
+
+    Args:
+        raw_path: Raw user-provided path.
+        allow_root: Allow empty paths to represent the root. Defaults to True.
+
+    Returns:
+        Normalized path without leading slash.
+
+    Raises:
+        ValueError: If the path is invalid or contains traversal.
+    """
     if raw_path is None:
         raise ValueError("Path is required")
 
@@ -36,6 +47,7 @@ def normalize_path(raw_path: str, *, allow_root: bool = True) -> str:
 
 
 def is_profile_images_path(path: str) -> bool:
+    """Return True if the path is within profile-images."""
     normalized = normalize_path(path)
     return normalized == PROFILE_IMAGES_PREFIX or normalized.startswith(f"{PROFILE_IMAGES_PREFIX}/")
 
@@ -47,6 +59,16 @@ def ensure_allowed_path(path: str) -> None:
 
 
 def bucket_key(user_id: str, path: str, *, is_folder: bool = False) -> str:
+    """Build a bucket key for a user and path.
+
+    Args:
+        user_id: Current user ID.
+        path: Relative path.
+        is_folder: Whether the key represents a folder marker.
+
+    Returns:
+        Bucket key string.
+    """
     key = f"{user_id}/{path.strip('/')}"
     if is_folder:
         return f"{key}/" if key and not key.endswith("/") else key
@@ -54,6 +76,15 @@ def bucket_key(user_id: str, path: str, *, is_folder: bool = False) -> str:
 
 
 def relative_path(base_path: str, full_path: str) -> str:
+    """Return a path relative to a base path.
+
+    Args:
+        base_path: Base folder path.
+        full_path: Full path including base.
+
+    Returns:
+        Relative path string.
+    """
     base = (base_path or "").strip("/")
     path = (full_path or "").strip("/")
     if not base:
@@ -67,6 +98,7 @@ def relative_path(base_path: str, full_path: str) -> str:
 
 @contextmanager
 def session_for_user(user_id: str):
+    """Provide a DB session scoped to a user ID."""
     db = SessionLocal()
     set_session_user_id(db, user_id)
     try:
