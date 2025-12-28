@@ -2,6 +2,9 @@
   import { Loader2, User } from 'lucide-svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import MemorySettings from '$lib/components/settings/MemorySettings.svelte';
+  import SettingsAccountSection from '$lib/components/left-sidebar/panels/settings/SettingsAccountSection.svelte';
+  import SettingsSystemSection from '$lib/components/left-sidebar/panels/settings/SettingsSystemSection.svelte';
+  import SettingsSkillsSection from '$lib/components/left-sidebar/panels/settings/SettingsSkillsSection.svelte';
 
   export let open = false;
   export let isLoadingSettings = false;
@@ -74,215 +77,52 @@
           </div>
         {/if}
         {#if activeSettingsSection === 'account'}
-          <h3>Account</h3>
-          <p>Basic details used to personalise prompts.</p>
-          <div class="settings-avatar">
-            <div class="settings-avatar-preview">
-              {#if profileImageSrc}
-                <img src={profileImageSrc} alt="Profile" on:error={handleProfileImageError} />
-              {:else}
-                <div class="settings-avatar-placeholder" aria-hidden="true">
-                  <User size={20} />
-                </div>
-              {/if}
-            </div>
-            <label class="settings-avatar-upload">
-              <input
-                type="file"
-                accept="image/*"
-                on:change={handleProfileImageChange}
-                disabled={isUploadingProfileImage}
-              />
-              {#if isUploadingProfileImage}
-                Uploading...
-              {:else}
-                Upload photo
-              {/if}
-            </label>
-            {#if profileImageError}
-              <div class="settings-error">{profileImageError}</div>
-            {/if}
-            {#if profileImageSrc}
-              <button
-                type="button"
-                class="settings-avatar-remove"
-                on:click={deleteProfileImage}
-                disabled={isUploadingProfileImage}
-              >
-                Remove photo
-              </button>
-            {/if}
-          </div>
-          <div class="settings-form settings-grid">
-            <label class="settings-label">
-              <span>Name</span>
-              <input class="settings-input" type="text" bind:value={name} placeholder="Name" />
-            </label>
-            <label class="settings-label">
-              <span>Job title</span>
-              <input class="settings-input" type="text" bind:value={jobTitle} placeholder="Job title" />
-            </label>
-            <label class="settings-label">
-              <span>Employer</span>
-              <input class="settings-input" type="text" bind:value={employer} placeholder="Employer" />
-            </label>
-            <label class="settings-label">
-              <span>Date of birth</span>
-              <input class="settings-input" type="date" bind:value={dateOfBirth} />
-            </label>
-            <label class="settings-label">
-              <span>Gender</span>
-              <input class="settings-input" type="text" bind:value={gender} placeholder="Gender" />
-            </label>
-            <label class="settings-label">
-              <span>Pronouns</span>
-              <select class="settings-input" bind:value={pronouns}>
-                <option value="">Select pronouns</option>
-                {#each pronounOptions as option}
-                  <option value={option}>{option}</option>
-                {/each}
-              </select>
-            </label>
-            <label class="settings-label">
-              <span>Home</span>
-              <div class="settings-autocomplete">
-                <input
-                  class="settings-input"
-                  type="text"
-                  bind:value={location}
-                  placeholder="City, region"
-                  on:input={handleLocationInput}
-                  on:focus={handleLocationInput}
-                  on:keydown={handleLocationKeydown}
-                  on:blur={handleLocationBlur}
-                />
-                {#if isLoadingLocations}
-                  <div class="settings-suggestions">
-                    <div class="settings-suggestion muted">Loading...</div>
-                  </div>
-                {:else if locationLookupError}
-                  <div class="settings-suggestions">
-                    <div class="settings-suggestion muted">{locationLookupError}</div>
-                  </div>
-                {:else if locationSuggestions.length}
-                  <div class="settings-suggestions">
-                    {#each locationSuggestions as suggestion, index}
-                      <button
-                        class="settings-suggestion"
-                        class:active={index === activeLocationIndex}
-                        type="button"
-                        on:mouseenter={() => (activeLocationIndex = index)}
-                        on:click={() => selectLocation(suggestion.description)}
-                      >
-                        {suggestion.description}
-                      </button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            </label>
-          </div>
-          <div class="settings-actions">
-            {#if isLoadingSettings}
-              <div class="settings-meta">
-                <Loader2 size={16} class="spin" />
-                Loading...
-              </div>
-            {/if}
-            {#if settingsError}
-              <div class="settings-error">{settingsError}</div>
-            {/if}
-          </div>
+          <SettingsAccountSection
+            bind:name
+            bind:jobTitle
+            bind:employer
+            bind:dateOfBirth
+            bind:gender
+            bind:pronouns
+            bind:location
+            bind:activeLocationIndex
+            {pronounOptions}
+            {profileImageSrc}
+            {profileImageError}
+            {isUploadingProfileImage}
+            {handleProfileImageChange}
+            {deleteProfileImage}
+            {handleProfileImageError}
+            {isLoadingLocations}
+            {locationLookupError}
+            {locationSuggestions}
+            {handleLocationInput}
+            {handleLocationKeydown}
+            {handleLocationBlur}
+            {selectLocation}
+            {isLoadingSettings}
+            {settingsError}
+          />
         {:else if activeSettingsSection === 'system'}
-          <h3>System</h3>
-          <p>Customize the prompts that guide your assistant.</p>
-          <div class="settings-form">
-            <label class="settings-label">
-              <span>Communication style</span>
-              <textarea
-                class="settings-textarea"
-                bind:value={communicationStyle}
-                placeholder="Style, tone, and formatting rules."
-                rows="8"
-              ></textarea>
-            </label>
-            <label class="settings-label">
-              <span>Working relationship</span>
-              <textarea
-                class="settings-textarea"
-                bind:value={workingRelationship}
-                placeholder="How the assistant should challenge and collaborate with you."
-                rows="8"
-              ></textarea>
-            </label>
-            <div class="settings-actions">
-              {#if isLoadingSettings}
-                <div class="settings-meta">
-                  <Loader2 size={16} class="spin" />
-                  Loading...
-                </div>
-              {/if}
-            </div>
-            {#if settingsError}
-              <div class="settings-error">{settingsError}</div>
-            {/if}
-          </div>
+          <SettingsSystemSection
+            bind:communicationStyle
+            bind:workingRelationship
+            {isLoadingSettings}
+            {settingsError}
+          />
         {:else if activeSettingsSection === 'memory'}
           <MemorySettings />
         {:else}
-          <h3>Skills</h3>
-          <div class="skills-header">
-            <p>Manage installed skills and permissions here.</p>
-            <label class="skill-toggle">
-              <input
-                type="checkbox"
-                checked={allSkillsEnabled}
-                on:change={(event) =>
-                  toggleAllSkills((event.currentTarget as HTMLInputElement).checked)
-                }
-              />
-              <span class="skill-switch" aria-hidden="true"></span>
-              <span class="skill-toggle-label">Enable all</span>
-            </label>
-          </div>
-          <div class="skills-panel">
-            {#if isLoadingSkills}
-              <div class="settings-meta">
-                <Loader2 size={16} class="spin" />
-                Loading skills...
-              </div>
-            {:else if skillsError}
-              <div class="settings-error">{skillsError}</div>
-            {:else if skills.length === 0}
-              <div class="settings-meta">No skills found.</div>
-            {:else}
-              {#each groupSkills(skills) as [category, categorySkills]}
-                <div class="skills-category">
-                  <div class="skills-category-title">{category}</div>
-                  <div class="skills-grid">
-                    {#each categorySkills as skill}
-                      <div class="skill-row">
-                        <div class="skill-row-header">
-                          <div class="skill-name">{skill.name}</div>
-                          <label class="skill-toggle">
-                            <input
-                              type="checkbox"
-                              checked={enabledSkills.includes(skill.id)}
-                              on:change={(event) =>
-                                toggleSkill(skill.id, (event.currentTarget as HTMLInputElement).checked)
-                              }
-                            />
-                            <span class="skill-switch" aria-hidden="true"></span>
-                          </label>
-                        </div>
-                        <div class="skill-description">{skill.description}</div>
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-              {/each}
-            {/if}
-          </div>
+          <SettingsSkillsSection
+            {skills}
+            {skillsError}
+            {isLoadingSkills}
+            {groupSkills}
+            {enabledSkills}
+            {allSkillsEnabled}
+            {toggleAllSkills}
+            {toggleSkill}
+          />
         {/if}
       </div>
     </div>
@@ -332,24 +172,24 @@
     background: var(--color-sidebar-accent);
   }
 
-  .settings-content h3 {
+  :global(.settings-content h3) {
     font-size: 1rem;
     margin-bottom: 0.35rem;
   }
 
-  .settings-content p {
+  :global(.settings-content p) {
     font-size: 0.85rem;
     color: var(--color-muted-foreground);
     margin-bottom: 1rem;
   }
 
-  .settings-form {
+  :global(.settings-form) {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
   }
 
-  .settings-label {
+  :global(.settings-label) {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
@@ -357,7 +197,7 @@
     color: var(--color-muted-foreground);
   }
 
-  .settings-textarea {
+  :global(.settings-textarea) {
     border-radius: 0.75rem;
     border: 1px solid var(--color-border);
     background: var(--color-card);
@@ -367,7 +207,7 @@
     resize: vertical;
   }
 
-  .settings-input {
+  :global(.settings-input) {
     border-radius: 0.75rem;
     border: 1px solid var(--color-border);
     background: var(--color-card);
@@ -376,21 +216,21 @@
     color: var(--color-sidebar-foreground);
   }
 
-  .settings-textarea:focus,
-  .settings-input:focus {
+  :global(.settings-textarea:focus),
+  :global(.settings-input:focus) {
     outline: none;
     border-color: var(--color-sidebar-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sidebar-accent) 30%, transparent);
   }
 
-  .settings-actions {
+  :global(.settings-actions) {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     margin-top: 0.5rem;
   }
 
-  .settings-button {
+  :global(.settings-button) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -405,17 +245,17 @@
     cursor: pointer;
   }
 
-  .settings-button.secondary {
+  :global(.settings-button.secondary) {
     background: var(--color-secondary);
     border: 1px solid var(--color-border);
   }
 
-  .settings-button:disabled {
+  :global(.settings-button:disabled) {
     opacity: 0.6;
     cursor: not-allowed;
   }
 
-  .settings-meta {
+  :global(.settings-meta) {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -423,36 +263,36 @@
     color: var(--color-muted-foreground);
   }
 
-  .settings-success {
+  :global(.settings-success) {
     color: #2f8a4d;
     font-size: 0.8rem;
   }
 
-  .settings-error {
+  :global(.settings-error) {
     color: #d55b5b;
     font-size: 0.8rem;
   }
 
-  .settings-grid {
+  :global(.settings-grid) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
   }
 
-  .settings-grid .settings-actions,
-  .settings-grid .settings-error,
-  .settings-grid .settings-success,
-  .settings-grid .settings-meta {
+  :global(.settings-grid .settings-actions),
+  :global(.settings-grid .settings-error),
+  :global(.settings-grid .settings-success),
+  :global(.settings-grid .settings-meta) {
     grid-column: 1 / -1;
   }
 
   @media (max-width: 900px) {
-    .settings-grid {
+    :global(.settings-grid) {
       grid-template-columns: 1fr;
     }
   }
 
-  .settings-avatar {
+  :global(.settings-avatar) {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -460,7 +300,7 @@
     margin-bottom: 1rem;
   }
 
-  .settings-avatar-preview {
+  :global(.settings-avatar-preview) {
     width: 64px;
     height: 64px;
     border-radius: 16px;
@@ -471,13 +311,13 @@
     place-items: center;
   }
 
-  .settings-avatar-preview img {
+  :global(.settings-avatar-preview img) {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  .settings-avatar-placeholder {
+  :global(.settings-avatar-placeholder) {
     width: 100%;
     height: 100%;
     display: grid;
@@ -485,7 +325,7 @@
     color: var(--color-muted-foreground);
   }
 
-  .settings-avatar-upload {
+  :global(.settings-avatar-upload) {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -498,11 +338,11 @@
     color: var(--color-sidebar-foreground);
   }
 
-  .settings-avatar-upload input {
+  :global(.settings-avatar-upload input) {
     display: none;
   }
 
-  .settings-avatar-remove {
+  :global(.settings-avatar-remove) {
     background: none;
     border: none;
     color: var(--color-muted-foreground);
@@ -510,7 +350,7 @@
     cursor: pointer;
   }
 
-  .settings-avatar-remove:disabled {
+  :global(.settings-avatar-remove:disabled) {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -519,11 +359,11 @@
     color: #9aa3ad;
   }
 
-  .settings-autocomplete {
+  :global(.settings-autocomplete) {
     position: relative;
   }
 
-  .settings-suggestions {
+  :global(.settings-suggestions) {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
@@ -537,7 +377,7 @@
     overflow-y: auto;
   }
 
-  .settings-suggestion {
+  :global(.settings-suggestion) {
     display: block;
     width: 100%;
     text-align: left;
@@ -550,15 +390,15 @@
     cursor: pointer;
   }
 
-  .settings-suggestion:hover {
+  :global(.settings-suggestion:hover) {
     background: var(--color-sidebar-accent);
   }
 
-  .settings-suggestion.active {
+  :global(.settings-suggestion.active) {
     background: var(--color-sidebar-accent);
   }
 
-  .settings-suggestion.muted {
+  :global(.settings-suggestion.muted) {
     color: var(--color-muted-foreground);
     cursor: default;
   }
