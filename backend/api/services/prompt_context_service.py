@@ -38,6 +38,21 @@ class PromptContextService:
         current_weather: dict[str, Any] | str | None = None,
         now: datetime | None = None,
     ) -> tuple[str, str]:
+        """Build system and first-message prompts.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            open_context: Open note/website context payload.
+            user_agent: User agent string.
+            current_location: Current location label.
+            current_location_levels: Structured location levels.
+            current_weather: Weather payload.
+            now: Optional timestamp override.
+
+        Returns:
+            Tuple of (system_prompt, first_message_prompt).
+        """
         timestamp = now or datetime.now(timezone.utc)
         settings_record = UserSettingsService.get_settings(db, user_id)
         location_fallback = (
@@ -97,10 +112,12 @@ class PromptContextService:
 
     @staticmethod
     def _start_of_today(now: datetime) -> datetime:
+        """Return a timezone-aware start-of-day timestamp."""
         return datetime(now.year, now.month, now.day, tzinfo=now.tzinfo)
 
     @staticmethod
     def _truncate_text(value: str, max_chars: int) -> str:
+        """Truncate a string to a maximum length."""
         if len(value) <= max_chars:
             return value
         return value[:max_chars]
@@ -111,6 +128,16 @@ class PromptContextService:
         user_id: str,
         now: datetime,
     ) -> tuple[list[dict], list[dict], list[dict]]:
+        """Fetch recent activity items for prompt context.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            now: Current timestamp.
+
+        Returns:
+            Tuple of (note_items, website_items, conversation_items).
+        """
         start_of_day = PromptContextService._start_of_today(now)
 
         notes = (
