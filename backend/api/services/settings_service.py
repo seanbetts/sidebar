@@ -46,6 +46,15 @@ storage_backend = get_storage_backend()
 class SettingsService:
     @staticmethod
     def _resolve_default(value: Optional[str], default: str) -> Optional[str]:
+        """Return a trimmed value or the default.
+
+        Args:
+            value: Candidate value.
+            default: Default to use when value is empty.
+
+        Returns:
+            Trimmed value or default.
+        """
         if value is None:
             return default
         trimmed = value.strip()
@@ -53,12 +62,28 @@ class SettingsService:
 
     @staticmethod
     def _profile_image_url(settings_record) -> Optional[str]:
+        """Build a profile image URL for a settings record.
+
+        Args:
+            settings_record: User settings record or None.
+
+        Returns:
+            Profile image URL or None.
+        """
         if settings_record and settings_record.profile_image_path:
             return "/api/settings/profile-image"
         return None
 
     @staticmethod
     def _resolve_enabled_skills(settings_record) -> list[str]:
+        """Resolve enabled skills against the skill catalog.
+
+        Args:
+            settings_record: User settings record or None.
+
+        Returns:
+            List of enabled skill IDs.
+        """
         catalog = SkillCatalogService.list_skills(settings.skills_dir)
         all_ids = [skill["id"] for skill in catalog]
         if not settings_record or settings_record.enabled_skills is None:
@@ -68,6 +93,19 @@ class SettingsService:
 
     @staticmethod
     def _clean_text_field(value: Optional[str], field_name: str, max_length: int) -> Optional[str]:
+        """Validate and normalize a text field.
+
+        Args:
+            value: Field value.
+            field_name: Field name for error messages.
+            max_length: Maximum allowed length.
+
+        Returns:
+            Trimmed value or None.
+
+        Raises:
+            HTTPException: 400 if the value exceeds max_length.
+        """
         if value is None:
             return None
         trimmed = value.strip()
@@ -82,6 +120,15 @@ class SettingsService:
 
     @staticmethod
     def build_response(settings_record, user_id: str) -> dict:
+        """Build a settings response payload.
+
+        Args:
+            settings_record: User settings record or None.
+            user_id: Current user ID.
+
+        Returns:
+            Settings response payload.
+        """
         return {
             "user_id": user_id,
             "communication_style": SettingsService._resolve_default(
@@ -105,6 +152,17 @@ class SettingsService:
 
     @staticmethod
     def clean_updates(updates: dict) -> dict:
+        """Normalize and validate updates payload.
+
+        Args:
+            updates: Raw updates dict.
+
+        Returns:
+            Cleaned updates dict.
+
+        Raises:
+            HTTPException: 400 for invalid values or skills.
+        """
         if "communication_style" in updates:
             updates["communication_style"] = SettingsService._clean_text_field(
                 updates.get("communication_style"),
@@ -166,11 +224,30 @@ class SettingsService:
 
     @staticmethod
     def get_settings(db, user_id: str) -> dict:
+        """Fetch settings for a user.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+
+        Returns:
+            Settings response payload.
+        """
         settings_record = UserSettingsService.get_settings(db, user_id)
         return SettingsService.build_response(settings_record, user_id)
 
     @staticmethod
     def update_settings(db, user_id: str, updates: dict) -> dict:
+        """Update settings for a user.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            updates: Updates payload.
+
+        Returns:
+            Updated settings response payload.
+        """
         cleaned = SettingsService.clean_updates(updates)
         user_settings = UserSettingsService.upsert_settings(db, user_id, **cleaned)
         return SettingsService.build_response(user_settings, user_id)
@@ -184,6 +261,21 @@ class SettingsService:
         contents: bytes,
         filename: str,
     ) -> dict:
+        """Upload a profile image to storage and update settings.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            content_type: Image MIME type.
+            contents: Image bytes.
+            filename: Original filename for extension fallback.
+
+        Returns:
+            Upload result payload with profile_image_url.
+
+        Raises:
+            HTTPException: 400 for invalid payload, 500 on storage errors.
+        """
         if not contents:
             raise HTTPException(status_code=400, detail="Empty image payload")
 
@@ -217,6 +309,18 @@ class SettingsService:
 
     @staticmethod
     def get_profile_image(db, user_id: str) -> bytes:
+        """Retrieve profile image bytes for a user.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+
+        Returns:
+            Profile image bytes.
+
+        Raises:
+            HTTPException: 404 if no image exists.
+        """
         settings_record = UserSettingsService.get_settings(db, user_id)
         if not settings_record or not settings_record.profile_image_path:
             raise HTTPException(status_code=404, detail="Profile image not found")
@@ -228,6 +332,18 @@ class SettingsService:
 
     @staticmethod
     def delete_profile_image(db, user_id: str) -> dict:
+        """Delete the user's profile image.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+
+        Returns:
+            Delete result payload.
+
+        Raises:
+            HTTPException: 404 if no image exists, 500 on storage errors.
+        """
         settings_record = UserSettingsService.get_settings(db, user_id)
         if not settings_record or not settings_record.profile_image_path:
             raise HTTPException(status_code=404, detail="Profile image not found")
