@@ -64,7 +64,8 @@ class Settings(BaseSettings):
 
     # JWT validation
     jwt_audience: str = "authenticated"
-    jwt_algorithm: str = "RS256"
+    jwt_algorithm: str = "HS256"
+    jwt_algorithms: list[str] = ["HS256", "RS256"]
     jwks_cache_ttl_seconds: int = 3600
     jwt_issuer: str = ""
 

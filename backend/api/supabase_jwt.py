@@ -66,6 +66,9 @@ class SupabaseJWTValidator:
         jwks = await self._fetch_jwks()
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
+        alg = header.get("alg") or settings.jwt_algorithm
+        if alg not in settings.jwt_algorithms:
+            raise JWTValidationError(f"Unsupported JWT algorithm: {alg}")
         if not kid:
             raise JWTValidationError("Missing key ID in token header.")
 
@@ -74,12 +77,16 @@ class SupabaseJWTValidator:
         if not key:
             raise JWTValidationError("No matching JWKS key found.")
 
-        public_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(key))
+        algorithms = jwt.algorithms.get_default_algorithms()
+        algorithm = algorithms.get(alg)
+        if not algorithm:
+            raise JWTValidationError(f"Unsupported JWT algorithm: {alg}")
+        public_key = algorithm.from_jwk(json.dumps(key))
         try:
             payload = jwt.decode(
                 token,
                 public_key,
-                algorithms=[settings.jwt_algorithm],
+                algorithms=[alg],
                 audience=settings.jwt_audience,
                 issuer=self._get_issuer(),
             )

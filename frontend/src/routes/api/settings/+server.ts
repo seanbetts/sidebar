@@ -7,7 +7,7 @@ import { error } from '@sveltejs/kit';
 
 const API_URL = getApiUrl();
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ locals }) => {
 	try {
 		const response = await fetch(`${API_URL}/api/settings`, {
 			headers: buildAuthHeaders(locals)
