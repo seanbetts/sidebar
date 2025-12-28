@@ -23,6 +23,15 @@ class NotesService:
 
     @staticmethod
     def extract_title(content: str, fallback: str) -> str:
+        """Extract the first H1 title from content.
+
+        Args:
+            content: Markdown content to scan.
+            fallback: Fallback title if no H1 is present.
+
+        Returns:
+            Extracted title or fallback.
+        """
         match = NotesService.H1_PATTERN.search(content or "")
         if match:
             return match.group(1).strip()
@@ -30,12 +39,29 @@ class NotesService:
 
     @staticmethod
     def update_content_title(content: str, title: str) -> str:
+        """Ensure the content has a leading H1 with the given title.
+
+        Args:
+            content: Markdown content to update.
+            title: Title to inject or replace.
+
+        Returns:
+            Updated content with a leading H1.
+        """
         if NotesService.H1_PATTERN.search(content or ""):
             return NotesService.H1_PATTERN.sub(f"# {title}", content, count=1)
         return f"# {title}\n\n{content or ''}".strip() + "\n"
 
     @staticmethod
     def parse_note_id(value: str) -> uuid.UUID | None:
+        """Parse a UUID from a note ID string.
+
+        Args:
+            value: Note ID string.
+
+        Returns:
+            Parsed UUID or None if invalid.
+        """
         try:
             return uuid.UUID(value)
         except (ValueError, TypeError):
@@ -43,10 +69,19 @@ class NotesService:
 
     @staticmethod
     def is_archived_folder(folder: str) -> bool:
+        """Return True if a folder path is within Archive."""
         return folder == "Archive" or folder.startswith("Archive/")
 
     @staticmethod
     def build_notes_tree(notes: Iterable[Note]) -> dict:
+        """Build a hierarchical notes tree for UI display.
+
+        Args:
+            notes: Iterable of Note records.
+
+        Returns:
+            Tree dict with folders and note files.
+        """
         root = {"name": "notes", "path": "/", "type": "directory", "children": [], "expanded": False}
         index: dict[str, dict] = {"": root}
 
@@ -107,6 +142,20 @@ class NotesService:
         pinned: bool = False,
         tags: Optional[list[str]] = None,
     ) -> Note:
+        """Create a new note record.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            content: Markdown content.
+            title: Optional explicit title.
+            folder: Folder path. Defaults to "".
+            pinned: Whether the note is pinned. Defaults to False.
+            tags: Optional list of tags.
+
+        Returns:
+            Newly created Note.
+        """
         now = datetime.now(timezone.utc)
         resolved_title = title or NotesService.extract_title(content, "Untitled Note")
         metadata = {"folder": folder, "pinned": pinned}
@@ -137,6 +186,21 @@ class NotesService:
         *,
         title: Optional[str] = None,
     ) -> Note:
+        """Update a note's content and title.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note UUID.
+            content: Updated markdown content.
+            title: Optional explicit title.
+
+        Returns:
+            Updated Note.
+
+        Raises:
+            NoteNotFoundError: If the note does not exist.
+        """
         note = (
             db.query(Note)
             .filter(
@@ -163,6 +227,20 @@ class NotesService:
         note_id: uuid.UUID,
         folder: str,
     ) -> Note:
+        """Update a note's folder.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note UUID.
+            folder: New folder path.
+
+        Returns:
+            Updated Note.
+
+        Raises:
+            NoteNotFoundError: If the note does not exist.
+        """
         note = (
             db.query(Note)
             .filter(
@@ -187,6 +265,20 @@ class NotesService:
         note_id: uuid.UUID,
         pinned: bool,
     ) -> Note:
+        """Update a note's pinned status.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note UUID.
+            pinned: Desired pinned state.
+
+        Returns:
+            Updated Note.
+
+        Raises:
+            NoteNotFoundError: If the note does not exist.
+        """
         note = (
             db.query(Note)
             .filter(
@@ -207,6 +299,16 @@ class NotesService:
 
     @staticmethod
     def delete_note(db: Session, user_id: str, note_id: uuid.UUID) -> bool:
+        """Soft delete a note by setting deleted_at.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note UUID.
+
+        Returns:
+            True if the note was deleted, False if not found.
+        """
         note = (
             db.query(Note)
             .filter(
@@ -233,6 +335,17 @@ class NotesService:
         *,
         mark_opened: bool = True,
     ) -> Optional[Note]:
+        """Fetch a note by ID.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            note_id: Note UUID.
+            mark_opened: Whether to update last_opened_at. Defaults to True.
+
+        Returns:
+            Note if found, otherwise None.
+        """
         note = (
             db.query(Note)
             .filter(
@@ -258,6 +371,17 @@ class NotesService:
         *,
         mark_opened: bool = True,
     ) -> Optional[Note]:
+        """Fetch a note by title.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            title: Note title.
+            mark_opened: Whether to update last_opened_at. Defaults to True.
+
+        Returns:
+            Note if found, otherwise None.
+        """
         note = (
             db.query(Note)
             .filter(
@@ -291,6 +415,25 @@ class NotesService:
         opened_before: Optional[datetime] = None,
         title_search: Optional[str] = None,
     ) -> Iterable[Note]:
+        """List notes using optional filters.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            folder: Optional folder filter.
+            pinned: Optional pinned filter.
+            archived: Optional archived filter.
+            created_after: Optional created_at lower bound.
+            created_before: Optional created_at upper bound.
+            updated_after: Optional updated_at lower bound.
+            updated_before: Optional updated_at upper bound.
+            opened_after: Optional last_opened_at lower bound.
+            opened_before: Optional last_opened_at upper bound.
+            title_search: Optional title substring search.
+
+        Returns:
+            List of matching notes ordered by updated_at desc.
+        """
         query = db.query(Note).filter(
             Note.user_id == user_id,
             Note.deleted_at.is_(None),
