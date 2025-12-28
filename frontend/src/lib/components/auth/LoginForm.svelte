@@ -27,7 +27,7 @@
       return;
     }
 
-    await goto(redirectTo);
+    await goto(redirectTo, { invalidateAll: true });
   }
 </script>
 
