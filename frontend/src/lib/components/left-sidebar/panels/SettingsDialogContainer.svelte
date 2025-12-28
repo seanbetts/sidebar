@@ -1,7 +1,19 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { User, Monitor, Brain, Wrench } from 'lucide-svelte';
   import SettingsDialog from '$lib/components/left-sidebar/panels/SettingsDialog.svelte';
+  import {
+    deleteProfileImage as deleteProfileImageRequest,
+    fetchLocationSuggestions,
+    fetchSettings,
+    fetchSkills,
+    saveSettings as persistSettings,
+    uploadProfileImage as uploadProfileImageRequest
+  } from '$lib/components/left-sidebar/panels/settingsApi';
+  import {
+    PRONOUN_OPTIONS,
+    SETTINGS_SECTIONS
+  } from '$lib/components/left-sidebar/panels/settingsConstants';
+  import { groupSkills, normalizeSkillList } from '$lib/components/left-sidebar/panels/settingsUtils';
 
   export let open = false;
   export let profileImageSrc = '';
@@ -54,22 +66,8 @@
     profileImageError = 'Failed to load profile image.';
   }
 
-  const pronounOptions = [
-    'he/him',
-    'she/her',
-    'they/them',
-    'he/they',
-    'she/they',
-    'they/he',
-    'they/she',
-    'other'
-  ];
-  const settingsSections = [
-    { key: 'account', label: 'Account', icon: User },
-    { key: 'system', label: 'System', icon: Monitor },
-    { key: 'memory', label: 'Memory', icon: Brain },
-    { key: 'skills', label: 'Skills', icon: Wrench }
-  ];
+  const pronounOptions = PRONOUN_OPTIONS;
+  const settingsSections = SETTINGS_SECTIONS;
   let activeSettingsSection = 'account';
 
   onMount(() => {
@@ -88,12 +86,7 @@
     skillsError = '';
 
     try {
-      const response = await fetch('/api/skills');
-      if (!response.ok) {
-        throw new Error('Failed to load skills');
-      }
-      const data = await response.json();
-      skills = Array.isArray(data?.skills) ? data.skills : [];
+      skills = await fetchSkills();
     } catch (error) {
       skillsError =
         error instanceof Error && error.message
@@ -104,18 +97,6 @@
     }
   }
 
-  function groupSkills(list: Array<{ id: string; name: string; description: string; category?: string }>) {
-    const groups = new Map<string, typeof list>();
-    list.forEach((skill) => {
-      const category = skill.category || 'Other';
-      if (!groups.has(category)) {
-        groups.set(category, []);
-      }
-      groups.get(category)?.push(skill);
-    });
-    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }
-
   async function loadSettings(force = false) {
     if (isLoadingSettings || (settingsLoaded && !force)) return;
     isLoadingSettings = true;
@@ -124,11 +105,7 @@
     locationSuggestions = [];
 
     try {
-      const response = await fetch('/api/settings');
-      if (!response.ok) {
-        throw new Error('Failed to load settings');
-      }
-      const data = await response.json();
+      const data = await fetchSettings();
       communicationStyle = data?.communication_style ?? '';
       workingRelationship = data?.working_relationship ?? '';
       name = data?.name ?? '';
@@ -180,17 +157,7 @@
         enabled_skills: enabledSkills
       };
 
-      const response = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save settings');
-      }
-
-      const data = await response.json();
+      const data = await persistSettings(payload);
 
       communicationStyle = data?.communication_style ?? '';
       workingRelationship = data?.working_relationship ?? '';
@@ -229,18 +196,7 @@
     profileImageError = '';
 
     try {
-      const response = await fetch('/api/settings/profile-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': file.type || 'application/octet-stream',
-          'X-Filename': file.name
-        },
-        body: file
-      });
-      if (!response.ok) {
-        throw new Error('Failed to upload profile image');
-      }
-      const data = await response.json();
+      const data = await uploadProfileImageRequest(file);
       profileImageUrl = data?.profile_image_url ?? profileImageUrl;
       profileImageVersion = Date.now();
     } catch (error) {
@@ -260,12 +216,7 @@
     profileImageError = '';
 
     try {
-      const response = await fetch('/api/settings/profile-image', {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete profile image');
-      }
+      await deleteProfileImageRequest();
       profileImageUrl = '';
       profileImageVersion = Date.now();
     } catch (error) {
@@ -303,10 +254,6 @@
     }
   }
 
-  function normalizeSkillList(list: string[]) {
-    return [...new Set(list)].sort().join('|');
-  }
-
   function selectLocation(value: string) {
     location = value;
     locationSuggestions = [];
@@ -328,12 +275,7 @@
     isLoadingLocations = true;
     locationLookupError = '';
     try {
-      const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(query)}`);
-      if (!response.ok) {
-        throw new Error('Failed to load locations');
-      }
-      const data = await response.json();
-      locationSuggestions = Array.isArray(data?.predictions) ? data.predictions : [];
+      locationSuggestions = await fetchLocationSuggestions(query);
       activeLocationIndex = locationSuggestions.length ? 0 : -1;
     } catch (error) {
       console.error('Failed to load locations:', error);

@@ -1,11 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { Editor } from '@tiptap/core';
-  import StarterKit from '@tiptap/starter-kit';
-  import { Image } from '@tiptap/extension-image';
-  import { TaskList, TaskItem } from '@tiptap/extension-list';
-  import { TableKit } from '@tiptap/extension-table';
-  import { Markdown } from 'tiptap-markdown';
+  import type { Editor } from '@tiptap/core';
   import { editorStore } from '$lib/stores/editor';
   import { filesStore } from '$lib/stores/files';
   import { toast } from 'svelte-sonner';
@@ -13,18 +8,15 @@
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
   import EditorToolbar from '$lib/components/editor/EditorToolbar.svelte';
+  import { createMarkdownEditor } from '$lib/components/editor/useMarkdownEditor';
   import { useEditorActions } from '$lib/hooks/useEditorActions';
   import { useLeaveGuard } from '$lib/hooks/useLeaveGuard';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
   let saveTimeout: ReturnType<typeof setTimeout>;
-  let unsubscribe: (() => void) | undefined;
+  let destroyEditor: (() => void) | null = null;
 
-  // Flag to prevent infinite loops:
-  // When we programmatically update the editor (e.g., loading a note or AI updates),
-  // we don't want that to trigger onUpdate which would mark the note as dirty
-  let isUpdatingContent = false;
   let isLeaveDialogOpen = false;
   let pendingHref: string | null = null;
   let allowNavigateOnce = false;
@@ -88,107 +80,14 @@
   });
 
   onMount(() => {
-    editor = new Editor({
+    const { editor: createdEditor, destroy } = createMarkdownEditor({
       element: editorElement,
-      extensions: [
-        StarterKit,
-        Image.configure({ inline: false, allowBase64: true }),
-        TaskList,
-        TaskItem.configure({ nested: true }),
-        TableKit,
-        Markdown  // Enables markdown shortcuts and parsing
-      ],
-      content: '',
-      editable: true,
-      editorProps: {
-        attributes: {
-          class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none'
-        }
-      },
-      onUpdate: ({ editor }) => {
-        // Skip updates when we're programmatically setting content
-        if (isUpdatingContent) return;
-
-        const markdown = editor.storage.markdown.getMarkdown();
-        editorStore.updateContent(markdown);
-        scheduleAutoSave();
-      }
+      editorStore,
+      onAutosave: scheduleAutoSave,
+      onExternalUpdate: () => toast.message('Note updated')
     });
-
-    // Update editor when store changes (e.g., loading new note)
-    let lastNoteId = '';
-    let lastContent = '';
-    unsubscribe = editorStore.subscribe(async state => {
-      if (!editor || state.isLoading) return;
-
-      if (!state.currentNoteId) {
-        lastNoteId = '';
-        lastContent = '';
-        try {
-          isUpdatingContent = true;
-          editor.commands.setContent('');
-          await tick();
-          await new Promise(resolve => requestAnimationFrame(resolve));
-        } catch (error) {
-          console.error('Failed to clear editor content:', error);
-        } finally {
-          isUpdatingContent = false;
-        }
-        return;
-      }
-
-      const nextContent = state.content || '';
-
-      const isSameNote = state.currentNoteId === lastNoteId && lastNoteId !== '';
-      const isExternalUpdate = isSameNote && !state.isDirty && nextContent !== lastContent;
-      const shouldSync =
-        state.currentNoteId !== lastNoteId ||
-        isExternalUpdate;
-
-      if (!shouldSync) return;
-
-      try {
-        // Get current editor content to check if update is actually needed
-        const currentEditorContent = editor.storage.markdown.getMarkdown();
-        const contentActuallyChanged = currentEditorContent !== nextContent;
-
-        // Set flag to prevent onUpdate from firing
-        isUpdatingContent = true;
-
-        // Only update editor if content actually changed
-        if (contentActuallyChanged) {
-          // Save cursor position before updating content
-          const currentPosition = editor.state.selection.anchor;
-
-          // Set content directly (no need to clear first)
-          editor.commands.setContent(nextContent);
-
-          // Wait for Svelte reactivity and browser render
-          await tick();
-          await new Promise(resolve => requestAnimationFrame(resolve));
-
-          // Restore cursor position if it's still valid
-          // (Only restore if we're at the same note, not switching notes)
-          if (isSameNote && currentPosition <= nextContent.length) {
-            editor.commands.setTextSelection(currentPosition);
-          }
-        }
-
-        // Update tracking variables AFTER editor has updated
-        lastNoteId = state.currentNoteId;
-        lastContent = nextContent;
-
-        if (isExternalUpdate && state.lastUpdateSource === 'ai') {
-          toast.message('Note updated');
-          editorStore.clearUpdateSource();
-        }
-      } catch (error) {
-        console.error('Failed to update editor content:', error);
-        // Don't update tracking variables if update failed
-      } finally {
-        isUpdatingContent = false;
-      }
-    });
+    editor = createdEditor;
+    destroyEditor = destroy;
   });
 
   const { stayOnPage, confirmLeave } = useLeaveGuard({
@@ -215,8 +114,7 @@
     // Cleanup all timers and subscriptions
     clearTimeout(saveTimeout);
     if (copyTimeout) clearTimeout(copyTimeout);
-    if (unsubscribe) unsubscribe();
-    if (editor) editor.destroy();
+    if (destroyEditor) destroyEditor();
   });
 
   function scheduleAutoSave() {
