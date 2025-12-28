@@ -19,16 +19,16 @@ async def get_file_tree(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """
-    Get the file tree for a subdirectory within workspace.
+    """Return the file tree for a workspace subdirectory.
 
     Args:
-        base_path: Subdirectory within workspace (e.g., "documents")
+        basePath: Subdirectory within workspace (e.g., "documents").
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
 
     Returns:
-        {
-            "children": [...]  # Direct children of the base_path folder
-        }
+        Tree payload containing children of the basePath folder.
     """
     return FilesWorkspaceService.get_tree(db, user_id, basePath)
 
@@ -42,6 +42,22 @@ async def search_files(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Search files by name or content.
+
+    Args:
+        query: Search query string.
+        basePath: Subdirectory within workspace (e.g., "documents").
+        limit: Max results to return. Defaults to 50.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Search results payload.
+
+    Raises:
+        HTTPException: 400 if query is missing.
+    """
     if not query:
         raise HTTPException(status_code=400, detail="query required")
     return FilesWorkspaceService.search(db, user_id, query, basePath, limit=limit)
@@ -54,14 +70,19 @@ async def create_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """
-    Create a folder within workspace.
+    """Create a folder within workspace.
 
-    Body:
-        {
-            "basePath": "documents",
-            "path": "Folder/Subfolder"
-        }
+    Args:
+        request: Request payload with basePath and path.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Folder creation result.
+
+    Raises:
+        HTTPException: 400 if path is missing.
     """
     base_path = request.get("basePath", "documents")
     path = (request.get("path") or "").strip("/")
@@ -79,15 +100,19 @@ async def rename_file_or_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """
-    Rename a file or folder within workspace.
+    """Rename a file or folder within workspace.
 
-    Body:
-        {
-            "basePath": "documents",
-            "oldPath": "relative/path/to/item",
-            "newName": "new-name.txt"
-        }
+    Args:
+        request: Request payload with basePath, oldPath, newName.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Rename result.
+
+    Raises:
+        HTTPException: 400 if required fields are missing.
     """
     base_path = request.get("basePath", "documents")
     old_path = request.get("oldPath", "")
@@ -106,15 +131,19 @@ async def move_file_or_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """
-    Move a file or folder within workspace.
+    """Move a file or folder within workspace.
 
-    Body:
-        {
-            "basePath": "documents",
-            "path": "relative/path/to/item",
-            "destination": "relative/path/to/folder"
-        }
+    Args:
+        request: Request payload with basePath, path, destination.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Move result.
+
+    Raises:
+        HTTPException: 400 if path is missing.
     """
     base_path = request.get("basePath", "documents")
     path = request.get("path", "")
@@ -133,14 +162,19 @@ async def delete_file_or_folder(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """
-    Delete a file or folder within workspace.
+    """Delete a file or folder within workspace.
 
-    Body:
-        {
-            "basePath": "documents",
-            "path": "relative/path/to/item"
-        }
+    Args:
+        request: Request payload with basePath and path.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Delete result.
+
+    Raises:
+        HTTPException: 400 if path is missing or points to root.
     """
     base_path = request.get("basePath", "documents")
     path = request.get("path", "")
@@ -159,6 +193,21 @@ async def download_file(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
+    """Download a file from workspace.
+
+    Args:
+        basePath: Subdirectory within workspace (e.g., "documents").
+        path: Relative path to file within basePath.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        File content response with attachment headers.
+
+    Raises:
+        HTTPException: 400 if path is missing.
+    """
     if not path:
         raise HTTPException(status_code=400, detail="path parameter required")
     result = FilesWorkspaceService.download(db, user_id, basePath, path)
@@ -177,20 +226,20 @@ async def get_file_content(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """
-    Get the content of a file.
+    """Return the content of a file.
 
-    Query params:
-        basePath: Subdirectory within workspace (e.g., "documents")
-        path: Relative path to file within basePath
+    Args:
+        basePath: Subdirectory within workspace (e.g., "documents").
+        path: Relative path to file within basePath.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
 
     Returns:
-        {
-            "content": "file content...",
-            "name": "filename.md",
-            "path": "relative/path.md",
-            "modified": 1234567890
-        }
+        File content payload with metadata.
+
+    Raises:
+        HTTPException: 400 if path is missing.
     """
     if not path:
         raise HTTPException(status_code=400, detail="path parameter required")
@@ -205,21 +254,19 @@ async def update_file_content(
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """
-    Update the content of a file.
+    """Update the content of a file.
 
-    Body:
-        {
-            "basePath": "documents",
-            "path": "relative/path/file.md",
-            "content": "new content..."
-        }
+    Args:
+        request: Request payload with basePath, path, content.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
 
     Returns:
-        {
-            "success": true,
-            "modified": 1234567890
-        }
+        Update result payload with modified time.
+
+    Raises:
+        HTTPException: 400 if path is missing.
     """
     base_path = request.get("basePath", "documents")
     path = request.get("path", "")
