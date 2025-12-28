@@ -8,6 +8,8 @@ from typing import Iterable, Optional
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.models.note import Note
 
@@ -174,9 +176,22 @@ class NotesService:
             deleted_at=None,
         )
         db.add(note)
+        db.flush()
+        note._snapshot_id = note.id
+        note._snapshot_updated_at = note.updated_at
         db.commit()
-        db.refresh(note)
-        return note
+        note_id = note._snapshot_id
+        try:
+            db.refresh(note)
+            return note
+        except (InvalidRequestError, ObjectDeletedError):
+            # Fall back to a fresh query if refresh is blocked by RLS visibility.
+            refreshed = (
+                db.query(Note)
+                .filter(Note.user_id == user_id, Note.id == note_id, Note.deleted_at.is_(None))
+                .first()
+            )
+            return refreshed or note
 
     @staticmethod
     def update_note(
