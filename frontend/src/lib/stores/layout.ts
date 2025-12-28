@@ -5,12 +5,12 @@ export type LayoutMode = 'default' | 'chat-focused';
 
 export interface LayoutState {
   mode: LayoutMode;
-  chatPanelRatio: number;
+  sidebarRatio: number;
 }
 
 const DEFAULT_STATE: LayoutState = {
   mode: 'default',
-  chatPanelRatio: 0.38
+  sidebarRatio: 0.38
 };
 
 const STORAGE_KEY = 'sideBar.layout';
@@ -25,16 +25,29 @@ function loadInitialState(): LayoutState {
   if (!stored) return DEFAULT_STATE;
   try {
     const parsed = JSON.parse(stored) as Partial<LayoutState> & {
+      chatPanelRatio?: number;
       chatSidebarRatio?: number;
       workspaceSidebarRatio?: number;
     };
-    if (typeof parsed.chatPanelRatio === 'number') {
+    if (typeof parsed.sidebarRatio === 'number') {
       return { ...DEFAULT_STATE, ...parsed };
+    }
+    if (typeof parsed.chatPanelRatio === 'number') {
+      return {
+        ...DEFAULT_STATE,
+        sidebarRatio: parsed.chatPanelRatio
+      };
     }
     if (typeof parsed.chatSidebarRatio === 'number') {
       return {
         ...DEFAULT_STATE,
-        chatPanelRatio: parsed.chatSidebarRatio
+        sidebarRatio: parsed.chatSidebarRatio
+      };
+    }
+    if (typeof parsed.workspaceSidebarRatio === 'number') {
+      return {
+        ...DEFAULT_STATE,
+        sidebarRatio: parsed.workspaceSidebarRatio
       };
     }
     return DEFAULT_STATE;
@@ -53,10 +66,10 @@ function createLayoutStore() {
         ...state,
         mode: state.mode === 'default' ? 'chat-focused' : 'default'
       })),
-    setChatPanelRatio: (ratio: number) =>
+    setSidebarRatio: (ratio: number) =>
       update((state) => ({
         ...state,
-        chatPanelRatio: clamp(ratio, 0.2, 0.5)
+        sidebarRatio: clamp(ratio, 0.2, 0.5)
       }))
   };
 }
