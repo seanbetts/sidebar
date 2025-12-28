@@ -61,7 +61,7 @@
 			<div class="text-center">
 				<img class="welcome-logo" src="/images/logo.svg" alt="sideBar" />
 				<p class="text-xl mb-2 font-semibold">Welcome to sideBar</p>
-				<p class="text-sm">Select a note or send a message to get started</p>
+				<p class="text-sm">Send a message to get started</p>
 			</div>
 		</div>
 	{:else}

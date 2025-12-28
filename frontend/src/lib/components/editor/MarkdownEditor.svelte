@@ -298,7 +298,7 @@
     <div class="empty-state">
       <img class="welcome-logo" src="/images/logo.svg" alt="sideBar" />
       <h2>Welcome to sideBar</h2>
-      <p>Select a note or send a message to get started</p>
+      <p>Select a note, website, or file to get started</p>
     </div>
   {/if}
 </div>

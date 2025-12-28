@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
 
   export let onResize: (width: number) => void;
+  export let onReset: (() => void) | null = null;
   export let containerRef: HTMLElement;
   export let side: 'left' | 'right' = 'right';
 
@@ -28,6 +29,10 @@
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+  }
+
+  function handleDoubleClick() {
+    onReset?.();
   }
 
   function handlePointerMove(event: PointerEvent) {
@@ -64,6 +69,7 @@
   class="resize-handle"
   class:dragging={isDragging}
   on:pointerdown|preventDefault={handlePointerDown}
+  on:dblclick={handleDoubleClick}
   role="separator"
   aria-orientation="vertical"
   aria-label="Resize sidebar"
@@ -78,8 +84,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-background);
+    background: transparent;
     transition: background-color 0.15s ease;
+    z-index: 0;
   }
 
   .resize-handle::after {
@@ -88,7 +95,7 @@
     height: 44px;
     background-color: var(--color-border);
     border-radius: 1px;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, height 0.15s ease;
   }
 
   .resize-handle:hover {
@@ -97,10 +104,11 @@
 
   .resize-handle:hover::after,
   .resize-handle.dragging::after {
-    background-color: var(--color-primary);
+    background-color: var(--color-foreground);
+    height: 52px;
   }
 
   .resize-handle.dragging {
-    background-color: var(--color-primary);
+    background-color: var(--color-card);
   }
 </style>
