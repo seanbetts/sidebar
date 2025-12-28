@@ -34,6 +34,8 @@ services:
       - SUPABASE_SSLMODE=${SUPABASE_SSLMODE}
       - SUPABASE_POSTGRES_PSWD=${SUPABASE_POSTGRES_PSWD}
       - SUPABASE_APP_PSWD=${SUPABASE_APP_PSWD}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - STORAGE_BACKEND=${STORAGE_BACKEND}
       - R2_ENDPOINT=${R2_ENDPOINT}
       - R2_BUCKET=${R2_BUCKET}
@@ -69,8 +71,9 @@ services:
       - "3000:3000"
     environment:
       - API_URL=http://skills-api:8001
-      - BEARER_TOKEN=${BEARER_TOKEN}
       - BODY_SIZE_LIMIT=2M
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     networks:
       - sidebar-network
     depends_on:
