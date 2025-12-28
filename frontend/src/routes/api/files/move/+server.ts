@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
+const API_URL = getApiUrl();
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
+export const POST: RequestHandler = async ({ locals, request, fetch }) => {
   try {
     const body = await request.json();
     if (body?.basePath === 'notes') {
@@ -13,10 +13,9 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
     const response = await fetch(`${API_URL}/api/files/move`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`,
+      headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'
-      },
+      }),
       body: JSON.stringify(body)
     });
 

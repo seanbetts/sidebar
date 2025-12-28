@@ -1,18 +1,16 @@
 import type { RequestHandler } from './$types';
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
+const API_URL = getApiUrl();
 
-export const GET: RequestHandler = async ({ fetch, url }) => {
+export const GET: RequestHandler = async ({ locals, fetch, url }) => {
   const basePath = url.searchParams.get('basePath') || 'documents';
   const path = url.searchParams.get('path') || '';
 
   const response = await fetch(
     `${API_URL}/api/files/download?basePath=${encodeURIComponent(basePath)}&path=${encodeURIComponent(path)}`,
     {
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`
-      }
+      headers: buildAuthHeaders(locals)
     }
   );
 

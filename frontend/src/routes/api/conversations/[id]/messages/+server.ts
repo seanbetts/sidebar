@@ -1,23 +1,22 @@
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 /**
  * SvelteKit server route for adding messages to conversations
  */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN;
+const API_URL = getApiUrl();
 
 // POST /api/conversations/[id]/messages - Add message to conversation
-export const POST: RequestHandler = async ({ params, request }) => {
+export const POST: RequestHandler = async ({ locals, params, request }) => {
 	try {
 		const body = await request.json();
 
 		const response = await fetch(`${API_URL}/api/conversations/${params.id}/messages`, {
 			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${BEARER_TOKEN}`,
+			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json'
-			},
+			}),
 			body: JSON.stringify(body)
 		});
 

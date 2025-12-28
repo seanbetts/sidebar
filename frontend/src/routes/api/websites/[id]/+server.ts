@@ -1,15 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
+const API_URL = getApiUrl();
 
-export const GET: RequestHandler = async ({ fetch, params }) => {
+export const GET: RequestHandler = async ({ locals, fetch, params }) => {
   try {
     const response = await fetch(`${API_URL}/api/websites/${params.id}`, {
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`
-      }
+      headers: buildAuthHeaders(locals)
     });
 
     if (!response.ok) {
@@ -24,13 +22,11 @@ export const GET: RequestHandler = async ({ fetch, params }) => {
   }
 };
 
-export const DELETE: RequestHandler = async ({ fetch, params }) => {
+export const DELETE: RequestHandler = async ({ locals, fetch, params }) => {
   try {
     const response = await fetch(`${API_URL}/api/websites/${params.id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`
-      }
+      headers: buildAuthHeaders(locals)
     });
 
     if (!response.ok) {

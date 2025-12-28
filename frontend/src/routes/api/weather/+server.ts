@@ -1,13 +1,13 @@
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 /**
  * SvelteKit server route for proxying weather requests to backend
  */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN;
+const API_URL = getApiUrl();
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
 		const lat = url.searchParams.get('lat');
 		const lon = url.searchParams.get('lon');
@@ -18,9 +18,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const response = await fetch(
 			`${API_URL}/api/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`,
 			{
-				headers: {
-					Authorization: `Bearer ${BEARER_TOKEN}`
-				}
+				headers: buildAuthHeaders(locals)
 			}
 		);
 

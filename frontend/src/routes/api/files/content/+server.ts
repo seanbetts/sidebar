@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN || '';
+const API_URL = getApiUrl();
 
-export const GET: RequestHandler = async ({ fetch, url }) => {
+export const GET: RequestHandler = async ({ locals, fetch, url }) => {
   try {
     const basePath = url.searchParams.get('basePath') || 'documents';
     const path = url.searchParams.get('path') || '';
@@ -15,9 +15,7 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
     const response = await fetch(
       `${API_URL}/api/files/content?basePath=${encodeURIComponent(basePath)}&path=${encodeURIComponent(path)}`,
       {
-        headers: {
-          'Authorization': `Bearer ${BEARER_TOKEN}`
-        }
+        headers: buildAuthHeaders(locals)
       }
     );
 
@@ -33,7 +31,7 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
   }
 };
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
+export const POST: RequestHandler = async ({ locals, request, fetch }) => {
   try {
     const body = await request.json();
     if (body?.basePath === 'notes') {
@@ -42,10 +40,9 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
     const response = await fetch(`${API_URL}/api/files/content`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${BEARER_TOKEN}`,
+      headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'
-      },
+      }),
       body: JSON.stringify(body)
     });
 

@@ -1,13 +1,13 @@
+import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 /**
  * SvelteKit server route for proxying chat SSE requests to backend
  */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 
-const API_URL = process.env.API_URL || 'http://skills-api:8001';
-const BEARER_TOKEN = process.env.BEARER_TOKEN;
+const API_URL = getApiUrl();
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ locals, request }) => {
 	try {
 		const userAgent = request.headers.get('user-agent') || '';
 		const {
@@ -29,11 +29,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Forward request to backend
 		const response = await fetch(`${API_URL}/api/chat/stream`, {
 			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${BEARER_TOKEN}`,
+			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json',
 				...(userAgent ? { 'User-Agent': userAgent } : {})
-			},
+			}),
 			body: JSON.stringify({
 				message,
 				history,
