@@ -281,26 +281,28 @@
 			<MessageSquare size={20} />
 			<h2 class="chat-title">{conversationTitle}</h2>
 		</div>
-		<div class="header-right">
-			<Button
-				size="icon"
-				variant="ghost"
-				onclick={handleNewChat}
-				aria-label="New chat"
-				title="New chat"
-			>
-				<Plus size={16} />
-			</Button>
-			<Button
-				size="icon"
-				variant="ghost"
-				onclick={handleCloseChat}
-				aria-label="Close chat"
-				title="Close chat"
-			>
-				<X size={16} />
-			</Button>
-		</div>
+		{#if $chatStore.conversationId}
+			<div class="header-right">
+				<Button
+					size="icon"
+					variant="ghost"
+					onclick={handleNewChat}
+					aria-label="New chat"
+					title="New chat"
+				>
+					<Plus size={16} />
+				</Button>
+				<Button
+					size="icon"
+					variant="ghost"
+					onclick={handleCloseChat}
+					aria-label="Close chat"
+					title="Close chat"
+				>
+					<X size={16} />
+				</Button>
+			</div>
+		{/if}
 	</div>
 	<!-- Messages -->
 	<MessageList messages={$chatStore.messages} activeTool={$chatStore.activeTool} />
