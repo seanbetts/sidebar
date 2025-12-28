@@ -108,3 +108,102 @@ async def test_stream_with_tools_handles_tool_use():
     assert "tool_result" in event_types
     assert tool_mapper.calls
     assert tool_mapper.calls[-1] == ("test_tool", {"foo": "bar"})
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_handles_bad_tool_json():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(type="tool_use", id="tool-1", name="test_tool"),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="input_json_delta", partial_json="{"),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+    client = FakeClient(events)
+    tool_mapper = DummyToolMapper()
+
+    output = []
+    async for event in stream_with_tools(
+        client=client,
+        tool_mapper=tool_mapper,
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert tool_mapper.calls[-1] == ("test_tool", {})
+    assert any(item["type"] == "tool_result" for item in output)
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_memory_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(type="tool_use", id="tool-1", name="memory"),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="input_json_delta", partial_json='{"command": "create"}'),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class MemoryToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            return "Memory Tool"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {"success": True, "data": {"command": "create", "content": "ok"}}
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=MemoryToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert any(item["type"] == "memory_created" for item in output)
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_error_on_exception():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(type="tool_use", id="tool-1", name="test_tool"),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="input_json_delta", partial_json='{"foo": "bar"}'),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class FailingToolMapper(DummyToolMapper):
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            raise RuntimeError("boom")
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=FailingToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert output[-1]["type"] == "error"
+    assert output[-1]["error"] == "boom"
