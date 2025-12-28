@@ -44,3 +44,42 @@ def test_websites_get_success(test_client, test_db):
     body = response.json()
     assert body["id"] == str(website_id)
     assert body["content"] == "Example content"
+
+
+def test_websites_pin_rename_archive(test_client, test_db):
+    website_id = uuid.uuid4()
+    website = Website(
+        id=website_id,
+        user_id=DEFAULT_USER_ID,
+        url="https://example.org",
+        url_full="https://example.org",
+        domain="example.org",
+        title="Example Org",
+        content="Example content",
+        metadata_={"pinned": False, "archived": False},
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    test_db.add(website)
+    test_db.commit()
+
+    pin = test_client.patch(
+        f"/api/websites/{website_id}/pin",
+        json={"pinned": True},
+        headers=_auth_headers(),
+    )
+    assert pin.status_code == 200
+
+    rename = test_client.patch(
+        f"/api/websites/{website_id}/rename",
+        json={"title": "Renamed"},
+        headers=_auth_headers(),
+    )
+    assert rename.status_code == 200
+
+    archive = test_client.patch(
+        f"/api/websites/{website_id}/archive",
+        json={"archived": True},
+        headers=_auth_headers(),
+    )
+    assert archive.status_code == 200
