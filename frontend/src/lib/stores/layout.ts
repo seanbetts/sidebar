@@ -42,15 +42,15 @@ function createLayoutStore() {
         ...state,
         mode: state.mode === 'default' ? 'chat-focused' : 'default'
       })),
-    setChatSidebarWidth: (width: number) =>
+    setChatSidebarWidth: (width: number, maxWidth?: number) =>
       update((state) => ({
         ...state,
-        chatSidebarWidth: clamp(width, 320, 900)
+        chatSidebarWidth: clamp(width, 320, maxWidth ?? 900)
       })),
-    setWorkspaceSidebarWidth: (width: number) =>
+    setWorkspaceSidebarWidth: (width: number, maxWidth?: number) =>
       update((state) => ({
         ...state,
-        workspaceSidebarWidth: clamp(width, 480, 900)
+        workspaceSidebarWidth: clamp(width, 480, maxWidth ?? 900)
       }))
   };
 }

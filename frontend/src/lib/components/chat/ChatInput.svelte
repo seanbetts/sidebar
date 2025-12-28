@@ -72,7 +72,6 @@
 <style>
 	.chat-input-bar {
 		padding: 1rem;
-		border-top: 1px solid var(--color-border);
 		background-color: var(--color-background);
 	}
 
