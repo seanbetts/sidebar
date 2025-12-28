@@ -26,6 +26,17 @@ def list_entries(
     pattern: str = "*",
     recursive: bool = False,
 ) -> dict:
+    """List entries under a directory for the fs skill.
+
+    Args:
+        user_id: Current user ID.
+        directory: Directory path to list.
+        pattern: Glob pattern for filtering. Defaults to "*".
+        recursive: Whether to recurse into subfolders. Defaults to False.
+
+    Returns:
+        Listing payload with files and directories.
+    """
     base_path = normalize_path(directory)
     if base_path:
         ensure_allowed_path(base_path)
@@ -121,6 +132,19 @@ def read_text(
     user_id: str,
     path: str,
 ) -> tuple[str, FileObject]:
+    """Read a text file and return content and metadata.
+
+    Args:
+        user_id: Current user ID.
+        path: File path to read.
+
+    Returns:
+        Tuple of decoded text content and FileObject metadata.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the path is a directory.
+    """
     normalized = normalize_path(path, allow_root=False)
     ensure_allowed_path(normalized)
 
@@ -143,6 +167,20 @@ def write_text(
     *,
     mode: str = "replace",
 ) -> dict:
+    """Write text content to storage.
+
+    Args:
+        user_id: Current user ID.
+        path: File path to write.
+        content: Text content to write.
+        mode: One of "replace", "create", "append".
+
+    Returns:
+        Write result payload.
+
+    Raises:
+        FileExistsError: If mode is create and file exists.
+    """
     normalized = normalize_path(path, allow_root=False)
     ensure_allowed_path(normalized)
 
@@ -194,6 +232,18 @@ def upload_file(
     content_type: Optional[str] = None,
     category: Optional[str] = None,
 ) -> FileObject:
+    """Upload a local file into storage.
+
+    Args:
+        user_id: Current user ID.
+        path: Destination path in storage.
+        local_path: Local filesystem path to read.
+        content_type: Optional MIME type override.
+        category: Optional category label.
+
+    Returns:
+        FileObject metadata for the uploaded file.
+    """
     normalized = normalize_path(path, allow_root=False)
     ensure_allowed_path(normalized)
 
@@ -220,6 +270,20 @@ def upload_file(
 
 
 def download_file(user_id: str, path: str, local_path: Path) -> FileObject:
+    """Download a storage file to a local path.
+
+    Args:
+        user_id: Current user ID.
+        path: Storage path to download.
+        local_path: Local filesystem destination.
+
+    Returns:
+        FileObject metadata for the downloaded file.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the path is a directory.
+    """
     normalized = normalize_path(path, allow_root=False)
     ensure_allowed_path(normalized)
 
@@ -237,6 +301,15 @@ def download_file(user_id: str, path: str, local_path: Path) -> FileObject:
 
 
 def create_folder(user_id: str, path: str) -> dict:
+    """Create a folder marker in storage metadata.
+
+    Args:
+        user_id: Current user ID.
+        path: Folder path to create.
+
+    Returns:
+        Result payload with action.
+    """
     normalized = normalize_path(path, allow_root=False)
     ensure_allowed_path(normalized)
 
@@ -260,6 +333,18 @@ def create_folder(user_id: str, path: str) -> dict:
 
 
 def delete_path(user_id: str, path: str) -> dict:
+    """Delete a file or directory path.
+
+    Args:
+        user_id: Current user ID.
+        path: Path to delete.
+
+    Returns:
+        Deletion payload with deleted paths and count.
+
+    Raises:
+        FileNotFoundError: If the path does not exist.
+    """
     normalized = normalize_path(path, allow_root=False)
     ensure_allowed_path(normalized)
     storage = get_storage_backend()
@@ -294,6 +379,20 @@ def delete_path(user_id: str, path: str) -> dict:
 
 
 def move_path(user_id: str, source: str, destination: str) -> dict:
+    """Move a file or directory to a new path.
+
+    Args:
+        user_id: Current user ID.
+        source: Source path.
+        destination: Destination path.
+
+    Returns:
+        Move result payload.
+
+    Raises:
+        FileExistsError: If destination exists.
+        FileNotFoundError: If source does not exist.
+    """
     src = normalize_path(source, allow_root=False)
     dest = normalize_path(destination, allow_root=False)
     ensure_allowed_path(src)
@@ -348,6 +447,20 @@ def move_path(user_id: str, source: str, destination: str) -> dict:
 
 
 def copy_path(user_id: str, source: str, destination: str) -> dict:
+    """Copy a file or directory to a new path.
+
+    Args:
+        user_id: Current user ID.
+        source: Source path.
+        destination: Destination path.
+
+    Returns:
+        Copy result payload.
+
+    Raises:
+        FileExistsError: If destination exists.
+        FileNotFoundError: If source does not exist.
+    """
     src = normalize_path(source, allow_root=False)
     dest = normalize_path(destination, allow_root=False)
     ensure_allowed_path(src)
@@ -419,6 +532,18 @@ def copy_path(user_id: str, source: str, destination: str) -> dict:
 
 
 def info(user_id: str, path: str) -> dict:
+    """Return metadata for a file or directory.
+
+    Args:
+        user_id: Current user ID.
+        path: Path to inspect.
+
+    Returns:
+        Metadata payload for the path.
+
+    Raises:
+        FileNotFoundError: If the path does not exist.
+    """
     normalized = normalize_path(path, allow_root=False)
     ensure_allowed_path(normalized)
 
