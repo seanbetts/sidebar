@@ -37,6 +37,7 @@ function createChatStore() {
 
 		/**
 		 * Load an existing conversation
+		 * @param conversationId
 		 */
 		async loadConversation(conversationId: string) {
 			toolState.clearToolTimers();
@@ -80,6 +81,7 @@ function createChatStore() {
 
 		/**
 		 * Add a user message and start streaming assistant response
+		 * @param content
 		 */
 		async sendMessage(content: string): Promise<{
 			assistantMessageId: string;
@@ -137,6 +139,8 @@ function createChatStore() {
 
 		/**
 		 * Append token to current streaming message
+		 * @param messageId
+		 * @param token
 		 */
 		appendToken(messageId: string, token: string) {
 			update((state) => ({
@@ -162,6 +166,8 @@ function createChatStore() {
 
 		/**
 		 * Add or update tool call in current message
+		 * @param messageId
+		 * @param toolCall
 		 */
 		addToolCall(messageId: string, toolCall: ToolCall) {
 			update((state) => ({
@@ -189,6 +195,10 @@ function createChatStore() {
 
 		/**
 		 * Update tool call result
+		 * @param messageId
+		 * @param toolCallId
+		 * @param result
+		 * @param status
 		 */
 		updateToolResult(messageId: string, toolCallId: string, result: any, status: 'success' | 'error') {
 			update((state) => ({
@@ -209,6 +219,7 @@ function createChatStore() {
 
 		/**
 		 * Mark streaming as complete
+		 * @param messageId
 		 */
 		async finishStreaming(messageId: string) {
 			update((state) => ({
@@ -260,6 +271,8 @@ function createChatStore() {
 
 		/**
 		 * Set error on current message
+		 * @param messageId
+		 * @param error
 		 */
 		setError(messageId: string, error: string) {
 			update((state) => ({

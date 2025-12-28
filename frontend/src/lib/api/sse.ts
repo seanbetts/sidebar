@@ -34,6 +34,16 @@ export class SSEClient {
 
 	/**
 	 * Connect to SSE endpoint and stream chat response
+	 * @param payload
+	 * @param payload.message
+	 * @param payload.conversationId
+	 * @param payload.userMessageId
+	 * @param payload.openContext
+	 * @param payload.currentLocation
+	 * @param payload.currentLocationLevels
+	 * @param payload.currentWeather
+	 * @param payload.currentTimezone
+	 * @param callbacks
 	 */
 	async connect(
 		payload: {
