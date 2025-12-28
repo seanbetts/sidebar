@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { Loader2, User } from 'lucide-svelte';
+  import { Loader2, LogOut, User } from 'lucide-svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+  import { Button } from '$lib/components/ui/button';
   import MemorySettings from '$lib/components/settings/MemorySettings.svelte';
   import SettingsAccountSection from '$lib/components/left-sidebar/panels/settings/SettingsAccountSection.svelte';
   import SettingsSystemSection from '$lib/components/left-sidebar/panels/settings/SettingsSystemSection.svelte';
@@ -66,6 +67,19 @@
             <span>{section.label}</span>
           </button>
         {/each}
+        <div class="settings-nav-footer">
+          <form method="post" action="/auth/logout">
+            <Button
+              type="submit"
+              variant="outline"
+              class="settings-logout"
+              aria-label="Sign out"
+            >
+              <LogOut size={16} />
+              <span>Sign out</span>
+            </Button>
+          </form>
+        </div>
       </aside>
       <div class="settings-content">
         {#if isLoadingSettings}
@@ -146,6 +160,19 @@
     gap: 0.35rem;
     border-right: 1px solid var(--color-border);
     padding-right: 1rem;
+    height: 100%;
+  }
+
+  .settings-nav-footer {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .settings-logout {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.5rem;
   }
 
   .settings-nav-item {

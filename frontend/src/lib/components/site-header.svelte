@@ -5,7 +5,7 @@
 	import { Button } from "$lib/components/ui/button";
 	import { layoutStore } from "$lib/stores/layout";
 	import { resolveWeatherIcon } from "$lib/utils/weatherIcons";
-	import { ArrowLeftRight, LogOut } from "lucide-svelte";
+	import { ArrowLeftRight } from "lucide-svelte";
 
 	const siteHeaderData = useSiteHeaderData();
 	let currentDate = "";
@@ -61,18 +61,6 @@
 		>
 			<ArrowLeftRight size={20} />
 		</Button>
-		<form method="post" action="/auth/logout" class="logout-form">
-			<Button
-				size="icon"
-				variant="outline"
-				type="submit"
-				aria-label="Sign out"
-				title="Sign out"
-				class="logout-button border-border"
-			>
-				<LogOut size={18} />
-			</Button>
-		</form>
 		<ScratchpadPopover />
 		<ModeToggle />
 	</div>
@@ -190,19 +178,6 @@
 	}
 
 	:global(.swap-button:hover) {
-		color: var(--color-foreground);
-	}
-
-	.logout-form {
-		display: inline-flex;
-	}
-
-	:global(.logout-button) {
-		color: var(--color-muted-foreground);
-		transition: color 0.2s ease;
-	}
-
-	:global(.logout-button:hover) {
 		color: var(--color-foreground);
 	}
 
