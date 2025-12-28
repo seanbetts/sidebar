@@ -128,7 +128,7 @@
       </div>
     </div>
     <AlertDialog.Footer class="settings-footer">
-      <form method="post" action="/auth/logout">
+      <form method="get" action="/auth/logout">
         <Button
           type="submit"
           variant="outline"
