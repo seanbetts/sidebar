@@ -33,4 +33,5 @@ class Conversation(Base):
     )
 
     def __repr__(self):
+        """Return a readable representation for debugging."""
         return f"<Conversation(id={self.id}, title='{self.title}', message_count={self.message_count})>"

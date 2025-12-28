@@ -22,4 +22,5 @@ class Note(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     def __repr__(self):
+        """Return a readable representation for debugging."""
         return f"<Note(id={self.id}, title='{self.title}')>"

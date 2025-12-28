@@ -22,16 +22,15 @@ async def stream_with_tools(
     allowed_skills: List[str] | None = None,
     tool_context: Dict[str, Any] | None = None,
 ) -> AsyncIterator[Dict[str, Any]]:
-    """
-    Stream chat with tool execution and multi-turn conversation.
+    """Stream chat with tool execution and multi-turn conversation.
 
     Args:
-        message: User message
-        conversation_history: Previous messages (optional)
-        tool_context: Context passed to tool execution (optional)
+        message: User message.
+        conversation_history: Previous messages (optional).
+        tool_context: Context passed to tool execution (optional).
 
     Yields:
-        Events: token, tool_call, tool_result, error
+        Events: token, tool_call, tool_result, error.
     """
     messages = conversation_history or []
     messages.append({"role": "user", "content": message})

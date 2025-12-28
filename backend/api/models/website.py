@@ -32,4 +32,5 @@ class Website(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     def __repr__(self):
+        """Return a readable representation for debugging."""
         return f"<Website(id={self.id}, url='{self.url}')>"

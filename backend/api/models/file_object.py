@@ -29,4 +29,5 @@ class FileObject(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     def __repr__(self):
+        """Return a readable representation for debugging."""
         return f"<FileObject(id={self.id}, path='{self.path}')>"
