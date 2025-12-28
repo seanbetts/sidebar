@@ -61,7 +61,7 @@ def test_create_folder_calls_upsert(monkeypatch):
     result = FilesWorkspaceService.create_folder(DummyDB(), "user-1", "base", "folder")
     assert result["success"] is True
     assert calls["path"] == "base/folder"
-    assert calls["bucket_key"] == "user-1/base/folder/"
+    assert calls["bucket_key"] == "user-1/base/folder"
     assert calls["category"] == "folder"
 
 
@@ -71,7 +71,10 @@ def test_rename_file_moves_object(monkeypatch):
     record = _record("base/old.txt", bucket_key="user-1/base/old.txt")
 
     monkeypatch.setattr(service_module, "storage_backend", dummy_storage)
-    monkeypatch.setattr(service_module.FilesService, "get_by_path", lambda *_: record)
+    def fake_get_by_path(_db, _user_id, path):
+        return record if path == "base/old.txt" else None
+
+    monkeypatch.setattr(service_module.FilesService, "get_by_path", fake_get_by_path)
     monkeypatch.setattr(service_module.FilesService, "list_by_prefix", lambda *_: [])
 
     result = FilesWorkspaceService.rename(db, "user-1", "base", "old.txt", "new.txt")
