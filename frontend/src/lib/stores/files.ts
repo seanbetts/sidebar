@@ -2,7 +2,7 @@
  * Files store for managing multiple file tree states
  */
 import { writable, get } from 'svelte/store';
-import type { FileNode, FileTreeState, SingleFileTree } from '$lib/types/file';
+import type { FileNode, FileTreeState } from '$lib/types/file';
 import { editorStore } from '$lib/stores/editor';
 import { notesAPI } from '$lib/services/api';
 

@@ -31,7 +31,7 @@ sideBar is built as a modern, containerized full-stack application:
 ## Prerequisites
 
 - **Docker** & **Docker Compose** (required)
-- **Node.js 20.19+** (for local frontend development)
+- **Node.js 20.19+** (for local frontend development and `npm run lint` with JSDoc rules)
 - **Python 3.11+** (for local backend development)
 - **uv** (Python package manager - for skill validation)
 

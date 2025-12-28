@@ -65,7 +65,7 @@ function createEditorStore() {
           isReadOnly: false,
           lastUpdateSource: options?.source ?? null
         }));
-      } catch (error) {
+      } catch {
         update(state => ({
           ...state,
           isLoading: false,
@@ -131,7 +131,7 @@ function createEditorStore() {
           saveError: null,
           lastUpdateSource: null
         }));
-      } catch (error) {
+      } catch {
         update(s => ({
           ...s,
           isSaving: false,
