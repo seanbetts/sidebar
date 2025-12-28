@@ -16,8 +16,20 @@ storage_backend = get_storage_backend()
 
 
 class FilesWorkspaceService:
+    """Workspace-facing file operations backed by storage + DB."""
+
     @staticmethod
     def get_tree(db: Session, user_id: str, base_path: str) -> dict:
+        """Return the file tree for a base path.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            base_path: Base folder for the tree.
+
+        Returns:
+            Tree payload with children.
+        """
         base_path = FileTreeService.normalize_base_path(base_path)
         records = FilesService.list_by_prefix(db, user_id, base_path)
         tree = FileTreeService.build_tree(records, base_path)
@@ -32,6 +44,18 @@ class FilesWorkspaceService:
         *,
         limit: int = 50,
     ) -> dict:
+        """Search files and format results for the UI.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            query: Search query string.
+            base_path: Base folder to scope the search.
+            limit: Max results to return. Defaults to 50.
+
+        Returns:
+            Search results payload.
+        """
         base_path = FileTreeService.normalize_base_path(base_path)
         records = FilesService.search_by_name(db, user_id, query, base_path, limit=limit)
         items = []
@@ -50,6 +74,17 @@ class FilesWorkspaceService:
 
     @staticmethod
     def create_folder(db: Session, user_id: str, base_path: str, path: str) -> dict:
+        """Create a folder marker in storage and metadata.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            base_path: Base folder path.
+            path: Folder path relative to base_path.
+
+        Returns:
+            Folder creation result.
+        """
         full_path = FileTreeService.full_path(base_path, path)
         bucket_key = FileTreeService.bucket_key(user_id, f"{full_path}/")
         FilesService.upsert_file(
@@ -72,6 +107,21 @@ class FilesWorkspaceService:
         old_path: str,
         new_name: str,
     ) -> dict:
+        """Rename a file or folder within a base path.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            base_path: Base folder path.
+            old_path: Relative path to rename.
+            new_name: New name for the item.
+
+        Returns:
+            Rename result payload with new path.
+
+        Raises:
+            HTTPException: 400 if target exists, 404 if item not found.
+        """
         old_full_path = FileTreeService.full_path(base_path, old_path)
         parent = str(Path(old_path).parent) if Path(old_path).parent != Path(".") else ""
         new_rel = f"{parent}/{new_name}".strip("/")
@@ -122,6 +172,21 @@ class FilesWorkspaceService:
         path: str,
         destination: str,
     ) -> dict:
+        """Move a file or folder to a new destination.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            base_path: Base folder path.
+            path: Relative path to move.
+            destination: Destination folder path.
+
+        Returns:
+            Move result payload with new path.
+
+        Raises:
+            HTTPException: 400 if target exists, 404 if item not found.
+        """
         full_path = FileTreeService.full_path(base_path, path)
         filename = Path(path).name
         new_full_path = FileTreeService.full_path(base_path, f"{destination}/{filename}")
@@ -165,6 +230,20 @@ class FilesWorkspaceService:
 
     @staticmethod
     def delete(db: Session, user_id: str, base_path: str, path: str) -> dict:
+        """Delete a file or folder.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            base_path: Base folder path.
+            path: Relative path to delete.
+
+        Returns:
+            Delete result payload.
+
+        Raises:
+            HTTPException: 404 if item not found.
+        """
         full_path = FileTreeService.full_path(base_path, path)
         record = FilesService.get_by_path(db, user_id, full_path)
         if record:
@@ -184,6 +263,20 @@ class FilesWorkspaceService:
 
     @staticmethod
     def download(db: Session, user_id: str, base_path: str, path: str) -> dict:
+        """Download a file from storage.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            base_path: Base folder path.
+            path: Relative file path to download.
+
+        Returns:
+            Download payload with bytes and metadata.
+
+        Raises:
+            HTTPException: 404 if file not found or is a folder.
+        """
         full_path = FileTreeService.full_path(base_path, path)
         record = FilesService.get_by_path(db, user_id, full_path)
         if not record or record.category == "folder":
@@ -199,6 +292,20 @@ class FilesWorkspaceService:
 
     @staticmethod
     def get_content(db: Session, user_id: str, base_path: str, path: str) -> dict:
+        """Fetch text content of a file.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            base_path: Base folder path.
+            path: Relative file path.
+
+        Returns:
+            File content payload.
+
+        Raises:
+            HTTPException: 400 if file is not text, 404 if not found.
+        """
         full_path = FileTreeService.full_path(base_path, path)
         record = FilesService.get_by_path(db, user_id, full_path)
         if not record or record.category == "folder":
@@ -222,6 +329,18 @@ class FilesWorkspaceService:
 
     @staticmethod
     def update_content(db: Session, user_id: str, base_path: str, path: str, content: str) -> dict:
+        """Write text content to storage and update metadata.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            base_path: Base folder path.
+            path: Relative file path.
+            content: Text content to store.
+
+        Returns:
+            Update result payload with modified timestamp.
+        """
         full_path = FileTreeService.full_path(base_path, path)
         bucket_key = FileTreeService.bucket_key(user_id, full_path)
         data = content.encode("utf-8")
