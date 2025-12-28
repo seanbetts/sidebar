@@ -21,12 +21,29 @@ _weather_cache: dict[str, dict[str, Any]] = {}
 
 
 def _as_list(value: Any) -> list:
+    """Return a list if value is already a list.
+
+    Args:
+        value: Value to normalize.
+
+    Returns:
+        List value or an empty list.
+    """
     if isinstance(value, list):
         return value
     return []
 
 
 def _fetch_weather(lat: float, lon: float) -> dict:
+    """Fetch weather data from Open-Meteo.
+
+    Args:
+        lat: Latitude.
+        lon: Longitude.
+
+    Returns:
+        Parsed JSON response payload.
+    """
     query = urlencode(
         {
             "latitude": lat,
@@ -48,6 +65,15 @@ def _fetch_weather(lat: float, lon: float) -> dict:
 
 
 def _cache_key(lat: float, lon: float) -> str:
+    """Build a cache key for weather lookups.
+
+    Args:
+        lat: Latitude.
+        lon: Longitude.
+
+    Returns:
+        Cache key string with rounded coordinates.
+    """
     return f"{round(lat, 2)}:{round(lon, 2)}"
 
 
@@ -57,6 +83,19 @@ async def get_weather(
     lon: float,
     _: str = Depends(verify_bearer_token),
 ):
+    """Fetch weather data with caching.
+
+    Args:
+        lat: Latitude.
+        lon: Longitude.
+        _: Authorization token (validated).
+
+    Returns:
+        Weather payload with current and daily summary.
+
+    Raises:
+        HTTPException: 502 if the upstream lookup fails.
+    """
     cache_key = _cache_key(lat, lon)
     now = time.time()
     cached = _weather_cache.get(cache_key)
