@@ -64,8 +64,9 @@ class Settings(BaseSettings):
 
     # JWT validation
     jwt_audience: str = "authenticated"
-    jwt_algorithm: str = "HS256"
-    jwt_algorithms: list[str] = ["HS256", "RS256"]
+    jwt_algorithm: str = "ES256"
+    jwt_algorithms: list[str] = ["ES256", "HS256", "RS256"]
+    supabase_jwt_secret: str | None = None
     jwks_cache_ttl_seconds: int = 3600
     jwt_issuer: str = ""
 

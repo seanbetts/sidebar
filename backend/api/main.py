@@ -7,6 +7,7 @@ from api.routers import health, chat, conversations, files, websites, scratchpad
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
 from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
+import jwt
 from api.executors.skill_executor import SkillExecutor
 from api.security.path_validator import PathValidator
 import logging
@@ -83,7 +84,14 @@ async def auth_middleware(request: Request, call_next):
         request.state.user_id = payload.get("sub")
         if not request.state.user_id:
             raise JWTValidationError("Missing user ID")
-    except (ValueError, AttributeError, JWTValidationError):
+    except (ValueError, AttributeError, JWTValidationError) as exc:
+        logging.warning("Auth failed: %s", exc)
+        try:
+            header = jwt.get_unverified_header(token) if "token" in locals() else None
+            if header:
+                logging.info("JWT header: %s", header)
+        except Exception:
+            logging.info("JWT header unavailable")
         return JSONResponse(
             status_code=401,
             content={"error": "Invalid Authorization header"},

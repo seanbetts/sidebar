@@ -69,28 +69,55 @@ class SupabaseJWTValidator:
         alg = header.get("alg") or settings.jwt_algorithm
         if alg not in settings.jwt_algorithms:
             raise JWTValidationError(f"Unsupported JWT algorithm: {alg}")
-        if not kid:
-            raise JWTValidationError("Missing key ID in token header.")
-
-        keys = jwks.get("keys", [])
-        key = next((item for item in keys if item.get("kid") == kid), None)
-        if not key:
-            raise JWTValidationError("No matching JWKS key found.")
-
         algorithms = jwt.algorithms.get_default_algorithms()
         algorithm = algorithms.get(alg)
         if not algorithm:
             raise JWTValidationError(f"Unsupported JWT algorithm: {alg}")
-        public_key = algorithm.from_jwk(json.dumps(key))
-        try:
-            payload = jwt.decode(
+
+        if alg == "HS256":
+            if not settings.supabase_jwt_secret:
+                raise JWTValidationError("Missing SUPABASE_JWT_SECRET for HS256 validation.")
+            try:
+                return jwt.decode(
+                    token,
+                    settings.supabase_jwt_secret,
+                    algorithms=[alg],
+                    audience=settings.jwt_audience,
+                    issuer=self._get_issuer(),
+                )
+            except jwt.PyJWTError as exc:
+                raise JWTValidationError(str(exc)) from exc
+
+        keys = jwks.get("keys", [])
+
+        def decode_with_key(jwk: dict[str, Any]) -> dict[str, Any]:
+            public_key = algorithm.from_jwk(json.dumps(jwk))
+            return jwt.decode(
                 token,
                 public_key,
                 algorithms=[alg],
                 audience=settings.jwt_audience,
                 issuer=self._get_issuer(),
             )
-        except jwt.PyJWTError as exc:
-            raise JWTValidationError(str(exc)) from exc
 
-        return payload
+        if kid:
+            key = next((item for item in keys if item.get("kid") == kid), None)
+            if not key:
+                raise JWTValidationError("No matching JWKS key found.")
+            try:
+                return decode_with_key(key)
+            except jwt.PyJWTError as exc:
+                raise JWTValidationError(str(exc)) from exc
+
+        # Some tokens omit kid; try all keys in JWKS.
+        last_error: Exception | None = None
+        for key in keys:
+            try:
+                return decode_with_key(key)
+            except jwt.PyJWTError as exc:
+                last_error = exc
+                continue
+
+        if last_error:
+            raise JWTValidationError(str(last_error)) from last_error
+        raise JWTValidationError("No JWKS keys available for validation.")
