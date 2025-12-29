@@ -6,7 +6,7 @@ from api.config import settings
 from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
 
 # Unified bearer authentication (Supabase JWTs)
-bearer_scheme = HTTPBearer(auto_error=True)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def verify_supabase_jwt(
@@ -15,6 +15,12 @@ async def verify_supabase_jwt(
     """Verify Supabase JWT token and return payload."""
     if settings.auth_dev_mode:
         return {"sub": settings.default_user_id}
+    if not credentials or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     validator = SupabaseJWTValidator()
     try:

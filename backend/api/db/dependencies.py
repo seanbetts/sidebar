@@ -17,6 +17,12 @@ async def get_current_user_id(
     """Extract user ID from Supabase JWT token."""
     if settings.auth_dev_mode:
         return settings.default_user_id
+    if not credentials or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     user_id = getattr(request.state, "user_id", None)
     if user_id:
