@@ -6,8 +6,10 @@
 	import { Toaster } from 'svelte-sonner';
 	import { initAuth } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
 
 	let { data } = $props();
+	let healthChecked = false;
 
 	onMount(() => {
 		initAuth(
@@ -16,7 +18,27 @@
 			data.supabaseUrl,
 			data.supabaseAnonKey
 		);
+		checkHealth();
 	});
+
+	async function checkHealth() {
+		if (healthChecked) return;
+		healthChecked = true;
+		try {
+			const response = await fetch('/api/health');
+			if (!response.ok) {
+				toast.error('Some services are unavailable. Restart the backend via Doppler and refresh.');
+				return;
+			}
+			const data = await response.json();
+			if (data?.status && data.status !== 'healthy') {
+				toast.error('Some services are unavailable. Restart the backend via Doppler and refresh.');
+			}
+		} catch (error) {
+			console.error('Health check failed:', error);
+			toast.error('Some services are unavailable. Restart the backend via Doppler and refresh.');
+		}
+	}
 </script>
 
 <svelte:head>

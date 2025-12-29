@@ -25,6 +25,12 @@
 
 {#if loading}
   <SidebarLoading message="Loading files..." />
+{:else if treeData?.error}
+  <SidebarEmptyState
+    icon={Folder}
+    title="Service unavailable"
+    subtitle="Please try again later."
+  />
 {:else if children.length === 0}
   <SidebarEmptyState
     icon={Folder}

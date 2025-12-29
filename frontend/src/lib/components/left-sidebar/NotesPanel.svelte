@@ -92,6 +92,12 @@
 
 {#if loading}
   <SidebarLoading message="Loading notes..." />
+{:else if treeData?.error}
+  <SidebarEmptyState
+    icon={FileText}
+    title="Service unavailable"
+    subtitle="Please try again later."
+  />
 {:else if children.length === 0 && !searchQuery}
   <SidebarEmptyState
     icon={FileText}

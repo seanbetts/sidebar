@@ -52,6 +52,7 @@ function createFilesStore() {
           [basePath]: {
             ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
             loading: true,
+            error: null,
             searchQuery: '',
             loaded: state.trees[basePath]?.loaded ?? false
           }
@@ -74,6 +75,7 @@ function createFilesStore() {
               ...state.trees[basePath],
               children,
               loading: false,
+              error: null,
               searchQuery: '',
               loaded: true
             }
@@ -94,6 +96,7 @@ function createFilesStore() {
             [basePath]: {
               ...state.trees[basePath],
               loading: false,
+              error: 'Service unavailable',
               searchQuery: '',
               loaded: false
             }
