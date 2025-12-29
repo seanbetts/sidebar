@@ -9,6 +9,7 @@
   let password = '';
   let loading = false;
   let error = '';
+  $: loggedOut = $page.url.searchParams.get('loggedOut') === '1';
   $: redirectTo = $page.url.searchParams.get('redirectTo') ?? '/';
 
   async function handleLogin(event: SubmitEvent) {
@@ -107,6 +108,10 @@
         <img src="/images/logo.svg" alt="sideBar" class="panel-logo" />
         <div class="login-wordmark">Login</div>
       </div>
+
+      {#if loggedOut}
+        <div class="login-success">You have been signed out.</div>
+      {/if}
 
       {#if error}
         <div class="login-error">{error}</div>
@@ -301,6 +306,15 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+  }
+
+  .login-success {
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.6rem;
+    background: var(--color-muted);
+    border: 1px solid var(--color-border);
+    color: var(--color-foreground);
+    font-size: 0.9rem;
   }
 
   .panel-logo {
