@@ -33,8 +33,14 @@
 </script>
 
 <div class="login-shell">
-  <div class="login-grid">
-    <section class="login-hero">
+  <div class="login-container">
+    <div class="login-brand">
+      <img src="/images/logo.svg" alt="sideBar" class="brand-logo" />
+      <span class="brand-wordmark">sideBar</span>
+    </div>
+
+    <div class="login-grid">
+      <section class="login-hero">
       <h1 class="login-hero-title">
         <img src="/images/logo.svg" alt="sideBar" class="hero-logo" />
         <span>Welcome to sideBar</span>
@@ -120,6 +126,7 @@
         </Button>
       </form>
     </section>
+    </div>
   </div>
 </div>
 
@@ -134,8 +141,38 @@
     background: var(--color-background);
   }
 
-  .login-grid {
+  .login-container {
     width: min(96vw, 1100px);
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .login-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .brand-logo {
+    width: 64px;
+    height: 64px;
+  }
+
+  :global(.dark) .brand-logo {
+    filter: invert(1);
+  }
+
+  .brand-wordmark {
+    font-size: 2.5rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-foreground);
+  }
+
+  .login-grid {
+    width: 100%;
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
     gap: 2.5rem;
@@ -320,6 +357,19 @@
   }
 
   @media (max-width: 900px) {
+    .login-container {
+      gap: 2rem;
+    }
+
+    .brand-logo {
+      width: 52px;
+      height: 52px;
+    }
+
+    .brand-wordmark {
+      font-size: 2rem;
+    }
+
     .login-grid {
       grid-template-columns: 1fr;
     }
