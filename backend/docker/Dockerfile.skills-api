@@ -27,13 +27,13 @@ RUN pip install --no-cache-dir \
     -r requirements.txt
 
 # Copy API code
-COPY api/ ./api/
-COPY skills/ ./skills/
-COPY scripts/ ./scripts/
+COPY --chown=appuser:appuser api/ ./api/
+COPY --chown=appuser:appuser skills/ ./skills/
+COPY --chown=appuser:appuser scripts/ ./scripts/
 
 # Create writable directories for non-root user
 RUN mkdir -p /workspace /tmp && \
-    chown -R appuser:appuser /workspace /tmp /app/skills /app/scripts
+    chown -R appuser:appuser /workspace /tmp /app/api /app/skills /app/scripts
 
 # Switch to non-root user
 USER appuser
