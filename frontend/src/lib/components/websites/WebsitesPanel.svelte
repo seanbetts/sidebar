@@ -426,14 +426,14 @@
     color: var(--color-foreground);
   }
 
-  .archive-chevron {
+  :global(.archive-chevron) {
     width: 16px;
     height: 16px;
     flex-shrink: 0;
     color: var(--color-muted-foreground);
   }
 
-  :global(.archive-trigger:hover) .archive-chevron {
+  :global(.archive-trigger:hover) :global(.archive-chevron) {
     color: var(--color-foreground);
   }
 </style>

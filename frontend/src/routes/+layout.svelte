@@ -8,7 +8,7 @@
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
-	let { data } = $props();
+	let { data, children } = $props();
 	let healthChecked = false;
 
 	onMount(() => {
@@ -48,14 +48,14 @@
 {#if data.maintenanceMode}
 	<HoldingPage />
 {:else if !data.session}
-	<slot />
+	{@render children?.()}
 {:else}
 	<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
 		<Sidebar />
 		<main class="main-content">
 			<SiteHeader />
 			<div class="page-content">
-				<slot />
+				{@render children?.()}
 			</div>
 		</main>
 	</div>

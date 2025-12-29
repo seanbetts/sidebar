@@ -161,7 +161,7 @@
     height: 100%;
   }
 
-  .settings-logout {
+  :global(.settings-logout) {
     justify-content: flex-start;
     gap: 0.5rem;
   }
@@ -455,7 +455,7 @@
     animation: settings-dialog-out 0.15s ease-in !important;
   }
 
-  .settings-header {
+  :global(.settings-header) {
     border-bottom: 1px solid var(--color-border);
     padding-bottom: 0.75rem;
   }
