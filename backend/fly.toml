@@ -7,6 +7,7 @@ primary_region = "lhr"
 [env]
   PORT = "8001"
   WORKSPACE_BASE = "/tmp/skills"
+  SKILLS_DIR = "/app/skills"
 
 [http_service]
   internal_port = 8001

@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # Base directories
     workspace_base: Path = Path(os.getenv("WORKSPACE_BASE", "/tmp/skills"))
-    skills_dir: Path = Path("/skills")
+    skills_dir: Path = Path(os.getenv("SKILLS_DIR", "/skills"))
 
     # Authentication
     bearer_token: str | None = None
