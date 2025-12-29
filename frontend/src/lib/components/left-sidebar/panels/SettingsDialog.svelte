@@ -386,7 +386,7 @@
     cursor: not-allowed;
   }
 
-  :global(.dark) .settings-avatar-placeholder {
+  :global(.dark .settings-avatar-placeholder) {
     color: #9aa3ad;
   }
 
