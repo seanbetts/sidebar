@@ -99,7 +99,7 @@
     <section class="login-panel">
       <div class="login-panel-header">
         <img src="/images/logo.svg" alt="sideBar" class="panel-logo" />
-        <div class="login-wordmark">sideBar</div>
+        <div class="login-wordmark">Login</div>
       </div>
 
       {#if error}
