@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "svelte-kit build",
+    "build": "node node_modules/@sveltejs/kit/bin/cli.js build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
