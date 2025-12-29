@@ -17,19 +17,29 @@
     loading = true;
     error = '';
 
-    const supabase = getSupabaseClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    try {
+      const supabase = getSupabaseClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    if (authError) {
-      error = authError.message;
+      if (authError) {
+        const message = authError.message || '';
+        error = message.toLowerCase().includes('failed to fetch')
+          ? 'Service unavailable. Please try again later.'
+          : authError.message;
+        loading = false;
+        return;
+      }
+
+      await goto(redirectTo, { invalidateAll: true });
+    } catch (err) {
+      console.error('Login failed:', err);
+      error = 'Service unavailable. Please try again later.';
+    } finally {
       loading = false;
-      return;
     }
-
-    await goto(redirectTo, { invalidateAll: true });
   }
 </script>
 
