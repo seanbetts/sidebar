@@ -1,6 +1,6 @@
 {
   "framework": "sveltekit",
-  "installCommand": "npm install --include=dev",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".vercel/output"
+  "installCommand": "npm --prefix frontend install --include=dev",
+  "buildCommand": "npm --prefix frontend run build",
+  "outputDirectory": "frontend/.vercel/output"
 }
