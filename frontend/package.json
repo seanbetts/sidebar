@@ -20,7 +20,7 @@
   "devDependencies": {
     "@internationalized/date": "^3.10.1",
     "@lucide/svelte": "^0.561.0",
-    "@sveltejs/adapter-node": "^5.4.0",
+    "@sveltejs/adapter-vercel": "^5.10.0",
     "@sveltejs/kit": "^2.49.2",
     "@tailwindcss/postcss": "^4.0.0",
     "@tailwindcss/typography": "^0.5.19",
