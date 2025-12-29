@@ -66,15 +66,15 @@
     background: var(--color-card);
   }
 
-  .memory-table {
+  :global(.memory-table) {
     table-layout: fixed;
   }
 
-  .memory-row {
+  :global(.memory-row) {
     height: 68px;
   }
 
-  .memory-name-cell {
+  :global(.memory-name-cell) {
     font-weight: 600;
     color: var(--color-foreground);
     white-space: nowrap;
@@ -82,19 +82,13 @@
     text-overflow: ellipsis;
   }
 
-  .memory-action-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .memory-updated {
+  :global(.memory-updated) {
     color: var(--color-muted-foreground);
     font-size: 0.78rem;
     white-space: nowrap;
   }
 
-  .memory-col-updated {
+  :global(.memory-col-updated) {
     width: 96px;
   }
 
@@ -112,6 +106,9 @@
 
   :global(.memory-action-cell),
   :global(.memory-col-action-cell) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     padding: 0.2rem 0.2rem !important;
     min-width: 64px;

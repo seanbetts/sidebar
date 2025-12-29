@@ -1,9 +1,11 @@
 <script lang="ts">
   import { Collapsible as CollapsiblePrimitive } from "bits-ui";
 
-  let { ...restProps }: CollapsiblePrimitive.TriggerProps = $props();
+  let { children, ...restProps }: CollapsiblePrimitive.TriggerProps & {
+    children?: () => unknown;
+  } = $props();
 </script>
 
 <CollapsiblePrimitive.Trigger {...restProps}>
-  <slot />
+  {@render children?.()}
 </CollapsiblePrimitive.Trigger>

@@ -208,7 +208,7 @@
 </Popover.Root>
 
 <style>
-	.scratchpad-popover {
+  :global(.scratchpad-popover) {
 		width: 840px;
 		max-width: min(95vw, 840px);
 		margin-right: 1rem;

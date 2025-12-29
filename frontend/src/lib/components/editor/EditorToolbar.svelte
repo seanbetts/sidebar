@@ -215,7 +215,7 @@
     border-radius: 0.375rem;
   }
 
-  .note-move-menu {
+  :global(.note-move-menu) {
     width: 220px;
     padding: 0.25rem 0;
   }
