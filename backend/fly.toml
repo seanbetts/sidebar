@@ -22,3 +22,7 @@ primary_region = "lhr"
     grace_period = "5s"
     method = "GET"
     path = "/api/health"
+
+[vm]
+  size = "shared-cpu-1x"
+  memory = "1024mb"
