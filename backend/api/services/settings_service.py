@@ -72,7 +72,8 @@ class SettingsService:
             Profile image URL or None.
         """
         if settings_record and settings_record.profile_image_path:
-            return "/api/settings/profile-image"
+            if storage_backend.object_exists(settings_record.profile_image_path):
+                return "/api/settings/profile-image"
         return None
 
     @staticmethod
