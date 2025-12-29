@@ -221,8 +221,8 @@
   {#if $websitesStore.error}
     <SidebarEmptyState
       icon={Globe}
-      title="Unable to load websites"
-      subtitle={$websitesStore.error}
+      title="Service unavailable"
+      subtitle="Please try again later."
     />
   {:else if $websitesStore.loading}
     <SidebarLoading message="Loading websites..." />
