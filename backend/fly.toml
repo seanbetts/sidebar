@@ -8,6 +8,15 @@ primary_region = "lhr"
   PORT = "8001"
   WORKSPACE_BASE = "/tmp/skills"
   SKILLS_DIR = "/app/skills"
+  SUPABASE_PROJECT_ID = "ixsexuxkmklbfvrnrybm"
+  SUPABASE_USE_POOLER = "true"
+  SUPABASE_POOLER_HOST = "db.ixsexuxkmklbfvrnrybm.supabase.co"
+  SUPABASE_POOLER_USER = "postgres.ixsexuxkmklbfvrnrybm"
+  SUPABASE_DB_NAME = "postgres"
+  SUPABASE_DB_PORT = "5432"
+  SUPABASE_SSLMODE = "require"
+  R2_ENDPOINT = "https://f16e1f68ea7097515b5ede661fc421d2.r2.cloudflarestorage.com/"
+  R2_BUCKET = "sidebar"
 
 [http_service]
   internal_port = 8001
