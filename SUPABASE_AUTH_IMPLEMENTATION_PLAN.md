@@ -701,27 +701,27 @@ finally:
 #### 6.1 Testing Checklist
 
 **Backend Testing**:
-- [ ] JWT validation with valid Supabase token
-- [ ] JWT validation with expired token (should fail)
-- [ ] JWT validation with invalid signature (should fail)
-- [ ] User ID extraction from JWT `sub` claim
-- [ ] RLS policies work with JWT-derived user_id
-- [ ] Dev mode bypass works with AUTH_DEV_MODE=true
+- [x] JWT validation with valid Supabase token
+- [ ] JWT validation with expired token (should fail) (skipped: requires Pro session time-boxing)
+- [x] JWT validation with invalid signature (should fail)
+- [x] User ID extraction from JWT `sub` claim
+- [x] RLS policies work with JWT-derived user_id
+- [x] Dev mode bypass works with AUTH_DEV_MODE=true
 
 **Frontend Testing**:
-- [ ] Login with admin email/password
-- [ ] Login with wrong password (should fail)
-- [ ] Protected routes redirect to login when unauthenticated
-- [ ] Session persists across page refreshes
-- [ ] Logout clears session
-- [ ] Token auto-refresh before expiry
-- [ ] Signup attempts fail (signups disabled)
+- [x] Login with admin email/password
+- [x] Login with wrong password (should fail)
+- [x] Protected routes redirect to login when unauthenticated
+- [x] Session persists across page refreshes
+- [x] Logout clears session
+- [x] Token auto-refresh before expiry
+- [x] Signup attempts fail (signups disabled)
 
 **User Scoping Testing**:
-- [ ] Create note as User A - only User A can see it
-- [ ] Create website as User B - only User B can see it
-- [ ] List conversations shows only user's conversations
-- [ ] Settings update only affects current user
+- [x] Create note as User A - only User A can see it
+- [x] Create website as User B - only User B can see it
+- [x] List conversations shows only user's conversations
+- [x] Settings update only affects current user
 
 #### 6.2 Development Workflow
 
@@ -823,16 +823,16 @@ If issues occur:
 
 ## Success Criteria
 
-- [ ] Admin can login with email/password
-- [ ] Signups are disabled in Supabase dashboard
-- [ ] Backend validates Supabase JWTs correctly
-- [ ] User data is properly scoped (no data leakage between users)
-- [ ] Sessions persist across page refreshes
-- [ ] Tokens auto-refresh before expiry
-- [ ] Logout works and clears session
-- [ ] Production data accessible to authenticated admin user
-- [ ] Protected routes require authentication
-- [ ] Unauthenticated users redirected to login
+- [x] Admin can login with email/password
+- [x] Signups are disabled in Supabase dashboard
+- [x] Backend validates Supabase JWTs correctly
+- [x] User data is properly scoped (no data leakage between users)
+- [x] Sessions persist across page refreshes
+- [x] Tokens auto-refresh before expiry
+- [x] Logout works and clears session
+- [x] Production data accessible to authenticated admin user
+- [x] Protected routes require authentication
+- [x] Unauthenticated users redirected to login
 
 ## Estimated Effort
 
