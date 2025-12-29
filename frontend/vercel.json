@@ -1,6 +1,0 @@
-{
-  "framework": "sveltekit",
-  "installCommand": "npm install --include=dev",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".vercel/output"
-}
