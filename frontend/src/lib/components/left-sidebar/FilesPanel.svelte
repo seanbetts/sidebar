@@ -29,7 +29,8 @@
   $: readyItems = ($ingestionStore.items || []).filter(
     item => item.job.status === 'ready' && item.recommended_viewer
   );
-  $: imageItems = readyItems.filter(item => item.file.mime_original?.startsWith('image/'));
+  $: pinnedItems = readyItems.filter(item => item.file.pinned);
+  $: imageItems = readyItems.filter(item => item.file.category === 'images');
   let retryingIds = new Set<string>();
   let imagesExpanded = false;
 
@@ -108,7 +109,16 @@
     <div class="workspace-main">
       <div class="files-block">
         <div class="files-block-title">Pinned</div>
-        <div class="files-empty">No pinned files</div>
+        {#if pinnedItems.length > 0}
+          {#each pinnedItems as item (item.file.id)}
+            <button class="ingested-item" onclick={() => openViewer(item)}>
+              <span class="ingested-name">{item.file.filename_original}</span>
+              <span class="ingested-action">Open</span>
+            </button>
+          {/each}
+        {:else}
+          <div class="files-empty">No pinned files</div>
+        {/if}
       </div>
       {#if processingItems.length > 0}
         <IngestionQueue items={processingItems} />

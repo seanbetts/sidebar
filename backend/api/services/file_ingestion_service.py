@@ -138,3 +138,20 @@ class FileIngestionService:
         record.deleted_at = datetime.now(timezone.utc)
         db.commit()
         return record
+
+    @staticmethod
+    def update_pinned(db: Session, user_id: str, file_id: uuid.UUID, pinned: bool) -> None:
+        """Update pinned state for a file."""
+        record = (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.id == file_id,
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not record:
+            return
+        record.pinned = pinned
+        db.commit()

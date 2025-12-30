@@ -61,6 +61,26 @@ def _recommended_viewer(derivatives: list[dict]) -> str | None:
     return None
 
 
+def _category_for_file(filename: str, mime: str) -> str:
+    if mime.startswith("image/"):
+        return "images"
+    if mime == "application/pdf":
+        return "pdf"
+    if mime == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        return "documents"
+    if mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        return "spreadsheets"
+    if mime == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        return "presentations"
+    if mime.startswith("text/"):
+        return "documents"
+    if mime.startswith("audio/"):
+        return "audio"
+    if mime.startswith("video/"):
+        return "video"
+    return "other"
+
+
 def _user_message_for_error(error_code: str | None, status: str | None) -> str | None:
     if not error_code or status != "failed":
         return None
@@ -155,6 +175,8 @@ async def list_ingestions(
                     "mime_original": record.mime_original,
                     "size_bytes": record.size_bytes,
                     "sha256": record.sha256,
+                    "pinned": record.pinned,
+                    "category": _category_for_file(record.filename_original, record.mime_original),
                     "created_at": record.created_at.isoformat(),
                 },
                 "job": {
@@ -213,6 +235,8 @@ async def get_file_meta(
             "mime_original": record.mime_original,
             "size_bytes": record.size_bytes,
             "sha256": record.sha256,
+            "pinned": record.pinned,
+            "category": _category_for_file(record.filename_original, record.mime_original),
             "created_at": record.created_at.isoformat(),
         },
         "job": {
@@ -367,6 +391,28 @@ async def reprocess_file(
         error_message=None,
     )
     return {"status": job.status if job else "queued"}
+
+
+@router.patch("/{file_id}/pin")
+async def update_pin(
+    file_id: str,
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Pin or unpin an ingested file."""
+    try:
+        file_uuid = uuid.UUID(file_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    pinned = bool(request.get("pinned", False))
+    FileIngestionService.update_pinned(db, user_id, file_uuid, pinned)
+    return {"success": True}
 
 
 @router.delete("/{file_id}")

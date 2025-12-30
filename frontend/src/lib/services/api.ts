@@ -213,6 +213,15 @@ class IngestionAPI {
     const response = await fetch(`${this.baseUrl}/${fileId}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete ingestion');
   }
+
+  async setPinned(fileId: string, pinned: boolean): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/pin`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned })
+    });
+    if (!response.ok) throw new Error('Failed to update pinned state');
+  }
 }
 
 export const ingestionAPI = new IngestionAPI();

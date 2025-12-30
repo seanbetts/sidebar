@@ -4,6 +4,8 @@ export interface IngestedFileMeta {
   mime_original: string;
   size_bytes: number;
   sha256?: string | null;
+  pinned?: boolean;
+  category?: string | null;
   created_at: string;
 }
 
