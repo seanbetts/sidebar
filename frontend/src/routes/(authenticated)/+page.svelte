@@ -19,11 +19,10 @@
 	$: minRatio = containerWidth ? Math.min(maxRatio, minSidebarPx / containerWidth) : 0;
 	$: effectiveRatio = containerWidth
 		? Math.min(maxRatio, Math.max(minRatio, sidebarRatio))
-		: 0;
-	$: fallbackRatio = defaultChatWidth / defaultContainerWidth;
+		: Math.min(maxRatio, sidebarRatio);
 	$: sidebarWidth = containerWidth
 		? `${(effectiveRatio * 100).toFixed(2)}%`
-		: `${(fallbackRatio * 100).toFixed(2)}%`;
+		: 'var(--sidebar-width, 38%)';
 
 	const defaultChatWidth = 550;
 	const defaultContainerWidth = 1200;
