@@ -23,9 +23,11 @@ from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDeriv
 from api.services.storage.service import get_storage_backend
 
 
-LEASE_SECONDS = 30
+LEASE_SECONDS = 180
 SLEEP_SECONDS = 2
 MAX_ATTEMPTS = 3
+BACKOFF_BASE_SECONDS = 2
+BACKOFF_MAX_SECONDS = 60
 PIPELINE_STAGES = [
     "validating",
     "converting",
@@ -108,6 +110,13 @@ def _mark_ready(db, job: FileProcessingJob) -> None:
     db.commit()
 
 
+def _compute_backoff_seconds(attempts: int) -> int:
+    if attempts <= 0:
+        return 0
+    delay = BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))
+    return min(delay, BACKOFF_MAX_SECONDS)
+
+
 def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
     job.attempts = (job.attempts or 0) + 1
     job.error_code = error.code
@@ -118,12 +127,37 @@ def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
 
     if error.retryable and job.attempts < MAX_ATTEMPTS:
         job.status = "queued"
+        job.stage = "queued"
+        job.lease_expires_at = _now() + timedelta(seconds=_compute_backoff_seconds(job.attempts))
         db.commit()
         return
 
     job.status = "failed"
+    job.stage = "failed"
     job.finished_at = _now()
     db.commit()
+
+
+def _requeue_stalled_jobs(db) -> None:
+    stalled_jobs = (
+        db.query(FileProcessingJob)
+        .filter(
+            and_(
+                FileProcessingJob.status == "processing",
+                FileProcessingJob.lease_expires_at.is_not(None),
+                FileProcessingJob.lease_expires_at < _now(),
+            )
+        )
+        .order_by(FileProcessingJob.updated_at.asc())
+        .limit(5)
+        .all()
+    )
+    for job in stalled_jobs:
+        _retry_or_fail(
+            db,
+            job,
+            IngestionError("WORKER_STALLED", "Worker heartbeat expired", retryable=True),
+        )
 
 
 def _get_file(db, job: FileProcessingJob) -> IngestedFile:
@@ -317,6 +351,7 @@ def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     while True:
         with SessionLocal() as db:
+            _requeue_stalled_jobs(db)
             job = _claim_job(db, worker_id)
             if not job:
                 time.sleep(SLEEP_SECONDS)
