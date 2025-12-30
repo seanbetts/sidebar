@@ -1,6 +1,7 @@
 """Ingestion worker loop with leasing and stage updates."""
 from __future__ import annotations
 
+import io
 import os
 import time
 import subprocess
@@ -13,6 +14,7 @@ from uuid import uuid4
 
 from sqlalchemy import and_, or_
 
+from PIL import Image
 from pypdf import PdfReader
 from pptx import Presentation
 from docx import Document
@@ -218,6 +220,43 @@ def _run_libreoffice_convert(source_path: Path, output_dir: Path) -> Path:
     return pdf_path
 
 
+def _generate_image_thumbnail(image_path: Path, max_size: int = 640) -> bytes | None:
+    try:
+        with Image.open(image_path) as image:
+            image.thumbnail((max_size, max_size))
+            output = io.BytesIO()
+            image.save(output, format="PNG")
+            return output.getvalue()
+    except Exception:
+        return None
+
+
+def _generate_pdf_thumbnail(pdf_path: Path, output_dir: Path) -> bytes | None:
+    if not shutil.which("pdftoppm"):
+        return None
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_base = output_dir / "thumb"
+    command = [
+        "pdftoppm",
+        "-f",
+        "1",
+        "-l",
+        "1",
+        "-singlefile",
+        "-png",
+        str(pdf_path),
+        str(output_base),
+    ]
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+    except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        return None
+    thumb_path = output_dir / "thumb.png"
+    if not thumb_path.exists():
+        return None
+    return thumb_path.read_bytes()
+
+
 def _extract_pdf_text(pdf_path: Path) -> str:
     reader = PdfReader(str(pdf_path))
     sections = []
@@ -273,6 +312,8 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
     content = source_path.read_bytes()
     extraction_text = ""
     viewer_payload: DerivativePayload | None = None
+    thumb_payload: DerivativePayload | None = None
+    thumb_bytes: bytes | None = None
 
     if mime == "application/pdf":
         viewer_payload = DerivativePayload(
@@ -284,6 +325,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             content=content,
         )
         extraction_text = _extract_pdf_text(source_path)
+        thumb_bytes = _generate_pdf_thumbnail(source_path, _derivative_dir(file_id))
     elif mime.startswith("image/"):
         extension = _detect_extension(record.filename_original, mime)
         viewer_payload = DerivativePayload(
@@ -295,6 +337,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             content=content,
         )
         extraction_text = "Image file. No text extraction available."
+        thumb_bytes = _generate_image_thumbnail(source_path)
     elif mime in {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -316,11 +359,22 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             extraction_text = _extract_pptx_text(source_path)
         else:
             extraction_text = _extract_xlsx_text(source_path)
+        thumb_bytes = _generate_pdf_thumbnail(pdf_path, _derivative_dir(file_id))
     else:
         raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
 
     if viewer_payload is None:
         raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
+
+    if thumb_bytes:
+        thumb_payload = DerivativePayload(
+            kind="thumb_png",
+            storage_key=f"files/{file_id}/derivatives/thumb.png",
+            mime="image/png",
+            size_bytes=len(thumb_bytes),
+            sha256=sha256(thumb_bytes).hexdigest(),
+            content=thumb_bytes,
+        )
 
     ai_body = (
         "---\n"
@@ -344,7 +398,10 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         content=ai_bytes,
     )
 
-    return [viewer_payload, ai_md]
+    derivatives = [viewer_payload, ai_md]
+    if thumb_payload:
+        derivatives.append(thumb_payload)
+    return derivatives
 
 
 def worker_loop() -> None:

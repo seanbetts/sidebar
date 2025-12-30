@@ -200,7 +200,8 @@
       await ingestionStore.load();
     } catch (error) {
       console.error('Failed to upload file:', error);
-      errorMessage = 'Failed to upload file. Please try again.';
+      errorMessage =
+        error instanceof Error ? error.message : 'Failed to upload file. Please try again.';
       isErrorDialogOpen = true;
     } finally {
       isUploadingFile = false;

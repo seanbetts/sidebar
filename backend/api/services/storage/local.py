@@ -66,6 +66,13 @@ class LocalStorage(StorageBackend):
         """Read object bytes from local storage."""
         return self._resolve_key(key).read_bytes()
 
+    def get_object_range(self, key: str, start: int, end: int) -> bytes:
+        """Read a byte range from local storage."""
+        path = self._resolve_key(key)
+        with path.open("rb") as handle:
+            handle.seek(start)
+            return handle.read(end - start + 1)
+
     def put_object(self, key: str, data: bytes, content_type: Optional[str] = None) -> StorageObject:
         """Write object bytes to local storage."""
         path = self._resolve_key(key)

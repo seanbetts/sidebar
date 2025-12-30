@@ -4,8 +4,10 @@
 	import ChatSidebar from '$lib/components/chat/ChatSidebar.svelte';
 	import ResizeHandle from '$lib/components/layout/ResizeHandle.svelte';
 	import WebsitesViewer from '$lib/components/websites/WebsitesViewer.svelte';
+	import UniversalViewer from '$lib/components/files/UniversalViewer.svelte';
 	import { layoutStore } from '$lib/stores/layout';
 	import { websitesStore } from '$lib/stores/websites';
+	import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 
 	let sidebarRef: HTMLElement;
 	let pageContainerRef: HTMLElement;
@@ -67,7 +69,9 @@
 		{#if isChatFocused}
 			<ChatSidebar />
 		{:else}
-			{#if $websitesStore.active}
+			{#if $ingestionViewerStore.active}
+				<UniversalViewer />
+			{:else if $websitesStore.active}
 				<WebsitesViewer />
 			{:else}
 				<MarkdownEditor />
@@ -90,7 +94,9 @@
 		style:min-width={`${minSidebarPx}px`}
 	>
 		{#if isChatFocused}
-			{#if $websitesStore.active}
+			{#if $ingestionViewerStore.active}
+				<UniversalViewer />
+			{:else if $websitesStore.active}
 				<WebsitesViewer />
 			{:else}
 				<MarkdownEditor />
