@@ -112,6 +112,7 @@ class NotesService:
                 current_node = index[current_path]
 
             if is_folder_marker:
+                current_node["folderMarker"] = True
                 continue
 
             is_archived = NotesService.is_archived_folder(folder)

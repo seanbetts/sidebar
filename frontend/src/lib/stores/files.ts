@@ -10,7 +10,7 @@ import { getCachedData, invalidateCache, isCacheStale, setCachedData } from '$li
 const NOTES_TREE_CACHE_KEY = 'notes.tree';
 const WORKSPACE_TREE_CACHE_PREFIX = 'files.tree';
 const TREE_CACHE_TTL = 30 * 60 * 1000;
-const TREE_CACHE_VERSION = '1.0';
+const TREE_CACHE_VERSION = '1.1';
 const EXPANDED_CACHE_PREFIX = 'files.expanded';
 const EXPANDED_TTL = 7 * 24 * 60 * 60 * 1000;
 
