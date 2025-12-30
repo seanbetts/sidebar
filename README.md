@@ -34,6 +34,7 @@ sideBar is built as a modern, containerized full-stack application:
 - **Node.js 20.19+** (for local frontend development and `npm run lint` with JSDoc rules)
 - **Python 3.11+** (for local backend development)
 - **uv** (Python package manager - for skill validation)
+- **Poppler** (`pdftoppm`) for PDF thumbnails in the ingestion pipeline (macOS: `brew install poppler`)
 
 ## Quick Start
 
