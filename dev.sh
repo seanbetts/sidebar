@@ -138,9 +138,9 @@ start_frontend() {
 start_ingestion_worker() {
   echo "Starting ingestion worker..."
   if [[ ${use_doppler} -eq 1 ]]; then
-    (cd backend && doppler run -- uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
+    (cd backend && doppler run -- env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
   else
-    (cd backend && uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
+    (cd backend && env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
   fi
   echo $! >"${INGESTION_PID}"
 }

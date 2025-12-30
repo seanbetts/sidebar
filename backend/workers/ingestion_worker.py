@@ -12,7 +12,7 @@ from pathlib import Path
 import shutil
 from uuid import uuid4
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, text
 
 from PIL import Image
 from pypdf import PdfReader
@@ -22,6 +22,7 @@ from openpyxl import load_workbook
 
 from api.db.session import SessionLocal
 from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
+from api.config import settings
 from api.services.storage.service import get_storage_backend
 
 
@@ -406,8 +407,11 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
 
 def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
+    worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
     while True:
         with SessionLocal() as db:
+            if worker_user_id:
+                db.execute(text("SET app.user_id = :user_id"), {"user_id": worker_user_id})
             _requeue_stalled_jobs(db)
             job = _claim_job(db, worker_id)
             if not job:
