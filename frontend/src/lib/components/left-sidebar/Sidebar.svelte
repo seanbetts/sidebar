@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { Plus, Folder, Upload } from 'lucide-svelte';
+  import { Plus, Folder } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -491,22 +491,22 @@
               size="icon"
               variant="ghost"
               class="panel-action"
-              onclick={handleUploadFileClick}
-              aria-label="Upload file"
-              title="Upload file"
-              disabled={isUploadingFile}
-            >
-              <Upload size={16} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              class="panel-action"
               onclick={handleNewWorkspaceFolder}
               aria-label="New folder"
               title="New folder"
             >
               <Folder size={16} />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              class="panel-action"
+              onclick={handleUploadFileClick}
+              aria-label="Upload file"
+              title="Upload file"
+              disabled={isUploadingFile}
+            >
+              <Plus size={16} />
             </Button>
           </svelte:fragment>
         </SidebarSectionHeader>
