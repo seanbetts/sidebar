@@ -70,6 +70,7 @@ Use a **tiered caching approach**:
 // Tier 1: Memory (Svelte stores) - fastest
 // Tier 2: localStorage - fast, persistent
 // Tier 3: API - authoritative source
+const inFlightRequests = new Map<string, Promise<unknown>>();
 
 async function loadData<T>(
   cacheKey: string,
@@ -80,13 +81,18 @@ async function loadData<T>(
     version?: string;       // Cache version for invalidation
   }
 ): Promise<T> {
+  // De-duplicate in-flight requests
+  if (inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey) as Promise<T>;
+  }
+
   // 1. Check memory (Svelte store)
   if (memoryCache.has(cacheKey)) {
     return memoryCache.get(cacheKey);
   }
 
   // 2. Check localStorage
-  const cached = getCachedData<T>(cacheKey, options.ttl);
+  const cached = getCachedData<T>(cacheKey, options);
   if (cached) {
     memoryCache.set(cacheKey, cached);
 
@@ -99,10 +105,18 @@ async function loadData<T>(
   }
 
   // 3. Fetch from API
-  const fresh = await apiFetcher();
-  setCachedData(cacheKey, fresh, options.version);
-  memoryCache.set(cacheKey, fresh);
-  return fresh;
+  const request = apiFetcher()
+    .then((fresh) => {
+      setCachedData(cacheKey, fresh, options);
+      memoryCache.set(cacheKey, fresh);
+      return fresh;
+    })
+    .finally(() => {
+      inFlightRequests.delete(cacheKey);
+    });
+
+  inFlightRequests.set(cacheKey, request);
+  return request;
 }
 ```
 
@@ -126,12 +140,34 @@ interface CacheMetadata {
 
 // Invalidation registry
 const invalidationMap = {
-  'conversations.list': ['conversation.created', 'conversation.deleted', 'conversation.title_updated'],
-  'websites.list': ['website.saved', 'website.deleted'],
-  'notes.tree': ['note.created', 'note.deleted', 'note.moved'],
-  'files.tree': ['file.uploaded', 'file.deleted', 'file.moved']
+  'conversations.list': [
+    'conversation.created',
+    'conversation.deleted',
+    'conversation.title_updated',
+    'conversation.archived',
+    'conversation.unarchived'
+  ],
+  'websites.list': ['website.saved', 'website.deleted', 'website.renamed', 'website.pinned', 'website.archived'],
+  'notes.tree': ['note.created', 'note.deleted', 'note.moved', 'note.renamed', 'note.pinned', 'note.archived'],
+  'files.tree': ['file.uploaded', 'file.deleted', 'file.moved', 'file.renamed']
 };
 ```
+
+### Additional Cache Requirements
+
+- **Per-user namespacing:** Prefix cache keys with user ID (e.g., `sideBar.cache.${userId}.`) to prevent cross-account leakage.
+- **SSR safety:** All localStorage access must be guarded with `browser` checks in SvelteKit.
+- **Version mismatch invalidation:** If `metadata.version !== config.version`, invalidate and refetch.
+- **Request de-duplication:** Avoid concurrent fetches for the same cache key with an in-flight map.
+- **Cross-tab invalidation:** Listen to `storage` events to sync cache updates between tabs.
+- **Sensitive data:** Avoid caching large or sensitive payloads (e.g., full message histories or attachments) in localStorage.
+- **Default behavior:** Use stale-while-revalidate for list endpoints, and opt out for detail views where freshness matters more.
+
+### Implementation Notes
+
+- **`getActiveUserId()` source:** Prefer the authenticated user ID from the existing settings/session store used by the frontend. Fall back to the API `/api/settings` payload if needed, and only use a placeholder in tests.
+- **Cache key assembly:** `const userId = getActiveUserId(); const key = `${CACHE_PREFIX(userId)}${cacheKey}`;`
+- **Logout flow:** Ensure logout clears all per-user caches and resets any in-memory caches.
 
 ---
 
@@ -168,7 +204,12 @@ interface CacheMetadata<T> {
 /**
  * Cache key prefix for namespacing
  */
-const CACHE_PREFIX = 'sideBar.cache.';
+const CACHE_PREFIX = (userId: string) => `sideBar.cache.${userId}.`;
+
+function getActiveUserId(): string {
+  // Prefer current session user ID from auth context/store.
+  return 'current-user-id';
+}
 
 /**
  * Default TTL: 15 minutes
@@ -180,18 +221,26 @@ const DEFAULT_TTL = 15 * 60 * 1000;
  */
 export function getCachedData<T>(
   key: string,
-  ttl: number = DEFAULT_TTL
+  config: CacheConfig = {}
 ): T | null {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (typeof window === 'undefined') return null;
+    const ttl = config.ttl ?? DEFAULT_TTL;
+    const version = config.version ?? '1.0';
+    const raw = localStorage.getItem(CACHE_PREFIX(getActiveUserId()) + key);
     if (!raw) return null;
 
     const metadata: CacheMetadata<T> = JSON.parse(raw);
     const age = Date.now() - metadata.timestamp;
 
+    if (metadata.version && metadata.version !== version) {
+      localStorage.removeItem(CACHE_PREFIX(getActiveUserId()) + key);
+      return null;
+    }
+
     // Check TTL
     if (age > (metadata.ttl || ttl)) {
-      localStorage.removeItem(CACHE_PREFIX + key);
+      localStorage.removeItem(CACHE_PREFIX(getActiveUserId()) + key);
       return null;
     }
 
@@ -211,6 +260,7 @@ export function setCachedData<T>(
   config: CacheConfig = {}
 ): void {
   try {
+    if (typeof window === 'undefined') return;
     const metadata: CacheMetadata<T> = {
       data,
       timestamp: Date.now(),
@@ -219,7 +269,7 @@ export function setCachedData<T>(
     };
 
     localStorage.setItem(
-      CACHE_PREFIX + key,
+      CACHE_PREFIX(getActiveUserId()) + key,
       JSON.stringify(metadata)
     );
   } catch (error) {
@@ -239,7 +289,8 @@ export function isCacheStale(
   maxAge: number = DEFAULT_TTL
 ): boolean {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (typeof window === 'undefined') return true;
+    const raw = localStorage.getItem(CACHE_PREFIX(getActiveUserId()) + key);
     if (!raw) return true;
 
     const metadata: CacheMetadata<unknown> = JSON.parse(raw);
@@ -255,7 +306,8 @@ export function isCacheStale(
  * Invalidate specific cache key
  */
 export function invalidateCache(key: string): void {
-  localStorage.removeItem(CACHE_PREFIX + key);
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(CACHE_PREFIX(getActiveUserId()) + key);
 }
 
 /**
@@ -269,9 +321,10 @@ export function invalidateCaches(keys: string[]): void {
  * Clear all caches with optional pattern matching
  */
 export function clearCaches(pattern?: RegExp): void {
+  if (typeof window === 'undefined') return;
   const keys = Object.keys(localStorage);
   keys.forEach(key => {
-    if (key.startsWith(CACHE_PREFIX)) {
+    if (key.startsWith(CACHE_PREFIX(getActiveUserId()))) {
       if (!pattern || pattern.test(key)) {
         localStorage.removeItem(key);
       }
@@ -283,10 +336,11 @@ export function clearCaches(pattern?: RegExp): void {
  * Clear oldest caches to free up space
  */
 function clearOldestCaches(): void {
+  if (typeof window === 'undefined') return;
   const caches: Array<{ key: string; timestamp: number }> = [];
 
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith(CACHE_PREFIX)) {
+    if (key.startsWith(CACHE_PREFIX(getActiveUserId()))) {
       try {
         const metadata = JSON.parse(localStorage.getItem(key) || '{}');
         caches.push({ key, timestamp: metadata.timestamp || 0 });
@@ -313,12 +367,15 @@ export function getCacheStats(): {
   totalSize: number;
   oldestAge: number;
 } {
+  if (typeof window === 'undefined') {
+    return { count: 0, totalSize: 0, oldestAge: 0 };
+  }
   let count = 0;
   let totalSize = 0;
   let oldestTimestamp = Date.now();
 
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith(CACHE_PREFIX)) {
+    if (key.startsWith(CACHE_PREFIX(getActiveUserId()))) {
       count++;
       const value = localStorage.getItem(key) || '';
       totalSize += new Blob([value]).size;
@@ -424,6 +481,21 @@ export function onCacheInvalidate(
 }
 ```
 
+**Cross-tab sync hook (optional):**
+```typescript
+export function listenForStorageEvents(onKeyChange: (key: string) => void): () => void {
+  const handler = (event: StorageEvent) => {
+    if (!event.key) return;
+    if (event.key.startsWith(CACHE_PREFIX(getActiveUserId()))) {
+      onKeyChange(event.key);
+    }
+  };
+
+  window.addEventListener('storage', handler);
+  return () => window.removeEventListener('storage', handler);
+}
+```
+
 ---
 
 ### Phase 2: Conversation List Caching (1.5 hours)
@@ -443,6 +515,7 @@ import type { Conversation } from '$lib/types';
 
 const CACHE_KEY = 'conversations.list';
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_VERSION = '1.0';
 
 interface ConversationListState {
   conversations: Conversation[];
@@ -478,7 +551,10 @@ function createConversationListStore() {
       try {
         // Try cache first (unless forcing refresh)
         if (!forceRefresh) {
-          const cached = getCachedData<Conversation[]>(CACHE_KEY, CACHE_TTL);
+          const cached = getCachedData<Conversation[]>(CACHE_KEY, {
+            ttl: CACHE_TTL,
+            version: CACHE_VERSION
+          });
           if (cached) {
             set({ conversations: cached, loaded: true, loading: false });
 
@@ -498,7 +574,7 @@ function createConversationListStore() {
         const conversations = await response.json();
 
         // Update cache and store
-        setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL });
+        setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
         set({ conversations, loaded: true, loading: false });
       } catch (error) {
         console.error('Failed to load conversations:', error);
@@ -513,7 +589,7 @@ function createConversationListStore() {
         if (!response.ok) return;
 
         const conversations = await response.json();
-        setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL });
+        setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
         update(s => ({ ...s, conversations }));
       } catch (error) {
         console.error('Background revalidation failed:', error);
@@ -996,6 +1072,23 @@ Add a "Storage & Cache" section:
 ```
 
 ---
+
+## Risks & Mitigations
+
+1. **Cross-account cache leakage**  
+   Mitigation: Prefix all cache keys with the active user ID and clear on logout.
+
+2. **Stale data after mutations**  
+   Mitigation: Centralize cache invalidation and ensure all mutation endpoints emit events.
+
+3. **SSR runtime errors**  
+   Mitigation: Guard localStorage access with `browser` checks.
+
+4. **Storage quota exhaustion**  
+   Mitigation: Enforce size/entry limits and evict oldest entries deterministically.
+
+5. **Multi-tab inconsistency**  
+   Mitigation: Listen to `storage` events and invalidate on change.
 
 ## Testing Checklist
 
