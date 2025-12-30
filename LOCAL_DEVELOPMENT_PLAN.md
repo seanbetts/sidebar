@@ -1,7 +1,7 @@
 # Local Development Workflow - Implementation Plan
 
 ## Overview
-Set up native (non-Docker) local development with instant hot reload for both backend and frontend, connecting to production Supabase database and R2 storage.
+Set up native (non-Docker) local development with instant hot reload for both backend and frontend, connecting to production Supabase database and R2 storage. Secrets are loaded via Doppler.
 
 ## User Preferences
 - **Database**: Supabase production instance
@@ -45,8 +45,8 @@ API_URL=http://localhost:8001
 # Explicitly mark local environment
 APP_ENV=local
 
-# All other variables (Supabase, R2, API keys) should be copied from your existing .env file
-# This file extends .env - only override what's different for local dev
+# Secrets (Supabase, R2, API keys) should be loaded via Doppler
+# This file only includes local overrides
 ```
 
 **Update `.gitignore`:**
@@ -102,7 +102,7 @@ export function getApiUrl(): string {
 - Verify prerequisites: python3, node, npm, uv installed
 - Check Python venv exists and has dependencies
 - Check frontend node_modules exists
-- Verify critical environment variables are set
+- Verify critical environment variables are set (via Doppler if configured)
 - Test database connectivity
 - Check port availability (8001, 3000)
 - Exit with clear error/success message
@@ -121,6 +121,7 @@ export function getApiUrl(): string {
 # Commands: upgrade, downgrade [revision], create 'message', history, current
 # Sources .env.local or .env before running alembic
 # If production Supabase is detected, require ALLOW_PROD_MIGRATIONS=true
+# Use Doppler for secrets when configured
 ```
 
 All scripts should be executable: `chmod +x scripts/*.sh`
@@ -192,7 +193,8 @@ You're using **production infrastructure** for local development. This means:
 ```bash
 # 1. Create local environment
 cp .env.example .env.local
-# Edit .env.local: set AUTH_DEV_MODE=true, add credentials, set API_URL and APP_ENV=local
+# Edit .env.local: set AUTH_DEV_MODE=true, set API_URL and APP_ENV=local
+# Configure Doppler for secrets
 
 # 2. Install dependencies
 cd backend && uv sync && cd ..
