@@ -4,6 +4,34 @@
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/images/logo.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			(() => {
+				try {
+					const stored = localStorage.getItem('sideBar.layout');
+					if (!stored) return;
+					const parsed = JSON.parse(stored);
+					const ratio =
+						typeof parsed.sidebarRatio === 'number'
+							? parsed.sidebarRatio
+							: typeof parsed.chatPanelRatio === 'number'
+								? parsed.chatPanelRatio
+								: typeof parsed.chatSidebarRatio === 'number'
+									? parsed.chatSidebarRatio
+									: typeof parsed.workspaceSidebarRatio === 'number'
+										? parsed.workspaceSidebarRatio
+										: null;
+					if (typeof ratio === 'number') {
+						const clamped = Math.min(Math.max(ratio, 0.2), 0.5);
+						document.documentElement.style.setProperty(
+							'--sidebar-width',
+							`${(clamped * 100).toFixed(2)}%`
+						);
+					}
+				} catch {
+					// Ignore storage errors.
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
