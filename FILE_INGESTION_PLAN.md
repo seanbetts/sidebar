@@ -82,18 +82,18 @@ API endpoints
 
 Upload and metadata
 
-POST /api/files
+POST /api/ingestion
 	•	Multipart upload
 	•	Creates DB record, enqueues processing job
 	•	Returns { file_id }
 
-GET /api/files/{file_id}/meta
+GET /api/ingestion/{file_id}/meta
 	•	Returns base metadata, processing status, available derivatives
 	•	Includes recommended viewer (for example viewer_pdf if present)
 
 File streaming
 
-GET /api/files/{file_id}/content?kind=original|viewer_pdf|thumb_png|ai_md|…
+GET /api/ingestion/{file_id}/content?kind=viewer_pdf|thumb_png|ai_md|…
 	•	Streams bytes
 	•	Sets correct Content-Type
 	•	Uses Content-Disposition: inline for viewable assets
@@ -101,23 +101,23 @@ GET /api/files/{file_id}/content?kind=original|viewer_pdf|thumb_png|ai_md|…
 
 Processing control
 
-POST /api/files/{file_id}/reprocess
+POST /api/ingestion/{file_id}/reprocess
 	•	Enqueues a new job with the current extraction_version
 
-DELETE /api/files/{file_id}
+DELETE /api/ingestion/{file_id}
 	•	Soft-deletes metadata
 	•	Optionally schedules storage cleanup after a retention window
 	•	Disallowed while processing
 
 Processing status controls
 
-POST /api/files/{file_id}/pause
+POST /api/ingestion/{file_id}/pause
 	•	Pauses an in-flight job
 
-POST /api/files/{file_id}/resume
+POST /api/ingestion/{file_id}/resume
 	•	Resumes a paused job
 
-POST /api/files/{file_id}/cancel
+POST /api/ingestion/{file_id}/cancel
 	•	Cancels processing and deletes any staged artifacts
 
 Worker pipeline

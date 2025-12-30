@@ -5,5 +5,16 @@ from api.models.website import Website
 from api.models.user_settings import UserSettings
 from api.models.user_memory import UserMemory
 from api.models.file_object import FileObject
+from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 
-__all__ = ["Conversation", "Note", "Website", "UserSettings", "UserMemory", "FileObject"]
+__all__ = [
+    "Conversation",
+    "Note",
+    "Website",
+    "UserSettings",
+    "UserMemory",
+    "FileObject",
+    "IngestedFile",
+    "FileDerivative",
+    "FileProcessingJob",
+]

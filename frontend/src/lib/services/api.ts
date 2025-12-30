@@ -1,5 +1,6 @@
 import type { Message } from '$lib/types/chat';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
+import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
 
 /**
  * API service for conversations.
@@ -122,6 +123,35 @@ class ConversationsAPI {
 }
 
 export const conversationsAPI = new ConversationsAPI();
+
+/**
+ * API service for file ingestion.
+ */
+class IngestionAPI {
+  private get baseUrl(): string {
+    return '/api/ingestion';
+  }
+
+  /**
+   * List ingestion records.
+   */
+  async list(): Promise<IngestionListResponse> {
+    const response = await fetch(`${this.baseUrl}`);
+    if (!response.ok) throw new Error('Failed to list ingestions');
+    return response.json();
+  }
+
+  /**
+   * Fetch ingestion metadata by file id.
+   */
+  async get(fileId: string): Promise<IngestionMetaResponse> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/meta`);
+    if (!response.ok) throw new Error('Failed to get ingestion metadata');
+    return response.json();
+  }
+}
+
+export const ingestionAPI = new IngestionAPI();
 
 /**
  * API service for notes.

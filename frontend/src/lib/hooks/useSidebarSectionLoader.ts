@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import { conversationListStore } from '$lib/stores/conversations';
 import { treeStore } from '$lib/stores/tree';
 import { websitesStore } from '$lib/stores/websites';
+import { ingestionStore } from '$lib/stores/ingestion';
 
 export type SidebarSection = 'history' | 'notes' | 'websites' | 'workspace';
 
@@ -45,6 +46,7 @@ export function useSidebarSectionLoader() {
 				break;
 			case 'workspace':
 				treeStore.load('.');
+				ingestionStore.load();
 				break;
 			case 'history':
 				conversationListStore.load();

@@ -1,9 +1,11 @@
 <script lang="ts">
   import { Folder } from 'lucide-svelte';
   import { treeStore } from '$lib/stores/tree';
+  import { ingestionStore } from '$lib/stores/ingestion';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
+  import IngestionQueue from '$lib/components/files/IngestionQueue.svelte';
   import type { FileNode } from '$lib/types/file';
 
   const basePath = '.';
@@ -13,6 +15,9 @@
   $: searchQuery = treeData?.searchQuery || '';
   // Show loading if explicitly loading OR if tree hasn't been initialized yet
   $: loading = treeData?.loading ?? !treeData;
+  $: processingItems = ($ingestionStore.items || []).filter(
+    item => !['ready', 'failed', 'canceled'].includes(item.job.status || '')
+  );
 
   // Data loading is now handled by parent Sidebar component
   // onMount removed to prevent duplicate loads and initial flicker
@@ -31,7 +36,7 @@
     title="Service unavailable"
     subtitle="Please try again later."
   />
-{:else if children.length === 0}
+{:else if children.length === 0 && processingItems.length === 0}
   <SidebarEmptyState
     icon={Folder}
     title="No files yet"
@@ -39,6 +44,9 @@
   />
 {:else}
   <div class="workspace-list">
+    {#if processingItems.length > 0}
+      <IngestionQueue items={processingItems} />
+    {/if}
     {#if searchQuery}
       <div class="workspace-results-label">Results</div>
     {/if}
