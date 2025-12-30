@@ -10,12 +10,20 @@
 	import { chatStore } from '$lib/stores/chat';
 	import { get } from 'svelte/store';
 	import { clearCaches, clearInFlight, clearMemoryCache, listenForStorageEvents } from '$lib/utils/cache';
+	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
 
 	let { data } = $props();
 	let healthChecked = false;
 	let stopStorageListener: (() => void) | null = null;
 
 	onMount(() => {
+		const storedTheme = getStoredTheme();
+		const prefersDark =
+			typeof window !== 'undefined' &&
+			window.matchMedia('(prefers-color-scheme: dark)').matches;
+		const initialTheme = storedTheme ?? (prefersDark ? 'dark' : 'light');
+		applyThemeMode(initialTheme, false);
+
 		initAuth(
 			data.session,
 			data.user,
