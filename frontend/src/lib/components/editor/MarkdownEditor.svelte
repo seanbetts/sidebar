@@ -2,7 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import type { Editor } from '@tiptap/core';
   import { editorStore } from '$lib/stores/editor';
-  import { filesStore } from '$lib/stores/files';
+  import { treeStore } from '$lib/stores/tree';
   import { toast } from 'svelte-sonner';
   import { FileText } from 'lucide-svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -60,11 +60,11 @@
     return walk(nodes);
   }
 
-  $: noteNode = findNoteNode(currentNoteId, $filesStore.trees['notes']);
+  $: noteNode = findNoteNode(currentNoteId, $treeStore.trees['notes']);
 
   const actions = useEditorActions({
     editorStore,
-    filesStore,
+    treeStore,
     getCurrentNoteId: () => currentNoteId,
     getDisplayTitle: () => displayTitle,
     getNoteNode: () => noteNode,

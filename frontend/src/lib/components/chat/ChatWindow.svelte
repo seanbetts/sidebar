@@ -8,7 +8,7 @@
 	import ChatInput from './ChatInput.svelte';
 	import { toast } from 'svelte-sonner';
 	import { get } from 'svelte/store';
-	import { filesStore } from '$lib/stores/files';
+	import { treeStore } from '$lib/stores/tree';
 	import { websitesStore } from '$lib/stores/websites';
 	import { editorStore } from '$lib/stores/editor';
 	import { conversationListStore } from '$lib/stores/conversations';
@@ -167,13 +167,13 @@
 					onNoteCreated: async (data) => {
 						dispatchCacheEvent('note.created');
 						if (data?.id && data?.title) {
-							filesStore.addNoteNode?.({
+							treeStore.addNoteNode?.({
 								id: data.id,
 								name: `${data.title}.md`,
 								folder: data.folder
 							});
 						} else {
-							await filesStore.load('notes', true);
+							await treeStore.load('notes', true);
 						}
 						if (data?.id) {
 							await editorStore.loadNote('notes', data.id, { source: 'ai' });
@@ -183,7 +183,7 @@
 					onNoteUpdated: async (data) => {
 						dispatchCacheEvent('note.updated');
 						if (data?.id && data?.title) {
-							filesStore.renameNoteNode?.(data.id, `${data.title}.md`);
+							treeStore.renameNoteNode?.(data.id, `${data.title}.md`);
 						}
 						if (data?.id) {
 							const editorState = get(editorStore);
@@ -205,9 +205,9 @@
 						}
 						dispatchCacheEvent('note.deleted');
 						if (data?.id) {
-							filesStore.removeNode?.('notes', data.id);
+							treeStore.removeNode?.('notes', data.id);
 						} else {
-							await filesStore.load('notes', true);
+							await treeStore.load('notes', true);
 						}
 					},
 

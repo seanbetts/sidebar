@@ -7,7 +7,7 @@
     Folder,
     FolderOpen
   } from 'lucide-svelte';
-  import { filesStore } from '$lib/stores/files';
+  import { treeStore } from '$lib/stores/tree';
   import { editorStore } from '$lib/stores/editor';
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
   import FileTreeContextMenu from '$lib/components/files/FileTreeContextMenu.svelte';
@@ -48,7 +48,7 @@
     setFolderOptions: (value) => (folderOptions = value),
     getDisplayName: () => displayName,
     editorStore,
-    filesStore
+    treeStore
   });
 
   function handleClick() {

@@ -16,7 +16,7 @@ type FileActionsContext = {
   setFolderOptions: (value: { label: string; value: string; depth: number }[]) => void;
   getDisplayName: () => string;
   editorStore: Writable<any>;
-  filesStore: Writable<any> & {
+  treeStore: Writable<any> & {
     load: (tree: string, force?: boolean) => Promise<void>;
     removeNode: (tree: string, path: string) => void;
     renameNoteNode?: (noteId: string, newName: string) => void;
@@ -39,7 +39,7 @@ const toFolderPath = (path: string) => path.replace(/^folder:/, '');
 export function useFileActions(ctx: FileActionsContext) {
   const buildFolderOptions = (excludePath?: string) => {
     const basePath = ctx.getBasePath();
-    const tree = get(ctx.filesStore).trees[basePath];
+    const tree = get(ctx.treeStore).trees[basePath];
     const rootChildren = tree?.children || [];
     const rootLabel = basePath === 'notes' ? 'Notes' : 'Workspace';
     const options: { label: string; value: string; depth: number }[] = [
@@ -126,12 +126,12 @@ export function useFileActions(ctx: FileActionsContext) {
 
         if (basePath === 'notes') {
           if (node.type === 'directory') {
-            ctx.filesStore.renameFolderNode?.(toFolderPath(node.path), newName);
+            ctx.treeStore.renameFolderNode?.(toFolderPath(node.path), newName);
           } else {
-            ctx.filesStore.renameNoteNode?.(node.path, newName);
+            ctx.treeStore.renameNoteNode?.(node.path, newName);
           }
         } else {
-          await ctx.filesStore.load(basePath, true);
+          await ctx.treeStore.load(basePath, true);
         }
         if (basePath === 'notes') {
           dispatchCacheEvent('note.renamed');
@@ -166,7 +166,7 @@ export function useFileActions(ctx: FileActionsContext) {
         body: JSON.stringify({ pinned })
       });
       if (!response.ok) throw new Error('Failed to update pin');
-      ctx.filesStore.setNotePinned?.(node.path, pinned);
+      ctx.treeStore.setNotePinned?.(node.path, pinned);
       dispatchCacheEvent('note.pinned');
     } catch (error) {
       console.error('Failed to pin note:', error);
@@ -183,7 +183,7 @@ export function useFileActions(ctx: FileActionsContext) {
         body: JSON.stringify({ archived: true })
       });
       if (!response.ok) throw new Error('Failed to archive note');
-      ctx.filesStore.archiveNoteNode?.(node.path, true);
+      ctx.treeStore.archiveNoteNode?.(node.path, true);
       dispatchCacheEvent('note.archived');
     } catch (error) {
       console.error('Failed to archive note:', error);
@@ -211,10 +211,10 @@ export function useFileActions(ctx: FileActionsContext) {
           });
       if (!response.ok) throw new Error('Failed to move file');
       if (ctx.getBasePath() === 'notes') {
-        ctx.filesStore.moveNoteNode?.(node.path, folder);
+        ctx.treeStore.moveNoteNode?.(node.path, folder);
         dispatchCacheEvent('note.moved');
       } else {
-        await ctx.filesStore.load(ctx.getBasePath(), true);
+        await ctx.treeStore.load(ctx.getBasePath(), true);
         dispatchCacheEvent('file.moved');
       }
     } catch (error) {
@@ -246,10 +246,10 @@ export function useFileActions(ctx: FileActionsContext) {
           });
       if (!response.ok) throw new Error('Failed to move folder');
       if (ctx.getBasePath() === 'notes') {
-        ctx.filesStore.moveFolderNode?.(toFolderPath(node.path), newParent);
+        ctx.treeStore.moveFolderNode?.(toFolderPath(node.path), newParent);
         dispatchCacheEvent('note.moved');
       } else {
-        await ctx.filesStore.load(ctx.getBasePath(), true);
+        await ctx.treeStore.load(ctx.getBasePath(), true);
         dispatchCacheEvent('file.moved');
       }
     } catch (error) {
@@ -309,9 +309,9 @@ export function useFileActions(ctx: FileActionsContext) {
         ctx.editorStore.reset();
       }
 
-      ctx.filesStore.removeNode(ctx.getBasePath(), node.path);
+      ctx.treeStore.removeNode(ctx.getBasePath(), node.path);
       if (ctx.getBasePath() !== 'notes') {
-        await ctx.filesStore.load(ctx.getBasePath(), true);
+        await ctx.treeStore.load(ctx.getBasePath(), true);
       }
       if (ctx.getBasePath() === 'notes') {
         dispatchCacheEvent('note.deleted');

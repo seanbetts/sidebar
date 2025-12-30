@@ -4,7 +4,7 @@
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
-  import { filesStore } from '$lib/stores/files';
+  import { treeStore } from '$lib/stores/tree';
   import { websitesStore } from '$lib/stores/websites';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
@@ -224,7 +224,7 @@
       const noteId = data?.id || filename;
 
       const folder = filename.includes('/') ? filename.split('/').slice(0, -1).join('/') : '';
-      filesStore.addNoteNode?.({
+      treeStore.addNoteNode?.({
         id: noteId,
         name: filename,
         folder,
@@ -256,7 +256,7 @@
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
-      filesStore.addFolderNode?.(name);
+      treeStore.addFolderNode?.(name);
       dispatchCacheEvent('note.created');
       isNewFolderDialogOpen = false;
     } catch (error) {
@@ -281,7 +281,7 @@
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
-      await filesStore.load('.', true);
+      await treeStore.load('.', true);
       dispatchCacheEvent('file.uploaded');
       isNewWorkspaceFolderDialogOpen = false;
     } catch (error) {
@@ -363,8 +363,8 @@
         <SidebarSectionHeader
           title="Notes"
           searchPlaceholder="Search notes..."
-          onSearch={(query) => filesStore.searchNotes(query)}
-          onClear={() => filesStore.load('notes', true)}
+          onSearch={(query) => treeStore.searchNotes(query)}
+          onClear={() => treeStore.load('notes', true)}
         >
           <svelte:fragment slot="actions">
             <Button
@@ -425,8 +425,8 @@
         <SidebarSectionHeader
           title="Files"
           searchPlaceholder="Search files..."
-          onSearch={(query) => filesStore.searchFiles('.', query)}
-          onClear={() => filesStore.load('.', true)}
+          onSearch={(query) => treeStore.searchFiles('.', query)}
+          onClear={() => treeStore.load('.', true)}
         >
           <svelte:fragment slot="actions">
             <Button

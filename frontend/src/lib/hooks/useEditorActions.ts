@@ -6,7 +6,7 @@ type NoteNode = { pinned?: boolean } | null;
 
 type EditorActionsContext = {
   editorStore: Writable<any>;
-  filesStore: {
+  treeStore: {
     load: (tree: string, force?: boolean) => Promise<void>;
     trees: Record<string, any>;
     removeNode?: (basePath: string, path: string) => void;
@@ -40,7 +40,7 @@ type EditorActionsContext = {
  */
 export function useEditorActions(ctx: EditorActionsContext) {
   const buildFolderOptions = () => {
-    const tree = ctx.filesStore.trees['notes'];
+    const tree = ctx.treeStore.trees['notes'];
     const nodes = tree?.children || [];
     const options: { label: string; value: string; depth: number }[] = [
       { label: 'Notes', value: '', depth: 0 }
@@ -119,7 +119,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       return;
     }
     const nextName = `${trimmed}.md`;
-    ctx.filesStore.renameNoteNode?.(currentNoteId, nextName);
+    ctx.treeStore.renameNoteNode?.(currentNoteId, nextName);
     ctx.editorStore.updateNoteName(nextName);
     dispatchCacheEvent('note.renamed');
     ctx.setIsRenameDialogOpen(false);
@@ -137,7 +137,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to move note');
       return;
     }
-    ctx.filesStore.moveNoteNode?.(currentNoteId, folder);
+    ctx.treeStore.moveNoteNode?.(currentNoteId, folder);
     dispatchCacheEvent('note.moved');
   };
 
@@ -153,7 +153,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to archive note');
       return;
     }
-    ctx.filesStore.archiveNoteNode?.(currentNoteId, true);
+    ctx.treeStore.archiveNoteNode?.(currentNoteId, true);
     ctx.editorStore.reset();
     dispatchCacheEvent('note.archived');
   };
@@ -172,7 +172,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to update pin');
       return;
     }
-    ctx.filesStore.setNotePinned?.(currentNoteId, pinned);
+    ctx.treeStore.setNotePinned?.(currentNoteId, pinned);
     dispatchCacheEvent('note.pinned');
   };
 
@@ -217,7 +217,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to delete note');
       return;
     }
-    ctx.filesStore.removeNode?.('notes', currentNoteId);
+    ctx.treeStore.removeNode?.('notes', currentNoteId);
     dispatchCacheEvent('note.deleted');
     ctx.editorStore.reset();
     ctx.setIsDeleteDialogOpen(false);

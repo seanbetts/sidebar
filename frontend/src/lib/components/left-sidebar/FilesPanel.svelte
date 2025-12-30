@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Folder } from 'lucide-svelte';
-  import { filesStore } from '$lib/stores/files';
+  import { treeStore } from '$lib/stores/tree';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
@@ -8,7 +8,7 @@
 
   const basePath = '.';
 
-  $: treeData = $filesStore.trees[basePath];
+  $: treeData = $treeStore.trees[basePath];
   $: children = treeData?.children || [];
   $: searchQuery = treeData?.searchQuery || '';
   // Show loading if explicitly loading OR if tree hasn't been initialized yet
@@ -18,7 +18,7 @@
   // onMount removed to prevent duplicate loads and initial flicker
 
   function handleToggle(path: string) {
-    filesStore.toggleExpanded(basePath, path);
+    treeStore.toggleExpanded(basePath, path);
   }
 
 </script>
