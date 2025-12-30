@@ -160,7 +160,21 @@ class IngestionAPI {
       method: 'POST',
       body: formData
     });
-    if (!response.ok) throw new Error('Failed to upload file');
+    if (!response.ok) {
+      let message = 'Failed to upload file';
+      try {
+        const data = await response.json();
+        if (data?.detail) {
+          message = data.detail;
+        }
+      } catch {
+        // Ignore parse errors and use fallback message.
+      }
+      if (response.status === 413) {
+        message = 'File too large. Max size is 100MB.';
+      }
+      throw new Error(message);
+    }
     return response.json();
   }
 

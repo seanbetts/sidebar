@@ -84,6 +84,12 @@ class FileIngestionService:
         )
 
     @staticmethod
+    def delete_derivatives(db: Session, file_id: uuid.UUID) -> None:
+        """Delete derivative records for a file."""
+        db.query(FileDerivative).filter(FileDerivative.file_id == file_id).delete()
+        db.commit()
+
+    @staticmethod
     def get_derivative(
         db: Session,
         file_id: uuid.UUID,

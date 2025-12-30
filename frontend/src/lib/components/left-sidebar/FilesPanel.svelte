@@ -4,6 +4,7 @@
   import { treeStore } from '$lib/stores/tree';
   import { ingestionStore } from '$lib/stores/ingestion';
   import { ingestionAPI } from '$lib/services/api';
+  import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
@@ -30,9 +31,8 @@
   let retryingIds = new Set<string>();
 
   function openViewer(item: IngestionListItem) {
-    const viewerKind = item.recommended_viewer;
-    if (!viewerKind) return;
-    window.open(`/api/ingestion/${item.file.id}/content?kind=${encodeURIComponent(viewerKind)}`, '_blank');
+    if (!item.recommended_viewer) return;
+    ingestionViewerStore.open(item.file.id);
   }
 
   async function retryIngestion(fileId: string) {

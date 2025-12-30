@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -226,6 +226,7 @@ async def get_file_meta(
 async def get_derivative_content(
     file_id: str,
     kind: str,
+    request: Request,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -245,12 +246,31 @@ async def get_derivative_content(
         raise HTTPException(status_code=404, detail="Derivative not found")
 
     storage = get_storage_backend()
+    headers = {"Content-Disposition": "inline"}
+    if derivative.mime == "application/pdf":
+        headers["Accept-Ranges"] = "bytes"
+        range_header = request.headers.get("range")
+        if range_header and range_header.startswith("bytes="):
+            range_value = range_header.replace("bytes=", "")
+            start_str, end_str = (range_value.split("-", 1) + [""])[:2]
+            if start_str.isdigit():
+                total = derivative.size_bytes or 0
+                start = int(start_str)
+                end = int(end_str) if end_str.isdigit() else max(total - 1, start)
+                if total <= 0 or start > end or end >= total:
+                    raise HTTPException(status_code=416, detail="Invalid range")
+                content = storage.get_object_range(derivative.storage_key, start, end)
+                headers["Content-Range"] = f"bytes {start}-{end}/{total}"
+                headers["Content-Length"] = str(end - start + 1)
+                return Response(
+                    content,
+                    status_code=206,
+                    media_type=derivative.mime,
+                    headers=headers,
+                )
+
     content = storage.get_object(derivative.storage_key)
-    return Response(
-        content,
-        media_type=derivative.mime,
-        headers={"Content-Disposition": "inline"},
-    )
+    return Response(content, media_type=derivative.mime, headers=headers)
 
 
 @router.post("/{file_id}/pause")
@@ -359,5 +379,14 @@ async def delete_file(
     if job and job.status not in {"ready", "failed", "canceled"}:
         raise HTTPException(status_code=409, detail="File is still processing")
 
+    derivatives = FileIngestionService.list_derivatives(db, file_uuid)
+    storage = get_storage_backend()
+    for derivative in derivatives:
+        try:
+            storage.delete_object(derivative.storage_key)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="Failed to delete file data") from exc
+    FileIngestionService.delete_derivatives(db, file_uuid)
     FileIngestionService.soft_delete_file(db, file_uuid)
+    _safe_cleanup(_staging_path(file_uuid))
     return {"status": "deleted"}
