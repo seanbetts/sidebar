@@ -147,7 +147,7 @@
   .website-meta-row {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 2rem;
   }
 
   .subtitle {

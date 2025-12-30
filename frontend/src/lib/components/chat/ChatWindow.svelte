@@ -211,9 +211,13 @@
 						}
 					},
 
-					onWebsiteDeleted: async () => {
+					onWebsiteDeleted: async (data) => {
 						dispatchCacheEvent('website.deleted');
-						await websitesStore.load(true);
+						if (data?.id) {
+							websitesStore.removeLocal?.(data.id);
+						} else {
+							await websitesStore.load(true);
+						}
 					},
 
 					onThemeSet: (data) => {
