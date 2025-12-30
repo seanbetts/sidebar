@@ -16,6 +16,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logger = logging.getLogger(__name__)
 
 # Create FastMCP server and get its HTTP app
 mcp = FastMCP("sidebar-skills")
@@ -61,6 +62,12 @@ async def auth_middleware(request: Request, call_next):
         return response
 
     if settings.auth_dev_mode:
+        if not settings.allow_auth_dev_mode:
+            logger.warning("AUTH_DEV_MODE is enabled outside local/test environment.")
+            return JSONResponse(
+                status_code=403,
+                content={"error": "AUTH_DEV_MODE requires APP_ENV=local"},
+            )
         response = await call_next(request)
         return response
 

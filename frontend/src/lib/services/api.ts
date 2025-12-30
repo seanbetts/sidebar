@@ -1,15 +1,12 @@
 import type { Message } from '$lib/types/chat';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
-import { browser } from '$app/environment';
 
 /**
  * API service for conversations.
  */
 class ConversationsAPI {
   private get baseUrl(): string {
-    // In browser, use relative URLs
-    // In SSR, use absolute URL to backend service
-    return browser ? '/api/conversations' : 'http://skills-api:8001/api/conversations';
+    return '/api/conversations';
   }
 
   /**
@@ -131,7 +128,7 @@ export const conversationsAPI = new ConversationsAPI();
  */
 class NotesAPI {
   private get baseUrl(): string {
-    return browser ? '/api/notes' : 'http://skills-api:8001/api/notes';
+    return '/api/notes';
   }
 
   /**
@@ -169,7 +166,7 @@ class NotesAPI {
  */
 class WebsitesAPI {
   private get baseUrl(): string {
-    return browser ? '/api/websites' : 'http://skills-api:8001/api/websites';
+    return '/api/websites';
   }
 
   /**
