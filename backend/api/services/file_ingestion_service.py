@@ -39,6 +39,8 @@ class FileIngestionService:
             created_at=now,
             deleted_at=None,
         )
+        db.add(record)
+        db.flush()
         job = FileProcessingJob(
             file_id=file_id,
             status="queued",
@@ -46,7 +48,6 @@ class FileIngestionService:
             attempts=0,
             updated_at=now,
         )
-        db.add(record)
         db.add(job)
         db.commit()
         return record, job

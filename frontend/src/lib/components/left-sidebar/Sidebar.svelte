@@ -27,6 +27,7 @@
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
+  let errorTitle = 'Unable to complete action';
   let errorMessage = 'Failed to create note. Please try again.';
   let isNewNoteDialogOpen = false;
   let newNoteName = '';
@@ -200,6 +201,7 @@
       await ingestionStore.load();
     } catch (error) {
       console.error('Failed to upload file:', error);
+      errorTitle = 'Unable to upload file';
       errorMessage =
         error instanceof Error ? error.message : 'Failed to upload file. Please try again.';
       isErrorDialogOpen = true;
@@ -245,6 +247,7 @@
       isNewWebsiteDialogOpen = false;
     } catch (error) {
       console.error('Failed to save website:', error);
+      errorTitle = 'Unable to save website';
       errorMessage =
         error instanceof Error && error.message
           ? error.message
@@ -288,6 +291,7 @@
       isNewNoteDialogOpen = false;
     } catch (error) {
       console.error('Failed to create note:', error);
+      errorTitle = 'Unable to create note';
       errorMessage = 'Failed to create note. Please try again.';
       isErrorDialogOpen = true;
     } finally {
@@ -313,6 +317,7 @@
       isNewFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
+      errorTitle = 'Unable to create folder';
       errorMessage = 'Failed to create folder. Please try again.';
       isErrorDialogOpen = true;
     } finally {
@@ -338,6 +343,7 @@
       isNewWorkspaceFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
+      errorTitle = 'Unable to create folder';
       errorMessage = 'Failed to create folder. Please try again.';
       isErrorDialogOpen = true;
     } finally {
@@ -381,6 +387,7 @@
 
 <SidebarErrorDialog
   bind:open={isErrorDialogOpen}
+  title={errorTitle}
   message={errorMessage}
   onConfirm={() => (isErrorDialogOpen = false)}
 />

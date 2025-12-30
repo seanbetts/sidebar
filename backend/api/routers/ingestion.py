@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from hashlib import sha256
+import logging
 from pathlib import Path
 import shutil
 import uuid
@@ -19,6 +20,7 @@ from api.models.file_ingestion import IngestedFile
 
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
+logger = logging.getLogger(__name__)
 
 MAX_FILE_BYTES = 100 * 1024 * 1024
 STAGING_ROOT = Path("/tmp/sidebar-ingestion")
@@ -100,6 +102,7 @@ async def upload_file(
         _safe_cleanup(staging_path)
         raise
     except Exception as exc:
+        logger.exception("Ingestion upload failed")
         _safe_cleanup(staging_path)
         raise HTTPException(status_code=500, detail="Upload failed") from exc
 
