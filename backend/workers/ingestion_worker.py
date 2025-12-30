@@ -411,7 +411,6 @@ def worker_loop() -> None:
     worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
     while True:
         with SessionLocal() as db:
-            db.execute(text("SET app.is_worker = 'true'"))
             if worker_user_id:
                 db.execute(text("SET app.user_id = :user_id"), {"user_id": worker_user_id})
             _requeue_stalled_jobs(db)
