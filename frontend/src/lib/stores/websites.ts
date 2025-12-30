@@ -146,6 +146,48 @@ function createWebsitesStore() {
     reset() {
       invalidateCache(CACHE_KEY);
       set({ items: [], loading: false, error: null, active: null, loadingDetail: false, searchQuery: '', loaded: false });
+    },
+
+    renameLocal(id: string, title: string) {
+      update(state => {
+        const items = state.items.map(item => (item.id === id ? { ...item, title } : item));
+        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        return { ...state, items };
+      });
+    },
+
+    setPinnedLocal(id: string, pinned: boolean) {
+      update(state => {
+        const items = state.items.map(item => (item.id === id ? { ...item, pinned } : item));
+        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        return { ...state, items };
+      });
+    },
+
+    setArchivedLocal(id: string, archived: boolean) {
+      update(state => {
+        const items = state.items.map(item => (item.id === id ? { ...item, archived } : item));
+        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        return { ...state, items };
+      });
+    },
+
+    removeLocal(id: string) {
+      update(state => {
+        const items = state.items.filter(item => item.id !== id);
+        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        return { ...state, items };
+      });
+    },
+
+    updateActiveLocal(updates: Partial<WebsiteDetail>) {
+      update(state => {
+        if (!state.active) return state;
+        return {
+          ...state,
+          active: { ...state.active, ...updates }
+        };
+      });
     }
   };
 }

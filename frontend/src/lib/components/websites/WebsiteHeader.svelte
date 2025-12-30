@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Globe, Pin, PinOff, Pencil, Copy, Check, Download, Archive, Trash2, X } from 'lucide-svelte';
+  import { Globe, Pin, PinOff, Pencil, Copy, Check, Download, Archive, ArchiveRestore, Trash2, X } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import type { WebsiteItem } from '$lib/stores/websites';
 
@@ -87,7 +87,11 @@
             aria-label={website.archived ? 'Unarchive website' : 'Archive website'}
             title={website.archived ? 'Unarchive website' : 'Archive website'}
           >
-            <Archive size={16} />
+            {#if website.archived}
+              <ArchiveRestore size={16} />
+            {:else}
+              <Archive size={16} />
+            {/if}
           </Button>
           <Button
             size="icon"
