@@ -20,6 +20,7 @@
   import NewWebsiteDialog from '$lib/components/left-sidebar/dialogs/NewWebsiteDialog.svelte';
   import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
   import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -184,6 +185,7 @@
       const websiteId = data?.data?.id;
 
       await websitesStore.load(true);
+      dispatchCacheEvent('website.saved');
       if (websiteId) {
         await websitesStore.loadById(websiteId);
       }
@@ -227,6 +229,7 @@
         folder,
         modified: data?.modified
       });
+      dispatchCacheEvent('note.created');
       currentNoteId.set(noteId);
       await editorStore.loadNote('notes', noteId, { source: 'user' });
       isNewNoteDialogOpen = false;
@@ -253,6 +256,7 @@
 
       if (!response.ok) throw new Error('Failed to create folder');
       await filesStore.load('notes', true);
+      dispatchCacheEvent('note.created');
       isNewFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
@@ -277,6 +281,7 @@
 
       if (!response.ok) throw new Error('Failed to create folder');
       await filesStore.load('.', true);
+      dispatchCacheEvent('file.uploaded');
       isNewWorkspaceFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);

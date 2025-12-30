@@ -2,11 +2,15 @@
  * Chat store for managing messages and streaming state
  */
 import { writable, get } from 'svelte/store';
+import { browser } from '$app/environment';
 import type { Message, ToolCall } from '$lib/types/chat';
 import { conversationsAPI } from '$lib/services/api';
 import { conversationListStore, currentConversationId } from './conversations';
 import { generateConversationTitle } from './chat/generateTitle';
 import { createToolStateHandlers } from './chat/toolState';
+import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+
+const LAST_CONVERSATION_KEY = 'sideBar.lastConversation';
 
 export interface ChatState {
 	messages: Message[];
@@ -32,6 +36,24 @@ function createChatStore() {
 	const getState = () => get({ subscribe });
 	const toolState = createToolStateHandlers(update, getState);
 
+	const setLastConversationId = (conversationId: string) => {
+		if (!browser) return;
+		try {
+			localStorage.setItem(LAST_CONVERSATION_KEY, conversationId);
+		} catch (error) {
+			console.warn('Failed to persist last conversation:', error);
+		}
+	};
+
+	const clearLastConversation = () => {
+		if (!browser) return;
+		try {
+			localStorage.removeItem(LAST_CONVERSATION_KEY);
+		} catch {
+			// Ignore storage errors.
+		}
+	};
+
 	return {
 		subscribe,
 
@@ -43,6 +65,7 @@ function createChatStore() {
 			toolState.clearToolTimers();
 			const conversation = await conversationsAPI.get(conversationId);
 			currentConversationId.set(conversationId);
+			setLastConversationId(conversationId);
 			set({
 				conversationId,
 				messages: conversation.messages.map(msg => ({
@@ -63,6 +86,7 @@ function createChatStore() {
 			toolState.clearToolTimers();
 			const conversation = await conversationsAPI.create();
 			currentConversationId.set(conversation.id);
+			setLastConversationId(conversation.id);
 			set({
 				conversationId: conversation.id,
 				messages: [],
@@ -76,6 +100,7 @@ function createChatStore() {
 
 			// Add conversation to sidebar without full refresh
 			conversationListStore.addConversation(conversation);
+			dispatchCacheEvent('conversation.created');
 
 			return conversation.id;
 		},
@@ -300,6 +325,7 @@ function createChatStore() {
 				currentMessageId: null,
 				activeTool: null
 			});
+			clearLastConversation();
 		},
 
 		/**
@@ -308,6 +334,17 @@ function createChatStore() {
 		async clear() {
 			await this.startNewConversation();
 		},
+
+		getLastConversationId(): string | null {
+			if (!browser) return null;
+			try {
+				return localStorage.getItem(LAST_CONVERSATION_KEY);
+			} catch {
+				return null;
+			}
+		},
+
+		clearLastConversation,
 
 		setActiveTool: toolState.setActiveTool,
 		finalizeActiveTool: toolState.finalizeActiveTool,

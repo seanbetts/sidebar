@@ -5,6 +5,32 @@ import { writable, get } from 'svelte/store';
 import type { FileNode, FileTreeState } from '$lib/types/file';
 import { editorStore } from '$lib/stores/editor';
 import { notesAPI } from '$lib/services/api';
+import { getCachedData, invalidateCache, isCacheStale, setCachedData } from '$lib/utils/cache';
+
+const NOTES_TREE_CACHE_KEY = 'notes.tree';
+const WORKSPACE_TREE_CACHE_PREFIX = 'files.tree';
+const TREE_CACHE_TTL = 30 * 60 * 1000;
+const TREE_CACHE_VERSION = '1.0';
+const EXPANDED_CACHE_PREFIX = 'files.expanded';
+const EXPANDED_TTL = 7 * 24 * 60 * 60 * 1000;
+
+const normalizeBasePath = (basePath: string) => (basePath === '.' ? 'workspace' : basePath);
+const getTreeCacheKey = (basePath: string) =>
+  basePath === 'notes' ? NOTES_TREE_CACHE_KEY : `${WORKSPACE_TREE_CACHE_PREFIX}.${normalizeBasePath(basePath)}`;
+const getExpandedCacheKey = (basePath: string) =>
+  `${EXPANDED_CACHE_PREFIX}.${normalizeBasePath(basePath)}`;
+
+function applyExpandedPaths(nodes: FileNode[], expandedPaths: Set<string>): FileNode[] {
+  return nodes.map((node) => {
+    const expanded = node.type === 'directory' ? expandedPaths.has(node.path) : undefined;
+    const children = node.children ? applyExpandedPaths(node.children, expandedPaths) : node.children;
+    return {
+      ...node,
+      ...(expanded !== undefined ? { expanded } : {}),
+      ...(children ? { children } : {})
+    };
+  });
+}
 
 function hasFilePath(nodes: FileNode[] | undefined, targetPath: string): boolean {
   if (!nodes) return false;
@@ -27,6 +53,11 @@ function createFilesStore() {
       // Get current state
       const currentState = get({ subscribe });
       const currentTree = currentState.trees[basePath];
+      const expandedCache = getCachedData<string[]>(getExpandedCacheKey(basePath), {
+        ttl: EXPANDED_TTL,
+        version: TREE_CACHE_VERSION
+      });
+      const cachedExpandedPaths = new Set(expandedCache || []);
 
       // Skip if already loading
       if (currentTree?.loading) {
@@ -34,6 +65,32 @@ function createFilesStore() {
       }
 
       if (!force) {
+        const cacheKey = getTreeCacheKey(basePath);
+        const cached = getCachedData<FileNode[]>(cacheKey, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+        if (cached) {
+          update(state => ({
+            trees: {
+              ...state.trees,
+              [basePath]: {
+                ...(state.trees[basePath] || { children: [], expandedPaths: cachedExpandedPaths }),
+                children: applyExpandedPaths(cached, cachedExpandedPaths),
+                expandedPaths: cachedExpandedPaths,
+                loading: false,
+                error: null,
+                searchQuery: '',
+                loaded: true
+              }
+            }
+          }));
+          if (isCacheStale(cacheKey, TREE_CACHE_TTL)) {
+            this.revalidateInBackground(basePath, cachedExpandedPaths);
+          }
+          return;
+        }
+
         // Skip if data already exists (prevent unnecessary reloads)
         if (currentTree?.children && currentTree.children.length > 0) {
           return;
@@ -50,7 +107,7 @@ function createFilesStore() {
         trees: {
           ...state.trees,
           [basePath]: {
-            ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
+            ...(state.trees[basePath] || { children: [], expandedPaths: cachedExpandedPaths }),
             loading: true,
             error: null,
             searchQuery: '',
@@ -68,12 +125,15 @@ function createFilesStore() {
 
         const data = await response.json();
         const children = data.children || [];
+        const cacheKey = getTreeCacheKey(basePath);
+        setCachedData(cacheKey, children, { ttl: TREE_CACHE_TTL, version: TREE_CACHE_VERSION });
         update(state => ({
           trees: {
             ...state.trees,
             [basePath]: {
               ...state.trees[basePath],
-              children,
+              children: applyExpandedPaths(children, cachedExpandedPaths),
+              expandedPaths: cachedExpandedPaths,
               loading: false,
               error: null,
               searchQuery: '',
@@ -102,6 +162,37 @@ function createFilesStore() {
             }
           }
         }));
+      }
+    },
+
+    async revalidateInBackground(basePath: string, expandedPaths: Set<string>) {
+      try {
+        const endpoint = basePath === 'notes'
+          ? '/api/notes/tree'
+          : `/api/files?basePath=${basePath}`;
+        const response = await fetch(endpoint);
+        if (!response.ok) return;
+        const data = await response.json();
+        const children = data.children || [];
+        setCachedData(getTreeCacheKey(basePath), children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+        update(state => ({
+          trees: {
+            ...state.trees,
+            [basePath]: {
+              ...(state.trees[basePath] || { expandedPaths }),
+              children: applyExpandedPaths(children, expandedPaths),
+              expandedPaths,
+              loading: false,
+              error: null,
+              loaded: true
+            }
+          }
+        }));
+      } catch (error) {
+        console.error(`Background revalidation failed for ${basePath}:`, error);
       }
     },
 
@@ -143,6 +234,13 @@ function createFilesStore() {
           }
         };
       });
+      const updatedTree = get({ subscribe }).trees[basePath];
+      if (updatedTree) {
+        setCachedData(getExpandedCacheKey(basePath), Array.from(updatedTree.expandedPaths), {
+          ttl: EXPANDED_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
     },
 
     removeNode(basePath: string, path: string) {
@@ -172,6 +270,13 @@ function createFilesStore() {
           }
         };
       });
+      const updatedTree = get({ subscribe }).trees[basePath];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey(basePath), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
     },
 
     addNoteNode(payload: { id: string; name: string; folder?: string; modified?: number }) {
@@ -245,9 +350,21 @@ function createFilesStore() {
           }
         };
       });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
     },
 
     reset() {
+      const currentState = get({ subscribe });
+      Object.keys(currentState.trees).forEach((basePath) => {
+        invalidateCache(getTreeCacheKey(basePath));
+        invalidateCache(getExpandedCacheKey(basePath));
+      });
       set({ trees: {} });
     },
 

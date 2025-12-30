@@ -5,11 +5,15 @@
 	import HoldingPage from '$lib/components/HoldingPage.svelte';
 	import { Toaster } from 'svelte-sonner';
 	import { initAuth } from '$lib/stores/auth';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { chatStore } from '$lib/stores/chat';
+	import { get } from 'svelte/store';
+	import { clearCaches, clearInFlight, clearMemoryCache, listenForStorageEvents } from '$lib/utils/cache';
 
 	let { data } = $props();
 	let healthChecked = false;
+	let stopStorageListener: (() => void) | null = null;
 
 	onMount(() => {
 		initAuth(
@@ -18,7 +22,19 @@
 			data.supabaseUrl,
 			data.supabaseAnonKey
 		);
+		stopStorageListener = listenForStorageEvents();
+		if (!data.session) {
+			clearCaches();
+			clearMemoryCache();
+			clearInFlight();
+			return;
+		}
 		checkHealth();
+		restoreLastConversation();
+	});
+
+	onDestroy(() => {
+		stopStorageListener?.();
 	});
 
 	async function checkHealth() {
@@ -37,6 +53,19 @@
 		} catch (error) {
 			console.error('Health check failed:', error);
 			toast.error('Some services are unavailable. Restart the backend via Doppler and refresh.');
+		}
+	}
+
+	async function restoreLastConversation() {
+		const state = get(chatStore);
+		if (state.conversationId) return;
+		const lastConversationId = chatStore.getLastConversationId();
+		if (!lastConversationId) return;
+		try {
+			await chatStore.loadConversation(lastConversationId);
+		} catch (error) {
+			console.warn('Failed to restore last conversation:', error);
+			chatStore.clearLastConversation();
 		}
 	}
 </script>
