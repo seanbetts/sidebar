@@ -163,6 +163,32 @@ class IngestionAPI {
     if (!response.ok) throw new Error('Failed to upload file');
     return response.json();
   }
+
+  /**
+   * Fetch a derivative asset for viewing.
+   */
+  async getContent(fileId: string, kind: string): Promise<Response> {
+    const response = await fetch(
+      `${this.baseUrl}/${fileId}/content?kind=${encodeURIComponent(kind)}`
+    );
+    if (!response.ok) throw new Error('Failed to fetch ingestion content');
+    return response;
+  }
+
+  async pause(fileId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/pause`, { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to pause ingestion');
+  }
+
+  async resume(fileId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/resume`, { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to resume ingestion');
+  }
+
+  async cancel(fileId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/cancel`, { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to cancel ingestion');
+  }
 }
 
 export const ingestionAPI = new IngestionAPI();

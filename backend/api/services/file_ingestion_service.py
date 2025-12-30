@@ -84,6 +84,22 @@ class FileIngestionService:
         )
 
     @staticmethod
+    def get_derivative(
+        db: Session,
+        file_id: uuid.UUID,
+        kind: str,
+    ) -> Optional[FileDerivative]:
+        """Fetch a derivative by kind."""
+        return (
+            db.query(FileDerivative)
+            .filter(
+                FileDerivative.file_id == file_id,
+                FileDerivative.kind == kind,
+            )
+            .first()
+        )
+
+    @staticmethod
     def update_job_status(
         db: Session,
         file_id: uuid.UUID,

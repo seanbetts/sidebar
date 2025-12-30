@@ -7,12 +7,14 @@ import shutil
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.services.file_ingestion_service import FileIngestionService
+from api.services.storage.service import get_storage_backend
 from api.models.file_ingestion import IngestedFile
 
 
@@ -180,6 +182,37 @@ async def get_file_meta(
         "derivatives": derivatives,
         "recommended_viewer": _recommended_viewer(derivatives),
     }
+
+
+@router.get("/{file_id}/content")
+async def get_derivative_content(
+    file_id: str,
+    kind: str,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Stream a derivative asset for viewing."""
+    try:
+        file_uuid = uuid.UUID(file_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+
+    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    derivative = FileIngestionService.get_derivative(db, file_uuid, kind)
+    if not derivative:
+        raise HTTPException(status_code=404, detail="Derivative not found")
+
+    storage = get_storage_backend()
+    content = storage.get_object(derivative.storage_key)
+    return Response(
+        content,
+        media_type=derivative.mime,
+        headers={"Content-Disposition": "inline"},
+    )
 
 
 @router.post("/{file_id}/pause")
