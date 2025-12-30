@@ -166,7 +166,15 @@
 
 					onNoteCreated: async (data) => {
 						dispatchCacheEvent('note.created');
-						await filesStore.load('notes', true);
+						if (data?.id && data?.title) {
+							filesStore.addNoteNode?.({
+								id: data.id,
+								name: `${data.title}.md`,
+								folder: data.folder
+							});
+						} else {
+							await filesStore.load('notes', true);
+						}
 						if (data?.id) {
 							await editorStore.loadNote('notes', data.id, { source: 'ai' });
 						}
@@ -174,7 +182,9 @@
 
 					onNoteUpdated: async (data) => {
 						dispatchCacheEvent('note.updated');
-						await filesStore.load('notes', true);
+						if (data?.id && data?.title) {
+							filesStore.renameNoteNode?.(data.id, `${data.title}.md`);
+						}
 						if (data?.id) {
 							const editorState = get(editorStore);
 							if (editorState.currentNoteId === data.id) {
@@ -194,7 +204,11 @@
 							editorStore.reset();
 						}
 						dispatchCacheEvent('note.deleted');
-						await filesStore.load('notes', true);
+						if (data?.id) {
+							filesStore.removeNode?.('notes', data.id);
+						} else {
+							await filesStore.load('notes', true);
+						}
 					},
 
 					onWebsiteDeleted: async () => {

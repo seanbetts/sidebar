@@ -256,7 +256,7 @@
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
-      await filesStore.load('notes', true);
+      filesStore.addFolderNode?.(name);
       dispatchCacheEvent('note.created');
       isNewFolderDialogOpen = false;
     } catch (error) {

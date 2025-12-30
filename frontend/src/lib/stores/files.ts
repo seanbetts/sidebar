@@ -19,6 +19,8 @@ const getTreeCacheKey = (basePath: string) =>
   basePath === 'notes' ? NOTES_TREE_CACHE_KEY : `${WORKSPACE_TREE_CACHE_PREFIX}.${normalizeBasePath(basePath)}`;
 const getExpandedCacheKey = (basePath: string) =>
   `${EXPANDED_CACHE_PREFIX}.${normalizeBasePath(basePath)}`;
+const toFolderPath = (path: string) => path.replace(/^folder:/, '');
+const toFolderNodePath = (path: string) => `folder:${path}`;
 
 function applyExpandedPaths(nodes: FileNode[], expandedPaths: Set<string>): FileNode[] {
   return nodes.map((node) => {
@@ -39,6 +41,268 @@ function hasFilePath(nodes: FileNode[] | undefined, targetPath: string): boolean
     if (node.children && hasFilePath(node.children, targetPath)) return true;
   }
   return false;
+}
+
+function sortNodes(nodes: FileNode[]): FileNode[] {
+  const sorted = [...nodes].sort(
+    (a, b) => Number(a.type !== 'directory') - Number(b.type !== 'directory') || a.name.localeCompare(b.name)
+  );
+  return sorted.map((node) => {
+    if (node.type !== 'directory' || !node.children) return node;
+    return { ...node, children: sortNodes(node.children) };
+  });
+}
+
+function updateNoteInTree(
+  nodes: FileNode[],
+  noteId: string,
+  updater: (node: FileNode) => FileNode
+): { nodes: FileNode[]; changed: boolean } {
+  let changed = false;
+  const updated = nodes.map((node) => {
+    if (node.type === 'file' && node.path === noteId) {
+      changed = true;
+      return updater(node);
+    }
+    if (node.children) {
+      const result = updateNoteInTree(node.children, noteId, updater);
+      if (result.changed) {
+        changed = true;
+        return { ...node, children: result.nodes };
+      }
+    }
+    return node;
+  });
+  return { nodes: changed ? updated : nodes, changed };
+}
+
+function removeNodeFromTree(
+  nodes: FileNode[],
+  targetPath: string
+): { nodes: FileNode[]; removed?: FileNode; changed: boolean } {
+  let removed: FileNode | undefined;
+  let changed = false;
+  const updated = [];
+
+  for (const node of nodes) {
+    if (node.path === targetPath) {
+      removed = node;
+      changed = true;
+      continue;
+    }
+    if (node.children) {
+      const result = removeNodeFromTree(node.children, targetPath);
+      if (result.changed) {
+        changed = true;
+        if (result.removed) {
+          removed = result.removed;
+        }
+        updated.push({ ...node, children: result.nodes });
+        continue;
+      }
+    }
+    updated.push(node);
+  }
+
+  return { nodes: changed ? updated : nodes, removed, changed };
+}
+
+function insertNoteIntoFolder(nodes: FileNode[], noteNode: FileNode, folderPath: string): FileNode[] {
+  const parts = folderPath.split('/').filter(Boolean);
+  const insertIntoList = (items: FileNode[]) => {
+    const filtered = items.filter((item) => item.path !== noteNode.path);
+    return sortNodes([...filtered, noteNode]);
+  };
+
+  const insertRecursive = (items: FileNode[], remaining: string[], prefix: string): FileNode[] => {
+    if (remaining.length === 0) {
+      return insertIntoList(items);
+    }
+
+    const [part, ...rest] = remaining;
+    const currentPath = prefix ? `${prefix}/${part}` : part;
+    const targetPath = toFolderNodePath(currentPath);
+    let found = false;
+
+    const nextItems = items.map((item) => {
+      if (item.type !== 'directory' || item.path !== targetPath) {
+        return item;
+      }
+      found = true;
+      const children = item.children || [];
+      const updatedChildren = insertRecursive(children, rest, currentPath);
+      return { ...item, children: updatedChildren };
+    });
+
+    if (!found) {
+      const newFolder: FileNode = {
+        name: part,
+        path: targetPath,
+        type: 'directory',
+        children: [],
+        expanded: false
+      };
+      newFolder.children = insertRecursive([], rest, currentPath);
+      return sortNodes([...nextItems, newFolder]);
+    }
+
+    return sortNodes(nextItems);
+  };
+
+  return parts.length === 0 ? insertIntoList(nodes) : insertRecursive(nodes, parts, '');
+}
+
+function updateFolderNodePaths(
+  node: FileNode,
+  oldPrefix: string,
+  newPrefix: string,
+  renameTo?: string
+): FileNode {
+  if (node.type !== 'directory') return node;
+
+  const oldToken = toFolderNodePath(oldPrefix);
+  const newToken = toFolderNodePath(newPrefix);
+  const matches = node.path === oldToken || node.path.startsWith(`${oldToken}/`);
+  const updatedPath = matches ? node.path.replace(oldToken, newToken) : node.path;
+  const updatedName = matches && renameTo && node.path === oldToken ? renameTo : node.name;
+
+  const children = node.children
+    ? node.children.map((child) =>
+        child.type === 'directory' ? updateFolderNodePaths(child, oldPrefix, newPrefix) : child
+      )
+    : node.children;
+
+  if (updatedPath === node.path && updatedName === node.name && children === node.children) {
+    return node;
+  }
+
+  return {
+    ...node,
+    path: updatedPath,
+    name: updatedName,
+    children
+  };
+}
+
+function insertFolderNode(
+  nodes: FileNode[],
+  folderNode: FileNode,
+  parentPath: string
+): FileNode[] {
+  const parts = parentPath.split('/').filter(Boolean);
+
+  const insertIntoList = (items: FileNode[]) => {
+    const filtered = items.filter((item) => item.path !== folderNode.path);
+    return sortNodes([...filtered, folderNode]);
+  };
+
+  const insertRecursive = (items: FileNode[], remaining: string[], prefix: string): FileNode[] => {
+    if (remaining.length === 0) {
+      return insertIntoList(items);
+    }
+
+    const [part, ...rest] = remaining;
+    const currentPath = prefix ? `${prefix}/${part}` : part;
+    const targetPath = toFolderNodePath(currentPath);
+    let found = false;
+
+    const nextItems = items.map((item) => {
+      if (item.type !== 'directory' || item.path !== targetPath) {
+        return item;
+      }
+      found = true;
+      const children = item.children || [];
+      const updatedChildren = insertRecursive(children, rest, currentPath);
+      return { ...item, children: updatedChildren };
+    });
+
+    if (!found) {
+      const newFolder: FileNode = {
+        name: part,
+        path: targetPath,
+        type: 'directory',
+        children: [],
+        expanded: false
+      };
+      newFolder.children = insertRecursive([], rest, currentPath);
+      return sortNodes([...nextItems, newFolder]);
+    }
+
+    return sortNodes(nextItems);
+  };
+
+  return parts.length === 0 ? insertIntoList(nodes) : insertRecursive(nodes, parts, '');
+}
+
+function ensureFolderPath(
+  nodes: FileNode[],
+  folderPath: string,
+  { folderMarker }: { folderMarker: boolean }
+): FileNode[] {
+  const parts = folderPath.split('/').filter(Boolean);
+  if (parts.length === 0) return nodes;
+
+  const ensureRecursive = (items: FileNode[], remaining: string[], prefix: string): FileNode[] => {
+    const [part, ...rest] = remaining;
+    const currentPath = prefix ? `${prefix}/${part}` : part;
+    const targetPath = toFolderNodePath(currentPath);
+    let found = false;
+
+    const nextItems = items.map((item) => {
+      if (item.type !== 'directory' || item.path !== targetPath) {
+        return item;
+      }
+      found = true;
+      if (rest.length === 0 && folderMarker && !item.folderMarker) {
+        return { ...item, folderMarker: true };
+      }
+      if (!item.children) {
+        return { ...item, children: [] };
+      }
+      const updatedChildren = rest.length ? ensureRecursive(item.children, rest, currentPath) : item.children;
+      if (updatedChildren !== item.children) {
+        return { ...item, children: updatedChildren };
+      }
+      return item;
+    });
+
+    if (!found) {
+      const newFolder: FileNode = {
+        name: part,
+        path: targetPath,
+        type: 'directory',
+        children: [],
+        expanded: false,
+        ...(rest.length === 0 && folderMarker ? { folderMarker: true } : {})
+      };
+      newFolder.children = rest.length ? ensureRecursive([], rest, currentPath) : [];
+      return sortNodes([...nextItems, newFolder]);
+    }
+
+    return sortNodes(nextItems);
+  };
+
+  return ensureRecursive(nodes, parts, '');
+}
+
+function updateExpandedPathsForFolder(
+  expandedPaths: Set<string>,
+  oldPath: string,
+  newPath: string
+): Set<string> {
+  const updated = new Set<string>();
+  const oldToken = toFolderNodePath(oldPath);
+  const newToken = toFolderNodePath(newPath);
+
+  expandedPaths.forEach((value) => {
+    if (value === oldToken || value.startsWith(`${oldToken}/`)) {
+      updated.add(value.replace(oldToken, newToken));
+    } else {
+      updated.add(value);
+    }
+  });
+
+  return updated;
 }
 
 function createFilesStore() {
@@ -327,25 +591,14 @@ function createFilesStore() {
         }
         current.push(fileNode);
 
-        const sortChildren = (node: { children?: FileNode[] }) => {
-          if (!node.children) return;
-          node.children.sort(
-            (a, b) => Number(a.type !== 'directory') - Number(b.type !== 'directory') || a.name.localeCompare(b.name)
-          );
-          node.children.forEach(child => {
-            if (child.type === 'directory') {
-              sortChildren(child);
-            }
-          });
-        };
-        sortChildren({ children });
+        const sortedChildren = sortNodes(children);
 
         return {
           trees: {
             ...state.trees,
             notes: {
               ...tree,
-              children
+              children: sortedChildren
             }
           }
         };
@@ -354,6 +607,243 @@ function createFilesStore() {
       if (updatedTree?.children) {
         setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
           ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    renameNoteNode(noteId: string, newName: string) {
+      update(state => {
+        const tree = state.trees['notes'];
+        if (!tree?.children) return state;
+
+        const result = updateNoteInTree(tree.children, noteId, (node) => ({
+          ...node,
+          name: newName
+        }));
+        if (!result.changed) return state;
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children: result.nodes
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    setNotePinned(noteId: string, pinned: boolean) {
+      update(state => {
+        const tree = state.trees['notes'];
+        if (!tree?.children) return state;
+
+        const result = updateNoteInTree(tree.children, noteId, (node) => ({
+          ...node,
+          pinned
+        }));
+        if (!result.changed) return state;
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children: result.nodes
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    moveNoteNode(noteId: string, folder: string, options?: { archived?: boolean }) {
+      update(state => {
+        const tree = state.trees['notes'];
+        if (!tree?.children) return state;
+        const searchQuery = tree.searchQuery || '';
+        const normalizedFolder = folder.replace(/^\/+|\/+$/g, '');
+
+        if (searchQuery) {
+          const result = updateNoteInTree(tree.children, noteId, (node) => ({
+            ...node,
+            ...(options?.archived !== undefined ? { archived: options.archived } : {})
+          }));
+          if (!result.changed) return state;
+          return {
+            trees: {
+              ...state.trees,
+              notes: {
+                ...tree,
+                children: result.nodes
+              }
+            }
+          };
+        }
+
+        const removal = removeNodeFromTree(tree.children, noteId);
+        if (!removal.removed) return state;
+
+        const archived = options?.archived ?? (normalizedFolder === 'Archive');
+        const movedNode: FileNode = {
+          ...removal.removed,
+          archived
+        };
+        const updatedChildren = insertNoteIntoFolder(removal.nodes, movedNode, normalizedFolder);
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children: updatedChildren
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    archiveNoteNode(noteId: string, archived: boolean) {
+      const targetFolder = archived ? 'Archive' : '';
+      this.moveNoteNode(noteId, targetFolder, { archived });
+    },
+
+    addFolderNode(path: string) {
+      update(state => {
+        const tree = state.trees['notes'] || { children: [], expandedPaths: new Set(), loading: false };
+        const searchQuery = tree.searchQuery || '';
+        if (searchQuery) {
+          return state;
+        }
+        const normalized = path.replace(/^\/+|\/+$/g, '');
+        if (!normalized) return state;
+
+        const updatedChildren = ensureFolderPath(tree.children || [], normalized, { folderMarker: true });
+        if (updatedChildren === tree.children) return state;
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children: updatedChildren
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    renameFolderNode(oldPath: string, newName: string) {
+      update(state => {
+        const tree = state.trees['notes'];
+        if (!tree?.children) return state;
+        const searchQuery = tree.searchQuery || '';
+        if (searchQuery) return state;
+
+        const normalizedOld = oldPath.replace(/^\/+|\/+$/g, '');
+        if (!normalizedOld) return state;
+
+        const parentPath = normalizedOld.split('/').slice(0, -1).join('/');
+        const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+        const removal = removeNodeFromTree(tree.children, toFolderNodePath(normalizedOld));
+        if (!removal.removed) return state;
+
+        const updatedNode = updateFolderNodePaths(removal.removed, normalizedOld, newPath, newName);
+        const updatedChildren = insertFolderNode(removal.nodes, updatedNode, parentPath);
+        const updatedExpandedPaths = updateExpandedPathsForFolder(tree.expandedPaths, normalizedOld, newPath);
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children: updatedChildren,
+              expandedPaths: updatedExpandedPaths
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+        setCachedData(getExpandedCacheKey('notes'), Array.from(updatedTree.expandedPaths), {
+          ttl: EXPANDED_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    moveFolderNode(oldPath: string, newParent: string) {
+      update(state => {
+        const tree = state.trees['notes'];
+        if (!tree?.children) return state;
+        const searchQuery = tree.searchQuery || '';
+        if (searchQuery) return state;
+
+        const normalizedOld = oldPath.replace(/^\/+|\/+$/g, '');
+        if (!normalizedOld) return state;
+        const normalizedParent = newParent.replace(/^\/+|\/+$/g, '');
+        const leafName = normalizedOld.split('/').slice(-1)[0];
+        const newPath = normalizedParent ? `${normalizedParent}/${leafName}` : leafName;
+
+        const removal = removeNodeFromTree(tree.children, toFolderNodePath(normalizedOld));
+        if (!removal.removed) return state;
+
+        const updatedNode = updateFolderNodePaths(removal.removed, normalizedOld, newPath);
+        const updatedChildren = insertFolderNode(removal.nodes, updatedNode, normalizedParent);
+        const updatedExpandedPaths = updateExpandedPathsForFolder(tree.expandedPaths, normalizedOld, newPath);
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children: updatedChildren,
+              expandedPaths: updatedExpandedPaths
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+        setCachedData(getExpandedCacheKey('notes'), Array.from(updatedTree.expandedPaths), {
+          ttl: EXPANDED_TTL,
           version: TREE_CACHE_VERSION
         });
       }
