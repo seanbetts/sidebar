@@ -1,7 +1,7 @@
 Goal
 
 Single ingestion pipeline that, for every uploaded file, produces:
-	•	A stable stored original
+	•	A canonical viewer asset (PDF or original image)
 	•	A standardised PDF derivative for UI viewing (when applicable)
 	•	A structured ai.md companion file for your AI agent
 	•	Optional thumbnails and machine-friendly extractions (CSV/JSON per table)
@@ -34,7 +34,6 @@ Storage keys
 
 Namespace every file by a stable file_id (UUID):
 
-files/{file_id}/original/{original_filename}
 files/{file_id}/derivatives/viewer.pdf
 files/{file_id}/derivatives/thumb.png
 files/{file_id}/ai/ai.md
@@ -75,7 +74,8 @@ file_processing_jobs
 	•	stage (text, nullable)
 	•	error (text, nullable)
 	•	attempts (int)
-	•	extraction_version (text)
+	•	started_at (timestamp, nullable)
+	•	finished_at (timestamp, nullable)
 	•	updated_at (timestamp)
 
 API endpoints
@@ -84,7 +84,7 @@ Upload and metadata
 
 POST /api/files
 	•	Multipart upload
-	•	Creates DB record, stores original, enqueues processing job
+	•	Creates DB record, enqueues processing job
 	•	Returns { file_id }
 
 GET /api/files/{file_id}/meta
@@ -107,6 +107,18 @@ POST /api/files/{file_id}/reprocess
 DELETE /api/files/{file_id}
 	•	Soft-deletes metadata
 	•	Optionally schedules storage cleanup after a retention window
+	•	Disallowed while processing
+
+Processing status controls
+
+POST /api/files/{file_id}/pause
+	•	Pauses an in-flight job
+
+POST /api/files/{file_id}/resume
+	•	Resumes a paused job
+
+POST /api/files/{file_id}/cancel
+	•	Cancels processing and deletes any staged artifacts
 
 Worker pipeline
 
@@ -116,17 +128,19 @@ Stage 0: Validate and classify
 	•	Validate extension and MIME against allowlist
 	•	Compute sha256
 	•	Optional deduplication per user
+	•	Enforce maximum file size (recommend 100 MB)
 
 Stage 1: Generate viewer derivative
 
 Rules:
-	•	PDF input: reuse as viewer.pdf
-	•	Images: no PDF conversion, use original plus thumbnail
+	•	PDF input: reuse as viewer.pdf (canonical stored asset)
+	•	Images: no PDF conversion; store canonical image plus thumbnail
 	•	DOCX/XLSX/PPTX: convert to viewer.pdf via LibreOffice headless
 
 Implementation notes:
 	•	Install fonts in worker container for stable layout
 	•	Enforce per-file timeouts and memory limits
+	•	Process in staging; only persist to storage on final success
 
 Stage 2: Extract content for AI
 
@@ -173,9 +187,10 @@ Stage 4: Thumbnails
 	•	For images, generate resized thumbnail
 
 Stage 5: Persist and finalise
-	•	Write derivatives to storage
-	•	Upsert derivative rows
+	•	Write derivatives to storage (R2)
+	•	Upsert derivative rows (single transaction)
 	•	Mark job ready or failed with error details
+	•	On failure, delete staged artifacts immediately
 
 Viewer strategy (Svelte)
 
@@ -205,6 +220,16 @@ Operations and safety
 	•	Timeouts per conversion stage
 	•	Structured logging with file_id correlation
 	•	Retention policies for internal and external storage
+	•	Single in-flight job per file_id (lock/lease)
+	•	Atomic finalization: no R2/DB writes until pipeline success
+	•	No original file retention by default
+
+Ingestion entry points
+
+	•	File sidebar upload (+ file button): direct file ingestion.
+	•	Chat attachment upload: runs the same ingestion pipeline.
+	•	Chat attachments are not passed to the assistant until processing status is ready.
+	•	When ready, attach canonical viewer asset and ai.md as appropriate.
 
 Extensibility checklist
 
@@ -214,3 +239,10 @@ To add a new file type:
 	3.	Implement extractor to intermediate representation
 	4.	Render into ai.md
 	5.	Add tests with golden outputs
+
+UI status and progress
+
+	•	Show a pipeline progress indicator with stages and timestamps
+	•	Expose current stage (queued, processing, converting, extracting, ai_md, thumb, finalizing)
+	•	Provide pause/resume/cancel controls during processing
+	•	Disable delete until processing status is ready
