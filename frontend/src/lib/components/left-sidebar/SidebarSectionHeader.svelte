@@ -22,7 +22,7 @@
     display: flex;
     flex-direction: column;
     padding: 1rem;
-    gap: 0.75rem;
+    gap: 0.8rem;
     border-bottom: 1px solid var(--color-sidebar-border);
   }
 
@@ -31,6 +31,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+    min-height: 2.25rem;
   }
 
   .panel-section-title {
@@ -48,21 +49,19 @@
     gap: 0.35rem;
   }
 
-  ::slotted(.panel-action) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.25rem;
-    border-radius: 0.5rem;
-    border: 1px solid transparent;
-    background-color: transparent;
-    color: var(--color-sidebar-foreground);
-    font-size: 0.75rem;
+  :global(.panel-section-actions .panel-action) {
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  ::slotted(.panel-action:hover) {
-    background-color: var(--color-sidebar-accent);
+  :global(.panel-section-actions .panel-action svg) {
+    pointer-events: none;
   }
+
+  :global(.panel-section-actions .panel-action:hover) {
+    background-color: var(--color-sidebar-accent);
+    color: var(--color-sidebar-foreground);
+  }
+
 </style>

@@ -1,15 +1,20 @@
 import { get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
+import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
-type NoteNode = { pinned?: boolean } | null;
+type NoteNode = { pinned?: boolean; archived?: boolean } | null;
 
 type EditorActionsContext = {
   editorStore: Writable<any>;
-  filesStore: {
+  treeStore: {
     load: (tree: string, force?: boolean) => Promise<void>;
     trees: Record<string, any>;
     removeNode?: (basePath: string, path: string) => void;
     addNoteNode?: (payload: { id: string; name: string; folder?: string; modified?: number }) => void;
+    renameNoteNode?: (noteId: string, newName: string) => void;
+    setNotePinned?: (noteId: string, pinned: boolean) => void;
+    moveNoteNode?: (noteId: string, folder: string, options?: { archived?: boolean }) => void;
+    archiveNoteNode?: (noteId: string, archived: boolean) => void;
   };
   getCurrentNoteId: () => string | null;
   getDisplayTitle: () => string;
@@ -35,7 +40,7 @@ type EditorActionsContext = {
  */
 export function useEditorActions(ctx: EditorActionsContext) {
   const buildFolderOptions = () => {
-    const tree = ctx.filesStore.trees['notes'];
+    const tree = get(ctx.treeStore).trees?.['notes'];
     const nodes = tree?.children || [];
     const options: { label: string; value: string; depth: number }[] = [
       { label: 'Notes', value: '', depth: 0 }
@@ -113,8 +118,10 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to rename note');
       return;
     }
-    await ctx.filesStore.load('notes');
-    await ctx.editorStore.loadNote('notes', currentNoteId, { source: 'user' });
+    const nextName = `${trimmed}.md`;
+    ctx.treeStore.renameNoteNode?.(currentNoteId, nextName);
+    ctx.editorStore.updateNoteName(nextName);
+    dispatchCacheEvent('note.renamed');
     ctx.setIsRenameDialogOpen(false);
   };
 
@@ -130,7 +137,8 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to move note');
       return;
     }
-    await ctx.filesStore.load('notes');
+    ctx.treeStore.moveNoteNode?.(currentNoteId, folder);
+    dispatchCacheEvent('note.moved');
   };
 
   const handleArchive = async () => {
@@ -145,8 +153,25 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to archive note');
       return;
     }
-    await ctx.filesStore.load('notes');
+    ctx.treeStore.archiveNoteNode?.(currentNoteId, true);
     ctx.editorStore.reset();
+    dispatchCacheEvent('note.archived');
+  };
+
+  const handleUnarchive = async () => {
+    const currentNoteId = ctx.getCurrentNoteId();
+    if (!currentNoteId) return;
+    const response = await fetch(`/api/notes/${currentNoteId}/archive`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: false })
+    });
+    if (!response.ok) {
+      console.error('Failed to unarchive note');
+      return;
+    }
+    ctx.treeStore.archiveNoteNode?.(currentNoteId, false);
+    dispatchCacheEvent('note.archived');
   };
 
   const handlePinToggle = async () => {
@@ -163,7 +188,8 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to update pin');
       return;
     }
-    await ctx.filesStore.load('notes');
+    ctx.treeStore.setNotePinned?.(currentNoteId, pinned);
+    dispatchCacheEvent('note.pinned');
   };
 
   const handleDownload = async () => {
@@ -207,8 +233,8 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to delete note');
       return;
     }
-    ctx.filesStore.removeNode?.('notes', currentNoteId);
-    await ctx.filesStore.load('notes', true);
+    ctx.treeStore.removeNode?.('notes', currentNoteId);
+    dispatchCacheEvent('note.deleted');
     ctx.editorStore.reset();
     ctx.setIsDeleteDialogOpen(false);
   };
@@ -216,6 +242,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
   return {
     buildFolderOptions,
     handleArchive,
+    handleUnarchive,
     handleClose,
     handleCopy,
     handleDelete,

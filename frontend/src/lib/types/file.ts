@@ -14,6 +14,7 @@ export interface FileNode {
   expanded?: boolean;
   pinned?: boolean;
   archived?: boolean;
+  folderMarker?: boolean;
 }
 
 export interface SingleFileTree {

@@ -9,6 +9,7 @@
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
   import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
   const ARCHIVED_FLAG = 'archived';
 
@@ -106,7 +107,8 @@
       console.error('Failed to rename website');
       return;
     }
-    await websitesStore.load(true);
+    websitesStore.renameLocal?.(selectedSite.id, trimmed);
+    dispatchCacheEvent('website.renamed');
     isRenameDialogOpen = false;
   }
 
@@ -120,7 +122,8 @@
       console.error('Failed to update pin');
       return;
     }
-    await websitesStore.load(true);
+    websitesStore.setPinnedLocal?.(site.id, !site.pinned);
+    dispatchCacheEvent('website.pinned');
     closeMenu();
   }
 
@@ -134,7 +137,8 @@
       console.error('Failed to archive website');
       return;
     }
-    await websitesStore.load(true);
+    websitesStore.setArchivedLocal?.(site.id, !isArchived(site));
+    dispatchCacheEvent('website.archived');
     closeMenu();
   }
 
@@ -163,7 +167,8 @@
       console.error('Failed to delete website');
       return;
     }
-    await websitesStore.load(true);
+    websitesStore.removeLocal?.(selectedSite.id);
+    dispatchCacheEvent('website.deleted');
     isDeleteDialogOpen = false;
     selectedSite = null;
   }
@@ -323,7 +328,7 @@
             <span class="websites-block-title archive-label">Archive</span>
             <ChevronRight class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90" />
           </Collapsible.Trigger>
-          <Collapsible.Content data-slot="collapsible-content" class="pt-1">
+          <Collapsible.Content data-slot="collapsible-content" class="websites-archive-content pt-1">
             <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
               {#if archivedItems.length === 0}
                 <div class="websites-empty">No archived websites</div>
@@ -435,5 +440,11 @@
 
   :global(.archive-trigger:hover) :global(.archive-chevron) {
     color: var(--color-foreground);
+  }
+
+  :global(.websites-archive-content) {
+    max-height: min(80vh, 720px);
+    overflow-y: auto;
+    padding-right: 0.25rem;
   }
 </style>

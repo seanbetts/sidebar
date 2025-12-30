@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import MarkdownEditor from '$lib/components/editor/MarkdownEditor.svelte';
 	import ChatSidebar from '$lib/components/chat/ChatSidebar.svelte';
 	import ResizeHandle from '$lib/components/layout/ResizeHandle.svelte';
@@ -8,6 +9,7 @@
 
 	let sidebarRef: HTMLElement;
 	let pageContainerRef: HTMLElement;
+	let isInitialLoad = true;
 
 	$: isChatFocused = $layoutStore.mode === 'chat-focused';
 	$: sidebarRatio = $layoutStore.sidebarRatio;
@@ -17,16 +19,22 @@
 	$: minRatio = containerWidth ? Math.min(maxRatio, minSidebarPx / containerWidth) : 0;
 	$: effectiveRatio = containerWidth
 		? Math.min(maxRatio, Math.max(minRatio, sidebarRatio))
-		: 0;
+		: Math.min(maxRatio, sidebarRatio);
 	$: sidebarWidth = containerWidth
 		? `${(effectiveRatio * 100).toFixed(2)}%`
-		: isChatFocused
-			? `${(1 - defaultChatWidth / defaultContainerWidth) * 100}%`
-			: `${(defaultChatWidth / defaultContainerWidth) * 100}%`;
+		: 'var(--sidebar-width, 38%)';
 
 	const defaultChatWidth = 550;
 	const defaultContainerWidth = 1200;
 	const snapPoints = [0.33, 0.4, 0.5];
+
+	onMount(() => {
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				isInitialLoad = false;
+			});
+		});
+	});
 
 	function handleResize(width: number) {
 		if (!containerWidth) return;
@@ -76,6 +84,7 @@
 
 	<div
 		class="panel sidebar-panel"
+		class:no-transition={isInitialLoad}
 		bind:this={sidebarRef}
 		style:width={sidebarWidth}
 		style:min-width={`${minSidebarPx}px`}
@@ -117,6 +126,10 @@
 		flex-shrink: 0;
 		transition: width 0.15s ease;
 		background-color: var(--color-background);
+	}
+
+	.sidebar-panel.no-transition {
+		transition: none;
 	}
 
 	@media (max-width: 900px) {

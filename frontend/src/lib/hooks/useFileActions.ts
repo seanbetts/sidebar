@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import type { FileNode } from '$lib/types/file';
 import type { Writable } from 'svelte/store';
+import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
 const NOTE_ARCHIVE_NAME = 'Archive';
 
@@ -15,9 +16,17 @@ type FileActionsContext = {
   setFolderOptions: (value: { label: string; value: string; depth: number }[]) => void;
   getDisplayName: () => string;
   editorStore: Writable<any>;
-  filesStore: Writable<any> & {
-    load: (tree: string) => Promise<void>;
+  treeStore: Writable<any> & {
+    load: (tree: string, force?: boolean) => Promise<void>;
     removeNode: (tree: string, path: string) => void;
+    renameNoteNode?: (noteId: string, newName: string) => void;
+    setNotePinned?: (noteId: string, pinned: boolean) => void;
+    moveNoteNode?: (noteId: string, folder: string, options?: { archived?: boolean }) => void;
+    archiveNoteNode?: (noteId: string, archived: boolean) => void;
+    renameFolderNode?: (oldPath: string, newName: string) => void;
+    moveFolderNode?: (oldPath: string, newParent: string) => void;
+    renameWorkspaceNode?: (basePath: string, path: string, newName: string) => void;
+    moveWorkspaceNode?: (basePath: string, path: string, destination: string) => void;
   };
 };
 
@@ -32,7 +41,7 @@ const toFolderPath = (path: string) => path.replace(/^folder:/, '');
 export function useFileActions(ctx: FileActionsContext) {
   const buildFolderOptions = (excludePath?: string) => {
     const basePath = ctx.getBasePath();
-    const tree = get(ctx.filesStore).trees[basePath];
+    const tree = get(ctx.treeStore).trees[basePath];
     const rootChildren = tree?.children || [];
     const rootLabel = basePath === 'notes' ? 'Notes' : 'Workspace';
     const options: { label: string; value: string; depth: number }[] = [
@@ -117,7 +126,20 @@ export function useFileActions(ctx: FileActionsContext) {
           ctx.editorStore.updateNoteName(newName);
         }
 
-        await ctx.filesStore.load(basePath);
+        if (basePath === 'notes') {
+          if (node.type === 'directory') {
+            ctx.treeStore.renameFolderNode?.(toFolderPath(node.path), newName);
+          } else {
+            ctx.treeStore.renameNoteNode?.(node.path, newName);
+          }
+        } else {
+          ctx.treeStore.renameWorkspaceNode?.(basePath, node.path, newName);
+        }
+        if (basePath === 'notes') {
+          dispatchCacheEvent('note.renamed');
+        } else {
+          dispatchCacheEvent('file.renamed');
+        }
       } catch (error) {
         console.error('Failed to rename:', error);
         ctx.setEditedName(node.name);
@@ -146,7 +168,8 @@ export function useFileActions(ctx: FileActionsContext) {
         body: JSON.stringify({ pinned })
       });
       if (!response.ok) throw new Error('Failed to update pin');
-      await ctx.filesStore.load(ctx.getBasePath());
+      ctx.treeStore.setNotePinned?.(node.path, pinned);
+      dispatchCacheEvent('note.pinned');
     } catch (error) {
       console.error('Failed to pin note:', error);
     }
@@ -162,9 +185,27 @@ export function useFileActions(ctx: FileActionsContext) {
         body: JSON.stringify({ archived: true })
       });
       if (!response.ok) throw new Error('Failed to archive note');
-      await ctx.filesStore.load(ctx.getBasePath());
+      ctx.treeStore.archiveNoteNode?.(node.path, true);
+      dispatchCacheEvent('note.archived');
     } catch (error) {
       console.error('Failed to archive note:', error);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    const node = ctx.getNode();
+    if (node.type !== 'file') return;
+    try {
+      const response = await fetch(`/api/notes/${node.path}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived: false })
+      });
+      if (!response.ok) throw new Error('Failed to unarchive note');
+      ctx.treeStore.archiveNoteNode?.(node.path, false);
+      dispatchCacheEvent('note.archived');
+    } catch (error) {
+      console.error('Failed to unarchive note:', error);
     }
   };
 
@@ -188,7 +229,13 @@ export function useFileActions(ctx: FileActionsContext) {
             })
           });
       if (!response.ok) throw new Error('Failed to move file');
-      await ctx.filesStore.load(ctx.getBasePath());
+      if (ctx.getBasePath() === 'notes') {
+        ctx.treeStore.moveNoteNode?.(node.path, folder);
+        dispatchCacheEvent('note.moved');
+      } else {
+        ctx.treeStore.moveWorkspaceNode?.(ctx.getBasePath(), node.path, folder);
+        dispatchCacheEvent('file.moved');
+      }
     } catch (error) {
       console.error('Failed to move file:', error);
     }
@@ -217,7 +264,13 @@ export function useFileActions(ctx: FileActionsContext) {
             })
           });
       if (!response.ok) throw new Error('Failed to move folder');
-      await ctx.filesStore.load(ctx.getBasePath());
+      if (ctx.getBasePath() === 'notes') {
+        ctx.treeStore.moveFolderNode?.(toFolderPath(node.path), newParent);
+        dispatchCacheEvent('note.moved');
+      } else {
+        ctx.treeStore.moveWorkspaceNode?.(ctx.getBasePath(), node.path, newParent);
+        dispatchCacheEvent('file.moved');
+      }
     } catch (error) {
       console.error('Failed to move folder:', error);
     }
@@ -275,9 +328,11 @@ export function useFileActions(ctx: FileActionsContext) {
         ctx.editorStore.reset();
       }
 
-      ctx.filesStore.removeNode(ctx.getBasePath(), node.path);
-      if (ctx.getBasePath() !== 'notes') {
-        await ctx.filesStore.load(ctx.getBasePath(), true);
+      ctx.treeStore.removeNode(ctx.getBasePath(), node.path);
+      if (ctx.getBasePath() === 'notes') {
+        dispatchCacheEvent('note.deleted');
+      } else {
+        dispatchCacheEvent('file.deleted');
       }
       ctx.setIsDeleteDialogOpen(false);
     } catch (error) {
@@ -293,6 +348,7 @@ export function useFileActions(ctx: FileActionsContext) {
     openDeleteDialog,
     handlePinToggle,
     handleArchive,
+    handleUnarchive,
     handleMove,
     handleMoveFolder,
     handleDownload,

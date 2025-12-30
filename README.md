@@ -104,6 +104,21 @@ Access the application:
 - **API**: http://localhost:8001
 - **API Docs**: http://localhost:8001/docs
 
+## Local Development (Native)
+
+For rapid iteration without Docker (secrets loaded via Doppler):
+
+```bash
+# First time setup
+cp .env.example .env.local
+# Edit .env.local with your credentials
+./scripts/health-check.sh
+ALLOW_PROD_MIGRATIONS=true ./scripts/migrate.sh upgrade
+./dev.sh start
+```
+
+See [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for the full guide and safety notes when using production Supabase/R2.
+
 ### 3. Rebuild After Changes
 
 ```bash
