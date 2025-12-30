@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { Folder } from 'lucide-svelte';
+  import { Folder, RotateCcw, Trash2 } from 'lucide-svelte';
   import { onDestroy, onMount } from 'svelte';
   import { treeStore } from '$lib/stores/tree';
   import { ingestionStore } from '$lib/stores/ingestion';
+  import { ingestionAPI } from '$lib/services/api';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
@@ -31,6 +32,25 @@
     const viewerKind = item.recommended_viewer;
     if (!viewerKind) return;
     window.open(`/api/ingestion/${item.file.id}/content?kind=${encodeURIComponent(viewerKind)}`, '_blank');
+  }
+
+  async function retryIngestion(fileId: string) {
+    try {
+      await ingestionAPI.reprocess(fileId);
+      await ingestionStore.load();
+      ingestionStore.startPolling();
+    } catch (error) {
+      console.error('Failed to retry ingestion:', error);
+    }
+  }
+
+  async function deleteIngestion(fileId: string) {
+    try {
+      await ingestionAPI.delete(fileId);
+      await ingestionStore.load();
+    } catch (error) {
+      console.error('Failed to delete ingestion:', error);
+    }
   }
 
   onMount(() => {
@@ -73,7 +93,27 @@
       <div class="workspace-results-label">Failed uploads</div>
       {#each failedItems as item (item.file.id)}
         <div class="failed-item">
-          <div class="failed-name">{item.file.filename_original}</div>
+          <div class="failed-header">
+            <div class="failed-name">{item.file.filename_original}</div>
+            <div class="failed-actions">
+              <button
+                class="failed-action"
+                type="button"
+                onclick={() => retryIngestion(item.file.id)}
+                aria-label="Retry upload"
+              >
+                <RotateCcw size={14} />
+              </button>
+              <button
+                class="failed-action"
+                type="button"
+                onclick={() => deleteIngestion(item.file.id)}
+                aria-label="Delete upload"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
           <div class="failed-message">
             {item.job.user_message || item.job.error_message || 'Upload failed.'}
           </div>
@@ -164,10 +204,17 @@
   .failed-item {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: 0.25rem;
     padding: 0.35rem 0.5rem;
     border-radius: 0.4rem;
     background: color-mix(in oklab, var(--color-destructive) 8%, transparent);
+  }
+
+  .failed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
   }
 
   .failed-name {
@@ -176,6 +223,24 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .failed-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .failed-action {
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    color: var(--color-muted-foreground);
+  }
+
+  .failed-action:hover {
+    color: var(--color-foreground);
   }
 
   .failed-message {
