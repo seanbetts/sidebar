@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, Trash2 } from 'lucide-svelte';
+  import { Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, ArchiveRestore, Trash2 } from 'lucide-svelte';
   import type { WebsiteItem } from '$lib/stores/websites';
 
   export let site: WebsiteItem;
@@ -48,7 +48,11 @@
         <span>Download</span>
       </button>
       <button class="menu-item" on:click={() => onArchive(site)}>
-        <Archive size={14} />
+        {#if archived}
+          <ArchiveRestore size={14} />
+        {:else}
+          <Archive size={14} />
+        {/if}
         <span>{archived ? 'Unarchive' : 'Archive'}</span>
       </button>
       <button class="menu-item delete" on:click={() => onDelete(site)}>

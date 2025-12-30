@@ -1,14 +1,12 @@
 import { onDestroy, onMount } from 'svelte';
 import { writable } from 'svelte/store';
 import { applyThemeMode } from '$lib/utils/theme';
+import { getCachedData, isCacheStale, revalidateInBackground, setCachedData } from '$lib/utils/cache';
 
-const locationCacheKey = 'sidebar.liveLocation';
-const locationCacheTimeKey = 'sidebar.liveLocationTs';
-const locationCacheLevelsKey = 'sidebar.liveLocationLevels';
-const coordsCacheKey = 'sidebar.coords';
-const coordsCacheTimeKey = 'sidebar.coordsTs';
-const weatherCacheKey = 'sidebar.weather';
-const weatherCacheTimeKey = 'sidebar.weatherTs';
+const locationCacheKey = 'location.live';
+const locationLevelsCacheKey = 'location.levels';
+const coordsCacheKey = 'location.coords';
+const weatherCacheKey = 'weather.snapshot';
 const locationCacheTtlMs = 30 * 60 * 1000;
 const coordsCacheTtlMs = 24 * 60 * 60 * 1000;
 const weatherCacheTtlMs = 30 * 60 * 1000;
@@ -64,6 +62,7 @@ export function useSiteHeaderData() {
   onMount(() => {
     updateDateTime();
     timeInterval = setInterval(updateDateTime, 60_000);
+    migrateLegacyWeatherCache();
     loadLocation();
     loadWeather();
   });
@@ -73,16 +72,13 @@ export function useSiteHeaderData() {
   });
 
   async function loadLocation() {
-    if (typeof window === 'undefined') return;
-
-    const cachedLabel = localStorage.getItem(locationCacheKey);
-    const cachedTime = localStorage.getItem(locationCacheTimeKey);
-    if (cachedLabel && cachedTime) {
-      const age = Date.now() - Number(cachedTime);
-      if (!Number.isNaN(age) && age < locationCacheTtlMs) {
-        setState({ liveLocation: cachedLabel });
-        return;
-      }
+    const cachedLabel = getCachedData<string>(locationCacheKey, {
+      ttl: locationCacheTtlMs,
+      version: '1.0'
+    });
+    if (cachedLabel) {
+      setState({ liveLocation: cachedLabel });
+      return;
     }
 
     const coords = await getCoords();
@@ -91,52 +87,43 @@ export function useSiteHeaderData() {
   }
 
   async function loadWeather() {
-    if (typeof window === 'undefined') return;
-
-    const cachedWeather = localStorage.getItem(weatherCacheKey);
-    const cachedTime = localStorage.getItem(weatherCacheTimeKey);
-    if (cachedWeather && cachedTime) {
-      const age = Date.now() - Number(cachedTime);
-      if (!Number.isNaN(age) && age < weatherCacheTtlMs) {
-        try {
-          const data = JSON.parse(cachedWeather);
-          applyWeather(data);
-          return;
-        } catch (error) {
-          console.error('Failed to parse weather cache:', error);
+    const cachedWeather = getCachedData<Record<string, unknown>>(weatherCacheKey, {
+      ttl: weatherCacheTtlMs,
+      version: '1.0'
+    });
+    if (cachedWeather) {
+      applyWeather(cachedWeather);
+      if (isCacheStale(weatherCacheKey, weatherCacheTtlMs)) {
+        const coords = await getCoords();
+        if (coords) {
+          revalidateInBackground(
+            weatherCacheKey,
+            () => fetchWeather(coords.lat, coords.lon),
+            { ttl: weatherCacheTtlMs, version: '1.0' }
+          );
         }
       }
+      return;
     }
 
     const coords = await getCoords();
     if (!coords) return;
 
     try {
-      const response = await fetch(
-        `/api/weather?lat=${encodeURIComponent(coords.lat)}&lon=${encodeURIComponent(coords.lon)}`
-      );
-      if (!response.ok) return;
-      const data = await response.json();
+      const data = await fetchWeather(coords.lat, coords.lon);
       applyWeather(data);
-      localStorage.setItem(weatherCacheKey, JSON.stringify(data));
-      localStorage.setItem(weatherCacheTimeKey, Date.now().toString());
     } catch (error) {
       console.error('Failed to load weather:', error);
     }
   }
 
   async function getCoords(): Promise<Coords | null> {
-    const cachedCoords = localStorage.getItem(coordsCacheKey);
-    const cachedTime = localStorage.getItem(coordsCacheTimeKey);
-    if (cachedCoords && cachedTime) {
-      const age = Date.now() - Number(cachedTime);
-      if (!Number.isNaN(age) && age < coordsCacheTtlMs) {
-        try {
-          return JSON.parse(cachedCoords);
-        } catch (error) {
-          console.error('Failed to parse coords cache:', error);
-        }
-      }
+    const cachedCoords = getCachedData<Coords>(coordsCacheKey, {
+      ttl: coordsCacheTtlMs,
+      version: '1.0'
+    });
+    if (cachedCoords) {
+      return cachedCoords;
     }
 
     if (!navigator.geolocation) return null;
@@ -149,8 +136,7 @@ export function useSiteHeaderData() {
               lat: position.coords.latitude,
               lon: position.coords.longitude
             };
-            localStorage.setItem(coordsCacheKey, JSON.stringify(coords));
-            localStorage.setItem(coordsCacheTimeKey, Date.now().toString());
+            setCachedData(coordsCacheKey, coords, { ttl: coordsCacheTtlMs, version: '1.0' });
             resolve(coords);
           },
           () => {
@@ -176,14 +162,66 @@ export function useSiteHeaderData() {
       const label = data?.label;
       if (label) {
         setState({ liveLocation: label });
-        localStorage.setItem(locationCacheKey, label);
-        localStorage.setItem(locationCacheTimeKey, Date.now().toString());
+        setCachedData(locationCacheKey, label, { ttl: locationCacheTtlMs, version: '1.0' });
       }
       if (data?.levels) {
-        localStorage.setItem(locationCacheLevelsKey, JSON.stringify(data.levels));
+        setCachedData(locationLevelsCacheKey, data.levels, { ttl: locationCacheTtlMs, version: '1.0' });
       }
     } catch (error) {
       console.error('Failed to load live location:', error);
+    }
+  }
+
+  async function fetchWeather(lat: number, lon: number): Promise<Record<string, unknown>> {
+    const response = await fetch(
+      `/api/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`
+    );
+    if (!response.ok) {
+      throw new Error('Weather request failed');
+    }
+    const data = await response.json();
+    setCachedData(weatherCacheKey, data, { ttl: weatherCacheTtlMs, version: '1.0' });
+    return data;
+  }
+
+  function migrateLegacyWeatherCache() {
+    if (typeof window === 'undefined') return;
+    try {
+      const legacyWeather = localStorage.getItem('sidebar.weather');
+      const legacyWeatherTs = localStorage.getItem('sidebar.weatherTs');
+      if (legacyWeather && legacyWeatherTs) {
+        const payload = JSON.parse(legacyWeather);
+        setCachedData(weatherCacheKey, payload, { ttl: weatherCacheTtlMs, version: '1.0' });
+        localStorage.removeItem('sidebar.weather');
+        localStorage.removeItem('sidebar.weatherTs');
+      }
+
+      const legacyCoords = localStorage.getItem('sidebar.coords');
+      const legacyCoordsTs = localStorage.getItem('sidebar.coordsTs');
+      if (legacyCoords && legacyCoordsTs) {
+        setCachedData(coordsCacheKey, JSON.parse(legacyCoords), { ttl: coordsCacheTtlMs, version: '1.0' });
+        localStorage.removeItem('sidebar.coords');
+        localStorage.removeItem('sidebar.coordsTs');
+      }
+
+      const legacyLocation = localStorage.getItem('sidebar.liveLocation');
+      const legacyLocationTs = localStorage.getItem('sidebar.liveLocationTs');
+      if (legacyLocation && legacyLocationTs) {
+        setCachedData(locationCacheKey, legacyLocation, { ttl: locationCacheTtlMs, version: '1.0' });
+        localStorage.removeItem('sidebar.liveLocation');
+        localStorage.removeItem('sidebar.liveLocationTs');
+      }
+
+      const legacyLevels = localStorage.getItem('sidebar.liveLocationLevels');
+      if (legacyLevels) {
+        setCachedData(locationLevelsCacheKey, JSON.parse(legacyLevels), {
+          ttl: locationCacheTtlMs,
+          version: '1.0'
+        });
+        localStorage.removeItem('sidebar.liveLocationLevels');
+      }
+    } catch (error) {
+      console.warn('Legacy location/weather cache migration failed:', error);
     }
   }
 

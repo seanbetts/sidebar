@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 import { conversationListStore } from '$lib/stores/conversations';
-import { filesStore } from '$lib/stores/files';
+import { treeStore } from '$lib/stores/tree';
 import { websitesStore } from '$lib/stores/websites';
 
 export type SidebarSection = 'history' | 'notes' | 'websites' | 'workspace';
@@ -18,14 +18,14 @@ export function useSidebarSectionLoader() {
 			return;
 		}
 
-		const filesState = get(filesStore);
+		const treeState = get(treeStore);
 		const websitesState = get(websitesStore);
 		const conversationsState = get(conversationListStore);
 
 		const hasData = {
-			notes: filesState.trees?.['notes']?.loaded ?? false,
+			notes: treeState.trees?.['notes']?.loaded ?? false,
 			websites: websitesState.loaded ?? false,
-			workspace: filesState.trees?.['.']?.loaded ?? false,
+			workspace: treeState.trees?.['.']?.loaded ?? false,
 			history: conversationsState.loaded ?? false
 		}[section];
 
@@ -38,13 +38,13 @@ export function useSidebarSectionLoader() {
 
 		switch (section) {
 			case 'notes':
-				filesStore.load('notes');
+				treeStore.load('notes');
 				break;
 			case 'websites':
 				websitesStore.load();
 				break;
 			case 'workspace':
-				filesStore.load('.');
+				treeStore.load('.');
 				break;
 			case 'history':
 				conversationListStore.load();

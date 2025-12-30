@@ -4,7 +4,7 @@
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
-  import { filesStore } from '$lib/stores/files';
+  import { treeStore } from '$lib/stores/tree';
   import { websitesStore } from '$lib/stores/websites';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
@@ -20,6 +20,8 @@
   import NewWebsiteDialog from '$lib/components/left-sidebar/dialogs/NewWebsiteDialog.svelte';
   import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
   import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+  import { Button } from '$lib/components/ui/button';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -43,7 +45,30 @@
   let profileImageSrc = '';
   const sidebarLogoSrc = '/images/logo.svg';
   let isMounted = false;
+  let lastConversationId: string | null = null;
+  let lastMessageCount = 0;
   const { loadSectionData } = useSidebarSectionLoader();
+  $: isBlankChat = (() => {
+    const currentId = $chatStore.conversationId;
+    if (!currentId) return true;
+    const current = $conversationListStore.conversations.find((conversation) => conversation.id === currentId);
+    return current ? current.messageCount === 0 : false;
+  })();
+  $: showNewChatButton = !isBlankChat;
+  $: if ($chatStore.conversationId) {
+    if (lastConversationId !== $chatStore.conversationId) {
+      lastConversationId = $chatStore.conversationId;
+      lastMessageCount = $chatStore.messages.length;
+    } else if ($chatStore.messages.length !== lastMessageCount) {
+      if (lastMessageCount === 0 && $chatStore.messages.length > 0 && activeSection !== 'history') {
+        openSection('history');
+      }
+      lastMessageCount = $chatStore.messages.length;
+    }
+  }
+  $: if (activeSection !== 'history' && $chatStore.conversationId && $chatStore.messages.length === 0) {
+    chatStore.cleanupEmptyConversation?.();
+  }
 
   onMount(() => {
     // Mark as mounted to enable reactive data loading
@@ -83,8 +108,7 @@
   }
 
   async function handleNewChat() {
-    await chatStore.clear();
-    await conversationListStore.refresh();
+    await chatStore.startNewConversation();
   }
 
   function toggleSidebar() {
@@ -184,6 +208,7 @@
       const websiteId = data?.data?.id;
 
       await websitesStore.load(true);
+      dispatchCacheEvent('website.saved');
       if (websiteId) {
         await websitesStore.loadById(websiteId);
       }
@@ -221,12 +246,13 @@
       const noteId = data?.id || filename;
 
       const folder = filename.includes('/') ? filename.split('/').slice(0, -1).join('/') : '';
-      filesStore.addNoteNode?.({
+      treeStore.addNoteNode?.({
         id: noteId,
         name: filename,
         folder,
         modified: data?.modified
       });
+      dispatchCacheEvent('note.created');
       currentNoteId.set(noteId);
       await editorStore.loadNote('notes', noteId, { source: 'user' });
       isNewNoteDialogOpen = false;
@@ -252,7 +278,8 @@
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
-      await filesStore.load('notes', true);
+      treeStore.addFolderNode?.(name);
+      dispatchCacheEvent('note.created');
       isNewFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
@@ -276,7 +303,8 @@
       });
 
       if (!response.ok) throw new Error('Failed to create folder');
-      await filesStore.load('.', true);
+      await treeStore.load('.', true);
+      dispatchCacheEvent('file.uploaded');
       isNewWorkspaceFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
@@ -357,26 +385,30 @@
         <SidebarSectionHeader
           title="Notes"
           searchPlaceholder="Search notes..."
-          onSearch={(query) => filesStore.searchNotes(query)}
-          onClear={() => filesStore.load('notes', true)}
+          onSearch={(query) => treeStore.searchNotes(query)}
+          onClear={() => treeStore.load('notes', true)}
         >
           <svelte:fragment slot="actions">
-            <button
+            <Button
+              size="icon"
+              variant="ghost"
               class="panel-action"
-              on:click={handleNewFolder}
+              onclick={handleNewFolder}
               aria-label="New folder"
               title="New folder"
             >
               <Folder size={16} />
-            </button>
-            <button
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
               class="panel-action"
-              on:click={handleNewNote}
+              onclick={handleNewNote}
               aria-label="New note"
               title="New note"
             >
               <Plus size={16} />
-            </button>
+            </Button>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="notes-content">
@@ -393,14 +425,16 @@
           onClear={() => websitesStore.load(true)}
         >
           <svelte:fragment slot="actions">
-            <button
+            <Button
+              size="icon"
+              variant="ghost"
               class="panel-action"
-              on:click={handleNewWebsite}
+              onclick={handleNewWebsite}
               aria-label="Save website"
               title="Save website"
             >
               <Plus size={16} />
-            </button>
+            </Button>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="files-content">
@@ -413,18 +447,20 @@
         <SidebarSectionHeader
           title="Files"
           searchPlaceholder="Search files..."
-          onSearch={(query) => filesStore.searchFiles('.', query)}
-          onClear={() => filesStore.load('.', true)}
+          onSearch={(query) => treeStore.searchFiles('.', query)}
+          onClear={() => treeStore.load('.', true)}
         >
           <svelte:fragment slot="actions">
-            <button
+            <Button
+              size="icon"
+              variant="ghost"
               class="panel-action"
-              on:click={handleNewWorkspaceFolder}
+              onclick={handleNewWorkspaceFolder}
               aria-label="New folder"
               title="New folder"
             >
               <Folder size={16} />
-            </button>
+            </Button>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="files-content">
@@ -439,7 +475,22 @@
           searchPlaceholder="Search conversations..."
           onSearch={(query) => conversationListStore.search(query)}
           onClear={() => conversationListStore.load(true)}
-        />
+        >
+          <svelte:fragment slot="actions">
+            {#if showNewChatButton}
+              <Button
+                size="icon"
+                variant="ghost"
+                class="panel-action"
+                onclick={handleNewChat}
+                aria-label="New chat"
+                title="New chat"
+              >
+                <Plus size={16} />
+              </Button>
+            {/if}
+          </svelte:fragment>
+        </SidebarSectionHeader>
         <div class="history-content">
           <ConversationList />
         </div>

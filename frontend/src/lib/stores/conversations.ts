@@ -4,6 +4,12 @@
 import { get, writable, derived } from 'svelte/store';
 import type { Conversation } from '$lib/types/history';
 import { conversationsAPI } from '$lib/services/api';
+import { getCachedData, invalidateCache, isCacheStale, setCachedData } from '$lib/utils/cache';
+import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+
+const CACHE_KEY = 'conversations.list';
+const CACHE_TTL = 10 * 60 * 1000;
+const CACHE_VERSION = '1.0';
 
 interface ConversationListState {
   conversations: Conversation[];
@@ -26,15 +32,36 @@ function createConversationListStore() {
     subscribe,
 
     async load(force: boolean = false) {
+      const currentState = get({ subscribe });
+      if (!force && currentState.searchQuery) {
+        return;
+      }
+
       if (!force) {
-        const currentState = get({ subscribe });
-        if (currentState.loaded && !currentState.searchQuery) {
+        const cached = getCachedData<Conversation[]>(CACHE_KEY, {
+          ttl: CACHE_TTL,
+          version: CACHE_VERSION
+        });
+        if (cached) {
+          update(state => ({
+            ...state,
+            conversations: cached,
+            loading: false,
+            loaded: true
+          }));
+          if (isCacheStale(CACHE_KEY, CACHE_TTL)) {
+            this.revalidateInBackground();
+          }
+          return;
+        }
+        if (currentState.loaded) {
           return;
         }
       }
       update(state => ({ ...state, loading: true }));
       try {
         const conversations = await conversationsAPI.list();
+        setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
         update(state => ({ ...state, conversations, loading: false, loaded: true }));
       } catch (error) {
         console.error('Failed to load conversations:', error);
@@ -44,6 +71,16 @@ function createConversationListStore() {
 
     async refresh() {
       await this.load(true);
+    },
+
+    async revalidateInBackground() {
+      try {
+        const conversations = await conversationsAPI.list();
+        setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        update(state => ({ ...state, conversations }));
+      } catch (error) {
+        console.error('Background revalidation failed:', error);
+      }
     },
 
     async search(query: string) {
@@ -66,6 +103,8 @@ function createConversationListStore() {
           ...state,
           conversations: state.conversations.filter(c => c.id !== id)
         }));
+        invalidateCache(CACHE_KEY);
+        dispatchCacheEvent('conversation.deleted');
       } catch (error) {
         console.error('Failed to delete conversation:', error);
       }
@@ -80,6 +119,10 @@ function createConversationListStore() {
         ...state,
         conversations: [conversation, ...state.conversations]
       }));
+      const nextState = get({ subscribe });
+      if (!nextState.searchQuery) {
+        setCachedData(CACHE_KEY, nextState.conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
+      }
     },
 
     /**
@@ -97,6 +140,10 @@ function createConversationListStore() {
           c.id === id ? { ...c, ...updates } : c
         )
       }));
+      const nextState = get({ subscribe });
+      if (!nextState.searchQuery) {
+        setCachedData(CACHE_KEY, nextState.conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
+      }
     },
 
     /**
@@ -123,8 +170,9 @@ function createConversationListStore() {
      * Update a single conversation's title without refreshing the entire list
      * @param id Conversation id to update.
      * @param title New title value.
+     * @param titleGenerated Whether the title was model-generated.
      */
-    updateConversationTitle(id: string, title: string) {
+    updateConversationTitle(id: string, title: string, titleGenerated: boolean = true) {
       update(state => {
         const newGeneratingIds = new Set(state.generatingTitleIds);
         newGeneratingIds.delete(id);
@@ -132,10 +180,14 @@ function createConversationListStore() {
           ...state,
           generatingTitleIds: newGeneratingIds,
           conversations: state.conversations.map(c =>
-            c.id === id ? { ...c, title, titleGenerated: true } : c
+            c.id === id ? { ...c, title, titleGenerated } : c
           )
         };
       });
+      const nextState = get({ subscribe });
+      if (!nextState.searchQuery) {
+        setCachedData(CACHE_KEY, nextState.conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
+      }
     }
   };
 }

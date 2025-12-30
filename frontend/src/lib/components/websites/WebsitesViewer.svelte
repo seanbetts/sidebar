@@ -10,6 +10,7 @@
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
   import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
@@ -92,8 +93,9 @@
       console.error('Failed to rename website');
       return;
     }
-    await websitesStore.load();
-    await websitesStore.loadById(active.id);
+    websitesStore.renameLocal?.(active.id, trimmed);
+    websitesStore.updateActiveLocal?.({ title: trimmed });
+    dispatchCacheEvent('website.renamed');
     isRenameDialogOpen = false;
   }
 
@@ -109,8 +111,9 @@
       console.error('Failed to update pin');
       return;
     }
-    await websitesStore.load();
-    await websitesStore.loadById(active.id);
+    websitesStore.setPinnedLocal?.(active.id, !active.pinned);
+    websitesStore.updateActiveLocal?.({ pinned: !active.pinned });
+    dispatchCacheEvent('website.pinned');
   }
 
   async function handleArchive() {
@@ -125,11 +128,13 @@
       console.error('Failed to archive website');
       return;
     }
-    await websitesStore.load();
-    if (active.archived) {
-      await websitesStore.loadById(active.id);
-    } else {
+    const nextArchived = !active.archived;
+    websitesStore.setArchivedLocal?.(active.id, nextArchived);
+    dispatchCacheEvent('website.archived');
+    if (nextArchived) {
       websitesStore.clearActive();
+    } else {
+      websitesStore.updateActiveLocal?.({ archived: nextArchived });
     }
   }
 
@@ -170,8 +175,9 @@
       console.error('Failed to delete website');
       return;
     }
-    await websitesStore.load();
+    websitesStore.removeLocal?.(active.id);
     websitesStore.clearActive();
+    dispatchCacheEvent('website.deleted');
     isDeleteDialogOpen = false;
   }
 

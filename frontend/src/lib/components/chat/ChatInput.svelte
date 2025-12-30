@@ -10,10 +10,20 @@
 	let inputValue = '';
 	let textarea: HTMLTextAreaElement;
 	let previousConversationId: string | null = null;
+	const MAX_TEXTAREA_HEIGHT = 220;
+
+	const resizeTextarea = () => {
+		if (!textarea) return;
+		textarea.style.height = 'auto';
+		const nextHeight = Math.min(textarea.scrollHeight, MAX_TEXTAREA_HEIGHT);
+		textarea.style.height = `${nextHeight}px`;
+		textarea.style.overflowY = textarea.scrollHeight > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
+	};
 
 	onMount(() => {
 		// Auto-focus the input when component mounts
 		textarea?.focus();
+		resizeTextarea();
 	});
 
 	// Auto-focus when conversation changes (new chat)
@@ -21,7 +31,12 @@
 		previousConversationId = $chatStore.conversationId;
 		tick().then(() => {
 			textarea?.focus();
+			resizeTextarea();
 		});
+	}
+
+	$: if (textarea && inputValue !== undefined) {
+		resizeTextarea();
 	}
 
 	function handleSubmit() {
@@ -32,6 +47,7 @@
 			// Re-focus after sending
 			tick().then(() => {
 				textarea?.focus();
+				resizeTextarea();
 			});
 		}
 	}
@@ -50,6 +66,7 @@
 			bind:this={textarea}
 			bind:value={inputValue}
 			onkeydown={handleKeydown}
+			oninput={resizeTextarea}
 			placeholder="Ask Anything..."
 			{disabled}
 			rows="1"

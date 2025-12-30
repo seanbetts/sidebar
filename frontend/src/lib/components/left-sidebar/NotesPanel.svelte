@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ChevronRight, FileText, Search } from 'lucide-svelte';
-  import { filesStore } from '$lib/stores/files';
+  import { treeStore } from '$lib/stores/tree';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
@@ -12,7 +12,7 @@
   export let hideExtensions: boolean = false;
   export let onFileClick: ((path: string) => void) | undefined = undefined;
 
-  $: treeData = $filesStore.trees[basePath];
+  $: treeData = $treeStore.trees[basePath];
   $: children = treeData?.children || [];
   // Show loading if explicitly loading OR if tree hasn't been initialized yet
   $: loading = treeData?.loading ?? !treeData;
@@ -23,7 +23,7 @@
   // onMount removed to prevent duplicate loads and initial flicker
 
   function handleToggle(path: string) {
-    filesStore.toggleExpanded(basePath, path);
+    treeStore.toggleExpanded(basePath, path);
   }
 
   function collectPinned(
@@ -65,7 +65,7 @@
           options,
           isArchive
         );
-        if (filteredChildren.length === 0) {
+        if (filteredChildren.length === 0 && !node.folderMarker) {
           continue;
         }
         results.push({ ...node, children: filteredChildren });
@@ -183,7 +183,7 @@
             <span class="notes-block-title archive-label">Archive</span>
             <ChevronRight class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90" />
           </Collapsible.Trigger>
-          <Collapsible.Content data-slot="collapsible-content" class="pt-1">
+          <Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
             <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
               {#if archiveNodes.length > 0}
                 <div class="notes-block-content">
@@ -273,6 +273,12 @@
 
   :global(.archive-trigger:hover) :global(.archive-chevron) {
     color: var(--color-foreground);
+  }
+
+  :global(.archive-content) {
+    max-height: min(80vh, 720px);
+    overflow-y: auto;
+    padding-right: 0.25rem;
   }
 
   .notes-block-content {

@@ -8,6 +8,7 @@
     PinOff,
     FolderInput,
     Archive,
+    ArchiveRestore,
     Download
   } from 'lucide-svelte';
   import type { FileNode } from '$lib/types/file';
@@ -23,6 +24,7 @@
   export let onMoveFolder: (folder: string) => void;
   export let onPinToggle: () => void;
   export let onArchive: () => void;
+  export let onUnarchive: () => void;
   export let onDownload: () => void;
 
   let showMenu = false;
@@ -73,6 +75,12 @@
   const handleArchive = async (event: MouseEvent) => {
     event.stopPropagation();
     await onArchive();
+    closeMenu();
+  };
+
+  const handleUnarchive = async (event: MouseEvent) => {
+    event.stopPropagation();
+    await onUnarchive();
     closeMenu();
   };
 
@@ -143,29 +151,52 @@
             <span>Pin</span>
           {/if}
         </button>
-      {/if}
-      <button class="menu-item" on:click={handleMoveToggle}>
-        <FolderInput size={16} />
-        <span>Move</span>
-      </button>
-      {#if showMoveMenu}
-        <div class="menu-submenu">
-          {#each folderOptions as option (option.value)}
-            <button
-              class="menu-subitem"
-              style={`padding-left: ${option.depth * 12 + 12}px`}
-              on:click={() => handleMove(option.value)}
-            >
-              {option.label}
-            </button>
-          {/each}
-        </div>
-      {/if}
-      {#if basePath === 'notes' && !node.archived}
-        <button class="menu-item" on:click={handleArchive}>
-          <Archive size={16} />
-          <span>Archive</span>
+        {#if node.archived}
+          <button class="menu-item" on:click={handleUnarchive}>
+            <ArchiveRestore size={16} />
+            <span>Unarchive</span>
+          </button>
+        {:else}
+          <button class="menu-item" on:click={handleMoveToggle}>
+            <FolderInput size={16} />
+            <span>Move</span>
+          </button>
+          {#if showMoveMenu}
+            <div class="menu-submenu">
+              {#each folderOptions as option (option.value)}
+                <button
+                  class="menu-subitem"
+                  style={`padding-left: ${option.depth * 12 + 12}px`}
+                  on:click={() => handleMove(option.value)}
+                >
+                  {option.label}
+                </button>
+              {/each}
+            </div>
+          {/if}
+          <button class="menu-item" on:click={handleArchive}>
+            <Archive size={16} />
+            <span>Archive</span>
+          </button>
+        {/if}
+      {:else}
+        <button class="menu-item" on:click={handleMoveToggle}>
+          <FolderInput size={16} />
+          <span>Move</span>
         </button>
+        {#if showMoveMenu}
+          <div class="menu-submenu">
+            {#each folderOptions as option (option.value)}
+              <button
+                class="menu-subitem"
+                style={`padding-left: ${option.depth * 12 + 12}px`}
+                on:click={() => handleMove(option.value)}
+              >
+                {option.label}
+              </button>
+            {/each}
+          </div>
+        {/if}
       {/if}
       <button class="menu-item" on:click={handleDownload}>
         <Download size={16} />

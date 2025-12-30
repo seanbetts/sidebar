@@ -149,9 +149,7 @@
         on:click={(e) => e.stopPropagation()}
       />
     {:else if isGeneratingTitle}
-      <div class="title-skeleton">
-        <div class="skeleton-bar"></div>
-      </div>
+      <div class="title-skeleton">New Chat</div>
     {:else}
       <div class="title">{conversation.title}</div>
     {/if}
@@ -311,11 +309,9 @@
     height: 0.875rem;
     display: flex;
     align-items: center;
-  }
-
-  .skeleton-bar {
-    width: 60%;
-    height: 0.625rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: transparent;
     background: linear-gradient(
       90deg,
       var(--color-muted) 0%,
@@ -324,7 +320,8 @@
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
-    border-radius: 0.25rem;
+    -webkit-background-clip: text;
+    background-clip: text;
   }
 
   @keyframes shimmer {

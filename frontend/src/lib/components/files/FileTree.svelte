@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Folder } from 'lucide-svelte';
-  import { filesStore } from '$lib/stores/files';
+  import { treeStore } from '$lib/stores/tree';
   import FileTreeNode from './FileTreeNode.svelte';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
@@ -13,16 +13,16 @@
   export let onFileClick: ((path: string) => void) | undefined = undefined;
 
   // Reactive variables for tree data
-  $: treeData = $filesStore.trees[basePath];
+  $: treeData = $treeStore.trees[basePath];
   $: children = treeData?.children || [];
   $: loading = treeData?.loading || false;
 
   onMount(() => {
-    filesStore.load(basePath);
+    treeStore.load(basePath);
   });
 
   function handleToggle(path: string) {
-    filesStore.toggleExpanded(basePath, path);
+    treeStore.toggleExpanded(basePath, path);
   }
 </script>
 
