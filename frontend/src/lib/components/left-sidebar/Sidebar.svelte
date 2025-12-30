@@ -46,6 +46,13 @@
   const sidebarLogoSrc = '/images/logo.svg';
   let isMounted = false;
   const { loadSectionData } = useSidebarSectionLoader();
+  $: isBlankChat = (() => {
+    const currentId = $chatStore.conversationId;
+    if (!currentId) return true;
+    const current = $conversationListStore.conversations.find((conversation) => conversation.id === currentId);
+    return current ? current.messageCount === 0 : false;
+  })();
+  $: showNewChatButton = !isBlankChat;
 
   onMount(() => {
     // Mark as mounted to enable reactive data loading
@@ -453,7 +460,22 @@
           searchPlaceholder="Search conversations..."
           onSearch={(query) => conversationListStore.search(query)}
           onClear={() => conversationListStore.load(true)}
-        />
+        >
+          <svelte:fragment slot="actions">
+            {#if showNewChatButton}
+              <Button
+                size="icon"
+                variant="ghost"
+                class="panel-action"
+                onclick={handleNewChat}
+                aria-label="New chat"
+                title="New chat"
+              >
+                <Plus size={16} />
+              </Button>
+            {/if}
+          </svelte:fragment>
+        </SidebarSectionHeader>
         <div class="history-content">
           <ConversationList />
         </div>
