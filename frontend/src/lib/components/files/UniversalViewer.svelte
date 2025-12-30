@@ -99,8 +99,8 @@
   }
 
   .file-viewer-title {
-    font-size: 1rem;
-    line-height: 1.6;
+    font-size: 1.25rem;
+    line-height: 1.4;
     font-weight: 600;
     color: var(--color-foreground);
     overflow: hidden;
@@ -110,7 +110,7 @@
 
   .file-viewer-type {
     font-size: 0.7rem;
-    line-height: 1.6;
+    line-height: 1.4;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-muted-foreground);
