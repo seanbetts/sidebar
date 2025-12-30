@@ -247,7 +247,8 @@ class FilesWorkspaceService:
         full_path = FileTreeService.full_path(base_path, path)
         record = FilesService.get_by_path(db, user_id, full_path)
         if record:
-            storage_backend.delete_object(record.bucket_key)
+            if record.category != "folder":
+                storage_backend.delete_object(record.bucket_key)
             FilesService.mark_deleted(db, user_id, full_path)
             return {"success": True}
 
