@@ -36,6 +36,9 @@ class SkillExecutor:
         """
         self.skills_dir = skills_dir.resolve()
         self.workspace_base = workspace_base.resolve()
+        self.workspace_base.mkdir(parents=True, exist_ok=True)
+        (self.workspace_base / "notes").mkdir(parents=True, exist_ok=True)
+        (self.workspace_base / "documents").mkdir(parents=True, exist_ok=True)
 
         # Concurrency control
         self._semaphore = asyncio.Semaphore(settings.skill_max_concurrent)
