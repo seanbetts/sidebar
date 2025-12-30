@@ -223,6 +223,10 @@ Operations and safety
 	•	Single in-flight job per file_id (lock/lease)
 	•	Atomic finalization: no R2/DB writes until pipeline success
 	•	No original file retention by default
+	•	Queue uses PostgreSQL (no external queue)
+	•	Worker heartbeat + lease expiry for crash recovery
+	•	Retry with backoff per stage and overall attempt cap
+	•	User-facing error codes and messages per failure type
 
 Ingestion entry points
 
@@ -246,3 +250,25 @@ UI status and progress
 	•	Expose current stage (queued, processing, converting, extracting, ai_md, thumb, finalizing)
 	•	Provide pause/resume/cancel controls during processing
 	•	Disable delete until processing status is ready
+
+Queue and worker details
+
+	•	PostgreSQL-backed queue using file_processing_jobs table
+	•	Worker claims jobs via lease (e.g., status=processing, worker_id, lease_expires_at)
+	•	Heartbeat updates lease_expires_at at a fixed interval (e.g., every 15s)
+	•	If lease expires, job can be re-claimed by another worker
+	•	Paused jobs are not claimed; canceled jobs trigger cleanup and are terminal
+
+Retry and backoff
+
+	•	Retry policy per stage with exponential backoff (e.g., 3 attempts, 2s → 4s → 8s)
+	•	Reset stage attempts when moving to next stage
+	•	After max attempts, mark job failed and delete staged artifacts
+	•	Retryable errors vs non-retryable (e.g., unsupported file type is terminal)
+
+Error codes and user messaging
+
+	•	Define stable error codes (e.g., FILE_TOO_LARGE, UNSUPPORTED_TYPE, CONVERSION_TIMEOUT)
+	•	Store last_error_code + last_error_message on job record
+	•	Map codes to friendly UI messages (e.g., “We couldn’t process this file. Try a PDF.”)
+	•	Surface retry action when error is retryable
