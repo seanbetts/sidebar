@@ -1,4 +1,7 @@
+import { get } from 'svelte/store';
 import { conversationListStore } from '$lib/stores/conversations';
+
+const inFlight = new Set<string>();
 
 /**
  * Trigger title generation for a conversation.
@@ -7,6 +10,13 @@ import { conversationListStore } from '$lib/stores/conversations';
  * @throws Error when the API request fails.
  */
 export async function generateConversationTitle(conversationId: string): Promise<void> {
+  const state = get(conversationListStore);
+  const conversation = state.conversations.find(item => item.id === conversationId);
+  if (conversation?.titleGenerated || inFlight.has(conversationId)) {
+    return;
+  }
+
+  inFlight.add(conversationId);
   conversationListStore.setGeneratingTitle(conversationId, true);
 
   try {
@@ -21,11 +31,11 @@ export async function generateConversationTitle(conversationId: string): Promise
     }
 
     const data = await response.json();
-    console.log(`Title generated: ${data.title}${data.fallback ? ' (fallback)' : ''}`);
-
-    conversationListStore.updateConversationTitle(conversationId, data.title);
+    conversationListStore.updateConversationTitle(conversationId, data.title, !data.fallback);
   } catch (error) {
     console.error('Title generation error:', error);
     conversationListStore.setGeneratingTitle(conversationId, false);
+  } finally {
+    inFlight.delete(conversationId);
   }
 }
