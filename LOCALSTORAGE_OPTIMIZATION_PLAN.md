@@ -71,6 +71,10 @@ Use a **tiered caching approach**:
 // Tier 2: localStorage - fast, persistent
 // Tier 3: API - authoritative source
 const inFlightRequests = new Map<string, Promise<unknown>>();
+const memoryCache = new Map<string, unknown>();
+const touch = (key: string) => {
+  // Updates LRU ordering for memory cache.
+};
 
 async function loadData<T>(
   cacheKey: string,
@@ -88,13 +92,14 @@ async function loadData<T>(
 
   // 1. Check memory (Svelte store)
   if (memoryCache.has(cacheKey)) {
+    touch(cacheKey);
     return memoryCache.get(cacheKey);
   }
 
   // 2. Check localStorage
   const cached = getCachedData<T>(cacheKey, options);
   if (cached) {
-    memoryCache.set(cacheKey, cached);
+    remember(cacheKey, cached);
 
     // If stale-while-revalidate, fetch fresh in background
     if (options.staleWhileRevalidate && isCacheStale(cacheKey, options.ttl)) {
@@ -108,7 +113,7 @@ async function loadData<T>(
   const request = apiFetcher()
     .then((fresh) => {
       setCachedData(cacheKey, fresh, options);
-      memoryCache.set(cacheKey, fresh);
+      remember(cacheKey, fresh);
       return fresh;
     })
     .finally(() => {
@@ -135,6 +140,7 @@ interface CacheMetadata {
   data: unknown;
   timestamp: number;
   version: string;
+  globalVersion?: string;
   ttl: number;
 }
 
@@ -162,12 +168,19 @@ const invalidationMap = {
 - **Cross-tab invalidation:** Listen to `storage` events to sync cache updates between tabs.
 - **Sensitive data:** Avoid caching large or sensitive payloads (e.g., full message histories or attachments) in localStorage.
 - **Default behavior:** Use stale-while-revalidate for list endpoints, and opt out for detail views where freshness matters more.
+- **Storage availability:** Detect localStorage availability and fall back to API-only mode when unavailable.
+- **Feature flag:** `VITE_ENABLE_CACHE` disables caching globally for debugging and rollback.
+- **Global cache version:** Invalidate all caches on breaking changes.
+- **Revalidation debounce:** Debounce background revalidation to avoid rapid re-fetching.
+- **Memory cache cap:** Cap in-memory cache size (LRU) for long sessions.
 
 ### Implementation Notes
 
 - **`getActiveUserId()` source:** Prefer the authenticated user ID from the existing settings/session store used by the frontend. Fall back to the API `/api/settings` payload if needed, and only use a placeholder in tests.
 - **Cache key assembly:** `const userId = getActiveUserId(); const key = `${CACHE_PREFIX(userId)}${cacheKey}`;`
 - **Logout flow:** Ensure logout clears all per-user caches and resets any in-memory caches.
+- **Loaded flag race condition:** Do not rely solely on `loaded` booleans; check cache existence first to avoid unnecessary fetches after refresh.
+- **Migration:** Migrate existing `sidebar.*` weather/location keys to the new per-user cache namespace on first load.
 
 ---
 
@@ -198,6 +211,7 @@ interface CacheMetadata<T> {
   data: T;
   timestamp: number;
   version: string;
+  globalVersion?: string;
   ttl: number;
 }
 
@@ -205,10 +219,54 @@ interface CacheMetadata<T> {
  * Cache key prefix for namespacing
  */
 const CACHE_PREFIX = (userId: string) => `sideBar.cache.${userId}.`;
+const GLOBAL_CACHE_VERSION = '1';
+const MAX_MEMORY_ENTRIES = 100;
+const REVALIDATE_DEBOUNCE_MS = 5000;
+const CACHE_ENABLED = import.meta.env.VITE_ENABLE_CACHE !== 'false';
+
+function hasStorage(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const testKey = '__sidebar_cache_test__';
+    localStorage.setItem(testKey, '1');
+    localStorage.removeItem(testKey);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function getActiveUserId(): string {
   // Prefer current session user ID from auth context/store.
   return 'current-user-id';
+}
+
+const memoryCache = new Map<string, unknown>();
+const memoryKeys: string[] = [];
+const revalidateAt = new Map<string, number>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+function touch(key: string): void {
+  const index = memoryKeys.indexOf(key);
+  if (index >= 0) {
+    memoryKeys.splice(index, 1);
+  }
+  memoryKeys.push(key);
+}
+
+function remember(key: string, value: unknown): void {
+  if (memoryCache.has(key)) {
+    touch(key);
+    return;
+  }
+  memoryCache.set(key, value);
+  memoryKeys.push(key);
+  if (memoryKeys.length > MAX_MEMORY_ENTRIES) {
+    const oldest = memoryKeys.shift();
+    if (oldest) {
+      memoryCache.delete(oldest);
+    }
+  }
 }
 
 /**
@@ -224,7 +282,7 @@ export function getCachedData<T>(
   config: CacheConfig = {}
 ): T | null {
   try {
-    if (typeof window === 'undefined') return null;
+    if (!CACHE_ENABLED || !hasStorage()) return null;
     const ttl = config.ttl ?? DEFAULT_TTL;
     const version = config.version ?? '1.0';
     const raw = localStorage.getItem(CACHE_PREFIX(getActiveUserId()) + key);
@@ -234,6 +292,10 @@ export function getCachedData<T>(
     const age = Date.now() - metadata.timestamp;
 
     if (metadata.version && metadata.version !== version) {
+      localStorage.removeItem(CACHE_PREFIX(getActiveUserId()) + key);
+      return null;
+    }
+    if (metadata.globalVersion && metadata.globalVersion !== GLOBAL_CACHE_VERSION) {
       localStorage.removeItem(CACHE_PREFIX(getActiveUserId()) + key);
       return null;
     }
@@ -260,11 +322,12 @@ export function setCachedData<T>(
   config: CacheConfig = {}
 ): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (!CACHE_ENABLED || !hasStorage()) return;
     const metadata: CacheMetadata<T> = {
       data,
       timestamp: Date.now(),
       version: config.version || '1.0',
+      globalVersion: GLOBAL_CACHE_VERSION,
       ttl: config.ttl || DEFAULT_TTL
     };
 
@@ -289,7 +352,7 @@ export function isCacheStale(
   maxAge: number = DEFAULT_TTL
 ): boolean {
   try {
-    if (typeof window === 'undefined') return true;
+    if (!CACHE_ENABLED || !hasStorage()) return true;
     const raw = localStorage.getItem(CACHE_PREFIX(getActiveUserId()) + key);
     if (!raw) return true;
 
@@ -306,7 +369,7 @@ export function isCacheStale(
  * Invalidate specific cache key
  */
 export function invalidateCache(key: string): void {
-  if (typeof window === 'undefined') return;
+  if (!CACHE_ENABLED || !hasStorage()) return;
   localStorage.removeItem(CACHE_PREFIX(getActiveUserId()) + key);
 }
 
@@ -321,7 +384,7 @@ export function invalidateCaches(keys: string[]): void {
  * Clear all caches with optional pattern matching
  */
 export function clearCaches(pattern?: RegExp): void {
-  if (typeof window === 'undefined') return;
+  if (!CACHE_ENABLED || !hasStorage()) return;
   const keys = Object.keys(localStorage);
   keys.forEach(key => {
     if (key.startsWith(CACHE_PREFIX(getActiveUserId()))) {
@@ -336,7 +399,7 @@ export function clearCaches(pattern?: RegExp): void {
  * Clear oldest caches to free up space
  */
 function clearOldestCaches(): void {
-  if (typeof window === 'undefined') return;
+  if (!CACHE_ENABLED || !hasStorage()) return;
   const caches: Array<{ key: string; timestamp: number }> = [];
 
   Object.keys(localStorage).forEach(key => {
@@ -367,7 +430,7 @@ export function getCacheStats(): {
   totalSize: number;
   oldestAge: number;
 } {
-  if (typeof window === 'undefined') {
+  if (!CACHE_ENABLED || !hasStorage()) {
     return { count: 0, totalSize: 0, oldestAge: 0 };
   }
   let count = 0;
@@ -395,6 +458,55 @@ export function getCacheStats(): {
     oldestAge: Date.now() - oldestTimestamp
   };
 }
+
+/**
+ * Clear all in-memory caches.
+ */
+export function clearMemoryCache(keys?: string[]): void {
+  if (!keys) {
+    memoryCache.clear();
+    memoryKeys.length = 0;
+    return;
+  }
+  keys.forEach((key) => {
+    memoryCache.delete(key);
+  });
+  for (let i = memoryKeys.length - 1; i >= 0; i -= 1) {
+    if (keys.includes(memoryKeys[i])) {
+      memoryKeys.splice(i, 1);
+    }
+  }
+}
+
+/**
+ * Clear all in-flight requests.
+ */
+export function clearInFlight(): void {
+  inFlightRequests.clear();
+}
+
+/**
+ * Debounced background revalidation.
+ */
+export function revalidateInBackground<T>(
+  cacheKey: string,
+  apiFetcher: () => Promise<T>
+): void {
+  const now = Date.now();
+  const last = revalidateAt.get(cacheKey) || 0;
+  if (now - last < REVALIDATE_DEBOUNCE_MS) {
+    return;
+  }
+  revalidateAt.set(cacheKey, now);
+  apiFetcher()
+    .then((fresh) => {
+      setCachedData(cacheKey, fresh, { ttl: DEFAULT_TTL });
+      remember(cacheKey, fresh);
+    })
+    .catch(() => {
+      // Swallow background errors
+    });
+}
 ```
 
 #### 1.2 Cache Event System
@@ -410,14 +522,25 @@ type CacheEventType =
   | 'conversation.created'
   | 'conversation.deleted'
   | 'conversation.updated'
+  | 'conversation.title_updated'
+  | 'conversation.archived'
+  | 'conversation.unarchived'
   | 'website.saved'
   | 'website.deleted'
+  | 'website.renamed'
+  | 'website.pinned'
+  | 'website.archived'
   | 'note.created'
   | 'note.deleted'
   | 'note.updated'
   | 'note.moved'
+  | 'note.renamed'
+  | 'note.pinned'
+  | 'note.archived'
   | 'file.uploaded'
   | 'file.deleted'
+  | 'file.moved'
+  | 'file.renamed'
   | 'memory.created'
   | 'memory.updated'
   | 'memory.deleted'
@@ -430,14 +553,25 @@ const INVALIDATION_MAP: Record<CacheEventType, string[]> = {
   'conversation.created': ['conversations.list'],
   'conversation.deleted': ['conversations.list'],
   'conversation.updated': ['conversations.list'],
+  'conversation.title_updated': ['conversations.list'],
+  'conversation.archived': ['conversations.list'],
+  'conversation.unarchived': ['conversations.list'],
   'website.saved': ['websites.list'],
   'website.deleted': ['websites.list'],
+  'website.renamed': ['websites.list'],
+  'website.pinned': ['websites.list'],
+  'website.archived': ['websites.list'],
   'note.created': ['notes.tree', 'files.notes'],
   'note.deleted': ['notes.tree', 'files.notes'],
   'note.updated': ['notes.tree', 'files.notes'],
   'note.moved': ['notes.tree', 'files.notes'],
+  'note.renamed': ['notes.tree', 'files.notes'],
+  'note.pinned': ['notes.tree', 'files.notes'],
+  'note.archived': ['notes.tree', 'files.notes'],
   'file.uploaded': ['files.tree', 'files.workspace'],
   'file.deleted': ['files.tree', 'files.workspace'],
+  'file.moved': ['files.tree', 'files.workspace'],
+  'file.renamed': ['files.tree', 'files.workspace'],
   'memory.created': ['memories.list'],
   'memory.updated': ['memories.list'],
   'memory.deleted': ['memories.list'],
@@ -452,10 +586,17 @@ export function dispatchCacheEvent(eventType: CacheEventType): void {
 
   if (cacheKeys.includes('*')) {
     // Clear all caches
-    import('./cache').then(({ clearCaches }) => clearCaches());
+    import('./cache').then(({ clearCaches, clearMemoryCache, clearInFlight }) => {
+      clearCaches();
+      clearMemoryCache();
+      clearInFlight();
+    });
   } else {
     // Invalidate specific caches
-    import('./cache').then(({ invalidateCaches }) => invalidateCaches(cacheKeys));
+    import('./cache').then(({ invalidateCaches, clearMemoryCache }) => {
+      invalidateCaches(cacheKeys);
+      clearMemoryCache(cacheKeys);
+    });
   }
 
   // Also dispatch custom event for listeners
@@ -743,13 +884,14 @@ import type { Website } from '$lib/types';
 
 const CACHE_KEY = 'websites.list';
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+const CACHE_VERSION = '1.0';
 
 async load(forceRefresh = false) {
   if (this.loaded && !forceRefresh) return;
 
   // Try cache
   if (!forceRefresh) {
-    const cached = getCachedData<Website[]>(CACHE_KEY, CACHE_TTL);
+    const cached = getCachedData<Website[]>(CACHE_KEY, { ttl: CACHE_TTL, version: CACHE_VERSION });
     if (cached) {
       set({ items: cached, loaded: true, active: get(this).active });
 
@@ -870,12 +1012,13 @@ import { getCachedData, setCachedData, isCacheStale } from '$lib/utils/cache';
 const NOTES_TREE_CACHE_KEY = 'notes.tree';
 const WORKSPACE_TREE_CACHE_KEY = 'files.tree';
 const TREE_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const TREE_CACHE_VERSION = '1.0';
 
 async load(section: 'notes' | 'workspace', forceRefresh = false) {
   const cacheKey = section === 'notes' ? NOTES_TREE_CACHE_KEY : WORKSPACE_TREE_CACHE_KEY;
 
   if (!forceRefresh) {
-    const cached = getCachedData<FileNode[]>(cacheKey, TREE_CACHE_TTL);
+    const cached = getCachedData<FileNode[]>(cacheKey, { ttl: TREE_CACHE_TTL, version: TREE_CACHE_VERSION });
     if (cached) {
       update(s => {
         s.trees[section] = { children: cached, loaded: true };
@@ -935,6 +1078,7 @@ Improve weather caching to use stale data while fetching fresh.
 
 ```typescript
 async function fetchWeather(coords: GeolocationCoordinates) {
+  migrateLegacyWeatherCache();
   const cacheKey = 'sidebar.weather';
   const cacheTsKey = 'sidebar.weatherTs';
   const WEATHER_TTL = 30 * 60 * 1000; // 30 minutes
@@ -977,6 +1121,55 @@ async function revalidateWeather(coords: GeolocationCoordinates) {
 
   return data;
 }
+
+function migrateLegacyWeatherCache() {
+  try {
+    const legacyWeather = localStorage.getItem('sidebar.weather');
+    const legacyWeatherTs = localStorage.getItem('sidebar.weatherTs');
+    if (!legacyWeather || !legacyWeatherTs) return;
+
+    const payload = JSON.parse(legacyWeather);
+    setCachedData('weather.snapshot', payload, {
+      ttl: 30 * 60 * 1000,
+      version: '1.0'
+    });
+    localStorage.removeItem('sidebar.weather');
+    localStorage.removeItem('sidebar.weatherTs');
+
+    const legacyCoords = localStorage.getItem('sidebar.coords');
+    const legacyCoordsTs = localStorage.getItem('sidebar.coordsTs');
+    if (legacyCoords && legacyCoordsTs) {
+      setCachedData('location.coords', JSON.parse(legacyCoords), {
+        ttl: 24 * 60 * 60 * 1000,
+        version: '1.0'
+      });
+      localStorage.removeItem('sidebar.coords');
+      localStorage.removeItem('sidebar.coordsTs');
+    }
+
+    const legacyLocation = localStorage.getItem('sidebar.liveLocation');
+    const legacyLocationTs = localStorage.getItem('sidebar.liveLocationTs');
+    if (legacyLocation && legacyLocationTs) {
+      setCachedData('location.live', JSON.parse(legacyLocation), {
+        ttl: 30 * 60 * 1000,
+        version: '1.0'
+      });
+      localStorage.removeItem('sidebar.liveLocation');
+      localStorage.removeItem('sidebar.liveLocationTs');
+    }
+
+    const legacyLevels = localStorage.getItem('sidebar.liveLocationLevels');
+    if (legacyLevels) {
+      setCachedData('location.levels', JSON.parse(legacyLevels), {
+        ttl: 30 * 60 * 1000,
+        version: '1.0'
+      });
+      localStorage.removeItem('sidebar.liveLocationLevels');
+    }
+  } catch (error) {
+    console.warn('Legacy weather cache migration failed:', error);
+  }
+}
 ```
 
 ---
@@ -990,7 +1183,7 @@ Add cleanup on logout and settings.
 **File**: `/frontend/src/lib/components/auth/LogoutButton.svelte` (or wherever logout is handled)
 
 ```typescript
-import { clearCaches } from '$lib/utils/cache';
+import { clearCaches, clearMemoryCache, clearInFlight } from '$lib/utils/cache';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
 async function handleLogout() {
@@ -999,6 +1192,8 @@ async function handleLogout() {
 
   // Clear all caches
   clearCaches();
+  clearMemoryCache();
+  clearInFlight();
 
   // Dispatch logout event
   dispatchCacheEvent('user.logout');
