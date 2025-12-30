@@ -10,6 +10,7 @@
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
   import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
@@ -94,6 +95,7 @@
     }
     await websitesStore.load();
     await websitesStore.loadById(active.id);
+    dispatchCacheEvent('website.renamed');
     isRenameDialogOpen = false;
   }
 
@@ -111,6 +113,7 @@
     }
     await websitesStore.load();
     await websitesStore.loadById(active.id);
+    dispatchCacheEvent('website.pinned');
   }
 
   async function handleArchive() {
@@ -126,6 +129,7 @@
       return;
     }
     await websitesStore.load();
+    dispatchCacheEvent('website.archived');
     if (active.archived) {
       await websitesStore.loadById(active.id);
     } else {
@@ -172,6 +176,7 @@
     }
     await websitesStore.load();
     websitesStore.clearActive();
+    dispatchCacheEvent('website.deleted');
     isDeleteDialogOpen = false;
   }
 

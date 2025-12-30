@@ -9,6 +9,7 @@
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
   import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
   const ARCHIVED_FLAG = 'archived';
 
@@ -107,6 +108,7 @@
       return;
     }
     await websitesStore.load(true);
+    dispatchCacheEvent('website.renamed');
     isRenameDialogOpen = false;
   }
 
@@ -121,6 +123,7 @@
       return;
     }
     await websitesStore.load(true);
+    dispatchCacheEvent('website.pinned');
     closeMenu();
   }
 
@@ -135,6 +138,7 @@
       return;
     }
     await websitesStore.load(true);
+    dispatchCacheEvent('website.archived');
     closeMenu();
   }
 
@@ -164,6 +168,7 @@
       return;
     }
     await websitesStore.load(true);
+    dispatchCacheEvent('website.deleted');
     isDeleteDialogOpen = false;
     selectedSite = null;
   }

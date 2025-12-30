@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import type { FileNode } from '$lib/types/file';
 import type { Writable } from 'svelte/store';
+import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
 const NOTE_ARCHIVE_NAME = 'Archive';
 
@@ -16,7 +17,7 @@ type FileActionsContext = {
   getDisplayName: () => string;
   editorStore: Writable<any>;
   filesStore: Writable<any> & {
-    load: (tree: string) => Promise<void>;
+    load: (tree: string, force?: boolean) => Promise<void>;
     removeNode: (tree: string, path: string) => void;
   };
 };
@@ -117,7 +118,12 @@ export function useFileActions(ctx: FileActionsContext) {
           ctx.editorStore.updateNoteName(newName);
         }
 
-        await ctx.filesStore.load(basePath);
+        await ctx.filesStore.load(basePath, true);
+        if (basePath === 'notes') {
+          dispatchCacheEvent('note.renamed');
+        } else {
+          dispatchCacheEvent('file.renamed');
+        }
       } catch (error) {
         console.error('Failed to rename:', error);
         ctx.setEditedName(node.name);
@@ -146,7 +152,8 @@ export function useFileActions(ctx: FileActionsContext) {
         body: JSON.stringify({ pinned })
       });
       if (!response.ok) throw new Error('Failed to update pin');
-      await ctx.filesStore.load(ctx.getBasePath());
+      await ctx.filesStore.load(ctx.getBasePath(), true);
+      dispatchCacheEvent('note.pinned');
     } catch (error) {
       console.error('Failed to pin note:', error);
     }
@@ -162,7 +169,8 @@ export function useFileActions(ctx: FileActionsContext) {
         body: JSON.stringify({ archived: true })
       });
       if (!response.ok) throw new Error('Failed to archive note');
-      await ctx.filesStore.load(ctx.getBasePath());
+      await ctx.filesStore.load(ctx.getBasePath(), true);
+      dispatchCacheEvent('note.archived');
     } catch (error) {
       console.error('Failed to archive note:', error);
     }
@@ -188,7 +196,12 @@ export function useFileActions(ctx: FileActionsContext) {
             })
           });
       if (!response.ok) throw new Error('Failed to move file');
-      await ctx.filesStore.load(ctx.getBasePath());
+      await ctx.filesStore.load(ctx.getBasePath(), true);
+      if (ctx.getBasePath() === 'notes') {
+        dispatchCacheEvent('note.moved');
+      } else {
+        dispatchCacheEvent('file.moved');
+      }
     } catch (error) {
       console.error('Failed to move file:', error);
     }
@@ -217,7 +230,12 @@ export function useFileActions(ctx: FileActionsContext) {
             })
           });
       if (!response.ok) throw new Error('Failed to move folder');
-      await ctx.filesStore.load(ctx.getBasePath());
+      await ctx.filesStore.load(ctx.getBasePath(), true);
+      if (ctx.getBasePath() === 'notes') {
+        dispatchCacheEvent('note.moved');
+      } else {
+        dispatchCacheEvent('file.moved');
+      }
     } catch (error) {
       console.error('Failed to move folder:', error);
     }
@@ -278,6 +296,11 @@ export function useFileActions(ctx: FileActionsContext) {
       ctx.filesStore.removeNode(ctx.getBasePath(), node.path);
       if (ctx.getBasePath() !== 'notes') {
         await ctx.filesStore.load(ctx.getBasePath(), true);
+      }
+      if (ctx.getBasePath() === 'notes') {
+        dispatchCacheEvent('note.deleted');
+      } else {
+        dispatchCacheEvent('file.deleted');
       }
       ctx.setIsDeleteDialogOpen(false);
     } catch (error) {

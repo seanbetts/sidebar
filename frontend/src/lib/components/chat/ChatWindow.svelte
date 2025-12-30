@@ -16,6 +16,8 @@
 	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { memoriesStore } from '$lib/stores/memories';
 	import { MessageSquare, Plus, X } from 'lucide-svelte';
+	import { getCachedData } from '$lib/utils/cache';
+	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
 	let sseClient = new SSEClient();
 
@@ -100,28 +102,18 @@
 				};
 			}
 
-			const currentLocation =
-				typeof window !== 'undefined' ? localStorage.getItem('sidebar.liveLocation') || '' : '';
-			let currentLocationLevels: Record<string, string> | undefined;
-			const rawLevels =
-				typeof window !== 'undefined' ? localStorage.getItem('sidebar.liveLocationLevels') : null;
-			if (rawLevels) {
-				try {
-					currentLocationLevels = JSON.parse(rawLevels);
-				} catch (error) {
-					console.error('Failed to parse live location levels:', error);
-				}
-			}
-			let currentWeather: Record<string, unknown> | undefined;
-			const rawWeather =
-				typeof window !== 'undefined' ? localStorage.getItem('sidebar.weather') : null;
-			if (rawWeather) {
-				try {
-					currentWeather = JSON.parse(rawWeather);
-				} catch (error) {
-					console.error('Failed to parse weather cache:', error);
-				}
-			}
+			const currentLocation = getCachedData<string>('location.live', {
+				ttl: 30 * 60 * 1000,
+				version: '1.0'
+			}) || '';
+			const currentLocationLevels = getCachedData<Record<string, string>>('location.levels', {
+				ttl: 30 * 60 * 1000,
+				version: '1.0'
+			});
+			const currentWeather = getCachedData<Record<string, unknown>>('weather.snapshot', {
+				ttl: 30 * 60 * 1000,
+				version: '1.0'
+			});
 			const currentTimezone =
 				typeof window !== 'undefined'
 					? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -173,14 +165,16 @@
 					},
 
 					onNoteCreated: async (data) => {
-						await filesStore.load('notes');
+						dispatchCacheEvent('note.created');
+						await filesStore.load('notes', true);
 						if (data?.id) {
 							await editorStore.loadNote('notes', data.id, { source: 'ai' });
 						}
 					},
 
 					onNoteUpdated: async (data) => {
-						await filesStore.load('notes');
+						dispatchCacheEvent('note.updated');
+						await filesStore.load('notes', true);
 						if (data?.id) {
 							const editorState = get(editorStore);
 							if (editorState.currentNoteId === data.id) {
@@ -190,7 +184,8 @@
 					},
 
 					onWebsiteSaved: async () => {
-						await websitesStore.load();
+						dispatchCacheEvent('website.saved');
+						await websitesStore.load(true);
 					},
 
 					onNoteDeleted: async (data) => {
@@ -198,11 +193,13 @@
 						if (data?.id && editorState.currentNoteId === data.id) {
 							editorStore.reset();
 						}
-						await filesStore.load('notes');
+						dispatchCacheEvent('note.deleted');
+						await filesStore.load('notes', true);
 					},
 
 					onWebsiteDeleted: async () => {
-						await websitesStore.load();
+						dispatchCacheEvent('website.deleted');
+						await websitesStore.load(true);
 					},
 
 					onThemeSet: (data) => {
@@ -227,19 +224,23 @@
 					},
 
 					onMemoryCreated: async () => {
+						dispatchCacheEvent('memory.created');
 						await memoriesStore.load();
 					},
 
 					onMemoryUpdated: async () => {
+						dispatchCacheEvent('memory.updated');
 						await memoriesStore.load();
 					},
 
 					onMemoryDeleted: async () => {
+						dispatchCacheEvent('memory.deleted');
 						await memoriesStore.load();
 					},
 
 					onComplete: async () => {
 						await chatStore.finishStreaming(assistantMessageId);
+						dispatchCacheEvent('conversation.updated');
 					},
 
 					onError: (error) => {

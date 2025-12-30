@@ -1,5 +1,6 @@
 import { get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
+import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
 type NoteNode = { pinned?: boolean } | null;
 
@@ -113,8 +114,9 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to rename note');
       return;
     }
-    await ctx.filesStore.load('notes');
+    await ctx.filesStore.load('notes', true);
     await ctx.editorStore.loadNote('notes', currentNoteId, { source: 'user' });
+    dispatchCacheEvent('note.renamed');
     ctx.setIsRenameDialogOpen(false);
   };
 
@@ -130,7 +132,8 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to move note');
       return;
     }
-    await ctx.filesStore.load('notes');
+    await ctx.filesStore.load('notes', true);
+    dispatchCacheEvent('note.moved');
   };
 
   const handleArchive = async () => {
@@ -145,8 +148,9 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to archive note');
       return;
     }
-    await ctx.filesStore.load('notes');
+    await ctx.filesStore.load('notes', true);
     ctx.editorStore.reset();
+    dispatchCacheEvent('note.archived');
   };
 
   const handlePinToggle = async () => {
@@ -163,7 +167,8 @@ export function useEditorActions(ctx: EditorActionsContext) {
       console.error('Failed to update pin');
       return;
     }
-    await ctx.filesStore.load('notes');
+    await ctx.filesStore.load('notes', true);
+    dispatchCacheEvent('note.pinned');
   };
 
   const handleDownload = async () => {
@@ -209,6 +214,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
     }
     ctx.filesStore.removeNode?.('notes', currentNoteId);
     await ctx.filesStore.load('notes', true);
+    dispatchCacheEvent('note.deleted');
     ctx.editorStore.reset();
     ctx.setIsDeleteDialogOpen(false);
   };
