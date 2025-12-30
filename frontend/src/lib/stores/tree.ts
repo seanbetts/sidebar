@@ -305,6 +305,87 @@ function updateExpandedPathsForFolder(
   return updated;
 }
 
+function updateWorkspaceNodePaths(node: FileNode, oldPrefix: string, newPrefix: string, renameTo?: string): FileNode {
+  const matches = node.path === oldPrefix || node.path.startsWith(`${oldPrefix}/`);
+  const updatedPath = matches ? node.path.replace(oldPrefix, newPrefix) : node.path;
+  const updatedName = matches && renameTo && node.path === oldPrefix ? renameTo : node.name;
+  const children = node.children
+    ? node.children.map((child) => updateWorkspaceNodePaths(child, oldPrefix, newPrefix))
+    : node.children;
+
+  if (updatedPath === node.path && updatedName === node.name && children === node.children) {
+    return node;
+  }
+
+  return {
+    ...node,
+    path: updatedPath,
+    name: updatedName,
+    children
+  };
+}
+
+function insertWorkspaceNode(nodes: FileNode[], nodeToInsert: FileNode, parentPath: string): FileNode[] {
+  const parts = parentPath.split('/').filter(Boolean);
+
+  const insertIntoList = (items: FileNode[]) => {
+    const filtered = items.filter((item) => item.path !== nodeToInsert.path);
+    return sortNodes([...filtered, nodeToInsert]);
+  };
+
+  const insertRecursive = (items: FileNode[], remaining: string[], prefix: string): FileNode[] => {
+    if (remaining.length === 0) {
+      return insertIntoList(items);
+    }
+
+    const [part, ...rest] = remaining;
+    const currentPath = prefix ? `${prefix}/${part}` : part;
+    let found = false;
+
+    const nextItems = items.map((item) => {
+      if (item.type !== 'directory' || item.path !== currentPath) {
+        return item;
+      }
+      found = true;
+      const children = item.children || [];
+      const updatedChildren = insertRecursive(children, rest, currentPath);
+      return { ...item, children: updatedChildren };
+    });
+
+    if (!found) {
+      const newFolder: FileNode = {
+        name: part,
+        path: currentPath,
+        type: 'directory',
+        children: [],
+        expanded: false
+      };
+      newFolder.children = insertRecursive([], rest, currentPath);
+      return sortNodes([...nextItems, newFolder]);
+    }
+
+    return sortNodes(nextItems);
+  };
+
+  return parts.length === 0 ? insertIntoList(nodes) : insertRecursive(nodes, parts, '');
+}
+
+function updateExpandedPathsForWorkspaceFolder(
+  expandedPaths: Set<string>,
+  oldPath: string,
+  newPath: string
+): Set<string> {
+  const updated = new Set<string>();
+  expandedPaths.forEach((value) => {
+    if (value === oldPath || value.startsWith(`${oldPath}/`)) {
+      updated.add(value.replace(oldPath, newPath));
+    } else {
+      updated.add(value);
+    }
+  });
+  return updated;
+}
+
 function createTreeStore() {
   const { subscribe, set, update } = writable<FileTreeState>({
     trees: {}
@@ -843,6 +924,103 @@ function createTreeStore() {
           version: TREE_CACHE_VERSION
         });
         setCachedData(getExpandedCacheKey('notes'), Array.from(updatedTree.expandedPaths), {
+          ttl: EXPANDED_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    renameWorkspaceNode(basePath: string, path: string, newName: string) {
+      if (basePath === 'notes') return;
+      update(state => {
+        const tree = state.trees[basePath];
+        if (!tree?.children) return state;
+        const searchQuery = tree.searchQuery || '';
+        if (searchQuery) return state;
+
+        const normalizedPath = path.replace(/^\/+|\/+$/g, '');
+        if (!normalizedPath) return state;
+        const parentPath = normalizedPath.split('/').slice(0, -1).join('/');
+        const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+
+        const removal = removeNodeFromTree(tree.children, normalizedPath);
+        if (!removal.removed) return state;
+
+        const updatedNode = removal.removed.type === 'directory'
+          ? updateWorkspaceNodePaths(removal.removed, normalizedPath, newPath, newName)
+          : { ...removal.removed, name: newName, path: newPath };
+        const updatedChildren = insertWorkspaceNode(removal.nodes, updatedNode, parentPath);
+        const updatedExpandedPaths = removal.removed.type === 'directory'
+          ? updateExpandedPathsForWorkspaceFolder(tree.expandedPaths, normalizedPath, newPath)
+          : tree.expandedPaths;
+
+        return {
+          trees: {
+            ...state.trees,
+            [basePath]: {
+              ...tree,
+              children: updatedChildren,
+              expandedPaths: updatedExpandedPaths
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees[basePath];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey(basePath), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+        setCachedData(getExpandedCacheKey(basePath), Array.from(updatedTree.expandedPaths), {
+          ttl: EXPANDED_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    moveWorkspaceNode(basePath: string, path: string, destination: string) {
+      if (basePath === 'notes') return;
+      update(state => {
+        const tree = state.trees[basePath];
+        if (!tree?.children) return state;
+        const searchQuery = tree.searchQuery || '';
+        if (searchQuery) return state;
+
+        const normalizedPath = path.replace(/^\/+|\/+$/g, '');
+        if (!normalizedPath) return state;
+        const normalizedDestination = destination.replace(/^\/+|\/+$/g, '');
+        const nodeName = normalizedPath.split('/').slice(-1)[0];
+        const newPath = normalizedDestination ? `${normalizedDestination}/${nodeName}` : nodeName;
+
+        const removal = removeNodeFromTree(tree.children, normalizedPath);
+        if (!removal.removed) return state;
+
+        const updatedNode = removal.removed.type === 'directory'
+          ? updateWorkspaceNodePaths(removal.removed, normalizedPath, newPath)
+          : { ...removal.removed, path: newPath };
+        const updatedChildren = insertWorkspaceNode(removal.nodes, updatedNode, normalizedDestination);
+        const updatedExpandedPaths = removal.removed.type === 'directory'
+          ? updateExpandedPathsForWorkspaceFolder(tree.expandedPaths, normalizedPath, newPath)
+          : tree.expandedPaths;
+
+        return {
+          trees: {
+            ...state.trees,
+            [basePath]: {
+              ...tree,
+              children: updatedChildren,
+              expandedPaths: updatedExpandedPaths
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees[basePath];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey(basePath), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+        setCachedData(getExpandedCacheKey(basePath), Array.from(updatedTree.expandedPaths), {
           ttl: EXPANDED_TTL,
           version: TREE_CACHE_VERSION
         });

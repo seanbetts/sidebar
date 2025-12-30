@@ -25,6 +25,8 @@ type FileActionsContext = {
     archiveNoteNode?: (noteId: string, archived: boolean) => void;
     renameFolderNode?: (oldPath: string, newName: string) => void;
     moveFolderNode?: (oldPath: string, newParent: string) => void;
+    renameWorkspaceNode?: (basePath: string, path: string, newName: string) => void;
+    moveWorkspaceNode?: (basePath: string, path: string, destination: string) => void;
   };
 };
 
@@ -131,7 +133,7 @@ export function useFileActions(ctx: FileActionsContext) {
             ctx.treeStore.renameNoteNode?.(node.path, newName);
           }
         } else {
-          await ctx.treeStore.load(basePath, true);
+          ctx.treeStore.renameWorkspaceNode?.(basePath, node.path, newName);
         }
         if (basePath === 'notes') {
           dispatchCacheEvent('note.renamed');
@@ -231,7 +233,7 @@ export function useFileActions(ctx: FileActionsContext) {
         ctx.treeStore.moveNoteNode?.(node.path, folder);
         dispatchCacheEvent('note.moved');
       } else {
-        await ctx.treeStore.load(ctx.getBasePath(), true);
+        ctx.treeStore.moveWorkspaceNode?.(ctx.getBasePath(), node.path, folder);
         dispatchCacheEvent('file.moved');
       }
     } catch (error) {
@@ -266,7 +268,7 @@ export function useFileActions(ctx: FileActionsContext) {
         ctx.treeStore.moveFolderNode?.(toFolderPath(node.path), newParent);
         dispatchCacheEvent('note.moved');
       } else {
-        await ctx.treeStore.load(ctx.getBasePath(), true);
+        ctx.treeStore.moveWorkspaceNode?.(ctx.getBasePath(), node.path, newParent);
         dispatchCacheEvent('file.moved');
       }
     } catch (error) {
@@ -327,9 +329,6 @@ export function useFileActions(ctx: FileActionsContext) {
       }
 
       ctx.treeStore.removeNode(ctx.getBasePath(), node.path);
-      if (ctx.getBasePath() !== 'notes') {
-        await ctx.treeStore.load(ctx.getBasePath(), true);
-      }
       if (ctx.getBasePath() === 'notes') {
         dispatchCacheEvent('note.deleted');
       } else {
