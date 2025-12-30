@@ -47,6 +47,11 @@ def _safe_cleanup(path: Path) -> None:
         shutil.rmtree(path.parent, ignore_errors=True)
 
 
+def _filter_user_derivatives(derivatives: list[dict], user_id: str) -> list[dict]:
+    prefix = f"{user_id}/"
+    return [item for item in derivatives if item.get("storage_key", "").startswith(prefix)]
+
+
 def _recommended_viewer(derivatives: list[dict]) -> str | None:
     kinds = {item["kind"] for item in derivatives}
     if "viewer_pdf" in kinds:
@@ -141,6 +146,7 @@ async def list_ingestions(
             }
             for item in derivatives
         ]
+        derivative_payload = _filter_user_derivatives(derivative_payload, record.user_id)
         items.append(
             {
                 "file": {
@@ -198,6 +204,7 @@ async def get_file_meta(
         }
         for item in FileIngestionService.list_derivatives(db, file_uuid)
     ]
+    derivatives = _filter_user_derivatives(derivatives, record.user_id)
 
     return {
         "file": {
