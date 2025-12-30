@@ -8,6 +8,7 @@
     PinOff,
     FolderInput,
     Archive,
+    ArchiveRestore,
     Download
   } from 'lucide-svelte';
   import type { FileNode } from '$lib/types/file';
@@ -152,7 +153,7 @@
         </button>
         {#if node.archived}
           <button class="menu-item" on:click={handleUnarchive}>
-            <Archive size={16} />
+            <ArchiveRestore size={16} />
             <span>Unarchive</span>
           </button>
         {:else}
