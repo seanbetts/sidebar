@@ -65,7 +65,7 @@
           options,
           isArchive
         );
-        if (filteredChildren.length === 0) {
+        if (filteredChildren.length === 0 && !node.folderMarker) {
           continue;
         }
         results.push({ ...node, children: filteredChildren });
