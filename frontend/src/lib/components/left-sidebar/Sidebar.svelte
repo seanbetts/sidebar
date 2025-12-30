@@ -21,6 +21,7 @@
   import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
   import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+  import { Button } from '$lib/components/ui/button';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -366,22 +367,26 @@
           onClear={() => filesStore.load('notes', true)}
         >
           <svelte:fragment slot="actions">
-            <button
+            <Button
+              size="icon"
+              variant="ghost"
               class="panel-action"
-              on:click={handleNewFolder}
+              onclick={handleNewFolder}
               aria-label="New folder"
               title="New folder"
             >
               <Folder size={16} />
-            </button>
-            <button
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
               class="panel-action"
-              on:click={handleNewNote}
+              onclick={handleNewNote}
               aria-label="New note"
               title="New note"
             >
               <Plus size={16} />
-            </button>
+            </Button>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="notes-content">
@@ -398,14 +403,16 @@
           onClear={() => websitesStore.load(true)}
         >
           <svelte:fragment slot="actions">
-            <button
+            <Button
+              size="icon"
+              variant="ghost"
               class="panel-action"
-              on:click={handleNewWebsite}
+              onclick={handleNewWebsite}
               aria-label="Save website"
               title="Save website"
             >
               <Plus size={16} />
-            </button>
+            </Button>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="files-content">
@@ -422,14 +429,16 @@
           onClear={() => filesStore.load('.', true)}
         >
           <svelte:fragment slot="actions">
-            <button
+            <Button
+              size="icon"
+              variant="ghost"
               class="panel-action"
-              on:click={handleNewWorkspaceFolder}
+              onclick={handleNewWorkspaceFolder}
               aria-label="New folder"
               title="New folder"
             >
               <Folder size={16} />
-            </button>
+            </Button>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="files-content">
