@@ -70,7 +70,6 @@ async def create_conversation(
     )
     db.add(conversation)
     db.commit()
-    db.refresh(conversation)
 
     return ConversationResponse(
         id=str(conversation.id),

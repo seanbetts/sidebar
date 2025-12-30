@@ -272,6 +272,8 @@ function createChatStore() {
 					if (messageCount === 2) {
 						const firstMessage = state.messages[0]?.content.substring(0, 100);
 
+						conversationListStore.setGeneratingTitle(state.conversationId, true);
+
 						// Update conversation metadata (message count and preview)
 						conversationListStore.updateConversationMetadata(state.conversationId, {
 							messageCount,

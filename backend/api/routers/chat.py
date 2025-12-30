@@ -1,6 +1,10 @@
 """Chat router with SSE streaming support."""
+import asyncio
+import hashlib
 import json
+import logging
 import os
+import time
 from datetime import datetime, timezone
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -19,6 +23,11 @@ from api.models.conversation import Conversation
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+logger = logging.getLogger(__name__)
+
+TITLE_CACHE_TTL_SECONDS = 60 * 60
+TITLE_CACHE_MAX_ENTRIES = 512
+TITLE_CACHE: dict[str, dict[str, object]] = {}
 
 
 def _build_history(messages, user_message_id, latest_message):
@@ -74,10 +83,80 @@ def _resolve_enabled_skills(settings_record):
     return [skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids]
 
 
- 
+def _build_title_cache_key(user_msg: str, assistant_msg: str) -> str:
+    combined = f"{user_msg}\n{assistant_msg}"
+    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
 
 
+def _get_cached_title(cache_key: str) -> dict[str, object] | None:
+    now = time.time()
+    entry = TITLE_CACHE.get(cache_key)
+    if not entry:
+        return None
+    if now - entry["timestamp"] > TITLE_CACHE_TTL_SECONDS:
+        TITLE_CACHE.pop(cache_key, None)
+        return None
+    return entry
 
+
+def _set_cached_title(cache_key: str, title: str) -> None:
+    if len(TITLE_CACHE) >= TITLE_CACHE_MAX_ENTRIES:
+        oldest_key = min(
+            TITLE_CACHE.items(),
+            key=lambda item: item[1]["timestamp"]
+        )[0]
+        TITLE_CACHE.pop(oldest_key, None)
+    TITLE_CACHE[cache_key] = {
+        "title": title,
+        "timestamp": time.time()
+    }
+
+
+def _sanitize_title(raw_title: str) -> str:
+    title = (raw_title or "").strip()
+    if not title:
+        raise ValueError("Empty title returned")
+    if title.lower().startswith("title:"):
+        title = title.split(":", 1)[1].strip()
+    title = title.strip('"\'').strip()
+    if "\n" in title:
+        title = title.splitlines()[0].strip()
+    title = " ".join(title.split())
+
+    words = title.split()
+    if len(words) > 5:
+        title = " ".join(words[:5])
+
+    if not title:
+        raise ValueError("Invalid title after sanitization")
+    if len(title) > 100:
+        title = title[:100].rstrip()
+    return title
+
+
+def _is_retryable_error(error: Exception) -> bool:
+    if isinstance(error, ValueError):
+        return False
+    error_name = error.__class__.__name__
+    if error_name in {"AuthenticationError", "PermissionDenied", "InvalidArgument"}:
+        return False
+    return True
+
+
+def _extract_response_text(response) -> str:
+    text = getattr(response, "text", None)
+    if text:
+        return text
+
+    candidates = getattr(response, "candidates", None) or []
+    for candidate in candidates:
+        content = getattr(candidate, "content", None)
+        parts = getattr(content, "parts", None) or []
+        for part in parts:
+            part_text = getattr(part, "text", None)
+            if part_text:
+                return part_text
+    return ""
 
 @router.post("/stream")
 async def stream_chat(
@@ -243,20 +322,16 @@ async def generate_title(
         raise HTTPException(status_code=400, detail="conversation_id required")
 
     # Get conversation and verify ownership
-    print(f"DEBUG: Looking for conversation_id={conversation_id}, user_id={user_id}")
     conversation = db.query(Conversation).filter(
         Conversation.id == conversation_id,
         Conversation.user_id == user_id
     ).first()
 
     if not conversation:
-        # Check if conversation exists at all
-        any_conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
-        if any_conv:
-            print(f"DEBUG: Conversation exists but belongs to user_id={any_conv.user_id}")
-        else:
-            print(f"DEBUG: Conversation {conversation_id} does not exist in database")
         raise HTTPException(status_code=404, detail="Conversation not found")
+
+    if conversation.title_generated and conversation.title:
+        return {"title": conversation.title, "fallback": False}
 
     # Get first user and assistant messages from JSONB array
     messages = conversation.messages
@@ -266,6 +341,14 @@ async def generate_title(
 
     user_msg = messages[0].get('content', '')
     assistant_msg = messages[1].get('content', '')
+    cache_key = _build_title_cache_key(user_msg, assistant_msg)
+    cached = _get_cached_title(cache_key)
+    if cached:
+        cached_title = cached["title"]
+        conversation.title = cached_title
+        conversation.title_generated = True
+        db.commit()
+        return {"title": cached_title, "fallback": False}
 
     try:
         # Initialize Gemini client
@@ -275,27 +358,54 @@ async def generate_title(
 
         client = genai.Client(api_key=api_key)
 
-        # Generate title with Gemini Flash
-        response = client.models.generate_content(
-            model='gemini-3-flash-preview',
-            contents=f"""Based on this conversation exchange, generate a concise, descriptive title of 3-5 words that captures the main topic.
-
-User: {user_msg[:200]}
-Assistant: {assistant_msg[:200]}
-
-Title (3-5 words only, no quotes):""",
-            config=types.GenerateContentConfig(
-                temperature=0.3,
-                max_output_tokens=20
-            )
+        prompt = (
+            "Generate ONLY a 3-5 word title for this conversation.\n"
+            "Output the title directly without quotes, punctuation, or prefixes.\n\n"
+            f"User: {user_msg[:200]}\n"
+            f"Assistant: {assistant_msg[:200]}\n\n"
+            "Title:"
         )
 
-        title = response.text.strip()
+        response = None
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model='gemini-3-flash-preview',
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        temperature=0,
+                        max_output_tokens=20,
+                        response_mime_type="text/plain",
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                            disable=True
+                        ),
+                        thinking_config=types.ThinkingConfig(
+                            thinking_budget=0
+                        )
+                    )
+                )
+                break
+            except Exception as error:
+                last_error = error
+                if not _is_retryable_error(error) or attempt == 2:
+                    raise
+                backoff_seconds = 0.5 * (2 ** attempt)
+                await asyncio.sleep(backoff_seconds)
+
+        if response is None:
+            if last_error:
+                raise last_error
+            raise ValueError("No response from title generator")
+
+        raw_title = _extract_response_text(response)
+        title = _sanitize_title(raw_title)
 
         # Update conversation title
         conversation.title = title
         conversation.title_generated = True
         db.commit()
+        _set_cached_title(cache_key, title)
 
         return {"title": title, "fallback": False}
 
@@ -307,6 +417,4 @@ Title (3-5 words only, no quotes):""",
         db.commit()
 
         # Log the error but don't fail the request
-        print(f"Title generation failed: {e}")
-
         return {"title": fallback_title, "fallback": True}

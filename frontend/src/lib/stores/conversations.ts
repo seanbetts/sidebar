@@ -170,8 +170,9 @@ function createConversationListStore() {
      * Update a single conversation's title without refreshing the entire list
      * @param id Conversation id to update.
      * @param title New title value.
+     * @param titleGenerated Whether the title was model-generated.
      */
-    updateConversationTitle(id: string, title: string) {
+    updateConversationTitle(id: string, title: string, titleGenerated: boolean = true) {
       update(state => {
         const newGeneratingIds = new Set(state.generatingTitleIds);
         newGeneratingIds.delete(id);
@@ -179,7 +180,7 @@ function createConversationListStore() {
           ...state,
           generatingTitleIds: newGeneratingIds,
           conversations: state.conversations.map(c =>
-            c.id === id ? { ...c, title, titleGenerated: true } : c
+            c.id === id ? { ...c, title, titleGenerated } : c
           )
         };
       });
