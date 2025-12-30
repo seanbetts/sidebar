@@ -35,6 +35,7 @@ from api.models.website import Website  # noqa: F401
 from api.models.user_settings import UserSettings  # noqa: F401
 from api.models.user_memory import UserMemory  # noqa: F401
 from api.models.file_object import FileObject  # noqa: F401
+from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob  # noqa: F401
 
 
 @pytest.fixture

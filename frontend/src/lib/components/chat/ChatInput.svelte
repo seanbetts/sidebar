@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { Send } from 'lucide-svelte';
+	import { Paperclip, Send } from 'lucide-svelte';
 	import { chatStore } from '$lib/stores/chat';
 
 	export let disabled = false;
 	export let onsend: ((message: string) => void) | undefined = undefined;
+	export let onattach: ((files: FileList) => void) | undefined = undefined;
 
 	let inputValue = '';
 	let textarea: HTMLTextAreaElement;
+	let attachmentInput: HTMLInputElement;
 	let previousConversationId: string | null = null;
 	const MAX_TEXTAREA_HEIGHT = 220;
 
@@ -58,6 +60,18 @@
 			handleSubmit();
 		}
 	}
+
+	function handleAttachClick() {
+		attachmentInput?.click();
+	}
+
+	function handleAttachChange(event: Event) {
+		const target = event.target as HTMLInputElement;
+		if (target.files && target.files.length > 0) {
+			onattach?.(target.files);
+			target.value = '';
+		}
+	}
 </script>
 
 <div class="chat-input-bar">
@@ -73,7 +87,25 @@
 			class="chat-input-textarea"
 		></textarea>
 		<div class="chat-input-actions">
-			<div class="chat-input-left"></div>
+			<div class="chat-input-left">
+				<input
+					type="file"
+					bind:this={attachmentInput}
+					on:change={handleAttachChange}
+					class="attachment-input"
+					multiple
+				/>
+				<Button
+					size="icon"
+					variant="ghost"
+					onclick={handleAttachClick}
+					aria-label="Attach file"
+					title="Attach file"
+					disabled={disabled}
+				>
+					<Paperclip size={16} />
+				</Button>
+			</div>
 			<Button
 				onclick={handleSubmit}
 				disabled={disabled || !inputValue.trim()}
@@ -135,5 +167,12 @@
 	.chat-input-left {
 		min-height: 1px;
 		flex: 1;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.attachment-input {
+		display: none;
 	}
 </style>
