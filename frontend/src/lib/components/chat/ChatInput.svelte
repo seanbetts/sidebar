@@ -91,7 +91,7 @@
 				<input
 					type="file"
 					bind:this={attachmentInput}
-					on:change={handleAttachChange}
+					onchange={handleAttachChange}
 					class="attachment-input"
 					multiple
 				/>
