@@ -276,7 +276,7 @@
   }
 
   :global(.archive-content) {
-    max-height: min(40vh, 360px);
+    max-height: min(80vh, 720px);
     overflow-y: auto;
     padding-right: 0.25rem;
   }
