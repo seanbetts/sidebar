@@ -108,8 +108,7 @@
   }
 
   async function handleNewChat() {
-    await chatStore.clear();
-    await conversationListStore.refresh();
+    await chatStore.startNewConversation();
   }
 
   function toggleSidebar() {
