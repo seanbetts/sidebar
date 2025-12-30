@@ -139,6 +139,7 @@
           onMoveFolder={actions.handleMoveFolder}
           onPinToggle={actions.handlePinToggle}
           onArchive={actions.handleArchive}
+          onUnarchive={actions.handleUnarchive}
           onDownload={actions.handleDownload}
         />
       </div>
