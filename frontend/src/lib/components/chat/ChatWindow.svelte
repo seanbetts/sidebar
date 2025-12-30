@@ -16,7 +16,7 @@
 	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { memoriesStore } from '$lib/stores/memories';
 	import { ingestionAPI } from '$lib/services/api';
-	import { MessageSquare, Plus, X } from 'lucide-svelte';
+	import { MessageSquare, Plus, RotateCcw, Trash2, X } from 'lucide-svelte';
 	import { getCachedData } from '$lib/utils/cache';
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
@@ -24,6 +24,7 @@
 	let attachments: Array<{
 		id: string;
 		fileId?: string;
+		file?: File;
 		name: string;
 		status: string;
 		stage?: string | null;
@@ -339,7 +340,7 @@
 			const id = crypto.randomUUID();
 			attachments = [
 				...attachments,
-				{ id, name: file.name, status: 'uploading', stage: 'uploading' }
+				{ id, name: file.name, status: 'uploading', stage: 'uploading', file }
 			];
 			try {
 				const data = await ingestionAPI.upload(file);
@@ -352,6 +353,55 @@
 				attachments = attachments.map((item) =>
 					item.id === id ? { ...item, status: 'failed', stage: 'failed' } : item
 				);
+			}
+		}
+	}
+
+	async function handleRetryAttachment(attachmentId: string) {
+		const attachment = attachments.find((item) => item.id === attachmentId);
+		if (!attachment) return;
+		if (attachment.fileId) {
+			try {
+				await ingestionAPI.reprocess(attachment.fileId);
+				attachments = attachments.map((item) =>
+					item.id === attachmentId ? { ...item, status: 'queued', stage: 'queued' } : item
+				);
+				startAttachmentPolling(attachmentId, attachment.fileId);
+			} catch (error) {
+				console.error('Failed to retry ingestion:', error);
+			}
+			return;
+		}
+		if (!attachment.file) return;
+		attachments = attachments.map((item) =>
+			item.id === attachmentId ? { ...item, status: 'uploading', stage: 'uploading' } : item
+		);
+		try {
+			const data = await ingestionAPI.upload(attachment.file);
+			attachments = attachments.map((item) =>
+				item.id === attachmentId ? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' } : item
+			);
+			startAttachmentPolling(attachmentId, data.file_id);
+		} catch (error) {
+			console.error('Attachment upload failed:', error);
+			attachments = attachments.map((item) =>
+				item.id === attachmentId ? { ...item, status: 'failed', stage: 'failed' } : item
+			);
+		}
+	}
+
+	async function handleDeleteAttachment(attachmentId: string) {
+		const attachment = attachments.find((item) => item.id === attachmentId);
+		if (!attachment) return;
+		const poll = attachmentPolls.get(attachmentId);
+		if (poll) clearTimeout(poll);
+		attachmentPolls.delete(attachmentId);
+		attachments = attachments.filter((item) => item.id !== attachmentId);
+		if (attachment.fileId) {
+			try {
+				await ingestionAPI.delete(attachment.fileId);
+			} catch (error) {
+				console.error('Failed to delete attachment:', error);
 			}
 		}
 	}
@@ -419,7 +469,27 @@
 			{#each attachments as attachment (attachment.id)}
 				<div class="chat-attachment">
 					<span class="attachment-name">{attachment.name}</span>
-					<span class="attachment-status">{attachment.stage || attachment.status}</span>
+					<div class="attachment-meta">
+						<span class="attachment-status">{attachment.stage || attachment.status}</span>
+						{#if attachment.status === 'failed'}
+							<div class="attachment-actions">
+								<button
+									class="attachment-action"
+									onclick={() => handleRetryAttachment(attachment.id)}
+									aria-label="Retry attachment"
+								>
+									<RotateCcw size={14} />
+								</button>
+								<button
+									class="attachment-action"
+									onclick={() => handleDeleteAttachment(attachment.id)}
+									aria-label="Delete attachment"
+								>
+									<Trash2 size={14} />
+								</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -487,5 +557,29 @@
 	.attachment-status {
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
+	}
+
+	.attachment-meta {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.attachment-actions {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.attachment-action {
+		border: none;
+		background: transparent;
+		padding: 0;
+		cursor: pointer;
+		color: var(--color-muted-foreground);
+	}
+
+	.attachment-action:hover {
+		color: var(--color-foreground);
 	}
 </style>
