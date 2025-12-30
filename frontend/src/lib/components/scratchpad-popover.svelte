@@ -33,6 +33,35 @@
 	let isClosing = false;
 	let hasUserEdits = false;
 
+	function applyScratchpadContent(content: string) {
+		lastSavedContent = content;
+		if (!editor) return;
+		const newContent = stripHeading(content) || '';
+		const currentEditorContent = editor.storage.markdown.getMarkdown();
+
+		if (currentEditorContent === newContent) {
+			return;
+		}
+
+		try {
+			isUpdatingContent = true;
+			hasUserEdits = false;
+			const currentPosition = editor.state.selection.anchor;
+			editor.commands.setContent(newContent);
+			tick().then(() =>
+				requestAnimationFrame(() => {
+					if (currentPosition <= newContent.length) {
+						editor?.commands.setTextSelection(currentPosition);
+					}
+				})
+			);
+		} catch (error) {
+			console.error('Failed to update scratchpad content:', error);
+		} finally {
+			isUpdatingContent = false;
+		}
+	}
+
 
 	async function ensureScratchpadExists() {
 		const response = await fetch('/api/scratchpad');
@@ -46,40 +75,15 @@
 		if (isLoading) return;
 		isLoading = true;
 		saveError = null;
+		const cachedContent = scratchpadStore.getCachedContent();
+		if (cachedContent) {
+			applyScratchpadContent(cachedContent);
+			isLoading = false;
+		}
 		try {
 			const content = await ensureScratchpadExists();
-			lastSavedContent = content;
-			if (editor) {
-				const newContent = stripHeading(content) || '';
-				const currentEditorContent = editor.storage.markdown.getMarkdown();
-
-				// Only update if content actually changed
-				if (currentEditorContent !== newContent) {
-					try {
-						isUpdatingContent = true;
-						hasUserEdits = false;
-
-						// Save cursor position before updating
-						const currentPosition = editor.state.selection.anchor;
-
-						// Update content
-						editor.commands.setContent(newContent);
-
-						// Wait for Svelte reactivity and browser render
-						await tick();
-						await new Promise(resolve => requestAnimationFrame(resolve));
-
-						// Restore cursor position if still valid
-						if (currentPosition <= newContent.length) {
-							editor.commands.setTextSelection(currentPosition);
-						}
-					} catch (error) {
-						console.error('Failed to update scratchpad content:', error);
-					} finally {
-						isUpdatingContent = false;
-					}
-				}
-			}
+			applyScratchpadContent(content);
+			scratchpadStore.setCachedContent(content);
 		} catch (error) {
 			saveError = 'Failed to load scratchpad.';
 		} finally {
@@ -119,6 +123,7 @@
 			if (!response.ok) throw new Error('Failed to save scratchpad');
 			lastSavedContent = content;
 			hasUserEdits = false;
+			scratchpadStore.setCachedContent(content);
 		} catch (error) {
 			saveError = 'Failed to save scratchpad.';
 		} finally {
