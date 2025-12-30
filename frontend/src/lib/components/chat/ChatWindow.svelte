@@ -15,13 +15,27 @@
 	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { memoriesStore } from '$lib/stores/memories';
+	import { ingestionAPI } from '$lib/services/api';
 	import { MessageSquare, Plus, X } from 'lucide-svelte';
 	import { getCachedData } from '$lib/utils/cache';
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
 	let sseClient = new SSEClient();
+	let attachments: Array<{
+		id: string;
+		fileId?: string;
+		name: string;
+		status: string;
+		stage?: string | null;
+	}> = [];
+	let attachmentPolls = new Map<string, ReturnType<typeof setTimeout>>();
+	let isMounted = true;
+	let previousConversationId: string | null = null;
 
 	onDestroy(() => {
+		isMounted = false;
+		attachmentPolls.forEach((timeoutId) => clearTimeout(timeoutId));
+		attachmentPolls.clear();
 		// Clean up SSE connection when component unmounts
 		sseClient.disconnect();
 	});
@@ -69,10 +83,22 @@
 	}
 
 	async function handleSend(message: string) {
+		const pendingAttachments = attachments.filter((item) => item.status !== 'ready');
+		if (pendingAttachments.length > 0) {
+			toast.error('Files are still processing. Please wait before sending.');
+			return;
+		}
 
 		// Add user message and start streaming assistant response
 		const { assistantMessageId, userMessageId } = await chatStore.sendMessage(message);
 		const { conversationId } = get(chatStore);
+		const attachmentsForMessage = attachments
+			.filter((item) => item.status === 'ready' && item.fileId)
+			.map((item) => ({
+				file_id: item.fileId,
+				filename: item.name
+			}));
+		attachments = [];
 
 		try {
 			// Connect to SSE stream
@@ -125,6 +151,7 @@
 					conversationId: conversationId ?? undefined,
 					userMessageId,
 					openContext,
+					attachments: attachmentsForMessage,
 					currentLocation: currentLocation || undefined,
 					currentLocationLevels,
 					currentWeather,
@@ -292,6 +319,67 @@
 	function handleCloseChat() {
 		chatStore.reset();
 	}
+
+	$: {
+		const currentId = $chatStore.conversationId;
+		if (currentId !== previousConversationId) {
+			previousConversationId = currentId;
+			attachments = [];
+			attachmentPolls.forEach((timeoutId) => clearTimeout(timeoutId));
+			attachmentPolls.clear();
+		}
+	}
+
+	$: hasPendingAttachments = attachments.some((item) => item.status !== 'ready');
+	$: isSendDisabled = $chatStore.isStreaming || (attachments.length > 0 && hasPendingAttachments);
+
+	async function handleAttach(files: FileList) {
+		const fileArray = Array.from(files);
+		for (const file of fileArray) {
+			const id = crypto.randomUUID();
+			attachments = [
+				...attachments,
+				{ id, name: file.name, status: 'uploading', stage: 'uploading' }
+			];
+			try {
+				const data = await ingestionAPI.upload(file);
+				attachments = attachments.map((item) =>
+					item.id === id ? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' } : item
+				);
+				startAttachmentPolling(id, data.file_id);
+			} catch (error) {
+				console.error('Attachment upload failed:', error);
+				attachments = attachments.map((item) =>
+					item.id === id ? { ...item, status: 'failed', stage: 'failed' } : item
+				);
+			}
+		}
+	}
+
+	function startAttachmentPolling(id: string, fileId: string) {
+		if (attachmentPolls.has(id)) {
+			clearTimeout(attachmentPolls.get(id));
+		}
+		const poll = async () => {
+			try {
+				const data = await ingestionAPI.get(fileId);
+				const status = data.job.status || 'queued';
+				const stage = data.job.stage;
+				attachments = attachments.map((item) =>
+					item.id === id ? { ...item, status, stage } : item
+				);
+				if (!['ready', 'failed', 'canceled'].includes(status) && isMounted) {
+					const next = setTimeout(poll, 5000);
+					attachmentPolls.set(id, next);
+					return;
+				}
+			} catch (error) {
+				console.error('Attachment status failed:', error);
+			}
+		};
+		const timeoutId = setTimeout(poll, 1500);
+		attachmentPolls.set(id, timeoutId);
+	}
 </script>
 
 <div class="flex flex-col h-full min-h-0 w-full bg-background">
@@ -326,8 +414,19 @@
 	<!-- Messages -->
 	<MessageList messages={$chatStore.messages} activeTool={$chatStore.activeTool} />
 
+	{#if attachments.length > 0}
+		<div class="chat-attachments">
+			{#each attachments as attachment (attachment.id)}
+				<div class="chat-attachment">
+					<span class="attachment-name">{attachment.name}</span>
+					<span class="attachment-status">{attachment.stage || attachment.status}</span>
+				</div>
+			{/each}
+		</div>
+	{/if}
+
 	<!-- Input -->
-	<ChatInput onsend={handleSend} disabled={$chatStore.isStreaming} />
+	<ChatInput onsend={handleSend} onattach={handleAttach} disabled={isSendDisabled} />
 </div>
 
 <style>
@@ -361,5 +460,32 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		max-width: 300px;
+	}
+
+	.chat-attachments {
+		padding: 0 1.5rem 0.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.chat-attachment {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.5rem;
+		font-size: 0.8rem;
+		color: var(--color-muted-foreground);
+	}
+
+	.attachment-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--color-foreground);
+	}
+
+	.attachment-status {
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
 	}
 </style>

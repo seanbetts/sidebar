@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Folder } from 'lucide-svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { treeStore } from '$lib/stores/tree';
   import { ingestionStore } from '$lib/stores/ingestion';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
@@ -18,6 +19,14 @@
   $: processingItems = ($ingestionStore.items || []).filter(
     item => !['ready', 'failed', 'canceled'].includes(item.job.status || '')
   );
+
+  onMount(() => {
+    ingestionStore.startPolling();
+  });
+
+  onDestroy(() => {
+    ingestionStore.stopPolling();
+  });
 
   // Data loading is now handled by parent Sidebar component
   // onMount removed to prevent duplicate loads and initial flicker

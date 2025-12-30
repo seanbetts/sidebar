@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { Plus, Folder } from 'lucide-svelte';
+  import { Plus, Folder, Upload } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import { treeStore } from '$lib/stores/tree';
   import { websitesStore } from '$lib/stores/websites';
+  import { ingestionStore } from '$lib/stores/ingestion';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
@@ -22,6 +23,7 @@
   import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { Button } from '$lib/components/ui/button';
+  import { ingestionAPI } from '$lib/services/api';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -43,6 +45,8 @@
   let pendingNotePath: string | null = null;
   let settingsDialog: { handleProfileImageError: () => void } | null = null;
   let profileImageSrc = '';
+  let isUploadingFile = false;
+  let fileInput: HTMLInputElement | null = null;
   const sidebarLogoSrc = '/images/logo.svg';
   let isMounted = false;
   let lastConversationId: string | null = null;
@@ -179,6 +183,31 @@
   function handleNewWorkspaceFolder() {
     newWorkspaceFolderName = '';
     isNewWorkspaceFolderDialogOpen = true;
+  }
+
+  function handleUploadFileClick() {
+    fileInput?.click();
+  }
+
+  async function handleFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const selected = input.files?.[0];
+    if (!selected || isUploadingFile) return;
+
+    isUploadingFile = true;
+    try {
+      await ingestionAPI.upload(selected);
+      await ingestionStore.load();
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      errorMessage = 'Failed to upload file. Please try again.';
+      isErrorDialogOpen = true;
+    } finally {
+      isUploadingFile = false;
+      if (input) {
+        input.value = '';
+      }
+    }
   }
 
   function handleNewWebsite() {
@@ -451,6 +480,23 @@
           onClear={() => treeStore.load('.', true)}
         >
           <svelte:fragment slot="actions">
+            <input
+              type="file"
+              bind:this={fileInput}
+              on:change={handleFileSelected}
+              class="file-upload-input"
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              class="panel-action"
+              onclick={handleUploadFileClick}
+              aria-label="Upload file"
+              title="Upload file"
+              disabled={isUploadingFile}
+            >
+              <Upload size={16} />
+            </Button>
             <Button
               size="icon"
               variant="ghost"
@@ -537,6 +583,10 @@
   }
 
   .panel-section.hidden {
+    display: none;
+  }
+
+  .file-upload-input {
     display: none;
   }
 

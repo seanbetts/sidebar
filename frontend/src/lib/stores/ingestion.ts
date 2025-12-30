@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { ingestionAPI } from '$lib/services/api';
 import type { IngestionListItem } from '$lib/types/ingestion';
 
@@ -14,6 +14,7 @@ function createIngestionStore() {
     loading: false,
     error: null
   });
+  let pollingId: ReturnType<typeof setInterval> | null = null;
 
   return {
     subscribe,
@@ -25,6 +26,26 @@ function createIngestionStore() {
       } catch (error) {
         console.error('Failed to load ingestion status:', error);
         update(state => ({ ...state, loading: false, error: 'Failed to load uploads.' }));
+      }
+    },
+    startPolling(intervalMs: number = 5000) {
+      if (pollingId) return;
+      pollingId = setInterval(() => {
+        const state = get({ subscribe });
+        const hasActive = state.items.some(
+          item => !['ready', 'failed', 'canceled'].includes(item.job.status || '')
+        );
+        if (hasActive) {
+          void this.load();
+        } else {
+          this.stopPolling();
+        }
+      }, intervalMs);
+    },
+    stopPolling() {
+      if (pollingId) {
+        clearInterval(pollingId);
+        pollingId = null;
       }
     }
   };

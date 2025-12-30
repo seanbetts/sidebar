@@ -149,6 +149,20 @@ class IngestionAPI {
     if (!response.ok) throw new Error('Failed to get ingestion metadata');
     return response.json();
   }
+
+  /**
+   * Upload a file for ingestion.
+   */
+  async upload(file: File): Promise<{ file_id: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${this.baseUrl}`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!response.ok) throw new Error('Failed to upload file');
+    return response.json();
+  }
 }
 
 export const ingestionAPI = new IngestionAPI();
