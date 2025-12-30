@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import time
+import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
@@ -11,6 +12,11 @@ import shutil
 from uuid import uuid4
 
 from sqlalchemy import and_, or_
+
+from pypdf import PdfReader
+from pptx import Presentation
+from docx import Document
+from openpyxl import load_workbook
 
 from api.db.session import SessionLocal
 from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
@@ -137,6 +143,10 @@ def _cleanup_staging(file_id: str) -> None:
         shutil.rmtree(staging_root, ignore_errors=True)
 
 
+def _derivative_dir(file_id: str) -> Path:
+    return Path("/tmp/sidebar-ingestion") / file_id / "derived"
+
+
 def _detect_extension(filename: str, mime: str) -> str:
     suffix = Path(filename).suffix
     if suffix:
@@ -148,13 +158,90 @@ def _detect_extension(filename: str, mime: str) -> str:
     return ""
 
 
+def _run_libreoffice_convert(source_path: Path, output_dir: Path) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    command = [
+        "soffice",
+        "--headless",
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        str(output_dir),
+        str(source_path),
+    ]
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+    except FileNotFoundError as exc:
+        raise IngestionError("CONVERSION_UNAVAILABLE", "LibreOffice not available", retryable=False) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise IngestionError("CONVERSION_TIMEOUT", "Conversion timed out", retryable=True) from exc
+    except subprocess.CalledProcessError as exc:
+        raise IngestionError("CONVERSION_FAILED", "Conversion failed", retryable=False) from exc
+
+    pdf_path = output_dir / (source_path.stem + ".pdf")
+    if not pdf_path.exists():
+        raise IngestionError("CONVERSION_FAILED", "Converted PDF missing", retryable=False)
+    return pdf_path
+
+
+def _extract_pdf_text(pdf_path: Path) -> str:
+    reader = PdfReader(str(pdf_path))
+    sections = []
+    for index, page in enumerate(reader.pages, start=1):
+        text = page.extract_text() or ""
+        sections.append(f"## Page {index}\n\n{text.strip()}")
+    return "\n\n".join(sections).strip()
+
+
+def _extract_pptx_text(pptx_path: Path) -> str:
+    presentation = Presentation(str(pptx_path))
+    sections = []
+    for index, slide in enumerate(presentation.slides, start=1):
+        texts = []
+        for shape in slide.shapes:
+            if hasattr(shape, "text") and shape.text:
+                texts.append(shape.text)
+        content = "\n".join(texts).strip()
+        sections.append(f"## Slide {index}\n\n{content}")
+    return "\n\n".join(sections).strip()
+
+
+def _extract_docx_text(docx_path: Path) -> str:
+    document = Document(str(docx_path))
+    parts: list[str] = []
+    for paragraph in document.paragraphs:
+        if paragraph.text:
+            parts.append(paragraph.text)
+    for table in document.tables:
+        rows = []
+        for row in table.rows:
+            rows.append(" | ".join(cell.text.strip() for cell in row.cells))
+        if rows:
+            parts.append("\n".join(rows))
+    return "\n\n".join(parts).strip()
+
+
+def _extract_xlsx_text(xlsx_path: Path) -> str:
+    workbook = load_workbook(str(xlsx_path), data_only=True, read_only=True)
+    sections = []
+    for sheet in workbook.worksheets:
+        rows = []
+        for row in sheet.iter_rows(min_row=1, max_row=10, values_only=True):
+            rows.append(" | ".join("" if cell is None else str(cell) for cell in row))
+        content = "\n".join(rows).strip()
+        sections.append(f"## Sheet: {sheet.title}\n\n{content}")
+    return "\n\n".join(sections).strip()
+
+
 def _build_derivatives(record: IngestedFile, source_path: Path) -> list[DerivativePayload]:
     mime = record.mime_original
     file_id = str(record.id)
     content = source_path.read_bytes()
+    extraction_text = ""
+    viewer_payload: DerivativePayload | None = None
 
     if mime == "application/pdf":
-        viewer = DerivativePayload(
+        viewer_payload = DerivativePayload(
             kind="viewer_pdf",
             storage_key=f"files/{file_id}/derivatives/viewer.pdf",
             mime="application/pdf",
@@ -162,9 +249,10 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             sha256=sha256(content).hexdigest(),
             content=content,
         )
+        extraction_text = _extract_pdf_text(source_path)
     elif mime.startswith("image/"):
         extension = _detect_extension(record.filename_original, mime)
-        viewer = DerivativePayload(
+        viewer_payload = DerivativePayload(
             kind="image_original",
             storage_key=f"files/{file_id}/derivatives/image{extension or ''}",
             mime=mime,
@@ -172,8 +260,33 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             sha256=sha256(content).hexdigest(),
             content=content,
         )
+        extraction_text = "Image file. No text extraction available."
+    elif mime in {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }:
+        pdf_path = _run_libreoffice_convert(source_path, _derivative_dir(file_id))
+        pdf_bytes = pdf_path.read_bytes()
+        viewer_payload = DerivativePayload(
+            kind="viewer_pdf",
+            storage_key=f"files/{file_id}/derivatives/viewer.pdf",
+            mime="application/pdf",
+            size_bytes=len(pdf_bytes),
+            sha256=sha256(pdf_bytes).hexdigest(),
+            content=pdf_bytes,
+        )
+        if mime.endswith("wordprocessingml.document"):
+            extraction_text = _extract_docx_text(source_path)
+        elif mime.endswith("presentationml.presentation"):
+            extraction_text = _extract_pptx_text(source_path)
+        else:
+            extraction_text = _extract_xlsx_text(source_path)
     else:
         raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+
+    if viewer_payload is None:
+        raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
 
     ai_body = (
         "---\n"
@@ -183,9 +296,9 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         f"created_at: {record.created_at.isoformat()}\n"
         f"sha256: {record.sha256}\n"
         "derivatives:\n"
-        f"  {viewer.kind}: true\n"
+        f"  {viewer_payload.kind}: true\n"
         "---\n\n"
-        "Content extraction is not yet available."
+        f"{extraction_text or 'No text extraction available.'}"
     )
     ai_bytes = ai_body.encode("utf-8")
     ai_md = DerivativePayload(
@@ -197,7 +310,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         content=ai_bytes,
     )
 
-    return [viewer, ai_md]
+    return [viewer_payload, ai_md]
 
 
 def worker_loop() -> None:
