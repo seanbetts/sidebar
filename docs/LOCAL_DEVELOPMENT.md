@@ -1,6 +1,6 @@
 # Local Development (Native)
 
-This guide sets up native (non-Docker) development with hot reload for backend and frontend. It uses production Supabase and R2, so read the safety notes carefully.
+This guide sets up native (non-Docker) development with hot reload for backend and frontend. It uses production Supabase and R2, so read the safety notes carefully. Secrets are loaded from Doppler.
 
 ## Quick Start
 
@@ -13,7 +13,7 @@ cp .env.example .env.local
 # - Set DEFAULT_USER_ID to a dedicated test user
 # - Set API_URL=http://localhost:8001
 # - Set APP_ENV=local
-# - Copy the remaining Supabase/R2/API keys from .env
+# - Configure Doppler (DOPPLER_TOKEN or doppler login)
 
 # 3. Install dependencies
 cd backend && uv sync && cd ..
@@ -45,6 +45,9 @@ git checkout dev
 ./dev.sh logs              # Both
 ./dev.sh logs backend      # Backend only
 ./dev.sh logs frontend     # Frontend only
+
+# Cleanup stale processes (if ports are stuck)
+./dev.sh cleanup
 
 # Run tests
 ./scripts/test.sh all

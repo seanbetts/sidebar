@@ -106,7 +106,7 @@ Access the application:
 
 ## Local Development (Native)
 
-For rapid iteration without Docker:
+For rapid iteration without Docker (secrets loaded via Doppler):
 
 ```bash
 # First time setup
