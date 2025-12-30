@@ -199,6 +199,7 @@
     try {
       await ingestionAPI.upload(selected);
       await ingestionStore.load();
+      ingestionStore.startPolling();
     } catch (error) {
       console.error('Failed to upload file:', error);
       errorTitle = 'Unable to upload file';

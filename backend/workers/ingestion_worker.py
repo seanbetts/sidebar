@@ -310,6 +310,7 @@ def _extract_xlsx_text(xlsx_path: Path) -> str:
 def _build_derivatives(record: IngestedFile, source_path: Path) -> list[DerivativePayload]:
     mime = record.mime_original
     file_id = str(record.id)
+    user_prefix = f"{record.user_id}/files/{file_id}"
     content = source_path.read_bytes()
     extraction_text = ""
     viewer_payload: DerivativePayload | None = None
@@ -319,7 +320,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
     if mime == "application/pdf":
         viewer_payload = DerivativePayload(
             kind="viewer_pdf",
-            storage_key=f"files/{file_id}/derivatives/viewer.pdf",
+            storage_key=f"{user_prefix}/derivatives/viewer.pdf",
             mime="application/pdf",
             size_bytes=len(content),
             sha256=sha256(content).hexdigest(),
@@ -331,7 +332,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         extension = _detect_extension(record.filename_original, mime)
         viewer_payload = DerivativePayload(
             kind="image_original",
-            storage_key=f"files/{file_id}/derivatives/image{extension or ''}",
+            storage_key=f"{user_prefix}/derivatives/image{extension or ''}",
             mime=mime,
             size_bytes=len(content),
             sha256=sha256(content).hexdigest(),
@@ -348,7 +349,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         pdf_bytes = pdf_path.read_bytes()
         viewer_payload = DerivativePayload(
             kind="viewer_pdf",
-            storage_key=f"files/{file_id}/derivatives/viewer.pdf",
+            storage_key=f"{user_prefix}/derivatives/viewer.pdf",
             mime="application/pdf",
             size_bytes=len(pdf_bytes),
             sha256=sha256(pdf_bytes).hexdigest(),
@@ -370,7 +371,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
     if thumb_bytes:
         thumb_payload = DerivativePayload(
             kind="thumb_png",
-            storage_key=f"files/{file_id}/derivatives/thumb.png",
+            storage_key=f"{user_prefix}/derivatives/thumb.png",
             mime="image/png",
             size_bytes=len(thumb_bytes),
             sha256=sha256(thumb_bytes).hexdigest(),
@@ -392,7 +393,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
     ai_bytes = ai_body.encode("utf-8")
     ai_md = DerivativePayload(
         kind="ai_md",
-        storage_key=f"files/{file_id}/ai/ai.md",
+        storage_key=f"{user_prefix}/ai/ai.md",
         mime="text/markdown",
         size_bytes=len(ai_bytes),
         sha256=sha256(ai_bytes).hexdigest(),
@@ -410,6 +411,7 @@ def worker_loop() -> None:
     worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
     while True:
         with SessionLocal() as db:
+            db.execute(text("SET app.is_worker = 'true'"))
             if worker_user_id:
                 db.execute(text("SET app.user_id = :user_id"), {"user_id": worker_user_id})
             _requeue_stalled_jobs(db)

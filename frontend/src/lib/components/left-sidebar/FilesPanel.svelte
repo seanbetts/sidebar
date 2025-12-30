@@ -84,7 +84,7 @@
     title="Service unavailable"
     subtitle="Please try again later."
   />
-{:else if children.length === 0 && processingItems.length === 0}
+{:else if children.length === 0 && processingItems.length === 0 && failedItems.length === 0 && readyItems.length === 0}
   <SidebarEmptyState
     icon={Folder}
     title="No files yet"
