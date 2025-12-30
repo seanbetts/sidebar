@@ -45,6 +45,8 @@
   let profileImageSrc = '';
   const sidebarLogoSrc = '/images/logo.svg';
   let isMounted = false;
+  let lastConversationId: string | null = null;
+  let lastMessageCount = 0;
   const { loadSectionData } = useSidebarSectionLoader();
   $: isBlankChat = (() => {
     const currentId = $chatStore.conversationId;
@@ -53,6 +55,17 @@
     return current ? current.messageCount === 0 : false;
   })();
   $: showNewChatButton = !isBlankChat;
+  $: if ($chatStore.conversationId) {
+    if (lastConversationId !== $chatStore.conversationId) {
+      lastConversationId = $chatStore.conversationId;
+      lastMessageCount = $chatStore.messages.length;
+    } else if ($chatStore.messages.length !== lastMessageCount) {
+      if (lastMessageCount === 0 && $chatStore.messages.length > 0 && activeSection !== 'history') {
+        openSection('history');
+      }
+      lastMessageCount = $chatStore.messages.length;
+    }
+  }
 
   onMount(() => {
     // Mark as mounted to enable reactive data loading
