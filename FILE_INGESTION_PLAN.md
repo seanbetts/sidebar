@@ -185,6 +185,7 @@ Images and figures:
 Stage 4: Thumbnails
 	•	Render first page of viewer.pdf to thumb.png
 	•	For images, generate resized thumbnail
+	•	Requires Poppler (`pdftoppm`) in the worker/container (macOS: `brew install poppler`)
 
 Stage 5: Persist and finalise
 	•	Write derivatives to storage (R2)
