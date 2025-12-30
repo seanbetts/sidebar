@@ -48,4 +48,19 @@
     gap: 0.35rem;
   }
 
+  :global(.panel-section-actions .panel-action) {
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  :global(.panel-section-actions .panel-action svg) {
+    pointer-events: none;
+  }
+
+  :global(.panel-section-actions .panel-action:hover) {
+    background-color: var(--color-sidebar-accent);
+    color: var(--color-sidebar-foreground);
+  }
+
 </style>
