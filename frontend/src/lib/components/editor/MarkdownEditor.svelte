@@ -284,6 +284,7 @@
       onMove={actions.handleMove}
       onDownload={actions.handleDownload}
       onArchive={actions.handleArchive}
+      onUnarchive={actions.handleUnarchive}
       onDelete={() => (isDeleteDialogOpen = true)}
     />
   {/if}

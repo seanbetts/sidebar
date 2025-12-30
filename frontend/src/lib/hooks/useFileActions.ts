@@ -190,6 +190,23 @@ export function useFileActions(ctx: FileActionsContext) {
     }
   };
 
+  const handleUnarchive = async () => {
+    const node = ctx.getNode();
+    if (node.type !== 'file') return;
+    try {
+      const response = await fetch(`/api/notes/${node.path}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived: false })
+      });
+      if (!response.ok) throw new Error('Failed to unarchive note');
+      ctx.treeStore.archiveNoteNode?.(node.path, false);
+      dispatchCacheEvent('note.archived');
+    } catch (error) {
+      console.error('Failed to unarchive note:', error);
+    }
+  };
+
   const handleMove = async (folder: string) => {
     const node = ctx.getNode();
     if (node.type !== 'file') return;
@@ -332,6 +349,7 @@ export function useFileActions(ctx: FileActionsContext) {
     openDeleteDialog,
     handlePinToggle,
     handleArchive,
+    handleUnarchive,
     handleMove,
     handleMoveFolder,
     handleDownload,

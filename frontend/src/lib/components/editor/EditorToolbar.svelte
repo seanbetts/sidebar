@@ -9,7 +9,7 @@
   export let isDirty = false;
   export let isSaving = false;
   export let saveError = '';
-  export let noteNode: { pinned?: boolean } | null = null;
+  export let noteNode: { pinned?: boolean; archived?: boolean } | null = null;
   export let folderOptions: { label: string; value: string; depth: number }[] = [];
   export let isCopied = false;
 
@@ -21,7 +21,20 @@
   export let onMove: (folder: string) => void;
   export let onDownload: () => void;
   export let onArchive: () => void;
+  export let onUnarchive: () => void;
   export let onDelete: () => void;
+
+  let isMoveOpen = false;
+  let didRequestMoveOptions = false;
+
+  $: if (isMoveOpen && !didRequestMoveOptions) {
+    didRequestMoveOptions = true;
+    onMoveOpen();
+  }
+
+  $: if (!isMoveOpen && didRequestMoveOptions) {
+    didRequestMoveOptions = false;
+  }
 </script>
 
 <div class="editor-header">
@@ -94,26 +107,28 @@
         >
           <Pencil size={16} />
         </Button>
-        <Popover.Root onOpenChange={(open) => open && onMoveOpen()}>
-          <Popover.Trigger>
-            {#snippet child({ props })}
-              <Button size="icon" variant="ghost" {...props} aria-label="Move note" title="Move note">
-                <FolderInput size={16} />
-              </Button>
-            {/snippet}
-          </Popover.Trigger>
-          <Popover.Content class="note-move-menu" align="start" sideOffset={8}>
-            {#each folderOptions as option (option.value)}
-              <button
-                class="note-move-item"
-                style={`padding-left: ${option.depth * 12 + 12}px`}
-                on:click={() => onMove(option.value)}
-              >
-                {option.label}
-              </button>
-            {/each}
-          </Popover.Content>
-        </Popover.Root>
+        {#if !noteNode?.archived}
+          <Popover.Root bind:open={isMoveOpen}>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <Button size="icon" variant="ghost" {...props} aria-label="Move note" title="Move note">
+                  <FolderInput size={16} />
+                </Button>
+              {/snippet}
+            </Popover.Trigger>
+            <Popover.Content class="note-move-menu" align="start" sideOffset={8}>
+              {#each folderOptions as option (option.value)}
+                <button
+                  class="note-move-item"
+                  style={`padding-left: ${option.depth * 12 + 12}px`}
+                  on:click={() => onMove(option.value)}
+                >
+                  {option.label}
+                </button>
+              {/each}
+            </Popover.Content>
+          </Popover.Root>
+        {/if}
         <Button
           size="icon"
           variant="ghost"
@@ -139,9 +154,9 @@
         <Button
           size="icon"
           variant="ghost"
-          onclick={onArchive}
-          aria-label="Archive note"
-          title="Archive note"
+          onclick={noteNode?.archived ? onUnarchive : onArchive}
+          aria-label={noteNode?.archived ? 'Unarchive note' : 'Archive note'}
+          title={noteNode?.archived ? 'Unarchive note' : 'Archive note'}
         >
           <Archive size={16} />
         </Button>
