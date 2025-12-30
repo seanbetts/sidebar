@@ -1,4 +1,5 @@
 """Unified authentication for both MCP and REST endpoints."""
+import logging
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -7,6 +8,7 @@ from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
 
 # Unified bearer authentication (Supabase JWTs)
 bearer_scheme = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 async def verify_supabase_jwt(
@@ -14,6 +16,12 @@ async def verify_supabase_jwt(
 ) -> dict:
     """Verify Supabase JWT token and return payload."""
     if settings.auth_dev_mode:
+        if not settings.allow_auth_dev_mode:
+            logger.warning("AUTH_DEV_MODE is enabled outside local/test environment.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="AUTH_DEV_MODE requires APP_ENV=local",
+            )
         return {"sub": settings.default_user_id}
     if not credentials or not credentials.credentials:
         raise HTTPException(

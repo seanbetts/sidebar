@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     workspace_base: Path = Path(os.getenv("WORKSPACE_BASE", "/tmp/skills"))
     skills_dir: Path = Path("/skills")
 
+    # Environment
+    app_env: str = os.getenv("APP_ENV", "")
+
     # Authentication
     bearer_token: str | None = None
     auth_dev_mode: bool = False
@@ -111,6 +114,15 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"  # Ignore extra environment variables (like DOPPLER_TOKEN)
     )
+
+    @property
+    def allow_auth_dev_mode(self) -> bool:
+        """Return True if AUTH_DEV_MODE is allowed in this environment."""
+        if not self.auth_dev_mode:
+            return True
+        if os.getenv("TESTING"):
+            return True
+        return self.app_env in {"local", "test"}
 
 
 # Singleton settings instance
