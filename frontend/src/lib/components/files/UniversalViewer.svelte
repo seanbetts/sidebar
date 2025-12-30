@@ -11,19 +11,40 @@
       ? `/api/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
       : null;
   $: isPdf = viewerKind === 'viewer_pdf';
+  $: filename = active?.file.filename_original ?? 'File viewer';
+  $: displayName = stripExtension(filename);
+  $: fileType = getFileType(filename, active?.file.mime_original);
 
   function handleClose() {
     ingestionViewerStore.clearActive();
+  }
+
+  function stripExtension(name: string): string {
+    const index = name.lastIndexOf('.');
+    if (index <= 0) return name;
+    return name.slice(0, index);
+  }
+
+  function getFileType(name: string, mime?: string): string {
+    if (mime) return mime;
+    const index = name.lastIndexOf('.');
+    if (index > 0 && index < name.length - 1) {
+      return name.slice(index + 1).toUpperCase();
+    }
+    return 'FILE';
   }
 </script>
 
 <div class="file-viewer">
   <div class="file-viewer-header">
     <div class="file-viewer-meta">
-      <div class="file-viewer-title">{active?.file.filename_original ?? 'File viewer'}</div>
-      {#if active}
-        <div class="file-viewer-subtitle">{active.file.mime_original}</div>
-      {/if}
+        <div class="file-viewer-title-row">
+          <div class="file-viewer-title">{displayName}</div>
+          {#if active}
+          <div class="file-viewer-divider"></div>
+          <div class="file-viewer-type">{fileType}</div>
+          {/if}
+        </div>
     </div>
     <button class="viewer-close" onclick={handleClose} aria-label="Close file viewer">
       <X size={16} />
@@ -69,8 +90,17 @@
     gap: 0.2rem;
   }
 
+  .file-viewer-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    min-width: 0;
+    min-height: 1.8rem; 
+  }
+
   .file-viewer-title {
     font-size: 1rem;
+    line-height: 1.6;
     font-weight: 600;
     color: var(--color-foreground);
     overflow: hidden;
@@ -78,11 +108,21 @@
     white-space: nowrap;
   }
 
-  .file-viewer-subtitle {
-    font-size: 0.75rem;
+  .file-viewer-type {
+    font-size: 0.7rem;
+    line-height: 1.6;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-muted-foreground);
+    flex-shrink: 0;
+  }
+
+  .file-viewer-divider {
+    width: 2px;
+    height: 1.8rem;
+    background: var(--color-border);
+    align-self: center;
+    flex-shrink: 0;
   }
 
   .file-viewer-body {
