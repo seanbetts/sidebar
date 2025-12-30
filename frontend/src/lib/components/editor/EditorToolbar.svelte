@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FileText, Save, Clock, X, Pencil, FolderInput, Archive, Pin, PinOff, Copy, Check, Download, Trash2 } from 'lucide-svelte';
+  import { FileText, Save, Clock, X, Pencil, FolderInput, Archive, ArchiveRestore, Pin, PinOff, Copy, Check, Download, Trash2 } from 'lucide-svelte';
   import * as Popover from '$lib/components/ui/popover/index.js';
   import { Button } from '$lib/components/ui/button';
 
@@ -158,7 +158,11 @@
           aria-label={noteNode?.archived ? 'Unarchive note' : 'Archive note'}
           title={noteNode?.archived ? 'Unarchive note' : 'Archive note'}
         >
-          <Archive size={16} />
+          {#if noteNode?.archived}
+            <ArchiveRestore size={16} />
+          {:else}
+            <Archive size={16} />
+          {/if}
         </Button>
         <Button
           size="icon"
