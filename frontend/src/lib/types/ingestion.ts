@@ -12,6 +12,7 @@ export interface IngestionJob {
   stage: string | null;
   error_code?: string | null;
   error_message?: string | null;
+  user_message?: string | null;
   attempts: number;
   updated_at?: string | null;
 }

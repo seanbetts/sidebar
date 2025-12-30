@@ -22,6 +22,18 @@ router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
 MAX_FILE_BYTES = 100 * 1024 * 1024
 STAGING_ROOT = Path("/tmp/sidebar-ingestion")
+ERROR_MESSAGES = {
+    "FILE_NOT_FOUND": "We couldn't find the uploaded file. Please try again.",
+    "SOURCE_MISSING": "The upload could not be found. Please upload it again.",
+    "FILE_EMPTY": "This file appears to be empty.",
+    "UNSUPPORTED_TYPE": "That file type isn't supported yet.",
+    "CONVERSION_UNAVAILABLE": "File conversion is unavailable right now.",
+    "CONVERSION_TIMEOUT": "File conversion timed out. We'll retry automatically.",
+    "CONVERSION_FAILED": "We couldn't convert this file.",
+    "DERIVATIVE_MISSING": "We couldn't generate a preview for this file.",
+    "WORKER_STALLED": "Processing took too long. We're retrying.",
+    "UNKNOWN_ERROR": "Something went wrong while processing this file.",
+}
 
 
 def _staging_path(file_id: uuid.UUID) -> Path:
@@ -40,6 +52,12 @@ def _recommended_viewer(derivatives: list[dict]) -> str | None:
     if "image_original" in kinds:
         return "image_original"
     return None
+
+
+def _user_message_for_error(error_code: str | None, status: str | None) -> str | None:
+    if not error_code or status != "failed":
+        return None
+    return ERROR_MESSAGES.get(error_code, "We couldn't process this file. Please try again.")
 
 
 @router.post("")
@@ -135,6 +153,10 @@ async def list_ingestions(
                     "stage": job.stage if job else None,
                     "error_code": job.error_code if job else None,
                     "error_message": job.error_message if job else None,
+                    "user_message": _user_message_for_error(
+                        job.error_code if job else None,
+                        job.status if job else None,
+                    ),
                     "attempts": job.attempts if job else 0,
                     "updated_at": job.updated_at.isoformat() if job and job.updated_at else None,
                 },
@@ -188,6 +210,10 @@ async def get_file_meta(
             "stage": job.stage if job else None,
             "error_code": job.error_code if job else None,
             "error_message": job.error_message if job else None,
+            "user_message": _user_message_for_error(
+                job.error_code if job else None,
+                job.status if job else None,
+            ),
             "attempts": job.attempts if job else 0,
             "updated_at": job.updated_at.isoformat() if job and job.updated_at else None,
         },

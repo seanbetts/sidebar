@@ -20,6 +20,9 @@
   $: processingItems = ($ingestionStore.items || []).filter(
     item => !['ready', 'failed', 'canceled'].includes(item.job.status || '')
   );
+  $: failedItems = ($ingestionStore.items || []).filter(
+    item => item.job.status === 'failed'
+  );
   $: readyItems = ($ingestionStore.items || []).filter(
     item => item.job.status === 'ready'
   );
@@ -65,6 +68,17 @@
   <div class="workspace-list">
     {#if processingItems.length > 0}
       <IngestionQueue items={processingItems} />
+    {/if}
+    {#if failedItems.length > 0}
+      <div class="workspace-results-label">Failed uploads</div>
+      {#each failedItems as item (item.file.id)}
+        <div class="failed-item">
+          <div class="failed-name">{item.file.filename_original}</div>
+          <div class="failed-message">
+            {item.job.user_message || item.job.error_message || 'Upload failed.'}
+          </div>
+        </div>
+      {/each}
     {/if}
     {#if readyItems.length > 0}
       <div class="workspace-results-label">Recent uploads</div>
@@ -144,6 +158,28 @@
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    color: var(--color-muted-foreground);
+  }
+
+  .failed-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.4rem;
+    background: color-mix(in oklab, var(--color-destructive) 8%, transparent);
+  }
+
+  .failed-name {
+    font-size: 0.85rem;
+    color: var(--color-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .failed-message {
+    font-size: 0.75rem;
     color: var(--color-muted-foreground);
   }
 
