@@ -1,5 +1,5 @@
 /**
- * Files store for managing multiple file tree states
+ * Tree store for managing notes and workspace file trees.
  */
 import { writable, get } from 'svelte/store';
 import type { FileNode, FileTreeState } from '$lib/types/file';
@@ -305,7 +305,7 @@ function updateExpandedPathsForFolder(
   return updated;
 }
 
-function createFilesStore() {
+function createTreeStore() {
   const { subscribe, set, update } = writable<FileTreeState>({
     trees: {}
   });
@@ -955,4 +955,4 @@ function createFilesStore() {
   };
 }
 
-export const filesStore = createFilesStore();
+export const treeStore = createTreeStore();
