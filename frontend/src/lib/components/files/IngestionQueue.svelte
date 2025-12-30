@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { Pause, Play, X } from 'lucide-svelte';
+  import { ingestionAPI } from '$lib/services/api';
+  import { ingestionStore } from '$lib/stores/ingestion';
   import type { IngestionListItem } from '$lib/types/ingestion';
 
   export let items: IngestionListItem[] = [];
@@ -11,6 +14,33 @@
     if (index < 0) return 0;
     return Math.round((index / (stageOrder.length - 1)) * 100);
   }
+
+  async function handlePause(fileId: string) {
+    try {
+      await ingestionAPI.pause(fileId);
+      await ingestionStore.load();
+    } catch (error) {
+      console.error('Failed to pause ingestion:', error);
+    }
+  }
+
+  async function handleResume(fileId: string) {
+    try {
+      await ingestionAPI.resume(fileId);
+      await ingestionStore.load();
+    } catch (error) {
+      console.error('Failed to resume ingestion:', error);
+    }
+  }
+
+  async function handleCancel(fileId: string) {
+    try {
+      await ingestionAPI.cancel(fileId);
+      await ingestionStore.load();
+    } catch (error) {
+      console.error('Failed to cancel ingestion:', error);
+    }
+  }
 </script>
 
 <div class="ingestion-queue">
@@ -19,7 +49,25 @@
     <div class="ingestion-item">
       <div class="ingestion-header">
         <span class="filename">{item.file.filename_original}</span>
-        <span class="status">{item.job.stage || item.job.status || 'queued'}</span>
+        <div class="status-row">
+          <span class="status">{item.job.stage || item.job.status || 'queued'}</span>
+          <div class="actions">
+            {#if item.job.status === 'processing'}
+              <button class="action" onclick={() => handlePause(item.file.id)} aria-label="Pause">
+                <Pause size={14} />
+              </button>
+            {:else if item.job.status === 'paused'}
+              <button class="action" onclick={() => handleResume(item.file.id)} aria-label="Resume">
+                <Play size={14} />
+              </button>
+            {/if}
+            {#if item.job.status !== 'ready'}
+              <button class="action" onclick={() => handleCancel(item.file.id)} aria-label="Cancel">
+                <X size={14} />
+              </button>
+            {/if}
+          </div>
+        </div>
       </div>
       <div class="progress">
         <div class="progress-bar" style={`width: ${getProgress(item.job.stage || item.job.status)}%`}></div>
@@ -54,6 +102,7 @@
     display: flex;
     justify-content: space-between;
     gap: 0.5rem;
+    align-items: center;
   }
 
   .filename {
@@ -69,6 +118,30 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-muted-foreground);
+  }
+
+  .status-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .action {
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    color: var(--color-muted-foreground);
+  }
+
+  .action:hover {
+    color: var(--color-foreground);
   }
 
   .progress {
