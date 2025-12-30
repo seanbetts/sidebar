@@ -19,6 +19,7 @@ export interface IngestionJob {
 export interface IngestionListItem {
   file: IngestedFileMeta;
   job: IngestionJob;
+  recommended_viewer?: string | null;
 }
 
 export interface IngestionListResponse {
