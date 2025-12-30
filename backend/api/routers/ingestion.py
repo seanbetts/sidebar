@@ -109,6 +109,17 @@ async def list_ingestions(
     items = []
     for record in records:
         job = FileIngestionService.get_job(db, record.id)
+        derivatives = FileIngestionService.list_derivatives(db, record.id)
+        derivative_payload = [
+            {
+                "id": str(item.id),
+                "kind": item.kind,
+                "storage_key": item.storage_key,
+                "mime": item.mime,
+                "size_bytes": item.size_bytes,
+            }
+            for item in derivatives
+        ]
         items.append(
             {
                 "file": {
@@ -127,6 +138,7 @@ async def list_ingestions(
                     "attempts": job.attempts if job else 0,
                     "updated_at": job.updated_at.isoformat() if job and job.updated_at else None,
                 },
+                "recommended_viewer": _recommended_viewer(derivative_payload),
             }
         )
 
