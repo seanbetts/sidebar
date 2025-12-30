@@ -35,6 +35,19 @@ function createChatStore() {
 	});
 	const getState = () => get({ subscribe });
 	const toolState = createToolStateHandlers(update, getState);
+	const cleanupEmptyConversation = async () => {
+		const state = get({ subscribe });
+		if (!state.conversationId || state.messages.length > 0 || state.isStreaming) {
+			return;
+		}
+		await conversationListStore.deleteConversation(state.conversationId);
+		currentConversationId.set(null);
+		clearLastConversation();
+		set({
+			...state,
+			conversationId: null
+		});
+	};
 
 	const setLastConversationId = (conversationId: string) => {
 		if (!browser) return;
@@ -63,6 +76,7 @@ function createChatStore() {
 		 */
 		async loadConversation(conversationId: string) {
 			toolState.clearToolTimers();
+			await cleanupEmptyConversation();
 			const conversation = await conversationsAPI.get(conversationId);
 			currentConversationId.set(conversationId);
 			setLastConversationId(conversationId);
@@ -84,6 +98,7 @@ function createChatStore() {
 		 */
 		async startNewConversation() {
 			toolState.clearToolTimers();
+			await cleanupEmptyConversation();
 			const conversation = await conversationsAPI.create();
 			currentConversationId.set(conversation.id);
 			setLastConversationId(conversation.id);
@@ -320,6 +335,7 @@ function createChatStore() {
 		 */
 		reset() {
 			toolState.clearToolTimers();
+			void cleanupEmptyConversation();
 			set({
 				conversationId: null,
 				messages: [],
@@ -351,7 +367,8 @@ function createChatStore() {
 		setActiveTool: toolState.setActiveTool,
 		finalizeActiveTool: toolState.finalizeActiveTool,
 		markNeedsNewline: toolState.markNeedsNewline,
-		getActiveToolStartTime: toolState.getActiveToolStartTime
+		getActiveToolStartTime: toolState.getActiveToolStartTime,
+		cleanupEmptyConversation
 	};
 }
 
