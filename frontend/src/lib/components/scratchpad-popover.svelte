@@ -326,4 +326,10 @@
 	:global(.scratchpad-editor tbody tr:nth-child(even)) {
 		background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
 	}
+
+	:global(.scratchpad-editor hr) {
+		border: none;
+		border-top: 1px solid var(--color-border);
+		margin: 1.25rem 0;
+	}
 </style>
