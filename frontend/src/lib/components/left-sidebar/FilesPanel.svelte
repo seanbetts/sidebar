@@ -27,6 +27,7 @@
   $: readyItems = ($ingestionStore.items || []).filter(
     item => item.job.status === 'ready'
   );
+  let retryingIds = new Set<string>();
 
   function openViewer(item: IngestionListItem) {
     const viewerKind = item.recommended_viewer;
@@ -35,12 +36,17 @@
   }
 
   async function retryIngestion(fileId: string) {
+    retryingIds = new Set(retryingIds).add(fileId);
     try {
       await ingestionAPI.reprocess(fileId);
       await ingestionStore.load();
       ingestionStore.startPolling();
     } catch (error) {
       console.error('Failed to retry ingestion:', error);
+    } finally {
+      const next = new Set(retryingIds);
+      next.delete(fileId);
+      retryingIds = next;
     }
   }
 
@@ -101,6 +107,7 @@
                 type="button"
                 onclick={() => retryIngestion(item.file.id)}
                 aria-label="Retry upload"
+                disabled={retryingIds.has(item.file.id)}
               >
                 <RotateCcw size={14} />
               </button>
@@ -115,7 +122,11 @@
             </div>
           </div>
           <div class="failed-message">
-            {item.job.user_message || item.job.error_message || 'Upload failed.'}
+            {#if retryingIds.has(item.file.id)}
+              <span class="failed-status">Retrying...</span>
+            {:else}
+              {item.job.user_message || item.job.error_message || 'Upload failed.'}
+            {/if}
           </div>
         </div>
       {/each}
@@ -243,9 +254,20 @@
     color: var(--color-foreground);
   }
 
+  .failed-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .failed-message {
     font-size: 0.75rem;
     color: var(--color-muted-foreground);
+  }
+
+  .failed-status {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
   /* Empty state handled by SidebarEmptyState */
