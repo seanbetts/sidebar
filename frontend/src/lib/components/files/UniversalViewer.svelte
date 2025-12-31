@@ -227,56 +227,58 @@
     </div>
     <div class="file-viewer-controls">
       {#if isPdf}
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
-          onclick={prevPage}
-          disabled={!canPrev}
-          aria-label="Previous page"
-        >
-          <ChevronLeft size={16} />
-        </Button>
-        <span class="viewer-page">{currentPage} / {pageCount || 1}</span>
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
-          onclick={nextPage}
-          disabled={!canNext}
-          aria-label="Next page"
-        >
-          <ChevronRight size={16} />
-        </Button>
-        <div class="viewer-divider"></div>
-        <Button size="icon" variant="ghost" class="viewer-control" onclick={zoomOut} aria-label="Zoom out">
-          <Minus size={16} />
-        </Button>
-        <span class="viewer-scale">{Math.round((isPdf ? normalizedScale : scale) * 100)}%</span>
-        <Button size="icon" variant="ghost" class="viewer-control" onclick={zoomIn} aria-label="Zoom in">
-          <Plus size={16} />
-        </Button>
-        <div class="viewer-divider"></div>
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
-          onclick={() => setFitMode('height')}
-          data-active={fitMode === 'height'}
-          aria-label="Fit to height"
-        >
-          <GalleryVertical size={16} />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
-          onclick={() => setFitMode('width')}
-          data-active={fitMode === 'width'}
-          aria-label="Fit to width"
-        >
-          <GalleryHorizontal size={16} />
-        </Button>
+        <div class="pdf-controls-inline">
+          <Button
+            size="icon"
+            variant="ghost"
+            class="viewer-control"
+            onclick={prevPage}
+            disabled={!canPrev}
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={16} />
+          </Button>
+          <span class="viewer-page">{currentPage} / {pageCount || 1}</span>
+          <Button
+            size="icon"
+            variant="ghost"
+            class="viewer-control"
+            onclick={nextPage}
+            disabled={!canNext}
+            aria-label="Next page"
+          >
+            <ChevronRight size={16} />
+          </Button>
+          <div class="viewer-divider"></div>
+          <Button size="icon" variant="ghost" class="viewer-control" onclick={zoomOut} aria-label="Zoom out">
+            <Minus size={16} />
+          </Button>
+          <span class="viewer-scale">{Math.round((isPdf ? normalizedScale : scale) * 100)}%</span>
+          <Button size="icon" variant="ghost" class="viewer-control" onclick={zoomIn} aria-label="Zoom in">
+            <Plus size={16} />
+          </Button>
+          <div class="viewer-divider"></div>
+          <Button
+            size="icon"
+            variant="ghost"
+            class="viewer-control"
+            onclick={() => setFitMode('height')}
+            data-active={fitMode === 'height'}
+            aria-label="Fit to height"
+          >
+            <GalleryVertical size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            class="viewer-control"
+            onclick={() => setFitMode('width')}
+            data-active={fitMode === 'width'}
+            aria-label="Fit to width"
+          >
+            <GalleryHorizontal size={16} />
+          </Button>
+        </div>
       {/if}
       <div class="viewer-standard-actions">
         <div class="viewer-divider"></div>
@@ -356,6 +358,41 @@
             {/snippet}
           </Popover.Trigger>
           <Popover.Content class="viewer-actions-menu" align="end" sideOffset={8}>
+            {#if isPdf}
+              <div class="viewer-menu-label">Page {currentPage} / {pageCount || 1}</div>
+              <div class="viewer-menu-row">
+                <button class="viewer-menu-item" onclick={prevPage} disabled={!canPrev}>
+                  <ChevronLeft size={16} />
+                  <span>Prev page</span>
+                </button>
+                <button class="viewer-menu-item" onclick={nextPage} disabled={!canNext}>
+                  <ChevronRight size={16} />
+                  <span>Next page</span>
+                </button>
+              </div>
+              <div class="viewer-menu-label">Zoom {Math.round((isPdf ? normalizedScale : scale) * 100)}%</div>
+              <div class="viewer-menu-row">
+                <button class="viewer-menu-item" onclick={zoomOut}>
+                  <Minus size={16} />
+                  <span>Zoom out</span>
+                </button>
+                <button class="viewer-menu-item" onclick={zoomIn}>
+                  <Plus size={16} />
+                  <span>Zoom in</span>
+                </button>
+              </div>
+              <div class="viewer-menu-row">
+                <button class="viewer-menu-item" onclick={() => setFitMode('height')}>
+                  <GalleryVertical size={16} />
+                  <span>Fit height</span>
+                </button>
+                <button class="viewer-menu-item" onclick={() => setFitMode('width')}>
+                  <GalleryHorizontal size={16} />
+                  <span>Fit width</span>
+                </button>
+              </div>
+              <div class="viewer-menu-divider"></div>
+            {/if}
             <button class="viewer-menu-item" onclick={handlePinToggle} disabled={!active}>
               {#if active?.file.pinned}
                 <PinOff size={16} />
@@ -379,7 +416,7 @@
                 <span>Copied</span>
               {:else}
                 <Copy size={16} />
-                <span>Copy markdown</span>
+                <span>Copy</span>
               {/if}
             </button>
             <button class="viewer-menu-item" onclick={handleDelete} disabled={!active}>
@@ -527,6 +564,12 @@
     gap: 0.35rem;
   }
 
+  .pdf-controls-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
   .viewer-standard-compact {
     display: none;
   }
@@ -558,6 +601,26 @@
   .viewer-menu-item:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .viewer-menu-label {
+    padding: 0.35rem 0.75rem 0.1rem;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted-foreground);
+  }
+
+  .viewer-menu-row {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0 0.15rem 0.2rem;
+  }
+
+  .viewer-menu-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 0.35rem 0.35rem 0.2rem;
   }
 
   .viewer-control[data-active='true'] {
@@ -601,6 +664,10 @@
     .viewer-standard-compact {
       display: inline-flex;
       align-items: center;
+    }
+
+    .pdf-controls-inline {
+      display: none;
     }
   }
 </style>
