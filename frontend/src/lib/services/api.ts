@@ -198,6 +198,30 @@ class IngestionAPI {
   }
 
   /**
+   * Queue a YouTube URL for ingestion.
+   */
+  async ingestYoutube(url: string): Promise<{ file_id: string }> {
+    const response = await fetch(`${this.baseUrl}/youtube`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!response.ok) {
+      let message = 'Failed to add YouTube video';
+      try {
+        const data = await response.json();
+        if (data?.detail) {
+          message = data.detail;
+        }
+      } catch {
+        // Ignore parse errors and use fallback message.
+      }
+      throw new Error(message);
+    }
+    return response.json();
+  }
+
+  /**
    * Fetch a derivative asset for viewing.
    */
   async getContent(fileId: string, kind: string): Promise<Response> {

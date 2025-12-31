@@ -109,6 +109,7 @@ _COMMON_SHORT_WORDS = {
 }
 
 _audio_transcriber: Callable[..., dict] | None = None
+_youtube_transcriber: Callable[..., dict] | None = None
 
 
 def _now() -> datetime:
@@ -309,6 +310,80 @@ def _load_audio_transcriber() -> Callable[..., dict]:
         raise IngestionError("TRANSCRIPTION_UNAVAILABLE", "Audio transcription entry point missing", retryable=False)
     _audio_transcriber = transcriber
     return transcriber
+
+
+def _load_youtube_transcriber() -> Callable[..., dict]:
+    global _youtube_transcriber
+    if _youtube_transcriber is not None:
+        return _youtube_transcriber
+    candidate_roots = [
+        Path(settings.skills_dir),
+        Path(__file__).resolve().parents[2] / "skills",
+    ]
+    skill_path = None
+    for root in candidate_roots:
+        candidate = root / "youtube-transcribe" / "scripts" / "transcribe_youtube.py"
+        if candidate.exists():
+            skill_path = candidate
+            break
+    if skill_path is None:
+        attempted = ", ".join(str(root / "youtube-transcribe" / "scripts" / "transcribe_youtube.py") for root in candidate_roots)
+        raise IngestionError(
+            "VIDEO_TRANSCRIPTION_UNAVAILABLE",
+            f"YouTube transcription skill not found. Checked: {attempted}",
+            retryable=False,
+        )
+    spec = importlib.util.spec_from_file_location("youtube_transcribe_skill", skill_path)
+    if not spec or not spec.loader:
+        raise IngestionError("VIDEO_TRANSCRIPTION_UNAVAILABLE", "YouTube transcription skill could not be loaded", retryable=False)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    transcriber = getattr(module, "transcribe_youtube", None)
+    if not callable(transcriber):
+        raise IngestionError("VIDEO_TRANSCRIPTION_UNAVAILABLE", "YouTube transcription entry point missing", retryable=False)
+    _youtube_transcriber = transcriber
+    return transcriber
+
+
+def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
+    if not record.source_url:
+        raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
+    transcriber = _load_youtube_transcriber()
+    temp_root = _derivative_dir(str(record.id))
+    temp_root.mkdir(parents=True, exist_ok=True)
+    try:
+        result = transcriber(
+            record.source_url,
+            user_id=str(record.user_id),
+            output_dir=f"files/{record.id}/ai",
+            output_name="ai.md",
+            audio_dir="files/videos",
+            keep_audio=False,
+        )
+    except ValueError as exc:
+        raise IngestionError("INVALID_YOUTUBE_URL", str(exc), retryable=False) from exc
+    except RuntimeError as exc:
+        message = str(exc)
+        retryable = "rate" in message.lower() or "timeout" in message.lower()
+        raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", message, retryable=retryable) from exc
+    except Exception as exc:
+        raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", "Video transcription failed", retryable=True) from exc
+
+    transcript_path = Path(result.get("transcript_file") or "")
+    if not transcript_path.exists():
+        raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", "Transcript output missing", retryable=False)
+    transcript = transcript_path.read_text(encoding="utf-8", errors="ignore").strip()
+    if not transcript:
+        transcript = "No transcription available."
+    metadata = {
+        "provider": "youtube",
+        "title": result.get("title"),
+        "youtube_url": record.source_url,
+        "audio_duration": result.get("audio_duration"),
+        "download_duration_seconds": result.get("download_duration_seconds"),
+        "transcription_duration_seconds": result.get("transcription_duration_seconds"),
+    }
+    return transcript, metadata
 
 
 def _transcribe_audio(source_path: Path, record: IngestedFile) -> str:
@@ -1113,6 +1188,86 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
     return derivatives
 
 
+def _build_youtube_derivatives(
+    record: IngestedFile,
+    transcript: str,
+    metadata: dict,
+) -> list[DerivativePayload]:
+    user_prefix = f"{record.user_id}/files/{record.id}"
+    title = metadata.get("title") or record.filename_original
+    ai_body = (
+        "---\n"
+        f"file_id: {record.id}\n"
+        f"source_title: {title}\n"
+        f"source_url: {record.source_url}\n"
+        f"source_mime: {record.mime_original}\n"
+        f"created_at: {record.created_at.isoformat()}\n"
+        "derivatives:\n"
+        "  ai_md: true\n"
+        "---\n\n"
+        f"{transcript or 'No transcription available.'}"
+    )
+    ai_bytes = ai_body.encode("utf-8")
+    ai_md = DerivativePayload(
+        kind="ai_md",
+        storage_key=f"{user_prefix}/ai/ai.md",
+        mime="text/markdown",
+        size_bytes=len(ai_bytes),
+        sha256=sha256(ai_bytes).hexdigest(),
+        content=ai_bytes,
+    )
+    return [ai_md]
+
+
+def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> None:
+    logger.info("Processing YouTube file_id=%s url=%s", record.id, record.source_url)
+    for stage in PIPELINE_STAGES:
+        db.refresh(job)
+        if job.status in {"paused", "canceled"}:
+            raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
+        _set_stage(db, job, stage)
+        logger.info("Stage %s file_id=%s", stage, record.id)
+        _refresh_lease(db, job)
+
+        if stage == "validating":
+            if not record.source_url:
+                raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
+        elif stage in {"converting", "extracting", "ai_md", "thumb"}:
+            time.sleep(0.05)
+        elif stage == "finalizing":
+            transcript, metadata = _transcribe_youtube(record)
+            existing_meta = record.source_metadata or {}
+            metadata = {**existing_meta, **metadata}
+            metadata.setdefault("provider", "youtube")
+            metadata.setdefault("youtube_url", record.source_url)
+            title = metadata.get("title")
+            if title:
+                record.filename_original = title
+            record.source_metadata = metadata
+            db.commit()
+
+            derivatives = _build_youtube_derivatives(record, transcript, metadata)
+            storage = get_storage_backend()
+            for item in derivatives:
+                storage.put_object(item.storage_key, item.content, content_type=item.mime)
+
+            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+            now = _now()
+            for item in derivatives:
+                db.add(
+                    FileDerivative(
+                        file_id=record.id,
+                        kind=item.kind,
+                        storage_key=item.storage_key,
+                        mime=item.mime,
+                        size_bytes=item.size_bytes,
+                        sha256=item.sha256,
+                        created_at=now,
+                    )
+                )
+            db.commit()
+
+
 def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
@@ -1143,6 +1298,13 @@ def worker_loop() -> None:
                 record = _get_file(db, job)
                 if record.user_id:
                     db.execute(text("SET app.user_id = :user_id"), {"user_id": str(record.user_id)})
+                if record.source_url:
+                    _process_youtube_job(db, job, record)
+                    db.refresh(job)
+                    if job.status not in {"paused", "canceled"}:
+                        _mark_ready(db, job)
+                    continue
+
                 source_path = _staging_path(str(record.id))
                 if not source_path.exists():
                     raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)

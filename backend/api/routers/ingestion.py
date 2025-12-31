@@ -5,6 +5,7 @@ from hashlib import sha256
 import logging
 from pathlib import Path
 import shutil
+import urllib.parse
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -36,6 +37,9 @@ ERROR_MESSAGES = {
     "INVALID_XLSX": "That doesn't appear to be a valid XLSX file. Try re-saving it as .xlsx in Excel or Google Sheets.",
     "TRANSCRIPTION_UNAVAILABLE": "Audio transcription is unavailable right now.",
     "TRANSCRIPTION_FAILED": "We couldn't transcribe this audio file.",
+    "VIDEO_TRANSCRIPTION_FAILED": "We couldn't transcribe this video.",
+    "VIDEO_TRANSCRIPTION_UNAVAILABLE": "Video transcription is unavailable right now.",
+    "INVALID_YOUTUBE_URL": "That doesn't look like a valid YouTube URL.",
     "WORKER_STALLED": "Processing took too long. We're retrying.",
     "UNKNOWN_ERROR": "Something went wrong while processing this file.",
 }
@@ -55,18 +59,55 @@ def _filter_user_derivatives(derivatives: list[dict], user_id: str) -> list[dict
     return [item for item in derivatives if item.get("storage_key", "").startswith(prefix)]
 
 
-def _recommended_viewer(derivatives: list[dict]) -> str | None:
+def _recommended_viewer(derivatives: list[dict], record: IngestedFile | None = None) -> str | None:
     kinds = {item["kind"] for item in derivatives}
     if "viewer_pdf" in kinds:
         return "viewer_pdf"
     if "viewer_json" in kinds:
         return "viewer_json"
+    if record and record.source_url and record.mime_original.startswith("video/"):
+        return "viewer_video"
     if "image_original" in kinds:
         return "image_original"
     if "audio_original" in kinds:
         return "audio_original"
     if "text_original" in kinds:
         return "text_original"
+    return None
+
+
+def _normalize_youtube_url(url: str) -> str:
+    parsed = urllib.parse.urlparse(url if url.startswith(("http://", "https://")) else f"https://{url}")
+    if not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Invalid URL")
+    if not any(domain in parsed.netloc for domain in ("youtube.com", "youtu.be")):
+        raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+    if "youtu.be" in parsed.netloc:
+        video_id = parsed.path.strip("/")
+        if not video_id:
+            raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+        return f"https://www.youtube.com/watch?v={video_id}"
+    if parsed.path.startswith("/shorts/"):
+        parts = [part for part in parsed.path.split("/") if part]
+        if len(parts) >= 2:
+            return f"https://www.youtube.com/watch?v={parts[1]}"
+    return url
+
+
+def _extract_youtube_id(url: str) -> str | None:
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if "youtu.be" in parsed.netloc:
+            return parsed.path.strip("/") or None
+        query = urllib.parse.parse_qs(parsed.query)
+        if "v" in query and query["v"]:
+            return query["v"][0]
+        if parsed.path.startswith("/shorts/"):
+            parts = [part for part in parsed.path.split("/") if part]
+            if len(parts) >= 2:
+                return parts[1]
+    except Exception:
+        return None
     return None
 
 
@@ -163,6 +204,36 @@ async def upload_file(
     return {"file_id": str(file_id)}
 
 
+@router.post("/youtube")
+async def ingest_youtube(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Create an ingestion job for a YouTube video URL."""
+    url = str(request.get("url", "")).strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="YouTube URL is required")
+    normalized_url = _normalize_youtube_url(url)
+    video_id = _extract_youtube_id(normalized_url)
+    metadata = {
+        "provider": "youtube",
+        "video_id": video_id,
+    }
+    record, _ = FileIngestionService.create_ingestion(
+        db,
+        user_id,
+        filename_original="YouTube video",
+        mime_original="video/youtube",
+        size_bytes=0,
+        sha256=None,
+        source_url=normalized_url,
+        source_metadata=metadata,
+    )
+    return {"file_id": str(record.id)}
+
+
 @router.get("")
 async def list_ingestions(
     user_id: str = Depends(get_current_user_id),
@@ -203,10 +274,12 @@ async def list_ingestions(
                     "filename_original": record.filename_original,
                     "mime_original": record.mime_original,
                     "size_bytes": record.size_bytes,
-                    "sha256": record.sha256,
-                    "pinned": record.pinned,
-                    "category": _category_for_file(record.filename_original, record.mime_original),
-                    "created_at": record.created_at.isoformat(),
+                "sha256": record.sha256,
+                "source_url": record.source_url,
+                "source_metadata": record.source_metadata,
+                "pinned": record.pinned,
+                "category": _category_for_file(record.filename_original, record.mime_original),
+                "created_at": record.created_at.isoformat(),
                 },
                 "job": {
                     "status": job.status if job else None,
@@ -220,7 +293,7 @@ async def list_ingestions(
                     "attempts": job.attempts if job else 0,
                     "updated_at": job.updated_at.isoformat() if job and job.updated_at else None,
                 },
-                "recommended_viewer": _recommended_viewer(derivative_payload),
+                "recommended_viewer": _recommended_viewer(derivative_payload, record),
             }
         )
 
@@ -264,6 +337,8 @@ async def get_file_meta(
             "mime_original": record.mime_original,
             "size_bytes": record.size_bytes,
             "sha256": record.sha256,
+            "source_url": record.source_url,
+            "source_metadata": record.source_metadata,
             "pinned": record.pinned,
             "category": _category_for_file(record.filename_original, record.mime_original),
             "created_at": record.created_at.isoformat(),
@@ -281,7 +356,7 @@ async def get_file_meta(
             "updated_at": job.updated_at.isoformat() if job and job.updated_at else None,
         },
         "derivatives": derivatives,
-        "recommended_viewer": _recommended_viewer(derivatives),
+        "recommended_viewer": _recommended_viewer(derivatives, record),
     }
 
 

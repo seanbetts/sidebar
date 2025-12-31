@@ -22,6 +22,8 @@ class FileIngestionService:
         mime_original: str,
         size_bytes: int,
         sha256: Optional[str] = None,
+        source_url: Optional[str] = None,
+        source_metadata: Optional[dict] = None,
         file_id: Optional[uuid.UUID] = None,
     ) -> tuple[IngestedFile, FileProcessingJob]:
         """Create ingestion records for a new file upload."""
@@ -36,6 +38,8 @@ class FileIngestionService:
             mime_original=mime_original,
             size_bytes=size_bytes,
             sha256=sha256,
+            source_url=source_url,
+            source_metadata=source_metadata,
             created_at=now,
             deleted_at=None,
         )

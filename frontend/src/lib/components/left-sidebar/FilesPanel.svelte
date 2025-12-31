@@ -6,6 +6,7 @@
     FileText,
     FileSpreadsheet,
     FileMusic,
+    FileVideoCamera,
     Image,
     Folder,
     FolderOpen,
@@ -75,6 +76,7 @@
     if (category === 'spreadsheets') return FileSpreadsheet;
     if (category === 'presentations') return FileChartPie;
     if (category === 'audio') return FileMusic;
+    if (category === 'video') return FileVideoCamera;
     return FileText;
   }
   $: categorizedItems = readyItems.reduce<Record<string, IngestionListItem[]>>((acc, item) => {
