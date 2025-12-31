@@ -160,11 +160,15 @@
     if (renderTask) {
       renderTask.cancel();
     }
+    const deviceScale = browser ? window.devicePixelRatio || 1 : 1;
     const viewport = page.getViewport({ scale: effectiveScale });
     const context = canvas.getContext('2d');
     if (!context) return;
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
+    canvas.width = Math.floor(viewport.width * deviceScale);
+    canvas.height = Math.floor(viewport.height * deviceScale);
+    canvas.style.width = `${Math.floor(viewport.width)}px`;
+    canvas.style.height = `${Math.floor(viewport.height)}px`;
+    context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
     renderTask = page.render({ canvasContext: context, viewport });
     try {
       await renderTask.promise;
