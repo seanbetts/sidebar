@@ -160,6 +160,14 @@ def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
     )
 
 
+def _should_cleanup_after_failure(error: IngestionError) -> bool:
+    if error.retryable:
+        return False
+    if error.code in {"CONVERSION_UNAVAILABLE"}:
+        return False
+    return True
+
+
 def _requeue_stalled_jobs(db) -> None:
     stalled_jobs = (
         db.query(FileProcessingJob)
@@ -533,11 +541,12 @@ def worker_loop() -> None:
                 if error.code == "JOB_HALTED":
                     continue
                 _retry_or_fail(db, job, error)
-                if job.status == "failed":
+                if job.status == "failed" and _should_cleanup_after_failure(error):
                     _cleanup_staging(str(job.file_id))
             except Exception as error:
-                _retry_or_fail(db, job, IngestionError("UNKNOWN_ERROR", str(error), retryable=True))
-                if job.status == "failed":
+                unknown_error = IngestionError("UNKNOWN_ERROR", str(error), retryable=True)
+                _retry_or_fail(db, job, unknown_error)
+                if job.status == "failed" and _should_cleanup_after_failure(unknown_error):
                     _cleanup_staging(str(job.file_id))
         time.sleep(SLEEP_SECONDS)
 

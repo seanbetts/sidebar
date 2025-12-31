@@ -196,7 +196,26 @@
   }
 
   function getFileType(name: string, mime?: string): string {
-    if (mime) return mime;
+    if (mime) {
+      const normalized = mime.split(';')[0].trim().toLowerCase();
+      const pretty = {
+        'application/pdf': 'PDF',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX'
+      } as Record<string, string>;
+      if (normalized.startsWith('image/')) {
+        const imageSubtype = normalized.split('/')[1] ?? 'image';
+        return imageSubtype.toUpperCase();
+      }
+      if (normalized === 'application/octet-stream') {
+        const index = name.lastIndexOf('.');
+        if (index > 0 && index < name.length - 1) {
+          return name.slice(index + 1).toUpperCase();
+        }
+      }
+      return pretty[normalized] ?? mime;
+    }
     const index = name.lastIndexOf('.');
     if (index > 0 && index < name.length - 1) {
       return name.slice(index + 1).toUpperCase();
