@@ -37,7 +37,7 @@ function createIngestionViewerStore() {
         file: item.file,
         job: item.job,
         derivatives: [],
-        recommended_viewer: null
+        recommended_viewer: item.recommended_viewer ?? null
       };
       update(state => ({ ...state, active: localMeta, loading: false, error: null }));
     },

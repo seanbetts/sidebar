@@ -68,6 +68,33 @@ function createIngestionStore() {
       }));
       return upload;
     },
+    addLocalSource(source: { id: string; name: string; mime: string; url: string }) {
+      const now = new Date().toISOString();
+      const upload: IngestionListItem = {
+        file: {
+          id: source.id,
+          filename_original: source.name,
+          mime_original: source.mime,
+          size_bytes: 0,
+          source_url: source.url,
+          created_at: now
+        },
+        job: {
+          status: 'uploading',
+          stage: 'uploading',
+          attempts: 0,
+          user_message: 'Validating link...',
+          progress: 0
+        },
+        recommended_viewer: 'viewer_video'
+      };
+      update(state => ({
+        ...state,
+        localUploads: [...state.localUploads, upload],
+        items: [...state.localUploads, upload, ...state.items]
+      }));
+      return upload;
+    },
     updateLocalUploadProgress(fileId: string, progress: number) {
       const percent = Math.max(0, Math.min(100, Math.round(progress)));
       update(state => {

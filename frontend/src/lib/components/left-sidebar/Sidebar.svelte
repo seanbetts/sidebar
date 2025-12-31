@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { Plus, Folder } from 'lucide-svelte';
+  import { Plus, Folder, FileVideoCamera } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -22,6 +22,7 @@
   import NewWebsiteDialog from '$lib/components/left-sidebar/dialogs/NewWebsiteDialog.svelte';
   import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
   import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
+  import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import { Button } from '$lib/components/ui/button';
   import { ingestionAPI } from '$lib/services/api';
 
@@ -45,6 +46,9 @@
   let profileImageSrc = '';
   let isUploadingFile = false;
   let pendingUploadId: string | null = null;
+  let isYouTubeDialogOpen = false;
+  let youtubeUrl = '';
+  let isAddingYoutube = false;
   let fileInput: HTMLInputElement | null = null;
   const sidebarLogoSrc = '/images/logo.svg';
   let isMounted = false;
@@ -184,6 +188,53 @@
 
   function handleUploadFileClick() {
     fileInput?.click();
+  }
+
+  function handleAddYouTube() {
+    youtubeUrl = '';
+    isYouTubeDialogOpen = true;
+  }
+
+  async function confirmAddYouTube() {
+    const url = youtubeUrl.trim();
+    if (!url || isAddingYoutube) return;
+
+    const tempId = `youtube-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+    isAddingYoutube = true;
+    const localItem = ingestionStore.addLocalSource({
+      id: tempId,
+      name: 'YouTube video',
+      mime: 'video/youtube',
+      url
+    });
+    ingestionViewerStore.setLocalActive(localItem);
+    try {
+      const { file_id } = await ingestionAPI.ingestYoutube(url);
+      ingestionStore.removeLocalUpload(tempId);
+      await ingestionStore.load();
+      ingestionStore.startPolling();
+      dispatchCacheEvent('file.uploaded');
+      websitesStore.clearActive();
+      editorStore.reset();
+      currentNoteId.set(null);
+      pendingUploadId = file_id;
+      ingestionViewerStore.open(file_id);
+      isYouTubeDialogOpen = false;
+    } catch (error) {
+      ingestionStore.removeLocalUpload(tempId);
+      ingestionViewerStore.updateActiveJob(tempId, {
+        status: 'failed',
+        stage: 'failed',
+        user_message: error instanceof Error ? error.message : 'Failed to add YouTube video.'
+      });
+      console.error('Failed to add YouTube video:', error);
+      errorTitle = 'Unable to add YouTube video';
+      errorMessage =
+        error instanceof Error ? error.message : 'Failed to add YouTube video. Please try again.';
+      isErrorDialogOpen = true;
+    } finally {
+      isAddingYoutube = false;
+    }
   }
 
   async function handleFileSelected(event: Event) {
@@ -401,6 +452,20 @@
   onConfirm={() => (isErrorDialogOpen = false)}
 />
 
+<TextInputDialog
+  bind:open={isYouTubeDialogOpen}
+  title="Add YouTube video"
+  description="Paste a YouTube URL to generate a transcript."
+  placeholder="https://www.youtube.com/watch?v=..."
+  bind:value={youtubeUrl}
+  confirmLabel="Add video"
+  cancelLabel="Cancel"
+  busyLabel="Adding..."
+  isBusy={isAddingYoutube}
+  onConfirm={confirmAddYouTube}
+  onCancel={() => (isYouTubeDialogOpen = false)}
+/>
+
 <SaveChangesDialog
   bind:open={isSaveChangesDialogOpen}
   onConfirm={confirmSaveAndSwitch}
@@ -500,9 +565,20 @@
             <input
               type="file"
               bind:this={fileInput}
-              on:change={handleFileSelected}
+              onchange={handleFileSelected}
               class="file-upload-input"
             />
+            <Button
+              size="icon"
+              variant="ghost"
+              class="panel-action"
+              onclick={handleAddYouTube}
+              aria-label="Add YouTube video"
+              title="Add YouTube video"
+              disabled={isAddingYoutube}
+            >
+              <FileVideoCamera size={16} />
+            </Button>
             <Button
               size="icon"
               variant="ghost"

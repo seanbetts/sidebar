@@ -14,6 +14,7 @@
     FilePenLine,
     Image,
     FileMusic,
+    FileVideoCamera,
     AlertTriangle,
     Menu,
     Minus,
@@ -41,13 +42,14 @@
   $: error = $ingestionViewerStore.error;
   $: viewerKind = active?.recommended_viewer;
   $: viewerUrl =
-    active && viewerKind
+    active && viewerKind && viewerKind !== 'viewer_video'
       ? `/api/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
       : null;
   $: isPdf = viewerKind === 'viewer_pdf';
   $: isAudio = viewerKind === 'audio_original';
   $: isText = viewerKind === 'text_original';
   $: isSpreadsheet = viewerKind === 'viewer_json';
+  $: isVideo = viewerKind === 'viewer_video';
   $: isImage = active?.file.category === 'images';
   $: isPresentation = active?.file.category === 'presentations';
   $: centerPdfPages = isPresentation || isPdf;
@@ -62,7 +64,8 @@
   $: canPrev = currentPage > 1;
   $: canNext = pageCount > 0 && currentPage < pageCount;
   $: hasMarkdown = Boolean(active?.derivatives?.some(item => item.kind === 'ai_md'));
-  $: showMarkdownToggle = hasMarkdown && !isSpreadsheet && !isAudio;
+  $: showMarkdownToggle = hasMarkdown && !isSpreadsheet && !isAudio && !isVideo;
+  $: videoEmbedUrl = isVideo ? buildYouTubeEmbedUrl(active?.file.source_url) : null;
 
   let currentPage = 1;
   let pageCount = 0;
@@ -108,6 +111,11 @@
       loadMarkdown();
     }
   }
+  $: if (isVideo && hasMarkdown && active?.file.id) {
+    if (active.file.id !== lastMarkdownId) {
+      loadMarkdown();
+    }
+  }
 
   onMount(async () => {
     if (!browser) return;
@@ -138,6 +146,33 @@
   function setFitMode(mode: 'auto' | 'width' | 'height') {
     fitMode = mode;
     scale = 1;
+  }
+
+  function buildYouTubeEmbedUrl(url: string | null | undefined): string | null {
+    if (!url) return null;
+    try {
+      const normalized = url.startsWith('http://') || url.startsWith('https://')
+        ? url
+        : `https://${url}`;
+      const parsed = new URL(normalized);
+      if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
+        return null;
+      }
+      let videoId: string | null = null;
+      if (parsed.hostname.includes('youtu.be')) {
+        videoId = parsed.pathname.replace('/', '') || null;
+      } else {
+        videoId = parsed.searchParams.get('v');
+        if (!videoId && parsed.pathname.startsWith('/shorts/')) {
+          const parts = parsed.pathname.split('/').filter(Boolean);
+          videoId = parts[1] ?? null;
+        }
+      }
+      if (!videoId) return null;
+      return `https://www.youtube-nocookie.com/embed/${videoId}`;
+    } catch {
+      return null;
+    }
   }
 
 
@@ -319,6 +354,13 @@
         } as Record<string, string>;
         return audioPretty[subtype] ?? subtype.replace(/^x-/, '').toUpperCase();
       }
+      if (normalized === 'video/youtube') {
+        return 'YouTube';
+      }
+      if (normalized.startsWith('video/')) {
+        const subtype = normalized.split('/')[1] ?? 'video';
+        return subtype.replace(/^x-/, '').toUpperCase();
+      }
       if (normalized === 'application/octet-stream') {
         const index = name.lastIndexOf('.');
         if (index > 0 && index < name.length - 1) {
@@ -379,6 +421,8 @@
             <Image size={18} />
           {:else if isAudio}
             <FileMusic size={18} />
+          {:else if isVideo}
+            <FileVideoCamera size={18} />
           {:else if isSpreadsheet}
             <FileSpreadsheet size={18} />
           {:else}
@@ -542,6 +586,7 @@
           variant="ghost"
           class="viewer-control"
           onclick={handleDownload}
+          disabled={!viewerUrl || isVideo}
           aria-label={isSpreadsheet ? 'Download CSV' : 'Download file'}
           title={isSpreadsheet ? 'Download CSV' : 'Download file'}
         >
@@ -635,7 +680,7 @@
               <Pencil size={16} />
               <span>Rename</span>
             </button>
-            <button class="viewer-menu-item" onclick={handleDownload}>
+            <button class="viewer-menu-item" onclick={handleDownload} disabled={!viewerUrl || isVideo}>
               <Download size={16} />
               <span>{isSpreadsheet ? 'Download CSV' : 'Download'}</span>
             </button>
@@ -662,11 +707,43 @@
     </div>
   </div>
 
-  <div class="file-viewer-body" class:audio-body={isAudio}>
+  <div class="file-viewer-body" class:audio-body={isAudio} class:video-body={isVideo}>
     {#if loading}
       <div class="viewer-placeholder">Loading file…</div>
     {:else if error}
       <div class="viewer-placeholder">{error}</div>
+    {:else if isVideo}
+      <div class="file-viewer-video-content">
+        <div class="file-viewer-video-card">
+          <span class="file-viewer-video-icon">
+            <FileVideoCamera size={40} />
+          </span>
+          {#if videoEmbedUrl}
+            <div class="file-viewer-video-frame">
+              <iframe
+                class="file-viewer-video-embed"
+                src={videoEmbedUrl}
+                title={active?.file.filename_original ?? 'YouTube video'}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+              />
+            </div>
+          {:else}
+            <div class="viewer-placeholder">Video unavailable.</div>
+          {/if}
+        </div>
+        {#if hasMarkdown}
+          {#if markdownLoading}
+            <div class="viewer-placeholder video-markdown-status">Loading markdown…</div>
+          {:else if markdownError}
+            <div class="viewer-placeholder video-markdown-status">{markdownError}</div>
+          {:else}
+            <div class="file-markdown-container">
+              <FileMarkdown content={markdownContent} />
+            </div>
+          {/if}
+        {/if}
+      </div>
     {:else if !viewerUrl}
       <div class="viewer-placeholder">
         {#if isFailed}
@@ -869,6 +946,11 @@
     justify-content: flex-start;
   }
 
+  .file-viewer-body.video-body {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
   .file-viewer-controls {
     display: inline-flex;
     align-items: center;
@@ -1067,6 +1149,14 @@
     gap: 1.25rem;
   }
 
+  .file-viewer-video-content {
+    width: min(900px, 100%);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
   .file-viewer-audio-card {
     display: flex;
     flex-direction: column;
@@ -1078,7 +1168,22 @@
     border: 1px solid var(--color-border);
   }
 
+  .file-viewer-video-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1.1rem 1.25rem;
+    border-radius: 0.75rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+  }
+
   .file-viewer-audio-icon {
+    color: var(--color-muted-foreground);
+  }
+
+  .file-viewer-video-icon {
     color: var(--color-muted-foreground);
   }
 
@@ -1086,7 +1191,29 @@
     width: min(520px, 100%);
   }
 
+  .file-viewer-video-frame {
+    width: min(720px, 100%);
+    aspect-ratio: 16 / 9;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+  }
+
+  .file-viewer-video-embed {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
   .audio-markdown-status {
+    margin-top: 0.5rem;
+    text-align: center;
+    align-self: center;
+  }
+
+  .video-markdown-status {
     margin-top: 0.5rem;
     text-align: center;
     align-self: center;

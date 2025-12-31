@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import uuid
 
 from sqlalchemy import Column, DateTime, Text, BigInteger, ForeignKey, Index, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from api.db.base import Base
 
@@ -24,6 +24,8 @@ class IngestedFile(Base):
     mime_original = Column(Text, nullable=False)
     size_bytes = Column(BigInteger, nullable=False, default=0)
     sha256 = Column(Text, nullable=True)
+    source_url = Column(Text, nullable=True)
+    source_metadata = Column(JSONB, nullable=True)
     pinned = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
