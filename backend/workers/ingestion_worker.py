@@ -460,6 +460,10 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
 def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
+    if shutil.which("soffice") is None:
+        logger.warning(
+            "LibreOffice (soffice) not found. DOCX/XLSX/PPTX conversion will fail."
+        )
     db_url = settings.database_url
     if db_url:
         safe_url = db_url

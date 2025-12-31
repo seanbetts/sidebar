@@ -4,6 +4,10 @@ This project ships as two containers (frontend + API) and relies on external ser
 - **Supabase Postgres** for structured data
 - **Cloudflare R2** for workspace files and assets
 
+## Runtime Dependencies
+
+- **LibreOffice (soffice)** is required in the API container to convert DOCX/XLSX/PPTX files into PDFs during ingestion.
+
 ## Environment Variables
 
 Create a `.env` from `.env.example` and fill in:
