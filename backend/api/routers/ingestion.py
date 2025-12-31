@@ -415,6 +415,31 @@ async def update_pin(
     return {"success": True}
 
 
+@router.patch("/{file_id}/rename")
+async def rename_file(
+    file_id: str,
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Rename an ingested file."""
+    try:
+        file_uuid = uuid.UUID(file_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    new_name = str(request.get("filename", "")).strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="filename is required")
+
+    FileIngestionService.update_filename(db, user_id, file_uuid, new_name)
+    return {"success": True, "filename": new_name}
+
+
 @router.delete("/{file_id}")
 async def delete_file(
     file_id: str,

@@ -24,6 +24,7 @@
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import IngestionQueue from '$lib/components/files/IngestionQueue.svelte';
+  import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import type { FileNode } from '$lib/types/file';
   import type { IngestionListItem } from '$lib/types/ingestion';
@@ -74,6 +75,10 @@
   let retryingIds = new Set<string>();
   let expandedCategories = new Set<string>();
   let openMenuKey: string | null = null;
+  let isRenameOpen = false;
+  let renameValue = '';
+  let renameItem: IngestionListItem | null = null;
+  let isRenaming = false;
 
   function openViewer(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
@@ -194,6 +199,37 @@
     }
   }
 
+  async function handleRename(item: IngestionListItem) {
+    renameItem = item;
+    renameValue = stripExtension(item.file.filename_original);
+    isRenameOpen = true;
+    openMenuKey = null;
+  }
+
+  async function confirmRename() {
+    if (!renameItem) return;
+    const original = renameItem.file.filename_original;
+    const extensionMatch = original.match(/\.[^/.]+$/);
+    const extension = extensionMatch ? extensionMatch[0] : '';
+    const trimmed = renameValue.trim();
+    if (!trimmed) return;
+    const filename = extension && !trimmed.endsWith(extension)
+      ? `${trimmed}${extension}`
+      : trimmed;
+    isRenaming = true;
+    try {
+      await ingestionAPI.rename(renameItem.file.id, filename);
+      ingestionStore.updateFilename(renameItem.file.id, filename);
+      ingestionViewerStore.updateFilename(renameItem.file.id, filename);
+      isRenameOpen = false;
+      renameItem = null;
+    } catch (error) {
+      console.error('Failed to rename ingestion:', error);
+    } finally {
+      isRenaming = false;
+    }
+  }
+
 </script>
 
 {#if loading}
@@ -238,7 +274,7 @@
                 </button>
                 {#if openMenuKey === `pinned-${item.file.id}`}
                   <div class="ingested-menu-dropdown">
-                    <button class="menu-item" disabled>
+                    <button class="menu-item" onclick={() => handleRename(item)}>
                       <Pencil size={14} />
                       <span>Rename</span>
                     </button>
@@ -358,7 +394,7 @@
                 </button>
                 {#if openMenuKey === `files-${item.file.id}`}
                   <div class="ingested-menu-dropdown">
-                    <button class="menu-item" disabled>
+                    <button class="menu-item" onclick={() => handleRename(item)}>
                       <Pencil size={14} />
                       <span>Rename</span>
                     </button>
@@ -446,7 +482,7 @@
                     </button>
                     {#if openMenuKey === `recent-${item.file.id}`}
                       <div class="ingested-menu-dropdown">
-                        <button class="menu-item" disabled>
+                        <button class="menu-item" onclick={() => handleRename(item)}>
                           <Pencil size={14} />
                           <span>Rename</span>
                         </button>
@@ -483,6 +519,23 @@
     {/if}
   </div>
 {/if}
+
+<TextInputDialog
+  bind:open={isRenameOpen}
+  title="Rename file"
+  description="Update the file name."
+  placeholder="File name"
+  bind:value={renameValue}
+  confirmLabel="Rename"
+  cancelLabel="Cancel"
+  busyLabel="Renaming..."
+  isBusy={isRenaming}
+  onConfirm={confirmRename}
+  onCancel={() => {
+    isRenameOpen = false;
+    renameItem = null;
+  }}
+/>
 
 <style>
   .workspace-list {

@@ -222,6 +222,15 @@ class IngestionAPI {
     });
     if (!response.ok) throw new Error('Failed to update pinned state');
   }
+
+  async rename(fileId: string, filename: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/rename`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename })
+    });
+    if (!response.ok) throw new Error('Failed to rename file');
+  }
 }
 
 export const ingestionAPI = new IngestionAPI();
