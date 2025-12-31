@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 import time
 import subprocess
@@ -39,6 +40,9 @@ PIPELINE_STAGES = [
     "thumb",
     "finalizing",
 ]
+
+logger = logging.getLogger("ingestion.worker")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
 def _now() -> datetime:
@@ -88,6 +92,7 @@ def _claim_job(db, worker_id: str) -> FileProcessingJob | None:
     job.started_at = job.started_at or _now()
     job.updated_at = _now()
     db.commit()
+    logger.info("Claimed job %s (file_id=%s)", job.id, job.file_id)
     return job
 
 
@@ -111,6 +116,7 @@ def _mark_ready(db, job: FileProcessingJob) -> None:
     job.worker_id = None
     job.lease_expires_at = None
     db.commit()
+    logger.info("Marked ready file_id=%s", job.file_id)
 
 
 def _compute_backoff_seconds(attempts: int) -> int:
@@ -133,12 +139,25 @@ def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
         job.stage = "queued"
         job.lease_expires_at = _now() + timedelta(seconds=_compute_backoff_seconds(job.attempts))
         db.commit()
+        logger.warning(
+            "Retrying job file_id=%s attempt=%s code=%s",
+            job.file_id,
+            job.attempts,
+            error.code,
+        )
         return
 
     job.status = "failed"
     job.stage = "failed"
     job.finished_at = _now()
     db.commit()
+    logger.error(
+        "Job failed file_id=%s attempt=%s code=%s message=%s",
+        job.file_id,
+        job.attempts,
+        error.code,
+        str(error),
+    )
 
 
 def _requeue_stalled_jobs(db) -> None:
@@ -156,6 +175,7 @@ def _requeue_stalled_jobs(db) -> None:
         .all()
     )
     for job in stalled_jobs:
+        logger.warning("Requeuing stalled job file_id=%s", job.file_id)
         _retry_or_fail(
             db,
             job,
@@ -425,11 +445,13 @@ def worker_loop() -> None:
                 if not source_path.exists():
                     raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)
 
+                logger.info("Processing file_id=%s name=%s", record.id, record.filename_original)
                 for stage in PIPELINE_STAGES:
                     db.refresh(job)
                     if job.status in {"paused", "canceled"}:
                         raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
                     _set_stage(db, job, stage)
+                    logger.info("Stage %s file_id=%s", stage, record.id)
                     _refresh_lease(db, job)
 
                     if stage == "validating":
@@ -473,7 +495,13 @@ def worker_loop() -> None:
                 _retry_or_fail(db, job, IngestionError("UNKNOWN_ERROR", str(error), retryable=True))
                 if job.status == "failed":
                     _cleanup_staging(str(job.file_id))
+        time.sleep(SLEEP_SECONDS)
 
 
 if __name__ == "__main__":
-    worker_loop()
+    while True:
+        try:
+            worker_loop()
+        except Exception:
+            logger.exception("Ingestion worker crashed, restarting after delay")
+            time.sleep(2)

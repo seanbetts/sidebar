@@ -25,6 +25,7 @@ def _build_database_url() -> str:
     port = os.getenv("SUPABASE_DB_PORT", "5432")
     sslmode = os.getenv("SUPABASE_SSLMODE", "require")
     use_pooler = os.getenv("SUPABASE_USE_POOLER", "true").lower() in {"1", "true", "yes", "on"}
+    pooler_mode = os.getenv("SUPABASE_POOLER_MODE", "transaction").lower()
 
     host = None
     user = None
@@ -34,6 +35,8 @@ def _build_database_url() -> str:
             user = os.getenv("SUPABASE_POOLER_USER", f"postgres.{project_id}")
             if user == "sidebar_app" or user.startswith("sidebar_app."):
                 supabase_password = os.getenv("SUPABASE_APP_PSWD", supabase_password)
+            if pooler_mode == "transaction":
+                port = os.getenv("SUPABASE_POOLER_PORT", "6543")
         else:
             use_pooler = False
 
@@ -75,6 +78,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = _build_database_url()
+    db_pool_size: int = int(os.getenv("DB_POOL_SIZE", "2"))
+    db_max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "4"))
 
     # Claude API configuration
     anthropic_api_key: str  # Loaded from Doppler or environment
