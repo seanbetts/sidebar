@@ -1,5 +1,6 @@
 import { get, writable } from 'svelte/store';
 import { ingestionAPI } from '$lib/services/api';
+import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
 import type { IngestionListItem } from '$lib/types/ingestion';
 
 interface IngestionState {
@@ -7,6 +8,26 @@ interface IngestionState {
   localUploads: IngestionListItem[];
   loading: boolean;
   error: string | null;
+  loaded: boolean;
+}
+
+const CACHE_KEY = 'ingestion.list';
+const CACHE_TTL = 2 * 60 * 1000;
+const CACHE_VERSION = '1.0';
+
+function mergeWithLocalUploads(
+  items: IngestionListItem[],
+  localUploads: IngestionListItem[]
+): IngestionListItem[] {
+  const localIds = new Set(localUploads.map(item => item.file.id));
+  const serverItems = items.filter(item => !localIds.has(item.file.id));
+  return [...localUploads, ...serverItems];
+}
+
+function persistCache(items: IngestionListItem[], localUploads: IngestionListItem[]) {
+  const localIds = new Set(localUploads.map(item => item.file.id));
+  const serverItems = items.filter(item => !localIds.has(item.file.id));
+  setCachedData(CACHE_KEY, serverItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
 }
 
 function createIngestionStore() {
@@ -14,7 +35,8 @@ function createIngestionStore() {
     items: [],
     localUploads: [],
     loading: false,
-    error: null
+    error: null,
+    loaded: false
   });
   let pollingId: ReturnType<typeof setInterval> | null = null;
 
@@ -74,54 +96,106 @@ function createIngestionStore() {
     removeLocalUpload(fileId: string) {
       update(state => {
         const nextUploads = state.localUploads.filter(item => item.file.id !== fileId);
+        const nextItems = state.items.filter(item => item.file.id !== fileId);
+        persistCache(nextItems, nextUploads);
         return {
           ...state,
           localUploads: nextUploads,
-          items: state.items.filter(item => item.file.id !== fileId)
+          items: nextItems
         };
       });
     },
     removeItem(fileId: string) {
-      update(state => ({
-        ...state,
-        localUploads: state.localUploads.filter(item => item.file.id !== fileId),
-        items: state.items.filter(item => item.file.id !== fileId)
-      }));
+      update(state => {
+        const nextUploads = state.localUploads.filter(item => item.file.id !== fileId);
+        const nextItems = state.items.filter(item => item.file.id !== fileId);
+        persistCache(nextItems, nextUploads);
+        return {
+          ...state,
+          localUploads: nextUploads,
+          items: nextItems
+        };
+      });
     },
     updatePinned(fileId: string, pinned: boolean) {
-      update(state => ({
-        ...state,
-        items: state.items.map(item =>
+      update(state => {
+        const nextItems = state.items.map(item =>
           item.file.id === fileId
             ? { ...item, file: { ...item.file, pinned } }
             : item
-        )
-      }));
+        );
+        persistCache(nextItems, state.localUploads);
+        return {
+          ...state,
+          items: nextItems
+        };
+      });
     },
     updateFilename(fileId: string, filename: string) {
-      update(state => ({
-        ...state,
-        items: state.items.map(item =>
+      update(state => {
+        const nextItems = state.items.map(item =>
           item.file.id === fileId
             ? { ...item, file: { ...item.file, filename_original: filename } }
             : item
-        )
-      }));
+        );
+        persistCache(nextItems, state.localUploads);
+        return {
+          ...state,
+          items: nextItems
+        };
+      });
     },
     async load() {
+      const currentState = get({ subscribe });
+      if (!currentState.loaded) {
+        const cached = getCachedData<IngestionListItem[]>(CACHE_KEY, {
+          ttl: CACHE_TTL,
+          version: CACHE_VERSION
+        });
+        if (cached) {
+          update(state => ({
+            ...state,
+            items: mergeWithLocalUploads(cached, state.localUploads),
+            loading: false,
+            error: null,
+            loaded: true
+          }));
+          if (isCacheStale(CACHE_KEY, CACHE_TTL)) {
+            this.revalidateInBackground();
+          }
+          return;
+        }
+      }
       update(state => ({ ...state, loading: true, error: null }));
       try {
         const data = await ingestionAPI.list();
         const localUploads = get({ subscribe }).localUploads;
+        setCachedData(CACHE_KEY, data.items || [], { ttl: CACHE_TTL, version: CACHE_VERSION });
         set({
-          items: [...localUploads, ...(data.items || [])],
+          items: mergeWithLocalUploads(data.items || [], localUploads),
           localUploads,
           loading: false,
-          error: null
+          error: null,
+          loaded: true
         });
       } catch (error) {
         console.error('Failed to load ingestion status:', error);
-        update(state => ({ ...state, loading: false, error: 'Failed to load uploads.' }));
+        update(state => ({ ...state, loading: false, error: 'Failed to load uploads.', loaded: false }));
+      }
+    },
+    async revalidateInBackground() {
+      try {
+        const data = await ingestionAPI.list();
+        const localUploads = get({ subscribe }).localUploads;
+        setCachedData(CACHE_KEY, data.items || [], { ttl: CACHE_TTL, version: CACHE_VERSION });
+        update(state => ({
+          ...state,
+          items: mergeWithLocalUploads(data.items || [], localUploads),
+          error: null,
+          loaded: true
+        }));
+      } catch (error) {
+        console.error('Failed to revalidate ingestion status:', error);
       }
     },
     startPolling(intervalMs: number = 5000) {

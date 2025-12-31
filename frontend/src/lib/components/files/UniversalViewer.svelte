@@ -32,6 +32,7 @@
   import { buildIngestionStatusMessage } from '$lib/utils/ingestionStatus';
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import SpreadsheetViewer from '$lib/components/files/SpreadsheetViewer.svelte';
+  import FileMarkdown from '$lib/components/files/FileMarkdown.svelte';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 
   $: active = $ingestionViewerStore.active;
@@ -684,7 +685,9 @@
           {:else if markdownError}
             <div class="viewer-placeholder">{markdownError}</div>
           {:else}
-            <pre class="file-viewer-text">{markdownContent}</pre>
+            <div class="file-markdown-container">
+              <FileMarkdown content={markdownContent} />
+            </div>
           {/if}
         {/if}
       {:else if viewMode === 'markdown'}
@@ -693,7 +696,9 @@
         {:else if markdownError}
           <div class="viewer-placeholder">{markdownError}</div>
         {:else}
-          <pre class="file-viewer-text">{markdownContent}</pre>
+          <div class="file-markdown-container">
+            <FileMarkdown content={markdownContent} />
+          </div>
         {/if}
       {:else if isSpreadsheet}
         <SpreadsheetViewer
@@ -1016,6 +1021,16 @@
     font-size: 0.85rem;
     line-height: 1.6;
     white-space: pre-wrap;
+  }
+
+  .file-markdown-container {
+    width: min(960px, 100%);
+    max-height: 100%;
+    overflow: auto;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
   }
 
   @container (max-width: 700px) {
