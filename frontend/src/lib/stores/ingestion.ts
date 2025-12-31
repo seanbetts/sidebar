@@ -18,6 +18,16 @@ function createIngestionStore() {
 
   return {
     subscribe,
+    updatePinned(fileId: string, pinned: boolean) {
+      update(state => ({
+        ...state,
+        items: state.items.map(item =>
+          item.file.id === fileId
+            ? { ...item, file: { ...item.file, pinned } }
+            : item
+        )
+      }));
+    },
     async load() {
       update(state => ({ ...state, loading: true, error: null }));
       try {

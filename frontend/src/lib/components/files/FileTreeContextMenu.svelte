@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import {
-    MoreVertical,
+    MoreHorizontal,
     Trash2,
     Pencil,
     Pin,
@@ -131,7 +131,7 @@
 </script>
 
 <button class="menu-btn" on:click={toggleMenu} aria-label="More options" bind:this={menuButton}>
-  <MoreVertical size={16} />
+  <MoreHorizontal size={16} />
 </button>
 
 {#if showMenu}

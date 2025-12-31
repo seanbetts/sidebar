@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Globe, MoreVertical, Pin, PinOff, Pencil, Download, Archive, ArchiveRestore, Trash2 } from 'lucide-svelte';
+  import { Globe, MoreHorizontal, Pin, PinOff, Pencil, Download, Archive, ArchiveRestore, Trash2 } from 'lucide-svelte';
   import type { WebsiteItem } from '$lib/stores/websites';
 
   export let site: WebsiteItem;
@@ -26,7 +26,7 @@
     </div>
   </button>
   <button class="website-menu-btn" on:click={(event) => onOpenMenu(event, site)} aria-label="More options">
-    <MoreVertical size={14} />
+    <MoreHorizontal size={14} />
   </button>
   {#if isMenuOpen}
     <div class="website-menu">

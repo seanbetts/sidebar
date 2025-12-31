@@ -9,6 +9,7 @@
     Copy,
     Download,
     FolderInput,
+    Check,
     Minus,
     Pencil,
     Pin,
@@ -21,6 +22,7 @@
   import { Button } from '$lib/components/ui/button';
   import { ingestionAPI } from '$lib/services/api';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+  import { ingestionStore } from '$lib/stores/ingestion';
 
   $: active = $ingestionViewerStore.active;
   $: loading = $ingestionViewerStore.loading;
@@ -46,6 +48,8 @@
   let effectiveScale = 1;
   let normalizedScale = 1;
   let PdfViewerComponent: typeof import('$lib/components/files/PdfViewer.svelte').default | null = null;
+  let isCopied = false;
+  let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 
   onMount(async () => {
     if (!browser) return;
@@ -95,10 +99,21 @@
     if (!active || !hasMarkdown) return;
     try {
       const response = await ingestionAPI.getContent(active.file.id, 'ai_md');
-      const text = await response.text();
+      let text = await response.text();
+      if (text.startsWith('---')) {
+        const match = text.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+        if (match) {
+          text = text.slice(match[0].length);
+        }
+      }
       if (browser && navigator.clipboard) {
         await navigator.clipboard.writeText(text);
       }
+      isCopied = true;
+      if (copyTimeout) clearTimeout(copyTimeout);
+      copyTimeout = setTimeout(() => {
+        isCopied = false;
+      }, 1500);
     } catch (error) {
       console.error('Failed to copy markdown:', error);
     }
@@ -119,8 +134,10 @@
   async function handlePinToggle() {
     if (!active) return;
     try {
-      await ingestionAPI.setPinned(active.file.id, !active.file.pinned);
-      await ingestionViewerStore.open(active.file.id);
+      const nextPinned = !active.file.pinned;
+      await ingestionAPI.setPinned(active.file.id, nextPinned);
+      ingestionViewerStore.updatePinned(active.file.id, nextPinned);
+      ingestionStore.updatePinned(active.file.id, nextPinned);
     } catch (error) {
       console.error('Failed to update pin:', error);
     }
@@ -212,7 +229,6 @@
         >
           <ArrowUpDown size={16} />
         </Button>
-        <div class="viewer-divider"></div>
       {/if}
       <div class="viewer-divider"></div>
       <Button
@@ -260,28 +276,32 @@
       >
         <Download size={16} />
       </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        onclick={handleCopyMarkdown}
-        disabled={!hasMarkdown}
-        aria-label="Copy markdown"
-        title={hasMarkdown ? 'Copy markdown' : 'Markdown not available'}
-      >
-        <Copy size={16} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        onclick={handleDelete}
-        disabled={!active}
-        aria-label="Delete file"
-        title="Delete file"
-      >
-        <Trash2 size={16} />
-      </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={handleCopyMarkdown}
+          disabled={!hasMarkdown}
+          aria-label="Copy markdown"
+          title={hasMarkdown ? 'Copy markdown' : 'Markdown not available'}
+        >
+          {#if isCopied}
+            <Check size={16} />
+          {:else}
+            <Copy size={16} />
+          {/if}
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={handleDelete}
+          disabled={!active}
+          aria-label="Delete file"
+          title="Delete file"
+        >
+          <Trash2 size={16} />
+        </Button>
       <Button size="icon" variant="ghost" class="viewer-close" onclick={handleClose} aria-label="Close file viewer">
         <X size={16} />
       </Button>

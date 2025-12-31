@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChevronDown, ChevronRight, File, Image, Folder, FolderOpen, RotateCcw, Trash2 } from 'lucide-svelte';
+  import { ChevronDown, ChevronRight, File, Image, Folder, FolderOpen, RotateCcw, Trash2, MoreHorizontal } from 'lucide-svelte';
   import { onDestroy, onMount } from 'svelte';
   import { treeStore } from '$lib/stores/tree';
   import { ingestionStore } from '$lib/stores/ingestion';
@@ -141,12 +141,35 @@
       <div class="files-block">
         <div class="files-block-title">Pinned</div>
         {#if pinnedItems.length > 0}
-          {#each pinnedItems as item (item.file.id)}
-            <button class="ingested-item" onclick={() => openViewer(item)}>
-              <span class="ingested-name">{item.file.filename_original}</span>
-              <span class="ingested-action">Open</span>
+          <div class="files-block-list">
+            {#each pinnedItems as item (item.file.id)}
+            <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
+              <span class="ingested-icon">
+                {#if item.file.category === 'images'}
+                  <Image size={16} />
+                {:else}
+                  <File size={16} />
+                {/if}
+              </span>
+              <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+              <span
+                class="ingested-menu"
+                role="button"
+                tabindex="0"
+                aria-label="File actions"
+                onclick={(event) => event.stopPropagation()}
+                onkeydown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                  }
+                  event.stopPropagation();
+                }}
+              >
+                <MoreHorizontal size={14} />
+              </span>
             </button>
-          {/each}
+            {/each}
+          </div>
         {:else}
           <div class="files-empty">No pinned files</div>
         {/if}
@@ -217,7 +240,7 @@
           </div>
           {#if expandedCategories.has(category)}
             {#each categorizedItems[category] as item (item.file.id)}
-              <button class="ingested-item ingested-item--nested" onclick={() => openViewer(item)}>
+              <button class="ingested-item ingested-item--file ingested-item--nested" onclick={() => openViewer(item)}>
                 <span class="ingested-icon">
                   {#if category === 'images'}
                     <Image size={16} />
@@ -226,7 +249,21 @@
                   {/if}
                 </span>
                 <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
-                <span class="ingested-action">Open</span>
+                <span
+                  class="ingested-menu"
+                  role="button"
+                  tabindex="0"
+                  aria-label="File actions"
+                  onclick={(event) => event.stopPropagation()}
+                  onkeydown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                    }
+                    event.stopPropagation();
+                  }}
+                >
+                  <MoreHorizontal size={14} />
+                </span>
               </button>
             {/each}
           {/if}
@@ -268,9 +305,30 @@
             <Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
               <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
                 {#each readyItems as item (item.file.id)}
-                  <button class="ingested-item" onclick={() => openViewer(item)}>
-                    <span class="ingested-name">{item.file.filename_original}</span>
-                    <span class="ingested-action">Open</span>
+                  <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
+                    <span class="ingested-icon">
+                      {#if item.file.category === 'images'}
+                        <Image size={16} />
+                      {:else}
+                        <File size={16} />
+                      {/if}
+                    </span>
+                    <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                    <span
+                      class="ingested-menu"
+                      role="button"
+                      tabindex="0"
+                      aria-label="File actions"
+                      onclick={(event) => event.stopPropagation()}
+                      onkeydown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                        }
+                        event.stopPropagation();
+                      }}
+                    >
+                      <MoreHorizontal size={14} />
+                    </span>
                   </button>
                 {/each}
               </div>
@@ -304,6 +362,10 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .files-block-list {
+    padding-left: 0.5rem;
   }
 
   .files-block-title {
@@ -345,6 +407,8 @@
     cursor: pointer;
     color: var(--color-foreground);
     text-align: left;
+    min-width: 0;
+    width: 100%;
   }
 
   .ingested-item:hover {
@@ -360,18 +424,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1;
+    min-width: 0;
   }
 
-  .ingested-action {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-muted-foreground);
+  .ingested-item--file {
+    justify-content: flex-start;
+    font-size: 0.875rem;
   }
 
   .ingested-item--nested {
     margin-left: 1.6rem;
-    justify-content: flex-start;
   }
 
   .tree-node {
@@ -433,12 +496,32 @@
     color: var(--color-muted-foreground);
   }
 
-  .ingested-item--nested .ingested-name {
+  .ingested-item--file .ingested-name {
     font-size: 0.875rem;
   }
 
-  .ingested-item--nested .ingested-action {
+  .ingested-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    color: var(--color-muted-foreground);
+    opacity: 0;
     margin-left: auto;
+    align-self: center;
+    transition: all 0.2s;
+  }
+
+  .ingested-item:hover .ingested-menu {
+    opacity: 1;
+  }
+
+  .ingested-menu:hover {
+    background-color: var(--color-accent);
   }
 
   .uploads-block {
