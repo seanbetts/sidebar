@@ -46,6 +46,20 @@ function createIngestionViewerStore() {
         };
       });
     },
+    updateFilename(fileId: string, filename: string) {
+      update(state => {
+        if (!state.active || state.active.file.id !== fileId) {
+          return state;
+        }
+        return {
+          ...state,
+          active: {
+            ...state.active,
+            file: { ...state.active.file, filename_original: filename }
+          }
+        };
+      });
+    },
     clearActive() {
       update(state => ({ ...state, active: null, error: null }));
     }

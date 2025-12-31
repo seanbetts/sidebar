@@ -28,6 +28,16 @@ function createIngestionStore() {
         )
       }));
     },
+    updateFilename(fileId: string, filename: string) {
+      update(state => ({
+        ...state,
+        items: state.items.map(item =>
+          item.file.id === fileId
+            ? { ...item, file: { ...item.file, filename_original: filename } }
+            : item
+        )
+      }));
+    },
     async load() {
       update(state => ({ ...state, loading: true, error: null }));
       try {

@@ -155,3 +155,20 @@ class FileIngestionService:
             return
         record.pinned = pinned
         db.commit()
+
+    @staticmethod
+    def update_filename(db: Session, user_id: str, file_id: uuid.UUID, filename: str) -> None:
+        """Update filename for an ingested file."""
+        record = (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.id == file_id,
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not record:
+            return
+        record.filename_original = filename
+        db.commit()
