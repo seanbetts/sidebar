@@ -58,6 +58,8 @@ def _recommended_viewer(derivatives: list[dict]) -> str | None:
         return "viewer_pdf"
     if "image_original" in kinds:
         return "image_original"
+    if "text_original" in kinds:
+        return "text_original"
     return None
 
 

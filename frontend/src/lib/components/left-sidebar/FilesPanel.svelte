@@ -43,6 +43,7 @@
   $: failedItems = ($ingestionStore.items || []).filter(
     item => item.job.status === 'failed'
   );
+  const nonRetryableErrors = new Set(['UNSUPPORTED_TYPE', 'FILE_EMPTY', 'SOURCE_MISSING']);
   $: readyItems = ($ingestionStore.items || []).filter(
     item => item.job.status === 'ready' && item.recommended_viewer
   );
@@ -308,42 +309,6 @@
           <div class="files-empty">No pinned files</div>
         {/if}
       </div>
-      {#if failedItems.length > 0}
-        <div class="workspace-results-label">Failed uploads</div>
-        {#each failedItems as item (item.file.id)}
-          <div class="failed-item">
-            <div class="failed-header">
-              <div class="failed-name">{item.file.filename_original}</div>
-              <div class="failed-actions">
-                <button
-                  class="failed-action"
-                  type="button"
-                  onclick={() => retryIngestion(item.file.id)}
-                  aria-label="Retry upload"
-                  disabled={retryingIds.has(item.file.id)}
-                >
-                  <RotateCcw size={14} />
-                </button>
-                <button
-                  class="failed-action"
-                  type="button"
-                  onclick={() => deleteIngestion(item.file.id)}
-                  aria-label="Delete upload"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-            <div class="failed-message">
-              {#if retryingIds.has(item.file.id)}
-                <span class="failed-status">Retrying...</span>
-              {:else}
-                {item.job.user_message || item.job.error_message || 'Upload failed.'}
-              {/if}
-            </div>
-          </div>
-        {/each}
-      {/if}
       <div class="files-block">
         <div class="files-block-title">Files</div>
         {#if searchQuery}
@@ -441,6 +406,46 @@
     {#if processingItems.length > 0}
       <div class="workspace-uploads uploads-block">
         <IngestionQueue items={processingItems} />
+      </div>
+    {/if}
+    {#if failedItems.length > 0}
+      <div class="workspace-uploads uploads-block">
+        <div class="workspace-results-label">Failed uploads</div>
+        {#each failedItems as item (item.file.id)}
+          <div class="failed-item">
+            <div class="failed-header">
+              <div class="failed-name">{item.file.filename_original}</div>
+              <div class="failed-actions">
+                {#if !nonRetryableErrors.has(item.job.error_code)}
+                  <button
+                    class="failed-action"
+                    type="button"
+                    onclick={() => retryIngestion(item.file.id)}
+                    aria-label="Retry upload"
+                    disabled={retryingIds.has(item.file.id)}
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                {/if}
+                <button
+                  class="failed-action"
+                  type="button"
+                  onclick={() => deleteIngestion(item.file.id)}
+                  aria-label="Delete upload"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+            <div class="failed-message">
+              {#if retryingIds.has(item.file.id)}
+                <span class="failed-status">Retrying...</span>
+              {:else}
+                {item.job.user_message || item.job.error_message || 'Upload failed.'}
+              {/if}
+            </div>
+          </div>
+        {/each}
       </div>
     {/if}
     {#if readyItems.length > 0}

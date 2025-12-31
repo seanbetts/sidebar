@@ -37,6 +37,7 @@
       ? `/api/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
       : null;
   $: isPdf = viewerKind === 'viewer_pdf';
+  $: isText = viewerKind === 'text_original';
   $: isImage = active?.file.category === 'images';
   $: filename = active?.file.filename_original ?? 'File viewer';
   $: displayName = stripExtension(filename);
@@ -58,6 +59,10 @@
   let isRenameOpen = false;
   let renameValue = '';
   let isRenaming = false;
+  let textContent = '';
+  let textError = '';
+  let isTextLoading = false;
+  let lastTextUrl: string | null = null;
 
   onMount(async () => {
     if (!browser) return;
@@ -204,6 +209,33 @@
     currentPage = 1;
     pageCount = 0;
     scale = 1;
+    textContent = '';
+    textError = '';
+    lastTextUrl = null;
+  }
+
+  $: if (browser && isText && viewerUrl && viewerUrl !== lastTextUrl) {
+    lastTextUrl = viewerUrl;
+    textContent = '';
+    textError = '';
+    isTextLoading = true;
+    fetch(viewerUrl, { credentials: 'include' })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Failed to load text');
+        }
+        return response.text();
+      })
+      .then((text) => {
+        textContent = text;
+      })
+      .catch((error) => {
+        console.error('Failed to load text content:', error);
+        textError = 'Failed to load text content.';
+      })
+      .finally(() => {
+        isTextLoading = false;
+      });
   }
 </script>
 
@@ -455,6 +487,14 @@
       {:else}
         <div class="viewer-placeholder">Loading PDF…</div>
       {/if}
+    {:else if isText}
+      {#if isTextLoading}
+        <div class="viewer-placeholder">Loading text…</div>
+      {:else if textError}
+        <div class="viewer-placeholder">{textError}</div>
+      {:else}
+        <pre class="file-viewer-text">{textContent}</pre>
+      {/if}
     {:else}
       <img class="file-viewer-image" src={viewerUrl} alt={active?.file.filename_original ?? 'File'} />
     {/if}
@@ -654,6 +694,20 @@
     border-radius: 0.5rem;
     object-fit: contain;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  }
+
+  .file-viewer-text {
+    width: min(960px, 100%);
+    max-height: 100%;
+    overflow: auto;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
   }
 
   @container (max-width: 700px) {

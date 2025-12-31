@@ -382,6 +382,16 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         else:
             extraction_text = _extract_xlsx_text(source_path)
         thumb_bytes = _generate_pdf_thumbnail(pdf_path, _derivative_dir(file_id))
+    elif mime.startswith("text/"):
+        viewer_payload = DerivativePayload(
+            kind="text_original",
+            storage_key=f"{user_prefix}/derivatives/source.txt",
+            mime=mime,
+            size_bytes=len(content),
+            sha256=sha256(content).hexdigest(),
+            content=content,
+        )
+        extraction_text = content.decode("utf-8", errors="ignore").strip()
     else:
         raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
 
