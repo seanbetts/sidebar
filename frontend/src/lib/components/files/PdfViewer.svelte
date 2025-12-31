@@ -7,6 +7,7 @@
   export let currentPage = 1;
   export let pageCount = 0;
   export let fitMode: 'auto' | 'width' | 'height' = 'height';
+  export let centerPages = false;
 
   let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
@@ -43,6 +44,7 @@
     ]);
     pdfjsLib = pdfjs;
     pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default;
+    pdfjsLib.setVerbosityLevel?.(pdfjsLib.VerbosityLevel.ERRORS);
     if (root || container) {
       resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -83,7 +85,10 @@
     if (loadTask) {
       loadTask.destroy();
     }
-    loadTask = pdfjsLib.getDocument({ url: src });
+    loadTask = pdfjsLib.getDocument({
+      url: src,
+      verbosity: pdfjsLib.VerbosityLevel.ERRORS
+    });
     pdfDocument = await loadTask.promise;
     pageCount = pdfDocument.numPages;
     if (currentPage > pageCount) {
@@ -322,9 +327,9 @@
       {/each}
     {/if}
   </div>
-  <div class="pdf-viewer-main" bind:this={container}>
+  <div class="pdf-viewer-main" class:centered={centerPages} bind:this={container}>
     {#if showAllPages}
-      <div class="pdf-pages">
+      <div class="pdf-pages" class:centered={centerPages}>
         {#each Array.from({ length: pageCount }, (_, index) => index + 1) as pageNumber (pageNumber)}
           <div class="pdf-page" bind:this={pageRefs[pageNumber]}>
             <canvas bind:this={pageCanvases[pageNumber - 1]} class="pdf-canvas"></canvas>
@@ -403,6 +408,11 @@
     justify-content: center;
     align-items: flex-start;
     overflow: auto;
+    padding-left: 1rem;
+  }
+
+  .pdf-viewer-main.centered {
+    align-items: center;
   }
 
   .pdf-pages {
@@ -410,6 +420,12 @@
     flex-direction: column;
     gap: 1.5rem;
     padding: 0.5rem 0;
+  }
+
+  .pdf-pages.centered {
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
   }
 
   .pdf-page {
