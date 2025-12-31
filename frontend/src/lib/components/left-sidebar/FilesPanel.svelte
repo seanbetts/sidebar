@@ -550,8 +550,8 @@
   .workspace-list {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.25rem 0;
+    gap: 1rem;
+    padding-top: 0.5rem;
     min-height: 0;
     flex: 1;
   }
@@ -559,7 +559,7 @@
   .workspace-main {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 1rem;
     min-height: 0;
     flex: 1;
   }
@@ -571,7 +571,14 @@
   }
 
   .files-block-list {
-    padding-left: 0.5rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .files-block-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
   }
 
   .files-block-title {
@@ -660,7 +667,7 @@
 
   .node-content {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.5rem;
   }
 
@@ -711,6 +718,7 @@
     display: flex;
     align-items: center;
     color: var(--color-muted-foreground);
+    margin-left: 1rem;
   }
 
   .ingested-item--file .ingested-name {
@@ -782,7 +790,7 @@
   }
 
   .uploads-block {
-    margin-top: 0.5rem;
+    margin-top: auto;
   }
 
   .uploads-label {
@@ -824,7 +832,7 @@
   }
 
   :global(.archive-content) {
-    max-height: min(40vh, 320px);
+    max-height: min(80vh, 720px);
     overflow-y: auto;
     padding-right: 0.25rem;
   }

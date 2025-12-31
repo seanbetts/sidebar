@@ -34,6 +34,8 @@ ERROR_MESSAGES = {
     "CONVERSION_FAILED": "We couldn't convert this file.",
     "DERIVATIVE_MISSING": "We couldn't generate a preview for this file.",
     "INVALID_XLSX": "That doesn't appear to be a valid XLSX file. Try re-saving it as .xlsx in Excel or Google Sheets.",
+    "TRANSCRIPTION_UNAVAILABLE": "Audio transcription is unavailable right now.",
+    "TRANSCRIPTION_FAILED": "We couldn't transcribe this audio file.",
     "WORKER_STALLED": "Processing took too long. We're retrying.",
     "UNKNOWN_ERROR": "Something went wrong while processing this file.",
 }
@@ -61,6 +63,8 @@ def _recommended_viewer(derivatives: list[dict]) -> str | None:
         return "viewer_json"
     if "image_original" in kinds:
         return "image_original"
+    if "audio_original" in kinds:
+        return "audio_original"
     if "text_original" in kinds:
         return "text_original"
     return None

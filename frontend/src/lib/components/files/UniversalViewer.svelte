@@ -44,6 +44,7 @@
       ? `/api/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
       : null;
   $: isPdf = viewerKind === 'viewer_pdf';
+  $: isAudio = viewerKind === 'audio_original';
   $: isText = viewerKind === 'text_original';
   $: isSpreadsheet = viewerKind === 'viewer_json';
   $: isImage = active?.file.category === 'images';
@@ -706,6 +707,10 @@
           filename={displayName}
           registerActions={(actions) => (spreadsheetActions = actions)}
         />
+      {:else if isAudio}
+        <audio class="file-viewer-audio" controls src={viewerUrl}>
+          Your browser does not support the audio element.
+        </audio>
       {:else if isText}
         {#if isTextLoading}
           <div class="viewer-placeholder">Loading text…</div>
@@ -1007,6 +1012,10 @@
     border-radius: 0.5rem;
     object-fit: contain;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  }
+
+  .file-viewer-audio {
+    width: 100%;
   }
 
   .file-viewer-text {

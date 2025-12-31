@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import importlib.util
 import json
 import logging
 import os
@@ -15,6 +16,7 @@ from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 import shutil
+from typing import Callable
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, text
@@ -105,6 +107,8 @@ _COMMON_SHORT_WORDS = {
     "you",
     "your",
 }
+
+_audio_transcriber: Callable[..., dict] | None = None
 
 
 def _now() -> datetime:
@@ -272,6 +276,49 @@ def _cleanup_staging(file_id: str) -> None:
 
 def _derivative_dir(file_id: str) -> Path:
     return Path("/tmp/sidebar-ingestion") / file_id / "derived"
+
+
+def _load_audio_transcriber() -> Callable[..., dict]:
+    global _audio_transcriber
+    if _audio_transcriber is not None:
+        return _audio_transcriber
+    skill_path = (
+        Path(__file__).resolve().parents[2]
+        / "skills"
+        / "audio-transcribe"
+        / "scripts"
+        / "transcribe_audio.py"
+    )
+    if not skill_path.exists():
+        raise IngestionError("TRANSCRIPTION_UNAVAILABLE", "Audio transcription skill not found", retryable=False)
+    spec = importlib.util.spec_from_file_location("audio_transcribe_skill", skill_path)
+    if not spec or not spec.loader:
+        raise IngestionError("TRANSCRIPTION_UNAVAILABLE", "Audio transcription skill could not be loaded", retryable=False)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    transcriber = getattr(module, "transcribe_audio", None)
+    if not callable(transcriber):
+        raise IngestionError("TRANSCRIPTION_UNAVAILABLE", "Audio transcription entry point missing", retryable=False)
+    _audio_transcriber = transcriber
+    return transcriber
+
+
+def _transcribe_audio(source_path: Path, record: IngestedFile) -> str:
+    transcriber = _load_audio_transcriber()
+    try:
+        result = transcriber(
+            str(source_path),
+            user_id=str(record.user_id),
+            output_dir=f"files/{record.id}/ai",
+            temp_dir=str(_derivative_dir(str(record.id))),
+            response_format="json",
+        )
+    except RuntimeError as exc:
+        raise IngestionError("TRANSCRIPTION_UNAVAILABLE", str(exc), retryable=False) from exc
+    except Exception as exc:
+        raise IngestionError("TRANSCRIPTION_FAILED", "Audio transcription failed", retryable=True) from exc
+    transcript = (result.get("transcript") or "").strip()
+    return transcript or "No transcription available."
 
 
 def _detect_extension(filename: str, mime: str) -> str:
@@ -942,6 +989,17 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         )
         extraction_text = "Image file. No text extraction available."
         thumb_bytes = _generate_image_thumbnail(source_path)
+    elif mime.startswith("audio/"):
+        extension = _detect_extension(record.filename_original, mime)
+        viewer_payload = DerivativePayload(
+            kind="audio_original",
+            storage_key=f"{user_prefix}/derivatives/audio{extension or ''}",
+            mime=mime,
+            size_bytes=len(content),
+            sha256=sha256(content).hexdigest(),
+            content=content,
+        )
+        extraction_text = _transcribe_audio(source_path, record)
     elif mime in {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
