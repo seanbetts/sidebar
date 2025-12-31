@@ -118,6 +118,9 @@
       return job.user_message;
     }
     const stage = job.stage || job.status || 'processing';
+    if (stage === 'queued') {
+      return 'Processing…';
+    }
     const label = formatStage(stage);
     return `${label.charAt(0).toUpperCase() + label.slice(1)}…`;
   }
