@@ -22,6 +22,7 @@
   let pageRefs: Record<number, HTMLDivElement | null> = {};
   let pageCanvases: HTMLCanvasElement[] = [];
   let pageRenderTasks = new Map<number, import('pdfjs-dist').RenderTask>();
+  let thumbRenderTasks = new Map<number, import('pdfjs-dist').RenderTask>();
   let lastRenderKeys: Record<number, string> = {};
   let disposed = false;
   let lastSrc: string | null = null;
@@ -74,6 +75,8 @@
     thumbnails = [];
     pageRenderTasks.forEach((task) => task.cancel());
     pageRenderTasks.clear();
+    thumbRenderTasks.forEach((task) => task.cancel());
+    thumbRenderTasks.clear();
     pageCanvases = [];
     pageRefs = {};
     lastRenderKeys = {};
@@ -109,14 +112,17 @@
       thumbCanvas.width = Math.floor(viewport.width);
       thumbCanvas.height = Math.floor(viewport.height);
       const task = page.render({ canvasContext: context, viewport });
+      thumbRenderTasks.set(pageIndex, task);
       try {
         await task.promise;
       } catch (error) {
+        if (task.cancelled || disposed) continue;
         continue;
       }
       nextThumbs.push({ page: pageIndex, url: thumbCanvas.toDataURL('image/png') });
     }
     thumbnails = nextThumbs;
+    thumbRenderTasks.clear();
   }
 
   function scrollThumbIntoView(page: number) {
@@ -201,6 +207,7 @@
     try {
       await renderTask.promise;
     } catch (error) {
+      if (renderTask?.cancelled || disposed) return;
       // Ignore render cancellations.
     }
   }
@@ -238,6 +245,7 @@
       try {
         await task.promise;
       } catch (error) {
+        if (task.cancelled || disposed) continue;
         // Ignore render cancellations.
       }
     }
@@ -249,7 +257,17 @@
   }
 
   $: if (!src && pdfDocument) {
+    disposed = true;
+    pdfDocument?.destroy();
     pdfDocument = null;
+    loadTask?.destroy();
+    loadTask = null;
+    renderTask?.cancel();
+    renderTask = null;
+    pageRenderTasks.forEach((task) => task.cancel());
+    pageRenderTasks.clear();
+    thumbRenderTasks.forEach((task) => task.cancel());
+    thumbRenderTasks.clear();
   }
 
   $: if (browser && pdfDocument) {
@@ -278,7 +296,10 @@
     renderTask?.cancel();
     pageRenderTasks.forEach((task) => task.cancel());
     pageRenderTasks.clear();
+    thumbRenderTasks.forEach((task) => task.cancel());
+    thumbRenderTasks.clear();
     loadTask?.destroy();
+    pdfDocument?.destroy();
   });
 </script>
 
