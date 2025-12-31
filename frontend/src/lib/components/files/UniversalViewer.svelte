@@ -12,6 +12,7 @@
     FileSpreadsheet,
     FileText,
     Image,
+    LoaderCircle,
     Menu,
     Minus,
     Pencil,
@@ -45,6 +46,12 @@
   $: filename = active?.file.filename_original ?? 'File viewer';
   $: displayName = stripExtension(filename);
   $: fileType = getFileType(filename, active?.file.mime_original);
+  $: isProcessing = Boolean(active?.job?.status && active.job.status !== 'ready');
+  $: processingMessage =
+    active?.job?.user_message ||
+    (active?.job?.status === 'failed'
+      ? 'File processing failed.'
+      : 'Processing file… this can take a moment.');
   $: canPrev = currentPage > 1;
   $: canNext = pageCount > 0 && currentPage < pageCount;
   $: hasMarkdown = Boolean(active?.derivatives?.some(item => item.kind === 'ai_md'));
@@ -517,7 +524,16 @@
     {:else if error}
       <div class="viewer-placeholder">{error}</div>
     {:else if !viewerUrl}
-      <div class="viewer-placeholder">No preview available.</div>
+      <div class="viewer-placeholder">
+        {#if isProcessing}
+          <div class="viewer-placeholder-stack">
+            <LoaderCircle size={20} class="viewer-placeholder-icon" />
+            <span>{processingMessage}</span>
+          </div>
+        {:else}
+          No preview available.
+        {/if}
+      </div>
     {:else if isPdf}
       {#if PdfViewerComponent}
         <svelte:component
@@ -738,6 +754,24 @@
   .viewer-placeholder {
     color: var(--color-muted-foreground);
     font-size: 0.9rem;
+  }
+
+  .viewer-placeholder-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .viewer-placeholder-icon {
+    animation: viewer-spin 1.1s linear infinite;
+  }
+
+  @keyframes viewer-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .file-viewer-image {
