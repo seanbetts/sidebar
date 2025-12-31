@@ -14,6 +14,7 @@
   import MemoryTable from '$lib/components/settings/memory/MemoryTable.svelte';
   import MemoryCreateDialog from '$lib/components/settings/memory/MemoryCreateDialog.svelte';
   import MemoryEditDialog from '$lib/components/settings/memory/MemoryEditDialog.svelte';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 
   let searchTerm = '';
   let showCreateDialog = false;
@@ -24,6 +25,8 @@
   let editorElement: HTMLDivElement | null = null;
   let editor: Editor | null = null;
   let isSyncingEditor = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
+  let pendingDelete: Memory | null = null;
 
   let draftById: Record<string, { path: string; name: string; content: string }> = {};
   let saveStateById: Record<string, 'idle' | 'dirty' | 'saving' | 'saved' | 'error'> = {};
@@ -147,10 +150,23 @@
     }, 650);
   }
 
-  async function deleteMemory(memory: Memory) {
-    await memoriesStore.delete(memory.id);
-    if (memory.id === activeMemoryId) {
-      closeEditor();
+  function requestDelete(memory: Memory) {
+    pendingDelete = memory;
+    deleteDialog?.openDialog(memory.path || 'memory');
+  }
+
+  async function confirmDelete(): Promise<boolean> {
+    if (!pendingDelete) return false;
+    try {
+      await memoriesStore.delete(pendingDelete.id);
+      if (pendingDelete.id === activeMemoryId) {
+        closeEditor();
+      }
+      pendingDelete = null;
+      return true;
+    } catch (error) {
+      console.error('Failed to delete memory:', error);
+      return false;
     }
   }
 
@@ -263,7 +279,7 @@
       {draftById}
       {displayName}
       onEdit={openEditor}
-      onDelete={deleteMemory}
+      onDelete={requestDelete}
     />
   {/if}
 </section>
@@ -284,7 +300,13 @@
   bind:editorElement
   onNameInput={handleDraftNameChange}
   onClose={closeEditor}
-  onDelete={() => activeMemory && deleteMemory(activeMemory)}
+  onDelete={() => activeMemory && requestDelete(activeMemory)}
+/>
+
+<DeleteDialogController
+  bind:this={deleteDialog}
+  itemType="memory"
+  onConfirm={confirmDelete}
 />
 
 <style>
