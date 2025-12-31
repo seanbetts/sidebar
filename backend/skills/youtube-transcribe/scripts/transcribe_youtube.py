@@ -12,6 +12,7 @@ import argparse
 import subprocess
 import time
 import tempfile
+import urllib.parse
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -30,7 +31,7 @@ except Exception:
 
 
 # Default directories (R2)
-DEFAULT_TRANSCRIPT_DIR = "Transcripts"
+DEFAULT_TRANSCRIPT_DIR = "files/videos/{video_id}/ai"
 
 # Script paths - dynamically locate based on this script's location
 SCRIPT_DIR = Path(__file__).parent.parent.parent  # Go up to skills/
@@ -71,6 +72,21 @@ def update_transcript_metadata(transcript_path: str, youtube_url: str, title: st
         # Don't fail the whole operation if metadata update fails
         print(f"Warning: Could not update transcript metadata: {e}")
 
+
+def extract_video_id(url: str) -> Optional[str]:
+    """Extract a YouTube video id from a URL."""
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if not parsed.scheme:
+            parsed = urllib.parse.urlparse("https://" + url)
+        if "youtu.be" in parsed.netloc:
+            return parsed.path.strip("/") or None
+        query = urllib.parse.parse_qs(parsed.query)
+        if "v" in query and query["v"]:
+            return query["v"][0]
+    except Exception:
+        return None
+    return None
 
 def run_command(cmd: list, stage: str) -> Dict[str, Any]:
     """
@@ -121,6 +137,7 @@ def transcribe_youtube(
     language: str = "en",
     model: str = "gpt-4o-transcribe",
     output_dir: Optional[str] = None,
+    output_name: Optional[str] = None,
     audio_dir: Optional[str] = None,
     keep_audio: bool = False,
     database: bool = False,
@@ -149,7 +166,12 @@ def transcribe_youtube(
     if not user_id:
         raise ValueError("user_id is required for storage")
 
-    transcript_dir = (output_dir or DEFAULT_TRANSCRIPT_DIR).strip("/")
+    transcript_dir = output_dir
+    if not transcript_dir:
+        video_id = extract_video_id(url) or "unknown"
+        transcript_dir = f"files/videos/{video_id}/ai"
+    transcript_dir = transcript_dir.strip("/")
+    transcript_name = output_name or "ai.md"
     temp_root = Path(tempfile.mkdtemp(prefix="yt-transcribe-"))
     target_audio_dir = temp_root / "audio"
     target_audio_dir.mkdir(parents=True, exist_ok=True)
@@ -165,10 +187,11 @@ def transcribe_youtube(
         url,
         "--audio",
         "--json",
-        "--output", audio_dir or "Videos",
+        "--output", audio_dir or "files/videos",
         "--user-id", user_id,
         "--temp-dir", str(target_audio_dir),
         "--keep-local",
+        "--no-upload",
     ]
 
     download_result = run_command(download_cmd, "download")
@@ -198,6 +221,7 @@ def transcribe_youtube(
         "--json",
         "--user-id", user_id,
         "--output-dir", transcript_dir,
+        "--output-name", transcript_name,
         "--temp-dir", str(temp_root / "transcripts"),
         "--keep-local",
     ]
@@ -364,6 +388,7 @@ Examples:
   # Custom output locations
   %(prog)s "https://youtube.com/watch?v=VIDEO_ID" \\
     --output-dir Transcripts \\
+    --output-name ai.md \\
     --audio-dir Videos
 
   # JSON output
@@ -396,6 +421,10 @@ Requirements:
     parser.add_argument(
         '--output-dir',
         help=f'R2 folder for transcripts (default: {DEFAULT_TRANSCRIPT_DIR})'
+    )
+    parser.add_argument(
+        '--output-name',
+        help='Transcript filename (default: ai.md)'
     )
     parser.add_argument(
         '--audio-dir',
@@ -435,6 +464,7 @@ Requirements:
             language=args.language,
             model=args.model,
             output_dir=args.output_dir,
+            output_name=args.output_name,
             audio_dir=args.audio_dir,
             keep_audio=args.keep_audio,
             database=args.database,
