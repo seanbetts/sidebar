@@ -9,6 +9,8 @@
     Copy,
     Download,
     Check,
+    FileText,
+    Image,
     Minus,
     Pencil,
     Pin,
@@ -32,6 +34,7 @@
       ? `/api/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
       : null;
   $: isPdf = viewerKind === 'viewer_pdf';
+  $: isImage = active?.file.category === 'images';
   $: filename = active?.file.filename_original ?? 'File viewer';
   $: displayName = stripExtension(filename);
   $: fileType = getFileType(filename, active?.file.mime_original);
@@ -168,13 +171,20 @@
 <div class="file-viewer">
   <div class="file-viewer-header">
     <div class="file-viewer-meta">
-        <div class="file-viewer-title-row">
-          <div class="file-viewer-title">{displayName}</div>
-          {#if active}
+      <div class="file-viewer-title-row">
+        <span class="file-viewer-icon">
+          {#if isImage}
+            <Image size={18} />
+          {:else}
+            <FileText size={18} />
+          {/if}
+        </span>
+        <div class="file-viewer-title">{displayName}</div>
+        {#if active}
           <div class="file-viewer-divider"></div>
           <div class="file-viewer-type">{fileType}</div>
-          {/if}
-        </div>
+        {/if}
+      </div>
     </div>
     <div class="file-viewer-controls">
       {#if isPdf}
@@ -351,14 +361,21 @@
 
   .file-viewer-title-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.7rem;
     min-width: 0;
     min-height: 1.8rem; 
   }
 
+  .file-viewer-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-foreground);
+    flex-shrink: 0;
+  }
+
   .file-viewer-title {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     line-height: 1.4;
     font-weight: 600;
     color: var(--color-foreground);
