@@ -24,6 +24,7 @@
   import { ingestionAPI } from '$lib/services/api';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { ingestionStore } from '$lib/stores/ingestion';
+  import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
 
   $: active = $ingestionViewerStore.active;
   $: loading = $ingestionViewerStore.loading;
@@ -52,6 +53,9 @@
   let PdfViewerComponent: typeof import('$lib/components/files/PdfViewer.svelte').default | null = null;
   let isCopied = false;
   let copyTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isRenameOpen = false;
+  let renameValue = '';
+  let isRenaming = false;
 
   onMount(async () => {
     if (!browser) return;
@@ -142,6 +146,39 @@
       ingestionStore.updatePinned(active.file.id, nextPinned);
     } catch (error) {
       console.error('Failed to update pin:', error);
+    }
+  }
+
+  function openRenameDialog() {
+    if (!active) return;
+    renameValue = stripExtension(active.file.filename_original);
+    isRenameOpen = true;
+  }
+
+  async function confirmRename() {
+    if (!active) return;
+    const original = active.file.filename_original;
+    const extensionMatch = original.match(/\.[^/.]+$/);
+    const extension = extensionMatch ? extensionMatch[0] : '';
+    const trimmed = renameValue.trim();
+    if (!trimmed) return;
+    const filename = extension && !trimmed.endsWith(extension)
+      ? `${trimmed}${extension}`
+      : trimmed;
+    if (filename === original) {
+      isRenameOpen = false;
+      return;
+    }
+    isRenaming = true;
+    try {
+      await ingestionAPI.rename(active.file.id, filename);
+      ingestionViewerStore.updateFilename(active.file.id, filename);
+      ingestionStore.updateFilename(active.file.id, filename);
+      isRenameOpen = false;
+    } catch (error) {
+      console.error('Failed to rename file:', error);
+    } finally {
+      isRenaming = false;
     }
   }
 
@@ -259,9 +296,10 @@
         size="icon"
         variant="ghost"
         class="viewer-control"
-        disabled
+        disabled={!active}
         aria-label="Rename file"
-        title="Rename file (coming soon)"
+        title="Rename file"
+        onclick={openRenameDialog}
       >
         <Pencil size={16} />
       </Button>
@@ -334,6 +372,20 @@
     {/if}
   </div>
 </div>
+
+<TextInputDialog
+  bind:open={isRenameOpen}
+  title="Rename file"
+  description="Update the file name."
+  placeholder="File name"
+  bind:value={renameValue}
+  confirmLabel="Rename"
+  cancelLabel="Cancel"
+  busyLabel="Renaming..."
+  isBusy={isRenaming}
+  onConfirm={confirmRename}
+  onCancel={() => (isRenameOpen = false)}
+/>
 
 <style>
   .file-viewer {
