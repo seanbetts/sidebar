@@ -6,6 +6,7 @@
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import { treeStore } from '$lib/stores/tree';
   import { websitesStore } from '$lib/stores/websites';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { ingestionStore } from '$lib/stores/ingestion';
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import ConversationList from './ConversationList.svelte';
@@ -21,7 +22,6 @@
   import NewWebsiteDialog from '$lib/components/left-sidebar/dialogs/NewWebsiteDialog.svelte';
   import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
   import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
-  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { Button } from '$lib/components/ui/button';
   import { ingestionAPI } from '$lib/services/api';
 
@@ -213,6 +213,7 @@
       ingestionStore.removeLocalUpload(tempId);
       await ingestionStore.load();
       ingestionStore.startPolling();
+      dispatchCacheEvent('file.uploaded');
       websitesStore.clearActive();
       editorStore.reset();
       currentNoteId.set(null);
