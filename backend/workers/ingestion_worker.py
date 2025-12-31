@@ -215,6 +215,21 @@ def _detect_extension(filename: str, mime: str) -> str:
     return ""
 
 
+def _guess_text_mime(filename: str) -> str | None:
+    ext = Path(filename).suffix.lower()
+    if ext in {".md", ".markdown"}:
+        return "text/markdown"
+    if ext in {".txt", ".log"}:
+        return "text/plain"
+    if ext == ".csv":
+        return "text/csv"
+    if ext == ".json":
+        return "application/json"
+    if ext in {".yml", ".yaml"}:
+        return "text/plain"
+    return None
+
+
 def _run_libreoffice_convert(source_path: Path, output_dir: Path) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     command = [
@@ -328,7 +343,13 @@ def _extract_xlsx_text(xlsx_path: Path) -> str:
 
 
 def _build_derivatives(record: IngestedFile, source_path: Path) -> list[DerivativePayload]:
-    mime = record.mime_original
+    mime = (record.mime_original or "application/octet-stream").split(";")[0].strip().lower()
+    if not mime:
+        mime = "application/octet-stream"
+    if mime == "application/octet-stream":
+        guessed_mime = _guess_text_mime(record.filename_original)
+        if guessed_mime:
+            mime = guessed_mime
     file_id = str(record.id)
     user_prefix = f"{record.user_id}/files/{file_id}"
     content = source_path.read_bytes()
@@ -382,7 +403,7 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         else:
             extraction_text = _extract_xlsx_text(source_path)
         thumb_bytes = _generate_pdf_thumbnail(pdf_path, _derivative_dir(file_id))
-    elif mime.startswith("text/"):
+    elif mime.startswith("text/") or mime == "application/json":
         viewer_payload = DerivativePayload(
             kind="text_original",
             storage_key=f"{user_prefix}/derivatives/source.txt",
@@ -439,6 +460,15 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
 def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
+    db_url = settings.database_url
+    if db_url:
+        safe_url = db_url
+        if "://" in safe_url:
+            scheme, rest = safe_url.split("://", 1)
+            if "@" in rest:
+                _, rest = rest.split("@", 1)
+            safe_url = f"{scheme}://{rest}"
+        logger.info("Ingestion DB URL: %s", safe_url)
     while True:
         with SessionLocal() as db:
             if worker_user_id:
