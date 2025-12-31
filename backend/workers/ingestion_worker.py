@@ -20,6 +20,7 @@ from pypdf import PdfReader
 from pptx import Presentation
 from docx import Document
 from openpyxl import load_workbook
+from openpyxl.utils.exceptions import InvalidFileException
 
 from api.db.session import SessionLocal
 from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
@@ -339,7 +340,14 @@ def _extract_docx_text(docx_path: Path) -> str:
 
 
 def _extract_xlsx_text(xlsx_path: Path) -> str:
-    workbook = load_workbook(str(xlsx_path), data_only=True, read_only=True)
+    try:
+        workbook = load_workbook(str(xlsx_path), data_only=True, read_only=True)
+    except InvalidFileException as exc:
+        raise IngestionError(
+            "INVALID_XLSX",
+            "Invalid XLSX file. Re-save the file as .xlsx in Excel or Google Sheets.",
+            retryable=False,
+        ) from exc
     sections = []
     for sheet in workbook.worksheets:
         rows = []
@@ -404,12 +412,20 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             sha256=sha256(pdf_bytes).hexdigest(),
             content=pdf_bytes,
         )
-        if mime.endswith("wordprocessingml.document"):
-            extraction_text = _extract_docx_text(source_path)
-        elif mime.endswith("presentationml.presentation"):
-            extraction_text = _extract_pptx_text(source_path)
-        else:
-            extraction_text = _extract_xlsx_text(source_path)
+        try:
+            if mime.endswith("wordprocessingml.document"):
+                extraction_text = _extract_docx_text(source_path)
+            elif mime.endswith("presentationml.presentation"):
+                extraction_text = _extract_pptx_text(source_path)
+            else:
+                extraction_text = _extract_xlsx_text(source_path)
+        except Exception as exc:
+            logger.warning(
+                "Falling back to PDF text extraction for file_id=%s: %s",
+                record.id,
+                exc,
+            )
+            extraction_text = _extract_pdf_text(pdf_path)
         thumb_bytes = _generate_pdf_thumbnail(pdf_path, _derivative_dir(file_id))
     elif mime.startswith("text/") or mime == "application/json":
         viewer_payload = DerivativePayload(
