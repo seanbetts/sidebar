@@ -8,7 +8,6 @@
     ChevronRight,
     Copy,
     Download,
-    FolderInput,
     Check,
     Minus,
     Pencil,
@@ -255,16 +254,6 @@
         title="Rename file (coming soon)"
       >
         <Pencil size={16} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        disabled
-        aria-label="Move file"
-        title="Move file (coming soon)"
-      >
-        <FolderInput size={16} />
       </Button>
       <Button
         size="icon"
