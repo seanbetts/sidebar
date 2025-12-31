@@ -30,7 +30,10 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
     });
     if (!response.ok) {
       const detail = await response.text();
-      throw new Error(detail || response.statusText);
+      return json(
+        { detail: detail || response.statusText || 'Failed to upload file' },
+        { status: response.status }
+      );
     }
     const data = await response.json();
     return json(data);

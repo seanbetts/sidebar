@@ -74,12 +74,12 @@ def _category_for_file(filename: str, mime: str) -> str:
     if normalized_mime == "application/octet-stream":
         if lower_name.endswith((".csv", ".tsv", ".xls", ".xlsx", ".xlsm", ".xltx", ".xltm")):
             return "spreadsheets"
-        if lower_name.endswith((".md", ".markdown", ".txt", ".log", ".json", ".yml", ".yaml")):
+        if lower_name.endswith((".md", ".markdown", ".txt", ".log", ".json", ".yml", ".yaml", ".pdf")):
             return "documents"
     if normalized_mime.startswith("image/"):
         return "images"
     if normalized_mime == "application/pdf":
-        return "pdf"
+        return "documents"
     if normalized_mime == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         return "documents"
     if normalized_mime in {
