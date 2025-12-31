@@ -219,6 +219,7 @@
     try {
       await ingestionAPI.delete(active.file.id);
       dispatchCacheEvent('file.deleted');
+      ingestionStore.removeItem(active.file.id);
       ingestionViewerStore.clearActive();
       return true;
     } catch (error) {
