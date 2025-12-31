@@ -10,7 +10,8 @@
 	import { get } from 'svelte/store';
 	import { treeStore } from '$lib/stores/tree';
 	import { websitesStore } from '$lib/stores/websites';
-	import { editorStore } from '$lib/stores/editor';
+	import { editorStore, currentNoteId } from '$lib/stores/editor';
+	import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 	import { conversationListStore } from '$lib/stores/conversations';
 	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
@@ -194,6 +195,9 @@
 
 					onNoteCreated: async (data) => {
 						dispatchCacheEvent('note.created');
+						websitesStore.clearActive();
+						ingestionViewerStore.clearActive();
+						currentNoteId.set(null);
 						if (data?.id && data?.title) {
 							treeStore.addNoteNode?.({
 								id: data.id,
@@ -210,6 +214,9 @@
 
 					onNoteUpdated: async (data) => {
 						dispatchCacheEvent('note.updated');
+						websitesStore.clearActive();
+						ingestionViewerStore.clearActive();
+						currentNoteId.set(null);
 						if (data?.id && data?.title) {
 							treeStore.renameNoteNode?.(data.id, `${data.title}.md`);
 						}

@@ -5,6 +5,8 @@
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import { websitesStore } from '$lib/stores/websites';
+  import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
+  import { editorStore, currentNoteId } from '$lib/stores/editor';
   import type { WebsiteItem } from '$lib/stores/websites';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
@@ -89,6 +91,13 @@
     renameValue = site.title || '';
     isRenameDialogOpen = true;
     closeMenu();
+  }
+
+  async function openWebsite(site: WebsiteItem) {
+    ingestionViewerStore.clearActive();
+    editorStore.reset();
+    currentNoteId.set(null);
+    await websitesStore.loadById(site.id);
   }
 
   async function handleRename() {
@@ -254,7 +263,7 @@
               archived={isArchived(site)}
               isMenuOpen={activeMenuId === site.id}
               formatDomain={formatDomain}
-              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpen={openWebsite}
               onOpenMenu={openMenu}
               onPin={handlePin}
               onRename={openRenameDialog}
@@ -279,7 +288,7 @@
               archived={isArchived(site)}
               isMenuOpen={activeMenuId === site.id}
               formatDomain={formatDomain}
-              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpen={openWebsite}
               onOpenMenu={openMenu}
               onPin={handlePin}
               onRename={openRenameDialog}
@@ -304,7 +313,7 @@
               archived={isArchived(site)}
               isMenuOpen={activeMenuId === site.id}
               formatDomain={formatDomain}
-              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpen={openWebsite}
               onOpenMenu={openMenu}
               onPin={handlePin}
               onRename={openRenameDialog}
@@ -340,7 +349,7 @@
                       archived={isArchived(site)}
                       isMenuOpen={activeMenuId === site.id}
                       formatDomain={formatDomain}
-                      onOpen={(item) => websitesStore.loadById(item.id)}
+                      onOpen={openWebsite}
                       onOpenMenu={openMenu}
                       onPin={handlePin}
                       onRename={openRenameDialog}

@@ -7,6 +7,7 @@
   import { treeStore } from '$lib/stores/tree';
   import { websitesStore } from '$lib/stores/websites';
   import { ingestionStore } from '$lib/stores/ingestion';
+  import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
@@ -138,6 +139,7 @@
 
     // Load the new note
     websitesStore.clearActive();
+    ingestionViewerStore.clearActive();
     currentNoteId.set(path);
     await editorStore.loadNote('notes', path, { source: 'user' });
   }
@@ -149,6 +151,7 @@
     isSaveChangesDialogOpen = false;
     if (pendingNotePath) {
       websitesStore.clearActive();
+      ingestionViewerStore.clearActive();
       currentNoteId.set(pendingNotePath);
       await editorStore.loadNote('notes', pendingNotePath, { source: 'user' });
       pendingNotePath = null;
@@ -159,6 +162,7 @@
     isSaveChangesDialogOpen = false;
     if (pendingNotePath) {
       websitesStore.clearActive();
+      ingestionViewerStore.clearActive();
       currentNoteId.set(pendingNotePath);
       await editorStore.loadNote('notes', pendingNotePath, { source: 'user' });
       pendingNotePath = null;
@@ -167,12 +171,14 @@
 
   async function handleNewNote() {
     websitesStore.clearActive();
+    ingestionViewerStore.clearActive();
     newNoteName = '';
     isNewNoteDialogOpen = true;
   }
 
   function handleNewFolder() {
     websitesStore.clearActive();
+    ingestionViewerStore.clearActive();
     newFolderName = '';
     isNewFolderDialogOpen = true;
   }
@@ -235,6 +241,9 @@
       await websitesStore.load(true);
       dispatchCacheEvent('website.saved');
       if (websiteId) {
+        ingestionViewerStore.clearActive();
+        editorStore.reset();
+        currentNoteId.set(null);
         await websitesStore.loadById(websiteId);
       }
       isNewWebsiteDialogOpen = false;
@@ -279,6 +288,8 @@
         modified: data?.modified
       });
       dispatchCacheEvent('note.created');
+      websitesStore.clearActive();
+      ingestionViewerStore.clearActive();
       currentNoteId.set(noteId);
       await editorStore.loadNote('notes', noteId, { source: 'user' });
       isNewNoteDialogOpen = false;
