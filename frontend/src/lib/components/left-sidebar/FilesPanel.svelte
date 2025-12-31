@@ -26,6 +26,8 @@
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import IngestionQueue from '$lib/components/files/IngestionQueue.svelte';
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+  import { buttonVariants } from '$lib/components/ui/button/index.js';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import type { FileNode } from '$lib/types/file';
   import type { IngestionListItem } from '$lib/types/ingestion';
@@ -81,6 +83,9 @@
   let renameValue = '';
   let renameItem: IngestionListItem | null = null;
   let isRenaming = false;
+  let isDeleteDialogOpen = false;
+  let deleteItem: IngestionListItem | null = null;
+  let deleteButton: HTMLButtonElement | null = null;
 
   function openViewer(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
@@ -105,12 +110,27 @@
     }
   }
 
-  async function deleteIngestion(fileId: string) {
+  function requestDelete(item: IngestionListItem, event?: MouseEvent) {
+    event?.stopPropagation();
+    deleteItem = item;
+    isDeleteDialogOpen = true;
+    openMenuKey = null;
+  }
+
+  async function confirmDelete() {
+    if (!deleteItem) return;
+    const fileId = deleteItem.file.id;
     try {
       await ingestionAPI.delete(fileId);
+      if (ingestionViewerStore && $ingestionViewerStore?.active?.file.id === fileId) {
+        ingestionViewerStore.clearActive();
+      }
       await ingestionStore.load();
     } catch (error) {
       console.error('Failed to delete ingestion:', error);
+    } finally {
+      isDeleteDialogOpen = false;
+      deleteItem = null;
     }
   }
 
@@ -193,15 +213,8 @@
     }
   }
 
-  async function handleDelete(item: IngestionListItem) {
-    try {
-      await ingestionAPI.delete(item.file.id);
-      await ingestionStore.load();
-    } catch (error) {
-      console.error('Failed to delete ingestion:', error);
-    } finally {
-      openMenuKey = null;
-    }
+  function handleDelete(item: IngestionListItem, event?: MouseEvent) {
+    requestDelete(item, event);
   }
 
   async function handleRename(item: IngestionListItem) {
@@ -236,6 +249,32 @@
   }
 
 </script>
+
+<AlertDialog.Root bind:open={isDeleteDialogOpen}>
+  <AlertDialog.Content
+    onOpenAutoFocus={(event) => {
+      event.preventDefault();
+      deleteButton?.focus();
+    }}
+  >
+    <AlertDialog.Header>
+      <AlertDialog.Title>Delete file?</AlertDialog.Title>
+      <AlertDialog.Description>
+        This will permanently delete "{deleteItem?.file.filename_original}". This action cannot be undone.
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+      <AlertDialog.Action
+        class={buttonVariants({ variant: 'destructive' })}
+        bind:ref={deleteButton}
+        onclick={confirmDelete}
+      >
+        Delete
+      </AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
 
 {#if loading}
   <SidebarLoading message="Loading files..." />
@@ -296,7 +335,7 @@
                       <Download size={14} />
                       <span>Download</span>
                     </button>
-                    <button class="menu-item delete" onclick={() => handleDelete(item)}>
+                    <button class="menu-item delete" onclick={(event) => handleDelete(item, event)}>
                       <Trash2 size={14} />
                       <span>Delete</span>
                     </button>
@@ -376,7 +415,7 @@
                       <Download size={14} />
                       <span>Download</span>
                     </button>
-                    <button class="menu-item delete" onclick={() => handleDelete(item)}>
+                    <button class="menu-item delete" onclick={(event) => handleDelete(item, event)}>
                       <Trash2 size={14} />
                       <span>Delete</span>
                     </button>
@@ -430,7 +469,7 @@
                 <button
                   class="failed-action"
                   type="button"
-                  onclick={() => deleteIngestion(item.file.id)}
+                  onclick={(event) => handleDelete(item, event)}
                   aria-label="Delete upload"
                 >
                   <Trash2 size={14} />
@@ -500,7 +539,7 @@
                           <Download size={14} />
                           <span>Download</span>
                         </button>
-                        <button class="menu-item delete" onclick={() => handleDelete(item)}>
+                        <button class="menu-item delete" onclick={(event) => handleDelete(item, event)}>
                           <Trash2 size={14} />
                           <span>Delete</span>
                         </button>
