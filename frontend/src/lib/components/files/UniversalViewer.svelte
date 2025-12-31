@@ -643,14 +643,6 @@
       <div class="viewer-placeholder">Loading file…</div>
     {:else if error}
       <div class="viewer-placeholder">{error}</div>
-    {:else if viewMode === 'markdown'}
-      {#if markdownLoading}
-        <div class="viewer-placeholder">Loading markdown…</div>
-      {:else if markdownError}
-        <div class="viewer-placeholder">{markdownError}</div>
-      {:else}
-        <pre class="file-viewer-text">{markdownContent}</pre>
-      {/if}
     {:else if !viewerUrl}
       <div class="viewer-placeholder">
         {#if isFailed}
@@ -667,38 +659,59 @@
           No preview available.
         {/if}
       </div>
-    {:else if isPdf}
-      {#if PdfViewerComponent}
-        <svelte:component
-          this={PdfViewerComponent}
-          src={viewerUrl}
-          fitMode={fitMode}
-          centerPages={centerPdfPages}
-          bind:effectiveScale
-          bind:normalizedScale
-          bind:currentPage
-          bind:pageCount
-          bind:scale
-        />
-      {:else}
-        <div class="viewer-placeholder">Loading PDF…</div>
-      {/if}
-    {:else if isSpreadsheet}
-      <SpreadsheetViewer
-        src={viewerUrl}
-        filename={displayName}
-        registerActions={(actions) => (spreadsheetActions = actions)}
-      />
-    {:else if isText}
-      {#if isTextLoading}
-        <div class="viewer-placeholder">Loading text…</div>
-      {:else if textError}
-        <div class="viewer-placeholder">{textError}</div>
-      {:else}
-        <pre class="file-viewer-text">{textContent}</pre>
-      {/if}
     {:else}
-      <img class="file-viewer-image" src={viewerUrl} alt={active?.file.filename_original ?? 'File'} />
+      {#if isPdf}
+        <div class="viewer-pane" class:viewer-hidden={viewMode === 'markdown'}>
+          {#if PdfViewerComponent}
+            <svelte:component
+              this={PdfViewerComponent}
+              src={viewerUrl}
+              fitMode={fitMode}
+              centerPages={centerPdfPages}
+              bind:effectiveScale
+              bind:normalizedScale
+              bind:currentPage
+              bind:pageCount
+              bind:scale
+            />
+          {:else}
+            <div class="viewer-placeholder">Loading PDF…</div>
+          {/if}
+        </div>
+        {#if viewMode === 'markdown'}
+          {#if markdownLoading}
+            <div class="viewer-placeholder">Loading markdown…</div>
+          {:else if markdownError}
+            <div class="viewer-placeholder">{markdownError}</div>
+          {:else}
+            <pre class="file-viewer-text">{markdownContent}</pre>
+          {/if}
+        {/if}
+      {:else if viewMode === 'markdown'}
+        {#if markdownLoading}
+          <div class="viewer-placeholder">Loading markdown…</div>
+        {:else if markdownError}
+          <div class="viewer-placeholder">{markdownError}</div>
+        {:else}
+          <pre class="file-viewer-text">{markdownContent}</pre>
+        {/if}
+      {:else if isSpreadsheet}
+        <SpreadsheetViewer
+          src={viewerUrl}
+          filename={displayName}
+          registerActions={(actions) => (spreadsheetActions = actions)}
+        />
+      {:else if isText}
+        {#if isTextLoading}
+          <div class="viewer-placeholder">Loading text…</div>
+        {:else if textError}
+          <div class="viewer-placeholder">{textError}</div>
+        {:else}
+          <pre class="file-viewer-text">{textContent}</pre>
+        {/if}
+      {:else}
+        <img class="file-viewer-image" src={viewerUrl} alt={active?.file.filename_original ?? 'File'} />
+      {/if}
     {/if}
   </div>
 </div>
@@ -862,6 +875,19 @@
 
   .pdf-controls-inline.hidden {
     display: none;
+  }
+
+  .viewer-pane {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+  }
+
+  .viewer-hidden {
+    display: none !important;
   }
 
   .viewer-standard-compact {
