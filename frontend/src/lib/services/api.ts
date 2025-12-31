@@ -230,6 +230,7 @@ class IngestionAPI {
 
   async delete(fileId: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/${fileId}`, { method: 'DELETE' });
+    if (response.status === 404) return;
     if (!response.ok) throw new Error('Failed to delete ingestion');
   }
 

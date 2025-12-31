@@ -5,6 +5,7 @@
     FileChartPie,
     FileText,
     FileSpreadsheet,
+    FileMusic,
     Image,
     Folder,
     FolderOpen,
@@ -73,6 +74,7 @@
     if (category === 'images') return Image;
     if (category === 'spreadsheets') return FileSpreadsheet;
     if (category === 'presentations') return FileChartPie;
+    if (category === 'audio') return FileMusic;
     return FileText;
   }
   $: categorizedItems = readyItems.reduce<Record<string, IngestionListItem[]>>((acc, item) => {
@@ -651,7 +653,7 @@
   }
 
   .ingested-row--nested {
-    padding-left: 1.6rem;
+    padding-left: 1rem;
   }
 
   .ingested-item--file {
