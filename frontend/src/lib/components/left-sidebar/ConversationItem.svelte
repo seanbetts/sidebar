@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { MoreVertical, Trash2, Pencil } from 'lucide-svelte';
+  import { MoreHorizontal, Trash2, Pencil } from 'lucide-svelte';
   import type { Conversation } from '$lib/types/history';
   import { chatStore } from '$lib/stores/chat';
   import { conversationListStore, currentConversationId } from '$lib/stores/conversations';
@@ -161,7 +161,7 @@
 
   <div class="actions">
     <button class="menu-btn" on:click={toggleMenu} aria-label="More options">
-      <MoreVertical size={16} />
+      <MoreHorizontal size={16} />
     </button>
 
     {#if showMenu}
@@ -252,7 +252,7 @@
   .actions {
     position: relative;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
   }
 
   .menu-btn {

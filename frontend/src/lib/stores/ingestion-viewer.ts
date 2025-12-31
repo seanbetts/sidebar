@@ -32,6 +32,20 @@ function createIngestionViewerStore() {
         }));
       }
     },
+    updatePinned(fileId: string, pinned: boolean) {
+      update(state => {
+        if (!state.active || state.active.file.id !== fileId) {
+          return state;
+        }
+        return {
+          ...state,
+          active: {
+            ...state.active,
+            file: { ...state.active.file, pinned }
+          }
+        };
+      });
+    },
     clearActive() {
       update(state => ({ ...state, active: null, error: null }));
     }

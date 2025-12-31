@@ -168,7 +168,7 @@
 
   .node-content {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.5rem;
   }
 
@@ -238,6 +238,6 @@
   .actions {
     position: relative;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
   }
 </style>
