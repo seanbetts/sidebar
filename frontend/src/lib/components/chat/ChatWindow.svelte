@@ -332,10 +332,12 @@
 	})();
 
 	async function handleNewChat() {
+		await chatStore.cleanupEmptyConversation?.();
 		await chatStore.startNewConversation();
 	}
 
 	function handleCloseChat() {
+		chatStore.cleanupEmptyConversation?.();
 		chatStore.reset();
 	}
 

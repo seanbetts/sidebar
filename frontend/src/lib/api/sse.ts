@@ -60,7 +60,6 @@ export class SSEClient {
 	): Promise<void> {
 		// Create abort controller for this connection
 		this.abortController = new AbortController();
-
 		try {
 			// Send message to backend via fetch POST to get SSE stream
 			const response = await fetch('/api/chat', {
