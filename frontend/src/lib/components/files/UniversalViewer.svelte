@@ -75,6 +75,13 @@
   let lastTextUrl: string | null = null;
   let spreadsheetActions: { copy: () => void; download: () => void } | null = null;
 
+  $: if (active) {
+    const item = $ingestionStore.items.find(entry => entry.file.id === active.file.id);
+    if (item && item.job) {
+      ingestionViewerStore.updateActiveJob(active.file.id, item.job);
+    }
+  }
+
   onMount(async () => {
     if (!browser) return;
     const module = await import('$lib/components/files/PdfViewer.svelte');
