@@ -193,15 +193,22 @@
 
     const tempId = `upload-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
     isUploadingFile = true;
-    ingestionStore.addLocalUpload({
+    const localItem = ingestionStore.addLocalUpload({
       id: tempId,
       name: selected.name,
       type: selected.type,
       size: selected.size
     });
+    ingestionViewerStore.setLocalActive(localItem);
     try {
       const { file_id } = await ingestionAPI.upload(selected, (progress) => {
         ingestionStore.updateLocalUploadProgress(tempId, progress);
+        ingestionViewerStore.updateActiveJob(tempId, {
+          status: 'uploading',
+          stage: 'uploading',
+          progress,
+          user_message: `Uploading ${Math.round(progress)}%`
+        });
       });
       ingestionStore.removeLocalUpload(tempId);
       await ingestionStore.load();
@@ -213,6 +220,11 @@
       ingestionViewerStore.open(file_id);
     } catch (error) {
       ingestionStore.removeLocalUpload(tempId);
+      ingestionViewerStore.updateActiveJob(tempId, {
+        status: 'failed',
+        stage: 'failed',
+        user_message: error instanceof Error ? error.message : 'Failed to upload file.'
+      });
       console.error('Failed to upload file:', error);
       errorTitle = 'Unable to upload file';
       errorMessage =

@@ -44,6 +44,7 @@ function createIngestionStore() {
         localUploads: [...state.localUploads, upload],
         items: [...state.localUploads, upload, ...state.items]
       }));
+      return upload;
     },
     updateLocalUploadProgress(fileId: string, progress: number) {
       const percent = Math.max(0, Math.min(100, Math.round(progress)));

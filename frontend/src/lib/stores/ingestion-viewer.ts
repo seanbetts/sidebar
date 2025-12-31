@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { ingestionAPI } from '$lib/services/api';
-import type { IngestionMetaResponse } from '$lib/types/ingestion';
+import type { IngestionListItem, IngestionMetaResponse } from '$lib/types/ingestion';
 
 interface IngestionViewerState {
   active: IngestionMetaResponse | null;
@@ -31,6 +31,29 @@ function createIngestionViewerStore() {
           active: null
         }));
       }
+    },
+    setLocalActive(item: IngestionListItem) {
+      const localMeta: IngestionMetaResponse = {
+        file: item.file,
+        job: item.job,
+        derivatives: [],
+        recommended_viewer: null
+      };
+      update(state => ({ ...state, active: localMeta, loading: false, error: null }));
+    },
+    updateActiveJob(fileId: string, patch: Partial<IngestionMetaResponse['job']>) {
+      update(state => {
+        if (!state.active || state.active.file.id !== fileId) {
+          return state;
+        }
+        return {
+          ...state,
+          active: {
+            ...state.active,
+            job: { ...state.active.job, ...patch }
+          }
+        };
+      });
     },
     updatePinned(fileId: string, pinned: boolean) {
       update(state => {
