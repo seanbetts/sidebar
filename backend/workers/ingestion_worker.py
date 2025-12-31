@@ -369,10 +369,11 @@ def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
     except Exception as exc:
         raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", "Video transcription failed", retryable=True) from exc
 
-    transcript_path = Path(result.get("transcript_file") or "")
+    transcript_path = Path(result.get("transcript_local_path") or result.get("transcript_file") or "")
     if not transcript_path.exists():
         raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", "Transcript output missing", retryable=False)
-    transcript = transcript_path.read_text(encoding="utf-8", errors="ignore").strip()
+    transcript_raw = transcript_path.read_text(encoding="utf-8", errors="ignore").strip()
+    transcript, transcript_meta = _extract_transcript_metadata(transcript_raw)
     if not transcript:
         transcript = "No transcription available."
     metadata = {
@@ -383,7 +384,72 @@ def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
         "download_duration_seconds": result.get("download_duration_seconds"),
         "transcription_duration_seconds": result.get("transcription_duration_seconds"),
     }
+    for key in (
+        "transcription_usage_total_tokens",
+        "transcription_usage_input_tokens",
+        "transcription_usage_output_tokens",
+        "transcription_usage_audio_tokens",
+    ):
+        if result.get(key) is not None:
+            metadata[key] = result.get(key)
+    metadata.update(transcript_meta)
     return transcript, metadata
+
+
+def _yaml_escape(value: str) -> str:
+    if value == "":
+        return "\"\""
+    if re.search(r"[\\s:#\\[\\]{},&*?]|^-|^\\?|^@", value):
+        return json.dumps(value)
+    return value
+
+
+def _extract_transcript_metadata(text: str) -> tuple[str, dict]:
+    normalized = text.replace("\r\n", "\n")
+    trimmed = normalized.lstrip()
+    if trimmed.startswith("---"):
+        match = re.match(r"^---\s*\n[\s\S]*?\n---\s*\n?", trimmed)
+        if match:
+            trimmed = trimmed[match.end():]
+    lines = trimmed.split("\n")
+    separator_index = next((idx for idx, line in enumerate(lines) if line.strip() == "---"), -1)
+    if separator_index <= 0:
+        return trimmed, {}
+    metadata_lines = lines[:separator_index]
+    if not any(line.lstrip().startswith("#") for line in metadata_lines):
+        return trimmed, {}
+    meta: dict[str, object] = {}
+    for line in metadata_lines:
+        line = line.strip()
+        if not line.startswith("#"):
+            continue
+        content = line.lstrip("#").strip()
+        if content.startswith("Transcript of"):
+            meta["transcription_source_file"] = content.replace("Transcript of", "").strip()
+        elif content.startswith("Generated:"):
+            meta["transcription_generated_at"] = content.replace("Generated:", "").strip()
+        elif content.startswith("Model:"):
+            meta["transcription_model"] = content.replace("Model:", "").strip()
+        elif content.startswith("File size:"):
+            size_value = content.replace("File size:", "").strip()
+            size_match = re.match(r"([0-9.]+)\s*([KMG]?B)", size_value, re.IGNORECASE)
+            if size_match:
+                amount = float(size_match.group(1))
+                unit = size_match.group(2).upper()
+                multiplier = {"KB": 1 / 1024, "MB": 1.0, "GB": 1024.0}.get(unit, 1.0)
+                meta["transcription_file_size_mb"] = round(amount * multiplier, 3)
+        elif content.startswith("Usage:"):
+            usage_match = re.search(r"(\\d+)\\s+total tokens\\s*\\((\\d+)\\s+input,\\s*(\\d+)\\s+output\\)", content)
+            if usage_match:
+                meta["transcription_usage_total_tokens"] = int(usage_match.group(1))
+                meta["transcription_usage_input_tokens"] = int(usage_match.group(2))
+                meta["transcription_usage_output_tokens"] = int(usage_match.group(3))
+        elif content.startswith("Audio tokens:"):
+            tokens = re.search(r"(\\d+)", content)
+            if tokens:
+                meta["transcription_usage_audio_tokens"] = int(tokens.group(1))
+    body = "\n".join(lines[separator_index + 1:]).lstrip()
+    return body, meta
 
 
 def _transcribe_audio(source_path: Path, record: IngestedFile) -> str:
@@ -1195,18 +1261,40 @@ def _build_youtube_derivatives(
 ) -> list[DerivativePayload]:
     user_prefix = f"{record.user_id}/files/{record.id}"
     title = metadata.get("title") or record.filename_original
-    ai_body = (
-        "---\n"
-        f"file_id: {record.id}\n"
-        f"source_title: {title}\n"
-        f"source_url: {record.source_url}\n"
-        f"source_mime: {record.mime_original}\n"
-        f"created_at: {record.created_at.isoformat()}\n"
-        "derivatives:\n"
-        "  ai_md: true\n"
-        "---\n\n"
-        f"{transcript or 'No transcription available.'}"
+    lines = [
+        "---",
+        f"file_id: {record.id}",
+        f"source_title: {_yaml_escape(str(title))}",
+        f"source_url: {_yaml_escape(str(record.source_url))}",
+        f"source_mime: {_yaml_escape(str(record.mime_original))}",
+        f"created_at: {_yaml_escape(record.created_at.isoformat())}",
+    ]
+    if metadata.get("transcription_generated_at"):
+        lines.append(f"transcription_generated_at: {_yaml_escape(str(metadata['transcription_generated_at']))}")
+    if metadata.get("transcription_model"):
+        lines.append(f"transcription_model: {_yaml_escape(str(metadata['transcription_model']))}")
+    if metadata.get("transcription_source_file"):
+        lines.append(f"transcription_source_file: {_yaml_escape(str(metadata['transcription_source_file']))}")
+    if metadata.get("transcription_file_size_mb") is not None:
+        lines.append(f"transcription_file_size_mb: {metadata['transcription_file_size_mb']}")
+    if metadata.get("transcription_usage_total_tokens") is not None:
+        lines.append(f"transcription_usage_total_tokens: {metadata['transcription_usage_total_tokens']}")
+    if metadata.get("transcription_usage_input_tokens") is not None:
+        lines.append(f"transcription_usage_input_tokens: {metadata['transcription_usage_input_tokens']}")
+    if metadata.get("transcription_usage_output_tokens") is not None:
+        lines.append(f"transcription_usage_output_tokens: {metadata['transcription_usage_output_tokens']}")
+    if metadata.get("transcription_usage_audio_tokens") is not None:
+        lines.append(f"transcription_usage_audio_tokens: {metadata['transcription_usage_audio_tokens']}")
+    lines.extend(
+        [
+            "derivatives:",
+            "  ai_md: true",
+            "---",
+            "",
+            transcript or "No transcription available.",
+        ]
     )
+    ai_body = "\n".join(lines)
     ai_bytes = ai_body.encode("utf-8")
     ai_md = DerivativePayload(
         kind="ai_md",

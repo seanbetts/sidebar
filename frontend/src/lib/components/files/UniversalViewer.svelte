@@ -227,10 +227,26 @@
   }
 
   function stripFrontmatter(text: string): string {
-    if (!text.startsWith('---')) return text;
-    const match = text.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
-    if (!match) return text;
-    return text.slice(match[0].length);
+    const normalized = text.replace(/\r\n/g, '\n');
+    const trimmed = normalized.replace(/^\s+/, '');
+    if (trimmed.startsWith('---')) {
+      const match = trimmed.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+      if (!match) return text;
+      return trimmed.slice(match[0].length);
+    }
+    const lines = trimmed.split('\n');
+    const separatorIndex = lines.findIndex((line) => line.trim() === '---');
+    if (separatorIndex > 0) {
+      const metadataLines = lines.slice(0, separatorIndex);
+      const allMetadata = metadataLines.every((line) => line.trim() === '' || line.trim().startsWith('#'));
+      const hasTranscriptHeader = metadataLines.some((line) =>
+        /#\s*(Transcript of|YouTube URL:|Original file:|Generated:)/.test(line)
+      );
+      if (allMetadata && hasTranscriptHeader) {
+        return lines.slice(separatorIndex + 1).join('\n');
+      }
+    }
+    return normalized;
   }
 
   async function loadMarkdown() {
@@ -715,9 +731,6 @@
     {:else if isVideo}
       <div class="file-viewer-video-content">
         <div class="file-viewer-video-card">
-          <span class="file-viewer-video-icon">
-            <FileVideoCamera size={40} />
-          </span>
           {#if videoEmbedUrl}
             <div class="file-viewer-video-frame">
               <iframe
@@ -732,6 +745,18 @@
             <div class="viewer-placeholder">Video unavailable.</div>
           {/if}
         </div>
+        {#if isInProgress || isFailed}
+          <div class="viewer-placeholder video-status">
+            <div class="viewer-placeholder-stack">
+              {#if isInProgress}
+                <span class="viewer-spinner" aria-hidden="true"></span>
+              {:else}
+                <AlertTriangle size={20} class="viewer-placeholder-alert" />
+              {/if}
+              <span>{statusMessage}</span>
+            </div>
+          </div>
+        {/if}
         {#if hasMarkdown}
           {#if markdownLoading}
             <div class="viewer-placeholder video-markdown-status">Loading markdown…</div>
@@ -1183,10 +1208,6 @@
     color: var(--color-muted-foreground);
   }
 
-  .file-viewer-video-icon {
-    color: var(--color-muted-foreground);
-  }
-
   .file-viewer-audio {
     width: min(520px, 100%);
   }
@@ -1215,6 +1236,12 @@
 
   .video-markdown-status {
     margin-top: 0.5rem;
+    text-align: center;
+    align-self: center;
+  }
+
+  .video-status {
+    margin-top: 0.25rem;
     text-align: center;
     align-self: center;
   }

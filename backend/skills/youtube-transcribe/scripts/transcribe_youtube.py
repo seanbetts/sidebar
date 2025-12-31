@@ -288,12 +288,20 @@ def transcribe_youtube(
             finally:
                 db.close()
 
+        usage = transcribe_data.get("usage") or {}
+        usage_details = usage.get("input_token_details") or {}
         result = {
             'youtube_url': url,
             'title': download_data['title'],
             'audio_file': download_data.get('r2_path') or str(audio_file_path),
             'audio_kept': audio_kept,
-            'transcript_file': transcribe_data.get('output_path') or str(transcript_path),
+            'transcript_file': str(transcript_path),
+            'transcript_local_path': str(transcript_path),
+            'transcript_r2_path': transcribe_data.get('output_path'),
+            'transcription_usage_total_tokens': usage.get('total_tokens'),
+            'transcription_usage_input_tokens': usage.get('input_tokens'),
+            'transcription_usage_output_tokens': usage.get('output_tokens'),
+            'transcription_usage_audio_tokens': usage_details.get('audio_tokens'),
             'language': language,
             'model': model,
             'download_duration_seconds': download_data['duration_seconds'],
