@@ -11,6 +11,7 @@
     Check,
     FileSpreadsheet,
     FileText,
+    FilePenLine,
     Image,
     AlertTriangle,
     Menu,
@@ -358,23 +359,65 @@
         {/if}
       </div>
     </div>
-    <div class="file-viewer-controls">
-      {#if showMarkdownToggle}
-        <div class="viewer-toggle">
+    {#if showMarkdownToggle}
+      <div class="viewer-toggle-center">
+        <div class="viewer-toggle viewer-toggle--compact">
           <button
             class="viewer-toggle-button"
             class:active={viewMode === 'content'}
             onclick={() => (viewMode = 'content')}
+            aria-label="View file"
+            title="View file"
           >
-            File
+            {#if isImage}
+              <Image size={16} />
+            {:else if isSpreadsheet}
+              <FileSpreadsheet size={16} />
+            {:else}
+              <FileText size={16} />
+            {/if}
           </button>
           <button
             class="viewer-toggle-button"
             class:active={viewMode === 'markdown'}
             onclick={() => (viewMode = 'markdown')}
+            aria-label="View markdown"
+            title="View markdown"
           >
-            Markdown
+            <FilePenLine size={16} />
           </button>
+        </div>
+      </div>
+    {/if}
+    <div class="file-viewer-controls">
+      {#if showMarkdownToggle}
+        <div class="viewer-toggle-compact">
+          <div class="viewer-toggle viewer-toggle--compact">
+            <button
+              class="viewer-toggle-button"
+              class:active={viewMode === 'content'}
+              onclick={() => (viewMode = 'content')}
+              aria-label="View file"
+              title="View file"
+            >
+              {#if isImage}
+                <Image size={16} />
+              {:else if isSpreadsheet}
+                <FileSpreadsheet size={16} />
+              {:else}
+                <FileText size={16} />
+              {/if}
+            </button>
+            <button
+              class="viewer-toggle-button"
+              class:active={viewMode === 'markdown'}
+              onclick={() => (viewMode = 'markdown')}
+              aria-label="View markdown"
+              title="View markdown"
+            >
+              <FilePenLine size={16} />
+            </button>
+          </div>
         </div>
       {/if}
       {#if isPdf}
@@ -432,7 +475,7 @@
         </div>
       {/if}
       <div class="viewer-standard-actions">
-        {#if isPdf}
+        {#if isPdf && viewMode !== 'markdown'}
           <div class="viewer-divider"></div>
         {/if}
         <Button
@@ -544,15 +587,6 @@
                   <span>Fit width</span>
                 </button>
               </div>
-              <div class="viewer-menu-divider"></div>
-            {/if}
-            {#if showMarkdownToggle}
-              <button class="viewer-menu-item" onclick={() => (viewMode = 'content')} disabled={viewMode === 'content'}>
-                <span>View file</span>
-              </button>
-              <button class="viewer-menu-item" onclick={() => (viewMode = 'markdown')} disabled={viewMode === 'markdown'}>
-                <span>View markdown</span>
-              </button>
               <div class="viewer-menu-divider"></div>
             {/if}
             <button class="viewer-menu-item" onclick={handlePinToggle} disabled={!active}>
@@ -690,6 +724,7 @@
     border-bottom: 1px solid var(--color-border);
     gap: 1rem;
     container-type: inline-size;
+    position: relative;
   }
 
   .file-viewer-meta {
@@ -757,6 +792,18 @@
     gap: 0.35rem;
   }
 
+  .viewer-toggle-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+  }
+
+  .viewer-toggle-compact {
+    display: none;
+  }
+
   .viewer-toggle {
     display: inline-flex;
     align-items: center;
@@ -765,13 +812,20 @@
     overflow: hidden;
   }
 
+  .viewer-toggle--compact {
+    border-radius: 0.6rem;
+  }
+
   .viewer-toggle-button {
     border: none;
     background: transparent;
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
     cursor: pointer;
     color: var(--color-muted-foreground);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .viewer-toggle-button.active {
@@ -924,6 +978,14 @@
   }
 
   @container (max-width: 700px) {
+    .viewer-toggle-center {
+      display: none;
+    }
+
+    .viewer-toggle-compact {
+      display: inline-flex;
+    }
+
     .viewer-standard-actions {
       display: none;
     }
