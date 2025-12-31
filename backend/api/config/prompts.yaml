@@ -138,4 +138,6 @@ current_open_wrapper_template: |-
 current_open_empty_text: "No items are currently open."
 current_open_note_header: "Note currently open:"
 current_open_website_header: "Website currently open:"
+current_open_file_header: "File currently open:"
+current_open_attachments_header: "Attached files:"
 current_open_content_header: "Content:"

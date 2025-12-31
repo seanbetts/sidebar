@@ -185,6 +185,7 @@ async def stream_chat(
     user_message_id = data.get("user_message_id")
     history = data.get("history", [])
     open_context = data.get("open_context") or {}
+    attachments = data.get("attachments") or []
     current_location = data.get("current_location")
     current_location_levels = data.get("current_location_levels")
     current_weather = data.get("current_weather")
@@ -211,6 +212,7 @@ async def stream_chat(
         db=db,
         user_id=user_id,
         open_context=open_context,
+        attachments=attachments,
         user_agent=user_agent,
         current_location=current_location,
         current_location_levels=current_location_levels,
@@ -227,6 +229,7 @@ async def stream_chat(
         "db": db,
         "user_id": user_id,
         "open_context": open_context,
+        "attachments": attachments,
         "user_agent": user_agent,
         "current_location": current_location,
         "current_location_levels": current_location_levels,

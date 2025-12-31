@@ -41,6 +41,7 @@ def handle_prompt_preview(context: Dict[str, Any] | None) -> Dict[str, Any]:
         db=db,
         user_id=user_id,
         open_context=context.get("open_context"),
+        attachments=context.get("attachments"),
         user_agent=context.get("user_agent"),
         current_location=context.get("current_location"),
         current_location_levels=context.get("current_location_levels"),

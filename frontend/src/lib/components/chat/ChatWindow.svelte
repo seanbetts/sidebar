@@ -106,9 +106,11 @@
 			// Connect to SSE stream
 			const editorState = get(editorStore);
 			const websiteState = get(websitesStore);
+			const fileState = get(ingestionViewerStore);
 			const openContext: {
 				note?: { id: string; title: string; path: string | null; content: string };
 				website?: { id: string; title: string; url: string; domain: string; content: string };
+				file?: { id: string; filename: string; mime?: string | null; category?: string | null };
 			} = {};
 
 			if (editorState.currentNoteId) {
@@ -127,6 +129,15 @@
 					url: websiteState.active.url_full || websiteState.active.url,
 					domain: websiteState.active.domain,
 					content: websiteState.active.content || ''
+				};
+			}
+
+			if (fileState.active) {
+				openContext.file = {
+					id: fileState.active.file.id,
+					filename: fileState.active.file.filename_original,
+					mime: fileState.active.file.mime_original,
+					category: fileState.active.file.category
 				};
 			}
 
