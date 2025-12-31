@@ -7,7 +7,7 @@
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
   import { websitesStore } from '$lib/stores/websites';
-  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
   import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
@@ -16,7 +16,7 @@
   let editor: Editor | null = null;
   let isRenameDialogOpen = false;
   let renameValue = '';
-  let isDeleteDialogOpen = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let copyTimeout: ReturnType<typeof setTimeout> | null = null;
   let isCopied = false;
 
@@ -165,20 +165,27 @@
     }
   }
 
-  async function handleDelete() {
+  async function handleDelete(): Promise<boolean> {
     const active = $websitesStore.active;
-    if (!active) return;
+    if (!active) return false;
     const response = await fetch(`/api/websites/${active.id}`, {
       method: 'DELETE'
     });
     if (!response.ok) {
       console.error('Failed to delete website');
-      return;
+      return false;
     }
     websitesStore.removeLocal?.(active.id);
     websitesStore.clearActive();
     dispatchCacheEvent('website.deleted');
-    isDeleteDialogOpen = false;
+    // dialog closes via controller
+    return true;
+  }
+
+  function requestDelete() {
+    const active = $websitesStore.active;
+    if (!active) return;
+    deleteDialog?.openDialog(active.title || 'website');
   }
 
   function handleClose() {
@@ -194,12 +201,10 @@
   onCancel={() => (isRenameDialogOpen = false)}
 />
 
-<NoteDeleteDialog
-  bind:open={isDeleteDialogOpen}
+<DeleteDialogController
+  bind:this={deleteDialog}
   itemType="website"
-  itemName={$websitesStore.active?.title ?? ''}
   onConfirm={handleDelete}
-  onCancel={() => (isDeleteDialogOpen = false)}
 />
 
 <div class="website-pane">
@@ -213,7 +218,7 @@
     onCopy={handleCopy}
     onDownload={handleDownload}
     onArchive={handleArchive}
-    onDelete={() => (isDeleteDialogOpen = true)}
+    onDelete={requestDelete}
     onClose={handleClose}
   />
   <div class="website-body">

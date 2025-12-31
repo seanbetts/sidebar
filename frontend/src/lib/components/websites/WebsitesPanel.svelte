@@ -9,7 +9,7 @@
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import type { WebsiteItem } from '$lib/stores/websites';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
@@ -38,7 +38,7 @@
   let isRenameDialogOpen = false;
   let renameValue = '';
   let renameInput: HTMLInputElement | null = null;
-  let isDeleteDialogOpen = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let selectedSite: WebsiteItem | null = null;
 
   function closeMenu() {
@@ -163,23 +163,23 @@
 
   function openDeleteDialog(site: WebsiteItem) {
     selectedSite = site;
-    isDeleteDialogOpen = true;
+    deleteDialog?.openDialog(site.title || 'website');
     closeMenu();
   }
 
-  async function handleDelete() {
-    if (!selectedSite) return;
+  async function handleDelete(): Promise<boolean> {
+    if (!selectedSite) return false;
     const response = await fetch(`/api/websites/${selectedSite.id}`, {
       method: 'DELETE'
     });
     if (!response.ok) {
       console.error('Failed to delete website');
-      return;
+      return false;
     }
     websitesStore.removeLocal?.(selectedSite.id);
     dispatchCacheEvent('website.deleted');
-    isDeleteDialogOpen = false;
     selectedSite = null;
+    return true;
   }
 
   $: if (isRenameDialogOpen) {
@@ -223,12 +223,10 @@
   </AlertDialog.Content>
 </AlertDialog.Root>
 
-<NoteDeleteDialog
-  bind:open={isDeleteDialogOpen}
+<DeleteDialogController
+  bind:this={deleteDialog}
   itemType="website"
-  itemName={selectedSite?.title ?? ''}
   onConfirm={handleDelete}
-  onCancel={() => (isDeleteDialogOpen = false)}
 />
 
 <div class="websites-sections">

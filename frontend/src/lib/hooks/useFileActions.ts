@@ -12,7 +12,7 @@ type FileActionsContext = {
   getEditedName: () => string;
   setEditedName: (value: string) => void;
   setIsEditing: (value: boolean) => void;
-  setIsDeleteDialogOpen: (value: boolean) => void;
+  requestDelete: () => void;
   setFolderOptions: (value: { label: string; value: string; depth: number }[]) => void;
   getDisplayName: () => string;
   editorStore: Writable<any>;
@@ -154,7 +154,7 @@ export function useFileActions(ctx: FileActionsContext) {
   };
 
   const openDeleteDialog = () => {
-    ctx.setIsDeleteDialogOpen(true);
+    ctx.requestDelete();
   };
 
   const handlePinToggle = async () => {
@@ -296,7 +296,7 @@ export function useFileActions(ctx: FileActionsContext) {
     }
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = async (): Promise<boolean> => {
     const node = ctx.getNode();
     try {
       const response = ctx.getBasePath() === 'notes'
@@ -334,9 +334,10 @@ export function useFileActions(ctx: FileActionsContext) {
       } else {
         dispatchCacheEvent('file.deleted');
       }
-      ctx.setIsDeleteDialogOpen(false);
+      return true;
     } catch (error) {
       console.error('Failed to delete:', error);
+      return false;
     }
   };
 
