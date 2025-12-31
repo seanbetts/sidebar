@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     # PDF processing (pdf skill)
     "pypdf>=4.0.0",
+    "pdfminer.six>=20231228",
     # PowerPoint processing (pptx skill)
     "python-pptx>=0.6.23",
     "python-docx>=1.1.0",

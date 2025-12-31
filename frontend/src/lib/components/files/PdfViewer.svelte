@@ -327,9 +327,9 @@
       {/each}
     {/if}
   </div>
-  <div class="pdf-viewer-main" class:centered={centerPages} bind:this={container}>
+  <div class="pdf-viewer-main" class:centered={centerPages && !showAllPages} bind:this={container}>
     {#if showAllPages}
-      <div class="pdf-pages" class:centered={centerPages}>
+      <div class="pdf-pages" class:centered={centerPages && !showAllPages}>
         {#each Array.from({ length: pageCount }, (_, index) => index + 1) as pageNumber (pageNumber)}
           <div class="pdf-page" bind:this={pageRefs[pageNumber]}>
             <canvas bind:this={pageCanvases[pageNumber - 1]} class="pdf-canvas"></canvas>

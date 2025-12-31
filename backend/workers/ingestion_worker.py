@@ -6,6 +6,7 @@ import io
 import json
 import logging
 import os
+import re
 import time
 import subprocess
 from dataclasses import dataclass
@@ -18,6 +19,8 @@ from uuid import uuid4
 from sqlalchemy import and_, or_, text
 
 from PIL import Image
+from pdfminer.high_level import extract_text as pdfminer_extract_text
+from pdfminer.layout import LAParams
 from pypdf import PdfReader
 from pptx import Presentation
 from docx import Document
@@ -45,6 +48,31 @@ PIPELINE_STAGES = [
 
 logger = logging.getLogger("ingestion.worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+_COMMON_SHORT_WORDS = {
+    "a",
+    "i",
+    "an",
+    "as",
+    "at",
+    "be",
+    "by",
+    "do",
+    "he",
+    "if",
+    "in",
+    "is",
+    "it",
+    "me",
+    "no",
+    "of",
+    "on",
+    "or",
+    "so",
+    "to",
+    "up",
+    "us",
+    "we",
+}
 
 
 def _now() -> datetime:
@@ -309,13 +337,112 @@ def _generate_pdf_thumbnail(pdf_path: Path, output_dir: Path) -> bytes | None:
     return thumb_path.read_bytes()
 
 
+def _merge_split_words(line: str) -> str:
+    parts = line.split(" ")
+    if len(parts) < 2:
+        return line
+    merged: list[str] = []
+    idx = 0
+    while idx < len(parts):
+        current = parts[idx]
+        if idx + 1 < len(parts):
+            next_part = parts[idx + 1]
+            if current.isalpha() and next_part.isalpha():
+                left = current.lower()
+                right = next_part.lower()
+                if (
+                    (len(current) <= 2 or len(next_part) <= 2)
+                    and left not in _COMMON_SHORT_WORDS
+                    and right not in _COMMON_SHORT_WORDS
+                    and not (current[0].isupper() and next_part[0].isupper())
+                ):
+                    current = f"{current}{next_part}"
+                    idx += 1
+        merged.append(current)
+        idx += 1
+    return " ".join(merged)
+
+
+def _should_merge_lines(current: str, next_line: str) -> bool:
+    if not next_line:
+        return False
+    if current.endswith((".", "!", "?", ":", ";")):
+        return False
+    if current.startswith(("- ", "* ", "• ")):
+        return False
+    if next_line.startswith(("- ", "* ", "• ")):
+        return False
+    if next_line[0].islower():
+        return True
+    return current.endswith(",")
+
+
+def _join_wrapped_lines(lines: list[str]) -> list[str]:
+    merged: list[str] = []
+    idx = 0
+    while idx < len(lines):
+        line = lines[idx]
+        if not line:
+            merged.append("")
+            idx += 1
+            continue
+        while idx + 1 < len(lines) and _should_merge_lines(line, lines[idx + 1]):
+            line = f"{line} {lines[idx + 1]}".strip()
+            idx += 1
+        merged.append(line)
+        idx += 1
+    return merged
+
+
+def _clean_extracted_text(text: str) -> str:
+    if not text:
+        return ""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = text.replace("\u00ad", "")
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r" *\n *", "\n", text)
+    text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)
+    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text)
+    text = re.sub(r"(\d)([A-Za-z])", r"\1 \2", text)
+    text = re.sub(r"([a-z])(\d)", r"\1 \2", text)
+    lines = [line.strip() for line in text.splitlines()]
+    lines = [_merge_split_words(line) if line else "" for line in lines]
+    lines = _join_wrapped_lines(lines)
+    text = "\n".join(lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def _extract_pdf_text(pdf_path: Path) -> str:
-    reader = PdfReader(str(pdf_path))
-    sections = []
-    for index, page in enumerate(reader.pages, start=1):
-        text = page.extract_text() or ""
-        sections.append(f"## Page {index}\n\n{text.strip()}")
-    return "\n\n".join(sections).strip()
+    text = ""
+    try:
+        laparams = LAParams()
+        reader = PdfReader(str(pdf_path))
+        sections: list[str] = []
+        for index in range(len(reader.pages)):
+            page_text = pdfminer_extract_text(
+                str(pdf_path),
+                laparams=laparams,
+                page_numbers=[index],
+                maxpages=1,
+            ) or ""
+            page_text = _clean_extracted_text(page_text)
+            sections.append(f"## Page {index + 1}\n\n{page_text.strip()}")
+        text = "\n\n".join(sections).strip()
+    except Exception as exc:
+        logger.warning("PDFMiner extraction failed (%s). Falling back to pypdf.", exc)
+        try:
+            reader = PdfReader(str(pdf_path))
+            sections = []
+            for index, page in enumerate(reader.pages, start=1):
+                page_text = page.extract_text() or ""
+                page_text = _clean_extracted_text(page_text)
+                sections.append(f"## Page {index}\n\n{page_text.strip()}")
+            text = "\n\n".join(sections).strip()
+        except Exception as fallback_exc:
+            logger.warning("pypdf extraction failed (%s).", fallback_exc)
+            text = ""
+    return _clean_extracted_text(text)
 
 
 def _extract_pptx_text(pptx_path: Path) -> str:
