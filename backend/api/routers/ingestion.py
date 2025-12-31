@@ -33,6 +33,7 @@ ERROR_MESSAGES = {
     "CONVERSION_TIMEOUT": "File conversion timed out. We'll retry automatically.",
     "CONVERSION_FAILED": "We couldn't convert this file.",
     "DERIVATIVE_MISSING": "We couldn't generate a preview for this file.",
+    "INVALID_XLSX": "That doesn't appear to be a valid XLSX file. Try re-saving it as .xlsx in Excel or Google Sheets.",
     "WORKER_STALLED": "Processing took too long. We're retrying.",
     "UNKNOWN_ERROR": "Something went wrong while processing this file.",
 }
