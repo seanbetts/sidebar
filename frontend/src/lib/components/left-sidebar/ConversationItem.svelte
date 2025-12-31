@@ -5,8 +5,7 @@
   import { chatStore } from '$lib/stores/chat';
   import { conversationListStore, currentConversationId } from '$lib/stores/conversations';
   import { conversationsAPI } from '$lib/services/api';
-  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-  import { buttonVariants } from '$lib/components/ui/button/index.js';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 
   export let conversation: Conversation;
 
@@ -15,8 +14,7 @@
   let isEditing = false;
   let editedTitle = conversation.title;
   let editInput: HTMLInputElement | null = null;
-  let isDeleteDialogOpen = false;
-  let deleteButton: HTMLButtonElement | null = null;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
 
   $: isActive = $currentConversationId === conversation.id;
   $: isGeneratingTitle = $conversationListStore.generatingTitleIds.has(conversation.id);
@@ -59,7 +57,7 @@
 
   async function handleDelete(event: MouseEvent) {
     event.stopPropagation();
-    isDeleteDialogOpen = true;
+    deleteDialog?.openDialog(conversation.title || 'conversation');
     showMenu = false;
   }
 
@@ -68,13 +66,18 @@
     showMenu = !showMenu;
   }
 
-  async function confirmDelete() {
-    await conversationListStore.deleteConversation(conversation.id);
-    if (isActive) {
-      chatStore.reset();
-      currentConversationId.set(null);
+  async function confirmDelete(): Promise<boolean> {
+    try {
+      await conversationListStore.deleteConversation(conversation.id);
+      if (isActive) {
+        chatStore.reset();
+        currentConversationId.set(null);
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      return false;
     }
-    isDeleteDialogOpen = false;
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -103,31 +106,11 @@
   }
 </script>
 
-<AlertDialog.Root bind:open={isDeleteDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      deleteButton?.focus();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Delete conversation?</AlertDialog.Title>
-      <AlertDialog.Description>
-        This will permanently delete "{conversation.title}". This action cannot be undone.
-      </AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action
-        class={buttonVariants({ variant: 'destructive' })}
-        bind:ref={deleteButton}
-        onclick={confirmDelete}
-      >
-        Delete
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<DeleteDialogController
+  bind:this={deleteDialog}
+  itemType="conversation"
+  onConfirm={confirmDelete}
+/>
 
 <div
   class="conversation-item"
