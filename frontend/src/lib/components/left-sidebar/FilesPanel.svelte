@@ -3,6 +3,7 @@
     ChevronDown,
     ChevronRight,
     FileText,
+    FileSpreadsheet,
     Image,
     Folder,
     FolderOpen,
@@ -303,6 +304,8 @@
                   <span class="ingested-icon">
                     {#if item.file.category === 'images'}
                       <Image size={16} />
+                    {:else if item.file.category === 'spreadsheets'}
+                      <FileSpreadsheet size={16} />
                     {:else}
                       <FileText size={16} />
                     {/if}
@@ -383,6 +386,8 @@
                   <span class="ingested-icon">
                     {#if category === 'images'}
                       <Image size={16} />
+                    {:else if category === 'spreadsheets'}
+                      <FileSpreadsheet size={16} />
                     {:else}
                       <FileText size={16} />
                     {/if}

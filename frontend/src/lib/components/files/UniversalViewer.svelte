@@ -9,6 +9,7 @@
     Copy,
     Download,
     Check,
+    FileSpreadsheet,
     FileText,
     Image,
     Menu,
@@ -27,6 +28,7 @@
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { ingestionStore } from '$lib/stores/ingestion';
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
+  import SpreadsheetViewer from '$lib/components/files/SpreadsheetViewer.svelte';
 
   $: active = $ingestionViewerStore.active;
   $: loading = $ingestionViewerStore.loading;
@@ -38,6 +40,7 @@
       : null;
   $: isPdf = viewerKind === 'viewer_pdf';
   $: isText = viewerKind === 'text_original';
+  $: isSpreadsheet = viewerKind === 'viewer_json';
   $: isImage = active?.file.category === 'images';
   $: filename = active?.file.filename_original ?? 'File viewer';
   $: displayName = stripExtension(filename);
@@ -63,6 +66,7 @@
   let textError = '';
   let isTextLoading = false;
   let lastTextUrl: string | null = null;
+  let spreadsheetActions: { copy: () => void; download: () => void } | null = null;
 
   onMount(async () => {
     if (!browser) return;
@@ -96,6 +100,10 @@
   }
 
   async function handleDownload() {
+    if (isSpreadsheet && spreadsheetActions) {
+      spreadsheetActions.download();
+      return;
+    }
     if (!viewerUrl || !browser) return;
     const response = await fetch(viewerUrl, { credentials: 'include' });
     if (!response.ok) return;
@@ -109,6 +117,15 @@
   }
 
   async function handleCopyMarkdown() {
+    if (isSpreadsheet && spreadsheetActions) {
+      spreadsheetActions.copy();
+      isCopied = true;
+      if (copyTimeout) clearTimeout(copyTimeout);
+      copyTimeout = setTimeout(() => {
+        isCopied = false;
+      }, 1500);
+      return;
+    }
     if (!active || !hasMarkdown) return;
     try {
       const response = await ingestionAPI.getContent(active.file.id, 'ai_md');
@@ -200,9 +217,14 @@
       const normalized = mime.split(';')[0].trim().toLowerCase();
       const pretty = {
         'application/pdf': 'PDF',
+        'application/vnd.ms-excel': 'XLS',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX'
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
+        'text/csv': 'CSV',
+        'application/csv': 'CSV',
+        'text/tab-separated-values': 'TSV',
+        'text/tsv': 'TSV'
       } as Record<string, string>;
       if (normalized.startsWith('image/')) {
         const imageSubtype = normalized.split('/')[1] ?? 'image';
@@ -231,6 +253,7 @@
     textContent = '';
     textError = '';
     lastTextUrl = null;
+    spreadsheetActions = null;
   }
 
   $: if (browser && isText && viewerUrl && viewerUrl !== lastTextUrl) {
@@ -265,6 +288,8 @@
         <span class="file-viewer-icon">
           {#if isImage}
             <Image size={18} />
+          {:else if isSpreadsheet}
+            <FileSpreadsheet size={18} />
           {:else}
             <FileText size={18} />
           {/if}
@@ -332,7 +357,9 @@
         </div>
       {/if}
       <div class="viewer-standard-actions">
-        <div class="viewer-divider"></div>
+        {#if isPdf}
+          <div class="viewer-divider"></div>
+        {/if}
         <Button
           size="icon"
           variant="ghost"
@@ -364,8 +391,8 @@
           variant="ghost"
           class="viewer-control"
           onclick={handleDownload}
-          aria-label="Download file"
-          title="Download file"
+          aria-label={isSpreadsheet ? 'Download CSV' : 'Download file'}
+          title={isSpreadsheet ? 'Download CSV' : 'Download file'}
         >
           <Download size={16} />
         </Button>
@@ -374,9 +401,9 @@
           variant="ghost"
           class="viewer-control"
           onclick={handleCopyMarkdown}
-          disabled={!hasMarkdown}
-          aria-label="Copy markdown"
-          title={hasMarkdown ? 'Copy markdown' : 'Markdown not available'}
+          disabled={!hasMarkdown && !isSpreadsheet}
+          aria-label={isSpreadsheet ? 'Copy CSV' : 'Copy markdown'}
+          title={isSpreadsheet ? 'Copy CSV' : hasMarkdown ? 'Copy markdown' : 'Markdown not available'}
         >
           {#if isCopied}
             <Check size={16} />
@@ -459,15 +486,15 @@
             </button>
             <button class="viewer-menu-item" onclick={handleDownload}>
               <Download size={16} />
-              <span>Download</span>
+              <span>{isSpreadsheet ? 'Download CSV' : 'Download'}</span>
             </button>
-            <button class="viewer-menu-item" onclick={handleCopyMarkdown} disabled={!hasMarkdown}>
+            <button class="viewer-menu-item" onclick={handleCopyMarkdown} disabled={!hasMarkdown && !isSpreadsheet}>
               {#if isCopied}
                 <Check size={16} />
                 <span>Copied</span>
               {:else}
                 <Copy size={16} />
-                <span>Copy</span>
+                <span>{isSpreadsheet ? 'Copy CSV' : 'Copy'}</span>
               {/if}
             </button>
             <button class="viewer-menu-item" onclick={handleDelete} disabled={!active}>
@@ -506,6 +533,12 @@
       {:else}
         <div class="viewer-placeholder">Loading PDF…</div>
       {/if}
+    {:else if isSpreadsheet}
+      <SpreadsheetViewer
+        src={viewerUrl}
+        filename={displayName}
+        registerActions={(actions) => (spreadsheetActions = actions)}
+      />
     {:else if isText}
       {#if isTextLoading}
         <div class="viewer-placeholder">Loading text…</div>

@@ -1,13 +1,15 @@
 """Ingestion worker loop with leasing and stage updates."""
 from __future__ import annotations
 
+import csv
 import io
+import json
 import logging
 import os
 import time
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 import shutil
@@ -19,8 +21,7 @@ from PIL import Image
 from pypdf import PdfReader
 from pptx import Presentation
 from docx import Document
-from openpyxl import load_workbook
-from openpyxl.utils.exceptions import InvalidFileException
+from python_calamine import CalamineWorkbook, CalamineError, ZipError, XmlError
 
 from api.db.session import SessionLocal
 from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
@@ -232,10 +233,16 @@ def _guess_text_mime(filename: str) -> str | None:
         return "text/plain"
     if ext == ".csv":
         return "text/csv"
+    if ext == ".tsv":
+        return "text/tab-separated-values"
     if ext == ".json":
         return "application/json"
     if ext in {".yml", ".yaml"}:
         return "text/plain"
+    if ext == ".xls":
+        return "application/vnd.ms-excel"
+    if ext in {".xlsx", ".xlsm", ".xltx", ".xltm"}:
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return None
 
 
@@ -339,23 +346,147 @@ def _extract_docx_text(docx_path: Path) -> str:
     return "\n\n".join(parts).strip()
 
 
-def _extract_xlsx_text(xlsx_path: Path) -> str:
+def _stringify_cell(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)
+
+
+def _column_index(column: str) -> int:
+    index = 0
+    for char in column.upper():
+        if not ("A" <= char <= "Z"):
+            break
+        index = index * 26 + (ord(char) - ord("A") + 1)
+    return max(index - 1, 0)
+
+
+def _parse_cell_reference(cell_ref: str) -> tuple[int, int]:
+    column_part = ""
+    row_part = ""
+    for char in cell_ref:
+        if char.isdigit():
+            row_part += char
+        else:
+            column_part += char
+    if not row_part:
+        return 0, 0
+    return int(row_part) - 1, _column_index(column_part)
+
+
+def _parse_range(range_ref: str) -> tuple[int, int, int, int]:
+    if ":" in range_ref:
+        start_ref, end_ref = range_ref.split(":", 1)
+    else:
+        start_ref = end_ref = range_ref
+    start_row, start_col = _parse_cell_reference(start_ref)
+    end_row, end_col = _parse_cell_reference(end_ref)
+    return (
+        min(start_row, end_row),
+        min(start_col, end_col),
+        max(start_row, end_row),
+        max(start_col, end_col),
+    )
+
+
+def _normalize_grid(rows: list[list[object]]) -> list[list[object]]:
+    if not rows:
+        return []
+    max_columns = max(len(row) for row in rows)
+    normalized = []
+    for row in rows:
+        padded = list(row) + [None] * (max_columns - len(row))
+        normalized.append(padded)
+    return normalized
+
+
+def _expand_merged_cells(rows: list[list[object]], merged_ranges: list[str]) -> list[list[object]]:
+    if not rows or not merged_ranges:
+        return rows
+    max_columns = max(len(row) for row in rows) if rows else 0
+    for range_ref in merged_ranges:
+        start_row, start_col, end_row, end_col = _parse_range(range_ref)
+        required_rows = end_row + 1
+        required_cols = end_col + 1
+        while len(rows) < required_rows:
+            rows.append([None] * max_columns)
+        if required_cols > max_columns:
+            for row in rows:
+                row.extend([None] * (required_cols - len(row)))
+            max_columns = required_cols
+
+        value = None
+        for row_index in range(start_row, end_row + 1):
+            for col_index in range(start_col, end_col + 1):
+                cell_value = rows[row_index][col_index]
+                if cell_value not in (None, ""):
+                    value = cell_value
+                    break
+            if value is not None:
+                break
+        if value is None:
+            continue
+        for row_index in range(start_row, end_row + 1):
+            for col_index in range(start_col, end_col + 1):
+                rows[row_index][col_index] = value
+    return rows
+
+
+def _build_sheet_payload(name: str, rows: list[list[str]]) -> dict:
+    return {
+        "name": name,
+        "rows": rows,
+        "header_row": 0 if rows else None,
+    }
+
+
+def _read_csv_rows(content: bytes, delimiter: str) -> list[list[str]]:
+    text = content.decode("utf-8-sig", errors="ignore")
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append([_stringify_cell(cell) for cell in row])
+    return rows
+
+
+def _extract_spreadsheet_data(source_path: Path, mime: str, filename: str) -> dict:
+    content = source_path.read_bytes()
+    lower_name = filename.lower()
+    if mime in {"text/csv", "application/csv"} or lower_name.endswith(".csv"):
+        rows = _read_csv_rows(content, ",")
+        return {"sheets": [_build_sheet_payload(Path(filename).stem or "Sheet1", rows)]}
+    if mime in {"text/tab-separated-values", "text/tsv"} or lower_name.endswith(".tsv"):
+        rows = _read_csv_rows(content, "\t")
+        return {"sheets": [_build_sheet_payload(Path(filename).stem or "Sheet1", rows)]}
+
     try:
-        workbook = load_workbook(str(xlsx_path), data_only=True, read_only=True)
-    except InvalidFileException as exc:
+        workbook = CalamineWorkbook.from_path(str(source_path))
+    except (CalamineError, ZipError, XmlError) as exc:
         raise IngestionError(
             "INVALID_XLSX",
-            "Invalid XLSX file. Re-save the file as .xlsx in Excel or Google Sheets.",
+            "Invalid spreadsheet file. Re-save it as .xlsx in Excel or Google Sheets.",
             retryable=False,
         ) from exc
-    sections = []
-    for sheet in workbook.worksheets:
-        rows = []
-        for row in sheet.iter_rows(min_row=1, max_row=10, values_only=True):
-            rows.append(" | ".join("" if cell is None else str(cell) for cell in row))
-        content = "\n".join(rows).strip()
-        sections.append(f"## Sheet: {sheet.title}\n\n{content}")
-    return "\n\n".join(sections).strip()
+
+    sheets = []
+    try:
+        for sheet_name in workbook.sheet_names:
+            sheet = workbook.get_sheet_by_name(sheet_name)
+            raw_rows = sheet.to_python(skip_empty_area=False) or []
+            normalized = _normalize_grid(raw_rows)
+            merged_ranges = getattr(sheet, "merged_cell_ranges", None) or []
+            normalized = _expand_merged_cells(normalized, list(merged_ranges))
+            rows = [[_stringify_cell(cell) for cell in row] for row in normalized]
+            sheets.append(_build_sheet_payload(sheet_name, rows))
+    finally:
+        workbook.close()
+    return {"sheets": sheets}
 
 
 def _build_derivatives(record: IngestedFile, source_path: Path) -> list[DerivativePayload]:
@@ -400,7 +531,6 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
     elif mime in {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }:
         pdf_path = _run_libreoffice_convert(source_path, _derivative_dir(file_id))
         pdf_bytes = pdf_path.read_bytes()
@@ -412,21 +542,35 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             sha256=sha256(pdf_bytes).hexdigest(),
             content=pdf_bytes,
         )
-        try:
-            if mime.endswith("wordprocessingml.document"):
-                extraction_text = _extract_docx_text(source_path)
-            elif mime.endswith("presentationml.presentation"):
-                extraction_text = _extract_pptx_text(source_path)
-            else:
-                extraction_text = _extract_xlsx_text(source_path)
-        except Exception as exc:
-            logger.warning(
-                "Falling back to PDF text extraction for file_id=%s: %s",
-                record.id,
-                exc,
-            )
-            extraction_text = _extract_pdf_text(pdf_path)
+        if mime.endswith("wordprocessingml.document"):
+            extraction_text = _extract_docx_text(source_path)
+        else:
+            extraction_text = _extract_pptx_text(source_path)
         thumb_bytes = _generate_pdf_thumbnail(pdf_path, _derivative_dir(file_id))
+    elif (
+        mime
+        in {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel",
+            "text/csv",
+            "application/csv",
+            "text/tab-separated-values",
+            "text/tsv",
+        }
+        or record.filename_original.lower().endswith((".csv", ".tsv"))
+    ):
+        data = _extract_spreadsheet_data(source_path, mime, record.filename_original)
+        data_json = json.dumps(data, ensure_ascii=False)
+        data_bytes = data_json.encode("utf-8")
+        viewer_payload = DerivativePayload(
+            kind="viewer_json",
+            storage_key=f"{user_prefix}/derivatives/data.json",
+            mime="application/json",
+            size_bytes=len(data_bytes),
+            sha256=sha256(data_bytes).hexdigest(),
+            content=data_bytes,
+        )
+        extraction_text = data_json
     elif mime.startswith("text/") or mime == "application/json":
         viewer_payload = DerivativePayload(
             kind="text_original",

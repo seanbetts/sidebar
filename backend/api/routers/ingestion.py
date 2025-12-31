@@ -57,6 +57,8 @@ def _recommended_viewer(derivatives: list[dict]) -> str | None:
     kinds = {item["kind"] for item in derivatives}
     if "viewer_pdf" in kinds:
         return "viewer_pdf"
+    if "viewer_json" in kinds:
+        return "viewer_json"
     if "image_original" in kinds:
         return "image_original"
     if "text_original" in kinds:
@@ -67,8 +69,12 @@ def _recommended_viewer(derivatives: list[dict]) -> str | None:
 def _category_for_file(filename: str, mime: str) -> str:
     lower_name = filename.lower()
     normalized_mime = (mime or "application/octet-stream").split(";")[0].strip().lower()
+    if lower_name.endswith((".csv", ".tsv")):
+        return "spreadsheets"
     if normalized_mime == "application/octet-stream":
-        if lower_name.endswith((".md", ".markdown", ".txt", ".log", ".csv", ".json", ".yml", ".yaml")):
+        if lower_name.endswith((".csv", ".tsv", ".xls", ".xlsx", ".xlsm", ".xltx", ".xltm")):
+            return "spreadsheets"
+        if lower_name.endswith((".md", ".markdown", ".txt", ".log", ".json", ".yml", ".yaml")):
             return "documents"
     if normalized_mime.startswith("image/"):
         return "images"
@@ -76,7 +82,14 @@ def _category_for_file(filename: str, mime: str) -> str:
         return "pdf"
     if normalized_mime == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         return "documents"
-    if normalized_mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    if normalized_mime in {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "text/csv",
+        "application/csv",
+        "text/tab-separated-values",
+        "text/tsv",
+    }:
         return "spreadsheets"
     if normalized_mime == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
         return "presentations"
