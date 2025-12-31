@@ -26,13 +26,15 @@
   let filterText = '';
   let sortColumn: number | null = null;
   let sortDirection: 'asc' | 'desc' = 'asc';
-  let scrollElement: HTMLDivElement | null = null;
+  const minimumRowHeight = 32;
+  let baseRowsPerView = 1;
+  let loadMorePages = 0;
+  let lastPageResetKey = '';
+  let tableWrapper: HTMLDivElement | null = null;
+  let tableViewport: HTMLDivElement | null = null;
+  let headerRef: HTMLTableSectionElement | null = null;
+  let bodyRef: HTMLTableSectionElement | null = null;
   let resizeObserver: ResizeObserver | null = null;
-  let scrollTop = 0;
-  let scrollLeft = 0;
-  let viewportHeight = 0;
-  const rowHeight = 32;
-  const overscan = 8;
 
   $: sheets = data?.sheets ?? [];
   $: if (activeSheetIndex >= sheets.length) {
@@ -44,10 +46,14 @@
   $: headerRow =
     headerRowIndex !== null && rawRows[headerRowIndex] ? rawRows[headerRowIndex] : [];
   $: columnCount = rawRows.reduce((max, row) => Math.max(max, row.length), headerRow.length);
-  $: columns =
+  $: columnLabels =
     headerRowIndex !== null && headerRow.some((value) => value && value.trim())
-      ? headerRow.map((value, index) => value?.trim() || `Column ${index + 1}`)
-      : Array.from({ length: columnCount }, (_, index) => `Column ${index + 1}`);
+      ? headerRow.map((value) => value?.trim() || '')
+      : Array.from({ length: columnCount }, () => '');
+  $: columnAriaLabels = Array.from({ length: columnCount }, (_, index) => {
+    const label = columnLabels[index]?.trim();
+    return label ? label : `Column ${index + 1}`;
+  });
   $: dataRows = rawRows.filter((_, index) => index !== headerRowIndex);
   $: filteredRows =
     filterText.trim().length === 0
@@ -70,41 +76,19 @@
     loadData(src);
   }
 
-  $: if (browser && scrollElement && !resizeObserver) {
-    resizeObserver = new ResizeObserver(() => updateViewport());
-    resizeObserver.observe(scrollElement);
-    updateViewport();
+  $: {
+    const key = `${activeSheetIndex}-${filterText}-${sortColumn}-${sortDirection}-${sortedRows.length}`;
+    if (key !== lastPageResetKey) {
+      lastPageResetKey = key;
+      loadMorePages = 0;
+    }
   }
-
-  $: totalSize = sortedRows.length * rowHeight;
-  $: startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
-  $: endIndex = Math.min(
-    sortedRows.length,
-    Math.ceil((scrollTop + viewportHeight) / rowHeight) + overscan
+  $: totalRows = sortedRows.length;
+  $: rowsToShow = Math.min(
+    totalRows,
+    baseRowsPerView * Math.max(1, loadMorePages + 1)
   );
-  $: visibleRows = sortedRows
-    .slice(startIndex, endIndex)
-    .map((row, offset) => ({ row, index: startIndex + offset }));
-
-  function updateViewport() {
-    if (!scrollElement) return;
-    viewportHeight = scrollElement.clientHeight;
-  }
-
-  function handleScroll() {
-    if (!scrollElement) return;
-    scrollTop = scrollElement.scrollTop;
-    scrollLeft = scrollElement.scrollLeft;
-    viewportHeight = scrollElement.clientHeight;
-  }
-
-  $: if (scrollElement) {
-    filterText;
-    scrollTop = 0;
-    scrollLeft = 0;
-    scrollElement.scrollTop = 0;
-    scrollElement.scrollLeft = 0;
-  }
+  $: visibleRows = sortedRows.slice(0, rowsToShow);
 
   async function loadData(url: string) {
     loading = true;
@@ -120,12 +104,7 @@
       activeSheetIndex = 0;
       sortColumn = null;
       sortDirection = 'asc';
-      scrollTop = 0;
-      scrollLeft = 0;
-      if (scrollElement) {
-        scrollElement.scrollTop = 0;
-        scrollElement.scrollLeft = 0;
-      }
+      loadMorePages = 0;
     } catch (err) {
       console.error('Failed to load spreadsheet data:', err);
       error = 'Failed to load spreadsheet data.';
@@ -138,12 +117,7 @@
     activeSheetIndex = index;
     sortColumn = null;
     sortDirection = 'asc';
-    scrollTop = 0;
-    scrollLeft = 0;
-    if (scrollElement) {
-      scrollElement.scrollTop = 0;
-      scrollElement.scrollLeft = 0;
-    }
+    loadMorePages = 0;
   }
 
   function toggleSort(columnIndex: number) {
@@ -153,11 +127,19 @@
       sortColumn = columnIndex;
       sortDirection = 'asc';
     }
-    scrollTop = 0;
-    scrollLeft = 0;
-    if (scrollElement) {
-      scrollElement.scrollTop = 0;
-      scrollElement.scrollLeft = 0;
+    loadMorePages = 0;
+  }
+
+  function updateRowsPerPage() {
+    if (!tableWrapper) return;
+    const availableHeight = tableWrapper.clientHeight;
+    if (!availableHeight) return;
+    const headerHeight = headerRef?.getBoundingClientRect().height ?? 0;
+    const usableHeight = Math.max(0, availableHeight - headerHeight);
+    const nextRows = Math.max(1, Math.floor(usableHeight / minimumRowHeight));
+    if (nextRows !== baseRowsPerView) {
+      baseRowsPerView = nextRows;
+      loadMorePages = 0;
     }
   }
 
@@ -166,7 +148,7 @@
     if (headerRowIndex !== null) {
       return rawRows;
     }
-    return [columns, ...dataRows];
+    return [columnLabels, ...dataRows];
   }
 
   function toCsv(rows: string[][]): string {
@@ -214,10 +196,24 @@
     registerActions({ copy: copyCsv, download: downloadCsv });
   }
 
+  $: if (browser && tableWrapper && !resizeObserver) {
+    resizeObserver = new ResizeObserver(() => updateRowsPerPage());
+    resizeObserver.observe(tableWrapper);
+  }
+
+  $: if (browser && tableWrapper) {
+    activeSheetIndex;
+    filterText;
+    sortColumn;
+    sortDirection;
+    updateRowsPerPage();
+  }
+
   onDestroy(() => {
     resizeObserver?.disconnect();
     resizeObserver = null;
   });
+
 </script>
 
 <div class="spreadsheet-viewer">
@@ -251,38 +247,55 @@
         <span>{sortedRows.length} rows</span>
       </div>
     </div>
-    <div class="sheet-table" style={`--column-count: ${Math.max(columns.length, 1)};`}>
-      <div class="sheet-header">
-        <div class="sheet-header-row" style={`transform: translateX(${-scrollLeft}px);`}>
-          {#each columns as column, index}
-            <button
-              class="sheet-header-cell"
-              class:sorted={sortColumn === index}
-              onclick={() => toggleSort(index)}
-              aria-label={`Sort by ${column}`}
-            >
-              <span>{column}</span>
-              {#if sortColumn === index}
-                <span class="sort-indicator">{sortDirection === 'asc' ? '▲' : '▼'}</span>
-              {/if}
-            </button>
-          {/each}
-        </div>
-      </div>
-      <div class="sheet-body" bind:this={scrollElement} onscroll={handleScroll}>
-        <div class="sheet-spacer" style={`height: ${totalSize}px;`}>
-          {#each visibleRows as item}
-            <div
-              class="sheet-row"
-              style={`transform: translateY(${item.index * rowHeight}px);`}
-            >
-              {#each columns as _column, columnIndex}
-                <div class="sheet-cell">
-                  {item.row[columnIndex] ?? ''}
-                </div>
+    <div class="sheet-pagination">
+      <span>Rows 1-{rowsToShow} of {totalRows}</span>
+      {#if rowsToShow < totalRows}
+        <button class="sheet-page-button" onclick={() => loadMorePages += 1}>
+          Load more
+        </button>
+      {/if}
+    </div>
+    <div class="sheet-table-wrapper" bind:this={tableWrapper}>
+      <div class="sheet-table" style={`--column-count: ${Math.max(columnLabels.length, 1)};`}>
+        <div class="sheet-table-scroll" bind:this={tableViewport}>
+          <table class="sheet-table-inner">
+          <thead bind:this={headerRef}>
+            <tr>
+              {#each columnLabels as column, index}
+                <th>
+                  <button
+                    class="sheet-header-cell"
+                    class:sorted={sortColumn === index}
+                    onclick={() => toggleSort(index)}
+                    aria-label={`Sort by ${columnAriaLabels[index]}`}
+                  >
+                    <span>{column}</span>
+                    {#if sortColumn === index}
+                      <span class="sort-indicator">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                    {/if}
+                  </button>
+                </th>
               {/each}
-            </div>
-          {/each}
+            </tr>
+          </thead>
+          <tbody bind:this={bodyRef}>
+            {#if visibleRows.length === 0}
+              <tr>
+                <td class="sheet-empty" colspan={Math.max(columnLabels.length, 1)}>
+                  No rows to display.
+                </td>
+              </tr>
+            {:else}
+              {#each visibleRows as row}
+                <tr>
+                  {#each columnLabels as _column, columnIndex}
+                    <td>{row[columnIndex] ?? ''}</td>
+                  {/each}
+                </tr>
+              {/each}
+            {/if}
+          </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -351,33 +364,83 @@
     color: var(--color-muted-foreground);
   }
 
+  .sheet-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .sheet-page-button {
+    border: 1px solid var(--color-border);
+    background: var(--color-sidebar-accent);
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .sheet-page-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
   .sheet-table {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
+    border-radius: 0.5rem;
     overflow: hidden;
     min-height: 0;
-    flex: 0 1 auto;
-    max-height: 60vh;
+    flex: 1 1 auto;
+    height: 100%;
   }
 
-  .sheet-header {
-    display: grid;
-    background: var(--color-sidebar-accent);
+  .sheet-table-wrapper {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .sheet-table-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .sheet-table-inner {
+    width: max(100%, calc(var(--column-count) * 140px));
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .sheet-table-inner th,
+  .sheet-table-inner td {
+    border-right: 1px solid var(--color-border);
     border-bottom: 1px solid var(--color-border);
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    vertical-align: middle;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .sheet-table-inner tbody tr {
+    height: 32px;
+  }
+
+  .sheet-table-inner th:last-child,
+  .sheet-table-inner td:last-child {
+    border-right: none;
+  }
+
+  .sheet-table-inner thead th {
     position: sticky;
     top: 0;
+    background: var(--color-sidebar-accent);
     z-index: 1;
-    overflow: hidden;
-  }
-
-  .sheet-header-row {
-    display: grid;
-    grid-template-columns: repeat(var(--column-count), minmax(140px, 1fr));
-    min-width: 100%;
-    width: max-content;
   }
 
   .sheet-header-cell {
@@ -385,15 +448,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.4rem;
-    padding: 0.4rem 0.6rem;
-    font-size: 0.75rem;
-    border-right: 1px solid var(--color-border);
+    width: 100%;
     background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 0.75rem;
     cursor: pointer;
-  }
-
-  .sheet-header-cell:last-child {
-    border-right: none;
+    text-align: left;
   }
 
   .sheet-header-cell.sorted {
@@ -404,43 +465,9 @@
     font-size: 0.6rem;
   }
 
-  .sheet-body {
-    flex: 1;
-    overflow: auto;
-    position: relative;
-    min-height: 0;
-    max-height: 60vh;
-  }
-
-  .sheet-spacer {
-    position: relative;
-    width: 100%;
-    min-width: 100%;
-  }
-
-  .sheet-row {
-    position: absolute;
-    left: 0;
-    right: 0;
-    display: grid;
-    grid-template-columns: repeat(var(--column-count), minmax(140px, 1fr));
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-background);
-    min-height: 32px;
-    min-width: 100%;
-    width: max-content;
-  }
-
-  .sheet-cell {
-    padding: 0.35rem 0.6rem;
-    font-size: 0.75rem;
-    border-right: 1px solid var(--color-border);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .sheet-cell:last-child {
-    border-right: none;
+  .sheet-empty {
+    text-align: center;
+    padding: 1rem;
+    color: var(--color-muted-foreground);
   }
 </style>
