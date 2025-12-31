@@ -68,9 +68,6 @@
       lastMessageCount = $chatStore.messages.length;
     }
   }
-  $: if (activeSection !== 'history' && $chatStore.conversationId && $chatStore.messages.length === 0) {
-    chatStore.cleanupEmptyConversation?.();
-  }
 
   onMount(() => {
     // Mark as mounted to enable reactive data loading
