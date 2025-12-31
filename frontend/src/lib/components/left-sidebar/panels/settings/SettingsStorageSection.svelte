@@ -2,20 +2,25 @@
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import { clearCaches, clearInFlight, clearMemoryCache, getCacheStats } from '$lib/utils/cache';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 
   let cacheStats = { count: 0, totalSize: 0, oldestAge: 0 };
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
 
   function loadCacheStats() {
     cacheStats = getCacheStats();
   }
 
-  function handleClearCache() {
-    if (confirm('Are you sure you want to clear cached data?')) {
+  function requestClearCache() {
+    deleteDialog?.openDialog('cached data');
+  }
+
+  function handleClearCache(): boolean {
       clearCaches();
       clearMemoryCache();
       clearInFlight();
       loadCacheStats();
-    }
+      return true;
   }
 
   onMount(loadCacheStats);
@@ -30,9 +35,15 @@
     <p>Oldest cache: <strong>{(cacheStats.oldestAge / 1000 / 60).toFixed(0)} minutes ago</strong></p>
   </div>
   <div class="settings-actions">
-    <Button variant="destructive" onclick={handleClearCache}>Clear cache</Button>
+    <Button variant="destructive" onclick={requestClearCache}>Clear cache</Button>
   </div>
 </div>
+
+<DeleteDialogController
+  bind:this={deleteDialog}
+  itemType="cache"
+  onConfirm={handleClearCache}
+/>
 
 <style>
   .cache-stats {
