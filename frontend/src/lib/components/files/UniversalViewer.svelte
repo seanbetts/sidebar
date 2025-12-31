@@ -12,7 +12,7 @@
     FileSpreadsheet,
     FileText,
     Image,
-    LoaderCircle,
+    AlertTriangle,
     Menu,
     Minus,
     Pencil,
@@ -46,12 +46,11 @@
   $: filename = active?.file.filename_original ?? 'File viewer';
   $: displayName = stripExtension(filename);
   $: fileType = getFileType(filename, active?.file.mime_original);
-  $: isProcessing = Boolean(active?.job?.status && active.job.status !== 'ready');
-  $: processingMessage =
-    active?.job?.user_message ||
-    (active?.job?.status === 'failed'
-      ? 'File processing failed.'
-      : 'Processing file… this can take a moment.');
+  $: jobStatus = active?.job?.status ?? null;
+  $: jobStage = active?.job?.stage ?? null;
+  $: isFailed = jobStatus === 'failed';
+  $: isInProgress = Boolean(jobStatus && jobStatus !== 'ready' && jobStatus !== 'failed');
+  $: statusMessage = buildStatusMessage(active?.job);
   $: canPrev = currentPage > 1;
   $: canNext = pageCount > 0 && currentPage < pageCount;
   $: hasMarkdown = Boolean(active?.derivatives?.some(item => item.kind === 'ai_md'));
@@ -104,6 +103,23 @@
   function setFitMode(mode: 'auto' | 'width' | 'height') {
     fitMode = mode;
     scale = 1;
+  }
+
+  function formatStage(value: string): string {
+    return value.replace(/_/g, ' ');
+  }
+
+  function buildStatusMessage(job?: { status: string | null; stage: string | null; user_message?: string | null; error_message?: string | null }) {
+    if (!job) return 'Preparing file…';
+    if (job.status === 'failed') {
+      return job.user_message || job.error_message || 'File processing failed.';
+    }
+    if (job.user_message) {
+      return job.user_message;
+    }
+    const stage = job.stage || job.status || 'processing';
+    const label = formatStage(stage);
+    return `${label.charAt(0).toUpperCase() + label.slice(1)}…`;
   }
 
   async function handleDownload() {
@@ -525,10 +541,15 @@
       <div class="viewer-placeholder">{error}</div>
     {:else if !viewerUrl}
       <div class="viewer-placeholder">
-        {#if isProcessing}
+        {#if isFailed}
           <div class="viewer-placeholder-stack">
-            <LoaderCircle size={20} class="viewer-placeholder-icon" />
-            <span>{processingMessage}</span>
+            <AlertTriangle size={20} class="viewer-placeholder-alert" />
+            <span>{statusMessage}</span>
+          </div>
+        {:else if isInProgress}
+          <div class="viewer-placeholder-stack">
+            <span class="viewer-spinner" aria-hidden="true"></span>
+            <span>{statusMessage}</span>
           </div>
         {:else}
           No preview available.
@@ -764,8 +785,13 @@
     text-align: center;
   }
 
-  .viewer-placeholder-icon {
-    animation: viewer-spin 1.1s linear infinite;
+  .viewer-spinner {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-sidebar-primary);
+    animation: viewer-spin 0.8s linear infinite;
   }
 
   @keyframes viewer-spin {
@@ -773,6 +799,11 @@
       transform: rotate(360deg);
     }
   }
+
+  .viewer-placeholder-alert {
+    color: var(--color-destructive);
+  }
+
 
   .file-viewer-image {
     max-width: 100%;

@@ -6,13 +6,23 @@
 
   export let items: IngestionListItem[] = [];
 
-  const stageOrder = ['queued', 'validating', 'converting', 'extracting', 'ai_md', 'thumb', 'finalizing', 'ready'];
+  const stageOrder = ['uploading', 'queued', 'validating', 'converting', 'extracting', 'ai_md', 'thumb', 'finalizing', 'ready'];
 
-  function getProgress(stage: string | null): number {
+  function getProgress(stage: string | null, progress: number | null | undefined): number {
     if (!stage) return 0;
+    if (stage === 'uploading' && typeof progress === 'number') {
+      return Math.round(progress);
+    }
     const index = stageOrder.indexOf(stage);
     if (index < 0) return 0;
     return Math.round((index / (stageOrder.length - 1)) * 100);
+  }
+
+  function getStatusLabel(item: IngestionListItem): string {
+    if (item.job.status === 'uploading' && typeof item.job.progress === 'number') {
+      return `uploading ${Math.round(item.job.progress)}%`;
+    }
+    return item.job.stage || item.job.status || 'queued';
   }
 
   async function handlePause(fileId: string) {
@@ -50,7 +60,7 @@
       <div class="ingestion-header">
         <span class="filename">{item.file.filename_original}</span>
         <div class="status-row">
-          <span class="status">{item.job.stage || item.job.status || 'queued'}</span>
+          <span class="status">{getStatusLabel(item)}</span>
           <div class="actions">
             {#if item.job.status === 'processing'}
               <button class="action" onclick={() => handlePause(item.file.id)} aria-label="Pause">
@@ -61,7 +71,7 @@
                 <Play size={14} />
               </button>
             {/if}
-            {#if item.job.status !== 'ready'}
+            {#if item.job.status !== 'ready' && item.job.status !== 'uploading'}
               <button class="action" onclick={() => handleCancel(item.file.id)} aria-label="Cancel">
                 <X size={14} />
               </button>
@@ -70,7 +80,7 @@
         </div>
       </div>
       <div class="progress">
-        <div class="progress-bar" style={`width: ${getProgress(item.job.stage || item.job.status)}%`}></div>
+        <div class="progress-bar" style={`width: ${getProgress(item.job.stage || item.job.status, item.job.progress)}%`}></div>
       </div>
     </div>
   {/each}

@@ -191,9 +191,19 @@
     const selected = input.files?.[0];
     if (!selected || isUploadingFile) return;
 
+    const tempId = `upload-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
     isUploadingFile = true;
+    ingestionStore.addLocalUpload({
+      id: tempId,
+      name: selected.name,
+      type: selected.type,
+      size: selected.size
+    });
     try {
-      const { file_id } = await ingestionAPI.upload(selected);
+      const { file_id } = await ingestionAPI.upload(selected, (progress) => {
+        ingestionStore.updateLocalUploadProgress(tempId, progress);
+      });
+      ingestionStore.removeLocalUpload(tempId);
       await ingestionStore.load();
       ingestionStore.startPolling();
       websitesStore.clearActive();
@@ -202,6 +212,7 @@
       pendingUploadId = file_id;
       ingestionViewerStore.open(file_id);
     } catch (error) {
+      ingestionStore.removeLocalUpload(tempId);
       console.error('Failed to upload file:', error);
       errorTitle = 'Unable to upload file';
       errorMessage =

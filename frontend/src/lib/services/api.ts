@@ -153,29 +153,48 @@ class IngestionAPI {
   /**
    * Upload a file for ingestion.
    */
-  async upload(file: File): Promise<{ file_id: string }> {
+  async upload(file: File, onProgress?: (progress: number) => void): Promise<{ file_id: string }> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${this.baseUrl}`, {
-      method: 'POST',
-      body: formData
-    });
-    if (!response.ok) {
-      let message = 'Failed to upload file';
-      try {
-        const data = await response.json();
-        if (data?.detail) {
-          message = data.detail;
+    return new Promise((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open('POST', this.baseUrl);
+      request.withCredentials = true;
+      request.upload.addEventListener('progress', event => {
+        if (!event.lengthComputable || !onProgress) return;
+        const percent = (event.loaded / event.total) * 100;
+        onProgress(percent);
+      });
+      request.onload = () => {
+        const isOk = request.status >= 200 && request.status < 300;
+        if (!isOk) {
+          let message = 'Failed to upload file';
+          try {
+            const data = JSON.parse(request.responseText);
+            if (data?.detail) {
+              message = data.detail;
+            }
+          } catch {
+            // Ignore parse errors and use fallback message.
+          }
+          if (request.status === 413) {
+            message = 'File too large. Max size is 100MB.';
+          }
+          reject(new Error(message));
+          return;
         }
-      } catch {
-        // Ignore parse errors and use fallback message.
-      }
-      if (response.status === 413) {
-        message = 'File too large. Max size is 100MB.';
-      }
-      throw new Error(message);
-    }
-    return response.json();
+        try {
+          const payload = JSON.parse(request.responseText);
+          resolve(payload);
+        } catch (error) {
+          reject(new Error('Failed to upload file'));
+        }
+      };
+      request.onerror = () => {
+        reject(new Error('Failed to upload file'));
+      };
+      request.send(formData);
+    });
   }
 
   /**

@@ -2,6 +2,7 @@
   import {
     ChevronDown,
     ChevronRight,
+    FileChartPie,
     FileText,
     FileSpreadsheet,
     Image,
@@ -53,7 +54,6 @@
   $: pinnedItems = readyItems.filter(item => item.file.pinned);
   const categoryOrder = [
     'images',
-    'pdf',
     'documents',
     'spreadsheets',
     'presentations',
@@ -63,7 +63,6 @@
   ];
   const categoryLabels: Record<string, string> = {
     images: 'Images',
-    pdf: 'PDFs',
     documents: 'Documents',
     spreadsheets: 'Spreadsheets',
     presentations: 'Presentations',
@@ -71,6 +70,12 @@
     video: 'Video',
     other: 'Other'
   };
+  function iconForCategory(category: string | null | undefined) {
+    if (category === 'images') return Image;
+    if (category === 'spreadsheets') return FileSpreadsheet;
+    if (category === 'presentations') return FileChartPie;
+    return FileText;
+  }
   $: categorizedItems = readyItems.reduce<Record<string, IngestionListItem[]>>((acc, item) => {
     const category = item.file.category || 'other';
     if (!acc[category]) acc[category] = [];
@@ -302,13 +307,7 @@
               <div class="ingested-row" data-ingested-menu-root={`pinned-${item.file.id}`}>
                 <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
                   <span class="ingested-icon">
-                    {#if item.file.category === 'images'}
-                      <Image size={16} />
-                    {:else if item.file.category === 'spreadsheets'}
-                      <FileSpreadsheet size={16} />
-                    {:else}
-                      <FileText size={16} />
-                    {/if}
+                    <svelte:component this={iconForCategory(item.file.category)} size={16} />
                   </span>
                   <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
                 </button>
@@ -384,13 +383,7 @@
               <div class="ingested-row ingested-row--nested" data-ingested-menu-root={`files-${item.file.id}`}>
                 <button class="ingested-item ingested-item--file ingested-item--nested" onclick={() => openViewer(item)}>
                   <span class="ingested-icon">
-                    {#if category === 'images'}
-                      <Image size={16} />
-                    {:else if category === 'spreadsheets'}
-                      <FileSpreadsheet size={16} />
-                    {:else}
-                      <FileText size={16} />
-                    {/if}
+                    <svelte:component this={iconForCategory(category)} size={16} />
                   </span>
                   <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
                 </button>
@@ -510,11 +503,7 @@
                   <div class="ingested-row" data-ingested-menu-root={`recent-${item.file.id}`}>
                     <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
                       <span class="ingested-icon">
-                        {#if item.file.category === 'images'}
-                          <Image size={16} />
-                        {:else}
-                          <FileText size={16} />
-                        {/if}
+                        <svelte:component this={iconForCategory(item.file.category)} size={16} />
                       </span>
                       <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
                     </button>

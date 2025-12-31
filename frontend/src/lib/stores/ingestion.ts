@@ -4,6 +4,7 @@ import type { IngestionListItem } from '$lib/types/ingestion';
 
 interface IngestionState {
   items: IngestionListItem[];
+  localUploads: IngestionListItem[];
   loading: boolean;
   error: string | null;
 }
@@ -11,6 +12,7 @@ interface IngestionState {
 function createIngestionStore() {
   const { subscribe, update, set } = writable<IngestionState>({
     items: [],
+    localUploads: [],
     loading: false,
     error: null
   });
@@ -18,6 +20,66 @@ function createIngestionStore() {
 
   return {
     subscribe,
+    addLocalUpload(file: { id: string; name: string; type: string; size: number }) {
+      const now = new Date().toISOString();
+      const upload: IngestionListItem = {
+        file: {
+          id: file.id,
+          filename_original: file.name,
+          mime_original: file.type || 'application/octet-stream',
+          size_bytes: file.size,
+          created_at: now
+        },
+        job: {
+          status: 'uploading',
+          stage: 'uploading',
+          attempts: 0,
+          user_message: 'Uploading 0%',
+          progress: 0
+        },
+        recommended_viewer: null
+      };
+      update(state => ({
+        ...state,
+        localUploads: [...state.localUploads, upload],
+        items: [...state.localUploads, upload, ...state.items]
+      }));
+    },
+    updateLocalUploadProgress(fileId: string, progress: number) {
+      const percent = Math.max(0, Math.min(100, Math.round(progress)));
+      update(state => {
+        const nextUploads = state.localUploads.map(item => {
+          if (item.file.id !== fileId) return item;
+          return {
+            ...item,
+            job: {
+              ...item.job,
+              progress: percent,
+              user_message: `Uploading ${percent}%`
+            }
+          };
+        });
+        const nextItems = state.items.map(item => {
+          if (item.file.id !== fileId) return item;
+          return nextUploads.find(local => local.file.id === fileId) ?? item;
+        });
+        return {
+          ...state,
+          localUploads: nextUploads,
+          items: nextItems
+        };
+      });
+    },
+    removeLocalUpload(fileId: string) {
+      update(state => {
+        const nextUploads = state.localUploads.filter(item => item.file.id !== fileId);
+        return {
+          ...state,
+          localUploads: nextUploads,
+          items: state.items.filter(item => item.file.id !== fileId)
+        };
+      });
+    },
     updatePinned(fileId: string, pinned: boolean) {
       update(state => ({
         ...state,
@@ -42,7 +104,13 @@ function createIngestionStore() {
       update(state => ({ ...state, loading: true, error: null }));
       try {
         const data = await ingestionAPI.list();
-        set({ items: data.items || [], loading: false, error: null });
+        const localUploads = get({ subscribe }).localUploads;
+        set({
+          items: [...localUploads, ...(data.items || [])],
+          localUploads,
+          loading: false,
+          error: null
+        });
       } catch (error) {
         console.error('Failed to load ingestion status:', error);
         update(state => ({ ...state, loading: false, error: 'Failed to load uploads.' }));
