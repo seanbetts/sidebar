@@ -10,6 +10,7 @@
 
   let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
+  let root: HTMLDivElement | null = null;
   let container: HTMLDivElement | null = null;
   let canvas: HTMLCanvasElement | null = null;
   let pdfDocument: import('pdfjs-dist').PDFDocumentProxy | null = null;
@@ -18,13 +19,20 @@
   let resizeObserver: ResizeObserver | null = null;
   let thumbnails: Array<{ page: number; url: string }> = [];
   let thumbRefs: Record<number, HTMLButtonElement | null> = {};
+  let pageRefs: Record<number, HTMLDivElement | null> = {};
+  let pageCanvases: HTMLCanvasElement[] = [];
+  let pageRenderTasks = new Map<number, import('pdfjs-dist').RenderTask>();
+  let lastRenderKeys: Record<number, string> = {};
   let disposed = false;
   let lastSrc: string | null = null;
   let lastRenderKey = '';
+  let rootWidth = 0;
   let containerWidth = 0;
   let containerHeight = 0;
+  let showAllPages = false;
   export let effectiveScale = 1;
   export let normalizedScale = 1;
+  const multiPageBreakpoint = 720;
 
   onMount(async () => {
     if (!browser) return;
@@ -34,15 +42,24 @@
     ]);
     pdfjsLib = pdfjs;
     pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default;
-    if (container) {
-      resizeObserver = new ResizeObserver(([entry]) => {
-        if (!entry) return;
-        containerWidth = entry.contentRect.width;
-        containerHeight = entry.contentRect.height;
+    if (root || container) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (!entry) continue;
+          if (entry.target === root) {
+            rootWidth = entry.contentRect.width;
+            showAllPages = rootWidth > 0 && rootWidth <= multiPageBreakpoint;
+          }
+          if (entry.target === container) {
+            containerWidth = entry.contentRect.width;
+            containerHeight = entry.contentRect.height;
+          }
+        }
         if (pdfDocument) {
           renderPage();
         }
       });
+      if (root) resizeObserver.observe(root);
       resizeObserver.observe(container);
     }
     if (src) {
@@ -55,6 +72,11 @@
     if (!src) return;
     disposed = false;
     thumbnails = [];
+    pageRenderTasks.forEach((task) => task.cancel());
+    pageRenderTasks.clear();
+    pageCanvases = [];
+    pageRefs = {};
+    lastRenderKeys = {};
     if (loadTask) {
       loadTask.destroy();
     }
@@ -137,6 +159,10 @@
   }
 
   async function renderPage() {
+    if (showAllPages) {
+      await renderAllPages();
+      return;
+    }
     if (!pdfDocument || !canvas || disposed) return;
     const page = await pdfDocument.getPage(currentPage);
     const baseViewport = page.getViewport({ scale: 1 });
@@ -179,6 +205,44 @@
     }
   }
 
+  async function renderAllPages() {
+    if (!pdfDocument || disposed) return;
+    if (!containerWidth) return;
+    for (let pageIndex = 1; pageIndex <= pageCount; pageIndex += 1) {
+      if (disposed || !pdfDocument) return;
+      const pageCanvas = pageCanvases[pageIndex - 1];
+      if (!pageCanvas) continue;
+      const page = await pdfDocument.getPage(pageIndex);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const fitScale = containerWidth / baseViewport.width;
+      effectiveScale = fitScale * scale;
+      normalizedScale = fitScale > 0 ? effectiveScale / fitScale : scale;
+      const renderKey = `${pageIndex}-${effectiveScale.toFixed(4)}`;
+      if (lastRenderKeys[pageIndex] === renderKey) continue;
+      lastRenderKeys[pageIndex] = renderKey;
+      const existingTask = pageRenderTasks.get(pageIndex);
+      if (existingTask) {
+        existingTask.cancel();
+      }
+      const deviceScale = browser ? window.devicePixelRatio || 1 : 1;
+      const viewport = page.getViewport({ scale: effectiveScale });
+      const context = pageCanvas.getContext('2d');
+      if (!context) continue;
+      pageCanvas.width = Math.floor(viewport.width * deviceScale);
+      pageCanvas.height = Math.floor(viewport.height * deviceScale);
+      pageCanvas.style.width = `${Math.floor(viewport.width)}px`;
+      pageCanvas.style.height = `${Math.floor(viewport.height)}px`;
+      context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+      const task = page.render({ canvasContext: context, viewport });
+      pageRenderTasks.set(pageIndex, task);
+      try {
+        await task.promise;
+      } catch (error) {
+        // Ignore render cancellations.
+      }
+    }
+  }
+
   $: if (browser && src && src !== lastSrc) {
     lastSrc = src;
     loadDocument();
@@ -201,15 +265,24 @@
     scrollThumbIntoView(currentPage);
   }
 
+  $: if (browser && showAllPages && currentPage) {
+    const pageRef = pageRefs[currentPage];
+    if (pageRef) {
+      pageRef.scrollIntoView({ block: 'start' });
+    }
+  }
+
   onDestroy(() => {
     disposed = true;
     resizeObserver?.disconnect();
     renderTask?.cancel();
+    pageRenderTasks.forEach((task) => task.cancel());
+    pageRenderTasks.clear();
     loadTask?.destroy();
   });
 </script>
 
-<div class="pdf-viewer">
+<div class="pdf-viewer" bind:this={root}>
   <div class="pdf-thumbs" tabindex="0" on:keydown={handleThumbKeydown} aria-label="PDF thumbnails">
     {#if thumbnails.length === 0 && pageCount > 0}
       <div class="pdf-thumbs-placeholder">Generating thumbnails…</div>
@@ -229,7 +302,17 @@
     {/if}
   </div>
   <div class="pdf-viewer-main" bind:this={container}>
-    <canvas bind:this={canvas} class="pdf-canvas"></canvas>
+    {#if showAllPages}
+      <div class="pdf-pages">
+        {#each Array.from({ length: pageCount }, (_, index) => index + 1) as pageNumber (pageNumber)}
+          <div class="pdf-page" bind:this={pageRefs[pageNumber]}>
+            <canvas bind:this={pageCanvases[pageNumber - 1]} class="pdf-canvas"></canvas>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <canvas bind:this={canvas} class="pdf-canvas"></canvas>
+    {/if}
   </div>
 </div>
 
@@ -299,6 +382,18 @@
     justify-content: center;
     align-items: flex-start;
     overflow: auto;
+  }
+
+  .pdf-pages {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0.5rem 0;
+  }
+
+  .pdf-page {
+    display: flex;
+    justify-content: center;
   }
 
   .pdf-canvas {

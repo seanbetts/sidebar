@@ -208,7 +208,7 @@
 </script>
 
 <div class="file-viewer">
-  <div class="file-viewer-header">
+  <div class="file-viewer-header" class:pdf-header={isPdf}>
     <div class="file-viewer-meta">
       <div class="file-viewer-title-row">
         <span class="file-viewer-icon">
@@ -668,6 +668,17 @@
 
     .pdf-controls-inline {
       display: none;
+    }
+  }
+
+  @container (max-width: 860px) {
+    .pdf-header .viewer-standard-actions {
+      display: none;
+    }
+
+    .pdf-header .viewer-standard-compact {
+      display: inline-flex;
+      align-items: center;
     }
   }
 </style>
