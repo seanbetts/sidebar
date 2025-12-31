@@ -64,21 +64,26 @@ def _recommended_viewer(derivatives: list[dict]) -> str | None:
 
 
 def _category_for_file(filename: str, mime: str) -> str:
-    if mime.startswith("image/"):
+    lower_name = filename.lower()
+    normalized_mime = (mime or "application/octet-stream").split(";")[0].strip().lower()
+    if normalized_mime == "application/octet-stream":
+        if lower_name.endswith((".md", ".markdown", ".txt", ".log", ".csv", ".json", ".yml", ".yaml")):
+            return "documents"
+    if normalized_mime.startswith("image/"):
         return "images"
-    if mime == "application/pdf":
+    if normalized_mime == "application/pdf":
         return "pdf"
-    if mime == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    if normalized_mime == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         return "documents"
-    if mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    if normalized_mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
         return "spreadsheets"
-    if mime == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    if normalized_mime == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
         return "presentations"
-    if mime.startswith("text/"):
+    if normalized_mime.startswith("text/"):
         return "documents"
-    if mime.startswith("audio/"):
+    if normalized_mime.startswith("audio/"):
         return "audio"
-    if mime.startswith("video/"):
+    if normalized_mime.startswith("video/"):
         return "video"
     return "other"
 
@@ -116,11 +121,15 @@ async def upload_file(
                 digest.update(chunk)
                 target.write(chunk)
 
+        mime_original = file.content_type or "application/octet-stream"
+        mime_original = mime_original.split(";")[0].strip().lower()
+        if not mime_original:
+            mime_original = "application/octet-stream"
         FileIngestionService.create_ingestion(
             db,
             user_id,
             filename_original=file.filename or "upload",
-            mime_original=file.content_type or "application/octet-stream",
+            mime_original=mime_original,
             size_bytes=size,
             sha256=digest.hexdigest(),
             file_id=file_id,

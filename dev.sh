@@ -136,6 +136,7 @@ start_frontend() {
 }
 
 start_ingestion_worker() {
+  cleanup_ingestion_workers
   echo "Starting ingestion worker..."
   if [[ ${use_doppler} -eq 1 ]]; then
     (cd backend && doppler run -- env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
@@ -143,6 +144,22 @@ start_ingestion_worker() {
     (cd backend && env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
   fi
   echo $! >"${INGESTION_PID}"
+}
+
+cleanup_ingestion_workers() {
+  local pid
+  local command
+
+  if command -v pgrep >/dev/null 2>&1; then
+    while read -r pid; do
+      [[ -z "${pid}" ]] && continue
+      command=$(pid_command "${pid}")
+      if [[ "${command}" == *"workers/ingestion_worker.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]; then
+        echo "Cleaning ingestion worker process (PID ${pid})..."
+        stop_pid "${pid}"
+      fi
+    done < <(pgrep -f "workers/ingestion_worker.py" || true)
+  fi
 }
 
 stop_service() {
