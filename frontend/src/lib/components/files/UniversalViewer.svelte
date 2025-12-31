@@ -45,6 +45,7 @@
   $: isSpreadsheet = viewerKind === 'viewer_json';
   $: isImage = active?.file.category === 'images';
   $: isPresentation = active?.file.category === 'presentations';
+  $: centerPdfPages = isPresentation || isPdf;
   $: filename = active?.file.filename_original ?? 'File viewer';
   $: displayName = stripExtension(filename);
   $: fileType = getFileType(filename, active?.file.mime_original);
@@ -554,7 +555,7 @@
           this={PdfViewerComponent}
           src={viewerUrl}
           fitMode={fitMode}
-          centerPages={isPresentation}
+          centerPages={centerPdfPages}
           bind:effectiveScale
           bind:normalizedScale
           bind:currentPage
