@@ -9,6 +9,7 @@ import os
 import re
 import time
 import subprocess
+import statistics
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
@@ -19,12 +20,14 @@ from uuid import uuid4
 from sqlalchemy import and_, or_, text
 
 from PIL import Image
+import pdfplumber
 from pdfminer.high_level import extract_pages
-from pdfminer.layout import LAParams, LTTextContainer, LTTextLine
+from pdfminer.layout import LAParams, LTAnno, LTChar, LTTextContainer, LTTextLine
 from pypdf import PdfReader
 from pptx import Presentation
 from docx import Document
 from python_calamine import CalamineWorkbook, CalamineError, ZipError, XmlError
+from tabulate import tabulate
 
 from api.db.session import SessionLocal
 from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
@@ -405,7 +408,7 @@ def _order_pdf_lines(lines: list[tuple[float, float, str]], page_width: float) -
     if page_width > 0 and len(xs) >= 6:
         gaps = [(xs[i + 1] - xs[i], i) for i in range(len(xs) - 1)]
         max_gap, gap_index = max(gaps, key=lambda item: item[0])
-        if max_gap > page_width * 0.08:
+        if max_gap > page_width * 0.05:
             split_x = (xs[gap_index] + xs[gap_index + 1]) / 2
 
     def sort_lines(values: list[tuple[float, float, str]]) -> list[str]:
@@ -421,6 +424,38 @@ def _order_pdf_lines(lines: list[tuple[float, float, str]], page_width: float) -
         ordered.append("")
     ordered.extend(sort_lines(right))
     return ordered
+
+
+def _split_line_segments(line: LTTextLine) -> list[tuple[float, str]]:
+    chars = [obj for obj in line if isinstance(obj, LTChar)]
+    if not chars:
+        return []
+    widths = [char.width for char in chars if char.width > 0]
+    avg_width = statistics.median(widths) if widths else 0.0
+    gap_threshold = avg_width * 2.5 if avg_width > 0 else 6.0
+    segments: list[tuple[float, str]] = []
+    current: list[str] = []
+    current_x0: float | None = None
+    prev_x1: float | None = None
+    for obj in line:
+        if isinstance(obj, LTChar):
+            if prev_x1 is not None and obj.x0 - prev_x1 > gap_threshold:
+                text = "".join(current).strip()
+                if text:
+                    segments.append((current_x0 or obj.x0, text))
+                current = []
+                current_x0 = None
+            if current_x0 is None:
+                current_x0 = obj.x0
+            current.append(obj.get_text())
+            prev_x1 = obj.x1
+        elif isinstance(obj, LTAnno):
+            current.append(obj.get_text())
+    if current:
+        text = "".join(current).strip()
+        if text:
+            segments.append((current_x0 or chars[0].x0, text))
+    return segments
 
 
 def _should_merge_lines(current: str, next_line: str) -> bool:
@@ -461,8 +496,9 @@ def _clean_extracted_text(text: str) -> str:
     text = text.replace("\u00ad", "")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r" *\n *", "\n", text)
-    text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)
+    text = re.sub(r"(\w)-\n(\w)", r"\1-\2", text)
     text = re.sub(r"([a-z]{4,})([A-Z][a-z]{2,})", r"\1 \2", text)
+    text = re.sub(r"\b([A-Z][a-z]{2,})([A-Z][a-z]{2,})\b", r"\1 \2", text)
     text = re.sub(r"([a-z])([A-Z]{2,})", r"\1 \2", text)
     text = re.sub(r"(\d)([A-Za-z])", r"\1 \2", text)
     text = re.sub(r"([a-z])(\d)", r"\1 \2", text)
@@ -474,10 +510,104 @@ def _clean_extracted_text(text: str) -> str:
     return text.strip()
 
 
+def _normalize_table_rows(rows: list[list[object | None]]) -> list[list[str]]:
+    if not rows:
+        return []
+    max_cols = max(len(row) for row in rows)
+    normalized = []
+    for row in rows:
+        padded = [str(cell).strip() if cell is not None else "" for cell in row]
+        padded += [""] * (max_cols - len(padded))
+        normalized.append(padded)
+    last_col = -1
+    for col in range(max_cols):
+        if any(row[col].strip() for row in normalized):
+            last_col = col
+    if last_col < 0:
+        return []
+    trimmed = [row[: last_col + 1] for row in normalized]
+    return [row for row in trimmed if any(cell.strip() for cell in row)]
+
+
+def _table_to_markdown(rows: list[list[object | None]]) -> str | None:
+    normalized = _normalize_table_rows(rows)
+    if len(normalized) < 2 or len(normalized[0]) < 2:
+        return None
+    header = normalized[0]
+    body = normalized[1:]
+    if not body:
+        return None
+    return tabulate(body, headers=header, tablefmt="github")
+
+
+def _extract_non_table_text(page: pdfplumber.page.Page, table_bboxes: list[tuple[float, float, float, float]]) -> str:
+    words = page.extract_words(x_tolerance=2, y_tolerance=2, keep_blank_chars=False)
+    if not words:
+        return ""
+    filtered = []
+    for word in words:
+        x0 = float(word["x0"])
+        x1 = float(word["x1"])
+        top = float(word["top"])
+        bottom = float(word["bottom"])
+        inside = False
+        for bx0, by0, bx1, by1 in table_bboxes:
+            if x0 >= bx0 and x1 <= bx1 and top >= by0 and bottom <= by1:
+                inside = True
+                break
+        if not inside:
+            filtered.append(word)
+    if not filtered:
+        return ""
+    filtered.sort(key=lambda item: (item["top"], item["x0"]))
+    lines: list[list[str]] = []
+    current: list[str] = []
+    current_top: float | None = None
+    for word in filtered:
+        top = float(word["top"])
+        if current_top is None or abs(top - current_top) <= 3:
+            current.append(word["text"])
+            current_top = top if current_top is None else current_top
+        else:
+            lines.append(current)
+            current = [word["text"]]
+            current_top = top
+    if current:
+        lines.append(current)
+    return "\n".join(" ".join(line).strip() for line in lines if line)
+
+
+def _extract_pdf_tables(pdf_path: Path) -> tuple[dict[int, list[str]], dict[int, str]]:
+    tables_by_page: dict[int, list[str]] = {}
+    text_by_page: dict[int, str] = {}
+    try:
+        with pdfplumber.open(str(pdf_path)) as pdf:
+            for index, page in enumerate(pdf.pages):
+                tables = page.find_tables()
+                if not tables:
+                    continue
+                table_bboxes = [table.bbox for table in tables]
+                markdown_tables = []
+                for table in tables:
+                    rows = table.extract()
+                    markdown = _table_to_markdown(rows or [])
+                    if markdown:
+                        markdown_tables.append(markdown)
+                if markdown_tables:
+                    tables_by_page[index] = markdown_tables
+                    non_table_text = _extract_non_table_text(page, table_bboxes)
+                    if non_table_text:
+                        text_by_page[index] = non_table_text
+    except Exception as exc:
+        logger.warning("pdfplumber table extraction failed (%s).", exc)
+    return tables_by_page, text_by_page
+
+
 def _extract_pdf_text(pdf_path: Path) -> str:
     text = ""
     try:
-        laparams = LAParams()
+        tables_by_page, table_text_by_page = _extract_pdf_tables(pdf_path)
+        laparams = LAParams(word_margin=0.1, char_margin=2.0, line_margin=0.5)
         sections: list[str] = []
         for index, layout in enumerate(extract_pages(str(pdf_path), laparams=laparams)):
             lines: list[tuple[float, float, str]] = []
@@ -490,13 +620,28 @@ def _extract_pdf_text(pdf_path: Path) -> str:
                 for line in element:
                     if not isinstance(line, LTTextLine):
                         continue
-                    line_text = line.get_text().strip()
-                    if not line_text:
+                    segments = _split_line_segments(line)
+                    if not segments:
+                        line_text = line.get_text().strip()
+                        if not line_text:
+                            continue
+                        x0, y0, _, _ = line.bbox
+                        lines.append((float(x0), float(y0), line_text))
                         continue
-                    x0, y0, _, _ = line.bbox
-                    lines.append((float(x0), float(y0), line_text))
+                    _, y0, _, _ = line.bbox
+                    for seg_x0, seg_text in segments:
+                        if seg_text:
+                            lines.append((float(seg_x0), float(y0), seg_text))
             ordered_lines = _order_pdf_lines(lines, page_width)
             page_text = _clean_extracted_text("\n".join(ordered_lines))
+            if index in tables_by_page:
+                table_text = "\n\n".join(tables_by_page[index])
+                non_table_text = table_text_by_page.get(index, "")
+                page_text = _clean_extracted_text(non_table_text) if non_table_text else ""
+                if page_text:
+                    page_text = f"{page_text}\n\n{table_text}"
+                else:
+                    page_text = table_text
             sections.append(f"## Page {index + 1}\n\n{page_text.strip()}")
         text = "\n\n".join(sections).strip()
     except Exception as exc:
