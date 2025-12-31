@@ -605,22 +605,30 @@ Requirements:
         chunking_strategy = "auto" if args.chunking_strategy == "auto" else args.chunking_strategy
 
     try:
-        result = transcribe_audio(
-            args.file,
-            language=args.language,
-            model=args.model,
-            output_dir=args.output_dir,
-            user_id=args.user_id,
-            temp_dir=args.temp_dir,
-            keep_local=args.keep_local,
-            output_name=args.output_name,
-            chunking_strategy=chunking_strategy,
-            include=args.include,
-            prompt=args.prompt,
-            response_format=args.response_format,
-            temperature=args.temperature,
-            timestamp_granularities=args.timestamp_granularities
-        )
+        redirected_stdout = None
+        try:
+            if args.json:
+                redirected_stdout = sys.stdout
+                sys.stdout = sys.stderr
+            result = transcribe_audio(
+                args.file,
+                language=args.language,
+                model=args.model,
+                output_dir=args.output_dir,
+                user_id=args.user_id,
+                temp_dir=args.temp_dir,
+                keep_local=args.keep_local,
+                output_name=args.output_name,
+                chunking_strategy=chunking_strategy,
+                include=args.include,
+                prompt=args.prompt,
+                response_format=args.response_format,
+                temperature=args.temperature,
+                timestamp_granularities=args.timestamp_granularities
+            )
+        finally:
+            if redirected_stdout is not None:
+                sys.stdout = redirected_stdout
 
         note_data = None
         if args.database:
@@ -642,6 +650,7 @@ Requirements:
                 'success': True,
                 'data': {
                     'output_path': result['output_path'],
+                    'local_path': result.get('local_path'),
                     'word_count': result['word_count'],
                     'chunks': result['chunks'],
                     'model': result['model'],
