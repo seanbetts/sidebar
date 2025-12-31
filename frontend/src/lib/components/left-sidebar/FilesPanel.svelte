@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChevronDown, ChevronRight, Image, Folder, FolderOpen, RotateCcw, Trash2 } from 'lucide-svelte';
+  import { ChevronDown, ChevronRight, File, Image, Folder, FolderOpen, RotateCcw, Trash2 } from 'lucide-svelte';
   import { onDestroy, onMount } from 'svelte';
   import { treeStore } from '$lib/stores/tree';
   import { ingestionStore } from '$lib/stores/ingestion';
@@ -30,9 +30,34 @@
     item => item.job.status === 'ready' && item.recommended_viewer
   );
   $: pinnedItems = readyItems.filter(item => item.file.pinned);
-  $: imageItems = readyItems.filter(item => item.file.category === 'images');
+  const categoryOrder = [
+    'images',
+    'pdf',
+    'documents',
+    'spreadsheets',
+    'presentations',
+    'audio',
+    'video',
+    'other'
+  ];
+  const categoryLabels: Record<string, string> = {
+    images: 'Images',
+    pdf: 'PDFs',
+    documents: 'Documents',
+    spreadsheets: 'Spreadsheets',
+    presentations: 'Presentations',
+    audio: 'Audio',
+    video: 'Video',
+    other: 'Other'
+  };
+  $: categorizedItems = readyItems.reduce<Record<string, IngestionListItem[]>>((acc, item) => {
+    const category = item.file.category || 'other';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(item);
+    return acc;
+  }, {});
   let retryingIds = new Set<string>();
-  let imagesExpanded = false;
+  let expandedCategories = new Set<string>();
 
   function openViewer(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
@@ -78,8 +103,14 @@
     treeStore.toggleExpanded(basePath, path);
   }
 
-  function toggleImages() {
-    imagesExpanded = !imagesExpanded;
+  function toggleCategory(category: string) {
+    const next = new Set(expandedCategories);
+    if (next.has(category)) {
+      next.delete(category);
+    } else {
+      next.add(category);
+    }
+    expandedCategories = next;
   }
 
   function stripExtension(name: string): string {
@@ -120,9 +151,6 @@
           <div class="files-empty">No pinned files</div>
         {/if}
       </div>
-      {#if processingItems.length > 0}
-        <IngestionQueue items={processingItems} />
-      {/if}
       {#if failedItems.length > 0}
         <div class="workspace-results-label">Failed uploads</div>
         {#each failedItems as item (item.file.id)}
@@ -164,40 +192,46 @@
         {#if searchQuery}
           <div class="workspace-results-label">Results</div>
         {/if}
-      {#if imageItems.length > 0}
-        <div class="tree-node">
-          <div class="node-content">
-            <button class="node-button expandable" onclick={toggleImages}>
-              <span class="chevron">
-                {#if imagesExpanded}
-                  <ChevronDown size={16} />
-                {:else}
-                  <ChevronRight size={16} />
-                {/if}
-              </span>
-              <span class="icon">
-                {#if imagesExpanded}
-                  <FolderOpen size={16} />
-                {:else}
-                  <Folder size={16} />
-                {/if}
-              </span>
-              <span class="name">Images</span>
-            </button>
+      {#each categoryOrder as category}
+        {#if categorizedItems[category]?.length}
+          <div class="tree-node">
+            <div class="node-content">
+              <button class="node-button expandable" onclick={() => toggleCategory(category)}>
+                <span class="chevron">
+                  {#if expandedCategories.has(category)}
+                    <ChevronDown size={16} />
+                  {:else}
+                    <ChevronRight size={16} />
+                  {/if}
+                </span>
+                <span class="icon">
+                  {#if expandedCategories.has(category)}
+                    <FolderOpen size={16} />
+                  {:else}
+                    <Folder size={16} />
+                  {/if}
+                </span>
+                <span class="name">{categoryLabels[category] ?? 'Files'}</span>
+              </button>
+            </div>
           </div>
-        </div>
-        {#if imagesExpanded}
-          {#each imageItems as item (item.file.id)}
-            <button class="ingested-item ingested-item--nested" onclick={() => openViewer(item)}>
-              <span class="ingested-icon">
-                <Image size={16} />
-              </span>
-              <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
-              <span class="ingested-action">Open</span>
-            </button>
-          {/each}
+          {#if expandedCategories.has(category)}
+            {#each categorizedItems[category] as item (item.file.id)}
+              <button class="ingested-item ingested-item--nested" onclick={() => openViewer(item)}>
+                <span class="ingested-icon">
+                  {#if category === 'images'}
+                    <Image size={16} />
+                  {:else}
+                    <File size={16} />
+                  {/if}
+                </span>
+                <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                <span class="ingested-action">Open</span>
+              </button>
+            {/each}
+          {/if}
         {/if}
-        {/if}
+      {/each}
         {#if children.length > 0}
           {#each children as node (node.path)}
             <FileTreeNode
@@ -209,11 +243,16 @@
               showActions={true}
             />
           {/each}
-        {:else if imageItems.length === 0}
+        {:else if readyItems.length === 0}
           <div class="files-empty">No files yet</div>
         {/if}
       </div>
     </div>
+    {#if processingItems.length > 0}
+      <div class="workspace-uploads uploads-block">
+        <IngestionQueue items={processingItems} />
+      </div>
+    {/if}
     {#if readyItems.length > 0}
       <div class="workspace-uploads uploads-block">
         <Collapsible.Root defaultOpen={false} class="group/collapsible" data-collapsible-root>
