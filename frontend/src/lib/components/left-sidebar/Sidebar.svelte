@@ -17,7 +17,6 @@
   import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
   import NewNoteDialog from '$lib/components/left-sidebar/dialogs/NewNoteDialog.svelte';
   import NewFolderDialog from '$lib/components/left-sidebar/dialogs/NewFolderDialog.svelte';
-  import NewWorkspaceFolderDialog from '$lib/components/left-sidebar/dialogs/NewWorkspaceFolderDialog.svelte';
   import NewWebsiteDialog from '$lib/components/left-sidebar/dialogs/NewWebsiteDialog.svelte';
   import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
   import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
@@ -33,13 +32,10 @@
   let newNoteName = '';
   let isNewFolderDialogOpen = false;
   let newFolderName = '';
-  let isNewWorkspaceFolderDialogOpen = false;
-  let newWorkspaceFolderName = '';
   let isSettingsOpen = false;
   let isNewWebsiteDialogOpen = false;
   let newWebsiteUrl = '';
   let isSavingWebsite = false;
-  let isCreatingWorkspaceFolder = false;
   let isCreatingNote = false;
   let isCreatingFolder = false;
   let isSaveChangesDialogOpen = false;
@@ -181,10 +177,6 @@
     isNewFolderDialogOpen = true;
   }
 
-  function handleNewWorkspaceFolder() {
-    newWorkspaceFolderName = '';
-    isNewWorkspaceFolderDialogOpen = true;
-  }
 
   function handleUploadFileClick() {
     fileInput?.click();
@@ -326,31 +318,6 @@
     }
   }
 
-  async function createWorkspaceFolderFromDialog() {
-    const name = newWorkspaceFolderName.trim().replace(/^\/+|\/+$/g, '');
-    if (!name || isCreatingWorkspaceFolder) return;
-
-    isCreatingWorkspaceFolder = true;
-    try {
-      const response = await fetch('/api/files/folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ basePath: '.', path: name })
-      });
-
-      if (!response.ok) throw new Error('Failed to create folder');
-      await treeStore.load('.', true);
-      dispatchCacheEvent('file.uploaded');
-      isNewWorkspaceFolderDialogOpen = false;
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-      errorTitle = 'Unable to create folder';
-      errorMessage = 'Failed to create folder. Please try again.';
-      isErrorDialogOpen = true;
-    } finally {
-      isCreatingWorkspaceFolder = false;
-    }
-  }
 
 </script>
 
@@ -370,13 +337,6 @@
   onCancel={() => (isNewFolderDialogOpen = false)}
 />
 
-<NewWorkspaceFolderDialog
-  bind:open={isNewWorkspaceFolderDialogOpen}
-  bind:value={newWorkspaceFolderName}
-  isBusy={isCreatingWorkspaceFolder}
-  onConfirm={createWorkspaceFolderFromDialog}
-  onCancel={() => (isNewWorkspaceFolderDialogOpen = false)}
-/>
 
 <NewWebsiteDialog
   bind:open={isNewWebsiteDialogOpen}
@@ -495,16 +455,6 @@
               on:change={handleFileSelected}
               class="file-upload-input"
             />
-            <Button
-              size="icon"
-              variant="ghost"
-              class="panel-action"
-              onclick={handleNewWorkspaceFolder}
-              aria-label="New folder"
-              title="New folder"
-            >
-              <Folder size={16} />
-            </Button>
             <Button
               size="icon"
               variant="ghost"

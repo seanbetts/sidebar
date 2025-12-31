@@ -12,7 +12,6 @@
     Pencil,
     Pin,
     PinOff,
-    FolderInput,
     Download
   } from 'lucide-svelte';
   import { onDestroy, onMount } from 'svelte';
@@ -287,10 +286,6 @@
                         <span>Pin</span>
                       {/if}
                     </button>
-                    <button class="menu-item" disabled>
-                      <FolderInput size={14} />
-                      <span>Move</span>
-                    </button>
                     <button class="menu-item" onclick={() => handleDownload(item)}>
                       <Download size={14} />
                       <span>Download</span>
@@ -407,10 +402,6 @@
                         <span>Pin</span>
                       {/if}
                     </button>
-                    <button class="menu-item" disabled>
-                      <FolderInput size={14} />
-                      <span>Move</span>
-                    </button>
                     <button class="menu-item" onclick={() => handleDownload(item)}>
                       <Download size={14} />
                       <span>Download</span>
@@ -494,10 +485,6 @@
                             <Pin size={14} />
                             <span>Pin</span>
                           {/if}
-                        </button>
-                        <button class="menu-item" disabled>
-                          <FolderInput size={14} />
-                          <span>Move</span>
                         </button>
                         <button class="menu-item" onclick={() => handleDownload(item)}>
                           <Download size={14} />
