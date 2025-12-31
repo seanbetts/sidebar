@@ -27,8 +27,8 @@ except Exception:
     upload_file = None
 
 
-# Default output directory (R2 Videos)
-DEFAULT_R2_DIR = "Videos"
+# Default output directory (files workspace)
+DEFAULT_R2_DIR = "files/videos"
 
 
 def check_ffmpeg() -> bool:
@@ -186,6 +186,7 @@ def download_youtube(
     user_id: Optional[str] = None,
     temp_dir: Optional[str] = None,
     keep_local: bool = False,
+    upload: bool = True,
 ) -> Dict[str, Any]:
     """
     Download YouTube video or audio.
@@ -215,10 +216,11 @@ def download_youtube(
     # Normalize URL
     processed_url = normalize_url(url)
 
-    if not user_id:
-        raise ValueError("user_id is required for storage")
-    if upload_file is None:
-        raise RuntimeError("Storage dependencies are unavailable")
+    if upload:
+        if not user_id:
+            raise ValueError("user_id is required for storage")
+        if upload_file is None:
+            raise RuntimeError("Storage dependencies are unavailable")
 
     r2_dir = (output_dir or DEFAULT_R2_DIR).strip("/")
     local_root = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="yt-download-"))
@@ -314,9 +316,11 @@ def download_youtube(
         if not local_output.exists():
             raise FileNotFoundError(f"Download output not found: {local_output}")
 
-        content_type = "audio/mpeg" if audio_only else "video/mp4"
-        r2_path = f"{r2_dir}/{final_filename}" if r2_dir else final_filename
-        record = upload_file(user_id, r2_path, local_output, content_type=content_type)
+        record = None
+        if upload:
+            content_type = "audio/mpeg" if audio_only else "video/mp4"
+            r2_path = f"{r2_dir}/{final_filename}" if r2_dir else final_filename
+            record = upload_file(user_id, r2_path, local_output, content_type=content_type)
 
         if not keep_local and temp_dir is None:
             local_output.unlink(missing_ok=True)
@@ -326,8 +330,8 @@ def download_youtube(
             'title': title,
             'output_dir': r2_dir or ".",
             'filename': final_filename,
-            'r2_path': record.path,
-            'local_path': str(local_output) if keep_local else None,
+            'r2_path': record.path if record else None,
+            'local_path': str(local_output) if keep_local or not upload else None,
             'audio_only': audio_only,
             'is_playlist': is_playlist,
             'duration_seconds': int(duration),
@@ -439,6 +443,11 @@ Requirements:
         help='Keep local file (for chaining)'
     )
     parser.add_argument(
+        '--no-upload',
+        action='store_true',
+        help='Skip uploading to storage'
+    )
+    parser.add_argument(
         '--json',
         action='store_true',
         help='Output results in JSON format'
@@ -457,6 +466,7 @@ Requirements:
             user_id=args.user_id,
             temp_dir=args.temp_dir,
             keep_local=args.keep_local,
+            upload=not args.no_upload,
         )
 
         # Output results

@@ -1,6 +1,6 @@
 ---
 name: youtube-transcribe
-description: Transcribe YouTube videos to text by downloading audio and using OpenAI's Whisper API. Use when you need to convert YouTube lectures, podcasts, interviews, or presentations to text transcripts.
+description: Transcribe YouTube videos to text by downloading audio and using OpenAI's Whisper API. Use when you need transcripts stored in the files workspace.
 ---
 
 # youtube-transcribe
@@ -9,7 +9,7 @@ Transcribe YouTube videos by downloading audio and running speech-to-text transc
 
 ## Description
 
-Downloads audio from YouTube videos using the youtube-download skill, then transcribes the audio using the audio-transcribe skill with OpenAI's transcription API. Provides a streamlined workflow for converting YouTube content to text transcripts.
+Downloads audio from YouTube videos using the youtube-download skill, then transcribes the audio using the audio-transcribe skill with OpenAI's transcription API. Stores transcripts in the files workspace and does not keep the audio by default.
 
 ## When to Use
 
@@ -34,7 +34,7 @@ Downloads audio from YouTube videos using the youtube-download skill, then trans
 Downloads YouTube audio and transcribes it with OpenAI's API.
 
 ```bash
-python transcribe_youtube.py URL [--language LANG] [--model MODEL] [--output-dir DIR] [--keep-audio] [--audio-dir DIR] [--user-id USER] [--json]
+python transcribe_youtube.py URL [--language LANG] [--model MODEL] [--output-dir DIR] [--output-name NAME] [--keep-audio] [--audio-dir DIR] [--user-id USER] [--json]
 ```
 
 **Arguments**:
@@ -44,13 +44,12 @@ python transcribe_youtube.py URL [--language LANG] [--model MODEL] [--output-dir
 - `--language`: Language code for transcription (default: "en")
 - `--model`: Transcription model (default: "gpt-4o-transcribe")
   - Options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
-- `--output-dir`: R2 folder for transcripts (default: Transcripts)
+- `--output-dir`: Output folder for transcripts (default: files/videos/{video_id}/ai)
+- `--output-name`: Transcript filename (default: ai.md)
 - `--keep-audio`: Keep downloaded audio file after transcription
-- `--audio-dir`: R2 folder for downloaded audio (default: Videos)
+- `--audio-dir`: Output folder for downloaded audio (default: files/videos)
 - `--user-id`: User id for storage access (required)
 - `--json`: Output results in JSON format
-- `--database`: Save transcript to the notes database
-- `--folder`: Database folder for transcript note (default: Transcripts/YouTube)
 
 **Features**:
 - Automatic audio download and transcription
@@ -76,8 +75,9 @@ python transcribe_youtube.py "https://youtube.com/watch?v=VIDEO_ID" --keep-audio
 
 # Custom output locations
 python transcribe_youtube.py "https://youtube.com/watch?v=VIDEO_ID" \
-  --output-dir Transcripts \
-  --audio-dir Videos
+  --output-dir files/videos/VIDEO_ID/ai \
+  --output-name ai.md \
+  --audio-dir files/videos
 
 # JSON output
 python transcribe_youtube.py "https://youtube.com/watch?v=VIDEO_ID" --json
@@ -92,21 +92,21 @@ Human-readable output shows both stages:
 Downloading YouTube Audio...
 ==========================================================================
 Title: Example Video
-Saved to: R2/Videos/
+Saved locally for transcription (audio is removed by default)
 Filename: Example Video.mp3
 
 ==========================================================================
 Transcribing Audio...
 ==========================================================================
 File: Example Video.mp3
-Transcript: R2/Transcripts/Example Video_20251220_143045_transcript.txt
+Transcript: files/videos/VIDEO_ID/ai/ai.md
 Duration: 15m 30s
 
 ==========================================================================
 TRANSCRIPTION COMPLETED SUCCESSFULLY
 ==========================================================================
 YouTube URL: https://youtube.com/watch?v=VIDEO_ID
-Transcript: R2/Transcripts/Example Video_20251220_143045_transcript.txt
+Transcript: files/videos/VIDEO_ID/ai/ai.md
 Audio file: Removed (use --keep-audio to keep)
 ```
 
@@ -118,9 +118,9 @@ JSON output combines results from both stages:
   "data": {
     "youtube_url": "https://youtube.com/watch?v=VIDEO_ID",
     "title": "Example Video",
-    "audio_file": "R2/Videos/Example Video.mp3",
+    "audio_file": "/tmp/yt-transcribe-.../audio/Example Video.mp3",
     "audio_kept": false,
-    "transcript_file": "R2/Transcripts/Example Video_20251220_143045_transcript.txt",
+    "transcript_file": "files/videos/VIDEO_ID/ai/ai.md",
     "language": "en",
     "model": "gpt-4o-transcribe",
     "download_duration_seconds": 45,
@@ -133,7 +133,7 @@ JSON output combines results from both stages:
 
 1. **Download Stage**:
    - Validates YouTube URL
-   - Downloads audio using youtube-download skill to `R2/Videos/`
+   - Downloads audio using youtube-download skill to `files/videos/` (local only by default)
    - Reports download progress and completion
    - Returns audio file location
 
@@ -183,15 +183,15 @@ JSON output combines results from both stages:
 
 ## Default Save Locations
 
-**Audio Files (R2, temporary unless `--keep-audio`)**:
+**Audio Files (temporary unless `--keep-audio`)**:
 ```
-Videos/
+files/videos/
 ```
 Audio files are automatically deleted after transcription unless `--keep-audio` is specified.
 
-**Transcripts (R2)**:
+**Transcripts (files workspace)**:
 ```
-Transcripts/
+files/videos/{video_id}/ai/ai.md
 ```
 
 ## Model Comparison

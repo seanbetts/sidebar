@@ -476,7 +476,6 @@ def build_youtube_transcribe_args(params: dict) -> list:
     args = [
         params["url"],
         "--json",
-        "--database",
     ]
     if params.get("user_id"):
         args.extend(["--user-id", params["user_id"]])
@@ -484,8 +483,12 @@ def build_youtube_transcribe_args(params: dict) -> list:
         args.extend(["--language", params["language"]])
     if params.get("model"):
         args.extend(["--model", params["model"]])
-    if params.get("output_dir"):
-        args.extend(["--output-dir", params["output_dir"]])
+    output_dir = params.get("output_dir")
+    output_name = params.get("output_name") or "ai.md"
+    if output_dir:
+        args.extend(["--output-dir", output_dir])
+    if output_name:
+        args.extend(["--output-name", output_name])
     if params.get("audio_dir"):
         args.extend(["--audio-dir", params["audio_dir"]])
     if params.get("keep_audio"):
