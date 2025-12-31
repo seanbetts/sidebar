@@ -1,5 +1,20 @@
 <script lang="ts">
-  import { ChevronDown, ChevronRight, File, Image, Folder, FolderOpen, RotateCcw, Trash2, MoreHorizontal } from 'lucide-svelte';
+  import {
+    ChevronDown,
+    ChevronRight,
+    File,
+    Image,
+    Folder,
+    FolderOpen,
+    RotateCcw,
+    Trash2,
+    MoreHorizontal,
+    Pencil,
+    Pin,
+    PinOff,
+    FolderInput,
+    Download
+  } from 'lucide-svelte';
   import { onDestroy, onMount } from 'svelte';
   import { treeStore } from '$lib/stores/tree';
   import { ingestionStore } from '$lib/stores/ingestion';
@@ -58,6 +73,7 @@
   }, {});
   let retryingIds = new Set<string>();
   let expandedCategories = new Set<string>();
+  let openMenuId: string | null = null;
 
   function openViewer(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
@@ -90,6 +106,16 @@
 
   onMount(() => {
     ingestionStore.startPolling();
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (!openMenuId) return;
+      const target = event.target as HTMLElement | null;
+      const root = target?.closest<HTMLElement>('[data-ingested-menu-root]');
+      if (!root || root.dataset.ingestedMenuRoot !== openMenuId) {
+        openMenuId = null;
+      }
+    };
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
   });
 
   onDestroy(() => {
@@ -119,6 +145,55 @@
     return name.slice(0, index);
   }
 
+  function toggleMenu(event: MouseEvent, fileId: string) {
+    event.stopPropagation();
+    openMenuId = openMenuId === fileId ? null : fileId;
+  }
+
+  async function handlePinToggle(item: IngestionListItem) {
+    try {
+      const nextPinned = !item.file.pinned;
+      await ingestionAPI.setPinned(item.file.id, nextPinned);
+      ingestionStore.updatePinned(item.file.id, nextPinned);
+      if (ingestionViewerStore) {
+        ingestionViewerStore.updatePinned(item.file.id, nextPinned);
+      }
+    } catch (error) {
+      console.error('Failed to update pin:', error);
+    } finally {
+      openMenuId = null;
+    }
+  }
+
+  async function handleDownload(item: IngestionListItem) {
+    if (!item.recommended_viewer) return;
+    try {
+      const response = await ingestionAPI.getContent(item.file.id, item.recommended_viewer);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = item.file.filename_original;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+    } finally {
+      openMenuId = null;
+    }
+  }
+
+  async function handleDelete(item: IngestionListItem) {
+    try {
+      await ingestionAPI.delete(item.file.id);
+      await ingestionStore.load();
+    } catch (error) {
+      console.error('Failed to delete ingestion:', error);
+    } finally {
+      openMenuId = null;
+    }
+  }
+
 </script>
 
 {#if loading}
@@ -143,31 +218,54 @@
         {#if pinnedItems.length > 0}
           <div class="files-block-list">
             {#each pinnedItems as item (item.file.id)}
-            <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
-              <span class="ingested-icon">
-                {#if item.file.category === 'images'}
-                  <Image size={16} />
-                {:else}
-                  <File size={16} />
+              <div class="ingested-row" data-ingested-menu-root={item.file.id}>
+                <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
+                  <span class="ingested-icon">
+                    {#if item.file.category === 'images'}
+                      <Image size={16} />
+                    {:else}
+                      <File size={16} />
+                    {/if}
+                  </span>
+                  <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                </button>
+                <button
+                  class="ingested-menu"
+                  onclick={(event) => toggleMenu(event, item.file.id)}
+                  aria-label="File actions"
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+                {#if openMenuId === item.file.id}
+                  <div class="ingested-menu-dropdown">
+                    <button class="menu-item" disabled>
+                      <Pencil size={14} />
+                      <span>Rename</span>
+                    </button>
+                    <button class="menu-item" onclick={() => handlePinToggle(item)}>
+                      {#if item.file.pinned}
+                        <PinOff size={14} />
+                        <span>Unpin</span>
+                      {:else}
+                        <Pin size={14} />
+                        <span>Pin</span>
+                      {/if}
+                    </button>
+                    <button class="menu-item" disabled>
+                      <FolderInput size={14} />
+                      <span>Move</span>
+                    </button>
+                    <button class="menu-item" onclick={() => handleDownload(item)}>
+                      <Download size={14} />
+                      <span>Download</span>
+                    </button>
+                    <button class="menu-item delete" onclick={() => handleDelete(item)}>
+                      <Trash2 size={14} />
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 {/if}
-              </span>
-              <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
-              <span
-                class="ingested-menu"
-                role="button"
-                tabindex="0"
-                aria-label="File actions"
-                onclick={(event) => event.stopPropagation()}
-                onkeydown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                  }
-                  event.stopPropagation();
-                }}
-              >
-                <MoreHorizontal size={14} />
-              </span>
-            </button>
+              </div>
             {/each}
           </div>
         {:else}
@@ -240,31 +338,54 @@
           </div>
           {#if expandedCategories.has(category)}
             {#each categorizedItems[category] as item (item.file.id)}
-              <button class="ingested-item ingested-item--file ingested-item--nested" onclick={() => openViewer(item)}>
-                <span class="ingested-icon">
-                  {#if category === 'images'}
-                    <Image size={16} />
-                  {:else}
-                    <File size={16} />
-                  {/if}
-                </span>
-                <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
-                <span
+              <div class="ingested-row ingested-row--nested" data-ingested-menu-root={item.file.id}>
+                <button class="ingested-item ingested-item--file ingested-item--nested" onclick={() => openViewer(item)}>
+                  <span class="ingested-icon">
+                    {#if category === 'images'}
+                      <Image size={16} />
+                    {:else}
+                      <File size={16} />
+                    {/if}
+                  </span>
+                  <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                </button>
+                <button
                   class="ingested-menu"
-                  role="button"
-                  tabindex="0"
+                  onclick={(event) => toggleMenu(event, item.file.id)}
                   aria-label="File actions"
-                  onclick={(event) => event.stopPropagation()}
-                  onkeydown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                    }
-                    event.stopPropagation();
-                  }}
                 >
                   <MoreHorizontal size={14} />
-                </span>
-              </button>
+                </button>
+                {#if openMenuId === item.file.id}
+                  <div class="ingested-menu-dropdown">
+                    <button class="menu-item" disabled>
+                      <Pencil size={14} />
+                      <span>Rename</span>
+                    </button>
+                    <button class="menu-item" onclick={() => handlePinToggle(item)}>
+                      {#if item.file.pinned}
+                        <PinOff size={14} />
+                        <span>Unpin</span>
+                      {:else}
+                        <Pin size={14} />
+                        <span>Pin</span>
+                      {/if}
+                    </button>
+                    <button class="menu-item" disabled>
+                      <FolderInput size={14} />
+                      <span>Move</span>
+                    </button>
+                    <button class="menu-item" onclick={() => handleDownload(item)}>
+                      <Download size={14} />
+                      <span>Download</span>
+                    </button>
+                    <button class="menu-item delete" onclick={() => handleDelete(item)}>
+                      <Trash2 size={14} />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                {/if}
+              </div>
             {/each}
           {/if}
         {/if}
@@ -305,31 +426,54 @@
             <Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
               <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
                 {#each readyItems as item (item.file.id)}
-                  <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
-                    <span class="ingested-icon">
-                      {#if item.file.category === 'images'}
-                        <Image size={16} />
-                      {:else}
-                        <File size={16} />
-                      {/if}
-                    </span>
-                    <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
-                    <span
+                  <div class="ingested-row" data-ingested-menu-root={item.file.id}>
+                    <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
+                      <span class="ingested-icon">
+                        {#if item.file.category === 'images'}
+                          <Image size={16} />
+                        {:else}
+                          <File size={16} />
+                        {/if}
+                      </span>
+                      <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                    </button>
+                    <button
                       class="ingested-menu"
-                      role="button"
-                      tabindex="0"
+                      onclick={(event) => toggleMenu(event, item.file.id)}
                       aria-label="File actions"
-                      onclick={(event) => event.stopPropagation()}
-                      onkeydown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                        }
-                        event.stopPropagation();
-                      }}
                     >
                       <MoreHorizontal size={14} />
-                    </span>
-                  </button>
+                    </button>
+                    {#if openMenuId === item.file.id}
+                      <div class="ingested-menu-dropdown">
+                        <button class="menu-item" disabled>
+                          <Pencil size={14} />
+                          <span>Rename</span>
+                        </button>
+                        <button class="menu-item" onclick={() => handlePinToggle(item)}>
+                          {#if item.file.pinned}
+                            <PinOff size={14} />
+                            <span>Unpin</span>
+                          {:else}
+                            <Pin size={14} />
+                            <span>Pin</span>
+                          {/if}
+                        </button>
+                        <button class="menu-item" disabled>
+                          <FolderInput size={14} />
+                          <span>Move</span>
+                        </button>
+                        <button class="menu-item" onclick={() => handleDownload(item)}>
+                          <Download size={14} />
+                          <span>Download</span>
+                        </button>
+                        <button class="menu-item delete" onclick={() => handleDelete(item)}>
+                          <Trash2 size={14} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    {/if}
+                  </div>
                 {/each}
               </div>
             </Collapsible.Content>
@@ -408,7 +552,7 @@
     color: var(--color-foreground);
     text-align: left;
     min-width: 0;
-    width: 100%;
+    flex: 1;
   }
 
   .ingested-item:hover {
@@ -428,13 +572,21 @@
     min-width: 0;
   }
 
+  .ingested-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+  }
+
+  .ingested-row--nested {
+    margin-left: 1.6rem;
+  }
+
   .ingested-item--file {
     justify-content: flex-start;
     font-size: 0.875rem;
-  }
-
-  .ingested-item--nested {
-    margin-left: 1.6rem;
   }
 
   .tree-node {
@@ -511,17 +663,57 @@
     border-radius: 0.25rem;
     color: var(--color-muted-foreground);
     opacity: 0;
-    margin-left: auto;
     align-self: center;
     transition: all 0.2s;
   }
 
-  .ingested-item:hover .ingested-menu {
+  .ingested-row:hover .ingested-menu {
     opacity: 1;
   }
 
   .ingested-menu:hover {
     background-color: var(--color-accent);
+  }
+
+  .ingested-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.25rem;
+    background-color: var(--color-popover);
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    min-width: 150px;
+  }
+
+  .ingested-menu-dropdown .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-align: left;
+    transition: background-color 0.2s;
+    color: var(--color-popover-foreground);
+  }
+
+  .ingested-menu-dropdown .menu-item:hover:not(:disabled) {
+    background-color: var(--color-accent);
+  }
+
+  .ingested-menu-dropdown .menu-item:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .ingested-menu-dropdown .menu-item.delete {
+    color: var(--color-destructive);
   }
 
   .uploads-block {
