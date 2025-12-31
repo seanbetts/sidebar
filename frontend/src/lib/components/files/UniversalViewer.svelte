@@ -57,6 +57,7 @@
   $: canPrev = currentPage > 1;
   $: canNext = pageCount > 0 && currentPage < pageCount;
   $: hasMarkdown = Boolean(active?.derivatives?.some(item => item.kind === 'ai_md'));
+  $: showMarkdownToggle = hasMarkdown && !isSpreadsheet;
 
   let currentPage = 1;
   let pageCount = 0;
@@ -76,11 +77,24 @@
   let isTextLoading = false;
   let lastTextUrl: string | null = null;
   let spreadsheetActions: { copy: () => void; download: () => void } | null = null;
+  let viewMode: 'content' | 'markdown' = 'content';
+  let markdownContent = '';
+  let markdownError = '';
+  let markdownLoading = false;
+  let lastMarkdownId: string | null = null;
 
   $: if (active) {
     const item = $ingestionStore.items.find(entry => entry.file.id === active.file.id);
     if (item && item.job) {
       ingestionViewerStore.updateActiveJob(active.file.id, item.job);
+    }
+  }
+  $: if (!showMarkdownToggle) {
+    viewMode = 'content';
+  }
+  $: if (viewMode === 'markdown' && active?.file.id) {
+    if (active.file.id !== lastMarkdownId) {
+      loadMarkdown();
     }
   }
 
@@ -163,6 +177,32 @@
       }, 1500);
     } catch (error) {
       console.error('Failed to copy markdown:', error);
+    }
+  }
+
+  function stripFrontmatter(text: string): string {
+    if (!text.startsWith('---')) return text;
+    const match = text.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+    if (!match) return text;
+    return text.slice(match[0].length);
+  }
+
+  async function loadMarkdown() {
+    if (!active) return;
+    markdownLoading = true;
+    markdownError = '';
+    lastMarkdownId = active.file.id;
+    try {
+      const response = await ingestionAPI.getContent(active.file.id, 'ai_md');
+      let text = await response.text();
+      text = stripFrontmatter(text);
+      markdownContent = text;
+    } catch (error) {
+      console.error('Failed to load markdown:', error);
+      markdownError = 'Failed to load markdown.';
+      markdownContent = '';
+    } finally {
+      markdownLoading = false;
     }
   }
 
@@ -319,8 +359,26 @@
       </div>
     </div>
     <div class="file-viewer-controls">
+      {#if showMarkdownToggle}
+        <div class="viewer-toggle">
+          <button
+            class="viewer-toggle-button"
+            class:active={viewMode === 'content'}
+            onclick={() => (viewMode = 'content')}
+          >
+            File
+          </button>
+          <button
+            class="viewer-toggle-button"
+            class:active={viewMode === 'markdown'}
+            onclick={() => (viewMode = 'markdown')}
+          >
+            Markdown
+          </button>
+        </div>
+      {/if}
       {#if isPdf}
-        <div class="pdf-controls-inline">
+        <div class="pdf-controls-inline" class:hidden={viewMode === 'markdown'}>
           <Button
             size="icon"
             variant="ghost"
@@ -488,6 +546,15 @@
               </div>
               <div class="viewer-menu-divider"></div>
             {/if}
+            {#if showMarkdownToggle}
+              <button class="viewer-menu-item" onclick={() => (viewMode = 'content')} disabled={viewMode === 'content'}>
+                <span>View file</span>
+              </button>
+              <button class="viewer-menu-item" onclick={() => (viewMode = 'markdown')} disabled={viewMode === 'markdown'}>
+                <span>View markdown</span>
+              </button>
+              <div class="viewer-menu-divider"></div>
+            {/if}
             <button class="viewer-menu-item" onclick={handlePinToggle} disabled={!active}>
               {#if active?.file.pinned}
                 <PinOff size={16} />
@@ -533,6 +600,14 @@
       <div class="viewer-placeholder">Loading file…</div>
     {:else if error}
       <div class="viewer-placeholder">{error}</div>
+    {:else if viewMode === 'markdown'}
+      {#if markdownLoading}
+        <div class="viewer-placeholder">Loading markdown…</div>
+      {:else if markdownError}
+        <div class="viewer-placeholder">{markdownError}</div>
+      {:else}
+        <pre class="file-viewer-text">{markdownContent}</pre>
+      {/if}
     {:else if !viewerUrl}
       <div class="viewer-placeholder">
         {#if isFailed}
@@ -682,6 +757,28 @@
     gap: 0.35rem;
   }
 
+  .viewer-toggle {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .viewer-toggle-button {
+    border: none;
+    background: transparent;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: var(--color-muted-foreground);
+  }
+
+  .viewer-toggle-button.active {
+    color: var(--color-foreground);
+    background: var(--color-sidebar-accent);
+  }
+
   .viewer-standard-actions {
     display: inline-flex;
     align-items: center;
@@ -692,6 +789,10 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+  }
+
+  .pdf-controls-inline.hidden {
+    display: none;
   }
 
   .viewer-standard-compact {
