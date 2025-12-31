@@ -8,7 +8,7 @@ def get_transcription_definitions() -> dict:
     """Return transcription tool definitions."""
     return {
         "Transcribe Audio": {
-            "description": "Transcribe an audio file into text and save it as a note.",
+            "description": "Transcribe an audio file into text and save it to the files workspace.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -16,6 +16,7 @@ def get_transcription_definitions() -> dict:
                     "language": {"type": "string", "description": "Language code (optional)"},
                     "model": {"type": "string", "description": "Transcription model (optional)"},
                     "output_dir": {"type": "string", "description": "Transcript output directory (optional)"},
+                    "output_name": {"type": "string", "description": "Transcript filename (optional)"},
                     "folder": {"type": "string", "description": "Notes folder for transcript (optional)"},
                 },
                 "required": ["file_path"],

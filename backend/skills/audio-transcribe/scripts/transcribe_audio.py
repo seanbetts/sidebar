@@ -75,7 +75,8 @@ def save_transcript(
     original_file: Path,
     model: str,
     output_dir: Path,
-    usage_info: Optional[Dict[str, Any]] = None
+    usage_info: Optional[Dict[str, Any]] = None,
+    output_name: Optional[str] = None,
 ) -> Path:
     """
     Save transcript to specified folder with timestamp and metadata.
@@ -93,10 +94,13 @@ def save_transcript(
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate filename with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base_name = original_file.stem
-    output_filename = f"{base_name}_{timestamp}_transcript.txt"
+    # Generate filename with timestamp (unless overridden)
+    if output_name:
+        output_filename = output_name
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_name = original_file.stem
+        output_filename = f"{base_name}_{timestamp}_transcript.txt"
     output_path = output_dir / output_filename
 
     # Create metadata header
@@ -384,6 +388,7 @@ def transcribe_audio(
     user_id: Optional[str] = None,
     temp_dir: Optional[str] = None,
     keep_local: bool = False,
+    output_name: Optional[str] = None,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -474,7 +479,14 @@ def transcribe_audio(
         print(f"✅ Transcription complete! Combined {len(transcripts)} chunks.")
         print(f"📊 Total words: {len(combined_transcript.split())}")
 
-        output_path = save_transcript(combined_transcript, path, model, out_dir, last_usage)
+        output_path = save_transcript(
+            combined_transcript,
+            path,
+            model,
+            out_dir,
+            last_usage,
+            output_name=output_name,
+        )
         print(f"💾 Transcript saved to: {output_path}")
 
         r2_path = None
@@ -500,7 +512,14 @@ def transcribe_audio(
         print(f"✅ Transcription complete!")
         print(f"📊 Total words: {len(transcript.split())}")
 
-        output_path = save_transcript(transcript, path, model, out_dir, usage_info)
+        output_path = save_transcript(
+            transcript,
+            path,
+            model,
+            out_dir,
+            usage_info,
+            output_name=output_name,
+        )
         print(f"💾 Transcript saved to: {output_path}")
 
         r2_path = None
@@ -557,6 +576,7 @@ Requirements:
     parser.add_argument("--language", default="en", help="Language hint (default: en)")
     parser.add_argument("--model", default="gpt-4o-transcribe", help="Transcription model")
     parser.add_argument("--output-dir", help="R2 folder for transcripts (default: Transcripts)")
+    parser.add_argument("--output-name", help="Output filename override (default: timestamped)")
     parser.add_argument("--chunking-strategy", help="Use 'auto' for automatic VAD-based chunking")
     parser.add_argument("--include", action="append", help="Additional info to include")
     parser.add_argument("--prompt", help="Optional text to guide the model's style")
@@ -593,6 +613,7 @@ Requirements:
             user_id=args.user_id,
             temp_dir=args.temp_dir,
             keep_local=args.keep_local,
+            output_name=args.output_name,
             chunking_strategy=chunking_strategy,
             include=args.include,
             prompt=args.prompt,
