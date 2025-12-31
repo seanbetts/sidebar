@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Globe, Pin, PinOff, Pencil, Copy, Check, Download, Archive, ArchiveRestore, Trash2, X } from 'lucide-svelte';
+  import { FileTerminal, Pin, PinOff, Pencil, Copy, Check, Download, Archive, ArchiveRestore, Trash2, X } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import type { WebsiteItem } from '$lib/stores/websites';
 
@@ -20,7 +20,7 @@
   {#if website}
     <div class="website-meta">
       <div class="title-row">
-        <Globe size={18} />
+        <FileTerminal size={18} />
         <span class="title-text">{website.title}</span>
       </div>
       <div class="website-meta-row">

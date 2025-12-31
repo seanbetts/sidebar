@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Globe, MoreHorizontal, Pin, PinOff, Pencil, Download, Archive, ArchiveRestore, Trash2 } from 'lucide-svelte';
+  import { FileTerminal, MoreHorizontal, Pin, PinOff, Pencil, Download, Archive, ArchiveRestore, Trash2 } from 'lucide-svelte';
   import type { WebsiteItem } from '$lib/stores/websites';
 
   export let site: WebsiteItem;
@@ -18,7 +18,7 @@
 <div class="website-item">
   <button class="website-main" on:click={() => onOpen(site)}>
     <span class="website-icon">
-      <Globe />
+      <FileTerminal />
     </span>
     <div class="website-text">
       <span class="website-title">{site.title}</span>
