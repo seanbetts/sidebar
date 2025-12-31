@@ -28,6 +28,7 @@
   import { ingestionAPI } from '$lib/services/api';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { ingestionStore } from '$lib/stores/ingestion';
+  import { buildIngestionStatusMessage } from '$lib/utils/ingestionStatus';
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import SpreadsheetViewer from '$lib/components/files/SpreadsheetViewer.svelte';
 
@@ -50,7 +51,7 @@
   $: jobStage = active?.job?.stage ?? null;
   $: isFailed = jobStatus === 'failed';
   $: isInProgress = Boolean(jobStatus && jobStatus !== 'ready' && jobStatus !== 'failed');
-  $: statusMessage = buildStatusMessage(active?.job);
+  $: statusMessage = buildIngestionStatusMessage(active?.job);
   $: canPrev = currentPage > 1;
   $: canNext = pageCount > 0 && currentPage < pageCount;
   $: hasMarkdown = Boolean(active?.derivatives?.some(item => item.kind === 'ai_md'));
@@ -105,25 +106,6 @@
     scale = 1;
   }
 
-  function formatStage(value: string): string {
-    return value.replace(/_/g, ' ');
-  }
-
-  function buildStatusMessage(job?: { status: string | null; stage: string | null; user_message?: string | null; error_message?: string | null }) {
-    if (!job) return 'Preparing file…';
-    if (job.status === 'failed') {
-      return job.user_message || job.error_message || 'File processing failed.';
-    }
-    if (job.user_message) {
-      return job.user_message;
-    }
-    const stage = job.stage || job.status || 'processing';
-    if (stage === 'queued') {
-      return 'Processing…';
-    }
-    const label = formatStage(stage);
-    return `${label.charAt(0).toUpperCase() + label.slice(1)}…`;
-  }
 
   async function handleDownload() {
     if (isSpreadsheet && spreadsheetActions) {
