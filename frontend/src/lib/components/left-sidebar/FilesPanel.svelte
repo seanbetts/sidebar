@@ -28,8 +28,7 @@
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import IngestionQueue from '$lib/components/files/IngestionQueue.svelte';
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
-  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-  import { buttonVariants } from '$lib/components/ui/button/index.js';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import type { FileNode } from '$lib/types/file';
   import type { IngestionListItem } from '$lib/types/ingestion';
@@ -89,9 +88,8 @@
   let renameValue = '';
   let renameItem: IngestionListItem | null = null;
   let isRenaming = false;
-  let isDeleteDialogOpen = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let deleteItem: IngestionListItem | null = null;
-  let deleteButton: HTMLButtonElement | null = null;
 
   function openViewer(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
@@ -119,12 +117,12 @@
   function requestDelete(item: IngestionListItem, event?: MouseEvent) {
     event?.stopPropagation();
     deleteItem = item;
-    isDeleteDialogOpen = true;
+    deleteDialog?.openDialog(item.file.filename_original ?? 'file');
     openMenuKey = null;
   }
 
-  async function confirmDelete() {
-    if (!deleteItem) return;
+  async function confirmDelete(): Promise<boolean> {
+    if (!deleteItem) return false;
     const fileId = deleteItem.file.id;
     try {
       await ingestionAPI.delete(fileId);
@@ -132,10 +130,11 @@
         ingestionViewerStore.clearActive();
       }
       await ingestionStore.load();
+      return true;
     } catch (error) {
       console.error('Failed to delete ingestion:', error);
+      return false;
     } finally {
-      isDeleteDialogOpen = false;
       deleteItem = null;
     }
   }
@@ -256,31 +255,11 @@
 
 </script>
 
-<AlertDialog.Root bind:open={isDeleteDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      deleteButton?.focus();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Delete file?</AlertDialog.Title>
-      <AlertDialog.Description>
-        This will permanently delete "{deleteItem?.file.filename_original}". This action cannot be undone.
-      </AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action
-        class={buttonVariants({ variant: 'destructive' })}
-        bind:ref={deleteButton}
-        onclick={confirmDelete}
-      >
-        Delete
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<DeleteDialogController
+  bind:this={deleteDialog}
+  itemType="file"
+  onConfirm={confirmDelete}
+/>
 
 {#if loading}
   <SidebarLoading message="Loading files..." />

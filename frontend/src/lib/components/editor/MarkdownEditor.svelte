@@ -6,7 +6,7 @@
   import { toast } from 'svelte-sonner';
   import { FileText } from 'lucide-svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import EditorToolbar from '$lib/components/editor/EditorToolbar.svelte';
   import { createMarkdownEditor } from '$lib/components/editor/useMarkdownEditor';
   import { useEditorActions } from '$lib/hooks/useEditorActions';
@@ -23,7 +23,7 @@
   let isRenameDialogOpen = false;
   let renameValue = '';
   let renameInput: HTMLInputElement | null = null;
-  let isDeleteDialogOpen = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let isSaveBeforeCloseDialogOpen = false;
   let isSaveBeforeRenameDialogOpen = false;
   let folderOptions: { label: string; value: string; depth: number }[] = [];
@@ -74,7 +74,6 @@
     setIsSaveBeforeCloseDialogOpen: (value) => (isSaveBeforeCloseDialogOpen = value),
     setIsSaveBeforeRenameDialogOpen: (value) => (isSaveBeforeRenameDialogOpen = value),
     setIsRenameDialogOpen: (value) => (isRenameDialogOpen = value),
-    setIsDeleteDialogOpen: (value) => (isDeleteDialogOpen = value),
     setFolderOptions: (value) => (folderOptions = value),
     getCopyTimeout: () => copyTimeout,
     setCopyTimeout: (value) => (copyTimeout = value),
@@ -110,6 +109,11 @@
 
   $: if (editor) {
     editor.setEditable(!isReadOnly);
+  }
+
+  function requestDelete() {
+    if (!currentNoteName) return;
+    deleteDialog?.openDialog(displayTitle || currentNoteName);
   }
 
   onDestroy(() => {
@@ -226,12 +230,10 @@
   </AlertDialog.Content>
 </AlertDialog.Root>
 
-<NoteDeleteDialog
-  bind:open={isDeleteDialogOpen}
+<DeleteDialogController
+  bind:this={deleteDialog}
   itemType="note"
-  itemName={displayTitle}
   onConfirm={actions.handleDelete}
-  onCancel={() => (isDeleteDialogOpen = false)}
 />
 
 <AlertDialog.Root bind:open={isSaveBeforeCloseDialogOpen}>
@@ -285,7 +287,7 @@
       onDownload={actions.handleDownload}
       onArchive={actions.handleArchive}
       onUnarchive={actions.handleUnarchive}
-      onDelete={() => (isDeleteDialogOpen = true)}
+      onDelete={requestDelete}
     />
   {/if}
 

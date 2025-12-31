@@ -32,6 +32,7 @@
   import { buildIngestionStatusMessage } from '$lib/utils/ingestionStatus';
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import SpreadsheetViewer from '$lib/components/files/SpreadsheetViewer.svelte';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 
   $: active = $ingestionViewerStore.active;
   $: loading = $ingestionViewerStore.loading;
@@ -73,6 +74,7 @@
   let isRenameOpen = false;
   let renameValue = '';
   let isRenaming = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let textContent = '';
   let textError = '';
   let isTextLoading = false;
@@ -207,15 +209,21 @@
     }
   }
 
-  async function handleDelete() {
+  function requestDelete() {
     if (!active) return;
-    if (!browser || !confirm('Delete this file?')) return;
+    deleteDialog?.openDialog(active.file.filename_original ?? 'file');
+  }
+
+  async function confirmDelete(): Promise<boolean> {
+    if (!active) return false;
     try {
       await ingestionAPI.delete(active.file.id);
       dispatchCacheEvent('file.deleted');
       ingestionViewerStore.clearActive();
+      return true;
     } catch (error) {
       console.error('Failed to delete file:', error);
+      return false;
     }
   }
 
@@ -533,7 +541,7 @@
           size="icon"
           variant="ghost"
           class="viewer-control"
-          onclick={handleDelete}
+          onclick={requestDelete}
           disabled={!active}
           aria-label="Delete file"
           title="Delete file"
@@ -615,7 +623,7 @@
                 <span>{isSpreadsheet ? 'Copy CSV' : 'Copy'}</span>
               {/if}
             </button>
-            <button class="viewer-menu-item" onclick={handleDelete} disabled={!active}>
+            <button class="viewer-menu-item" onclick={requestDelete} disabled={!active}>
               <Trash2 size={16} />
               <span>Delete</span>
             </button>
@@ -706,6 +714,12 @@
   isBusy={isRenaming}
   onConfirm={confirmRename}
   onCancel={() => (isRenameOpen = false)}
+/>
+
+<DeleteDialogController
+  bind:this={deleteDialog}
+  itemType="file"
+  onConfirm={confirmDelete}
 />
 
 <style>

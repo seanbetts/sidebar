@@ -9,7 +9,7 @@
   } from 'lucide-svelte';
   import { treeStore } from '$lib/stores/tree';
   import { editorStore } from '$lib/stores/editor';
-  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import FileTreeContextMenu from '$lib/components/files/FileTreeContextMenu.svelte';
   import { useFileActions } from '$lib/hooks/useFileActions';
   import type { FileNode } from '$lib/types/file';
@@ -24,7 +24,7 @@
 
   let isEditing = false;
   let editedName = node.name;
-  let isDeleteDialogOpen = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let editInput: HTMLInputElement | null = null;
   let folderOptions: { label: string; value: string; depth: number }[] = [];
 
@@ -44,7 +44,7 @@
     getEditedName: () => editedName,
     setEditedName: (value) => (editedName = value),
     setIsEditing: (value) => (isEditing = value),
-    setIsDeleteDialogOpen: (value) => (isDeleteDialogOpen = value),
+    requestDelete: () => deleteDialog?.openDialog(node.name),
     setFolderOptions: (value) => (folderOptions = value),
     getDisplayName: () => displayName,
     editorStore,
@@ -76,12 +76,10 @@
 
 </script>
 
-<NoteDeleteDialog
-  bind:open={isDeleteDialogOpen}
+<DeleteDialogController
+  bind:this={deleteDialog}
   itemType={itemType}
-  itemName={node.name}
   onConfirm={actions.confirmDelete}
-  onCancel={() => (isDeleteDialogOpen = false)}
 />
 
 <div class="tree-node" style="padding-left: {level * 1}rem;">
