@@ -19,8 +19,8 @@ from uuid import uuid4
 from sqlalchemy import and_, or_, text
 
 from PIL import Image
-from pdfminer.high_level import extract_text as pdfminer_extract_text
-from pdfminer.layout import LAParams
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LAParams, LTTextContainer, LTTextLine
 from pypdf import PdfReader
 from pptx import Presentation
 from docx import Document
@@ -52,26 +52,55 @@ _COMMON_SHORT_WORDS = {
     "a",
     "i",
     "an",
+    "and",
     "as",
     "at",
     "be",
     "by",
+    "can",
     "do",
+    "for",
+    "from",
+    "had",
+    "has",
+    "have",
     "he",
     "if",
     "in",
+    "into",
     "is",
     "it",
     "me",
+    "might",
+    "may",
     "no",
+    "not",
     "of",
     "on",
     "or",
+    "our",
+    "out",
     "so",
+    "than",
+    "that",
+    "the",
+    "them",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
     "to",
     "up",
     "us",
+    "was",
+    "were",
     "we",
+    "with",
+    "will",
+    "would",
+    "you",
+    "your",
 }
 
 
@@ -351,7 +380,7 @@ def _merge_split_words(line: str) -> str:
                 left = current.lower()
                 right = next_part.lower()
                 if (
-                    (len(current) <= 2 or len(next_part) <= 2)
+                    (len(current) <= 2 and len(next_part) <= 2)
                     and left not in _COMMON_SHORT_WORDS
                     and right not in _COMMON_SHORT_WORDS
                     and not (current[0].isupper() and next_part[0].isupper())
@@ -361,6 +390,37 @@ def _merge_split_words(line: str) -> str:
         merged.append(current)
         idx += 1
     return " ".join(merged)
+
+
+def _order_pdf_lines(lines: list[tuple[float, float, str]], page_width: float) -> list[str]:
+    if not lines:
+        return []
+    xs = sorted(x for x, _, _ in lines)
+    left_x = xs[0]
+    right_x = xs[-1]
+    inferred_width = right_x - left_x
+    if page_width <= 0:
+        page_width = inferred_width
+    split_x: float | None = None
+    if page_width > 0 and len(xs) >= 6:
+        gaps = [(xs[i + 1] - xs[i], i) for i in range(len(xs) - 1)]
+        max_gap, gap_index = max(gaps, key=lambda item: item[0])
+        if max_gap > page_width * 0.08:
+            split_x = (xs[gap_index] + xs[gap_index + 1]) / 2
+
+    def sort_lines(values: list[tuple[float, float, str]]) -> list[str]:
+        return [text for _, _, text in sorted(values, key=lambda item: (-item[1], item[0]))]
+
+    if split_x is None:
+        return sort_lines(lines)
+
+    left = [line for line in lines if line[0] <= split_x]
+    right = [line for line in lines if line[0] > split_x]
+    ordered = sort_lines(left)
+    if left and right:
+        ordered.append("")
+    ordered.extend(sort_lines(right))
+    return ordered
 
 
 def _should_merge_lines(current: str, next_line: str) -> bool:
@@ -402,7 +462,8 @@ def _clean_extracted_text(text: str) -> str:
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r" *\n *", "\n", text)
     text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)
-    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text)
+    text = re.sub(r"([a-z]{4,})([A-Z][a-z]{2,})", r"\1 \2", text)
+    text = re.sub(r"([a-z])([A-Z]{2,})", r"\1 \2", text)
     text = re.sub(r"(\d)([A-Za-z])", r"\1 \2", text)
     text = re.sub(r"([a-z])(\d)", r"\1 \2", text)
     lines = [line.strip() for line in text.splitlines()]
@@ -417,16 +478,25 @@ def _extract_pdf_text(pdf_path: Path) -> str:
     text = ""
     try:
         laparams = LAParams()
-        reader = PdfReader(str(pdf_path))
         sections: list[str] = []
-        for index in range(len(reader.pages)):
-            page_text = pdfminer_extract_text(
-                str(pdf_path),
-                laparams=laparams,
-                page_numbers=[index],
-                maxpages=1,
-            ) or ""
-            page_text = _clean_extracted_text(page_text)
+        for index, layout in enumerate(extract_pages(str(pdf_path), laparams=laparams)):
+            lines: list[tuple[float, float, str]] = []
+            page_width = 0.0
+            if hasattr(layout, "bbox"):
+                page_width = float(layout.bbox[2] - layout.bbox[0])
+            for element in layout:
+                if not isinstance(element, LTTextContainer):
+                    continue
+                for line in element:
+                    if not isinstance(line, LTTextLine):
+                        continue
+                    line_text = line.get_text().strip()
+                    if not line_text:
+                        continue
+                    x0, y0, _, _ = line.bbox
+                    lines.append((float(x0), float(y0), line_text))
+            ordered_lines = _order_pdf_lines(lines, page_width)
+            page_text = _clean_extracted_text("\n".join(ordered_lines))
             sections.append(f"## Page {index + 1}\n\n{page_text.strip()}")
         text = "\n\n".join(sections).strip()
     except Exception as exc:
@@ -852,6 +922,8 @@ def worker_loop() -> None:
 
             try:
                 record = _get_file(db, job)
+                if record.user_id:
+                    db.execute(text("SET app.user_id = :user_id"), {"user_id": str(record.user_id)})
                 source_path = _staging_path(str(record.id))
                 if not source_path.exists():
                     raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)
@@ -899,11 +971,13 @@ def worker_loop() -> None:
             except IngestionError as error:
                 if error.code == "JOB_HALTED":
                     continue
+                db.rollback()
                 _retry_or_fail(db, job, error)
                 if job.status == "failed" and _should_cleanup_after_failure(error):
                     _cleanup_staging(str(job.file_id))
             except Exception as error:
                 unknown_error = IngestionError("UNKNOWN_ERROR", str(error), retryable=True)
+                db.rollback()
                 _retry_or_fail(db, job, unknown_error)
                 if job.status == "failed" and _should_cleanup_after_failure(unknown_error):
                     _cleanup_staging(str(job.file_id))

@@ -81,6 +81,13 @@ function createIngestionStore() {
         };
       });
     },
+    removeItem(fileId: string) {
+      update(state => ({
+        ...state,
+        localUploads: state.localUploads.filter(item => item.file.id !== fileId),
+        items: state.items.filter(item => item.file.id !== fileId)
+      }));
+    },
     updatePinned(fileId: string, pinned: boolean) {
       update(state => ({
         ...state,
