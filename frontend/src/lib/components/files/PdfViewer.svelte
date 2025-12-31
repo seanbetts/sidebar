@@ -239,6 +239,7 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
+    container-type: inline-size;
   }
 
   .pdf-thumbs {
@@ -302,5 +303,15 @@
 
   .pdf-canvas {
     display: block;
+  }
+
+  @container (max-width: 720px) {
+    .pdf-thumbs {
+      display: none;
+    }
+
+    .pdf-viewer-main {
+      width: 100%;
+    }
   }
 </style>
