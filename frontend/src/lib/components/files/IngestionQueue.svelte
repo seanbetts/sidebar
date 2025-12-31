@@ -2,6 +2,7 @@
   import { Pause, Play, X } from 'lucide-svelte';
   import { ingestionAPI } from '$lib/services/api';
   import { ingestionStore } from '$lib/stores/ingestion';
+  import { buildIngestionStatusMessage } from '$lib/utils/ingestionStatus';
   import type { IngestionListItem } from '$lib/types/ingestion';
 
   export let items: IngestionListItem[] = [];
@@ -18,12 +19,6 @@
     return Math.round((index / (stageOrder.length - 1)) * 100);
   }
 
-  function getStatusLabel(item: IngestionListItem): string {
-    if (item.job.status === 'uploading' && typeof item.job.progress === 'number') {
-      return `uploading ${Math.round(item.job.progress)}%`;
-    }
-    return item.job.stage || item.job.status || 'queued';
-  }
 
   async function handlePause(fileId: string) {
     try {
@@ -60,7 +55,7 @@
       <div class="ingestion-header">
         <span class="filename">{item.file.filename_original}</span>
         <div class="status-row">
-          <span class="status">{getStatusLabel(item)}</span>
+          <span class="status">{buildIngestionStatusMessage(item.job)}</span>
           <div class="actions">
             {#if item.job.status === 'processing'}
               <button class="action" onclick={() => handlePause(item.file.id)} aria-label="Pause">
