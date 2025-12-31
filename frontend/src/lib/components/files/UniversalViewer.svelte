@@ -6,14 +6,21 @@
     ArrowUpDown,
     ChevronLeft,
     ChevronRight,
+    Copy,
     Download,
+    FolderInput,
     Minus,
+    Pencil,
+    Pin,
+    PinOff,
     Plus,
-    Printer,
+    Trash2,
     X
   } from 'lucide-svelte';
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import { Button } from '$lib/components/ui/button';
+  import { ingestionAPI } from '$lib/services/api';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
   $: active = $ingestionViewerStore.active;
   $: loading = $ingestionViewerStore.loading;
@@ -29,6 +36,7 @@
   $: fileType = getFileType(filename, active?.file.mime_original);
   $: canPrev = currentPage > 1;
   $: canNext = pageCount > 0 && currentPage < pageCount;
+  $: hasMarkdown = Boolean(active?.derivatives?.some(item => item.kind === 'ai_md'));
 
   let currentPage = 1;
   let pageCount = 0;
@@ -83,29 +91,39 @@
     URL.revokeObjectURL(url);
   }
 
-  async function handlePrint() {
-    if (!viewerUrl || !browser) return;
-    const response = await fetch(viewerUrl, { credentials: 'include' });
-    if (!response.ok) return;
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const frame = document.createElement('iframe');
-    frame.style.position = 'fixed';
-    frame.style.right = '0';
-    frame.style.bottom = '0';
-    frame.style.width = '0';
-    frame.style.height = '0';
-    frame.style.border = '0';
-    frame.src = url;
-    frame.onload = () => {
-      frame.contentWindow?.focus();
-      frame.contentWindow?.print();
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        frame.remove();
-      }, 500);
-    };
-    document.body.appendChild(frame);
+  async function handleCopyMarkdown() {
+    if (!active || !hasMarkdown) return;
+    try {
+      const response = await ingestionAPI.getContent(active.file.id, 'ai_md');
+      const text = await response.text();
+      if (browser && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch (error) {
+      console.error('Failed to copy markdown:', error);
+    }
+  }
+
+  async function handleDelete() {
+    if (!active) return;
+    if (!browser || !confirm('Delete this file?')) return;
+    try {
+      await ingestionAPI.delete(active.file.id);
+      dispatchCacheEvent('file.deleted');
+      ingestionViewerStore.clearActive();
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+    }
+  }
+
+  async function handlePinToggle() {
+    if (!active) return;
+    try {
+      await ingestionAPI.setPinned(active.file.id, !active.file.pinned);
+      await ingestionViewerStore.open(active.file.id);
+    } catch (error) {
+      console.error('Failed to update pin:', error);
+    }
   }
 
   function stripExtension(name: string): string {
@@ -195,25 +213,75 @@
           <ArrowUpDown size={16} />
         </Button>
         <div class="viewer-divider"></div>
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
-          onclick={handleDownload}
-          aria-label="Download file"
-        >
-          <Download size={16} />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
-          onclick={handlePrint}
-          aria-label="Print file"
-        >
-          <Printer size={16} />
-        </Button>
       {/if}
+      <div class="viewer-divider"></div>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="viewer-control"
+        onclick={handlePinToggle}
+        disabled={!active}
+        aria-label="Pin file"
+        title="Pin file"
+      >
+        {#if active?.file.pinned}
+          <PinOff size={16} />
+        {:else}
+          <Pin size={16} />
+        {/if}
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="viewer-control"
+        disabled
+        aria-label="Rename file"
+        title="Rename file (coming soon)"
+      >
+        <Pencil size={16} />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="viewer-control"
+        disabled
+        aria-label="Move file"
+        title="Move file (coming soon)"
+      >
+        <FolderInput size={16} />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="viewer-control"
+        onclick={handleDownload}
+        aria-label="Download file"
+        title="Download file"
+      >
+        <Download size={16} />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="viewer-control"
+        onclick={handleCopyMarkdown}
+        disabled={!hasMarkdown}
+        aria-label="Copy markdown"
+        title={hasMarkdown ? 'Copy markdown' : 'Markdown not available'}
+      >
+        <Copy size={16} />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="viewer-control"
+        onclick={handleDelete}
+        disabled={!active}
+        aria-label="Delete file"
+        title="Delete file"
+      >
+        <Trash2 size={16} />
+      </Button>
       <Button size="icon" variant="ghost" class="viewer-close" onclick={handleClose} aria-label="Close file viewer">
         <X size={16} />
       </Button>
