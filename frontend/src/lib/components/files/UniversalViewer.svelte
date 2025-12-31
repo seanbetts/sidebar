@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import {
-    ArrowLeftRight,
-    ArrowUpDown,
+    GalleryHorizontal,
+    GalleryVertical,
     ChevronLeft,
     ChevronRight,
     Copy,
@@ -216,7 +216,7 @@
           data-active={fitMode === 'width'}
           aria-label="Fit to width"
         >
-          <ArrowLeftRight size={16} />
+          <GalleryHorizontal size={16} />
         </Button>
         <Button
           size="icon"
@@ -226,7 +226,7 @@
           data-active={fitMode === 'height'}
           aria-label="Fit to height"
         >
-          <ArrowUpDown size={16} />
+          <GalleryVertical size={16} />
         </Button>
       {/if}
       <div class="viewer-divider"></div>
