@@ -3,7 +3,7 @@
   import {
     ChevronRight,
     ChevronDown,
-    File,
+    FileText,
     Folder,
     FolderOpen
   } from 'lucide-svelte';
@@ -108,7 +108,7 @@
         </span>
       {:else}
         <span class="icon file-icon">
-          <File size={16} />
+          <FileText size={16} />
         </span>
       {/if}
       {#if isEditing}

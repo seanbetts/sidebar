@@ -2,7 +2,7 @@
   import {
     ChevronDown,
     ChevronRight,
-    File,
+    FileText,
     Image,
     Folder,
     FolderOpen,
@@ -264,7 +264,7 @@
                     {#if item.file.category === 'images'}
                       <Image size={16} />
                     {:else}
-                      <File size={16} />
+                      <FileText size={16} />
                     {/if}
                   </span>
                   <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
@@ -380,7 +380,7 @@
                     {#if category === 'images'}
                       <Image size={16} />
                     {:else}
-                      <File size={16} />
+                      <FileText size={16} />
                     {/if}
                   </span>
                   <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
@@ -464,7 +464,7 @@
                         {#if item.file.category === 'images'}
                           <Image size={16} />
                         {:else}
-                          <File size={16} />
+                          <FileText size={16} />
                         {/if}
                       </span>
                       <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
