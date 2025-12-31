@@ -212,21 +212,21 @@
           size="icon"
           variant="ghost"
           class="viewer-control"
-          onclick={() => setFitMode('width')}
-          data-active={fitMode === 'width'}
-          aria-label="Fit to width"
-        >
-          <GalleryHorizontal size={16} />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
           onclick={() => setFitMode('height')}
           data-active={fitMode === 'height'}
           aria-label="Fit to height"
         >
           <GalleryVertical size={16} />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={() => setFitMode('width')}
+          data-active={fitMode === 'width'}
+          aria-label="Fit to width"
+        >
+          <GalleryHorizontal size={16} />
         </Button>
       {/if}
       <div class="viewer-divider"></div>

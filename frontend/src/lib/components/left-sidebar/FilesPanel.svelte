@@ -19,6 +19,8 @@
   import { ingestionStore } from '$lib/stores/ingestion';
   import { ingestionAPI } from '$lib/services/api';
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
+  import { websitesStore } from '$lib/stores/websites';
+  import { editorStore, currentNoteId } from '$lib/stores/editor';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
@@ -81,6 +83,9 @@
 
   function openViewer(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
+    websitesStore.clearActive();
+    editorStore.reset();
+    currentNoteId.set(null);
     ingestionViewerStore.open(item.file.id);
   }
 
