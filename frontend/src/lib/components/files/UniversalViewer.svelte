@@ -13,6 +13,7 @@
     X
   } from 'lucide-svelte';
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
+  import { Button } from '$lib/components/ui/button';
 
   $: active = $ingestionViewerStore.active;
   $: loading = $ingestionViewerStore.loading;
@@ -143,49 +144,79 @@
     </div>
     <div class="file-viewer-controls">
       {#if isPdf}
-        <button class="viewer-control" on:click={prevPage} disabled={!canPrev} aria-label="Previous page">
-          <ChevronLeft size={16} />
-        </button>
-        <span class="viewer-page">{currentPage} / {pageCount || 1}</span>
-        <button class="viewer-control" on:click={nextPage} disabled={!canNext} aria-label="Next page">
-          <ChevronRight size={16} />
-        </button>
-        <div class="viewer-divider"></div>
-        <button class="viewer-control" on:click={zoomOut} aria-label="Zoom out">
-          <Minus size={16} />
-        </button>
-        <span class="viewer-scale">{Math.round((isPdf ? normalizedScale : scale) * 100)}%</span>
-        <button class="viewer-control" on:click={zoomIn} aria-label="Zoom in">
-          <Plus size={16} />
-        </button>
-        <div class="viewer-divider"></div>
-        <button
+        <Button
+          size="icon"
+          variant="ghost"
           class="viewer-control"
-          on:click={() => setFitMode('width')}
+          onclick={prevPage}
+          disabled={!canPrev}
+          aria-label="Previous page"
+        >
+          <ChevronLeft size={16} />
+        </Button>
+        <span class="viewer-page">{currentPage} / {pageCount || 1}</span>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={nextPage}
+          disabled={!canNext}
+          aria-label="Next page"
+        >
+          <ChevronRight size={16} />
+        </Button>
+        <div class="viewer-divider"></div>
+        <Button size="icon" variant="ghost" class="viewer-control" onclick={zoomOut} aria-label="Zoom out">
+          <Minus size={16} />
+        </Button>
+        <span class="viewer-scale">{Math.round((isPdf ? normalizedScale : scale) * 100)}%</span>
+        <Button size="icon" variant="ghost" class="viewer-control" onclick={zoomIn} aria-label="Zoom in">
+          <Plus size={16} />
+        </Button>
+        <div class="viewer-divider"></div>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={() => setFitMode('width')}
           data-active={fitMode === 'width'}
           aria-label="Fit to width"
         >
           <ArrowLeftRight size={16} />
-        </button>
-        <button
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
           class="viewer-control"
-          on:click={() => setFitMode('height')}
+          onclick={() => setFitMode('height')}
           data-active={fitMode === 'height'}
           aria-label="Fit to height"
         >
           <ArrowUpDown size={16} />
-        </button>
+        </Button>
         <div class="viewer-divider"></div>
-        <button class="viewer-control" on:click={handleDownload} aria-label="Download file">
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={handleDownload}
+          aria-label="Download file"
+        >
           <Download size={16} />
-        </button>
-        <button class="viewer-control" on:click={handlePrint} aria-label="Print file">
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={handlePrint}
+          aria-label="Print file"
+        >
           <Printer size={16} />
-        </button>
+        </Button>
       {/if}
-      <button class="viewer-close" on:click={handleClose} aria-label="Close file viewer">
-      <X size={16} />
-    </button>
+      <Button size="icon" variant="ghost" class="viewer-close" onclick={handleClose} aria-label="Close file viewer">
+        <X size={16} />
+      </Button>
     </div>
   </div>
 
@@ -229,7 +260,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.85rem 1.2rem;
+    padding: 0.63rem 1.2rem;
     border-bottom: 1px solid var(--color-border);
     gap: 1rem;
   }
@@ -292,36 +323,7 @@
     gap: 0.35rem;
   }
 
-  .viewer-close {
-    border: none;
-    background: transparent;
-    color: var(--color-muted-foreground);
-    cursor: pointer;
-    padding: 0.25rem;
-  }
-
-  .viewer-close:hover {
-    color: var(--color-foreground);
-  }
-
-  .viewer-control {
-    border: none;
-    background: transparent;
-    color: var(--color-muted-foreground);
-    cursor: pointer;
-    padding: 0.25rem;
-  }
-
   .viewer-control[data-active='true'] {
-    color: var(--color-foreground);
-  }
-
-  .viewer-control:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .viewer-control:hover:not(:disabled) {
     color: var(--color-foreground);
   }
 
