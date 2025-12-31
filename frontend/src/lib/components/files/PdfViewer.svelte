@@ -142,12 +142,14 @@
     const baseViewport = page.getViewport({ scale: 1 });
     let fitScale = 1;
     let heightFitScale = 1;
+    let widthFitScale = 1;
     if (containerWidth > 0 && containerHeight > 0) {
       heightFitScale = containerHeight / baseViewport.height;
       if (fitMode === 'width') {
         fitScale = containerWidth / baseViewport.width;
       } else if (fitMode === 'height') {
-        fitScale = heightFitScale;
+        widthFitScale = containerWidth / baseViewport.width;
+        fitScale = Math.min(heightFitScale, widthFitScale);
       } else {
         fitScale = Math.min(heightFitScale, containerWidth / baseViewport.width);
       }
@@ -300,7 +302,5 @@
 
   .pdf-canvas {
     display: block;
-    max-width: 100%;
-    height: auto;
   }
 </style>
