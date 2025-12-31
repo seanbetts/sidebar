@@ -382,7 +382,9 @@ def _parse_cell_reference(cell_ref: str) -> tuple[int, int]:
     return int(row_part) - 1, _column_index(column_part)
 
 
-def _parse_range(range_ref: object) -> tuple[int, int, int, int]:
+def _parse_range(
+    range_ref: object, row_count: int | None = None, col_count: int | None = None
+) -> tuple[int, int, int, int]:
     if isinstance(range_ref, str):
         if ":" in range_ref:
             start_ref, end_ref = range_ref.split(":", 1)
@@ -398,6 +400,7 @@ def _parse_range(range_ref: object) -> tuple[int, int, int, int]:
         )
     if isinstance(range_ref, (list, tuple)):
         parts = list(range_ref)
+        numeric_candidates: list[tuple[int, int, int, int]] = []
         if len(parts) == 2:
             start_ref, end_ref = parts
             if isinstance(start_ref, str) and isinstance(end_ref, str):
@@ -417,20 +420,49 @@ def _parse_range(range_ref: object) -> tuple[int, int, int, int]:
             ):
                 start_row, start_col = int(start_ref[0]), int(start_ref[1])
                 end_row, end_col = int(end_ref[0]), int(end_ref[1])
-                return (
+                numeric_candidates.append(
+                    (
+                        min(start_row, end_row),
+                        min(start_col, end_col),
+                        max(start_row, end_row),
+                        max(start_col, end_col),
+                    )
+                )
+        if len(parts) == 4 and all(isinstance(part, (int, float)) for part in parts):
+            start_row, start_col, end_row, end_col = [int(part) for part in parts]
+            numeric_candidates.append(
+                (
                     min(start_row, end_row),
                     min(start_col, end_col),
                     max(start_row, end_row),
                     max(start_col, end_col),
                 )
-        if len(parts) == 4 and all(isinstance(part, (int, float)) for part in parts):
-            start_row, start_col, end_row, end_col = [int(part) for part in parts]
-            return (
-                min(start_row, end_row),
-                min(start_col, end_col),
-                max(start_row, end_row),
-                max(start_col, end_col),
             )
+            numeric_candidates.append(
+                (
+                    min(start_col, end_col),
+                    min(start_row, end_row),
+                    max(start_col, end_col),
+                    max(start_row, end_row),
+                )
+            )
+        if numeric_candidates:
+            for candidate in numeric_candidates:
+                if row_count is None or col_count is None:
+                    return candidate
+                if candidate[0] < row_count and candidate[1] < col_count:
+                    return candidate
+            adjusted_candidates: list[tuple[int, int, int, int]] = []
+            for start_row, start_col, end_row, end_col in numeric_candidates:
+                if min(start_row, start_col, end_row, end_col) >= 1:
+                    adjusted_candidates.append(
+                        (start_row - 1, start_col - 1, end_row - 1, end_col - 1)
+                    )
+            for candidate in adjusted_candidates:
+                if row_count is None or col_count is None:
+                    return candidate
+                if candidate[0] < row_count and candidate[1] < col_count:
+                    return candidate
     return 0, 0, 0, 0
 
 
@@ -445,12 +477,13 @@ def _normalize_grid(rows: list[list[object]]) -> list[list[object]]:
     return normalized
 
 
-def _expand_merged_cells(rows: list[list[object]], merged_ranges: list[str]) -> list[list[object]]:
+def _expand_merged_cells(rows: list[list[object]], merged_ranges: list[object]) -> list[list[object]]:
     if not rows or not merged_ranges:
         return rows
     max_columns = max(len(row) for row in rows) if rows else 0
+    row_count = len(rows)
     for range_ref in merged_ranges:
-        start_row, start_col, end_row, end_col = _parse_range(range_ref)
+        start_row, start_col, end_row, end_col = _parse_range(range_ref, row_count, max_columns)
         required_rows = end_row + 1
         required_cols = end_col + 1
         while len(rows) < required_rows:

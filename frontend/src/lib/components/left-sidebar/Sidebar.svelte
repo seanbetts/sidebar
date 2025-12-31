@@ -44,6 +44,7 @@
   let settingsDialog: { handleProfileImageError: () => void } | null = null;
   let profileImageSrc = '';
   let isUploadingFile = false;
+  let pendingUploadId: string | null = null;
   let fileInput: HTMLInputElement | null = null;
   const sidebarLogoSrc = '/images/logo.svg';
   let isMounted = false;
@@ -192,9 +193,14 @@
 
     isUploadingFile = true;
     try {
-      await ingestionAPI.upload(selected);
+      const { file_id } = await ingestionAPI.upload(selected);
       await ingestionStore.load();
       ingestionStore.startPolling();
+      websitesStore.clearActive();
+      editorStore.reset();
+      currentNoteId.set(null);
+      pendingUploadId = file_id;
+      ingestionViewerStore.open(file_id);
     } catch (error) {
       console.error('Failed to upload file:', error);
       errorTitle = 'Unable to upload file';
@@ -206,6 +212,16 @@
       if (input) {
         input.value = '';
       }
+    }
+  }
+
+  $: if (pendingUploadId) {
+    const item = $ingestionStore.items.find(entry => entry.file.id === pendingUploadId);
+    if (item?.job.status === 'ready' && item.recommended_viewer) {
+      ingestionViewerStore.open(pendingUploadId);
+      pendingUploadId = null;
+    } else if (item?.job.status === 'failed') {
+      pendingUploadId = null;
     }
   }
 
