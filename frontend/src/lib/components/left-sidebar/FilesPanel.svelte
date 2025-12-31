@@ -73,7 +73,7 @@
   }, {});
   let retryingIds = new Set<string>();
   let expandedCategories = new Set<string>();
-  let openMenuId: string | null = null;
+  let openMenuKey: string | null = null;
 
   function openViewer(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
@@ -107,11 +107,11 @@
   onMount(() => {
     ingestionStore.startPolling();
     const handleDocumentClick = (event: MouseEvent) => {
-      if (!openMenuId) return;
+      if (!openMenuKey) return;
       const target = event.target as HTMLElement | null;
       const root = target?.closest<HTMLElement>('[data-ingested-menu-root]');
-      if (!root || root.dataset.ingestedMenuRoot !== openMenuId) {
-        openMenuId = null;
+      if (!root || root.dataset.ingestedMenuRoot !== openMenuKey) {
+        openMenuKey = null;
       }
     };
     document.addEventListener('click', handleDocumentClick);
@@ -145,9 +145,9 @@
     return name.slice(0, index);
   }
 
-  function toggleMenu(event: MouseEvent, fileId: string) {
+  function toggleMenu(event: MouseEvent, menuKey: string) {
     event.stopPropagation();
-    openMenuId = openMenuId === fileId ? null : fileId;
+    openMenuKey = openMenuKey === menuKey ? null : menuKey;
   }
 
   async function handlePinToggle(item: IngestionListItem) {
@@ -161,7 +161,7 @@
     } catch (error) {
       console.error('Failed to update pin:', error);
     } finally {
-      openMenuId = null;
+      openMenuKey = null;
     }
   }
 
@@ -179,7 +179,7 @@
     } catch (error) {
       console.error('Failed to download file:', error);
     } finally {
-      openMenuId = null;
+      openMenuKey = null;
     }
   }
 
@@ -190,7 +190,7 @@
     } catch (error) {
       console.error('Failed to delete ingestion:', error);
     } finally {
-      openMenuId = null;
+      openMenuKey = null;
     }
   }
 
@@ -218,7 +218,7 @@
         {#if pinnedItems.length > 0}
           <div class="files-block-list">
             {#each pinnedItems as item (item.file.id)}
-              <div class="ingested-row" data-ingested-menu-root={item.file.id}>
+              <div class="ingested-row" data-ingested-menu-root={`pinned-${item.file.id}`}>
                 <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
                   <span class="ingested-icon">
                     {#if item.file.category === 'images'}
@@ -231,12 +231,12 @@
                 </button>
                 <button
                   class="ingested-menu"
-                  onclick={(event) => toggleMenu(event, item.file.id)}
+                  onclick={(event) => toggleMenu(event, `pinned-${item.file.id}`)}
                   aria-label="File actions"
                 >
                   <MoreHorizontal size={14} />
                 </button>
-                {#if openMenuId === item.file.id}
+                {#if openMenuKey === `pinned-${item.file.id}`}
                   <div class="ingested-menu-dropdown">
                     <button class="menu-item" disabled>
                       <Pencil size={14} />
@@ -338,7 +338,7 @@
           </div>
           {#if expandedCategories.has(category)}
             {#each categorizedItems[category] as item (item.file.id)}
-              <div class="ingested-row ingested-row--nested" data-ingested-menu-root={item.file.id}>
+              <div class="ingested-row ingested-row--nested" data-ingested-menu-root={`files-${item.file.id}`}>
                 <button class="ingested-item ingested-item--file ingested-item--nested" onclick={() => openViewer(item)}>
                   <span class="ingested-icon">
                     {#if category === 'images'}
@@ -351,12 +351,12 @@
                 </button>
                 <button
                   class="ingested-menu"
-                  onclick={(event) => toggleMenu(event, item.file.id)}
+                  onclick={(event) => toggleMenu(event, `files-${item.file.id}`)}
                   aria-label="File actions"
                 >
                   <MoreHorizontal size={14} />
                 </button>
-                {#if openMenuId === item.file.id}
+                {#if openMenuKey === `files-${item.file.id}`}
                   <div class="ingested-menu-dropdown">
                     <button class="menu-item" disabled>
                       <Pencil size={14} />
@@ -426,7 +426,7 @@
             <Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
               <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
                 {#each readyItems as item (item.file.id)}
-                  <div class="ingested-row" data-ingested-menu-root={item.file.id}>
+                  <div class="ingested-row" data-ingested-menu-root={`recent-${item.file.id}`}>
                     <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
                       <span class="ingested-icon">
                         {#if item.file.category === 'images'}
@@ -439,12 +439,12 @@
                     </button>
                     <button
                       class="ingested-menu"
-                      onclick={(event) => toggleMenu(event, item.file.id)}
+                      onclick={(event) => toggleMenu(event, `recent-${item.file.id}`)}
                       aria-label="File actions"
                     >
                       <MoreHorizontal size={14} />
                     </button>
-                    {#if openMenuId === item.file.id}
+                    {#if openMenuKey === `recent-${item.file.id}`}
                       <div class="ingested-menu-dropdown">
                         <button class="menu-item" disabled>
                           <Pencil size={14} />
@@ -570,6 +570,7 @@
     white-space: nowrap;
     flex: 1;
     min-width: 0;
+    max-width: 100%;
   }
 
   .ingested-row {
@@ -581,12 +582,14 @@
   }
 
   .ingested-row--nested {
-    margin-left: 1.6rem;
+    padding-left: 1.6rem;
   }
 
   .ingested-item--file {
     justify-content: flex-start;
     font-size: 0.875rem;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .tree-node {
