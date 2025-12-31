@@ -282,15 +282,23 @@ def _load_audio_transcriber() -> Callable[..., dict]:
     global _audio_transcriber
     if _audio_transcriber is not None:
         return _audio_transcriber
-    skill_path = (
-        Path(__file__).resolve().parents[2]
-        / "skills"
-        / "audio-transcribe"
-        / "scripts"
-        / "transcribe_audio.py"
-    )
-    if not skill_path.exists():
-        raise IngestionError("TRANSCRIPTION_UNAVAILABLE", "Audio transcription skill not found", retryable=False)
+    candidate_roots = [
+        Path(settings.skills_dir),
+        Path(__file__).resolve().parents[2] / "skills",
+    ]
+    skill_path = None
+    for root in candidate_roots:
+        candidate = root / "audio-transcribe" / "scripts" / "transcribe_audio.py"
+        if candidate.exists():
+            skill_path = candidate
+            break
+    if skill_path is None:
+        attempted = ", ".join(str(root / "audio-transcribe" / "scripts" / "transcribe_audio.py") for root in candidate_roots)
+        raise IngestionError(
+            "TRANSCRIPTION_UNAVAILABLE",
+            f"Audio transcription skill not found. Checked: {attempted}",
+            retryable=False,
+        )
     spec = importlib.util.spec_from_file_location("audio_transcribe_skill", skill_path)
     if not spec or not spec.loader:
         raise IngestionError("TRANSCRIPTION_UNAVAILABLE", "Audio transcription skill could not be loaded", retryable=False)
@@ -305,9 +313,17 @@ def _load_audio_transcriber() -> Callable[..., dict]:
 
 def _transcribe_audio(source_path: Path, record: IngestedFile) -> str:
     transcriber = _load_audio_transcriber()
+    temp_root = _derivative_dir(str(record.id))
+    temp_root.mkdir(parents=True, exist_ok=True)
+    filename = Path(record.filename_original).name or "audio"
+    if "." not in filename:
+        extension = _detect_extension(record.filename_original, record.mime_original or "")
+        filename = f"{filename}{extension or ''}"
+    temp_path = temp_root / filename
+    shutil.copyfile(source_path, temp_path)
     try:
         result = transcriber(
-            str(source_path),
+            str(temp_path),
             user_id=str(record.user_id),
             output_dir=f"files/{record.id}/ai",
             temp_dir=str(_derivative_dir(str(record.id))),

@@ -13,6 +13,7 @@
     FileText,
     FilePenLine,
     Image,
+    FileMusic,
     AlertTriangle,
     Menu,
     Minus,
@@ -61,7 +62,7 @@
   $: canPrev = currentPage > 1;
   $: canNext = pageCount > 0 && currentPage < pageCount;
   $: hasMarkdown = Boolean(active?.derivatives?.some(item => item.kind === 'ai_md'));
-  $: showMarkdownToggle = hasMarkdown && !isSpreadsheet;
+  $: showMarkdownToggle = hasMarkdown && !isSpreadsheet && !isAudio;
 
   let currentPage = 1;
   let pageCount = 0;
@@ -98,6 +99,11 @@
     viewMode = 'content';
   }
   $: if (viewMode === 'markdown' && active?.file.id) {
+    if (active.file.id !== lastMarkdownId) {
+      loadMarkdown();
+    }
+  }
+  $: if (isAudio && hasMarkdown && active?.file.id) {
     if (active.file.id !== lastMarkdownId) {
       loadMarkdown();
     }
@@ -299,6 +305,20 @@
         const imageSubtype = normalized.split('/')[1] ?? 'image';
         return imageSubtype.toUpperCase();
       }
+      if (normalized.startsWith('audio/')) {
+        const subtype = normalized.split('/')[1] ?? 'audio';
+        const audioPretty = {
+          'mpeg': 'MP3',
+          'mp3': 'MP3',
+          'x-m4a': 'M4A',
+          'm4a': 'M4A',
+          'x-wav': 'WAV',
+          'wav': 'WAV',
+          'flac': 'FLAC',
+          'ogg': 'OGG'
+        } as Record<string, string>;
+        return audioPretty[subtype] ?? subtype.replace(/^x-/, '').toUpperCase();
+      }
       if (normalized === 'application/octet-stream') {
         const index = name.lastIndexOf('.');
         if (index > 0 && index < name.length - 1) {
@@ -357,6 +377,8 @@
         <span class="file-viewer-icon">
           {#if isImage}
             <Image size={18} />
+          {:else if isAudio}
+            <FileMusic size={18} />
           {:else if isSpreadsheet}
             <FileSpreadsheet size={18} />
           {:else}
@@ -640,7 +662,7 @@
     </div>
   </div>
 
-  <div class="file-viewer-body">
+  <div class="file-viewer-body" class:audio-body={isAudio}>
     {#if loading}
       <div class="viewer-placeholder">Loading file…</div>
     {:else if error}
@@ -708,9 +730,27 @@
           registerActions={(actions) => (spreadsheetActions = actions)}
         />
       {:else if isAudio}
-        <audio class="file-viewer-audio" controls src={viewerUrl}>
-          Your browser does not support the audio element.
-        </audio>
+        <div class="file-viewer-audio-content">
+          <div class="file-viewer-audio-card">
+            <span class="file-viewer-audio-icon">
+              <FileMusic size={40} />
+            </span>
+            <audio class="file-viewer-audio" controls src={viewerUrl}>
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+          {#if hasMarkdown}
+            {#if markdownLoading}
+              <div class="viewer-placeholder audio-markdown-status">Loading markdown…</div>
+            {:else if markdownError}
+              <div class="viewer-placeholder audio-markdown-status">{markdownError}</div>
+            {:else}
+              <div class="file-markdown-container">
+                <FileMarkdown content={markdownContent} />
+              </div>
+            {/if}
+          {/if}
+        </div>
       {:else if isText}
         {#if isTextLoading}
           <div class="viewer-placeholder">Loading text…</div>
@@ -822,6 +862,11 @@
     justify-content: center;
     padding: 1rem;
     background: var(--color-background);
+  }
+
+  .file-viewer-body.audio-body {
+    align-items: flex-start;
+    justify-content: flex-start;
   }
 
   .file-viewer-controls {
@@ -1014,8 +1059,37 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
   }
 
+  .file-viewer-audio-content {
+    width: min(820px, 100%);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .file-viewer-audio-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.1rem 1.25rem;
+    border-radius: 0.75rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+  }
+
+  .file-viewer-audio-icon {
+    color: var(--color-muted-foreground);
+  }
+
   .file-viewer-audio {
-    width: 100%;
+    width: min(520px, 100%);
+  }
+
+  .audio-markdown-status {
+    margin-top: 0.5rem;
+    text-align: center;
+    align-self: center;
   }
 
   .file-viewer-text {

@@ -37,7 +37,7 @@
 				<div class="weather-location">
 					{#if weatherTemp}
 						<span class="weather">
-							<svelte:component this={resolveWeatherIcon(weatherCode, weatherIsDay)} size={16} />
+							<svelte:component this={resolveWeatherIcon(weatherCode, weatherIsDay)} size={20} />
 							<span class="weather-temp">{weatherTemp}</span>
 						</span>
 					{/if}
@@ -161,15 +161,15 @@
 	.weather {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: 0.7rem;
 		color: var(--color-foreground);
 		font-size: 0.95rem;
 		font-weight: 600;
 	}
 
 	.weather :global(svg) {
-		width: 16px;
-		height: 16px;
+		width: 20px;
+		height: 20px;
 	}
 
 	:global(.swap-button) {
