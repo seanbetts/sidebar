@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { FileTerminal, Pin, PinOff, Pencil, Copy, Check, Download, Archive, ArchiveRestore, Trash2, X } from 'lucide-svelte';
+  import { FileTerminal, Pin, PinOff, Pencil, Copy, Check, Download, Archive, ArchiveRestore, Trash2, X, Menu } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
+  import * as Popover from '$lib/components/ui/popover/index.js';
   import type { WebsiteItem } from '$lib/stores/websites';
 
   export let website: WebsiteItem | null = null;
@@ -112,6 +113,62 @@
             <X size={16} />
           </Button>
         </div>
+        <div class="website-actions-compact">
+          <Popover.Root>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <Button size="icon" variant="ghost" {...props} aria-label="More actions" title="More actions">
+                  <Menu size={16} />
+                </Button>
+              {/snippet}
+            </Popover.Trigger>
+            <Popover.Content class="website-actions-menu" align="end" sideOffset={8}>
+              <button class="website-menu-item" onclick={onPinToggle}>
+                {#if website.pinned}
+                  <PinOff size={16} />
+                  <span>Unpin</span>
+                {:else}
+                  <Pin size={16} />
+                  <span>Pin</span>
+                {/if}
+              </button>
+              <button class="website-menu-item" onclick={onRename}>
+                <Pencil size={16} />
+                <span>Rename</span>
+              </button>
+              <button class="website-menu-item" onclick={onCopy}>
+                {#if isCopied}
+                  <Check size={16} />
+                  <span>Copied</span>
+                {:else}
+                  <Copy size={16} />
+                  <span>Copy</span>
+                {/if}
+              </button>
+              <button class="website-menu-item" onclick={onDownload}>
+                <Download size={16} />
+                <span>Download</span>
+              </button>
+              <button class="website-menu-item" onclick={onArchive}>
+                {#if website.archived}
+                  <ArchiveRestore size={16} />
+                  <span>Unarchive</span>
+                {:else}
+                  <Archive size={16} />
+                  <span>Archive</span>
+                {/if}
+              </button>
+              <button class="website-menu-item" onclick={onDelete}>
+                <Trash2 size={16} />
+                <span>Delete</span>
+              </button>
+              <button class="website-menu-item" onclick={onClose}>
+                <X size={16} />
+                <span>Close</span>
+              </button>
+            </Popover.Content>
+          </Popover.Root>
+        </div>
       </div>
     </div>
   {/if}
@@ -127,6 +184,7 @@
     min-height: 57px;
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-card);
+    container-type: inline-size;
   }
 
   .website-meta {
@@ -164,6 +222,34 @@
     gap: 0.25rem;
   }
 
+  .website-actions-compact {
+    display: none;
+  }
+
+  :global(.website-actions-menu) {
+    width: max-content !important;
+    min-width: 0 !important;
+    padding: 0.25rem 0;
+  }
+
+  .website-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0.45rem 0.75rem;
+    text-align: left;
+    font-size: 0.8rem;
+    color: var(--color-popover-foreground);
+  }
+
+  .website-menu-item:hover {
+    background-color: var(--color-accent);
+  }
+
   .pipe {
     color: var(--color-muted-foreground);
   }
@@ -184,5 +270,16 @@
     gap: 0.35rem;
     color: var(--color-muted-foreground);
     text-decoration: none;
+  }
+
+  @container (max-width: 700px) {
+    .website-actions {
+      display: none;
+    }
+
+    .website-actions-compact {
+      display: inline-flex;
+      align-items: center;
+    }
   }
 </style>

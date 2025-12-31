@@ -11,6 +11,7 @@
     Check,
     FileText,
     Image,
+    Menu,
     Minus,
     Pencil,
     Pin,
@@ -21,6 +22,7 @@
   } from 'lucide-svelte';
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import { Button } from '$lib/components/ui/button';
+  import * as Popover from '$lib/components/ui/popover/index.js';
   import { ingestionAPI } from '$lib/services/api';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { ingestionStore } from '$lib/stores/ingestion';
@@ -276,43 +278,44 @@
           <GalleryHorizontal size={16} />
         </Button>
       {/if}
-      <div class="viewer-divider"></div>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        onclick={handlePinToggle}
-        disabled={!active}
-        aria-label="Pin file"
-        title="Pin file"
-      >
-        {#if active?.file.pinned}
-          <PinOff size={16} />
-        {:else}
-          <Pin size={16} />
-        {/if}
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        disabled={!active}
-        aria-label="Rename file"
-        title="Rename file"
-        onclick={openRenameDialog}
-      >
-        <Pencil size={16} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        onclick={handleDownload}
-        aria-label="Download file"
-        title="Download file"
-      >
-        <Download size={16} />
-      </Button>
+      <div class="viewer-standard-actions">
+        <div class="viewer-divider"></div>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={handlePinToggle}
+          disabled={!active}
+          aria-label="Pin file"
+          title="Pin file"
+        >
+          {#if active?.file.pinned}
+            <PinOff size={16} />
+          {:else}
+            <Pin size={16} />
+          {/if}
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          disabled={!active}
+          aria-label="Rename file"
+          title="Rename file"
+          onclick={openRenameDialog}
+        >
+          <Pencil size={16} />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="viewer-control"
+          onclick={handleDownload}
+          aria-label="Download file"
+          title="Download file"
+        >
+          <Download size={16} />
+        </Button>
         <Button
           size="icon"
           variant="ghost"
@@ -339,9 +342,57 @@
         >
           <Trash2 size={16} />
         </Button>
-      <Button size="icon" variant="ghost" class="viewer-close" onclick={handleClose} aria-label="Close file viewer">
-        <X size={16} />
-      </Button>
+        <Button size="icon" variant="ghost" class="viewer-close" onclick={handleClose} aria-label="Close file viewer">
+          <X size={16} />
+        </Button>
+      </div>
+      <div class="viewer-standard-compact">
+        <Popover.Root>
+          <Popover.Trigger>
+            {#snippet child({ props })}
+              <Button size="icon" variant="ghost" {...props} aria-label="More actions" title="More actions">
+                <Menu size={16} />
+              </Button>
+            {/snippet}
+          </Popover.Trigger>
+          <Popover.Content class="viewer-actions-menu" align="end" sideOffset={8}>
+            <button class="viewer-menu-item" onclick={handlePinToggle} disabled={!active}>
+              {#if active?.file.pinned}
+                <PinOff size={16} />
+                <span>Unpin</span>
+              {:else}
+                <Pin size={16} />
+                <span>Pin</span>
+              {/if}
+            </button>
+            <button class="viewer-menu-item" onclick={openRenameDialog} disabled={!active}>
+              <Pencil size={16} />
+              <span>Rename</span>
+            </button>
+            <button class="viewer-menu-item" onclick={handleDownload}>
+              <Download size={16} />
+              <span>Download</span>
+            </button>
+            <button class="viewer-menu-item" onclick={handleCopyMarkdown} disabled={!hasMarkdown}>
+              {#if isCopied}
+                <Check size={16} />
+                <span>Copied</span>
+              {:else}
+                <Copy size={16} />
+                <span>Copy markdown</span>
+              {/if}
+            </button>
+            <button class="viewer-menu-item" onclick={handleDelete} disabled={!active}>
+              <Trash2 size={16} />
+              <span>Delete</span>
+            </button>
+            <button class="viewer-menu-item" onclick={handleClose}>
+              <X size={16} />
+              <span>Close</span>
+            </button>
+          </Popover.Content>
+        </Popover.Root>
+      </div>
     </div>
   </div>
 
@@ -402,6 +453,7 @@
     padding: 0.63rem 1.2rem;
     border-bottom: 1px solid var(--color-border);
     gap: 1rem;
+    container-type: inline-size;
   }
 
   .file-viewer-meta {
@@ -469,6 +521,45 @@
     gap: 0.35rem;
   }
 
+  .viewer-standard-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .viewer-standard-compact {
+    display: none;
+  }
+
+  :global(.viewer-actions-menu) {
+    width: max-content !important;
+    min-width: 0 !important;
+    padding: 0.25rem 0;
+  }
+
+  .viewer-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0.45rem 0.75rem;
+    text-align: left;
+    font-size: 0.8rem;
+    color: var(--color-popover-foreground);
+  }
+
+  .viewer-menu-item:hover {
+    background-color: var(--color-accent);
+  }
+
+  .viewer-menu-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .viewer-control[data-active='true'] {
     color: var(--color-foreground);
   }
@@ -500,5 +591,16 @@
     border-radius: 0.5rem;
     object-fit: contain;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  }
+
+  @container (max-width: 700px) {
+    .viewer-standard-actions {
+      display: none;
+    }
+
+    .viewer-standard-compact {
+      display: inline-flex;
+      align-items: center;
+    }
   }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FileText, Save, Clock, X, Pencil, FolderInput, Archive, ArchiveRestore, Pin, PinOff, Copy, Check, Download, Trash2 } from 'lucide-svelte';
+  import { FileText, Save, Clock, X, Pencil, FolderInput, Archive, ArchiveRestore, Pin, PinOff, Copy, Check, Download, Trash2, Menu } from 'lucide-svelte';
   import * as Popover from '$lib/components/ui/popover/index.js';
   import { Button } from '$lib/components/ui/button';
 
@@ -25,14 +25,15 @@
   export let onDelete: () => void;
 
   let isMoveOpen = false;
+  let isMoveOpenCompact = false;
   let didRequestMoveOptions = false;
 
-  $: if (isMoveOpen && !didRequestMoveOptions) {
+  $: if ((isMoveOpen || isMoveOpenCompact) && !didRequestMoveOptions) {
     didRequestMoveOptions = true;
     onMoveOpen();
   }
 
-  $: if (!isMoveOpen && didRequestMoveOptions) {
+  $: if (!isMoveOpen && !isMoveOpenCompact && didRequestMoveOptions) {
     didRequestMoveOptions = false;
   }
 </script>
@@ -121,7 +122,7 @@
                 <button
                   class="note-move-item"
                   style={`padding-left: ${option.depth * 12 + 12}px`}
-                  on:click={() => onMove(option.value)}
+                  onclick={() => onMove(option.value)}
                 >
                   {option.label}
                 </button>
@@ -184,6 +185,101 @@
         </Button>
       {/if}
     </div>
+    <div class="note-actions-compact">
+      <Popover.Root>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <Button size="icon" variant="ghost" {...props} aria-label="More actions" title="More actions">
+              <Menu size={16} />
+            </Button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Content class="note-actions-menu" align="end" sideOffset={8}>
+          {#if isReadOnly}
+            <button class="note-menu-item" onclick={onCopy}>
+              {#if isCopied}
+                <Check size={16} />
+                <span>Copied</span>
+              {:else}
+                <Copy size={16} />
+                <span>Copy</span>
+              {/if}
+            </button>
+            <button class="note-menu-item" onclick={onClose}>
+              <X size={16} />
+              <span>Close</span>
+            </button>
+          {:else}
+            <button class="note-menu-item" onclick={onPinToggle}>
+              {#if noteNode?.pinned}
+                <PinOff size={16} />
+                <span>Unpin</span>
+              {:else}
+                <Pin size={16} />
+                <span>Pin</span>
+              {/if}
+            </button>
+            <button class="note-menu-item" onclick={onRename}>
+              <Pencil size={16} />
+              <span>Rename</span>
+            </button>
+            {#if !noteNode?.archived}
+              <Popover.Root bind:open={isMoveOpenCompact}>
+                <Popover.Trigger>
+                  {#snippet child({ props })}
+                    <button class="note-menu-item" {...props}>
+                      <FolderInput size={16} />
+                      <span>Move</span>
+                    </button>
+                  {/snippet}
+                </Popover.Trigger>
+                <Popover.Content class="note-move-menu" align="start" sideOffset={8}>
+                  {#each folderOptions as option (option.value)}
+                    <button
+                      class="note-move-item"
+                      style={`padding-left: ${option.depth * 12 + 12}px`}
+                      onclick={() => onMove(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  {/each}
+                </Popover.Content>
+              </Popover.Root>
+            {/if}
+            <button class="note-menu-item" onclick={onCopy}>
+              {#if isCopied}
+                <Check size={16} />
+                <span>Copied</span>
+              {:else}
+                <Copy size={16} />
+                <span>Copy</span>
+              {/if}
+            </button>
+            <button class="note-menu-item" onclick={onDownload}>
+              <Download size={16} />
+              <span>Download</span>
+            </button>
+            <button class="note-menu-item" onclick={noteNode?.archived ? onUnarchive : onArchive}>
+              {#if noteNode?.archived}
+                <ArchiveRestore size={16} />
+                <span>Unarchive</span>
+              {:else}
+                <Archive size={16} />
+                <span>Archive</span>
+              {/if}
+            </button>
+            <button class="note-menu-item" onclick={onDelete}>
+              <Trash2 size={16} />
+              <span>Delete</span>
+            </button>
+            <button class="note-menu-item" onclick={onClose}>
+              <X size={16} />
+              <span>Close</span>
+            </button>
+          {/if}
+        </Popover.Content>
+      </Popover.Root>
+    </div>
   </div>
 </div>
 
@@ -197,6 +293,7 @@
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-card);
     flex-shrink: 0;
+    container-type: inline-size;
   }
 
   .header-left {
@@ -223,6 +320,34 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+  }
+
+  .note-actions-compact {
+    display: none;
+  }
+
+  :global(.note-actions-menu) {
+    width: max-content !important;
+    min-width: 0 !important;
+    padding: 0.25rem 0;
+  }
+
+  .note-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0.45rem 0.75rem;
+    text-align: left;
+    font-size: 0.8rem;
+    color: var(--color-popover-foreground);
+  }
+
+  .note-menu-item:hover {
+    background-color: var(--color-accent);
   }
 
   .status {
@@ -253,6 +378,17 @@
 
   .note-move-item:hover {
     background-color: var(--color-accent);
+  }
+
+  @container (max-width: 700px) {
+    .note-actions {
+      display: none;
+    }
+
+    .note-actions-compact {
+      display: inline-flex;
+      align-items: center;
+    }
   }
 
   .status.saving {
