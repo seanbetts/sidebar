@@ -205,7 +205,7 @@ import { SquarePen } from 'lucide-svelte';
 	<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'icon' })} aria-label="Open scratchpad">
 		<SquarePen size={18} />
 	</Popover.Trigger>
-	<Popover.Content class="w-[840px] max-w-[95vw]" align="end" sideOffset={8}>
+	<Popover.Content class="w-[95vw] max-w-[840px] p-0" align="end" sideOffset={8}>
 		<div class="scratchpad-popover">
 			<ScratchpadHeader {isSaving} {saveError} />
 			<div class="scratchpad-body">
@@ -220,20 +220,37 @@ import { SquarePen } from 'lucide-svelte';
 
 <style>
 	.scratchpad-popover {
-		width: 840px;
-		max-width: min(95vw, 840px);
+		width: 100%;
+		max-width: 100%;
 		margin-right: 1rem;
 		max-height: min(85vh, 720px);
+		height: min(85vh, 720px);
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
+		overflow: hidden;
+		padding: 1rem 0.5rem 1rem 1rem;
 	}
 
 
 	.scratchpad-body {
 		flex: 1;
+		display: flex;
+		min-height: 0;
 		overflow: hidden;
 		position: relative;
+	}
+
+	:global(.scratchpad-header) {
+		min-width: 0;
+	}
+
+	:global(.scratchpad-header .status) {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 45%;
+		text-align: right;
 	}
 
 	.scratchpad-loading {
@@ -248,10 +265,11 @@ import { SquarePen } from 'lucide-svelte';
 	}
 
 	:global(.scratchpad-editor) {
-		min-height: 28rem;
-		max-height: 60vh;
+		flex: 1;
+		min-height: 0;
+		height: 100%;
 		overflow-y: auto;
-		padding: 0.25rem 0.5rem 0.5rem 0;
+		padding: 0.25rem 0 0.5rem 0;
 		outline: none;
 		color: var(--color-foreground);
 	}
