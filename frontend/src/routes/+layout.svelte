@@ -12,7 +12,7 @@
 	import { clearCaches, clearInFlight, clearMemoryCache, listenForStorageEvents } from '$lib/utils/cache';
 	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
 
-	let { data } = $props();
+	let { data, children } = $props();
 	let healthChecked = false;
 	let stopStorageListener: (() => void) | null = null;
 
@@ -85,14 +85,14 @@
 {#if data.maintenanceMode}
 	<HoldingPage />
 {:else if !data.session}
-	<slot />
+	{@render children()}
 {:else}
 	<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
 		<Sidebar />
 		<main class="main-content">
 			<SiteHeader />
 			<div class="page-content">
-				<slot />
+				{@render children()}
 			</div>
 		</main>
 	</div>
