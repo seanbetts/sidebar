@@ -205,13 +205,15 @@
 	<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'icon' })} aria-label="Open scratchpad">
 		<Pencil size={18} />
 	</Popover.Trigger>
-	<Popover.Content class="scratchpad-popover w-[840px] max-w-[95vw]" align="end" sideOffset={8}>
-		<ScratchpadHeader {isSaving} {saveError} />
-		<div class="scratchpad-body">
-			<div bind:this={editorElement} class="scratchpad-editor"></div>
-			{#if isLoading}
-				<div class="scratchpad-loading">Loading...</div>
-			{/if}
+	<Popover.Content class="w-[840px] max-w-[95vw]" align="end" sideOffset={8}>
+		<div class="scratchpad-popover">
+			<ScratchpadHeader {isSaving} {saveError} />
+			<div class="scratchpad-body">
+				<div bind:this={editorElement} class="scratchpad-editor"></div>
+				{#if isLoading}
+					<div class="scratchpad-loading">Loading...</div>
+				{/if}
+			</div>
 		</div>
 	</Popover.Content>
 </Popover.Root>

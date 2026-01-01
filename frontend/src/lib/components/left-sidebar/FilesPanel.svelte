@@ -450,7 +450,9 @@
               class="archive-trigger"
             >
               <span class="uploads-label">Recent uploads</span>
-              <ChevronRight class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90" />
+              <span class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90">
+                <ChevronRight size={16} />
+              </span>
             </Collapsible.Trigger>
             <Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
               <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
@@ -549,12 +551,6 @@
   .files-block-list {
     display: flex;
     flex-direction: column;
-  }
-
-  .files-block-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
   }
 
   .files-block-title {
