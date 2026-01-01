@@ -285,6 +285,8 @@
 							data?.system_prompt,
 							data?.first_message_prompt
 						);
+						websitesStore.clearActive();
+						ingestionViewerStore.clearActive();
 						editorStore.openPreview('Prompt Preview', content);
 					},
 
