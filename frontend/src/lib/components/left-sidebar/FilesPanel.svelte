@@ -7,6 +7,7 @@
     FileSpreadsheet,
     FileMusic,
     FileVideoCamera,
+    FileChartLine,
     Image,
     Folder,
     FolderOpen,
@@ -54,11 +55,12 @@
   );
   $: pinnedItems = readyItems.filter(item => item.file.pinned);
   const categoryOrder = [
-    'images',
-    'documents',
-    'spreadsheets',
-    'presentations',
     'audio',
+    'documents',
+    'images',
+    'presentations',
+    'reports',
+    'spreadsheets',
     'video',
     'other'
   ];
@@ -67,6 +69,7 @@
     documents: 'Documents',
     spreadsheets: 'Spreadsheets',
     presentations: 'Presentations',
+    reports: 'Reports',
     audio: 'Audio',
     video: 'Video',
     other: 'Other'
@@ -75,6 +78,7 @@
     if (category === 'images') return Image;
     if (category === 'spreadsheets') return FileSpreadsheet;
     if (category === 'presentations') return FileChartPie;
+    if (category === 'reports') return FileChartLine;
     if (category === 'audio') return FileMusic;
     if (category === 'video') return FileVideoCamera;
     return FileText;
