@@ -106,17 +106,17 @@
   class:drag-over={isDragOver}
   class:dragging={isDragging}
   style="padding-left: {level * 1}rem;"
-  on:dragover={handleDragOver}
-  on:drop={handleDrop}
+  ondragover={handleDragOver}
+  ondrop={handleDrop}
 >
   <div class="node-content">
     {#if showGrabHandle && node.type === 'file'}
       <button
         class="grab-handle"
         draggable="true"
-        on:dragstart={onGrabStart}
-        on:dragend={onGrabEnd}
-        on:click|stopPropagation
+        ondragstart={onGrabStart}
+        ondragend={onGrabEnd}
+        onclick={(event) => event.stopPropagation()}
         aria-label="Reorder pinned note"
       >
         <GripVertical size={14} />
@@ -125,7 +125,7 @@
     <button
       class="node-button"
       class:expandable={node.type === 'directory'}
-      on:click={handleClick}
+      onclick={handleClick}
     >
       {#if node.type === 'directory'}
         <span class="chevron">
@@ -153,9 +153,9 @@
           class="name-input"
           bind:this={editInput}
           bind:value={editedName}
-          on:blur={actions.saveRename}
-          on:keydown={handleRenameKeydown}
-          on:click={(e) => e.stopPropagation()}
+          onblur={actions.saveRename}
+          onkeydown={handleRenameKeydown}
+          onclick={(e) => e.stopPropagation()}
         />
       {:else}
         <span class="name">{displayName}</span>

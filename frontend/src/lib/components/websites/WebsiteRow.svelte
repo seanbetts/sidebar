@@ -34,22 +34,22 @@
 <div
   class="website-item"
   class:drag-over={isDragOver}
-  on:dragover={handleDragOver}
-  on:drop={handleDrop}
+  ondragover={handleDragOver}
+  ondrop={handleDrop}
 >
   {#if showGrabHandle}
     <button
       class="grab-handle"
       draggable="true"
-      on:dragstart={onGrabStart}
-      on:dragend={onGrabEnd}
-      on:click|stopPropagation
+      ondragstart={onGrabStart}
+      ondragend={onGrabEnd}
+      onclick={(event) => event.stopPropagation()}
       aria-label="Reorder pinned website"
     >
       <GripVertical size={14} />
     </button>
   {/if}
-  <button class="website-main" on:click={() => onOpen(site)}>
+  <button class="website-main" onclick={() => onOpen(site)}>
     <span class="website-icon">
       <FileTerminal />
     </span>
@@ -58,12 +58,12 @@
       <span class="website-domain">{formatDomain(site.domain)}</span>
     </div>
   </button>
-  <button class="website-menu-btn" on:click={(event) => onOpenMenu(event, site)} aria-label="More options">
+  <button class="website-menu-btn" onclick={(event) => onOpenMenu(event, site)} aria-label="More options">
     <MoreHorizontal size={16} />
   </button>
   {#if isMenuOpen}
     <div class="website-menu">
-      <button class="menu-item" on:click={() => onPin(site)}>
+      <button class="menu-item" onclick={() => onPin(site)}>
         {#if site.pinned}
           <PinOff size={16} />
           <span>Unpin</span>
@@ -72,15 +72,15 @@
           <span>Pin</span>
         {/if}
       </button>
-      <button class="menu-item" on:click={() => onRename(site)}>
+      <button class="menu-item" onclick={() => onRename(site)}>
         <Pencil size={16} />
         <span>Rename</span>
       </button>
-      <button class="menu-item" on:click={() => onDownload(site)}>
+      <button class="menu-item" onclick={() => onDownload(site)}>
         <Download size={16} />
         <span>Download</span>
       </button>
-      <button class="menu-item" on:click={() => onArchive(site)}>
+      <button class="menu-item" onclick={() => onArchive(site)}>
         {#if archived}
           <ArchiveRestore size={16} />
         {:else}
@@ -88,7 +88,7 @@
         {/if}
         <span>{archived ? 'Unarchive' : 'Archive'}</span>
       </button>
-      <button class="menu-item" on:click={() => onDelete(site)}>
+      <button class="menu-item" onclick={() => onDelete(site)}>
         <Trash2 size={16} />
         <span>Delete</span>
       </button>

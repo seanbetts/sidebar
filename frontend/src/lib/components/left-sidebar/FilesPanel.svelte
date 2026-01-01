@@ -342,15 +342,15 @@
                   class="ingested-row"
                   class:drag-over={dragOverPinnedId === item.file.id}
                   data-ingested-menu-root={`pinned-${item.file.id}`}
-                  on:dragover={(event) => handlePinnedDragOver(event, item.file.id)}
-                  on:drop={(event) => handlePinnedDrop(event, item.file.id)}
+                  ondragover={(event) => handlePinnedDragOver(event, item.file.id)}
+                  ondrop={(event) => handlePinnedDrop(event, item.file.id)}
                 >
                   <button
                     class="grab-handle"
                     draggable="true"
-                    on:dragstart={(event) => handlePinnedDragStart(event, item.file.id)}
-                    on:dragend={handlePinnedDragEnd}
-                    on:click|stopPropagation
+                    ondragstart={(event) => handlePinnedDragStart(event, item.file.id)}
+                    ondragend={handlePinnedDragEnd}
+                    onclick={(event) => event.stopPropagation()}
                     aria-label="Reorder pinned file"
                   >
                     <GripVertical size={14} />
