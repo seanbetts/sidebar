@@ -7,6 +7,8 @@ from api.routers import health, chat, conversations, files, ingestion, websites,
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
 from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
+from api.models.user_settings import UserSettings
+from sqlalchemy import text
 from api.executors.skill_executor import SkillExecutor
 from api.security.path_validator import PathValidator
 import logging
@@ -80,16 +82,33 @@ async def auth_middleware(request: Request, call_next):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Verify JWT token
+    # Verify JWT token or Shortcuts PAT
     try:
         scheme, token = auth_header.split()
         if scheme.lower() != "bearer":
             raise ValueError("Invalid scheme")
-        validator = SupabaseJWTValidator()
-        payload = await validator.validate_token(token)
-        request.state.user_id = payload.get("sub")
-        if not request.state.user_id:
-            raise JWTValidationError("Missing user ID")
+        if token.startswith("sb_pat_"):
+            from api.db.session import SessionLocal
+            with SessionLocal() as db:
+                db.execute(text("SET app.pat_token = :token"), {"token": token})
+                record = (
+                    db.query(UserSettings)
+                    .filter(UserSettings.shortcuts_pat == token)
+                    .first()
+                )
+            if not record:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "Invalid API token"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            request.state.user_id = record.user_id
+        else:
+            validator = SupabaseJWTValidator()
+            payload = await validator.validate_token(token)
+            request.state.user_id = payload.get("sub")
+            if not request.state.user_id:
+                raise JWTValidationError("Missing user ID")
     except (ValueError, AttributeError, JWTValidationError):
         return JSONResponse(
             status_code=401,
