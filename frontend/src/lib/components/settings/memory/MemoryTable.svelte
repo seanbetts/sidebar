@@ -113,9 +113,14 @@
 
   .memory-table-wrapper :global([data-slot='table-cell']:nth-child(3)),
   .memory-table-wrapper :global([data-slot='table-cell']:nth-child(4)) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    vertical-align: middle;
+  }
+
+  .memory-table-wrapper
+    :global([data-slot='table-cell']:nth-child(3) .settings-button),
+  .memory-table-wrapper
+    :global([data-slot='table-cell']:nth-child(4) .settings-button) {
+    margin: 0 auto;
   }
 
   .memory-table-wrapper :global(.settings-button.icon) {
