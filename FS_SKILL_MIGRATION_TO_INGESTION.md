@@ -582,14 +582,14 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 
 ### Preparation
 - [x] Review FILE_INGESTION_PLAN.md
-- [x] Backup `file_objects` table
-- [x] Backup R2 storage bucket
+- [ ] Backup `file_objects` table (N/A: table removed)
+- [ ] Backup R2 storage bucket (skipped)
 
 ### Phase 1: Fast-Track Processing
 - [x] Add `should_fast_track()` function to worker
 - [x] Implement `process_simple_file()` for text files
-- [ ] Test with sample .txt, .md, .json files
-- [ ] Verify ai.md generation works
+- [x] Test with sample .txt, .md, .json files
+- [x] Verify ai.md generation works
 
 ### Phase 2: Add Path Support
 - [x] Update `list.py` to query ingested_files
@@ -598,14 +598,14 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [x] Update `delete.py` to soft delete ingested files
 - [x] Update `move.py` and `rename.py`
 - [x] Update `info.py` to show processing status
-- [ ] Test each script independently
+- [x] Test each script independently
 
 ### Phase 3: Update fs Scripts
 - [x] Create migration for `path` column
 - [x] Update IngestedFile model
 - [x] Update upload API to accept folder parameter
 - [x] Update fs scripts to use path instead of filename
-- [ ] Test hierarchical organization
+- [x] Test hierarchical organization
 
 ### Phase 4: Data Migration
 Skipped: no legacy `file_objects` data to migrate.
@@ -616,15 +616,15 @@ Skipped: no legacy `file_objects` data to migrate.
 
 ### Phase 5: Documentation
 - [x] Update fs SKILL.md
-- [x] Update API documentation
-- [x] Add migration notes to changelog
-- [x] Update developer guide
+- [ ] Update API documentation (skipped)
+- [ ] Add migration notes to changelog (skipped)
+- [ ] Update developer guide (skipped)
 
 ### Phase 6: Cleanup
-- [x] Monitor for 1 week post-migration
+- [ ] Monitor for 1 week post-migration (pending)
 - [x] Remove file_objects code
-- [x] Drop file_objects table
-- [x] Archive old R2 storage (optional)
+- [ ] Drop file_objects table (N/A: already removed)
+- [ ] Archive old R2 storage (optional, skipped)
 
 ---
 
