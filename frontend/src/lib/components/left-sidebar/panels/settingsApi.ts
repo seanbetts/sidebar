@@ -99,3 +99,29 @@ export async function deleteProfileImage() {
     throw new Error('Failed to delete profile image');
   }
 }
+
+/**
+ * Fetch the Shortcuts PAT token.
+ */
+export async function fetchShortcutsPat() {
+  const response = await fetch('/api/settings/shortcuts/pat');
+  if (!response.ok) {
+    throw new Error('Failed to load shortcuts token');
+  }
+  const data = await response.json();
+  return data?.token || '';
+}
+
+/**
+ * Rotate the Shortcuts PAT token.
+ */
+export async function rotateShortcutsPat() {
+  const response = await fetch('/api/settings/shortcuts/pat/rotate', {
+    method: 'POST'
+  });
+  if (!response.ok) {
+    throw new Error('Failed to rotate shortcuts token');
+  }
+  const data = await response.json();
+  return data?.token || '';
+}

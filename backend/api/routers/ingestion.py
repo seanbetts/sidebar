@@ -10,7 +10,7 @@ import urllib.parse
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -53,6 +53,58 @@ def _staging_path(file_id: uuid.UUID) -> Path:
 def _safe_cleanup(path: Path) -> None:
     if path.exists():
         shutil.rmtree(path.parent, ignore_errors=True)
+
+
+async def _handle_upload(
+    file: UploadFile,
+    folder: str,
+    user_id: str,
+    db: Session,
+) -> tuple[uuid.UUID, uuid.UUID]:
+    file_id = uuid.uuid4()
+    staging_path = _staging_path(file_id)
+    staging_path.parent.mkdir(parents=True, exist_ok=True)
+
+    digest = sha256()
+    size = 0
+
+    try:
+        with staging_path.open("wb") as target:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > MAX_FILE_BYTES:
+                    raise HTTPException(status_code=413, detail="File too large")
+                digest.update(chunk)
+                target.write(chunk)
+
+        mime_original = file.content_type or "application/octet-stream"
+        mime_original = mime_original.split(";")[0].strip().lower()
+        if not mime_original:
+            mime_original = "application/octet-stream"
+        filename = file.filename or "upload"
+        path = _build_ingestion_path(folder, filename)
+        _, job = FileIngestionService.create_ingestion(
+            db,
+            user_id,
+            filename_original=filename,
+            path=path,
+            mime_original=mime_original,
+            size_bytes=size,
+            sha256=digest.hexdigest(),
+            file_id=file_id,
+        )
+    except HTTPException:
+        _safe_cleanup(staging_path)
+        raise
+    except Exception as exc:
+        logger.exception("Ingestion upload failed")
+        _safe_cleanup(staging_path)
+        raise HTTPException(status_code=500, detail="Upload failed") from exc
+
+    return file_id, job.id
 
 
 def _build_ingestion_path(folder: str | None, filename: str) -> str:
@@ -170,50 +222,24 @@ async def upload_file(
     db: Session = Depends(get_db),
 ):
     """Upload a file and enqueue ingestion."""
-    file_id = uuid.uuid4()
-    staging_path = _staging_path(file_id)
-    staging_path.parent.mkdir(parents=True, exist_ok=True)
-
-    digest = sha256()
-    size = 0
-
-    try:
-        with staging_path.open("wb") as target:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                size += len(chunk)
-                if size > MAX_FILE_BYTES:
-                    raise HTTPException(status_code=413, detail="File too large")
-                digest.update(chunk)
-                target.write(chunk)
-
-        mime_original = file.content_type or "application/octet-stream"
-        mime_original = mime_original.split(";")[0].strip().lower()
-        if not mime_original:
-            mime_original = "application/octet-stream"
-        filename = file.filename or "upload"
-        path = _build_ingestion_path(folder, filename)
-        FileIngestionService.create_ingestion(
-            db,
-            user_id,
-            filename_original=filename,
-            path=path,
-            mime_original=mime_original,
-            size_bytes=size,
-            sha256=digest.hexdigest(),
-            file_id=file_id,
-        )
-    except HTTPException:
-        _safe_cleanup(staging_path)
-        raise
-    except Exception as exc:
-        logger.exception("Ingestion upload failed")
-        _safe_cleanup(staging_path)
-        raise HTTPException(status_code=500, detail="Upload failed") from exc
-
+    file_id, _ = await _handle_upload(file, folder, user_id, db)
     return {"file_id": str(file_id)}
+
+
+@router.post("/quick-upload")
+async def quick_upload_file(
+    file: UploadFile = File(...),
+    folder: str = Form(default=""),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Upload a file and enqueue ingestion (async)."""
+    file_id, job_id = await _handle_upload(file, folder, user_id, db)
+    return JSONResponse(
+        status_code=202,
+        content={"success": True, "data": {"file_id": str(file_id), "job_id": str(job_id)}},
+    )
 
 
 @router.post("/youtube")

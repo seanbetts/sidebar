@@ -26,6 +26,7 @@ class UserSettings(Base):
     location = Column(Text, nullable=True)
     profile_image_path = Column(Text, nullable=True)
     enabled_skills = Column(JSONB, nullable=True)
+    shortcuts_pat = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

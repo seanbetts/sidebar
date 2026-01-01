@@ -4,6 +4,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from api.auth import bearer_scheme
 from api.config import settings
+from sqlalchemy import text
+from api.models.user_settings import UserSettings
 from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
 
 
@@ -28,9 +30,28 @@ async def get_current_user_id(
     if user_id:
         return user_id
 
+    token = credentials.credentials
+    if token.startswith("sb_pat_"):
+        from api.db.session import SessionLocal
+        with SessionLocal() as db:
+            db.execute(text("SET app.pat_token = :token"), {"token": token})
+            record = (
+                db.query(UserSettings)
+                .filter(UserSettings.shortcuts_pat == token)
+                .first()
+            )
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid API token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        request.state.user_id = record.user_id
+        return record.user_id
+
     validator = SupabaseJWTValidator()
     try:
-        payload = await validator.validate_token(credentials.credentials)
+        payload = await validator.validate_token(token)
     except JWTValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

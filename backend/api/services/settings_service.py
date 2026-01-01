@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+import secrets
 from typing import Optional
 
 from fastapi import HTTPException
@@ -45,6 +46,12 @@ storage_backend = get_storage_backend()
 
 class SettingsService:
     """High-level settings operations for the API layer."""
+    SHORTCUTS_PAT_PREFIX = "sb_pat_"
+
+    @staticmethod
+    def _generate_shortcuts_pat() -> str:
+        """Generate a new shortcuts PAT token."""
+        return f"{SettingsService.SHORTCUTS_PAT_PREFIX}{secrets.token_urlsafe(24)}"
     @staticmethod
     def _resolve_default(value: Optional[str], default: str) -> Optional[str]:
         """Return a trimmed value or the default.
@@ -361,3 +368,20 @@ class SettingsService:
             profile_image_path=None,
         )
         return {"success": True}
+
+    @staticmethod
+    def get_or_create_shortcuts_pat(db, user_id: str) -> str:
+        """Fetch the current shortcuts PAT or create a new one."""
+        settings_record = UserSettingsService.get_settings(db, user_id)
+        if settings_record and settings_record.shortcuts_pat:
+            return settings_record.shortcuts_pat
+        token = SettingsService._generate_shortcuts_pat()
+        UserSettingsService.upsert_settings(db, user_id, shortcuts_pat=token)
+        return token
+
+    @staticmethod
+    def rotate_shortcuts_pat(db, user_id: str) -> str:
+        """Rotate the shortcuts PAT token for a user."""
+        token = SettingsService._generate_shortcuts_pat()
+        UserSettingsService.upsert_settings(db, user_id, shortcuts_pat=token)
+        return token

@@ -1,16 +1,64 @@
 """Websites router for archived web content in Postgres."""
 import uuid
+from datetime import datetime, timezone
 from sqlalchemy import or_
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi.responses import Response, JSONResponse
 from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
-from api.db.session import get_db
+from api.db.session import get_db, SessionLocal, set_session_user_id
 from api.models.website import Website
+from api.services.jina_service import JinaService
+from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService, WebsiteNotFoundError
 
 router = APIRouter(prefix="/websites", tags=["websites"])
+
+
+def _normalize_url(value: str) -> str:
+    if value.startswith(("http://", "https://")):
+        return value
+    return f"https://{value}"
+
+
+def _run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None) -> None:
+    with SessionLocal() as db:
+        set_session_user_id(db, user_id)
+        WebsiteProcessingService.update_job(db, job_id, status="running")
+        try:
+            markdown = JinaService.fetch_markdown(url)
+            metadata, cleaned = JinaService.parse_metadata(markdown)
+            resolved_title = title or metadata.get("title") or JinaService.extract_title(cleaned, url)
+            source = metadata.get("url_source") or url
+            published_at = JinaService.parse_published_at(metadata.get("published_time"))
+
+            website = WebsitesService.upsert_website(
+                db,
+                user_id,
+                url=url,
+                title=resolved_title,
+                content=cleaned,
+                source=source,
+                url_full=url,
+                saved_at=datetime.now(timezone.utc),
+                published_at=published_at,
+                pinned=False,
+                archived=False,
+            )
+            WebsiteProcessingService.update_job(
+                db,
+                job_id,
+                status="completed",
+                website_id=website.id,
+            )
+        except Exception as exc:
+            WebsiteProcessingService.update_job(
+                db,
+                job_id,
+                status="failed",
+                error_message=str(exc),
+            )
 
 
 def parse_website_id(value: str):
@@ -148,6 +196,53 @@ async def search_websites(
         .all()
     )
     return {"items": [website_summary(site) for site in websites]}
+
+
+@router.post("/quick-save")
+async def quick_save_website(
+    request: dict,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Save a website with lightweight Jina fetch in the background."""
+    url = str(request.get("url", "")).strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="url required")
+    title = request.get("title")
+    normalized_url = _normalize_url(url)
+
+    job = WebsiteProcessingService.create_job(db, user_id, normalized_url)
+    background_tasks.add_task(_run_quick_save, job.id, user_id, normalized_url, title)
+    return JSONResponse(status_code=202, content={"success": True, "data": {"job_id": str(job.id)}})
+
+
+@router.get("/quick-save/{job_id}")
+async def get_quick_save_job(
+    job_id: str,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Return quick-save job status."""
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid job_id") from exc
+
+    job = WebsiteProcessingService.get_job(db, user_id, job_uuid)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    return {
+        "id": str(job.id),
+        "status": job.status,
+        "error_message": job.error_message,
+        "website_id": str(job.website_id) if job.website_id else None,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+    }
 
 
 @router.post("/save")

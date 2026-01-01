@@ -1,4 +1,4 @@
-import { Brain, HardDrive, Monitor, User, Wrench } from 'lucide-svelte';
+import { Brain, Command, HardDrive, Monitor, User, Wrench } from 'lucide-svelte';
 
 export const PRONOUN_OPTIONS = [
   'he/him',
@@ -15,6 +15,7 @@ export const SETTINGS_SECTIONS = [
   { key: 'account', label: 'Account', icon: User },
   { key: 'system', label: 'System', icon: Monitor },
   { key: 'storage', label: 'Storage', icon: HardDrive },
+  { key: 'shortcuts', label: 'Shortcuts', icon: Command },
   { key: 'memory', label: 'Memory', icon: Brain },
   { key: 'skills', label: 'Skills', icon: Wrench }
 ];
