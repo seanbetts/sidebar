@@ -771,7 +771,7 @@
           {:else if markdownError}
             <div class="viewer-placeholder video-markdown-status">{markdownError}</div>
           {:else}
-            <div class="file-markdown-container">
+            <div class="file-markdown-container file-markdown-container--media">
               <FileMarkdown content={markdownContent} />
             </div>
           {/if}
@@ -857,7 +857,7 @@
             {:else if markdownError}
               <div class="viewer-placeholder audio-markdown-status">{markdownError}</div>
             {:else}
-              <div class="file-markdown-container">
+              <div class="file-markdown-container file-markdown-container--media">
                 <FileMarkdown content={markdownContent} />
               </div>
             {/if}
@@ -978,14 +978,14 @@
 
   .file-viewer-body.audio-body {
     align-items: flex-start;
-    justify-content: flex-start;
-    overflow: auto;
+    justify-content: center;
+    overflow: hidden;
   }
 
   .file-viewer-body.video-body {
     align-items: flex-start;
-    justify-content: flex-start;
-    overflow: auto;
+    justify-content: center;
+    overflow: hidden;
   }
 
   .file-viewer-controls {
@@ -1184,6 +1184,8 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    height: 100%;
+    min-height: 0;
   }
 
   .file-viewer-video-content {
@@ -1192,6 +1194,8 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    height: 100%;
+    min-height: 0;
   }
 
   .file-viewer-audio-card {
@@ -1280,6 +1284,13 @@
     border-radius: 0.5rem;
     background: var(--color-card);
     border: 1px solid var(--color-border);
+  }
+
+  .file-markdown-container--media {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    margin: 0 auto;
   }
 
   @container (max-width: 700px) {
