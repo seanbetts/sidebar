@@ -16,9 +16,18 @@ export function initAuth(
   session.set(initialSession);
   user.set(initialUser);
 
-  supabase.auth.onAuthStateChange((_event, newSession) => {
+  supabase.auth.onAuthStateChange(async (_event, newSession) => {
     session.set(newSession);
-    user.set(newSession?.user ?? null);
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        user.set(null);
+      } else {
+        user.set(data.user ?? null);
+      }
+    } catch {
+      user.set(null);
+    }
     void invalidateAll();
   });
 }

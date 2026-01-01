@@ -9,6 +9,8 @@ import { conversationListStore, currentConversationId } from './conversations';
 import { generateConversationTitle } from './chat/generateTitle';
 import { createToolStateHandlers } from './chat/toolState';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+import { ingestionAPI } from '$lib/services/api';
+import { ingestionStore } from '$lib/stores/ingestion';
 
 const LAST_CONVERSATION_KEY = 'sideBar.lastConversation';
 
@@ -243,6 +245,12 @@ function createChatStore() {
 		 * @param status Tool result status.
 		 */
 		updateToolResult(messageId: string, toolCallId: string, result: any, status: 'success' | 'error') {
+			const state = get({ subscribe });
+			const toolName = state.messages
+				.find((msg) => msg.id === messageId)
+				?.toolCalls?.find((tc) => tc.id === toolCallId)
+				?.name
+				?.toLowerCase();
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) => {
@@ -257,6 +265,22 @@ function createChatStore() {
 					};
 				})
 			}));
+			if (status === 'success' && toolName && (toolName.includes('fs.write') || toolName === 'write file')) {
+				const fileId = result?.data?.file_id ?? result?.data?.fileId;
+				if (!fileId) return;
+				void ingestionAPI
+					.get(fileId)
+					.then((meta) => {
+						ingestionStore.upsertItem({
+							file: meta.file,
+							job: meta.job,
+							recommended_viewer: meta.recommended_viewer
+						});
+					})
+					.catch((error) => {
+						console.error('Failed to fetch ingestion metadata:', error);
+					});
+			}
 		},
 
 		/**

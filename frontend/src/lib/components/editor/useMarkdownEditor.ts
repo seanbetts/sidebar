@@ -6,6 +6,7 @@ import { TaskList, TaskItem } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
 import { Markdown } from 'tiptap-markdown';
 import { tick } from 'svelte';
+import { TextSelection } from '@tiptap/pm/state';
 
 interface MarkdownEditorOptions {
   element: HTMLDivElement;
@@ -100,8 +101,11 @@ export function createMarkdownEditor({
         await tick();
         await new Promise((resolve) => requestAnimationFrame(resolve));
 
-        if (isSameNote && currentPosition <= nextContent.length) {
-          editor.commands.setTextSelection(currentPosition);
+        if (isSameNote) {
+          const maxPosition = editor.state.doc.content.size;
+          const safePosition = Math.min(currentPosition, maxPosition);
+          const selection = TextSelection.near(editor.state.doc.resolve(safePosition));
+          editor.view.dispatch(editor.state.tr.setSelection(selection));
         }
       }
 

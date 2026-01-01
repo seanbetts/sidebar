@@ -1,7 +1,7 @@
 """Configuration settings for sideBar Skills API."""
 import os
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse, urlunparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,7 +13,22 @@ def _build_database_url() -> str:
         Database URL string suitable for SQLAlchemy.
     """
     explicit_url = os.getenv("DATABASE_URL")
+    app_env = os.getenv("APP_ENV", "").lower()
     if explicit_url:
+        if app_env not in {"prod", "production"}:
+            parsed = urlparse(explicit_url)
+            if parsed.hostname and "pooler.supabase.com" in parsed.hostname:
+                port = parsed.port or 5432
+                if port == 5432:
+                    netloc = parsed.netloc
+                    if "@" in netloc:
+                        auth, hostport = netloc.split("@", 1)
+                        host = hostport.split(":")[0]
+                        netloc = f"{auth}@{host}:6543"
+                    else:
+                        host = netloc.split(":")[0]
+                        netloc = f"{host}:6543"
+                    return urlunparse(parsed._replace(netloc=netloc))
         return explicit_url
 
     supabase_password = os.getenv("SUPABASE_POSTGRES_PSWD")
@@ -25,6 +40,9 @@ def _build_database_url() -> str:
     port = os.getenv("SUPABASE_DB_PORT", "5432")
     sslmode = os.getenv("SUPABASE_SSLMODE", "require")
     use_pooler = os.getenv("SUPABASE_USE_POOLER", "true").lower() in {"1", "true", "yes", "on"}
+    pooler_mode = os.getenv("SUPABASE_POOLER_MODE", "transaction").lower()
+    if use_pooler and app_env not in {"prod", "production"}:
+        pooler_mode = "transaction"
 
     host = None
     user = None
@@ -34,6 +52,11 @@ def _build_database_url() -> str:
             user = os.getenv("SUPABASE_POOLER_USER", f"postgres.{project_id}")
             if user == "sidebar_app" or user.startswith("sidebar_app."):
                 supabase_password = os.getenv("SUPABASE_APP_PSWD", supabase_password)
+            if pooler_mode == "transaction":
+                # Transaction pooler uses 6543 regardless of session port config.
+                port = "6543"
+            else:
+                port = os.getenv("SUPABASE_POOLER_PORT", "5432")
         else:
             use_pooler = False
 
@@ -75,6 +98,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = _build_database_url()
+    db_pool_size: int = int(os.getenv("DB_POOL_SIZE", "15"))
+    db_max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "5"))
 
     # Claude API configuration
     anthropic_api_key: str  # Loaded from Doppler or environment

@@ -8,7 +8,7 @@ def get_transcription_definitions() -> dict:
     """Return transcription tool definitions."""
     return {
         "Transcribe Audio": {
-            "description": "Transcribe an audio file into text and save it as a note.",
+            "description": "Transcribe an audio file into text and save it to the files workspace.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -16,6 +16,7 @@ def get_transcription_definitions() -> dict:
                     "language": {"type": "string", "description": "Language code (optional)"},
                     "model": {"type": "string", "description": "Transcription model (optional)"},
                     "output_dir": {"type": "string", "description": "Transcript output directory (optional)"},
+                    "output_name": {"type": "string", "description": "Transcript filename (optional)"},
                     "folder": {"type": "string", "description": "Notes folder for transcript (optional)"},
                 },
                 "required": ["file_path"],
@@ -25,7 +26,7 @@ def get_transcription_definitions() -> dict:
             "build_args": pm.build_audio_transcribe_args,
         },
         "Download YouTube": {
-            "description": "Download YouTube video or audio to R2 (Videos folder by default).",
+            "description": "Download YouTube video or audio to the files workspace (videos by default).",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -41,7 +42,7 @@ def get_transcription_definitions() -> dict:
             "build_args": pm.build_youtube_download_args,
         },
         "Transcribe YouTube": {
-            "description": "Download YouTube audio, transcribe it, and save it as a note.",
+            "description": "Download YouTube audio, transcribe it, and save it to the files workspace.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -49,9 +50,9 @@ def get_transcription_definitions() -> dict:
                     "language": {"type": "string", "description": "Language code (optional)"},
                     "model": {"type": "string", "description": "Transcription model (optional)"},
                     "output_dir": {"type": "string", "description": "Transcript output directory (optional)"},
+                    "output_name": {"type": "string", "description": "Transcript filename (optional)"},
                     "audio_dir": {"type": "string", "description": "Audio output directory (optional)"},
                     "keep_audio": {"type": "boolean", "description": "Keep audio file after transcription"},
-                    "folder": {"type": "string", "description": "Notes folder for transcript (optional)"},
                 },
                 "required": ["url"],
             },

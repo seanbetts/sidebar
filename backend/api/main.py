@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from api.routers import health, chat, conversations, files, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories
+from api.routers import health, chat, conversations, files, ingestion, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
 from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
@@ -106,6 +106,7 @@ app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(conversations.router, prefix="/api", tags=["conversations"])
 app.include_router(files.router, prefix="/api", tags=["files"])
+app.include_router(ingestion.router, prefix="/api", tags=["ingestion"])
 app.include_router(notes.router, prefix="/api", tags=["notes"])
 app.include_router(websites.router, prefix="/api", tags=["websites"])
 app.include_router(scratchpad.router, prefix="/api", tags=["scratchpad"])

@@ -10,15 +10,14 @@ from api.services.skill_file_ops_paths import (
     relative_path,
     session_for_user,
 )
-from api.services.skill_file_ops_storage import (
-    copy_path,
-    create_folder,
+from api.services.skill_file_ops_ingestion import (
     delete_path,
     download_file,
     info,
     list_entries,
     move_path,
     read_text,
+    search_entries,
     upload_file,
     write_text,
 )
@@ -31,14 +30,13 @@ __all__ = [
     "normalize_path",
     "relative_path",
     "session_for_user",
-    "copy_path",
-    "create_folder",
     "delete_path",
     "download_file",
     "info",
     "list_entries",
     "move_path",
     "read_text",
+    "search_entries",
     "upload_file",
     "write_text",
 ]

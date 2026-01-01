@@ -10,18 +10,35 @@
 	import { get } from 'svelte/store';
 	import { treeStore } from '$lib/stores/tree';
 	import { websitesStore } from '$lib/stores/websites';
-	import { editorStore } from '$lib/stores/editor';
+	import { editorStore, currentNoteId } from '$lib/stores/editor';
+	import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
+	import { ingestionStore } from '$lib/stores/ingestion';
 	import { conversationListStore } from '$lib/stores/conversations';
 	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { memoriesStore } from '$lib/stores/memories';
-	import { MessageSquare, Plus, X } from 'lucide-svelte';
+	import { ingestionAPI } from '$lib/services/api';
+	import { MessageSquare, Plus, RotateCcw, Trash2, X } from 'lucide-svelte';
 	import { getCachedData } from '$lib/utils/cache';
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
 	let sseClient = new SSEClient();
+	let attachments: Array<{
+		id: string;
+		fileId?: string;
+		file?: File;
+		name: string;
+		status: string;
+		stage?: string | null;
+	}> = [];
+	let attachmentPolls = new Map<string, ReturnType<typeof setTimeout>>();
+	let isMounted = true;
+	let previousConversationId: string | null = null;
 
 	onDestroy(() => {
+		isMounted = false;
+		attachmentPolls.forEach((timeoutId) => clearTimeout(timeoutId));
+		attachmentPolls.clear();
 		// Clean up SSE connection when component unmounts
 		sseClient.disconnect();
 	});
@@ -69,18 +86,32 @@
 	}
 
 	async function handleSend(message: string) {
+		const pendingAttachments = attachments.filter((item) => item.status !== 'ready');
+		if (pendingAttachments.length > 0) {
+			toast.error('Files are still processing. Please wait before sending.');
+			return;
+		}
 
 		// Add user message and start streaming assistant response
 		const { assistantMessageId, userMessageId } = await chatStore.sendMessage(message);
 		const { conversationId } = get(chatStore);
+		const attachmentsForMessage = attachments
+			.filter((item) => item.status === 'ready' && item.fileId)
+			.map((item) => ({
+				file_id: item.fileId,
+				filename: item.name
+			}));
+		attachments = [];
 
 		try {
 			// Connect to SSE stream
 			const editorState = get(editorStore);
 			const websiteState = get(websitesStore);
+			const fileState = get(ingestionViewerStore);
 			const openContext: {
 				note?: { id: string; title: string; path: string | null; content: string };
 				website?: { id: string; title: string; url: string; domain: string; content: string };
+				file?: { id: string; filename: string; mime?: string | null; category?: string | null };
 			} = {};
 
 			if (editorState.currentNoteId) {
@@ -99,6 +130,15 @@
 					url: websiteState.active.url_full || websiteState.active.url,
 					domain: websiteState.active.domain,
 					content: websiteState.active.content || ''
+				};
+			}
+
+			if (fileState.active) {
+				openContext.file = {
+					id: fileState.active.file.id,
+					filename: fileState.active.file.filename_original,
+					mime: fileState.active.file.mime_original,
+					category: fileState.active.file.category
 				};
 			}
 
@@ -125,6 +165,7 @@
 					conversationId: conversationId ?? undefined,
 					userMessageId,
 					openContext,
+					attachments: attachmentsForMessage,
 					currentLocation: currentLocation || undefined,
 					currentLocationLevels,
 					currentWeather,
@@ -166,6 +207,9 @@
 
 					onNoteCreated: async (data) => {
 						dispatchCacheEvent('note.created');
+						websitesStore.clearActive();
+						ingestionViewerStore.clearActive();
+						currentNoteId.set(null);
 						if (data?.id && data?.title) {
 							treeStore.addNoteNode?.({
 								id: data.id,
@@ -182,6 +226,9 @@
 
 					onNoteUpdated: async (data) => {
 						dispatchCacheEvent('note.updated');
+						websitesStore.clearActive();
+						ingestionViewerStore.clearActive();
+						currentNoteId.set(null);
 						if (data?.id && data?.title) {
 							treeStore.renameNoteNode?.(data.id, `${data.title}.md`);
 						}
@@ -238,6 +285,8 @@
 							data?.system_prompt,
 							data?.first_message_prompt
 						);
+						websitesStore.clearActive();
+						ingestionViewerStore.clearActive();
 						editorStore.openPreview('Prompt Preview', content);
 					},
 
@@ -286,11 +335,127 @@
 	})();
 
 	async function handleNewChat() {
+		await chatStore.cleanupEmptyConversation?.();
 		await chatStore.startNewConversation();
 	}
 
 	function handleCloseChat() {
+		chatStore.cleanupEmptyConversation?.();
 		chatStore.reset();
+	}
+
+	$: {
+		const currentId = $chatStore.conversationId;
+		if (currentId !== previousConversationId) {
+			previousConversationId = currentId;
+			attachments = [];
+			attachmentPolls.forEach((timeoutId) => clearTimeout(timeoutId));
+			attachmentPolls.clear();
+		}
+	}
+
+	$: hasPendingAttachments = attachments.some((item) => item.status !== 'ready');
+	$: readyAttachments = attachments.filter((item) => item.status === 'ready');
+	$: pendingAttachments = attachments.filter((item) => item.status !== 'ready');
+	$: isSendDisabled = $chatStore.isStreaming || (attachments.length > 0 && hasPendingAttachments);
+
+	async function handleAttach(files: FileList) {
+		const fileArray = Array.from(files);
+		for (const file of fileArray) {
+			const id = crypto.randomUUID();
+			attachments = [
+				...attachments,
+				{ id, name: file.name, status: 'uploading', stage: 'uploading', file }
+			];
+			try {
+				const data = await ingestionAPI.upload(file);
+				attachments = attachments.map((item) =>
+					item.id === id ? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' } : item
+				);
+				startAttachmentPolling(id, data.file_id);
+			} catch (error) {
+				console.error('Attachment upload failed:', error);
+				attachments = attachments.map((item) =>
+					item.id === id ? { ...item, status: 'failed', stage: 'failed' } : item
+				);
+			}
+		}
+	}
+
+	async function handleRetryAttachment(attachmentId: string) {
+		const attachment = attachments.find((item) => item.id === attachmentId);
+		if (!attachment) return;
+		if (!attachment.file) {
+			toast.error('Re-upload the file to retry.');
+			return;
+		}
+		attachments = attachments.map((item) =>
+			item.id === attachmentId
+				? { ...item, fileId: undefined, status: 'uploading', stage: 'uploading' }
+				: item
+		);
+		try {
+			const data = await ingestionAPI.upload(attachment.file);
+			attachments = attachments.map((item) =>
+				item.id === attachmentId ? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' } : item
+			);
+			startAttachmentPolling(attachmentId, data.file_id);
+		} catch (error) {
+			console.error('Attachment upload failed:', error);
+			attachments = attachments.map((item) =>
+				item.id === attachmentId ? { ...item, status: 'failed', stage: 'failed' } : item
+			);
+		}
+	}
+
+	async function handleDeleteAttachment(attachmentId: string) {
+		const attachment = attachments.find((item) => item.id === attachmentId);
+		if (!attachment) return;
+		const poll = attachmentPolls.get(attachmentId);
+		if (poll) clearTimeout(poll);
+		attachmentPolls.delete(attachmentId);
+		attachments = attachments.filter((item) => item.id !== attachmentId);
+		if (attachment.fileId) {
+			try {
+				await ingestionAPI.delete(attachment.fileId);
+			} catch (error) {
+				console.error('Failed to delete attachment:', error);
+			}
+		}
+	}
+
+	function handleRemoveReadyAttachment(attachmentId: string) {
+		attachments = attachments.filter((item) => item.id !== attachmentId);
+	}
+
+	function startAttachmentPolling(id: string, fileId: string) {
+		if (attachmentPolls.has(id)) {
+			clearTimeout(attachmentPolls.get(id));
+		}
+		const poll = async () => {
+			try {
+				const data = await ingestionAPI.get(fileId);
+				const status = data.job.status || 'queued';
+				const stage = data.job.stage;
+				attachments = attachments.map((item) =>
+					item.id === id ? { ...item, status, stage } : item
+				);
+				if (status === 'ready') {
+					ingestionViewerStore.open(fileId);
+					void ingestionStore.load();
+					dispatchCacheEvent('file.uploaded');
+				}
+				if (!['ready', 'failed', 'canceled'].includes(status) && isMounted) {
+					const next = setTimeout(poll, 5000);
+					attachmentPolls.set(id, next);
+					return;
+				}
+			} catch (error) {
+				console.error('Attachment status failed:', error);
+			}
+		};
+		const timeoutId = setTimeout(poll, 1500);
+		attachmentPolls.set(id, timeoutId);
 	}
 </script>
 
@@ -326,8 +491,48 @@
 	<!-- Messages -->
 	<MessageList messages={$chatStore.messages} activeTool={$chatStore.activeTool} />
 
+	{#if pendingAttachments.length > 0}
+		<div class="chat-attachments">
+			{#each pendingAttachments as attachment (attachment.id)}
+				<div class="chat-attachment">
+					<span class="attachment-name">{attachment.name}</span>
+					<div class="attachment-meta">
+						{#if attachment.status !== 'ready' && attachment.status !== 'failed'}
+							<span class="attachment-spinner" aria-hidden="true"></span>
+						{/if}
+						<span class="attachment-status">{attachment.stage || attachment.status}</span>
+						{#if attachment.status === 'failed'}
+							<div class="attachment-actions">
+								<button
+									class="attachment-action"
+									onclick={() => handleRetryAttachment(attachment.id)}
+									aria-label="Retry attachment"
+								>
+									<RotateCcw size={14} />
+								</button>
+								<button
+									class="attachment-action"
+									onclick={() => handleDeleteAttachment(attachment.id)}
+									aria-label="Delete attachment"
+								>
+									<Trash2 size={14} />
+								</button>
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
+	{/if}
+
 	<!-- Input -->
-	<ChatInput onsend={handleSend} disabled={$chatStore.isStreaming} />
+	<ChatInput
+		onsend={handleSend}
+		onattach={handleAttach}
+		onremoveattachment={handleRemoveReadyAttachment}
+		readyattachments={readyAttachments}
+		disabled={isSendDisabled}
+	/>
 </div>
 
 <style>
@@ -361,5 +566,71 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		max-width: 300px;
+	}
+
+	.chat-attachments {
+		padding: 0 1.5rem 0.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.chat-attachment {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.5rem;
+		font-size: 0.8rem;
+		color: var(--color-muted-foreground);
+	}
+
+	.attachment-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--color-foreground);
+	}
+
+	.attachment-status {
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+	}
+
+	.attachment-meta {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.attachment-spinner {
+		width: 12px;
+		height: 12px;
+		border-radius: 999px;
+		border: 2px solid color-mix(in oklab, var(--color-muted-foreground) 40%, transparent);
+		border-top-color: var(--color-muted-foreground);
+		animation: attachment-spin 1s linear infinite;
+	}
+
+	.attachment-actions {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.attachment-action {
+		border: none;
+		background: transparent;
+		padding: 0;
+		cursor: pointer;
+		color: var(--color-muted-foreground);
+	}
+
+	.attachment-action:hover {
+		color: var(--color-foreground);
+	}
+
+	@keyframes attachment-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

@@ -34,7 +34,7 @@ Transcribes audio files to text using OpenAI's gpt-4o-transcribe, gpt-4o-mini-tr
 Transcribes audio files with automatic chunking and progress tracking.
 
 ```bash
-python transcribe_audio.py FILE [--language LANG] [--model MODEL] [--output-dir DIR] [--user-id USER] [--json]
+python transcribe_audio.py FILE [--language LANG] [--model MODEL] [--output-dir DIR] [--output-name NAME] [--user-id USER] [--json]
 ```
 
 **Arguments**:
@@ -45,6 +45,7 @@ python transcribe_audio.py FILE [--language LANG] [--model MODEL] [--output-dir 
 - `--model`: Transcription model (default: "gpt-4o-transcribe")
   - Options: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
 - `--output-dir`: R2 folder for transcripts (default: Transcripts)
+- `--output-name`: Output filename override (default: ai.md when invoked via tool)
 - `--chunking-strategy`: Use "auto" for automatic VAD-based chunking
 - `--prompt`: Optional text to guide model's style
 - `--response-format`: Output format (json, text, srt, vtt, verbose_json)

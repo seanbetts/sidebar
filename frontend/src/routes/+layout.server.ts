@@ -6,7 +6,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     maintenanceMode: env.MAINTENANCE_MODE === 'true',
     supabaseUrl: env.SUPABASE_URL,
     supabaseAnonKey: env.SUPABASE_ANON_KEY,
-    session: locals.session ?? null,
+    isAuthenticated: Boolean(locals.session),
     user: locals.user ?? null
   };
 };

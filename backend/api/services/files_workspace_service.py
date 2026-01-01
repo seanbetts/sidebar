@@ -1,22 +1,101 @@
-"""Workspace file operations and storage orchestration."""
+"""Workspace file operations backed by ingestion."""
 from __future__ import annotations
 
 import mimetypes
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 from api.services.file_tree_service import FileTreeService
-from api.services.files_service import FilesService
 from api.services.storage.service import get_storage_backend
+from api.services.skill_file_ops_ingestion import write_text as write_ingested_text
 
 storage_backend = get_storage_backend()
 
 
+@dataclass(frozen=True)
+class _TreeRecord:
+    path: str
+    deleted_at: datetime | None
+    category: str | None
+    size: int
+    updated_at: datetime | None
+
+
+def _full_path(base_path: str, path: str) -> str:
+    return FileTreeService.full_path(base_path, path)
+
+
+def _relative_path(base_path: str, full_path: str) -> str:
+    return FileTreeService.relative_path(base_path, full_path)
+
+
+def _find_record(db: Session, user_id: str, path: str) -> IngestedFile | None:
+    return (
+        db.query(IngestedFile)
+        .filter(
+            IngestedFile.user_id == user_id,
+            IngestedFile.path == path,
+            IngestedFile.deleted_at.is_(None),
+        )
+        .first()
+    )
+
+
+def _list_prefix(db: Session, user_id: str, prefix: str) -> list[IngestedFile]:
+    prefix_norm = prefix.strip("/")
+    if prefix_norm:
+        match = f"{prefix_norm}/%"
+        query = db.query(IngestedFile).filter(
+            IngestedFile.user_id == user_id,
+            IngestedFile.deleted_at.is_(None),
+            IngestedFile.path.like(match),
+        )
+    else:
+        query = db.query(IngestedFile).filter(
+            IngestedFile.user_id == user_id,
+            IngestedFile.deleted_at.is_(None),
+        )
+    return query.order_by(IngestedFile.path.asc()).all()
+
+
+def _pick_download_derivative(db: Session, file_id) -> FileDerivative | None:
+    preferred = [
+        "viewer_pdf",
+        "image_original",
+        "audio_original",
+        "text_original",
+        "viewer_json",
+        "ai_md",
+    ]
+    derivatives = (
+        db.query(FileDerivative)
+        .filter(FileDerivative.file_id == file_id)
+        .all()
+    )
+    by_kind = {item.kind: item for item in derivatives}
+    for kind in preferred:
+        if kind in by_kind:
+            return by_kind[kind]
+    return derivatives[0] if derivatives else None
+
+
+def _strip_frontmatter(content: str) -> str:
+    if not content.startswith("---\n"):
+        return content
+    marker = "\n---\n"
+    idx = content.find(marker)
+    if idx == -1:
+        return content
+    return content[idx + len(marker):]
+
+
 class FilesWorkspaceService:
-    """Workspace-facing file operations backed by storage + DB."""
+    """Workspace-facing file operations backed by ingestion."""
 
     @staticmethod
     def get_tree(db: Session, user_id: str, base_path: str) -> dict:
@@ -31,8 +110,19 @@ class FilesWorkspaceService:
             Tree payload with children.
         """
         base_path = FileTreeService.normalize_base_path(base_path)
-        records = FilesService.list_by_prefix(db, user_id, base_path)
-        tree = FileTreeService.build_tree(records, base_path)
+        records = _list_prefix(db, user_id, base_path)
+        tree_records = [
+            _TreeRecord(
+                path=record.path,
+                deleted_at=record.deleted_at,
+                category=None,
+                size=record.size_bytes,
+                updated_at=record.created_at,
+            )
+            for record in records
+            if record.path
+        ]
+        tree = FileTreeService.build_tree(tree_records, base_path)
         return {"children": tree.get("children", [])}
 
     @staticmethod
@@ -57,24 +147,38 @@ class FilesWorkspaceService:
             Search results payload.
         """
         base_path = FileTreeService.normalize_base_path(base_path)
-        records = FilesService.search_by_name(db, user_id, query, base_path, limit=limit)
+        like_pattern = f"%{query}%"
+        filters = [
+            IngestedFile.user_id == user_id,
+            IngestedFile.deleted_at.is_(None),
+            IngestedFile.path.ilike(like_pattern),
+        ]
+        if base_path:
+            filters.append(IngestedFile.path.like(f"{base_path}/%"))
+        records = (
+            db.query(IngestedFile)
+            .filter(*filters)
+            .order_by(IngestedFile.created_at.desc())
+            .limit(limit)
+            .all()
+        )
         items = []
         for record in records:
-            rel_path = FileTreeService.relative_path(base_path, record.path)
+            rel_path = _relative_path(base_path, record.path)
             items.append(
                 {
                     "name": Path(rel_path).name,
                     "path": rel_path,
                     "type": "file",
-                    "modified": record.updated_at.timestamp() if record.updated_at else None,
-                    "size": record.size,
+                    "modified": record.created_at.timestamp() if record.created_at else None,
+                    "size": record.size_bytes,
                 }
             )
         return {"items": items}
 
     @staticmethod
     def create_folder(db: Session, user_id: str, base_path: str, path: str) -> dict:
-        """Create a folder marker in storage and metadata.
+        """Return success for folder creation (folders are implicit).
 
         Args:
             db: Database session.
@@ -85,19 +189,8 @@ class FilesWorkspaceService:
         Returns:
             Folder creation result.
         """
-        full_path = FileTreeService.full_path(base_path, path)
-        bucket_key = FileTreeService.bucket_key(user_id, f"{full_path}/")
-        FilesService.upsert_file(
-            db,
-            user_id,
-            full_path,
-            bucket_key=bucket_key,
-            size=0,
-            content_type=None,
-            etag=None,
-            category="folder",
-        )
-        return {"success": True}
+        _full_path(base_path, path)
+        return {"success": True, "created": False}
 
     @staticmethod
     def rename(
@@ -122,45 +215,28 @@ class FilesWorkspaceService:
         Raises:
             HTTPException: 400 if target exists, 404 if item not found.
         """
-        old_full_path = FileTreeService.full_path(base_path, old_path)
+        old_full_path = _full_path(base_path, old_path)
         parent = str(Path(old_path).parent) if Path(old_path).parent != Path(".") else ""
         new_rel = f"{parent}/{new_name}".strip("/")
-        new_full_path = FileTreeService.full_path(base_path, new_rel)
+        new_full_path = _full_path(base_path, new_rel)
 
-        if FilesService.get_by_path(db, user_id, new_full_path):
+        if _find_record(db, user_id, new_full_path):
             raise HTTPException(status_code=400, detail="An item with that name already exists")
 
-        record = FilesService.get_by_path(db, user_id, old_full_path)
+        record = _find_record(db, user_id, old_full_path)
         if record:
-            is_folder = record.category == "folder"
-        else:
-            prefix_records = FilesService.list_by_prefix(db, user_id, f"{old_full_path}/")
-            if not prefix_records:
-                raise HTTPException(status_code=404, detail="Item not found")
-            is_folder = True
-
-        if not is_folder:
-            old_key = record.bucket_key
-            new_key = FileTreeService.bucket_key(user_id, new_full_path)
-            storage_backend.move_object(old_key, new_key)
             record.path = new_full_path
-            record.bucket_key = new_key
-            record.updated_at = datetime.now(timezone.utc)
+            record.filename_original = new_name
             db.commit()
             return {"success": True, "newPath": new_rel}
 
-        records = FilesService.list_by_prefix(db, user_id, f"{old_full_path}/")
-        for item in records:
-            if item.category == "folder":
-                item.path = item.path.replace(old_full_path, new_full_path, 1)
-                item.bucket_key = FileTreeService.bucket_key(user_id, f"{item.path}/")
-                item.updated_at = datetime.now(timezone.utc)
-                continue
-            old_key = item.bucket_key
+        prefix_records = _list_prefix(db, user_id, old_full_path)
+        if not prefix_records:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        for item in prefix_records:
             item.path = item.path.replace(old_full_path, new_full_path, 1)
-            item.bucket_key = FileTreeService.bucket_key(user_id, item.path)
-            item.updated_at = datetime.now(timezone.utc)
-            storage_backend.move_object(old_key, item.bucket_key)
+            item.filename_original = Path(item.path).name
         db.commit()
         return {"success": True, "newPath": new_rel}
 
@@ -187,46 +263,29 @@ class FilesWorkspaceService:
         Raises:
             HTTPException: 400 if target exists, 404 if item not found.
         """
-        full_path = FileTreeService.full_path(base_path, path)
+        full_path = _full_path(base_path, path)
         filename = Path(path).name
-        new_full_path = FileTreeService.full_path(base_path, f"{destination}/{filename}")
+        new_full_path = _full_path(base_path, f"{destination}/{filename}")
 
-        if FilesService.get_by_path(db, user_id, new_full_path):
+        if _find_record(db, user_id, new_full_path):
             raise HTTPException(status_code=400, detail="An item with that name already exists")
 
-        record = FilesService.get_by_path(db, user_id, full_path)
+        record = _find_record(db, user_id, full_path)
         if record:
-            is_folder = record.category == "folder"
-        else:
-            prefix_records = FilesService.list_by_prefix(db, user_id, f"{full_path}/")
-            if not prefix_records:
-                raise HTTPException(status_code=404, detail="Item not found")
-            is_folder = True
-
-        if not is_folder:
-            old_key = record.bucket_key
-            new_key = FileTreeService.bucket_key(user_id, new_full_path)
-            storage_backend.move_object(old_key, new_key)
             record.path = new_full_path
-            record.bucket_key = new_key
-            record.updated_at = datetime.now(timezone.utc)
+            record.filename_original = Path(new_full_path).name
             db.commit()
-            return {"success": True, "newPath": FileTreeService.relative_path(base_path, new_full_path)}
+            return {"success": True, "newPath": _relative_path(base_path, new_full_path)}
 
-        records = FilesService.list_by_prefix(db, user_id, f"{full_path}/")
-        for item in records:
-            if item.category == "folder":
-                item.path = item.path.replace(full_path, new_full_path, 1)
-                item.bucket_key = FileTreeService.bucket_key(user_id, f"{item.path}/")
-                item.updated_at = datetime.now(timezone.utc)
-                continue
-            old_key = item.bucket_key
+        prefix_records = _list_prefix(db, user_id, full_path)
+        if not prefix_records:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        for item in prefix_records:
             item.path = item.path.replace(full_path, new_full_path, 1)
-            item.bucket_key = FileTreeService.bucket_key(user_id, item.path)
-            item.updated_at = datetime.now(timezone.utc)
-            storage_backend.move_object(old_key, item.bucket_key)
+            item.filename_original = Path(item.path).name
         db.commit()
-        return {"success": True, "newPath": FileTreeService.relative_path(base_path, new_full_path)}
+        return {"success": True, "newPath": _relative_path(base_path, new_full_path)}
 
     @staticmethod
     def delete(db: Session, user_id: str, base_path: str, path: str) -> dict:
@@ -244,22 +303,39 @@ class FilesWorkspaceService:
         Raises:
             HTTPException: 404 if item not found.
         """
-        full_path = FileTreeService.full_path(base_path, path)
-        record = FilesService.get_by_path(db, user_id, full_path)
+        full_path = _full_path(base_path, path)
+        record = _find_record(db, user_id, full_path)
         if record:
-            if record.category != "folder":
-                storage_backend.delete_object(record.bucket_key)
-            FilesService.mark_deleted(db, user_id, full_path)
+            job = db.query(FileProcessingJob).filter(FileProcessingJob.file_id == record.id).first()
+            if job and job.status not in {"ready", "failed", "canceled"}:
+                raise HTTPException(status_code=409, detail="File is still processing")
+            derivatives = (
+                db.query(FileDerivative)
+                .filter(FileDerivative.file_id == record.id)
+                .all()
+            )
+            for item in derivatives:
+                storage_backend.delete_object(item.storage_key)
+            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+            record.deleted_at = datetime.now(timezone.utc)
+            db.commit()
             return {"success": True}
 
-        records = FilesService.list_by_prefix(db, user_id, f"{full_path}/")
+        records = _list_prefix(db, user_id, full_path)
         if not records:
             raise HTTPException(status_code=404, detail="Item not found")
 
         for item in records:
-            if item.category != "folder":
-                storage_backend.delete_object(item.bucket_key)
-            FilesService.mark_deleted(db, user_id, item.path)
+            derivatives = (
+                db.query(FileDerivative)
+                .filter(FileDerivative.file_id == item.id)
+                .all()
+            )
+            for derivative in derivatives:
+                storage_backend.delete_object(derivative.storage_key)
+            db.query(FileDerivative).filter(FileDerivative.file_id == item.id).delete()
+            item.deleted_at = datetime.now(timezone.utc)
+        db.commit()
         return {"success": True}
 
     @staticmethod
@@ -278,13 +354,17 @@ class FilesWorkspaceService:
         Raises:
             HTTPException: 404 if file not found or is a folder.
         """
-        full_path = FileTreeService.full_path(base_path, path)
-        record = FilesService.get_by_path(db, user_id, full_path)
-        if not record or record.category == "folder":
+        full_path = _full_path(base_path, path)
+        record = _find_record(db, user_id, full_path)
+        if not record:
             raise HTTPException(status_code=404, detail="File not found")
 
-        content = storage_backend.get_object(record.bucket_key)
-        content_type = record.content_type or mimetypes.guess_type(path)[0] or "application/octet-stream"
+        derivative = _pick_download_derivative(db, record.id)
+        if not derivative:
+            raise HTTPException(status_code=404, detail="File data missing")
+
+        content = storage_backend.get_object(derivative.storage_key)
+        content_type = derivative.mime or mimetypes.guess_type(path)[0] or "application/octet-stream"
         return {
             "content": content,
             "content_type": content_type,
@@ -307,25 +387,36 @@ class FilesWorkspaceService:
         Raises:
             HTTPException: 400 if file is not text, 404 if not found.
         """
-        full_path = FileTreeService.full_path(base_path, path)
-        record = FilesService.get_by_path(db, user_id, full_path)
-        if not record or record.category == "folder":
+        full_path = _full_path(base_path, path)
+        record = _find_record(db, user_id, full_path)
+        if not record:
             raise HTTPException(status_code=404, detail="File not found")
 
-        content = storage_backend.get_object(record.bucket_key)
-        if record.content_type and record.content_type.startswith("text/"):
+        derivative = (
+            db.query(FileDerivative)
+            .filter(
+                FileDerivative.file_id == record.id,
+                FileDerivative.kind.in_(["text_original", "ai_md"]),
+            )
+            .order_by(FileDerivative.created_at.desc())
+            .first()
+        )
+        if not derivative:
+            raise HTTPException(status_code=400, detail="File is not a text file")
+
+        content = storage_backend.get_object(derivative.storage_key)
+        try:
             decoded = content.decode("utf-8")
-        else:
-            try:
-                decoded = content.decode("utf-8")
-            except UnicodeDecodeError as exc:
-                raise HTTPException(status_code=400, detail="File is not a text file") from exc
+        except UnicodeDecodeError as exc:
+            raise HTTPException(status_code=400, detail="File is not a text file") from exc
+        if derivative.kind == "ai_md":
+            decoded = _strip_frontmatter(decoded)
 
         return {
             "content": decoded,
             "name": Path(path).name,
             "path": path,
-            "modified": record.updated_at.timestamp() if record.updated_at else None,
+            "modified": record.created_at.timestamp() if record.created_at else None,
         }
 
     @staticmethod
@@ -342,21 +433,9 @@ class FilesWorkspaceService:
         Returns:
             Update result payload with modified timestamp.
         """
-        full_path = FileTreeService.full_path(base_path, path)
-        bucket_key = FileTreeService.bucket_key(user_id, full_path)
-        data = content.encode("utf-8")
-        storage_backend.put_object(bucket_key, data, content_type="text/plain")
-        record = FilesService.upsert_file(
-            db,
-            user_id,
-            full_path,
-            bucket_key=bucket_key,
-            size=len(data),
-            content_type="text/plain",
-            etag=None,
-            category="file",
-        )
+        full_path = _full_path(base_path, path)
+        write_ingested_text(user_id, full_path, content, mode="replace")
         return {
             "success": True,
-            "modified": record.updated_at.timestamp() if record.updated_at else None,
+            "modified": datetime.now(timezone.utc).timestamp(),
         }

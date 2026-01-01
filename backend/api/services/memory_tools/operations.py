@@ -101,19 +101,40 @@ def handle_str_replace(db: Session, user_id: str, payload: dict[str, Any]) -> di
             f"Error: The path {path} does not exist. Please provide a valid path."
         )
 
-    occurrences = find_occurrences(memory.content, old_str)
-    if not occurrences:
-        return error(
-            f"No replacement was performed, old_str `{old_str}` did not appear verbatim in {path}."
-        )
-    if len(occurrences) > 1:
+    exact_count = memory.content.count(old_str)
+    if exact_count == 1:
+        updated_content = memory.content.replace(old_str, new_str)
+    elif exact_count > 1:
+        occurrences = find_occurrences(memory.content, old_str)
         line_list = ", ".join(str(line) for line in sorted(set(occurrences)))
         return error(
             "No replacement was performed. Multiple occurrences of "
             f"old_str `{old_str}` in lines: {line_list}. Please ensure it is unique"
         )
-
-    updated_content = memory.content.replace(old_str, new_str)
+    else:
+        fuzzy_matches = find_fuzzy_block_occurrences(memory.content, old_str)
+        if not fuzzy_matches:
+            return error(
+                f"No replacement was performed, old_str `{old_str}` did not appear in {path}."
+            )
+        if len(fuzzy_matches) > 1:
+            line_list = ", ".join(str(line) for line in sorted(set(fuzzy_matches)))
+            return error(
+                "No replacement was performed. Multiple fuzzy matches of "
+                f"old_str `{old_str}` in lines: {line_list}. Please ensure it is unique"
+            )
+        start_index = fuzzy_matches[0] - 1
+        content_lines = memory.content.splitlines(keepends=True)
+        old_lines = old_str.splitlines()
+        end_index = start_index + len(old_lines)
+        trailing = content_lines[end_index - 1] if end_index > 0 else ""
+        if trailing.endswith("\r\n") and not new_str.endswith(("\n", "\r\n")):
+            new_str = f"{new_str}\r\n"
+        elif trailing.endswith("\n") and not new_str.endswith(("\n", "\r\n")):
+            new_str = f"{new_str}\n"
+        updated_content = "".join(content_lines[:start_index]) + new_str + "".join(
+            content_lines[end_index:]
+        )
     validate_content(updated_content)
     memory.content = updated_content
     memory.updated_at = datetime.now(timezone.utc)
@@ -328,16 +349,44 @@ def find_occurrences(content: str, old_str: str) -> list[int]:
     """
     if not old_str:
         return []
-    lines = content.splitlines()
-    matches = []
-    for index, line in enumerate(lines, start=1):
-        start = 0
-        while True:
-            found = line.find(old_str, start)
-            if found == -1:
-                break
-            matches.append(index)
-            start = found + max(1, len(old_str))
+    matches: list[int] = []
+    start = 0
+    while True:
+        found = content.find(old_str, start)
+        if found == -1:
+            break
+        line_number = content.count("\n", 0, found) + 1
+        matches.append(line_number)
+        start = found + max(1, len(old_str))
+    return matches
+
+
+def find_fuzzy_block_occurrences(content: str, old_str: str) -> list[int]:
+    """Find line starts where old_str matches after whitespace normalization.
+
+    Args:
+        content: File content to scan.
+        old_str: Block text to locate.
+
+    Returns:
+        Line numbers (1-indexed) where the block matches.
+    """
+    if not old_str:
+        return []
+    old_lines = old_str.splitlines()
+    if not old_lines:
+        return []
+    content_lines = content.splitlines()
+
+    def normalize_line(line: str) -> str:
+        return " ".join(line.strip().split())
+
+    normalized_old = [normalize_line(line) for line in old_lines]
+    normalized_content = [normalize_line(line) for line in content_lines]
+    matches: list[int] = []
+    for index in range(0, len(normalized_content) - len(normalized_old) + 1):
+        if normalized_content[index : index + len(normalized_old)] == normalized_old:
+            matches.append(index + 1)
     return matches
 
 

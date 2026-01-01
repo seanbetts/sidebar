@@ -22,6 +22,10 @@
 		gap: 1rem;
 		border-bottom: 1px solid var(--color-border);
 		padding-bottom: 0.5rem;
+		overflow: hidden;
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
 	}
 
 	.scratchpad-header h2 {
@@ -29,11 +33,23 @@
 		font-size: 1.1rem;
 		font-weight: 600;
 		color: var(--color-foreground);
+		min-width: 0;
+		flex: 1 1 auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.status {
 		font-size: 0.75rem;
 		color: var(--color-muted-foreground);
+		flex-shrink: 1;
+		min-width: 0;
+		max-width: 45%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		text-align: right;
 	}
 
 	.status.error {

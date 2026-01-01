@@ -1,11 +1,14 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { Plus, Folder } from 'lucide-svelte';
+  import { Plus, Folder, FileVideoCamera } from 'lucide-svelte';
   import { conversationListStore } from '$lib/stores/conversations';
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import { treeStore } from '$lib/stores/tree';
   import { websitesStore } from '$lib/stores/websites';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+  import { ingestionStore } from '$lib/stores/ingestion';
+  import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
@@ -16,33 +19,37 @@
   import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
   import NewNoteDialog from '$lib/components/left-sidebar/dialogs/NewNoteDialog.svelte';
   import NewFolderDialog from '$lib/components/left-sidebar/dialogs/NewFolderDialog.svelte';
-  import NewWorkspaceFolderDialog from '$lib/components/left-sidebar/dialogs/NewWorkspaceFolderDialog.svelte';
   import NewWebsiteDialog from '$lib/components/left-sidebar/dialogs/NewWebsiteDialog.svelte';
   import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
   import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
-  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+  import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import { Button } from '$lib/components/ui/button';
+  import { ingestionAPI } from '$lib/services/api';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
+  let errorTitle = 'Unable to complete action';
   let errorMessage = 'Failed to create note. Please try again.';
   let isNewNoteDialogOpen = false;
   let newNoteName = '';
   let isNewFolderDialogOpen = false;
   let newFolderName = '';
-  let isNewWorkspaceFolderDialogOpen = false;
-  let newWorkspaceFolderName = '';
   let isSettingsOpen = false;
   let isNewWebsiteDialogOpen = false;
   let newWebsiteUrl = '';
   let isSavingWebsite = false;
-  let isCreatingWorkspaceFolder = false;
   let isCreatingNote = false;
   let isCreatingFolder = false;
   let isSaveChangesDialogOpen = false;
   let pendingNotePath: string | null = null;
   let settingsDialog: { handleProfileImageError: () => void } | null = null;
   let profileImageSrc = '';
+  let isUploadingFile = false;
+  let pendingUploadId: string | null = null;
+  let isYouTubeDialogOpen = false;
+  let youtubeUrl = '';
+  let isAddingYoutube = false;
+  let fileInput: HTMLInputElement | null = null;
   const sidebarLogoSrc = '/images/logo.svg';
   let isMounted = false;
   let lastConversationId: string | null = null;
@@ -65,9 +72,6 @@
       }
       lastMessageCount = $chatStore.messages.length;
     }
-  }
-  $: if (activeSection !== 'history' && $chatStore.conversationId && $chatStore.messages.length === 0) {
-    chatStore.cleanupEmptyConversation?.();
   }
 
   onMount(() => {
@@ -137,6 +141,7 @@
 
     // Load the new note
     websitesStore.clearActive();
+    ingestionViewerStore.clearActive();
     currentNoteId.set(path);
     await editorStore.loadNote('notes', path, { source: 'user' });
   }
@@ -148,6 +153,7 @@
     isSaveChangesDialogOpen = false;
     if (pendingNotePath) {
       websitesStore.clearActive();
+      ingestionViewerStore.clearActive();
       currentNoteId.set(pendingNotePath);
       await editorStore.loadNote('notes', pendingNotePath, { source: 'user' });
       pendingNotePath = null;
@@ -158,6 +164,7 @@
     isSaveChangesDialogOpen = false;
     if (pendingNotePath) {
       websitesStore.clearActive();
+      ingestionViewerStore.clearActive();
       currentNoteId.set(pendingNotePath);
       await editorStore.loadNote('notes', pendingNotePath, { source: 'user' });
       pendingNotePath = null;
@@ -166,19 +173,131 @@
 
   async function handleNewNote() {
     websitesStore.clearActive();
+    ingestionViewerStore.clearActive();
     newNoteName = '';
     isNewNoteDialogOpen = true;
   }
 
   function handleNewFolder() {
     websitesStore.clearActive();
+    ingestionViewerStore.clearActive();
     newFolderName = '';
     isNewFolderDialogOpen = true;
   }
 
-  function handleNewWorkspaceFolder() {
-    newWorkspaceFolderName = '';
-    isNewWorkspaceFolderDialogOpen = true;
+
+  function handleUploadFileClick() {
+    fileInput?.click();
+  }
+
+  function handleAddYouTube() {
+    youtubeUrl = '';
+    isYouTubeDialogOpen = true;
+  }
+
+  async function confirmAddYouTube() {
+    const url = youtubeUrl.trim();
+    if (!url || isAddingYoutube) return;
+
+    const tempId = `youtube-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+    isAddingYoutube = true;
+    const localItem = ingestionStore.addLocalSource({
+      id: tempId,
+      name: 'YouTube video',
+      mime: 'video/youtube',
+      url
+    });
+    ingestionViewerStore.setLocalActive(localItem);
+    try {
+      const { file_id } = await ingestionAPI.ingestYoutube(url);
+      ingestionStore.removeLocalUpload(tempId);
+      await ingestionStore.load();
+      ingestionStore.startPolling();
+      dispatchCacheEvent('file.uploaded');
+      websitesStore.clearActive();
+      editorStore.reset();
+      currentNoteId.set(null);
+      pendingUploadId = file_id;
+      ingestionViewerStore.open(file_id);
+      isYouTubeDialogOpen = false;
+    } catch (error) {
+      ingestionStore.removeLocalUpload(tempId);
+      ingestionViewerStore.updateActiveJob(tempId, {
+        status: 'failed',
+        stage: 'failed',
+        user_message: error instanceof Error ? error.message : 'Failed to add YouTube video.'
+      });
+      console.error('Failed to add YouTube video:', error);
+      errorTitle = 'Unable to add YouTube video';
+      errorMessage =
+        error instanceof Error ? error.message : 'Failed to add YouTube video. Please try again.';
+      isErrorDialogOpen = true;
+    } finally {
+      isAddingYoutube = false;
+    }
+  }
+
+  async function handleFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const selected = input.files?.[0];
+    if (!selected || isUploadingFile) return;
+
+    const tempId = `upload-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+    isUploadingFile = true;
+    const localItem = ingestionStore.addLocalUpload({
+      id: tempId,
+      name: selected.name,
+      type: selected.type,
+      size: selected.size
+    });
+    ingestionViewerStore.setLocalActive(localItem);
+    try {
+      const { file_id } = await ingestionAPI.upload(selected, (progress) => {
+        ingestionStore.updateLocalUploadProgress(tempId, progress);
+        ingestionViewerStore.updateActiveJob(tempId, {
+          status: 'uploading',
+          stage: 'uploading',
+          progress,
+          user_message: `Uploading ${Math.round(progress)}%`
+        });
+      });
+      ingestionStore.removeLocalUpload(tempId);
+      await ingestionStore.load();
+      ingestionStore.startPolling();
+      dispatchCacheEvent('file.uploaded');
+      websitesStore.clearActive();
+      editorStore.reset();
+      currentNoteId.set(null);
+      pendingUploadId = file_id;
+      ingestionViewerStore.open(file_id);
+    } catch (error) {
+      ingestionStore.removeLocalUpload(tempId);
+      ingestionViewerStore.updateActiveJob(tempId, {
+        status: 'failed',
+        stage: 'failed',
+        user_message: error instanceof Error ? error.message : 'Failed to upload file.'
+      });
+      console.error('Failed to upload file:', error);
+      errorTitle = 'Unable to upload file';
+      errorMessage =
+        error instanceof Error ? error.message : 'Failed to upload file. Please try again.';
+      isErrorDialogOpen = true;
+    } finally {
+      isUploadingFile = false;
+      if (input) {
+        input.value = '';
+      }
+    }
+  }
+
+  $: if (pendingUploadId) {
+    const item = $ingestionStore.items.find(entry => entry.file.id === pendingUploadId);
+    if (item?.job.status === 'ready' && item.recommended_viewer) {
+      ingestionViewerStore.open(pendingUploadId);
+      pendingUploadId = null;
+    } else if (item?.job.status === 'failed') {
+      pendingUploadId = null;
+    }
   }
 
   function handleNewWebsite() {
@@ -210,11 +329,15 @@
       await websitesStore.load(true);
       dispatchCacheEvent('website.saved');
       if (websiteId) {
+        ingestionViewerStore.clearActive();
+        editorStore.reset();
+        currentNoteId.set(null);
         await websitesStore.loadById(websiteId);
       }
       isNewWebsiteDialogOpen = false;
     } catch (error) {
       console.error('Failed to save website:', error);
+      errorTitle = 'Unable to save website';
       errorMessage =
         error instanceof Error && error.message
           ? error.message
@@ -253,11 +376,14 @@
         modified: data?.modified
       });
       dispatchCacheEvent('note.created');
+      websitesStore.clearActive();
+      ingestionViewerStore.clearActive();
       currentNoteId.set(noteId);
       await editorStore.loadNote('notes', noteId, { source: 'user' });
       isNewNoteDialogOpen = false;
     } catch (error) {
       console.error('Failed to create note:', error);
+      errorTitle = 'Unable to create note';
       errorMessage = 'Failed to create note. Please try again.';
       isErrorDialogOpen = true;
     } finally {
@@ -283,6 +409,7 @@
       isNewFolderDialogOpen = false;
     } catch (error) {
       console.error('Failed to create folder:', error);
+      errorTitle = 'Unable to create folder';
       errorMessage = 'Failed to create folder. Please try again.';
       isErrorDialogOpen = true;
     } finally {
@@ -290,30 +417,6 @@
     }
   }
 
-  async function createWorkspaceFolderFromDialog() {
-    const name = newWorkspaceFolderName.trim().replace(/^\/+|\/+$/g, '');
-    if (!name || isCreatingWorkspaceFolder) return;
-
-    isCreatingWorkspaceFolder = true;
-    try {
-      const response = await fetch('/api/files/folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ basePath: '.', path: name })
-      });
-
-      if (!response.ok) throw new Error('Failed to create folder');
-      await treeStore.load('.', true);
-      dispatchCacheEvent('file.uploaded');
-      isNewWorkspaceFolderDialogOpen = false;
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-      errorMessage = 'Failed to create folder. Please try again.';
-      isErrorDialogOpen = true;
-    } finally {
-      isCreatingWorkspaceFolder = false;
-    }
-  }
 
 </script>
 
@@ -333,13 +436,6 @@
   onCancel={() => (isNewFolderDialogOpen = false)}
 />
 
-<NewWorkspaceFolderDialog
-  bind:open={isNewWorkspaceFolderDialogOpen}
-  bind:value={newWorkspaceFolderName}
-  isBusy={isCreatingWorkspaceFolder}
-  onConfirm={createWorkspaceFolderFromDialog}
-  onCancel={() => (isNewWorkspaceFolderDialogOpen = false)}
-/>
 
 <NewWebsiteDialog
   bind:open={isNewWebsiteDialogOpen}
@@ -351,8 +447,23 @@
 
 <SidebarErrorDialog
   bind:open={isErrorDialogOpen}
+  title={errorTitle}
   message={errorMessage}
   onConfirm={() => (isErrorDialogOpen = false)}
+/>
+
+<TextInputDialog
+  bind:open={isYouTubeDialogOpen}
+  title="Add YouTube video"
+  description="Paste a YouTube URL to generate a transcript."
+  placeholder="https://www.youtube.com/watch?v=..."
+  bind:value={youtubeUrl}
+  confirmLabel="Add video"
+  cancelLabel="Cancel"
+  busyLabel="Adding..."
+  isBusy={isAddingYoutube}
+  onConfirm={confirmAddYouTube}
+  onCancel={() => (isYouTubeDialogOpen = false)}
 />
 
 <SaveChangesDialog
@@ -370,6 +481,7 @@
 <div class="sidebar-shell" class:collapsed={isCollapsed}>
   <SidebarRail
     {isCollapsed}
+    {activeSection}
     {profileImageSrc}
     {sidebarLogoSrc}
     onToggle={toggleSidebar}
@@ -447,19 +559,37 @@
         <SidebarSectionHeader
           title="Files"
           searchPlaceholder="Search files..."
-          onSearch={(query) => treeStore.searchFiles('.', query)}
-          onClear={() => treeStore.load('.', true)}
+          onSearch={(query) => treeStore.searchFiles('documents', query)}
+          onClear={() => treeStore.load('documents', true)}
         >
           <svelte:fragment slot="actions">
+            <input
+              type="file"
+              bind:this={fileInput}
+              onchange={handleFileSelected}
+              class="file-upload-input"
+            />
             <Button
               size="icon"
               variant="ghost"
               class="panel-action"
-              onclick={handleNewWorkspaceFolder}
-              aria-label="New folder"
-              title="New folder"
+              onclick={handleAddYouTube}
+              aria-label="Add YouTube video"
+              title="Add YouTube video"
+              disabled={isAddingYoutube}
             >
-              <Folder size={16} />
+              <FileVideoCamera size={16} />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              class="panel-action"
+              onclick={handleUploadFileClick}
+              aria-label="Upload file"
+              title="Upload file"
+              disabled={isUploadingFile}
+            >
+              <Plus size={16} />
             </Button>
           </svelte:fragment>
         </SidebarSectionHeader>
@@ -537,6 +667,10 @@
   }
 
   .panel-section.hidden {
+    display: none;
+  }
+
+  .file-upload-input {
     display: none;
   }
 

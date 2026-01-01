@@ -1,0 +1,28 @@
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
+
+const API_URL = getApiUrl();
+
+export const PATCH: RequestHandler = async ({ locals, params, request, fetch }) => {
+  try {
+    const body = await request.json();
+    const response = await fetch(`${API_URL}/api/ingestion/${params.file_id}/rename`, {
+      method: 'PATCH',
+      headers: {
+        ...buildAuthHeaders(locals),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(detail || response.statusText);
+    }
+    const data = await response.json();
+    return json(data);
+  } catch (error) {
+    console.error('Failed to rename ingestion file:', error);
+    return json({ error: 'Failed to rename file' }, { status: 500 });
+  }
+};

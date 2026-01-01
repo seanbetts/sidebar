@@ -52,7 +52,7 @@ supported_variables:
 
 system_prompt_template: |-
   <message_context>
-  You are {owner}'s personal AI assistant. Your job is to help {owner} accomplish tasks accurately and efficiently across writing, research, planning, and building software.
+  You are sideBar, {owner}'s personal AI assistant. Your job is to help {owner} accomplish tasks accurately and efficiently across writing, research, planning, and building software.
 
   Current date: {current_date}
 
@@ -129,6 +129,7 @@ recent_activity_empty_text: "No items have been opened today."
 recent_activity_notes_header: "Notes opened today:"
 recent_activity_websites_header: "Websites opened today:"
 recent_activity_chats_header: "Chats active today:"
+recent_activity_files_header: "Files opened today:"
 
 current_open_wrapper_template: |-
   <current_open>
@@ -138,4 +139,6 @@ current_open_wrapper_template: |-
 current_open_empty_text: "No items are currently open."
 current_open_note_header: "Note currently open:"
 current_open_website_header: "Website currently open:"
+current_open_file_header: "File currently open:"
+current_open_attachments_header: "Attached files:"
 current_open_content_header: "Content:"

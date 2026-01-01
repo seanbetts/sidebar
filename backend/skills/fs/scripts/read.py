@@ -20,7 +20,7 @@ elif str(SCRIPT_DIR) in sys.path:
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_ops import read_text
+from api.services.skill_file_ops_ingestion import read_text
 
 
 def read_file(
@@ -43,7 +43,7 @@ def read_file(
     return {
         'path': record.path,
         'content': filtered_content,
-        'size': record.size,
+        'size': record.size_bytes,
         'total_lines': len(content.splitlines()),
         'returned_lines': len(filtered_content.splitlines()),
     }

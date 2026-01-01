@@ -43,6 +43,19 @@ class StorageBackend:
         """
         raise NotImplementedError
 
+    def get_object_range(self, key: str, start: int, end: int) -> bytes:
+        """Retrieve a byte range for an object.
+
+        Args:
+            key: Object key.
+            start: Start byte (inclusive).
+            end: End byte (inclusive).
+
+        Returns:
+            Object bytes for the requested range.
+        """
+        raise NotImplementedError
+
     def put_object(self, key: str, data: bytes, content_type: Optional[str] = None) -> StorageObject:
         """Store object bytes under a key.
 

@@ -41,10 +41,13 @@ RECENT_ACTIVITY_EMPTY_TEXT = _PROMPT_CONFIG["recent_activity_empty_text"]
 RECENT_ACTIVITY_NOTES_HEADER = _PROMPT_CONFIG["recent_activity_notes_header"]
 RECENT_ACTIVITY_WEBSITES_HEADER = _PROMPT_CONFIG["recent_activity_websites_header"]
 RECENT_ACTIVITY_CHATS_HEADER = _PROMPT_CONFIG["recent_activity_chats_header"]
+RECENT_ACTIVITY_FILES_HEADER = _PROMPT_CONFIG["recent_activity_files_header"]
 CURRENT_OPEN_WRAPPER_TEMPLATE = _PROMPT_CONFIG["current_open_wrapper_template"]
 CURRENT_OPEN_EMPTY_TEXT = _PROMPT_CONFIG["current_open_empty_text"]
 CURRENT_OPEN_NOTE_HEADER = _PROMPT_CONFIG["current_open_note_header"]
 CURRENT_OPEN_WEBSITE_HEADER = _PROMPT_CONFIG["current_open_website_header"]
+CURRENT_OPEN_FILE_HEADER = _PROMPT_CONFIG["current_open_file_header"]
+CURRENT_OPEN_ATTACHMENTS_HEADER = _PROMPT_CONFIG["current_open_attachments_header"]
 CURRENT_OPEN_CONTENT_HEADER = _PROMPT_CONFIG["current_open_content_header"]
 SUPPORTED_VARIABLES = set(_PROMPT_CONFIG.get("supported_variables", []))
 
@@ -330,6 +333,7 @@ def build_recent_activity_block(
     notes: list[dict[str, Any]],
     websites: list[dict[str, Any]],
     conversations: list[dict[str, Any]],
+    files: list[dict[str, Any]],
 ) -> str:
     """Render the recent activity block for prompts.
 
@@ -337,6 +341,7 @@ def build_recent_activity_block(
         notes: Recent note items.
         websites: Recent website items.
         conversations: Recent conversation items.
+        files: Recent file items.
 
     Returns:
         Rendered recent activity block string.
@@ -376,6 +381,16 @@ def build_recent_activity_block(
                 f"- {conversation['title']} (last_opened_at: {conversation['last_opened_at']}, id: {conversation['id']}{message_count})"
             )
 
+    if files:
+        if lines:
+            lines.append("")
+        lines.append(RECENT_ACTIVITY_FILES_HEADER)
+        for file in files:
+            mime = f", type: {file['mime']}" if file.get("mime") else ""
+            lines.append(
+                f"- {file['filename']} (last_opened_at: {file['last_opened_at']}, id: {file['id']}{mime})"
+            )
+
     if not lines:
         return resolve_template(
             RECENT_ACTIVITY_WRAPPER_TEMPLATE,
@@ -402,6 +417,8 @@ def _truncate_content(value: str | None, limit: int) -> str | None:
 def build_open_context_block(
     note: dict[str, Any] | None,
     website: dict[str, Any] | None,
+    file_item: dict[str, Any] | None = None,
+    attachments: list[dict[str, Any]] | None = None,
     max_chars: int = 20000,
 ) -> str:
     """Render the currently open note/website block.
@@ -443,6 +460,47 @@ def build_open_context_block(
         if content:
             lines.append(CURRENT_OPEN_CONTENT_HEADER)
             lines.append(content)
+
+    if file_item:
+        if lines:
+            lines.append("")
+        lines.append(CURRENT_OPEN_FILE_HEADER)
+        filename = file_item.get("filename") or "Untitled"
+        file_id = file_item.get("id") or "unknown"
+        mime = file_item.get("mime")
+        category = file_item.get("category")
+        meta_bits = [f"id: {file_id}"]
+        if mime:
+            meta_bits.append(f"type: {mime}")
+        if category:
+            meta_bits.append(f"category: {category}")
+        meta_text = ", ".join(meta_bits)
+        lines.append(f"- {filename} ({meta_text})")
+        content = _truncate_content(file_item.get("content"), max_chars)
+        if content:
+            lines.append(CURRENT_OPEN_CONTENT_HEADER)
+            lines.append(content)
+
+    if attachments:
+        if lines:
+            lines.append("")
+        lines.append(CURRENT_OPEN_ATTACHMENTS_HEADER)
+        for attachment in attachments:
+            filename = attachment.get("filename") or "Untitled"
+            file_id = attachment.get("id") or "unknown"
+            mime = attachment.get("mime")
+            category = attachment.get("category")
+            meta_bits = [f"id: {file_id}"]
+            if mime:
+                meta_bits.append(f"type: {mime}")
+            if category:
+                meta_bits.append(f"category: {category}")
+            meta_text = ", ".join(meta_bits)
+            lines.append(f"- {filename} ({meta_text})")
+            content = _truncate_content(attachment.get("content"), max_chars)
+            if content:
+                lines.append(CURRENT_OPEN_CONTENT_HEADER)
+                lines.append(content)
 
     if not lines:
         return resolve_template(

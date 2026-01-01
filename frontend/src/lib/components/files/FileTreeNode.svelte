@@ -3,13 +3,13 @@
   import {
     ChevronRight,
     ChevronDown,
-    File,
+    FileText,
     Folder,
     FolderOpen
   } from 'lucide-svelte';
   import { treeStore } from '$lib/stores/tree';
   import { editorStore } from '$lib/stores/editor';
-  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import FileTreeContextMenu from '$lib/components/files/FileTreeContextMenu.svelte';
   import { useFileActions } from '$lib/hooks/useFileActions';
   import type { FileNode } from '$lib/types/file';
@@ -21,14 +21,15 @@
   export let hideExtensions: boolean = false;
   export let onFileClick: ((path: string) => void) | undefined = undefined;
   export let showActions: boolean = true;
+  export let forceExpand: boolean = false;
 
   let isEditing = false;
   let editedName = node.name;
-  let isDeleteDialogOpen = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let editInput: HTMLInputElement | null = null;
   let folderOptions: { label: string; value: string; depth: number }[] = [];
 
-  $: isExpanded = node.expanded || false;
+  $: isExpanded = forceExpand || node.expanded || false;
   $: hasChildren = node.children && node.children.length > 0;
   $: itemType = node.type === 'directory' ? 'folder' : 'file';
 
@@ -44,7 +45,7 @@
     getEditedName: () => editedName,
     setEditedName: (value) => (editedName = value),
     setIsEditing: (value) => (isEditing = value),
-    setIsDeleteDialogOpen: (value) => (isDeleteDialogOpen = value),
+    requestDelete: () => deleteDialog?.openDialog(node.name),
     setFolderOptions: (value) => (folderOptions = value),
     getDisplayName: () => displayName,
     editorStore,
@@ -76,12 +77,10 @@
 
 </script>
 
-<NoteDeleteDialog
-  bind:open={isDeleteDialogOpen}
+<DeleteDialogController
+  bind:this={deleteDialog}
   itemType={itemType}
-  itemName={node.name}
   onConfirm={actions.confirmDelete}
-  onCancel={() => (isDeleteDialogOpen = false)}
 />
 
 <div class="tree-node" style="padding-left: {level * 1}rem;">
@@ -108,7 +107,7 @@
         </span>
       {:else}
         <span class="icon file-icon">
-          <File size={16} />
+          <FileText size={16} />
         </span>
       {/if}
       {#if isEditing}
@@ -157,6 +156,7 @@
       {hideExtensions}
       {onFileClick}
       {showActions}
+      {forceExpand}
     />
   {/each}
 {/if}
@@ -168,7 +168,7 @@
 
   .node-content {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.5rem;
   }
 
@@ -238,6 +238,6 @@
   .actions {
     position: relative;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
   }
 </style>

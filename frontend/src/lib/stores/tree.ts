@@ -53,6 +53,7 @@ function sortNodes(nodes: FileNode[]): FileNode[] {
   });
 }
 
+
 function updateNoteInTree(
   nodes: FileNode[],
   noteId: string,
@@ -1103,12 +1104,13 @@ function createTreeStore() {
           throw new Error('Failed to search files');
         }
         const data = await response.json();
+        const rawItems = data.items || data.children || [];
         update(state => ({
           trees: {
             ...state.trees,
             [basePath]: {
               ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
-              children: data.items || data.children || [],
+              children: rawItems,
               loading: false,
               searchQuery: query,
               loaded: true

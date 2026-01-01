@@ -1,6 +1,6 @@
 ---
 name: youtube-download
-description: Download YouTube videos (MP4) or audio (MP3) using yt-dlp with automatic quality selection and format conversion. Use when you need to download videos for offline viewing, extract audio, or archive YouTube content.
+description: Download YouTube videos (MP4) or audio (MP3) using yt-dlp with automatic quality selection and format conversion. Use when you need to download videos for offline viewing, extract audio, or archive YouTube content in the files workspace.
 ---
 
 # youtube-download
@@ -32,7 +32,7 @@ Downloads YouTube videos (as MP4) or audio (as MP3) with automatic quality selec
 Downloads YouTube videos or audio with automatic format selection and conversion.
 
 ```bash
-python download_video.py URL [--audio] [--playlist] [--output PATH] [--json]
+python download_video.py URL [--audio] [--playlist] [--output PATH] [--no-upload] [--json]
 ```
 
 **Arguments**:
@@ -41,7 +41,8 @@ python download_video.py URL [--audio] [--playlist] [--output PATH] [--json]
 **Options**:
 - `--audio`: Download audio only (converts to MP3)
 - `--playlist`: Download entire playlist (default: single video only)
-- `--output`: R2 folder for output (default: Videos)
+- `--output`: Output folder (default: files/videos)
+- `--no-upload`: Skip uploading to storage (download only)
 - `--json`: Output results in JSON format
 
 **Features**:
@@ -65,7 +66,7 @@ python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --audio
 python download_video.py "https://youtube.com/playlist?list=PLAYLIST_ID" --playlist
 
 # Custom output location
-python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --output Videos
+python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --output files/videos
 
 # JSON output
 python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --json
@@ -86,9 +87,9 @@ python download_video.py "https://youtube.com/watch?v=VIDEO_ID" --json
 
 ## Default Save Location
 
-Videos are saved to your R2 Videos folder:
+Videos are saved to your files workspace videos folder:
 ```
-R2/Videos/
+files/videos/
 ```
 
 Filenames are sanitized and truncated to 100 characters:
