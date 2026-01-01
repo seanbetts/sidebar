@@ -192,18 +192,19 @@ class FilesService:
         """
         prefix_norm = base_prefix.strip("/")
         like_pattern = f"%{query}%"
+        filters = [
+            FileObject.user_id == user_id,
+            FileObject.deleted_at.is_(None),
+            FileObject.path.ilike(like_pattern),
+        ]
+        if prefix_norm:
+            filters.append(FileObject.path.like(f"{prefix_norm}%"))
         q = (
             db.query(FileObject)
-            .filter(
-                FileObject.user_id == user_id,
-                FileObject.deleted_at.is_(None),
-                FileObject.path.ilike(like_pattern),
-            )
+            .filter(*filters)
             .order_by(FileObject.updated_at.desc())
             .limit(limit)
         )
-        if prefix_norm:
-            q = q.filter(FileObject.path.like(f"{prefix_norm}%"))
         return q.all()
 
     @staticmethod
