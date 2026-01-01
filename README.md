@@ -199,6 +199,19 @@ Authorization: Bearer <your_bearer_token>
 - `POST /api/websites` - Save new website
 - `DELETE /api/websites/{id}` - Delete website
 
+**Ingestion**
+- `POST /api/ingestion` - Upload file (multipart form with `file`, optional `folder`)
+- `POST /api/ingestion/youtube` - Ingest YouTube URL
+- `GET /api/ingestion` - List ingestions
+- `GET /api/ingestion/{id}/meta` - Fetch ingestion metadata + job status
+- `GET /api/ingestion/{id}/content?kind=...` - Fetch derivative content
+- `POST /api/ingestion/{id}/pause` - Pause ingestion job
+- `POST /api/ingestion/{id}/resume` - Resume ingestion job
+- `POST /api/ingestion/{id}/cancel` - Cancel ingestion job
+- `PATCH /api/ingestion/{id}/pin` - Pin/unpin file
+- `PATCH /api/ingestion/{id}/rename` - Rename file
+- `DELETE /api/ingestion/{id}` - Delete file
+
 **Memories**
 - `GET /api/memories` - List stored memories
 - `POST /api/memories` - Create memory

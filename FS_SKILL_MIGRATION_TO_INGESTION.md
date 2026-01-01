@@ -668,9 +668,9 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 
 ### Phase 5: Documentation
 - [x] Update fs SKILL.md
-- [ ] Update API documentation
-- [ ] Add migration notes to changelog
-- [ ] Update developer guide
+- [x] Update API documentation
+- [x] Add migration notes to changelog
+- [x] Update developer guide
 
 ### Phase 6: Cleanup
 - [ ] Monitor for 1 week post-migration
