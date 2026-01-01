@@ -642,12 +642,12 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [ ] Verify ai.md generation works
 
 ### Phase 2: Add Path Support
-- [ ] Update `list.py` to query ingested_files
-- [ ] Update `read.py` to fetch ai.md derivatives
-- [ ] Update `write.py` to create ingestion jobs
-- [ ] Update `delete.py` to soft delete ingested files
-- [ ] Update `move.py` and `rename.py`
-- [ ] Update `info.py` to show processing status
+- [x] Update `list.py` to query ingested_files
+- [x] Update `read.py` to fetch ai.md derivatives
+- [x] Update `write.py` to create ingestion jobs
+- [x] Update `delete.py` to soft delete ingested files
+- [x] Update `move.py` and `rename.py`
+- [x] Update `info.py` to show processing status
 - [ ] Test each script independently
 
 ### Phase 3: Update fs Scripts

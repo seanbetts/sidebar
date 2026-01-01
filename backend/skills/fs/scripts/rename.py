@@ -14,7 +14,7 @@ from typing import Dict, Any
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_ops import move_path
+from api.services.skill_file_ops_ingestion import move_path
 
 
 def rename_path(
