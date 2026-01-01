@@ -278,7 +278,7 @@ Implementation status
 	•	[x] Upload endpoint + job enqueue
 	•	[x] /meta response with derivatives + recommended viewer
 	•	[x] Content streaming with PDF range support
-	•	[x] Pause/resume/cancel/reprocess/delete controls
+	•	[x] Pause/resume/cancel/delete controls
 	•	[x] Worker leasing + retry/backoff for stalled jobs
 	•	[x] PDF/image/audio/text/spreadsheet ingestion paths
 	•	[x] JSON viewer for spreadsheets
