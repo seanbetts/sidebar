@@ -1,6 +1,6 @@
 ---
 name: fs
-description: Comprehensive filesystem operations for R2-backed storage - list, read, write, delete, move, search files. Use for all file management tasks in storage.
+description: Filesystem operations backed by ingestion - list, read, write, delete, move, search files. Use for file management tasks in storage.
 metadata:
   capabilities:
     reads: true
@@ -11,11 +11,11 @@ metadata:
 
 # Filesystem Operations (fs)
 
-Complete filesystem CRUD operations for sideBar storage.
+Filesystem operations for ingestion-backed files.
 
 ## Base Directory
 
-All operations are relative to the storage root (R2-backed).
+All operations are relative to the ingestion-backed storage root.
 
 ## Scripts
 

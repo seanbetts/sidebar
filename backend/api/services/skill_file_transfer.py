@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Tuple
 
 from api.config import settings
+from api.models.file_ingestion import IngestedFile, FileDerivative
 from api.services.skill_file_ops import (
     download_file,
     upload_file,
@@ -14,7 +15,6 @@ from api.services.skill_file_ops import (
     ensure_allowed_path,
     session_for_user,
 )
-from api.services.files_service import FilesService
 from api.services.storage.service import get_storage_backend
 
 
@@ -124,16 +124,48 @@ def download_input_dir(user_id: str, r2_prefix: str, local_dir: Path) -> Path:
 
     storage = get_storage_backend()
     with session_for_user(user_id) as db:
-        records = FilesService.list_by_prefix(db, user_id, f"{prefix}/")
+        records = (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+                IngestedFile.path.like(f"{prefix}/%"),
+            )
+            .all()
+        )
+        file_ids = [record.id for record in records]
+        derivatives_by_file = {}
+        if file_ids:
+            derivatives_by_file = {
+                item.file_id: item
+                for item in db.query(FileDerivative)
+                .filter(
+                    FileDerivative.file_id.in_(file_ids),
+                    FileDerivative.kind.in_(
+                        [
+                            "viewer_pdf",
+                            "image_original",
+                            "audio_original",
+                            "text_original",
+                            "viewer_json",
+                            "ai_md",
+                        ]
+                    ),
+                )
+                .all()
+            }
 
     for record in records:
-        if record.deleted_at is not None or record.category == "folder":
+        if not record.path:
             continue
         if record.path.startswith("profile-images/") or record.path == "profile-images":
+            continue
+        derivative = derivatives_by_file.get(record.id)
+        if not derivative:
             continue
         rel = record.path[len(prefix) + 1 :]
         local_path = local_dir / rel
         local_path.parent.mkdir(parents=True, exist_ok=True)
-        local_path.write_bytes(storage.get_object(record.bucket_key))
+        local_path.write_bytes(storage.get_object(derivative.storage_key))
 
     return local_dir

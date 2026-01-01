@@ -73,6 +73,27 @@ def _get_derivative(db, file_id, kind: str) -> Optional[FileDerivative]:
     )
 
 
+def _pick_derivative(db, file_id) -> Optional[FileDerivative]:
+    preferred = [
+        "viewer_pdf",
+        "image_original",
+        "audio_original",
+        "text_original",
+        "viewer_json",
+        "ai_md",
+    ]
+    derivatives = (
+        db.query(FileDerivative)
+        .filter(FileDerivative.file_id == file_id)
+        .all()
+    )
+    by_kind = {item.kind: item for item in derivatives}
+    for kind in preferred:
+        if kind in by_kind:
+            return by_kind[kind]
+    return derivatives[0] if derivatives else None
+
+
 def list_entries(
     user_id: str,
     directory: str,
@@ -314,6 +335,74 @@ def write_text(
         "size": size,
         "lines": len(content.splitlines()),
     }
+
+
+def upload_file(
+    user_id: str,
+    path: str,
+    local_path: Path,
+    *,
+    content_type: Optional[str] = None,
+) -> IngestedFile:
+    """Upload a local file via ingestion."""
+    normalized = normalize_path(path, allow_root=False)
+    ensure_allowed_path(normalized)
+
+    content = local_path.read_bytes()
+    digest = sha256(content).hexdigest()
+    size = len(content)
+    filename = Path(normalized).name or "upload"
+    mime = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    file_id = uuid4()
+    staging_path = _staging_path(str(file_id))
+    staging_path.parent.mkdir(parents=True, exist_ok=True)
+    staging_path.write_bytes(content)
+
+    now = _now()
+    with session_for_user(user_id) as db:
+        record = IngestedFile(
+            id=file_id,
+            user_id=user_id,
+            filename_original=filename,
+            path=normalized,
+            mime_original=mime,
+            size_bytes=size,
+            sha256=digest,
+            created_at=now,
+            deleted_at=None,
+        )
+        db.add(record)
+        db.add(
+            FileProcessingJob(
+                file_id=record.id,
+                status="queued",
+                stage="queued",
+                attempts=0,
+                updated_at=now,
+            )
+        )
+        db.commit()
+        return record
+
+
+def download_file(user_id: str, path: str, local_path: Path) -> IngestedFile:
+    """Download a file derivative to a local path."""
+    normalized = normalize_path(path, allow_root=False)
+    ensure_allowed_path(normalized)
+
+    with session_for_user(user_id) as db:
+        record = _find_record_by_path(db, user_id, normalized)
+        if not record:
+            raise FileNotFoundError(f"File not found: {path}")
+        derivative = _pick_derivative(db, record.id)
+        if not derivative:
+            raise ValueError(f"No downloadable content for: {path}")
+
+    storage = get_storage_backend()
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_bytes(storage.get_object(derivative.storage_key))
+    return record
 
 
 def delete_path(user_id: str, path: str) -> dict:

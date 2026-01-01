@@ -453,59 +453,7 @@ def get_file_info(user_id: str, path: str):
 
 ### Phase 4: Migrate Existing file_objects Data
 
-Migrate any existing workspace files to ingestion system.
-
-**Migration Script**: `/backend/scripts/migrate_file_objects_to_ingestion.py`
-
-```python
-from api.models.file_object import FileObject
-from api.models.file_ingestion import IngestedFile
-from api.services.storage.service import get_storage_backend
-from api.routers.ingestion import create_ingestion_job
-
-def migrate_file_objects():
-    """Migrate all file_objects to ingested_files."""
-    with get_db() as db:
-        file_objects = db.query(FileObject).filter(
-            FileObject.deleted_at.is_(None)
-        ).all()
-
-        for obj in file_objects:
-            print(f"Migrating: {obj.path}")
-
-            # Download from old storage
-            storage = get_storage_backend()
-            content = storage.get_object(obj.bucket_key)
-
-            # Create ingestion job
-            file_obj = BytesIO(content)
-            file_obj.name = obj.path.split('/')[-1]  # Extract filename
-
-            result = create_ingestion_job(
-                file=file_obj,
-                filename=file_obj.name,
-                user_id=obj.user_id,
-                mime_type=obj.content_type or "application/octet-stream"
-            )
-
-            print(f"  → Created file_id: {result['file_id']}")
-
-            # Mark old record as migrated (don't delete yet)
-            obj.metadata = obj.metadata or {}
-            obj.metadata['migrated_to_file_id'] = result['file_id']
-            obj.metadata['migration_date'] = datetime.now(timezone.utc).isoformat()
-            db.commit()
-
-if __name__ == "__main__":
-    migrate_file_objects()
-    print("Migration complete!")
-```
-
-**Run migration:**
-```bash
-cd backend
-python scripts/migrate_file_objects_to_ingestion.py
-```
+Skipped. No legacy `file_objects` data to migrate in production.
 
 ---
 
@@ -660,7 +608,7 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [ ] Test hierarchical organization
 
 ### Phase 4: Data Migration
-- [x] Write migration script
+Skipped: no legacy `file_objects` data to migrate.
 - [ ] Test on development database
 - [ ] Run migration on production
 - [ ] Verify all files migrated successfully
@@ -674,7 +622,7 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 
 ### Phase 6: Cleanup
 - [ ] Monitor for 1 week post-migration
-- [ ] Remove file_objects code
+- [x] Remove file_objects code
 - [ ] Drop file_objects table
 - [ ] Archive old R2 storage (optional)
 
