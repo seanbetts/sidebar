@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import {
     GalleryHorizontal,
@@ -91,6 +91,7 @@
   let markdownError = '';
   let markdownLoading = false;
   let lastMarkdownId: string | null = null;
+  let isMounted = false;
 
   $: if (active) {
     const item = $ingestionStore.items.find(entry => entry.file.id === active.file.id);
@@ -119,8 +120,13 @@
 
   onMount(async () => {
     if (!browser) return;
+    isMounted = true;
     const module = await import('$lib/components/files/PdfViewer.svelte');
     PdfViewerComponent = module.default;
+  });
+
+  onDestroy(() => {
+    isMounted = false;
   });
 
   function handleClose() {
@@ -403,7 +409,7 @@
     spreadsheetActions = null;
   }
 
-  $: if (browser && isText && viewerUrl && viewerUrl !== lastTextUrl) {
+  $: if (isMounted && browser && isText && viewerUrl && viewerUrl !== lastTextUrl) {
     lastTextUrl = viewerUrl;
     textContent = '';
     textError = '';
