@@ -48,6 +48,12 @@ class SettingsUpdate(BaseModel):
     enabled_skills: Optional[list[str]] = None
 
 
+class ShortcutsPatResponse(BaseModel):
+    """Response payload for shortcuts PAT token."""
+
+    token: str
+
+
 @router.get("", response_model=SettingsResponse)
 async def get_settings(
     db: Session = Depends(get_db),
@@ -172,3 +178,25 @@ async def delete_profile_image(
         Delete result payload.
     """
     return SettingsService.delete_profile_image(db, user_id)
+
+
+@router.get("/shortcuts/pat", response_model=ShortcutsPatResponse)
+async def get_shortcuts_pat(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Return the current shortcuts PAT token, creating one if missing."""
+    token = SettingsService.get_or_create_shortcuts_pat(db, user_id)
+    return ShortcutsPatResponse(token=token)
+
+
+@router.post("/shortcuts/pat/rotate", response_model=ShortcutsPatResponse)
+async def rotate_shortcuts_pat(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+):
+    """Rotate the shortcuts PAT token for the current user."""
+    token = SettingsService.rotate_shortcuts_pat(db, user_id)
+    return ShortcutsPatResponse(token=token)

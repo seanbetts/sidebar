@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone, date
+import secrets
 from typing import Optional, Any
 
 from sqlalchemy.orm import Session
@@ -28,6 +29,18 @@ class UserSettingsService:
         return db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
 
     @staticmethod
+    def get_user_id_for_shortcuts_pat(db: Session, token: str) -> Optional[str]:
+        """Resolve a user_id for a shortcuts PAT token."""
+        record = (
+            db.query(UserSettings)
+            .filter(UserSettings.shortcuts_pat == token)
+            .first()
+        )
+        if record and secrets.compare_digest(record.shortcuts_pat, token):
+            return record.user_id
+        return None
+
+    @staticmethod
     def upsert_settings(
         db: Session,
         user_id: str,
@@ -45,6 +58,7 @@ class UserSettingsService:
         location: Any = UNSET,
         profile_image_path: Any = UNSET,
         enabled_skills: Any = UNSET,
+        shortcuts_pat: Any = UNSET,
     ) -> UserSettings:
         """Create or update a user's settings.
 
@@ -64,6 +78,7 @@ class UserSettingsService:
             location: Optional location.
             profile_image_path: Optional profile image path.
             enabled_skills: Optional list of enabled skills.
+            shortcuts_pat: Optional shortcuts PAT token.
 
         Returns:
             Upserted UserSettings record.
@@ -97,6 +112,8 @@ class UserSettingsService:
                 settings.profile_image_path = profile_image_path
             if enabled_skills is not UserSettingsService.UNSET:
                 settings.enabled_skills = enabled_skills
+            if shortcuts_pat is not UserSettingsService.UNSET:
+                settings.shortcuts_pat = shortcuts_pat
             settings.updated_at = now
         else:
             settings = UserSettings(
@@ -114,6 +131,7 @@ class UserSettingsService:
                 location=None if location is UserSettingsService.UNSET else location,
                 profile_image_path=None if profile_image_path is UserSettingsService.UNSET else profile_image_path,
                 enabled_skills=None if enabled_skills is UserSettingsService.UNSET else enabled_skills,
+                shortcuts_pat=None if shortcuts_pat is UserSettingsService.UNSET else shortcuts_pat,
                 created_at=now,
                 updated_at=now,
             )

@@ -6,6 +6,7 @@
   import SettingsAccountSection from '$lib/components/left-sidebar/panels/settings/SettingsAccountSection.svelte';
   import SettingsSystemSection from '$lib/components/left-sidebar/panels/settings/SettingsSystemSection.svelte';
   import SettingsSkillsSection from '$lib/components/left-sidebar/panels/settings/SettingsSkillsSection.svelte';
+  import SettingsShortcutsSection from '$lib/components/left-sidebar/panels/settings/SettingsShortcutsSection.svelte';
   import SettingsStorageSection from '$lib/components/left-sidebar/panels/settings/SettingsStorageSection.svelte';
 
   export let open = false;
@@ -116,6 +117,8 @@
           />
         {:else if activeSettingsSection === 'storage'}
           <SettingsStorageSection />
+        {:else if activeSettingsSection === 'shortcuts'}
+          <SettingsShortcutsSection />
         {:else if activeSettingsSection === 'memory'}
           <MemorySettings />
         {:else}
