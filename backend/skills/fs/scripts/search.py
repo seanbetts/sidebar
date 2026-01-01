@@ -9,15 +9,12 @@ import sys
 import json
 import argparse
 import re
-from pathlib import Path
 from typing import Dict, Any, List
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.files_service import FilesService
-from api.services.storage.service import get_storage_backend
-from api.services.skill_file_ops import normalize_path, ensure_allowed_path, session_for_user
+from api.services.skill_file_ops_ingestion import search_entries
 
 
 def search_files(
@@ -47,10 +44,6 @@ def search_files(
     if not name_pattern and not content_pattern:
         raise ValueError("Must provide either name_pattern or content_pattern")
 
-    base_path = normalize_path(directory)
-    if base_path:
-        ensure_allowed_path(base_path)
-
     results = []
 
     # Compile content regex if provided
@@ -73,69 +66,13 @@ def search_files(
         flags = 0 if case_sensitive else re.IGNORECASE
         name_regex = re.compile(pattern_str, flags)
 
-    with session_for_user(user_id) as db:
-        records = FilesService.list_by_prefix(db, user_id, base_path)
-
-    storage = get_storage_backend()
-
-    for record in records:
-        if record.deleted_at is not None:
-            continue
-        if record.category == "folder":
-            continue
-        if record.path.startswith("profile-images/") or record.path == "profile-images":
-            continue
-
-        rel_path = record.path[len(base_path) + 1 :] if base_path and record.path.startswith(f"{base_path}/") else record.path
-        if not rel_path:
-            continue
-        name = Path(rel_path).name
-
-        if name_regex and not name_regex.match(name):
-            continue
-
-        if not content_regex:
-            results.append({
-                "path": record.path,
-                "name": name,
-                "size": record.size,
-                "match_type": "name",
-            })
-            if len(results) >= max_results:
-                break
-            continue
-
-        try:
-            content = storage.get_object(record.bucket_key).decode("utf-8", errors="ignore")
-        except Exception:
-            continue
-
-        matches = list(content_regex.finditer(content))
-        if not matches:
-            continue
-
-        lines = content.split('\n')
-        match_lines = []
-        for match in matches[:5]:
-            line_num = content[:match.start()].count('\n') + 1
-            if line_num <= len(lines):
-                line_content = lines[line_num - 1].strip()
-                match_lines.append({
-                    "line": line_num,
-                    "content": line_content[:100],
-                })
-
-        results.append({
-            "path": record.path,
-            "name": name,
-            "size": record.size,
-            "match_type": "content",
-            "match_count": len(matches),
-            "matches": match_lines,
-        })
-
-        if len(results) >= max_results:
-            break
+    results = search_entries(
+        user_id,
+        directory,
+        name_pattern=name_regex,
+        content_pattern=content_regex,
+        max_results=max_results,
+    )
 
     return {
         "success": True,
