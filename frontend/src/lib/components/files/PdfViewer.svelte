@@ -309,7 +309,13 @@
 </script>
 
 <div class="pdf-viewer" bind:this={root}>
-  <div class="pdf-thumbs" tabindex="0" on:keydown={handleThumbKeydown} aria-label="PDF thumbnails">
+  <div
+    class="pdf-thumbs"
+    role="listbox"
+    tabindex="0"
+    on:keydown={handleThumbKeydown}
+    aria-label="PDF thumbnails"
+  >
     {#if thumbnails.length === 0 && pageCount > 0}
       <div class="pdf-thumbs-placeholder">Generating thumbnails…</div>
     {:else}
