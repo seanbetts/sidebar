@@ -122,7 +122,7 @@ configure_supabase() {
 
   if [[ -n "${pooler_url}" ]]; then
     IFS="|" read -r parsed_user parsed_host parsed_port parsed_db < <(parse_pooler_url "${pooler_url}")
-    if [[ -z "${pooler_user}" && -n "${parsed_user}" ]]; then
+    if [[ -n "${parsed_user}" ]]; then
       pooler_user="${parsed_user}"
     fi
     if [[ -z "${pooler_host}" && -n "${parsed_host}" ]]; then
