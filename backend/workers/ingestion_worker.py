@@ -1419,6 +1419,82 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
     return derivatives
 
 
+def _should_fast_track(mime: str, filename: str) -> bool:
+    spreadsheet_mimes = {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "text/csv",
+        "application/csv",
+        "text/tab-separated-values",
+        "text/tsv",
+    }
+    if mime in spreadsheet_mimes or filename.lower().endswith((".csv", ".tsv")):
+        return False
+    if mime.startswith("text/"):
+        return True
+    return mime in {"application/json"}
+
+
+def _process_simple_file(
+    db,
+    job: FileProcessingJob,
+    record: IngestedFile,
+    source_path: Path,
+    mime: str,
+) -> None:
+    viewer_payload: DerivativePayload | None = None
+    extraction_text = ""
+    ai_payload: DerivativePayload | None = None
+    for stage in ("validating", "extracting", "ai_md", "finalizing"):
+        db.refresh(job)
+        if job.status in {"paused", "canceled"}:
+            raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
+        _set_stage(db, job, stage)
+        logger.info("Stage %s file_id=%s", stage, record.id)
+        _refresh_lease(db, job)
+
+        if stage == "validating":
+            if record.size_bytes <= 0:
+                raise IngestionError("FILE_EMPTY", "Uploaded file is empty", retryable=False)
+            if not _is_allowed_file(mime, record.filename_original):
+                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+        elif stage == "extracting":
+            source_bytes = source_path.read_bytes()
+            extraction_text = source_bytes.decode("utf-8", errors="ignore").strip()
+            viewer_payload = _make_payload(
+                kind="text_original",
+                storage_key=f"{record.user_id}/files/{record.id}/derivatives/source.txt",
+                mime=mime or "text/plain",
+                content=source_bytes,
+            )
+        elif stage == "ai_md":
+            if viewer_payload is None:
+                raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
+            ai_payload = _build_ai_md_payload(record, viewer_payload.kind, extraction_text)
+        elif stage == "finalizing":
+            storage = get_storage_backend()
+            if viewer_payload is None or ai_payload is None:
+                raise IngestionError("DERIVATIVE_MISSING", "Required derivatives missing", retryable=False)
+            derivatives = [viewer_payload, ai_payload]
+            _write_derivatives_atomically(storage, record, derivatives)
+
+            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+            now = _now()
+            for item in derivatives:
+                db.add(
+                    FileDerivative(
+                        file_id=record.id,
+                        kind=item.kind,
+                        storage_key=item.storage_key,
+                        mime=item.mime,
+                        size_bytes=item.size_bytes,
+                        sha256=item.sha256,
+                        created_at=now,
+                    )
+                )
+            db.commit()
+
+
 def _build_youtube_derivatives(
     record: IngestedFile,
     transcript: str,
@@ -1582,6 +1658,13 @@ def worker_loop() -> None:
                         }
                         or record.filename_original.lower().endswith((".csv", ".tsv"))
                     )
+                    if _should_fast_track(mime, record.filename_original):
+                        _process_simple_file(db, job, record, source_path, mime)
+                        db.refresh(job)
+                        if job.status not in {"paused", "canceled"}:
+                            _mark_ready(db, job)
+                            _cleanup_staging(str(record.id))
+                        continue
                     source_bytes: bytes | None = None
                     viewer_payload: DerivativePayload | None = None
                     viewer_source_path: Path | None = None
