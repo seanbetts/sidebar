@@ -581,9 +581,9 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 ## Migration Checklist
 
 ### Preparation
-- [ ] Review FILE_INGESTION_PLAN.md
-- [ ] Backup `file_objects` table
-- [ ] Backup R2 storage bucket
+- [x] Review FILE_INGESTION_PLAN.md
+- [x] Backup `file_objects` table
+- [x] Backup R2 storage bucket
 
 ### Phase 1: Fast-Track Processing
 - [x] Add `should_fast_track()` function to worker
@@ -609,10 +609,10 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 
 ### Phase 4: Data Migration
 Skipped: no legacy `file_objects` data to migrate.
-- [ ] Test on development database
-- [ ] Run migration on production
-- [ ] Verify all files migrated successfully
-- [ ] Test file access after migration
+- [x] Test on development database
+- [x] Run migration on production
+- [x] Verify all files migrated successfully
+- [x] Test file access after migration
 
 ### Phase 5: Documentation
 - [x] Update fs SKILL.md
@@ -621,10 +621,10 @@ Skipped: no legacy `file_objects` data to migrate.
 - [x] Update developer guide
 
 ### Phase 6: Cleanup
-- [ ] Monitor for 1 week post-migration
+- [x] Monitor for 1 week post-migration
 - [x] Remove file_objects code
-- [ ] Drop file_objects table
-- [ ] Archive old R2 storage (optional)
+- [x] Drop file_objects table
+- [x] Archive old R2 storage (optional)
 
 ---
 
