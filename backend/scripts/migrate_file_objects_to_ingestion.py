@@ -3,12 +3,33 @@
 from __future__ import annotations
 
 import argparse
+import os
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
 
 from sqlalchemy import or_
+
+
+def _load_env() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    for filename in (".env.local", ".env"):
+        env_path = repo_root / filename
+        if not env_path.exists():
+            continue
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip("\"'")
+            os.environ.setdefault(key, value)
+        break
+
+
+_load_env()
 
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.file_object import FileObject
@@ -42,6 +63,7 @@ def migrate_file_objects(
     dry_run: bool = False,
 ) -> dict:
     storage = get_storage_backend()
+    print(f"Storage backend: {storage.__class__.__name__}")
     migrated = 0
     skipped = 0
     failed = 0
