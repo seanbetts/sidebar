@@ -353,6 +353,8 @@
 	}
 
 	$: hasPendingAttachments = attachments.some((item) => item.status !== 'ready');
+	$: readyAttachments = attachments.filter((item) => item.status === 'ready');
+	$: pendingAttachments = attachments.filter((item) => item.status !== 'ready');
 	$: isSendDisabled = $chatStore.isStreaming || (attachments.length > 0 && hasPendingAttachments);
 
 	async function handleAttach(files: FileList) {
@@ -420,6 +422,10 @@
 		}
 	}
 
+	function handleRemoveReadyAttachment(attachmentId: string) {
+		attachments = attachments.filter((item) => item.id !== attachmentId);
+	}
+
 	function startAttachmentPolling(id: string, fileId: string) {
 		if (attachmentPolls.has(id)) {
 			clearTimeout(attachmentPolls.get(id));
@@ -483,9 +489,9 @@
 	<!-- Messages -->
 	<MessageList messages={$chatStore.messages} activeTool={$chatStore.activeTool} />
 
-	{#if attachments.length > 0}
+	{#if pendingAttachments.length > 0}
 		<div class="chat-attachments">
-			{#each attachments as attachment (attachment.id)}
+			{#each pendingAttachments as attachment (attachment.id)}
 				<div class="chat-attachment">
 					<span class="attachment-name">{attachment.name}</span>
 					<div class="attachment-meta">
@@ -518,7 +524,13 @@
 	{/if}
 
 	<!-- Input -->
-	<ChatInput onsend={handleSend} onattach={handleAttach} disabled={isSendDisabled} />
+	<ChatInput
+		onsend={handleSend}
+		onattach={handleAttach}
+		onremoveattachment={handleRemoveReadyAttachment}
+		readyattachments={readyAttachments}
+		disabled={isSendDisabled}
+	/>
 </div>
 
 <style>
