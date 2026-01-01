@@ -380,21 +380,14 @@
 	async function handleRetryAttachment(attachmentId: string) {
 		const attachment = attachments.find((item) => item.id === attachmentId);
 		if (!attachment) return;
-		if (attachment.fileId) {
-			try {
-				await ingestionAPI.reprocess(attachment.fileId);
-				attachments = attachments.map((item) =>
-					item.id === attachmentId ? { ...item, status: 'queued', stage: 'queued' } : item
-				);
-				startAttachmentPolling(attachmentId, attachment.fileId);
-			} catch (error) {
-				console.error('Failed to retry ingestion:', error);
-			}
+		if (!attachment.file) {
+			toast.error('Re-upload the file to retry.');
 			return;
 		}
-		if (!attachment.file) return;
 		attachments = attachments.map((item) =>
-			item.id === attachmentId ? { ...item, status: 'uploading', stage: 'uploading' } : item
+			item.id === attachmentId
+				? { ...item, fileId: undefined, status: 'uploading', stage: 'uploading' }
+				: item
 		);
 		try {
 			const data = await ingestionAPI.upload(attachment.file);

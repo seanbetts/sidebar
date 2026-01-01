@@ -470,33 +470,6 @@ async def cancel_processing(
     return {"status": job.status if job else "canceled"}
 
 
-@router.post("/{file_id}/reprocess")
-async def reprocess_file(
-    file_id: str,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Requeue a file for processing."""
-    try:
-        file_uuid = uuid.UUID(file_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
-    if not record:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    job = FileIngestionService.update_job_status(
-        db,
-        file_uuid,
-        status="queued",
-        stage="queued",
-        error_code=None,
-        error_message=None,
-    )
-    return {"status": job.status if job else "queued"}
-
-
 @router.patch("/{file_id}/pin")
 async def update_pin(
     file_id: str,

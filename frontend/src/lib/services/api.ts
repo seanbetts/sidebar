@@ -247,11 +247,6 @@ class IngestionAPI {
     if (!response.ok) throw new Error('Failed to cancel ingestion');
   }
 
-  async reprocess(fileId: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/${fileId}/reprocess`, { method: 'POST' });
-    if (!response.ok) throw new Error('Failed to reprocess ingestion');
-  }
-
   async delete(fileId: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/${fileId}`, { method: 'DELETE' });
     if (response.status === 404) return;

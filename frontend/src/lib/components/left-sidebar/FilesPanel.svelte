@@ -11,7 +11,6 @@
     Image,
     Folder,
     FolderOpen,
-    RotateCcw,
     Trash2,
     MoreHorizontal,
     Pencil,
@@ -49,7 +48,6 @@
   $: failedItems = ($ingestionStore.items || []).filter(
     item => item.job.status === 'failed'
   );
-  const nonRetryableErrors = new Set(['UNSUPPORTED_TYPE', 'FILE_EMPTY', 'SOURCE_MISSING']);
   $: readyItems = ($ingestionStore.items || []).filter(
     item => item.job.status === 'ready' && item.recommended_viewer
   );
@@ -89,7 +87,6 @@
     acc[category].push(item);
     return acc;
   }, {});
-  let retryingIds = new Set<string>();
   let expandedCategories = new Set<string>();
   let openMenuKey: string | null = null;
   let isRenameOpen = false;
@@ -105,21 +102,6 @@
     editorStore.reset();
     currentNoteId.set(null);
     ingestionViewerStore.open(item.file.id);
-  }
-
-  async function retryIngestion(fileId: string) {
-    retryingIds = new Set(retryingIds).add(fileId);
-    try {
-      await ingestionAPI.reprocess(fileId);
-      await ingestionStore.load();
-      ingestionStore.startPolling();
-    } catch (error) {
-      console.error('Failed to retry ingestion:', error);
-    } finally {
-      const next = new Set(retryingIds);
-      next.delete(fileId);
-      retryingIds = next;
-    }
   }
 
   function requestDelete(item: IngestionListItem, event?: MouseEvent) {
@@ -440,17 +422,6 @@
             <div class="failed-header">
               <div class="failed-name">{item.file.filename_original}</div>
               <div class="failed-actions">
-                {#if !nonRetryableErrors.has(item.job.error_code)}
-                  <button
-                    class="failed-action"
-                    type="button"
-                    onclick={() => retryIngestion(item.file.id)}
-                    aria-label="Retry upload"
-                    disabled={retryingIds.has(item.file.id)}
-                  >
-                    <RotateCcw size={14} />
-                  </button>
-                {/if}
                 <button
                   class="failed-action"
                   type="button"
@@ -462,11 +433,8 @@
               </div>
             </div>
             <div class="failed-message">
-              {#if retryingIds.has(item.file.id)}
-                <span class="failed-status">Retrying...</span>
-              {:else}
-                {item.job.user_message || item.job.error_message || 'Upload failed.'}
-              {/if}
+              {item.job.user_message || item.job.error_message || 'Upload failed.'}
+              <span class="failed-status">Re-upload to try again.</span>
             </div>
           </div>
         {/each}
