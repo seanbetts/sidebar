@@ -1,6 +1,7 @@
 """Notes router for database-backed note operations."""
 from __future__ import annotations
 
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -60,6 +61,38 @@ async def search_notes(
         raise HTTPException(status_code=400, detail="query required")
 
     return NotesWorkspaceService.search(db, user_id, query, limit=limit)
+
+
+@router.patch("/pinned-order")
+async def update_pinned_order(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Update pinned order for notes.
+
+    Args:
+        request: Request payload with order list.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+    """
+    order = request.get("order", [])
+    if not isinstance(order, list):
+        raise HTTPException(status_code=400, detail="order must be a list")
+    note_ids: list[uuid.UUID] = []
+    for item in order:
+        note_uuid = NotesService.parse_note_id(item)
+        if not note_uuid:
+            raise HTTPException(status_code=400, detail="Invalid note id")
+        note_ids.append(note_uuid)
+
+    NotesService.update_pinned_order(db, user_id, note_ids)
+    return {"success": True}
 
 
 @router.post("/folders")
@@ -239,41 +272,6 @@ async def create_note(
     return NotesWorkspaceService.create_note(db, user_id, content, path=path, folder=folder)
 
 
-@router.patch("/{note_id}")
-async def update_note(
-    note_id: str,
-    request: dict,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Update a note's content.
-
-    Args:
-        note_id: Note ID (UUID string).
-        request: Request payload with content.
-        user_id: Current authenticated user ID.
-        _: Authorization token (validated).
-        db: Database session.
-
-    Returns:
-        Updated note record.
-
-    Raises:
-        HTTPException: 400 for invalid request, 404 if not found.
-    """
-    content = request.get("content")
-    if content is None:
-        raise HTTPException(status_code=400, detail="content required")
-
-    try:
-        return NotesWorkspaceService.update_note(db, user_id, note_id, content)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except NoteNotFoundError:
-        raise HTTPException(status_code=404, detail="Note not found")
-
-
 @router.patch("/{note_id}/rename")
 async def rename_note(
     note_id: str,
@@ -405,36 +403,39 @@ async def update_pin(
     return {"success": True}
 
 
-@router.patch("/pinned-order")
-async def update_pinned_order(
+@router.patch("/{note_id}")
+async def update_note(
+    note_id: str,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """Update pinned order for notes.
+    """Update a note's content.
 
     Args:
-        request: Request payload with order list.
+        note_id: Note ID (UUID string).
+        request: Request payload with content.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
 
     Returns:
-        Success flag.
-    """
-    order = request.get("order", [])
-    if not isinstance(order, list):
-        raise HTTPException(status_code=400, detail="order must be a list")
-    note_ids: list[uuid.UUID] = []
-    for item in order:
-        note_uuid = NotesService.parse_note_id(item)
-        if not note_uuid:
-            raise HTTPException(status_code=400, detail="Invalid note id")
-        note_ids.append(note_uuid)
+        Updated note record.
 
-    NotesService.update_pinned_order(db, user_id, note_ids)
-    return {"success": True}
+    Raises:
+        HTTPException: 400 for invalid request, 404 if not found.
+    """
+    content = request.get("content")
+    if content is None:
+        raise HTTPException(status_code=400, detail="content required")
+
+    try:
+        return NotesWorkspaceService.update_note(db, user_id, note_id, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NoteNotFoundError:
+        raise HTTPException(status_code=404, detail="Note not found")
 
 
 @router.patch("/{note_id}/move")

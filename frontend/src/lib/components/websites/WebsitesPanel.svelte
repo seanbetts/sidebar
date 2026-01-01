@@ -257,7 +257,7 @@
         placeholder="Website title"
         bind:this={renameInput}
         bind:value={renameValue}
-        on:keydown={(event) => {
+        onkeydown={(event) => {
           if (event.key === 'Enter') handleRename();
         }}
       />

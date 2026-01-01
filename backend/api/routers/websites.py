@@ -78,6 +78,35 @@ async def list_websites(
     return {"items": [website_summary(site) for site in websites]}
 
 
+@router.patch("/pinned-order")
+async def update_pinned_order(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Update pinned order for websites.
+
+    Args:
+        request: Request payload with order list.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+    """
+    order = request.get("order", [])
+    if not isinstance(order, list):
+        raise HTTPException(status_code=400, detail="order must be a list")
+    website_ids: list[uuid.UUID] = []
+    for item in order:
+        website_ids.append(parse_website_id(item))
+
+    WebsitesService.update_pinned_order(db, user_id, website_ids)
+    return {"success": True}
+
+
 @router.post("/search")
 async def search_websites(
     query: str,
@@ -222,33 +251,6 @@ async def update_pin(
     return {"success": True}
 
 
-@router.patch("/pinned-order")
-async def update_pinned_order(
-    request: dict,
-    user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db),
-):
-    """Update pinned order for websites.
-
-    Args:
-        request: Request payload with order list.
-        user_id: Current authenticated user ID.
-        _: Authorization token (validated).
-        db: Database session.
-
-    Returns:
-        Success flag.
-    """
-    order = request.get("order", [])
-    if not isinstance(order, list):
-        raise HTTPException(status_code=400, detail="order must be a list")
-    website_ids: list[uuid.UUID] = []
-    for item in order:
-        website_ids.append(parse_website_id(item))
-
-    WebsitesService.update_pinned_order(db, user_id, website_ids)
-    return {"success": True}
 
 
 @router.patch("/{website_id}/rename")
