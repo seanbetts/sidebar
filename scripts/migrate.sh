@@ -159,7 +159,9 @@ configure_supabase() {
   fi
 
   password=$(prompt_supabase_password)
-  export DATABASE_URL_DIRECT="postgresql://${pooler_user}:${password}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
+  export DATABASE_URL="postgresql://${pooler_user}:${password}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
+  export DATABASE_URL_DIRECT="${DATABASE_URL}"
+  export APP_ENV="production"
   use_doppler=0
 }
 
