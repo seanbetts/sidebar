@@ -43,6 +43,20 @@ def _strip_frontmatter(content: str) -> str:
     return content[idx + len(marker):]
 
 
+def _build_frontmatter(record: IngestedFile, derivative_kind: str) -> str:
+    return (
+        "---\n"
+        f"file_id: {record.id}\n"
+        f"source_filename: {record.filename_original}\n"
+        f"source_mime: {record.mime_original}\n"
+        f"created_at: {record.created_at.isoformat()}\n"
+        f"sha256: {record.sha256}\n"
+        "derivatives:\n"
+        f"  {derivative_kind}: true\n"
+        "---\n\n"
+    )
+
+
 def _find_record_by_path(db, user_id: str, path: str) -> Optional[IngestedFile]:
     return (
         db.query(IngestedFile)
@@ -240,7 +254,10 @@ def read_text(user_id: str, path: str) -> tuple[str, IngestedFile]:
 
     storage = get_storage_backend()
     raw = storage.get_object(derivative.storage_key)
-    return raw.decode("utf-8", errors="ignore"), record
+    content = raw.decode("utf-8", errors="ignore")
+    if derivative.kind != "ai_md":
+        content = f"{_build_frontmatter(record, derivative.kind)}{content}"
+    return content, record
 
 
 def write_text(
