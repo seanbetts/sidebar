@@ -14,6 +14,7 @@ load_env() {
 }
 
 use_doppler=0
+use_supabase=0
 
 detect_doppler() {
   if command -v doppler >/dev/null 2>&1; then
@@ -52,6 +53,60 @@ is_prod_db() {
   return 1
 }
 
+prompt_supabase_password() {
+  local password
+  read -r -s -p "Supabase DB password: " password
+  echo
+  if [[ -z "${password}" ]]; then
+    echo "Password is required."
+    exit 1
+  fi
+  echo "${password}"
+}
+
+configure_supabase() {
+  local pooler_host
+  local project_id
+  local pooler_user
+  local pooler_port
+  local db_name
+  local sslmode
+  local password
+
+  pooler_host=$(get_env_value SUPABASE_POOLER_HOST)
+  project_id=$(get_env_value SUPABASE_PROJECT_ID)
+  pooler_user=$(get_env_value SUPABASE_POOLER_USER)
+  pooler_port=$(get_env_value SUPABASE_POOLER_PORT)
+  db_name=$(get_env_value SUPABASE_DB_NAME)
+  sslmode=$(get_env_value SUPABASE_SSLMODE)
+
+  if [[ -z "${pooler_host}" ]]; then
+    echo "Missing SUPABASE_POOLER_HOST."
+    exit 1
+  fi
+
+  if [[ -z "${pooler_user}" ]]; then
+    if [[ -n "${project_id}" ]]; then
+      pooler_user="postgres.${project_id}"
+    else
+      echo "Missing SUPABASE_POOLER_USER (or SUPABASE_PROJECT_ID)."
+      exit 1
+    fi
+  fi
+
+  pooler_port="${pooler_port:-5432}"
+  db_name="${db_name:-postgres}"
+  sslmode="${sslmode:-require}"
+
+  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    export ANTHROPIC_API_KEY="dummy"
+  fi
+
+  password=$(prompt_supabase_password)
+  export DATABASE_URL_DIRECT="postgresql://${pooler_user}:${password}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
+  use_doppler=0
+}
+
 load_env
 detect_doppler
 
@@ -60,12 +115,21 @@ if is_prod_db && [[ "${ALLOW_PROD_MIGRATIONS:-}" != "true" ]]; then
   exit 1
 fi
 
+if [[ "${1:-}" == "--supabase" ]]; then
+  use_supabase=1
+  shift
+fi
+
 COMMAND="${1:-}"
 ARG="${2:-}"
 
 if [[ -z "${COMMAND}" ]]; then
-  echo "Usage: ./scripts/migrate.sh [upgrade|downgrade|create|history|current] [args]"
+  echo "Usage: ./scripts/migrate.sh [--supabase] [upgrade|downgrade|create|stamp|history|current] [args]"
   exit 1
+fi
+
+if [[ ${use_supabase} -eq 1 ]]; then
+  configure_supabase
 fi
 
 cd backend
@@ -83,6 +147,17 @@ case "${COMMAND}" in
       doppler run -- uv run alembic -c api/alembic.ini downgrade "${ARG:--1}"
     else
       uv run alembic -c api/alembic.ini downgrade "${ARG:--1}"
+    fi
+    ;;
+  stamp)
+    if [[ -z "${ARG}" ]]; then
+      echo "Usage: ./scripts/migrate.sh stamp \"revision\""
+      exit 1
+    fi
+    if [[ ${use_doppler} -eq 1 ]]; then
+      doppler run -- uv run alembic -c api/alembic.ini stamp "${ARG}"
+    else
+      uv run alembic -c api/alembic.ini stamp "${ARG}"
     fi
     ;;
   create)
@@ -112,7 +187,7 @@ case "${COMMAND}" in
     ;;
   *)
     echo "Unknown command: ${COMMAND}"
-    echo "Usage: ./scripts/migrate.sh [upgrade|downgrade|create|history|current] [args]"
+    echo "Usage: ./scripts/migrate.sh [--supabase] [upgrade|downgrade|create|stamp|history|current] [args]"
     exit 1
     ;;
 esac
