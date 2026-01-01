@@ -431,6 +431,9 @@
 				attachments = attachments.map((item) =>
 					item.id === id ? { ...item, status, stage } : item
 				);
+				if (status === 'ready') {
+					ingestionViewerStore.open(fileId);
+				}
 				if (!['ready', 'failed', 'canceled'].includes(status) && isMounted) {
 					const next = setTimeout(poll, 5000);
 					attachmentPolls.set(id, next);
@@ -483,6 +486,9 @@
 				<div class="chat-attachment">
 					<span class="attachment-name">{attachment.name}</span>
 					<div class="attachment-meta">
+						{#if attachment.status !== 'ready' && attachment.status !== 'failed'}
+							<span class="attachment-spinner" aria-hidden="true"></span>
+						{/if}
 						<span class="attachment-status">{attachment.stage || attachment.status}</span>
 						{#if attachment.status === 'failed'}
 							<div class="attachment-actions">
@@ -578,6 +584,15 @@
 		gap: 0.5rem;
 	}
 
+	.attachment-spinner {
+		width: 12px;
+		height: 12px;
+		border-radius: 999px;
+		border: 2px solid color-mix(in oklab, var(--color-muted-foreground) 40%, transparent);
+		border-top-color: var(--color-muted-foreground);
+		animation: attachment-spin 1s linear infinite;
+	}
+
 	.attachment-actions {
 		display: inline-flex;
 		align-items: center;
@@ -594,5 +609,11 @@
 
 	.attachment-action:hover {
 		color: var(--color-foreground);
+	}
+
+	@keyframes attachment-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

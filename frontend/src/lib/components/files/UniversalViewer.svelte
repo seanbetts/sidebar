@@ -979,11 +979,13 @@
   .file-viewer-body.audio-body {
     align-items: flex-start;
     justify-content: flex-start;
+    overflow: auto;
   }
 
   .file-viewer-body.video-body {
     align-items: flex-start;
     justify-content: flex-start;
+    overflow: auto;
   }
 
   .file-viewer-controls {
