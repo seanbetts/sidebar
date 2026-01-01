@@ -104,7 +104,64 @@ else:
 
 ---
 
-### Phase 2: Update fs Skill Scripts
+### Phase 2: Add Path Support to Ingested Files
+
+Add a `path` column before migrating fs scripts so paths are unambiguous from day one.
+
+**Migration**: `/backend/alembic/versions/xxx_add_path_to_ingested_files.py`
+
+```python
+def upgrade():
+    op.add_column('ingested_files',
+        sa.Column('path', sa.Text, nullable=True)
+    )
+    op.create_index('idx_ingested_files_path', 'ingested_files', ['path'])
+
+    # Backfill: set path = filename_original
+    op.execute("UPDATE ingested_files SET path = filename_original")
+
+def downgrade():
+    op.drop_index('idx_ingested_files_path', table_name='ingested_files')
+    op.drop_column('ingested_files', 'path')
+```
+
+**Update Model**: `/backend/api/models/file_ingestion.py`
+
+```python
+class IngestedFile(Base):
+    # ... existing columns ...
+    filename_original = Column(Text, nullable=False)
+    path = Column(Text, nullable=True, index=True)  # NEW: hierarchical path
+    mime_original = Column(Text, nullable=False)
+    # ... rest of columns ...
+```
+
+**Update API**: Allow specifying folder on upload
+
+```python
+@router.post("/", response_model=IngestionResponse)
+async def upload_file(
+    file: UploadFile,
+    folder: str = Form(default=""),  # NEW
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    # Combine folder and filename
+    full_path = f"{folder}/{file.filename}".lstrip("/")
+
+    # Create file record with path
+    file_record = IngestedFile(
+        user_id=user_id,
+        filename_original=file.filename,
+        path=full_path,  # NEW
+        mime_original=file.content_type or "application/octet-stream",
+        size_bytes=0  # Set after upload
+    )
+```
+
+---
+
+### Phase 3: Update fs Skill Scripts
 
 Migrate each `fs` script to use ingestion API instead of `file_objects`.
 
@@ -114,7 +171,7 @@ Migrate each `fs` script to use ingestion API instead of `file_objects`.
 
 **Current**: Queries `file_objects` via `FilesService.list_by_prefix()`
 
-**New**: Query `ingested_files` table
+**New**: Query `ingested_files` table using `path`
 
 ```python
 from api.models.file_ingestion import IngestedFile
@@ -128,8 +185,7 @@ def list_files(user_id: str, directory: str = ".", pattern: str = "*", recursive
             IngestedFile.deleted_at.is_(None)
         )
 
-        # Filter by directory (use metadata or path logic)
-        # TODO: Add folder/path filtering
+        # Filter by directory using IngestedFile.path
 
         files = query.order_by(IngestedFile.created_at.desc()).all()
 
@@ -141,7 +197,7 @@ def list_files(user_id: str, directory: str = ".", pattern: str = "*", recursive
 
             entries.append({
                 "name": file.filename_original,
-                "path": file.filename_original,  # TODO: Add proper path
+                "path": file.path or file.filename_original,
                 "size": file.size_bytes,
                 "modified": file.created_at.isoformat(),
                 "is_file": True,
@@ -169,7 +225,7 @@ def list_files(user_id: str, directory: str = ".", pattern: str = "*", recursive
 
 **Current**: Reads from `file_objects` via `FilesService.get_by_path()`
 
-**New**: Fetch `ai.md` derivative from ingestion storage
+**New**: Fetch `ai.md` derivative from ingestion storage (include frontmatter + content)
 
 ```python
 from api.services.file_ingestion_service import FileIngestionService
@@ -222,7 +278,7 @@ def read_file(user_id: str, path: str):
 
 **Current**: Writes directly to R2 via `FilesService.upsert_file()`
 
-**New**: Create ingestion job
+**New**: Create ingestion job via a service helper (avoid calling router directly)
 
 ```python
 from api.routers.ingestion import create_ingestion_job
@@ -286,7 +342,7 @@ def write_file(user_id: str, path: str, content: str, mode: str = "replace"):
 
 **Current**: Marks `file_objects` as deleted
 
-**New**: Use ingestion API
+**New**: Use ingestion API (soft delete via ingested_files)
 
 ```python
 from api.services.file_ingestion_service import FileIngestionService
@@ -296,7 +352,7 @@ def delete_file(user_id: str, path: str):
     with get_db() as db:
         file = db.query(IngestedFile).filter(
             IngestedFile.user_id == user_id,
-            IngestedFile.filename_original == path,
+            IngestedFile.path == path,
             IngestedFile.deleted_at.is_(None)
         ).first()
 
@@ -319,7 +375,7 @@ def delete_file(user_id: str, path: str):
 
 **Current**: Updates `file_objects.path`
 
-**New**: Update `ingested_files.filename_original` (and path if we add it)
+**New**: Update `ingested_files.path` (and `filename_original` if needed)
 
 ```python
 def move_file(user_id: str, source: str, destination: str):
@@ -327,7 +383,7 @@ def move_file(user_id: str, source: str, destination: str):
     with get_db() as db:
         file = db.query(IngestedFile).filter(
             IngestedFile.user_id == user_id,
-            IngestedFile.filename_original == source,
+            IngestedFile.path == source,
             IngestedFile.deleted_at.is_(None)
         ).first()
 
@@ -337,7 +393,7 @@ def move_file(user_id: str, source: str, destination: str):
         # Check destination doesn't exist
         existing = db.query(IngestedFile).filter(
             IngestedFile.user_id == user_id,
-            IngestedFile.filename_original == destination,
+            IngestedFile.path == destination,
             IngestedFile.deleted_at.is_(None)
         ).first()
 
@@ -345,7 +401,8 @@ def move_file(user_id: str, source: str, destination: str):
             raise FileExistsError(f"Destination exists: {destination}")
 
         # Update filename
-        file.filename_original = destination
+        file.path = destination
+        file.filename_original = destination.split("/")[-1]
         db.commit()
 
         return {
@@ -360,7 +417,7 @@ def move_file(user_id: str, source: str, destination: str):
 
 **Current**: Queries `file_objects`
 
-**New**: Query `ingested_files` and derivatives
+**New**: Query `ingested_files` and derivatives (via path)
 
 ```python
 def get_file_info(user_id: str, path: str):
@@ -368,7 +425,7 @@ def get_file_info(user_id: str, path: str):
     with get_db() as db:
         file = db.query(IngestedFile).filter(
             IngestedFile.user_id == user_id,
-            IngestedFile.filename_original == path,
+            IngestedFile.path == path,
             IngestedFile.deleted_at.is_(None)
         ).first()
 
@@ -388,63 +445,6 @@ def get_file_info(user_id: str, path: str):
             "is_file": True,
             "is_directory": False
         }
-```
-
----
-
-### Phase 3: Add Path Support to Ingested Files
-
-To support hierarchical organization (like `Projects/Alpha/doc.pdf`), add a `path` column.
-
-**Migration**: `/backend/alembic/versions/xxx_add_path_to_ingested_files.py`
-
-```python
-def upgrade():
-    op.add_column('ingested_files',
-        sa.Column('path', sa.Text, nullable=True)
-    )
-    op.create_index('idx_ingested_files_path', 'ingested_files', ['path'])
-
-    # Backfill: set path = filename_original
-    op.execute("UPDATE ingested_files SET path = filename_original")
-
-def downgrade():
-    op.drop_index('idx_ingested_files_path', table_name='ingested_files')
-    op.drop_column('ingested_files', 'path')
-```
-
-**Update Model**: `/backend/api/models/file_ingestion.py`
-
-```python
-class IngestedFile(Base):
-    # ... existing columns ...
-    filename_original = Column(Text, nullable=False)
-    path = Column(Text, nullable=True, index=True)  # NEW: hierarchical path
-    mime_original = Column(Text, nullable=False)
-    # ... rest of columns ...
-```
-
-**Update API**: Allow specifying folder on upload
-
-```python
-@router.post("/", response_model=IngestionResponse)
-async def upload_file(
-    file: UploadFile,
-    folder: str = Form(default=""),  # NEW
-    user_id: str = Depends(get_current_user_id),
-    db: Session = Depends(get_db)
-):
-    # Combine folder and filename
-    full_path = f"{folder}/{file.filename}".lstrip("/")
-
-    # Create file record with path
-    file_record = IngestedFile(
-        user_id=user_id,
-        filename_original=file.filename,
-        path=full_path,  # NEW
-        mime_original=file.content_type or "application/octet-stream",
-        size_bytes=0  # Set after upload
-    )
 ```
 
 ---
@@ -542,7 +542,7 @@ Files are stored using the ingestion pipeline:
 ## Scripts
 
 - `list.py` - List files with filtering
-- `read.py` - Read file content (from ai.md derivative)
+- `read.py` - Read file content (ai.md including frontmatter)
 - `write.py` - Create/update files (creates ingestion job)
 - `info.py` - Get file metadata and processing status
 - `delete.py` - Soft delete files
@@ -641,7 +641,7 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [ ] Test with sample .txt, .md, .json files
 - [ ] Verify ai.md generation works
 
-### Phase 2: Update fs Scripts
+### Phase 2: Add Path Support
 - [ ] Update `list.py` to query ingested_files
 - [ ] Update `read.py` to fetch ai.md derivatives
 - [ ] Update `write.py` to create ingestion jobs
@@ -650,7 +650,7 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [ ] Update `info.py` to show processing status
 - [ ] Test each script independently
 
-### Phase 3: Add Path Support
+### Phase 3: Update fs Scripts
 - [ ] Create migration for `path` column
 - [ ] Update IngestedFile model
 - [ ] Update upload API to accept folder parameter
