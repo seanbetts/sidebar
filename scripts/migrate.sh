@@ -85,6 +85,15 @@ prompt_supabase_password() {
   echo "${password}"
 }
 
+urlencode() {
+  python3 - <<'PY' "$1"
+import sys
+from urllib.parse import quote_plus
+
+print(quote_plus(sys.argv[1]))
+PY
+}
+
 prompt_supabase_url() {
   local url
   read -r -p "Supabase pooler URL (no password): " url
@@ -180,7 +189,8 @@ configure_supabase() {
   fi
 
   password=$(prompt_supabase_password)
-  export DATABASE_URL="postgresql://${pooler_user}:${password}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
+  password_encoded=$(urlencode "${password}")
+  export DATABASE_URL="postgresql://${pooler_user}:${password_encoded}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
   export DATABASE_URL_DIRECT="${DATABASE_URL}"
   export APP_ENV="production"
   echo "Using Supabase pooler: user=${pooler_user} host=${pooler_host} port=${pooler_port} db=${db_name}"
