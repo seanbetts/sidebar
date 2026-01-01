@@ -61,6 +61,7 @@ def test_prompt_context_service_order_and_truncation(test_db):
         db=test_db,
         user_id=user_id,
         open_context=open_context,
+        attachments=None,
         user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
         current_location_levels={"locality": "Bealbury", "country": "United Kingdom"},
         now=now,
