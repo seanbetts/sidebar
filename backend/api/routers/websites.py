@@ -49,6 +49,7 @@ def website_summary(website: Website) -> dict:
         "saved_at": website.saved_at.isoformat() if website.saved_at else None,
         "published_at": website.published_at.isoformat() if website.published_at else None,
         "pinned": metadata.get("pinned", False),
+        "pinned_order": metadata.get("pinned_order"),
         "archived": metadata.get("archived", False),
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None
@@ -75,6 +76,35 @@ async def list_websites(
         WebsitesService.list_websites(db, user_id)
     )
     return {"items": [website_summary(site) for site in websites]}
+
+
+@router.patch("/pinned-order")
+async def update_pinned_order(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Update pinned order for websites.
+
+    Args:
+        request: Request payload with order list.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+    """
+    order = request.get("order", [])
+    if not isinstance(order, list):
+        raise HTTPException(status_code=400, detail="order must be a list")
+    website_ids: list[uuid.UUID] = []
+    for item in order:
+        website_ids.append(parse_website_id(item))
+
+    WebsitesService.update_pinned_order(db, user_id, website_ids)
+    return {"success": True}
 
 
 @router.post("/search")
@@ -219,6 +249,8 @@ async def update_pin(
         raise HTTPException(status_code=404, detail="Website not found")
 
     return {"success": True}
+
+
 
 
 @router.patch("/{website_id}/rename")

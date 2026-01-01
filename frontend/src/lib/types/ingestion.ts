@@ -6,6 +6,7 @@ export interface IngestedFileMeta {
   size_bytes: number;
   sha256?: string | null;
   pinned?: boolean;
+  pinned_order?: number | null;
   category?: string | null;
   source_url?: string | null;
   source_metadata?: Record<string, unknown> | null;

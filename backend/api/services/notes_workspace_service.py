@@ -75,6 +75,7 @@ class NotesWorkspaceService:
                     "type": "file",
                     "modified": note.updated_at.timestamp() if note.updated_at else None,
                     "pinned": bool(metadata.get("pinned")),
+                    "pinned_order": metadata.get("pinned_order"),
                     "archived": NotesService.is_archived_folder(folder),
                 }
             )

@@ -302,11 +302,59 @@ class WebsitesService:
         if not website:
             raise WebsiteNotFoundError(f"Website not found: {website_id}")
 
-        website.metadata_ = {**(website.metadata_ or {}), "pinned": pinned}
+        metadata = website.metadata_ or {}
+        metadata["pinned"] = pinned
+        if pinned:
+            if metadata.get("pinned_order") is None:
+                max_order = -1
+                for existing in (
+                    db.query(Website)
+                    .filter(Website.user_id == user_id, Website.deleted_at.is_(None))
+                    .all()
+                ):
+                    existing_meta = existing.metadata_ or {}
+                    if not existing_meta.get("pinned"):
+                        continue
+                    try:
+                        order_value = int(existing_meta.get("pinned_order"))
+                    except (TypeError, ValueError):
+                        order_value = -1
+                    max_order = max(max_order, order_value)
+                metadata["pinned_order"] = max_order + 1
+        else:
+            metadata.pop("pinned_order", None)
+        website.metadata_ = metadata
         website.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(website)
         return website
+
+    @staticmethod
+    def update_pinned_order(
+        db: Session,
+        user_id: str,
+        website_ids: list[uuid.UUID],
+    ) -> None:
+        """Update pinned order for websites."""
+        if not website_ids:
+            return
+        order_map = {website_id: index for index, website_id in enumerate(website_ids)}
+        websites = (
+            db.query(Website)
+            .filter(
+                Website.user_id == user_id,
+                Website.deleted_at.is_(None),
+                Website.id.in_(website_ids),
+            )
+            .all()
+        )
+        for website in websites:
+            metadata = website.metadata_ or {}
+            metadata["pinned"] = True
+            metadata["pinned_order"] = order_map.get(website.id)
+            website.metadata_ = metadata
+            website.updated_at = datetime.now(timezone.utc)
+        db.commit()
 
     @staticmethod
     def update_archived(

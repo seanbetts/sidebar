@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 import uuid
 
-from sqlalchemy import Column, DateTime, Text, BigInteger, ForeignKey, Index, Boolean
+from sqlalchemy import Column, DateTime, Text, BigInteger, ForeignKey, Index, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from api.db.base import Base
@@ -30,6 +30,7 @@ class IngestedFile(Base):
     source_url = Column(Text, nullable=True)
     source_metadata = Column(JSONB, nullable=True)
     pinned = Column(Boolean, nullable=False, default=False)
+    pinned_order = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     last_opened_at = Column(DateTime(timezone=True), nullable=True, index=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)

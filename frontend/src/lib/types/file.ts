@@ -13,6 +13,7 @@ export interface FileNode {
   children?: FileNode[];
   expanded?: boolean;
   pinned?: boolean;
+  pinned_order?: number | null;
   archived?: boolean;
   folderMarker?: boolean;
 }

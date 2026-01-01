@@ -16,6 +16,7 @@ RUN useradd -m -u 1000 -s /bin/bash appuser && \
 # Copy dependency files
 COPY pyproject.toml ./
 COPY api/requirements.txt ./requirements.txt
+COPY api/constraints.txt ./constraints.txt
 
 # Install Python dependencies
 # Note: Using pip instead of uv because uv lacks --trusted-host equivalent for

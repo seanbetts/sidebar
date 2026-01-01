@@ -8,6 +8,7 @@
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import type { WebsiteItem } from '$lib/stores/websites';
+  import { websitesAPI } from '$lib/services/api';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
@@ -28,6 +29,12 @@
 
   $: searchQuery = $websitesStore.searchQuery;
   $: pinnedItems = $websitesStore.items.filter((site) => site.pinned && !isArchived(site));
+  $: pinnedItemsSorted = [...pinnedItems].sort((a, b) => {
+    const aOrder = typeof a.pinned_order === 'number' ? a.pinned_order : Number.POSITIVE_INFINITY;
+    const bOrder = typeof b.pinned_order === 'number' ? b.pinned_order : Number.POSITIVE_INFINITY;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return (a.updated_at || '').localeCompare(b.updated_at || '');
+  });
   $: mainItems = $websitesStore.items.filter((site) => !site.pinned && !isArchived(site));
   $: archivedItems = $websitesStore.items.filter((site) => isArchived(site));
   $: totalItems = $websitesStore.items.length;
@@ -40,6 +47,9 @@
   let renameInput: HTMLInputElement | null = null;
   let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let selectedSite: WebsiteItem | null = null;
+  const PINNED_DROP_END = '__end__';
+  let draggingPinnedId: string | null = null;
+  let dragOverPinnedId: string | null = null;
 
   function closeMenu() {
     activeMenuId = null;
@@ -98,6 +108,64 @@
     editorStore.reset();
     currentNoteId.set(null);
     await websitesStore.loadById(site.id);
+  }
+
+  function handlePinnedDragStart(event: DragEvent, siteId: string) {
+    draggingPinnedId = siteId;
+    dragOverPinnedId = null;
+    event.dataTransfer?.setData('text/plain', siteId);
+    event.dataTransfer!.effectAllowed = 'move';
+  }
+
+  function handlePinnedDragOver(event: DragEvent, siteId: string) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    dragOverPinnedId = siteId;
+  }
+
+  async function handlePinnedDrop(event: DragEvent, targetId: string) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    const sourceId = draggingPinnedId;
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+    if (sourceId === targetId) return;
+    const order = pinnedItemsSorted.map(site => site.id);
+    const fromIndex = order.indexOf(sourceId);
+    const toIndex = order.indexOf(targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const nextOrder = [...order];
+    nextOrder.splice(toIndex, 0, nextOrder.splice(fromIndex, 1)[0]);
+    websitesStore.setPinnedOrderLocal?.(nextOrder);
+    try {
+      await websitesAPI.updatePinnedOrder(nextOrder);
+    } catch (error) {
+      console.error('Failed to update pinned order:', error);
+    }
+  }
+
+  async function handlePinnedDropEnd(event: DragEvent) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    const sourceId = draggingPinnedId;
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+    const order = pinnedItemsSorted.map(site => site.id);
+    const fromIndex = order.indexOf(sourceId);
+    if (fromIndex === -1) return;
+    const nextOrder = [...order];
+    nextOrder.push(nextOrder.splice(fromIndex, 1)[0]);
+    websitesStore.setPinnedOrderLocal?.(nextOrder);
+    try {
+      await websitesAPI.updatePinnedOrder(nextOrder);
+    } catch (error) {
+      console.error('Failed to update pinned order:', error);
+    }
+  }
+
+  function handlePinnedDragEnd() {
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
   }
 
   async function handleRename() {
@@ -209,7 +277,7 @@
         placeholder="Website title"
         bind:this={renameInput}
         bind:value={renameValue}
-        on:keydown={(event) => {
+        onkeydown={(event) => {
           if (event.key === 'Enter') handleRename();
         }}
       />
@@ -276,11 +344,11 @@
   {:else}
     <div class="websites-block">
       <div class="websites-block-title">Pinned</div>
-      {#if pinnedItems.length === 0}
+      {#if pinnedItemsSorted.length === 0}
         <div class="websites-empty">No pinned websites</div>
       {:else}
         <div class="websites-list">
-          {#each pinnedItems as site (site.id)}
+          {#each pinnedItemsSorted as site (site.id)}
             <WebsiteRow
               {site}
               archived={isArchived(site)}
@@ -293,8 +361,20 @@
               onDownload={handleDownload}
               onArchive={handleArchive}
               onDelete={openDeleteDialog}
+              showGrabHandle
+              isDragOver={dragOverPinnedId === site.id}
+              onGrabStart={(event) => handlePinnedDragStart(event, site.id)}
+              onGrabOver={(event) => handlePinnedDragOver(event, site.id)}
+              onGrabDrop={(event) => handlePinnedDrop(event, site.id)}
+              onGrabEnd={handlePinnedDragEnd}
             />
           {/each}
+          <div
+            class="pinned-drop-zone"
+            class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+            ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
+            ondrop={handlePinnedDropEnd}
+          ></div>
         </div>
       {/if}
     </div>
@@ -406,6 +486,22 @@
     flex-direction: column;
     gap: 0.35rem;
     padding: 0 0.25rem;
+  }
+
+  .pinned-drop-zone {
+    position: relative;
+    height: 12px;
+  }
+
+  .pinned-drop-zone.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
   }
 
   .websites-empty {
