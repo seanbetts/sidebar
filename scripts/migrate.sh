@@ -64,6 +64,48 @@ prompt_supabase_password() {
   echo "${password}"
 }
 
+prompt_supabase_url() {
+  local url
+  read -r -p "Supabase pooler URL (no password): " url
+  if [[ -z "${url}" ]]; then
+    echo "Pooler URL is required."
+    exit 1
+  fi
+  echo "${url}"
+}
+
+parse_pooler_url() {
+  local url="$1"
+  local remainder userinfo hostinfo hostport host port parsed_db
+
+  remainder="${url#*://}"
+  userinfo="${remainder%@*}"
+  hostinfo="${remainder#*@}"
+
+  pooler_user="${userinfo%%:*}"
+  hostport="${hostinfo%%/*}"
+  parsed_db="${hostinfo#*/}"
+  parsed_db="${parsed_db%%\?*}"
+
+  if [[ "${hostport}" == *":"* ]]; then
+    host="${hostport%%:*}"
+    port="${hostport##*:}"
+  else
+    host="${hostport}"
+    port="5432"
+  fi
+
+  if [[ -z "${pooler_host}" ]]; then
+    pooler_host="${host}"
+  fi
+  if [[ -z "${pooler_port}" ]]; then
+    pooler_port="${port}"
+  fi
+  if [[ -z "${db_name}" && -n "${parsed_db}" ]]; then
+    db_name="${parsed_db}"
+  fi
+}
+
 configure_supabase() {
   local pooler_host
   local project_id
@@ -71,6 +113,7 @@ configure_supabase() {
   local pooler_port
   local db_name
   local sslmode
+  local pooler_url
   local password
 
   pooler_host=$(get_env_value SUPABASE_POOLER_HOST)
@@ -79,6 +122,15 @@ configure_supabase() {
   pooler_port=$(get_env_value SUPABASE_POOLER_PORT)
   db_name=$(get_env_value SUPABASE_DB_NAME)
   sslmode=$(get_env_value SUPABASE_SSLMODE)
+  pooler_url=$(get_env_value SUPABASE_POOLER_URL)
+
+  if [[ -z "${pooler_host}" && -z "${pooler_url}" ]]; then
+    pooler_url=$(prompt_supabase_url)
+  fi
+
+  if [[ -n "${pooler_url}" ]]; then
+    parse_pooler_url "${pooler_url}"
+  fi
 
   if [[ -z "${pooler_host}" ]]; then
     echo "Missing SUPABASE_POOLER_HOST."
