@@ -5,11 +5,11 @@
 **V1 Scope:** Focused on essential quick capture workflows only. Advanced features moved to future development.
 
 **V1 Features:**
-- ✅ **Personal Access Token (PAT) auth** - Managed in user settings
-- ✅ **Scratchpad quick capture** - Append by default; prepend for Shortcuts only
-- ✅ **Notes creation** - Quick note capture with optional title (title stored separately)
-- ✅ **Website saving** - Save URLs with auto-fetched content (fail if fetch fails)
-- ✅ **File ingestion (Shortcuts upload)** - Quick upload via multipart; originals are removed after ingestion
+- ✅ **Personal Access Token (PAT) auth** - Managed in user settings (complete)
+- ✅ **Scratchpad quick capture** - Append by default; prepend for Shortcuts only (complete)
+- ✅ **Notes creation** - Quick note capture with optional title (title stored separately) (complete)
+- ✅ **Website saving** - Save URLs with auto-fetched content (fail if fetch fails) (complete)
+- ✅ **File ingestion (Shortcuts upload)** - Quick upload via multipart; originals are removed after ingestion (complete)
 
 **Moved to Future:**
 - 📋 Note templates (Phase 4)
@@ -209,10 +209,10 @@ Response:
 ## V1 Implementation Summary
 
 **Endpoints to Implement:**
-1. ✅ Enhanced `/api/scratchpad` - Prepend with divider mode for PAT/Shortcuts (append default)
-2. ✅ Enhanced `/api/notes` - Optional title parameter
-3. 🆕 New `/api/websites/quick-save` - Lightweight website saving
-4. 🆕 New `/api/ingestion/quick-upload` - Multipart file upload into ingestion
+1. ✅ Enhanced `/api/scratchpad` - Prepend with divider mode for PAT/Shortcuts (append default) (complete)
+2. ✅ Enhanced `/api/notes` - Optional title parameter (complete)
+3. ✅ New `/api/websites/quick-save` - Lightweight website saving (complete)
+4. ✅ New `/api/ingestion/quick-upload` - Multipart file upload into ingestion (complete)
 
 **Total New Endpoints:** 1 (just websites!)
 **Total Enhanced Endpoints:** 2 (scratchpad, notes)
