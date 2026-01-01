@@ -7,6 +7,7 @@
 	import { TaskList, TaskItem } from '@tiptap/extension-list';
 	import { TableKit } from '@tiptap/extension-table';
 	import { Markdown } from 'tiptap-markdown';
+	import { TextSelection } from '@tiptap/pm/state';
 	import { Pencil } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
@@ -50,8 +51,11 @@
 			editor.commands.setContent(newContent);
 			tick().then(() =>
 				requestAnimationFrame(() => {
-					if (currentPosition <= newContent.length) {
-						editor?.commands.setTextSelection(currentPosition);
+					if (editor) {
+						const maxPosition = editor.state.doc.content.size;
+						const safePosition = Math.min(currentPosition, maxPosition);
+						const selection = TextSelection.near(editor.state.doc.resolve(safePosition));
+						editor.view.dispatch(editor.state.tr.setSelection(selection));
 					}
 				})
 			);
