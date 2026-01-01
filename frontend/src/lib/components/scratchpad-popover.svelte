@@ -8,7 +8,7 @@
 	import { TableKit } from '@tiptap/extension-table';
 	import { Markdown } from 'tiptap-markdown';
 	import { TextSelection } from '@tiptap/pm/state';
-	import { Pencil } from 'lucide-svelte';
+import { SquarePen } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import ScratchpadHeader from '$lib/components/scratchpad/ScratchpadHeader.svelte';
@@ -203,7 +203,7 @@
 
 <Popover.Root bind:open={isOpen}>
 	<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'icon' })} aria-label="Open scratchpad">
-		<Pencil size={18} />
+		<SquarePen size={18} />
 	</Popover.Trigger>
 	<Popover.Content class="w-[840px] max-w-[95vw]" align="end" sideOffset={8}>
 		<div class="scratchpad-popover">
