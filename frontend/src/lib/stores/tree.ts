@@ -53,6 +53,20 @@ function sortNodes(nodes: FileNode[]): FileNode[] {
   });
 }
 
+function maxPinnedOrder(nodes: FileNode[]): number {
+  let maxOrder = -1;
+  for (const node of nodes) {
+    if (node.type === 'file' && node.pinned) {
+      const value = typeof node.pinned_order === 'number' ? node.pinned_order : -1;
+      if (value > maxOrder) maxOrder = value;
+    }
+    if (node.children) {
+      maxOrder = Math.max(maxOrder, maxPinnedOrder(node.children));
+    }
+  }
+  return maxOrder;
+}
+
 
 function updateNoteInTree(
   nodes: FileNode[],
@@ -728,10 +742,12 @@ function createTreeStore() {
       update(state => {
         const tree = state.trees['notes'];
         if (!tree?.children) return state;
+        const nextPinnedOrder = pinned ? maxPinnedOrder(tree.children) + 1 : null;
 
         const result = updateNoteInTree(tree.children, noteId, (node) => ({
           ...node,
-          pinned
+          pinned,
+          ...(pinned ? { pinned_order: node.pinned_order ?? nextPinnedOrder } : { pinned_order: null })
         }));
         if (!result.changed) return state;
 
@@ -741,6 +757,48 @@ function createTreeStore() {
             notes: {
               ...tree,
               children: result.nodes
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    setNotePinnedOrder(order: string[]) {
+      update(state => {
+        const tree = state.trees['notes'];
+        if (!tree?.children) return state;
+        const orderMap = new Map(order.map((noteId, index) => [noteId, index]));
+
+        let changed = false;
+        const updateNodes = (nodes: FileNode[]): FileNode[] =>
+          nodes.map(node => {
+            if (node.type === 'file' && orderMap.has(node.path)) {
+              changed = true;
+              return { ...node, pinned_order: orderMap.get(node.path) };
+            }
+            if (node.children) {
+              const children = updateNodes(node.children);
+              return children === node.children ? node : { ...node, children };
+            }
+            return node;
+          });
+
+        const nextChildren = updateNodes(tree.children);
+        if (!changed) return state;
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children: nextChildren
             }
           }
         };

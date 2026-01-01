@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ChevronRight, FileText, Search } from 'lucide-svelte';
   import { treeStore } from '$lib/stores/tree';
+  import { notesAPI } from '$lib/services/api';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
@@ -84,8 +85,79 @@
     return archiveNode?.children || [];
   }
 
+  function sortPinnedNodes(nodes: FileNode[]): FileNode[] {
+    return [...nodes].sort((a, b) => {
+      const aOrder = typeof a.pinned_order === 'number' ? a.pinned_order : Number.POSITIVE_INFINITY;
+      const bOrder = typeof b.pinned_order === 'number' ? b.pinned_order : Number.POSITIVE_INFINITY;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  const PINNED_DROP_END = '__end__';
+  let draggingPinnedId: string | null = null;
+  let dragOverPinnedId: string | null = null;
+
+  function handlePinnedDragStart(event: DragEvent, nodeId: string) {
+    draggingPinnedId = nodeId;
+    dragOverPinnedId = null;
+    event.dataTransfer?.setData('text/plain', nodeId);
+    event.dataTransfer!.effectAllowed = 'move';
+  }
+
+  function handlePinnedDragOver(event: DragEvent, nodeId: string) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    dragOverPinnedId = nodeId;
+  }
+
+  async function handlePinnedDrop(event: DragEvent, targetId: string) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    const sourceId = draggingPinnedId;
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+    if (sourceId === targetId) return;
+    const order = pinnedNodes.map(node => node.path);
+    const fromIndex = order.indexOf(sourceId);
+    const toIndex = order.indexOf(targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const nextOrder = [...order];
+    nextOrder.splice(toIndex, 0, nextOrder.splice(fromIndex, 1)[0]);
+    treeStore.setNotePinnedOrder(nextOrder);
+    try {
+      await notesAPI.updatePinnedOrder(nextOrder);
+    } catch (error) {
+      console.error('Failed to update pinned order:', error);
+    }
+  }
+
+  async function handlePinnedDropEnd(event: DragEvent) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    const sourceId = draggingPinnedId;
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+    const order = pinnedNodes.map(node => node.path);
+    const fromIndex = order.indexOf(sourceId);
+    if (fromIndex === -1) return;
+    const nextOrder = [...order];
+    nextOrder.push(nextOrder.splice(fromIndex, 1)[0]);
+    treeStore.setNotePinnedOrder(nextOrder);
+    try {
+      await notesAPI.updatePinnedOrder(nextOrder);
+    } catch (error) {
+      console.error('Failed to update pinned order:', error);
+    }
+  }
+
+  function handlePinnedDragEnd() {
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+  }
+
   $: searchQuery = treeData?.searchQuery || '';
-  $: pinnedNodes = collectPinned(children);
+  $: pinnedNodes = sortPinnedNodes(collectPinned(children));
   $: mainNodes = filterNodes(children, { excludePinned: true, excludeArchive: true });
   $: archiveNodes = getArchiveChildren(children);
 </script>
@@ -144,8 +216,21 @@
               {basePath}
               {hideExtensions}
               {onFileClick}
+              showGrabHandle
+              isDragging={draggingPinnedId === node.path}
+              isDragOver={dragOverPinnedId === node.path}
+              onGrabStart={(event) => handlePinnedDragStart(event, node.path)}
+              onGrabOver={(event) => handlePinnedDragOver(event, node.path)}
+              onGrabDrop={(event) => handlePinnedDrop(event, node.path)}
+              onGrabEnd={handlePinnedDragEnd}
             />
           {/each}
+          <div
+            class="pinned-drop-zone"
+            class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+            ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
+            ondrop={handlePinnedDropEnd}
+          ></div>
         </div>
       {:else}
         <div class="notes-empty">No pinned notes</div>
@@ -287,6 +372,22 @@
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
+  }
+
+  .pinned-drop-zone {
+    position: relative;
+    height: 12px;
+  }
+
+  .pinned-drop-zone.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
   }
 
 

@@ -16,7 +16,8 @@
     Pencil,
     Pin,
     PinOff,
-    Download
+    Download,
+    GripVertical
   } from 'lucide-svelte';
   import { onDestroy, onMount } from 'svelte';
   import { treeStore } from '$lib/stores/tree';
@@ -68,6 +69,12 @@
       )
     : readyItems;
   $: pinnedItems = filteredReadyItems.filter(item => item.file.pinned);
+  $: pinnedItemsSorted = [...pinnedItems].sort((a, b) => {
+    const aOrder = typeof a.file.pinned_order === 'number' ? a.file.pinned_order : Number.POSITIVE_INFINITY;
+    const bOrder = typeof b.file.pinned_order === 'number' ? b.file.pinned_order : Number.POSITIVE_INFINITY;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return (a.file.created_at || '').localeCompare(b.file.created_at || '');
+  });
   $: unpinnedReadyItems = filteredReadyItems.filter(item => !item.file.pinned);
   const categoryOrder = [
     'audio',
@@ -114,6 +121,9 @@
   let isRenaming = false;
   let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let deleteItem: IngestionListItem | null = null;
+  const PINNED_DROP_END = '__end__';
+  let draggingPinnedId: string | null = null;
+  let dragOverPinnedId: string | null = null;
 
   function openViewer(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
@@ -206,6 +216,64 @@
     }
   }
 
+  function handlePinnedDragStart(event: DragEvent, fileId: string) {
+    draggingPinnedId = fileId;
+    dragOverPinnedId = null;
+    event.dataTransfer?.setData('text/plain', fileId);
+    event.dataTransfer!.effectAllowed = 'move';
+  }
+
+  function handlePinnedDragOver(event: DragEvent, fileId: string) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    dragOverPinnedId = fileId;
+  }
+
+  async function handlePinnedDrop(event: DragEvent, targetId: string) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    const sourceId = draggingPinnedId;
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+    if (sourceId === targetId) return;
+    const order = pinnedItemsSorted.map(item => item.file.id);
+    const fromIndex = order.indexOf(sourceId);
+    const toIndex = order.indexOf(targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const nextOrder = [...order];
+    nextOrder.splice(toIndex, 0, nextOrder.splice(fromIndex, 1)[0]);
+    ingestionStore.setPinnedOrder(nextOrder);
+    try {
+      await ingestionAPI.updatePinnedOrder(nextOrder);
+    } catch (error) {
+      console.error('Failed to update pinned order:', error);
+    }
+  }
+
+  async function handlePinnedDropEnd(event: DragEvent) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    const sourceId = draggingPinnedId;
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+    const order = pinnedItemsSorted.map(item => item.file.id);
+    const fromIndex = order.indexOf(sourceId);
+    if (fromIndex === -1) return;
+    const nextOrder = [...order];
+    nextOrder.push(nextOrder.splice(fromIndex, 1)[0]);
+    ingestionStore.setPinnedOrder(nextOrder);
+    try {
+      await ingestionAPI.updatePinnedOrder(nextOrder);
+    } catch (error) {
+      console.error('Failed to update pinned order:', error);
+    }
+  }
+
+  function handlePinnedDragEnd() {
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+  }
+
   async function handleDownload(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
     try {
@@ -287,15 +355,31 @@
       {#if showPinnedSection}
         <div class="files-block">
           <div class="files-block-title">Pinned</div>
-          {#if pinnedItems.length > 0}
+          {#if pinnedItemsSorted.length > 0}
             <div class="files-block-list">
-              {#each pinnedItems as item (item.file.id)}
-                <div class="ingested-row" data-ingested-menu-root={`pinned-${item.file.id}`}>
+              {#each pinnedItemsSorted as item (item.file.id)}
+                <div
+                  class="ingested-row"
+                  class:drag-over={dragOverPinnedId === item.file.id}
+                  data-ingested-menu-root={`pinned-${item.file.id}`}
+                  ondragover={(event) => handlePinnedDragOver(event, item.file.id)}
+                  ondrop={(event) => handlePinnedDrop(event, item.file.id)}
+                >
                   <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
                     <span class="ingested-icon">
                       <svelte:component this={iconForCategory(item.file.category)} size={16} />
                     </span>
                     <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                  </button>
+                  <button
+                    class="grab-handle"
+                    draggable="true"
+                    ondragstart={(event) => handlePinnedDragStart(event, item.file.id)}
+                    ondragend={handlePinnedDragEnd}
+                    onclick={(event) => event.stopPropagation()}
+                    aria-label="Reorder pinned file"
+                  >
+                    <GripVertical size={14} />
                   </button>
                   <button
                     class="ingested-menu"
@@ -331,6 +415,12 @@
                   {/if}
                 </div>
               {/each}
+              <div
+                class="pinned-drop-zone"
+                class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+                ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
+                ondrop={handlePinnedDropEnd}
+              ></div>
             </div>
           {:else}
             <div class="files-empty">No pinned files</div>
@@ -689,6 +779,61 @@
     align-items: center;
     gap: 0.25rem;
     width: 100%;
+  }
+
+  .ingested-row.drag-over {
+    background: none;
+  }
+
+  .ingested-row.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    top: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
+  }
+
+  .pinned-drop-zone {
+    position: relative;
+    height: 12px;
+  }
+
+  .pinned-drop-zone.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
+  }
+
+  .grab-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    color: var(--color-muted-foreground);
+    cursor: grab;
+    border-radius: 0.375rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .grab-handle:active {
+    cursor: grabbing;
+  }
+
+  .ingested-row:hover .grab-handle {
+    opacity: 0.9;
+    pointer-events: auto;
   }
 
   .ingested-row--nested {

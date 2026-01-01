@@ -14,6 +14,7 @@ export interface WebsiteItem {
   saved_at: string | null;
   published_at: string | null;
   pinned: boolean;
+  pinned_order?: number | null;
   archived?: boolean;
   updated_at: string | null;
   last_opened_at: string | null;
@@ -158,7 +159,34 @@ function createWebsitesStore() {
 
     setPinnedLocal(id: string, pinned: boolean) {
       update(state => {
-        const items = state.items.map(item => (item.id === id ? { ...item, pinned } : item));
+        const maxOrder = Math.max(
+          -1,
+          ...state.items
+            .filter(item => item.pinned)
+            .map(item => (typeof item.pinned_order === 'number' ? item.pinned_order : -1))
+        );
+        const items = state.items.map(item =>
+          item.id === id
+            ? {
+                ...item,
+                pinned,
+                pinned_order: pinned ? (item.pinned_order ?? maxOrder + 1) : null
+              }
+            : item
+        );
+        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        return { ...state, items };
+      });
+    },
+
+    setPinnedOrderLocal(order: string[]) {
+      update(state => {
+        const orderMap = new Map(order.map((websiteId, index) => [websiteId, index]));
+        const items = state.items.map(item =>
+          orderMap.has(item.id)
+            ? { ...item, pinned_order: orderMap.get(item.id) ?? null }
+            : item
+        );
         setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
         return { ...state, items };
       });

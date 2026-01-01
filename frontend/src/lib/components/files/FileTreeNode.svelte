@@ -5,7 +5,8 @@
     ChevronDown,
     FileText,
     Folder,
-    FolderOpen
+    FolderOpen,
+    GripVertical
   } from 'lucide-svelte';
   import { treeStore } from '$lib/stores/tree';
   import { editorStore } from '$lib/stores/editor';
@@ -22,6 +23,13 @@
   export let onFileClick: ((path: string) => void) | undefined = undefined;
   export let showActions: boolean = true;
   export let forceExpand: boolean = false;
+  export let showGrabHandle: boolean = false;
+  export let isDragOver: boolean = false;
+  export let isDragging: boolean = false;
+  export let onGrabStart: ((event: DragEvent) => void) | undefined = undefined;
+  export let onGrabOver: ((event: DragEvent) => void) | undefined = undefined;
+  export let onGrabDrop: ((event: DragEvent) => void) | undefined = undefined;
+  export let onGrabEnd: (() => void) | undefined = undefined;
 
   let isEditing = false;
   let editedName = node.name;
@@ -60,6 +68,16 @@
     }
   }
 
+  function handleDragOver(event: DragEvent) {
+    if (!onGrabOver) return;
+    onGrabOver(event);
+  }
+
+  function handleDrop(event: DragEvent) {
+    if (!onGrabDrop) return;
+    onGrabDrop(event);
+  }
+
   const handleRenameKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       actions.cancelRename();
@@ -83,12 +101,19 @@
   onConfirm={actions.confirmDelete}
 />
 
-<div class="tree-node" style="padding-left: {level * 1}rem;">
+<div
+  class="tree-node"
+  class:drag-over={isDragOver}
+  class:dragging={isDragging}
+  style="padding-left: {level * 1}rem;"
+  ondragover={handleDragOver}
+  ondrop={handleDrop}
+>
   <div class="node-content">
     <button
       class="node-button"
       class:expandable={node.type === 'directory'}
-      on:click={handleClick}
+      onclick={handleClick}
     >
       {#if node.type === 'directory'}
         <span class="chevron">
@@ -116,9 +141,9 @@
           class="name-input"
           bind:this={editInput}
           bind:value={editedName}
-          on:blur={actions.saveRename}
-          on:keydown={handleRenameKeydown}
-          on:click={(e) => e.stopPropagation()}
+          onblur={actions.saveRename}
+          onkeydown={handleRenameKeydown}
+          onclick={(e) => e.stopPropagation()}
         />
       {:else}
         <span class="name">{displayName}</span>
@@ -127,6 +152,18 @@
 
     {#if showActions}
       <div class="actions">
+        {#if showGrabHandle && node.type === 'file'}
+          <button
+            class="grab-handle"
+            draggable="true"
+            ondragstart={onGrabStart}
+            ondragend={onGrabEnd}
+            onclick={(event) => event.stopPropagation()}
+            aria-label="Reorder pinned note"
+          >
+            <GripVertical size={14} />
+          </button>
+        {/if}
         <FileTreeContextMenu
           {node}
           {basePath}
@@ -164,12 +201,52 @@
 <style>
   .tree-node {
     user-select: none;
+    position: relative;
   }
 
   .node-content {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  .tree-node.drag-over {
+    background: none;
+  }
+
+  .tree-node.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    top: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
+  }
+
+  .grab-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: var(--color-muted-foreground);
+    padding: 0.25rem;
+    border-radius: 0.375rem;
+    cursor: grab;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .grab-handle:active {
+    cursor: grabbing;
+  }
+
+  .node-content:hover .grab-handle {
+    opacity: 0.9;
+    pointer-events: auto;
   }
 
   .node-button {

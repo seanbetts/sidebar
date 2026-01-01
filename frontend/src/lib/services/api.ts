@@ -270,6 +270,15 @@ class IngestionAPI {
     });
     if (!response.ok) throw new Error('Failed to rename file');
   }
+
+  async updatePinnedOrder(order: string[]): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/pinned-order`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order })
+    });
+    if (!response.ok) throw new Error('Failed to update pinned order');
+  }
 }
 
 export const ingestionAPI = new IngestionAPI();
@@ -309,6 +318,15 @@ class NotesAPI {
     if (!response.ok) throw new Error('Failed to search notes');
     const data = await response.json();
     return data.items || [];
+  }
+
+  async updatePinnedOrder(order: string[]): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/pinned-order`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order })
+    });
+    if (!response.ok) throw new Error('Failed to update pinned order');
   }
 }
 
@@ -359,6 +377,15 @@ class WebsitesAPI {
     });
     if (!response.ok) throw new Error('Failed to search websites');
     return response.json();
+  }
+
+  async updatePinnedOrder(order: string[]): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/pinned-order`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order })
+    });
+    if (!response.ok) throw new Error('Failed to update pinned order');
   }
 }
 

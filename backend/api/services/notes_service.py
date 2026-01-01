@@ -122,6 +122,7 @@ class NotesService:
                 "type": "file",
                 "modified": note.updated_at.timestamp() if note.updated_at else None,
                 "pinned": bool(metadata.get("pinned")),
+                "pinned_order": metadata.get("pinned_order"),
                 "archived": is_archived
             })
 
@@ -308,11 +309,59 @@ class NotesService:
         if not note:
             raise NoteNotFoundError(f"Note not found: {note_id}")
 
-        note.metadata_ = {**(note.metadata_ or {}), "pinned": pinned}
+        metadata = note.metadata_ or {}
+        metadata["pinned"] = pinned
+        if pinned:
+            if metadata.get("pinned_order") is None:
+                max_order = -1
+                for existing in (
+                    db.query(Note)
+                    .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
+                    .all()
+                ):
+                    existing_meta = existing.metadata_ or {}
+                    if not existing_meta.get("pinned"):
+                        continue
+                    try:
+                        order_value = int(existing_meta.get("pinned_order"))
+                    except (TypeError, ValueError):
+                        order_value = -1
+                    max_order = max(max_order, order_value)
+                metadata["pinned_order"] = max_order + 1
+        else:
+            metadata.pop("pinned_order", None)
+        note.metadata_ = metadata
         note.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(note)
         return note
+
+    @staticmethod
+    def update_pinned_order(
+        db: Session,
+        user_id: str,
+        note_ids: list[uuid.UUID],
+    ) -> None:
+        """Update pinned order for notes."""
+        if not note_ids:
+            return
+        order_map = {note_id: index for index, note_id in enumerate(note_ids)}
+        notes = (
+            db.query(Note)
+            .filter(
+                Note.user_id == user_id,
+                Note.deleted_at.is_(None),
+                Note.id.in_(note_ids),
+            )
+            .all()
+        )
+        for note in notes:
+            metadata = note.metadata_ or {}
+            metadata["pinned"] = True
+            metadata["pinned_order"] = order_map.get(note.id)
+            note.metadata_ = metadata
+            note.updated_at = datetime.now(timezone.utc)
+        db.commit()
 
     @staticmethod
     def delete_note(db: Session, user_id: str, note_id: uuid.UUID) -> bool:
