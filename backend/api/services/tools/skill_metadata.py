@@ -3,7 +3,7 @@
 SKILL_DISPLAY = {
     "fs": {
         "name": "Files",
-        "description": "Browse, read, search, and write files in R2-backed storage.",
+        "description": "Browse, read, search, and write ingested files. Reads return extracted text (ai.md) with frontmatter.",
     },
     "notes": {
         "name": "Notes",
