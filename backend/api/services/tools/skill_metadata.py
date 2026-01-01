@@ -47,11 +47,11 @@ SKILL_DISPLAY = {
     },
     "youtube-download": {
         "name": "YouTube Download",
-        "description": "Download YouTube video or audio to R2 (Videos folder by default).",
+        "description": "Download YouTube video or audio to the files workspace (videos by default).",
     },
     "youtube-transcribe": {
         "name": "YouTube Transcription",
-        "description": "Transcribe YouTube videos into text and store transcripts in R2.",
+        "description": "Transcribe YouTube videos into text and store transcripts in the files workspace.",
     },
     "mcp-builder": {
         "name": "MCP Builder",

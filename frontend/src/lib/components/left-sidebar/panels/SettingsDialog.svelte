@@ -52,9 +52,11 @@
 
 <AlertDialog.Root bind:open>
   <AlertDialog.Content class="settings-dialog-container">
-    <AlertDialog.Header class="settings-header">
-      <AlertDialog.Title>Settings</AlertDialog.Title>
-      <AlertDialog.Description>Configure your workspace.</AlertDialog.Description>
+    <AlertDialog.Header>
+      <div class="settings-header">
+        <AlertDialog.Title>Settings</AlertDialog.Title>
+        <AlertDialog.Description>Configure your workspace.</AlertDialog.Description>
+      </div>
     </AlertDialog.Header>
     <div class="settings-layout">
       <aside class="settings-nav">
@@ -132,15 +134,16 @@
     </div>
     <AlertDialog.Footer class="settings-footer">
       <form method="get" action="/auth/logout">
-        <Button
-          type="submit"
-          variant="outline"
-          class="settings-logout"
-          aria-label="Sign out"
-        >
-          <LogOut size={16} />
-          <span>Sign out</span>
-        </Button>
+        <div class="settings-logout">
+          <Button
+            type="submit"
+            variant="outline"
+            aria-label="Sign out"
+          >
+            <LogOut size={16} />
+            <span>Sign out</span>
+          </Button>
+        </div>
       </form>
       <AlertDialog.Action onclick={() => (open = false)}>Close</AlertDialog.Action>
     </AlertDialog.Footer>
@@ -164,7 +167,11 @@
     height: 100%;
   }
 
-  :global(.settings-logout) {
+  .settings-logout {
+    display: inline-flex;
+  }
+
+  .settings-logout :global(button) {
     justify-content: flex-start;
     gap: 0.5rem;
   }
@@ -351,14 +358,6 @@
     object-fit: cover;
   }
 
-  :global(.settings-avatar-placeholder) {
-    width: 100%;
-    height: 100%;
-    display: grid;
-    place-items: center;
-    color: var(--color-muted-foreground);
-  }
-
   :global(.settings-avatar-upload) {
     display: inline-flex;
     align-items: center;
@@ -389,9 +388,6 @@
     cursor: not-allowed;
   }
 
-  :global(.dark .settings-avatar-placeholder) {
-    color: #9aa3ad;
-  }
 
   :global(.settings-autocomplete) {
     position: relative;
@@ -458,7 +454,7 @@
     animation: settings-dialog-out 0.15s ease-in !important;
   }
 
-  :global(.settings-header) {
+  .settings-header {
     border-bottom: 1px solid var(--color-border);
     padding-bottom: 0.75rem;
   }

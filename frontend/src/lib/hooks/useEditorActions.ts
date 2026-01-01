@@ -25,7 +25,6 @@ type EditorActionsContext = {
   setIsSaveBeforeCloseDialogOpen: (value: boolean) => void;
   setIsSaveBeforeRenameDialogOpen: (value: boolean) => void;
   setIsRenameDialogOpen: (value: boolean) => void;
-  setIsDeleteDialogOpen: (value: boolean) => void;
   setFolderOptions: (value: { label: string; value: string; depth: number }[]) => void;
   getCopyTimeout: () => ReturnType<typeof setTimeout> | null;
   setCopyTimeout: (value: ReturnType<typeof setTimeout> | null) => void;
@@ -223,20 +222,20 @@ export function useEditorActions(ctx: EditorActionsContext) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<boolean> => {
     const currentNoteId = ctx.getCurrentNoteId();
-    if (!currentNoteId) return;
+    if (!currentNoteId) return false;
     const response = await fetch(`/api/notes/${currentNoteId}`, {
       method: 'DELETE'
     });
     if (!response.ok) {
       console.error('Failed to delete note');
-      return;
+      return false;
     }
     ctx.treeStore.removeNode?.('notes', currentNoteId);
     dispatchCacheEvent('note.deleted');
     ctx.editorStore.reset();
-    ctx.setIsDeleteDialogOpen(false);
+    return true;
   };
 
   return {

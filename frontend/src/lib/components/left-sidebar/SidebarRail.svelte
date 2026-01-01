@@ -3,6 +3,7 @@
   import type { SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
 
   export let isCollapsed = false;
+  export let activeSection: SidebarSection = 'notes';
   export let profileImageSrc = '';
   export let sidebarLogoSrc = '/images/logo.svg';
   export let onToggle: (() => void) | undefined;
@@ -25,6 +26,7 @@
     <button
       on:click={() => onOpenSection?.('notes')}
       class="rail-btn"
+      class:active={activeSection === 'notes'}
       aria-label="Notes"
       title="Notes"
     >
@@ -33,6 +35,7 @@
     <button
       on:click={() => onOpenSection?.('websites')}
       class="rail-btn"
+      class:active={activeSection === 'websites'}
       aria-label="Websites"
       title="Websites"
     >
@@ -41,6 +44,7 @@
     <button
       on:click={() => onOpenSection?.('workspace')}
       class="rail-btn"
+      class:active={activeSection === 'workspace'}
       aria-label="Files"
       title="Files"
     >
@@ -49,6 +53,7 @@
     <button
       on:click={() => onOpenSection?.('history')}
       class="rail-btn"
+      class:active={activeSection === 'history'}
       aria-label="Chat"
       title="Chat"
     >
@@ -96,7 +101,7 @@
     width: 40px;
     height: 40px;
     border-radius: 0.5rem;
-    border: 1px solid var(--color-sidebar-border);
+    border: 0px solid var(--color-sidebar-primary);
     background-color: transparent;
     color: var(--color-sidebar-foreground);
     cursor: pointer;
@@ -128,10 +133,16 @@
     color: var(--color-sidebar-foreground);
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease;
+    position: relative;
   }
 
   .rail-btn:hover {
     background-color: var(--color-sidebar-accent);
+  }
+
+  .rail-btn.active {
+    background-color: var(--color-sidebar-accent);
+    border-color: var(--color-sidebar-border);
   }
 
   .rail-footer {

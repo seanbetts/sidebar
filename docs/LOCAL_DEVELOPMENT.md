@@ -22,8 +22,8 @@ cd frontend && npm install && cd ..
 # 4. Validate setup
 ./scripts/health-check.sh
 
-# 5. Run migrations (requires ALLOW_PROD_MIGRATIONS=true)
-ALLOW_PROD_MIGRATIONS=true ./scripts/migrate.sh upgrade
+# 5. Run migrations (Supabase)
+./scripts/migrate.sh --supabase upgrade head
 
 # 6. Start development
 ./dev.sh start
@@ -73,10 +73,11 @@ You are connecting to production Supabase and R2.
 
 ```bash
 ./scripts/health-check.sh
-./scripts/migrate.sh upgrade
+./scripts/migrate.sh --supabase upgrade head
 ./scripts/test.sh backend
 ./dev.sh restart
 ```
+
 
 ## Troubleshooting
 

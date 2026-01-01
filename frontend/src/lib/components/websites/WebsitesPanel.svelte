@@ -5,9 +5,11 @@
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import { websitesStore } from '$lib/stores/websites';
+  import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
+  import { editorStore, currentNoteId } from '$lib/stores/editor';
   import type { WebsiteItem } from '$lib/stores/websites';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-  import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 
@@ -36,7 +38,7 @@
   let isRenameDialogOpen = false;
   let renameValue = '';
   let renameInput: HTMLInputElement | null = null;
-  let isDeleteDialogOpen = false;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let selectedSite: WebsiteItem | null = null;
 
   function closeMenu() {
@@ -89,6 +91,13 @@
     renameValue = site.title || '';
     isRenameDialogOpen = true;
     closeMenu();
+  }
+
+  async function openWebsite(site: WebsiteItem) {
+    ingestionViewerStore.clearActive();
+    editorStore.reset();
+    currentNoteId.set(null);
+    await websitesStore.loadById(site.id);
   }
 
   async function handleRename() {
@@ -154,23 +163,23 @@
 
   function openDeleteDialog(site: WebsiteItem) {
     selectedSite = site;
-    isDeleteDialogOpen = true;
+    deleteDialog?.openDialog(site.title || 'website');
     closeMenu();
   }
 
-  async function handleDelete() {
-    if (!selectedSite) return;
+  async function handleDelete(): Promise<boolean> {
+    if (!selectedSite) return false;
     const response = await fetch(`/api/websites/${selectedSite.id}`, {
       method: 'DELETE'
     });
     if (!response.ok) {
       console.error('Failed to delete website');
-      return;
+      return false;
     }
     websitesStore.removeLocal?.(selectedSite.id);
     dispatchCacheEvent('website.deleted');
-    isDeleteDialogOpen = false;
     selectedSite = null;
+    return true;
   }
 
   $: if (isRenameDialogOpen) {
@@ -214,12 +223,10 @@
   </AlertDialog.Content>
 </AlertDialog.Root>
 
-<NoteDeleteDialog
-  bind:open={isDeleteDialogOpen}
+<DeleteDialogController
+  bind:this={deleteDialog}
   itemType="website"
-  itemName={selectedSite?.title ?? ''}
   onConfirm={handleDelete}
-  onCancel={() => (isDeleteDialogOpen = false)}
 />
 
 <div class="websites-sections">
@@ -254,7 +261,7 @@
               archived={isArchived(site)}
               isMenuOpen={activeMenuId === site.id}
               formatDomain={formatDomain}
-              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpen={openWebsite}
               onOpenMenu={openMenu}
               onPin={handlePin}
               onRename={openRenameDialog}
@@ -279,7 +286,7 @@
               archived={isArchived(site)}
               isMenuOpen={activeMenuId === site.id}
               formatDomain={formatDomain}
-              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpen={openWebsite}
               onOpenMenu={openMenu}
               onPin={handlePin}
               onRename={openRenameDialog}
@@ -304,7 +311,7 @@
               archived={isArchived(site)}
               isMenuOpen={activeMenuId === site.id}
               formatDomain={formatDomain}
-              onOpen={(item) => websitesStore.loadById(item.id)}
+              onOpen={openWebsite}
               onOpenMenu={openMenu}
               onPin={handlePin}
               onRename={openRenameDialog}
@@ -326,7 +333,9 @@
             class="archive-trigger"
           >
             <span class="websites-block-title archive-label">Archive</span>
-            <ChevronRight class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90" />
+            <span class="archive-chevron transition-transform group-data-[state=open]/collapsible:rotate-90">
+              <ChevronRight size={16} />
+            </span>
           </Collapsible.Trigger>
           <Collapsible.Content data-slot="collapsible-content" class="websites-archive-content pt-1">
             <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
@@ -340,7 +349,7 @@
                       archived={isArchived(site)}
                       isMenuOpen={activeMenuId === site.id}
                       formatDomain={formatDomain}
-                      onOpen={(item) => websitesStore.loadById(item.id)}
+                      onOpen={openWebsite}
                       onOpenMenu={openMenu}
                       onPin={handlePin}
                       onRename={openRenameDialog}

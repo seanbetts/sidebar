@@ -410,10 +410,10 @@ def build_audio_transcribe_args(params: dict) -> list:
     Returns:
         CLI arguments list for audio transcription.
     """
+    file_path = params["file_path"]
     args = [
-        params["file_path"],
+        file_path,
         "--json",
-        "--database",
     ]
     if params.get("user_id"):
         args.extend(["--user-id", params["user_id"]])
@@ -421,8 +421,18 @@ def build_audio_transcribe_args(params: dict) -> list:
         args.extend(["--language", params["language"]])
     if params.get("model"):
         args.extend(["--model", params["model"]])
-    if params.get("output_dir"):
-        args.extend(["--output-dir", params["output_dir"]])
+    output_dir = params.get("output_dir")
+    output_name = params.get("output_name") or "ai.md"
+    if not output_dir:
+        parts = str(file_path).strip("/").split("/")
+        if len(parts) >= 2 and parts[0] == "files":
+            output_dir = f"files/{parts[1]}/ai"
+        else:
+            output_dir = "files/transcripts"
+    if output_dir:
+        args.extend(["--output-dir", output_dir])
+    if output_name:
+        args.extend(["--output-name", output_name])
     if params.get("folder"):
         args.extend(["--folder", params["folder"]])
     return args
@@ -466,7 +476,6 @@ def build_youtube_transcribe_args(params: dict) -> list:
     args = [
         params["url"],
         "--json",
-        "--database",
     ]
     if params.get("user_id"):
         args.extend(["--user-id", params["user_id"]])
@@ -474,8 +483,12 @@ def build_youtube_transcribe_args(params: dict) -> list:
         args.extend(["--language", params["language"]])
     if params.get("model"):
         args.extend(["--model", params["model"]])
-    if params.get("output_dir"):
-        args.extend(["--output-dir", params["output_dir"]])
+    output_dir = params.get("output_dir")
+    output_name = params.get("output_name") or "ai.md"
+    if output_dir:
+        args.extend(["--output-dir", output_dir])
+    if output_name:
+        args.extend(["--output-name", output_name])
     if params.get("audio_dir"):
         args.extend(["--audio-dir", params["audio_dir"]])
     if params.get("keep_audio"):

@@ -90,6 +90,16 @@ class R2Storage(StorageBackend):
         response = self.client.get_object(Bucket=self.bucket, Key=normalized)
         return response["Body"].read()
 
+    def get_object_range(self, key: str, start: int, end: int) -> bytes:
+        """Retrieve a byte range by key."""
+        normalized = self._normalize_key(key)
+        response = self.client.get_object(
+            Bucket=self.bucket,
+            Key=normalized,
+            Range=f"bytes={start}-{end}",
+        )
+        return response["Body"].read()
+
     def put_object(self, key: str, data: bytes, content_type: Optional[str] = None) -> StorageObject:
         """Store object bytes under a key."""
         normalized = self._normalize_key(key)

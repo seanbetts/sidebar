@@ -3,8 +3,10 @@ set -euo pipefail
 
 BACKEND_LOG="/tmp/sidebar-backend.log"
 FRONTEND_LOG="/tmp/sidebar-frontend.log"
+INGESTION_LOG="/tmp/sidebar-ingestion-worker.log"
 BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
+INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
 REPO_ROOT="$(pwd)"
 use_doppler=0
 
@@ -133,6 +135,33 @@ start_frontend() {
   echo $! >"${FRONTEND_PID}"
 }
 
+start_ingestion_worker() {
+  cleanup_ingestion_workers
+  echo "Starting ingestion worker..."
+  if [[ ${use_doppler} -eq 1 ]]; then
+    (cd backend && doppler run -- env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
+  else
+    (cd backend && env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
+  fi
+  echo $! >"${INGESTION_PID}"
+}
+
+cleanup_ingestion_workers() {
+  local pid
+  local command
+
+  if command -v pgrep >/dev/null 2>&1; then
+    while read -r pid; do
+      [[ -z "${pid}" ]] && continue
+      command=$(pid_command "${pid}")
+      if [[ "${command}" == *"workers/ingestion_worker.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]; then
+        echo "Cleaning ingestion worker process (PID ${pid})..."
+        stop_pid "${pid}"
+      fi
+    done < <(pgrep -f "workers/ingestion_worker.py" || true)
+  fi
+}
+
 stop_service() {
   local pid_file="$1"
   local name="$2"
@@ -173,6 +202,15 @@ cleanup_services() {
       stop_pid "${pid}"
     fi
   done
+
+  if [[ -f "${INGESTION_PID}" ]]; then
+    pid=$(cat "${INGESTION_PID}")
+    if kill -0 "${pid}" >/dev/null 2>&1; then
+      echo "Cleaning ingestion worker (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+    rm -f "${INGESTION_PID}"
+  fi
 }
 
 status_service() {
@@ -202,11 +240,16 @@ show_logs() {
     frontend)
       tail -n 200 "${FRONTEND_LOG}" || true
       ;;
+    ingestion)
+      tail -n 200 "${INGESTION_LOG}" || true
+      ;;
     *)
       echo "--- Backend logs (${BACKEND_LOG}) ---"
       tail -n 200 "${BACKEND_LOG}" || true
       echo "--- Frontend logs (${FRONTEND_LOG}) ---"
       tail -n 200 "${FRONTEND_LOG}" || true
+      echo "--- Ingestion worker logs (${INGESTION_LOG}) ---"
+      tail -n 200 "${INGESTION_LOG}" || true
       ;;
   esac
 }
@@ -220,16 +263,20 @@ case "${command}" in
   start)
     start_backend
     start_frontend
+    start_ingestion_worker
     ;;
   stop)
     stop_service "${BACKEND_PID}" "backend"
     stop_service "${FRONTEND_PID}" "frontend"
+    stop_service "${INGESTION_PID}" "ingestion worker"
     ;;
   restart)
     stop_service "${BACKEND_PID}" "backend"
     stop_service "${FRONTEND_PID}" "frontend"
+    stop_service "${INGESTION_PID}" "ingestion worker"
     start_backend
     start_frontend
+    start_ingestion_worker
     ;;
   cleanup)
     cleanup_services
@@ -237,12 +284,13 @@ case "${command}" in
   status)
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}"
     status_service "${FRONTEND_PID}" "Frontend" "http://localhost:3000" "${FRONTEND_LOG}"
+    status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}"
     ;;
   logs)
     show_logs "${2:-}"
     ;;
   *)
-    echo "Usage: ./dev.sh [start|stop|restart|cleanup|status|logs [backend|frontend]]"
+    echo "Usage: ./dev.sh [start|stop|restart|cleanup|status|logs [backend|frontend|ingestion]]"
     exit 1
     ;;
 esac

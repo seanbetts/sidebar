@@ -66,6 +66,20 @@
     </button>
   {/if}
 </div>
+
+<style>
+  .settings-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: var(--color-muted-foreground);
+  }
+
+  :global(.dark) .settings-avatar-placeholder {
+    color: #9aa3ad;
+  }
+</style>
 <div class="settings-form settings-grid">
   <label class="settings-label">
     <span>Name</span>

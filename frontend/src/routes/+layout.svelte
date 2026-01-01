@@ -25,13 +25,13 @@
 		applyThemeMode(initialTheme, false);
 
 		initAuth(
-			data.session,
+			null,
 			data.user,
 			data.supabaseUrl,
 			data.supabaseAnonKey
 		);
 		stopStorageListener = listenForStorageEvents();
-		if (!data.session) {
+		if (!data.isAuthenticated) {
 			clearCaches();
 			clearMemoryCache();
 			clearInFlight();
@@ -84,15 +84,15 @@
 
 {#if data.maintenanceMode}
 	<HoldingPage />
-{:else if !data.session}
-	{@render children?.()}
+{:else if !data.isAuthenticated}
+	{@render children()}
 {:else}
 	<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
 		<Sidebar />
 		<main class="main-content">
 			<SiteHeader />
 			<div class="page-content">
-				{@render children?.()}
+				{@render children()}
 			</div>
 		</main>
 	</div>

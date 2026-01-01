@@ -1,5 +1,6 @@
 import type { Message } from '$lib/types/chat';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
+import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
 
 /**
  * API service for conversations.
@@ -122,6 +123,156 @@ class ConversationsAPI {
 }
 
 export const conversationsAPI = new ConversationsAPI();
+
+/**
+ * API service for file ingestion.
+ */
+class IngestionAPI {
+  private get baseUrl(): string {
+    return '/api/ingestion';
+  }
+
+  /**
+   * List ingestion records.
+   */
+  async list(): Promise<IngestionListResponse> {
+    const response = await fetch(`${this.baseUrl}`);
+    if (!response.ok) throw new Error('Failed to list ingestions');
+    return response.json();
+  }
+
+  /**
+   * Fetch ingestion metadata by file id.
+   */
+  async get(fileId: string): Promise<IngestionMetaResponse> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/meta`);
+    if (!response.ok) throw new Error('Failed to get ingestion metadata');
+    return response.json();
+  }
+
+  /**
+   * Upload a file for ingestion.
+   */
+  async upload(file: File, onProgress?: (progress: number) => void): Promise<{ file_id: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return new Promise((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open('POST', this.baseUrl);
+      request.withCredentials = true;
+      request.upload.addEventListener('progress', event => {
+        if (!event.lengthComputable || !onProgress) return;
+        const percent = (event.loaded / event.total) * 100;
+        onProgress(percent);
+      });
+      request.onload = () => {
+        const isOk = request.status >= 200 && request.status < 300;
+        if (!isOk) {
+          let message = 'Failed to upload file';
+          try {
+            const data = JSON.parse(request.responseText);
+            if (data?.detail) {
+              message = data.detail;
+            }
+          } catch {
+            // Ignore parse errors and use fallback message.
+          }
+          if (request.status === 413) {
+            message = 'File too large. Max size is 100MB.';
+          }
+          reject(new Error(message));
+          return;
+        }
+        try {
+          const payload = JSON.parse(request.responseText);
+          resolve(payload);
+        } catch (error) {
+          reject(new Error('Failed to upload file'));
+        }
+      };
+      request.onerror = () => {
+        reject(new Error('Failed to upload file'));
+      };
+      request.send(formData);
+    });
+  }
+
+  /**
+   * Queue a YouTube URL for ingestion.
+   */
+  async ingestYoutube(url: string): Promise<{ file_id: string }> {
+    const response = await fetch(`${this.baseUrl}/youtube`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!response.ok) {
+      let message = 'Failed to add YouTube video';
+      try {
+        const data = await response.json();
+        if (data?.detail) {
+          message = data.detail;
+        }
+      } catch {
+        // Ignore parse errors and use fallback message.
+      }
+      throw new Error(message);
+    }
+    return response.json();
+  }
+
+  /**
+   * Fetch a derivative asset for viewing.
+   */
+  async getContent(fileId: string, kind: string): Promise<Response> {
+    const response = await fetch(
+      `${this.baseUrl}/${fileId}/content?kind=${encodeURIComponent(kind)}`
+    );
+    if (!response.ok) throw new Error('Failed to fetch ingestion content');
+    return response;
+  }
+
+  async pause(fileId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/pause`, { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to pause ingestion');
+  }
+
+  async resume(fileId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/resume`, { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to resume ingestion');
+  }
+
+  async cancel(fileId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/cancel`, { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to cancel ingestion');
+  }
+
+  async delete(fileId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}`, { method: 'DELETE' });
+    if (response.status === 404) return;
+    if (!response.ok) throw new Error('Failed to delete ingestion');
+  }
+
+  async setPinned(fileId: string, pinned: boolean): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/pin`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned })
+    });
+    if (!response.ok) throw new Error('Failed to update pinned state');
+  }
+
+  async rename(fileId: string, filename: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${fileId}/rename`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename })
+    });
+    if (!response.ok) throw new Error('Failed to rename file');
+  }
+}
+
+export const ingestionAPI = new IngestionAPI();
 
 /**
  * API service for notes.

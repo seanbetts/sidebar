@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from api.models.conversation import Conversation
 from api.models.note import Note
 from api.models.website import Website
+from api.models.file_ingestion import IngestedFile
 from api.prompts import (
     build_first_message_prompt,
     build_system_prompt,
@@ -18,6 +19,9 @@ from api.prompts import (
     resolve_template,
     CONTEXT_GUIDANCE_TEMPLATE,
 )
+from api.services.file_ingestion_service import FileIngestionService
+from api.services.storage.service import get_storage_backend
+import uuid
 from api.services.user_settings_service import UserSettingsService
 
 
@@ -26,12 +30,15 @@ class PromptContextService:
 
     MAX_SYSTEM_PROMPT_CHARS = 40000
     MAX_FIRST_MESSAGE_CHARS = 8000
+    MAX_OPEN_FILE_CHARS = 12000
+    MAX_ATTACHMENT_CHARS = 8000
 
     @staticmethod
     def build_prompts(
         db: Session,
         user_id: str,
         open_context: dict[str, Any] | None,
+        attachments: list[dict[str, Any]] | None,
         user_agent: str | None,
         current_location: str | None = None,
         current_location_levels: dict[str, Any] | str | None = None,
@@ -43,7 +50,8 @@ class PromptContextService:
         Args:
             db: Database session.
             user_id: Current user ID.
-            open_context: Open note/website context payload.
+            open_context: Open note/website/file context payload.
+            attachments: Optional file attachments metadata list.
             user_agent: User agent string.
             current_location: Current location label.
             current_location_levels: Structured location levels.
@@ -74,15 +82,28 @@ class PromptContextService:
         )
         open_note = open_context.get("note") if isinstance(open_context, dict) else None
         open_website = open_context.get("website") if isinstance(open_context, dict) else None
-        open_block = build_open_context_block(open_note, open_website)
+        open_file = open_context.get("file") if isinstance(open_context, dict) else None
+        resolved_file = PromptContextService._resolve_file_context(
+            db, user_id, open_file, PromptContextService.MAX_OPEN_FILE_CHARS
+        )
+        resolved_attachments = PromptContextService._resolve_attachment_contexts(
+            db, user_id, attachments or [], PromptContextService.MAX_ATTACHMENT_CHARS
+        )
+        open_block = build_open_context_block(
+            open_note,
+            open_website,
+            resolved_file,
+            resolved_attachments,
+        )
 
-        note_items, website_items, conversation_items = PromptContextService._get_recent_activity(
+        note_items, website_items, conversation_items, file_items = PromptContextService._get_recent_activity(
             db, user_id, timestamp
         )
         recent_activity_block = build_recent_activity_block(
             note_items,
             website_items,
             conversation_items,
+            file_items,
         )
 
         system_prompt = "\n\n".join(
@@ -111,6 +132,85 @@ class PromptContextService:
         return system_prompt, first_message_prompt
 
     @staticmethod
+    def _resolve_file_context(
+        db: Session,
+        user_id: str,
+        file_ref: dict[str, Any] | None,
+        max_chars: int,
+    ) -> dict[str, Any] | None:
+        if not file_ref:
+            return None
+        file_id = file_ref.get("id") or file_ref.get("file_id")
+        if not file_id:
+            return None
+        try:
+            file_uuid = uuid.UUID(str(file_id))
+        except ValueError:
+            return None
+        record = FileIngestionService.get_file(db, user_id, file_uuid)
+        if not record:
+            return None
+        derivative = FileIngestionService.get_derivative(db, file_uuid, "ai_md")
+        content = None
+        if derivative:
+            storage = get_storage_backend()
+            try:
+                content_bytes = storage.get_object(derivative.storage_key)
+                content = content_bytes.decode("utf-8", errors="ignore")
+            except Exception:
+                content = None
+        if content:
+            content = PromptContextService._truncate_text(content, max_chars)
+        return {
+            "id": str(record.id),
+            "filename": record.filename_original,
+            "mime": record.mime_original,
+            "category": file_ref.get("category"),
+            "content": content,
+        }
+
+    @staticmethod
+    def _resolve_attachment_contexts(
+        db: Session,
+        user_id: str,
+        attachments: list[dict[str, Any]],
+        max_chars: int,
+    ) -> list[dict[str, Any]]:
+        resolved: list[dict[str, Any]] = []
+        for attachment in attachments:
+            file_id = attachment.get("file_id") or attachment.get("id")
+            if not file_id:
+                continue
+            try:
+                file_uuid = uuid.UUID(str(file_id))
+            except ValueError:
+                continue
+            record = FileIngestionService.get_file(db, user_id, file_uuid)
+            if not record:
+                continue
+            derivative = FileIngestionService.get_derivative(db, file_uuid, "ai_md")
+            content = None
+            if derivative:
+                storage = get_storage_backend()
+                try:
+                    content_bytes = storage.get_object(derivative.storage_key)
+                    content = content_bytes.decode("utf-8", errors="ignore")
+                except Exception:
+                    content = None
+            if content:
+                content = PromptContextService._truncate_text(content, max_chars)
+            resolved.append(
+                {
+                    "id": str(record.id),
+                    "filename": record.filename_original,
+                    "mime": record.mime_original,
+                    "category": attachment.get("category"),
+                    "content": content,
+                }
+            )
+        return resolved
+
+    @staticmethod
     def _start_of_today(now: datetime) -> datetime:
         """Return a timezone-aware start-of-day timestamp."""
         return datetime(now.year, now.month, now.day, tzinfo=now.tzinfo)
@@ -127,7 +227,7 @@ class PromptContextService:
         db: Session,
         user_id: str,
         now: datetime,
-    ) -> tuple[list[dict], list[dict], list[dict]]:
+    ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
         """Fetch recent activity items for prompt context.
 
         Args:
@@ -136,7 +236,7 @@ class PromptContextService:
             now: Current timestamp.
 
         Returns:
-            Tuple of (note_items, website_items, conversation_items).
+            Tuple of (note_items, website_items, conversation_items, file_items).
         """
         start_of_day = PromptContextService._start_of_today(now)
 
@@ -162,6 +262,16 @@ class PromptContextService:
                 Conversation.updated_at >= start_of_day,
             )
             .order_by(Conversation.updated_at.desc())
+            .all()
+        )
+        files = (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.last_opened_at >= start_of_day,
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+            )
+            .order_by(IngestedFile.last_opened_at.desc())
             .all()
         )
 
@@ -193,5 +303,14 @@ class PromptContextService:
             }
             for conversation in conversations
         ]
+        file_items = [
+            {
+                "id": str(file.id),
+                "filename": file.filename_original,
+                "last_opened_at": file.last_opened_at.isoformat() if file.last_opened_at else None,
+                "mime": file.mime_original,
+            }
+            for file in files
+        ]
 
-        return note_items, website_items, conversation_items
+        return note_items, website_items, conversation_items, file_items

@@ -1,12 +1,11 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { MoreVertical, Trash2, Pencil } from 'lucide-svelte';
+  import { MoreHorizontal, Trash2, Pencil } from 'lucide-svelte';
   import type { Conversation } from '$lib/types/history';
   import { chatStore } from '$lib/stores/chat';
   import { conversationListStore, currentConversationId } from '$lib/stores/conversations';
   import { conversationsAPI } from '$lib/services/api';
-  import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-  import { buttonVariants } from '$lib/components/ui/button/index.js';
+  import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
 
   export let conversation: Conversation;
 
@@ -15,8 +14,7 @@
   let isEditing = false;
   let editedTitle = conversation.title;
   let editInput: HTMLInputElement | null = null;
-  let isDeleteDialogOpen = false;
-  let deleteButton: HTMLButtonElement | null = null;
+  let deleteDialog: { openDialog: (name: string) => void } | null = null;
 
   $: isActive = $currentConversationId === conversation.id;
   $: isGeneratingTitle = $conversationListStore.generatingTitleIds.has(conversation.id);
@@ -59,7 +57,7 @@
 
   async function handleDelete(event: MouseEvent) {
     event.stopPropagation();
-    isDeleteDialogOpen = true;
+    deleteDialog?.openDialog(conversation.title || 'conversation');
     showMenu = false;
   }
 
@@ -68,13 +66,18 @@
     showMenu = !showMenu;
   }
 
-  async function confirmDelete() {
-    await conversationListStore.deleteConversation(conversation.id);
-    if (isActive) {
-      chatStore.reset();
-      currentConversationId.set(null);
+  async function confirmDelete(): Promise<boolean> {
+    try {
+      await conversationListStore.deleteConversation(conversation.id);
+      if (isActive) {
+        chatStore.reset();
+        currentConversationId.set(null);
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      return false;
     }
-    isDeleteDialogOpen = false;
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -103,31 +106,11 @@
   }
 </script>
 
-<AlertDialog.Root bind:open={isDeleteDialogOpen}>
-  <AlertDialog.Content
-    onOpenAutoFocus={(event) => {
-      event.preventDefault();
-      deleteButton?.focus();
-    }}
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title>Delete conversation?</AlertDialog.Title>
-      <AlertDialog.Description>
-        This will permanently delete "{conversation.title}". This action cannot be undone.
-      </AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action
-        class={buttonVariants({ variant: 'destructive' })}
-        bind:ref={deleteButton}
-        onclick={confirmDelete}
-      >
-        Delete
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
+<DeleteDialogController
+  bind:this={deleteDialog}
+  itemType="conversation"
+  onConfirm={confirmDelete}
+/>
 
 <div
   class="conversation-item"
@@ -161,7 +144,7 @@
 
   <div class="actions">
     <button class="menu-btn" on:click={toggleMenu} aria-label="More options">
-      <MoreVertical size={16} />
+      <MoreHorizontal size={16} />
     </button>
 
     {#if showMenu}
@@ -170,7 +153,7 @@
           <Pencil size={16} />
           <span>Rename</span>
         </button>
-        <button class="menu-item delete" on:click={handleDelete}>
+        <button class="menu-item" on:click={handleDelete}>
           <Trash2 size={16} />
           <span>Delete</span>
         </button>
@@ -243,7 +226,7 @@
   .actions {
     position: relative;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
   }
 
   .menu-btn {
@@ -278,7 +261,7 @@
     border-radius: 0.375rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     z-index: 10;
-    min-width: 120px;
+    min-width: 150px;
   }
 
   .menu-item {
@@ -298,10 +281,6 @@
 
   .menu-item:hover {
     background-color: var(--color-accent);
-  }
-
-  .menu-item.delete {
-    color: var(--color-destructive);
   }
 
   .title-skeleton {

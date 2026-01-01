@@ -50,6 +50,7 @@ export class SSEClient {
 			conversationId?: string;
 			userMessageId?: string;
 			openContext?: any;
+			attachments?: Array<{ file_id: string; filename?: string }>;
 			currentLocation?: string;
 			currentLocationLevels?: Record<string, string>;
 			currentWeather?: Record<string, unknown>;
@@ -59,7 +60,6 @@ export class SSEClient {
 	): Promise<void> {
 		// Create abort controller for this connection
 		this.abortController = new AbortController();
-
 		try {
 			// Send message to backend via fetch POST to get SSE stream
 			const response = await fetch('/api/chat', {
@@ -72,6 +72,7 @@ export class SSEClient {
 					conversation_id: payload.conversationId,
 					user_message_id: payload.userMessageId,
 					open_context: payload.openContext,
+					attachments: payload.attachments,
 					current_location: payload.currentLocation,
 					current_location_levels: payload.currentLocationLevels,
 					current_weather: payload.currentWeather,
