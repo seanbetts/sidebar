@@ -551,26 +551,26 @@
             <Plus size={16} />
           </Button>
           <div class="viewer-divider"></div>
-          <Button
-            size="icon"
-            variant="ghost"
-            class="viewer-control"
-            onclick={() => setFitMode('height')}
-            data-active={fitMode === 'height'}
-            aria-label="Fit to height"
-          >
-            <GalleryVertical size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            class="viewer-control"
-            onclick={() => setFitMode('width')}
-            data-active={fitMode === 'width'}
-            aria-label="Fit to width"
-          >
-            <GalleryHorizontal size={16} />
-          </Button>
+          <span class="viewer-control" data-active={fitMode === 'height'}>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={() => setFitMode('height')}
+              aria-label="Fit to height"
+            >
+              <GalleryVertical size={16} />
+            </Button>
+          </span>
+          <span class="viewer-control" data-active={fitMode === 'width'}>
+            <Button
+              size="icon"
+              variant="ghost"
+              onclick={() => setFitMode('width')}
+              aria-label="Fit to width"
+            >
+              <GalleryHorizontal size={16} />
+            </Button>
+          </span>
         </div>
       {/if}
       <div class="viewer-standard-actions">
@@ -745,7 +745,7 @@
                 title={active?.file.filename_original ?? 'YouTube video'}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowfullscreen
-              />
+              ></iframe>
             </div>
           {:else}
             <div class="viewer-placeholder">Video unavailable.</div>
@@ -757,7 +757,9 @@
               {#if isInProgress}
                 <span class="viewer-spinner" aria-hidden="true"></span>
               {:else}
-                <AlertTriangle size={20} class="viewer-placeholder-alert" />
+                <span class="viewer-placeholder-alert">
+                  <AlertTriangle size={20} />
+                </span>
               {/if}
               <span>{statusMessage}</span>
             </div>
@@ -779,7 +781,9 @@
       <div class="viewer-placeholder">
         {#if isFailed}
           <div class="viewer-placeholder-stack">
-            <AlertTriangle size={20} class="viewer-placeholder-alert" />
+            <span class="viewer-placeholder-alert">
+              <AlertTriangle size={20} />
+            </span>
             <span>{statusMessage}</span>
           </div>
         {:else if isInProgress}
