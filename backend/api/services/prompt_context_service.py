@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from api.models.conversation import Conversation
 from api.models.note import Note
 from api.models.website import Website
+from api.models.file_ingestion import IngestedFile
 from api.prompts import (
     build_first_message_prompt,
     build_system_prompt,
@@ -95,13 +96,14 @@ class PromptContextService:
             resolved_attachments,
         )
 
-        note_items, website_items, conversation_items = PromptContextService._get_recent_activity(
+        note_items, website_items, conversation_items, file_items = PromptContextService._get_recent_activity(
             db, user_id, timestamp
         )
         recent_activity_block = build_recent_activity_block(
             note_items,
             website_items,
             conversation_items,
+            file_items,
         )
 
         system_prompt = "\n\n".join(
@@ -225,7 +227,7 @@ class PromptContextService:
         db: Session,
         user_id: str,
         now: datetime,
-    ) -> tuple[list[dict], list[dict], list[dict]]:
+    ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
         """Fetch recent activity items for prompt context.
 
         Args:
@@ -234,7 +236,7 @@ class PromptContextService:
             now: Current timestamp.
 
         Returns:
-            Tuple of (note_items, website_items, conversation_items).
+            Tuple of (note_items, website_items, conversation_items, file_items).
         """
         start_of_day = PromptContextService._start_of_today(now)
 
@@ -260,6 +262,16 @@ class PromptContextService:
                 Conversation.updated_at >= start_of_day,
             )
             .order_by(Conversation.updated_at.desc())
+            .all()
+        )
+        files = (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.last_opened_at >= start_of_day,
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+            )
+            .order_by(IngestedFile.last_opened_at.desc())
             .all()
         )
 
@@ -291,5 +303,14 @@ class PromptContextService:
             }
             for conversation in conversations
         ]
+        file_items = [
+            {
+                "id": str(file.id),
+                "filename": file.filename_original,
+                "last_opened_at": file.last_opened_at.isoformat() if file.last_opened_at else None,
+                "mime": file.mime_original,
+            }
+            for file in files
+        ]
 
-        return note_items, website_items, conversation_items
+        return note_items, website_items, conversation_items, file_items

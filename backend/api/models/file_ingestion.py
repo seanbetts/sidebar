@@ -16,6 +16,7 @@ class IngestedFile(Base):
         Index("idx_ingested_files_user_id", "user_id"),
         Index("idx_ingested_files_created_at", "created_at"),
         Index("idx_ingested_files_deleted_at", "deleted_at"),
+        Index("idx_ingested_files_last_opened_at", "last_opened_at"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -28,6 +29,7 @@ class IngestedFile(Base):
     source_metadata = Column(JSONB, nullable=True)
     pinned = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    last_opened_at = Column(DateTime(timezone=True), nullable=True, index=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
 

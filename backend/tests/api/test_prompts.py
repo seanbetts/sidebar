@@ -103,11 +103,20 @@ def test_build_recent_activity_block() -> None:
             "message_count": 4,
         }
     ]
-    block = build_recent_activity_block(notes, websites, conversations)
+    files = [
+        {
+            "id": "file-1",
+            "filename": "gentle-guide.pdf",
+            "last_opened_at": "2025-01-02T12:00:00Z",
+            "mime": "application/pdf",
+        }
+    ]
+    block = build_recent_activity_block(notes, websites, conversations, files)
     assert "<recent_activity>" in block
     assert "Notes opened today:" in block
     assert "Websites opened today:" in block
     assert "Chats active today:" in block
+    assert "Files opened today:" in block
     assert "Daily log" in block
     assert "folder: work" in block
     assert "Docs" in block
@@ -115,10 +124,11 @@ def test_build_recent_activity_block() -> None:
     assert "url: https://example.com/docs" in block
     assert "Project X" in block
     assert "messages: 4" in block
+    assert "gentle-guide.pdf" in block
 
 
 def test_build_recent_activity_block_empty() -> None:
-    block = build_recent_activity_block([], [], [])
+    block = build_recent_activity_block([], [], [], [])
     assert "No items have been opened today." in block
 
 

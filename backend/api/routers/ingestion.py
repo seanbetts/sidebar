@@ -1,6 +1,7 @@
 """File ingestion router for uploads and processing status."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from hashlib import sha256
 import logging
 from pathlib import Path
@@ -316,6 +317,9 @@ async def get_file_meta(
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
+
+    record.last_opened_at = datetime.now(timezone.utc)
+    db.commit()
 
     job = FileIngestionService.get_job(db, file_uuid)
     derivatives = [
