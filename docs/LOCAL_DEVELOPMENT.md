@@ -78,15 +78,6 @@ You are connecting to production Supabase and R2.
 ./dev.sh restart
 ```
 
-## File Ingestion Migration
-
-To migrate legacy `file_objects` records into the ingestion pipeline:
-
-```bash
-cd backend
-python scripts/migrate_file_objects_to_ingestion.py --dry-run
-python scripts/migrate_file_objects_to_ingestion.py
-```
 
 ## Troubleshooting
 
