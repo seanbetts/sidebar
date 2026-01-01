@@ -25,6 +25,7 @@
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import { websitesStore } from '$lib/stores/websites';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
+  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
@@ -137,7 +138,8 @@
       if (ingestionViewerStore && $ingestionViewerStore?.active?.file.id === fileId) {
         ingestionViewerStore.clearActive();
       }
-      await ingestionStore.load();
+      dispatchCacheEvent('file.deleted');
+      ingestionStore.removeItem(fileId);
       return true;
     } catch (error) {
       console.error('Failed to delete ingestion:', error);
