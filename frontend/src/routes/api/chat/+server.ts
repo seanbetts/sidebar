@@ -58,11 +58,21 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				try {
 					const reader = response.body?.getReader();
 					if (!reader) {
-						controller.close();
+						if (controller.desiredSize !== null) {
+							controller.close();
+						}
 						return;
 					}
 
 					const decoder = new TextDecoder();
+					const encoder = new TextEncoder();
+					const safeEnqueue = (data: string) => {
+						if (controller.desiredSize === null) {
+							return false;
+						}
+						controller.enqueue(encoder.encode(data));
+						return true;
+					};
 
 					while (true) {
 						const { done, value } = await reader.read();
@@ -70,13 +80,20 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 						// Forward chunk to client
 						const chunk = decoder.decode(value, { stream: true });
-						controller.enqueue(new TextEncoder().encode(chunk));
+						if (!safeEnqueue(chunk)) {
+							await reader.cancel();
+							break;
+						}
 					}
 
-					controller.close();
+					if (controller.desiredSize !== null) {
+						controller.close();
+					}
 				} catch (err) {
 					console.error('Stream error:', err);
-					controller.error(err);
+					if (controller.desiredSize !== null) {
+						controller.error(err);
+					}
 				}
 			}
 		});
