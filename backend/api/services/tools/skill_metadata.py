@@ -9,22 +9,6 @@ SKILL_DISPLAY = {
         "name": "Notes",
         "description": "Create, update, and organize notes and scratchpad content.",
     },
-    "docx": {
-        "name": "Word Documents",
-        "description": "Create and edit .docx documents with formatting preserved.",
-    },
-    "pdf": {
-        "name": "PDFs",
-        "description": "Extract, merge, split, and generate PDF documents.",
-    },
-    "pptx": {
-        "name": "Presentations",
-        "description": "Create and edit PowerPoint decks with slides and layouts.",
-    },
-    "xlsx": {
-        "name": "Spreadsheets",
-        "description": "Create, edit, and analyze spreadsheets with formulas.",
-    },
     "web-save": {
         "name": "Web Save",
         "description": "Save web pages as clean markdown in the database for later use.",
@@ -88,10 +72,6 @@ EXPOSED_SKILLS = {
     "youtube-transcribe",
     "subdomain-discover",
     "web-crawler-policy",
-    "docx",
-    "pdf",
-    "pptx",
-    "xlsx",
     "skill-creator",
     "mcp-builder",
 }
