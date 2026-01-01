@@ -405,6 +405,38 @@ async def update_pin(
     return {"success": True}
 
 
+@router.patch("/pinned-order")
+async def update_pinned_order(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Update pinned order for notes.
+
+    Args:
+        request: Request payload with order list.
+        user_id: Current authenticated user ID.
+        _: Authorization token (validated).
+        db: Database session.
+
+    Returns:
+        Success flag.
+    """
+    order = request.get("order", [])
+    if not isinstance(order, list):
+        raise HTTPException(status_code=400, detail="order must be a list")
+    note_ids: list[uuid.UUID] = []
+    for item in order:
+        note_uuid = NotesService.parse_note_id(item)
+        if not note_uuid:
+            raise HTTPException(status_code=400, detail="Invalid note id")
+        note_ids.append(note_uuid)
+
+    NotesService.update_pinned_order(db, user_id, note_ids)
+    return {"success": True}
+
+
 @router.patch("/{note_id}/move")
 async def update_folder(
     note_id: str,
