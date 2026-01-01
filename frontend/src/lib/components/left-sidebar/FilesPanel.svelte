@@ -41,8 +41,8 @@
   $: treeData = $treeStore.trees[basePath];
   $: children = treeData?.children || [];
   $: searchQuery = treeData?.searchQuery || '';
-  // Show loading if explicitly loading OR if tree hasn't been initialized yet
-  $: loading = treeData?.loading ?? !treeData;
+  // Show loading if explicitly loading OR if tree hasn't been initialized yet OR if ingestion is loading
+  $: loading = (treeData?.loading ?? !treeData) || $ingestionStore.loading;
   $: processingItems = ($ingestionStore.items || []).filter(
     item => !['ready', 'failed', 'canceled'].includes(item.job.status || '')
   );
@@ -303,29 +303,29 @@
                   onclick={(event) => toggleMenu(event, `pinned-${item.file.id}`)}
                   aria-label="File actions"
                 >
-                  <MoreHorizontal size={14} />
+                  <MoreHorizontal size={16} />
                 </button>
                 {#if openMenuKey === `pinned-${item.file.id}`}
                   <div class="ingested-menu-dropdown">
                     <button class="menu-item" onclick={() => handleRename(item)}>
-                      <Pencil size={14} />
+                      <Pencil size={16} />
                       <span>Rename</span>
                     </button>
                     <button class="menu-item" onclick={() => handlePinToggle(item)}>
                       {#if item.file.pinned}
-                        <PinOff size={14} />
+                        <PinOff size={16} />
                         <span>Unpin</span>
                       {:else}
-                        <Pin size={14} />
+                        <Pin size={16} />
                         <span>Pin</span>
                       {/if}
                     </button>
                     <button class="menu-item" onclick={() => handleDownload(item)}>
-                      <Download size={14} />
+                      <Download size={16} />
                       <span>Download</span>
                     </button>
-                    <button class="menu-item delete" onclick={(event) => handleDelete(item, event)}>
-                      <Trash2 size={14} />
+                    <button class="menu-item" onclick={(event) => handleDelete(item, event)}>
+                      <Trash2 size={16} />
                       <span>Delete</span>
                     </button>
                   </div>
@@ -379,29 +379,29 @@
                   onclick={(event) => toggleMenu(event, `files-${item.file.id}`)}
                   aria-label="File actions"
                 >
-                  <MoreHorizontal size={14} />
+                  <MoreHorizontal size={16} />
                 </button>
                 {#if openMenuKey === `files-${item.file.id}`}
                   <div class="ingested-menu-dropdown">
                     <button class="menu-item" onclick={() => handleRename(item)}>
-                      <Pencil size={14} />
+                      <Pencil size={16} />
                       <span>Rename</span>
                     </button>
                     <button class="menu-item" onclick={() => handlePinToggle(item)}>
                       {#if item.file.pinned}
-                        <PinOff size={14} />
+                        <PinOff size={16} />
                         <span>Unpin</span>
                       {:else}
-                        <Pin size={14} />
+                        <Pin size={16} />
                         <span>Pin</span>
                       {/if}
                     </button>
                     <button class="menu-item" onclick={() => handleDownload(item)}>
-                      <Download size={14} />
+                      <Download size={16} />
                       <span>Download</span>
                     </button>
-                    <button class="menu-item delete" onclick={(event) => handleDelete(item, event)}>
-                      <Trash2 size={14} />
+                    <button class="menu-item" onclick={(event) => handleDelete(item, event)}>
+                      <Trash2 size={16} />
                       <span>Delete</span>
                     </button>
                   </div>
@@ -499,29 +499,29 @@
                       onclick={(event) => toggleMenu(event, `recent-${item.file.id}`)}
                       aria-label="File actions"
                     >
-                      <MoreHorizontal size={14} />
+                      <MoreHorizontal size={16} />
                     </button>
                     {#if openMenuKey === `recent-${item.file.id}`}
                       <div class="ingested-menu-dropdown">
                         <button class="menu-item" onclick={() => handleRename(item)}>
-                          <Pencil size={14} />
+                          <Pencil size={16} />
                           <span>Rename</span>
                         </button>
                         <button class="menu-item" onclick={() => handlePinToggle(item)}>
                           {#if item.file.pinned}
-                            <PinOff size={14} />
+                            <PinOff size={16} />
                             <span>Unpin</span>
                           {:else}
-                            <Pin size={14} />
+                            <Pin size={16} />
                             <span>Pin</span>
                           {/if}
                         </button>
                         <button class="menu-item" onclick={() => handleDownload(item)}>
-                          <Download size={14} />
+                          <Download size={16} />
                           <span>Download</span>
                         </button>
-                        <button class="menu-item delete" onclick={(event) => handleDelete(item, event)}>
-                          <Trash2 size={14} />
+                        <button class="menu-item" onclick={(event) => handleDelete(item, event)}>
+                          <Trash2 size={16} />
                           <span>Delete</span>
                         </button>
                       </div>
@@ -778,7 +778,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     text-align: left;
     transition: background-color 0.2s;
     color: var(--color-popover-foreground);
@@ -791,10 +791,6 @@
   .ingested-menu-dropdown .menu-item:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-
-  .ingested-menu-dropdown .menu-item.delete {
-    color: var(--color-destructive);
   }
 
   .uploads-block {
