@@ -23,11 +23,9 @@ All operations are relative to the storage root (R2-backed).
 - `read.py` - Read file content
 - `write.py` - Create/update files
 - `info.py` - Get file metadata
-- `mkdir.py` - Create directories
 - `delete.py` - Delete files/folders
 - `move.py` - Move files
 - `rename.py` - Rename files
-- `copy.py` - Copy files
 - `search.py` - Search by name/content
 
 All scripts support `--json` flag for structured output.
