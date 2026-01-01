@@ -4,7 +4,7 @@ Single ingestion pipeline that, for every uploaded file, produces:
 	•	A canonical viewer asset (PDF or original image)
 	•	A standardised PDF derivative for UI viewing (when applicable)
 	•	A structured ai.md companion file for your AI agent
-	•	Optional thumbnails and machine-friendly extractions (CSV/JSON per table)
+	•	Optional thumbnails and machine-friendly extractions
 
 High-level architecture
 
@@ -32,13 +32,11 @@ Use object-storage semantics even if implemented on local disk.
 
 Storage keys
 
-Namespace every file by a stable file_id (UUID):
+Namespace every file by a stable file_id (UUID), prefixed by user_id:
 
-files/{file_id}/derivatives/viewer.pdf
-files/{file_id}/derivatives/thumb.png
-files/{file_id}/ai/ai.md
-files/{file_id}/ai/tables/{table_id}.csv
-files/{file_id}/ai/tables/{table_id}.json
+{user_id}/files/{file_id}/derivatives/viewer.pdf
+{user_id}/files/{file_id}/derivatives/thumb.png
+{user_id}/files/{file_id}/ai/ai.md
 
 Rationale
 	•	Easy to add new derivatives later
@@ -60,7 +58,7 @@ files
 file_derivatives
 	•	id (uuid, pk)
 	•	file_id (uuid, fk)
-	•	kind (enum: viewer_pdf, thumb_png, ai_md, table_csv, table_json, text_plain, etc.)
+	•	kind (enum: viewer_pdf, thumb_png, ai_md, text_plain, etc.)
 	•	storage_key (text)
 	•	mime (text)
 	•	size_bytes (bigint)
@@ -136,6 +134,8 @@ Rules:
 	•	PDF input: reuse as viewer.pdf (canonical stored asset)
 	•	Images: no PDF conversion; store canonical image plus thumbnail
 	•	DOCX/XLSX/PPTX: convert to viewer.pdf via LibreOffice headless
+	•	Spreadsheets: prefer viewer_json (no PDF conversion)
+	•	Text and JSON: store text_original derivative for viewing
 
 Implementation notes:
 	•	Install fonts in worker container for stable layout
@@ -176,7 +176,6 @@ Tables:
 	•	Optional markdown preview
 	•	Canonical machine block:
 	•	Embedded csv fenced block, or
-	•	Reference to stored table derivative
 
 Images and figures:
 	•	Include extracted alt text if present
@@ -251,6 +250,7 @@ UI status and progress
 	•	Expose current stage (queued, processing, converting, extracting, ai_md, thumb, finalizing)
 	•	Provide pause/resume/cancel controls during processing
 	•	Disable delete until processing status is ready
+	•	Status labels should match worker stages exactly: validating, converting, extracting, ai_md, thumb, finalizing
 
 Queue and worker details
 
@@ -273,3 +273,22 @@ Error codes and user messaging
 	•	Store last_error_code + last_error_message on job record
 	•	Map codes to friendly UI messages (e.g., “We couldn’t process this file. Try a PDF.”)
 	•	Surface retry action when error is retryable
+
+Implementation status
+
+	•	[x] Ingestion metadata tables + RLS policies
+	•	[x] Upload endpoint + job enqueue
+	•	[x] /meta response with derivatives + recommended viewer
+	•	[x] Content streaming with PDF range support
+	•	[x] Pause/resume/cancel/reprocess/delete controls
+	•	[x] Worker leasing + retry/backoff for stalled jobs
+	•	[x] PDF/image/audio/text/spreadsheet ingestion paths
+	•	[x] JSON viewer for spreadsheets
+	•	[x] ai.md generation with front matter
+	•	[x] Thumbnail generation for PDFs/images
+	•	[x] UI viewer + status polling + markdown toggle
+	•	[ ] Heartbeat/lease refresh during long-running work
+	•	[ ] Atomic storage finalization (no partial writes on failure)
+	•	[ ] Real work mapped to stage labels (validating, converting, extracting, ai_md, thumb, finalizing)
+	•	[ ] Explicit allowlist validation in Stage 0
+	•	[ ] Storage cleanup for failed staged writes
