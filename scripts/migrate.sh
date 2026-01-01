@@ -76,13 +76,13 @@ prompt_supabase_url() {
 
 parse_pooler_url() {
   local url="$1"
-  local remainder userinfo hostinfo hostport host port parsed_db
+  local remainder userinfo hostinfo hostport host port parsed_db parsed_user
 
   remainder="${url#*://}"
   userinfo="${remainder%@*}"
   hostinfo="${remainder#*@}"
 
-  pooler_user="${userinfo%%:*}"
+  parsed_user="${userinfo%%:*}"
   hostport="${hostinfo%%/*}"
   parsed_db="${hostinfo#*/}"
   parsed_db="${parsed_db%%\?*}"
@@ -95,15 +95,7 @@ parse_pooler_url() {
     port="5432"
   fi
 
-  if [[ -z "${pooler_host}" ]]; then
-    pooler_host="${host}"
-  fi
-  if [[ -z "${pooler_port}" ]]; then
-    pooler_port="${port}"
-  fi
-  if [[ -z "${db_name}" && -n "${parsed_db}" ]]; then
-    db_name="${parsed_db}"
-  fi
+  echo "${parsed_user}|${host}|${port}|${parsed_db}"
 }
 
 configure_supabase() {
@@ -129,7 +121,19 @@ configure_supabase() {
   fi
 
   if [[ -n "${pooler_url}" ]]; then
-    parse_pooler_url "${pooler_url}"
+    IFS="|" read -r parsed_user parsed_host parsed_port parsed_db < <(parse_pooler_url "${pooler_url}")
+    if [[ -z "${pooler_user}" && -n "${parsed_user}" ]]; then
+      pooler_user="${parsed_user}"
+    fi
+    if [[ -z "${pooler_host}" && -n "${parsed_host}" ]]; then
+      pooler_host="${parsed_host}"
+    fi
+    if [[ -z "${pooler_port}" && -n "${parsed_port}" ]]; then
+      pooler_port="${parsed_port}"
+    fi
+    if [[ -z "${db_name}" && -n "${parsed_db}" ]]; then
+      db_name="${parsed_db}"
+    fi
   fi
 
   if [[ -z "${pooler_host}" ]]; then
