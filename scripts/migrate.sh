@@ -24,6 +24,27 @@ detect_doppler() {
   fi
 }
 
+run_alembic() {
+  local cmd=("$@")
+  local env_args=()
+
+  if [[ -n "${DATABASE_URL:-}" ]]; then
+    env_args+=("DATABASE_URL=${DATABASE_URL}")
+  fi
+  if [[ -n "${APP_ENV:-}" ]]; then
+    env_args+=("APP_ENV=${APP_ENV}")
+  fi
+  if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    env_args+=("ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}")
+  fi
+
+  if [[ ${use_doppler} -eq 1 ]]; then
+    doppler run -- env "${env_args[@]}" uv run "${cmd[@]}"
+  else
+    env "${env_args[@]}" uv run "${cmd[@]}"
+  fi
+}
+
 get_env_value() {
   local name="$1"
   if [[ -n "${!name:-}" ]]; then
@@ -162,6 +183,7 @@ configure_supabase() {
   export DATABASE_URL="postgresql://${pooler_user}:${password}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
   export DATABASE_URL_DIRECT="${DATABASE_URL}"
   export APP_ENV="production"
+  echo "Using Supabase pooler: user=${pooler_user} host=${pooler_host} port=${pooler_port} db=${db_name}"
   use_doppler=0
 }
 
@@ -194,54 +216,30 @@ cd backend
 
 case "${COMMAND}" in
   upgrade)
-    if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run -- uv run alembic -c api/alembic.ini upgrade "${ARG:-head}"
-    else
-      uv run alembic -c api/alembic.ini upgrade "${ARG:-head}"
-    fi
+    run_alembic alembic -c api/alembic.ini upgrade "${ARG:-head}"
     ;;
   downgrade)
-    if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run -- uv run alembic -c api/alembic.ini downgrade "${ARG:--1}"
-    else
-      uv run alembic -c api/alembic.ini downgrade "${ARG:--1}"
-    fi
+    run_alembic alembic -c api/alembic.ini downgrade "${ARG:--1}"
     ;;
   stamp)
     if [[ -z "${ARG}" ]]; then
       echo "Usage: ./scripts/migrate.sh stamp \"revision\""
       exit 1
     fi
-    if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run -- uv run alembic -c api/alembic.ini stamp "${ARG}"
-    else
-      uv run alembic -c api/alembic.ini stamp "${ARG}"
-    fi
+    run_alembic alembic -c api/alembic.ini stamp "${ARG}"
     ;;
   create)
     if [[ -z "${ARG}" ]]; then
       echo "Usage: ./scripts/migrate.sh create \"message\""
       exit 1
     fi
-    if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run -- uv run alembic -c api/alembic.ini revision --autogenerate -m "${ARG}"
-    else
-      uv run alembic -c api/alembic.ini revision --autogenerate -m "${ARG}"
-    fi
+    run_alembic alembic -c api/alembic.ini revision --autogenerate -m "${ARG}"
     ;;
   history)
-    if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run -- uv run alembic -c api/alembic.ini history
-    else
-      uv run alembic -c api/alembic.ini history
-    fi
+    run_alembic alembic -c api/alembic.ini history
     ;;
   current)
-    if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run -- uv run alembic -c api/alembic.ini current
-    else
-      uv run alembic -c api/alembic.ini current
-    fi
+    run_alembic alembic -c api/alembic.ini current
     ;;
   *)
     echo "Unknown command: ${COMMAND}"
