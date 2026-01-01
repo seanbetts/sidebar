@@ -129,6 +129,7 @@ recent_activity_empty_text: "No items have been opened today."
 recent_activity_notes_header: "Notes opened today:"
 recent_activity_websites_header: "Websites opened today:"
 recent_activity_chats_header: "Chats active today:"
+recent_activity_files_header: "Files opened today:"
 
 current_open_wrapper_template: |-
   <current_open>
