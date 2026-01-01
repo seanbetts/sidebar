@@ -215,15 +215,6 @@
     border-color: var(--color-sidebar-primary);
   }
 
-  .preview {
-    font-size: 0.75rem;
-    color: var(--color-muted-foreground);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-bottom: 0.25rem;
-  }
-
   .meta {
     display: flex;
     gap: 0.5rem;
