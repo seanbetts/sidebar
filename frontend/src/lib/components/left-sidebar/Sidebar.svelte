@@ -481,6 +481,7 @@
 <div class="sidebar-shell" class:collapsed={isCollapsed}>
   <SidebarRail
     {isCollapsed}
+    {activeSection}
     {profileImageSrc}
     {sidebarLogoSrc}
     onToggle={toggleSidebar}
