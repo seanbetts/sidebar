@@ -94,6 +94,7 @@
     });
   }
 
+  const PINNED_DROP_END = '__end__';
   let draggingPinnedId: string | null = null;
   let dragOverPinnedId: string | null = null;
 
@@ -123,6 +124,25 @@
     if (fromIndex === -1 || toIndex === -1) return;
     const nextOrder = [...order];
     nextOrder.splice(toIndex, 0, nextOrder.splice(fromIndex, 1)[0]);
+    treeStore.setNotePinnedOrder(nextOrder);
+    try {
+      await notesAPI.updatePinnedOrder(nextOrder);
+    } catch (error) {
+      console.error('Failed to update pinned order:', error);
+    }
+  }
+
+  async function handlePinnedDropEnd(event: DragEvent) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    const sourceId = draggingPinnedId;
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+    const order = pinnedNodes.map(node => node.path);
+    const fromIndex = order.indexOf(sourceId);
+    if (fromIndex === -1) return;
+    const nextOrder = [...order];
+    nextOrder.push(nextOrder.splice(fromIndex, 1)[0]);
     treeStore.setNotePinnedOrder(nextOrder);
     try {
       await notesAPI.updatePinnedOrder(nextOrder);
@@ -205,6 +225,12 @@
               onGrabEnd={handlePinnedDragEnd}
             />
           {/each}
+          <div
+            class="pinned-drop-zone"
+            class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+            ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
+            ondrop={handlePinnedDropEnd}
+          ></div>
         </div>
       {:else}
         <div class="notes-empty">No pinned notes</div>
@@ -346,6 +372,22 @@
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
+  }
+
+  .pinned-drop-zone {
+    position: relative;
+    height: 12px;
+  }
+
+  .pinned-drop-zone.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
   }
 
 

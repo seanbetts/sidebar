@@ -121,6 +121,7 @@
   let isRenaming = false;
   let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let deleteItem: IngestionListItem | null = null;
+  const PINNED_DROP_END = '__end__';
   let draggingPinnedId: string | null = null;
   let dragOverPinnedId: string | null = null;
 
@@ -249,6 +250,25 @@
     }
   }
 
+  async function handlePinnedDropEnd(event: DragEvent) {
+    if (!draggingPinnedId) return;
+    event.preventDefault();
+    const sourceId = draggingPinnedId;
+    draggingPinnedId = null;
+    dragOverPinnedId = null;
+    const order = pinnedItemsSorted.map(item => item.file.id);
+    const fromIndex = order.indexOf(sourceId);
+    if (fromIndex === -1) return;
+    const nextOrder = [...order];
+    nextOrder.push(nextOrder.splice(fromIndex, 1)[0]);
+    ingestionStore.setPinnedOrder(nextOrder);
+    try {
+      await ingestionAPI.updatePinnedOrder(nextOrder);
+    } catch (error) {
+      console.error('Failed to update pinned order:', error);
+    }
+  }
+
   function handlePinnedDragEnd() {
     draggingPinnedId = null;
     dragOverPinnedId = null;
@@ -345,6 +365,12 @@
                   ondragover={(event) => handlePinnedDragOver(event, item.file.id)}
                   ondrop={(event) => handlePinnedDrop(event, item.file.id)}
                 >
+                  <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
+                    <span class="ingested-icon">
+                      <svelte:component this={iconForCategory(item.file.category)} size={16} />
+                    </span>
+                    <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                  </button>
                   <button
                     class="grab-handle"
                     draggable="true"
@@ -354,12 +380,6 @@
                     aria-label="Reorder pinned file"
                   >
                     <GripVertical size={14} />
-                  </button>
-                  <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
-                    <span class="ingested-icon">
-                      <svelte:component this={iconForCategory(item.file.category)} size={16} />
-                    </span>
-                    <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
                   </button>
                   <button
                     class="ingested-menu"
@@ -395,6 +415,12 @@
                   {/if}
                 </div>
               {/each}
+              <div
+                class="pinned-drop-zone"
+                class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+                ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
+                ondrop={handlePinnedDropEnd}
+              ></div>
             </div>
           {:else}
             <div class="files-empty">No pinned files</div>
@@ -756,8 +782,34 @@
   }
 
   .ingested-row.drag-over {
-    background-color: color-mix(in oklab, var(--color-sidebar-accent) 60%, transparent);
-    border-radius: 0.5rem;
+    background: none;
+  }
+
+  .ingested-row.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    top: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
+  }
+
+  .pinned-drop-zone {
+    position: relative;
+    height: 12px;
+  }
+
+  .pinned-drop-zone.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
   }
 
   .grab-handle {
@@ -770,7 +822,9 @@
     color: var(--color-muted-foreground);
     cursor: grab;
     border-radius: 0.375rem;
-    opacity: 0.4;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
   }
 
   .grab-handle:active {
@@ -779,6 +833,7 @@
 
   .ingested-row:hover .grab-handle {
     opacity: 0.9;
+    pointer-events: auto;
   }
 
   .ingested-row--nested {

@@ -110,18 +110,6 @@
   ondrop={handleDrop}
 >
   <div class="node-content">
-    {#if showGrabHandle && node.type === 'file'}
-      <button
-        class="grab-handle"
-        draggable="true"
-        ondragstart={onGrabStart}
-        ondragend={onGrabEnd}
-        onclick={(event) => event.stopPropagation()}
-        aria-label="Reorder pinned note"
-      >
-        <GripVertical size={14} />
-      </button>
-    {/if}
     <button
       class="node-button"
       class:expandable={node.type === 'directory'}
@@ -164,6 +152,18 @@
 
     {#if showActions}
       <div class="actions">
+        {#if showGrabHandle && node.type === 'file'}
+          <button
+            class="grab-handle"
+            draggable="true"
+            ondragstart={onGrabStart}
+            ondragend={onGrabEnd}
+            onclick={(event) => event.stopPropagation()}
+            aria-label="Reorder pinned note"
+          >
+            <GripVertical size={14} />
+          </button>
+        {/if}
         <FileTreeContextMenu
           {node}
           {basePath}
@@ -201,6 +201,7 @@
 <style>
   .tree-node {
     user-select: none;
+    position: relative;
   }
 
   .node-content {
@@ -210,8 +211,18 @@
   }
 
   .tree-node.drag-over {
-    background-color: color-mix(in oklab, var(--color-sidebar-accent) 60%, transparent);
-    border-radius: 0.5rem;
+    background: none;
+  }
+
+  .tree-node.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    top: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
   }
 
   .grab-handle {
@@ -224,7 +235,9 @@
     padding: 0.25rem;
     border-radius: 0.375rem;
     cursor: grab;
-    opacity: 0.4;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
   }
 
   .grab-handle:active {
@@ -233,6 +246,7 @@
 
   .node-content:hover .grab-handle {
     opacity: 0.9;
+    pointer-events: auto;
   }
 
   .node-button {

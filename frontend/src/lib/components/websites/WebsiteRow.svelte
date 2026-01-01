@@ -37,6 +37,15 @@
   ondragover={handleDragOver}
   ondrop={handleDrop}
 >
+  <button class="website-main" onclick={() => onOpen(site)}>
+    <span class="website-icon">
+      <FileTerminal />
+    </span>
+    <div class="website-text">
+      <span class="website-title">{site.title}</span>
+      <span class="website-domain">{formatDomain(site.domain)}</span>
+    </div>
+  </button>
   {#if showGrabHandle}
     <button
       class="grab-handle"
@@ -49,15 +58,6 @@
       <GripVertical size={14} />
     </button>
   {/if}
-  <button class="website-main" onclick={() => onOpen(site)}>
-    <span class="website-icon">
-      <FileTerminal />
-    </span>
-    <div class="website-text">
-      <span class="website-title">{site.title}</span>
-      <span class="website-domain">{formatDomain(site.domain)}</span>
-    </div>
-  </button>
   <button class="website-menu-btn" onclick={(event) => onOpenMenu(event, site)} aria-label="More options">
     <MoreHorizontal size={16} />
   </button>
@@ -113,7 +113,18 @@
   }
 
   .website-item.drag-over {
-    background-color: color-mix(in oklab, var(--color-sidebar-accent) 60%, transparent);
+    background: none;
+  }
+
+  .website-item.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    top: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-sidebar-border);
   }
 
   .website-item:hover {
@@ -162,7 +173,9 @@
     color: var(--color-muted-foreground);
     cursor: grab;
     border-radius: 0.375rem;
-    opacity: 0.4;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
   }
 
   .grab-handle:active {
@@ -171,6 +184,7 @@
 
   .website-item:hover .grab-handle {
     opacity: 0.9;
+    pointer-events: auto;
   }
 
   .website-menu-btn:hover {
