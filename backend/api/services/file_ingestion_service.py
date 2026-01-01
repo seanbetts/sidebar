@@ -6,6 +6,7 @@ from typing import Optional
 import uuid
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 
@@ -161,6 +162,45 @@ class FileIngestionService:
         if not record:
             return
         record.pinned = pinned
+        if pinned:
+            if record.pinned_order is None:
+                max_order = (
+                    db.query(func.max(IngestedFile.pinned_order))
+                    .filter(
+                        IngestedFile.user_id == user_id,
+                        IngestedFile.deleted_at.is_(None),
+                        IngestedFile.pinned.is_(True),
+                    )
+                    .scalar()
+                )
+                record.pinned_order = (max_order if max_order is not None else -1) + 1
+        else:
+            record.pinned_order = None
+        db.commit()
+
+    @staticmethod
+    def update_pinned_order(
+        db: Session,
+        user_id: str,
+        ordered_ids: list[uuid.UUID],
+    ) -> None:
+        """Persist pinned order for a set of files."""
+        if not ordered_ids:
+            return
+        order_map = {file_id: index for index, file_id in enumerate(ordered_ids)}
+        records = (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+                IngestedFile.id.in_(ordered_ids),
+            )
+            .all()
+        )
+        for record in records:
+            if record.id in order_map:
+                record.pinned_order = order_map[record.id]
+                record.pinned = True
         db.commit()
 
     @staticmethod

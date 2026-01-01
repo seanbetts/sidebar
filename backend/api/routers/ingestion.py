@@ -291,6 +291,7 @@ async def list_ingestions(
                     "source_url": record.source_url,
                     "source_metadata": record.source_metadata,
                     "pinned": record.pinned,
+                    "pinned_order": record.pinned_order,
                     "category": _category_for_file(record.filename_original, record.mime_original),
                     "created_at": record.created_at.isoformat(),
                 },
@@ -357,6 +358,7 @@ async def get_file_meta(
             "source_url": record.source_url,
             "source_metadata": record.source_metadata,
             "pinned": record.pinned,
+            "pinned_order": record.pinned_order,
             "category": _category_for_file(record.filename_original, record.mime_original),
             "created_at": record.created_at.isoformat(),
         },
@@ -509,6 +511,28 @@ async def update_pin(
 
     pinned = bool(request.get("pinned", False))
     FileIngestionService.update_pinned(db, user_id, file_uuid, pinned)
+    return {"success": True}
+
+
+@router.patch("/pinned-order")
+async def update_pinned_order(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Update pinned order for files."""
+    order = request.get("order", [])
+    if not isinstance(order, list):
+        raise HTTPException(status_code=400, detail="order must be a list")
+    file_ids: list[uuid.UUID] = []
+    for item in order:
+        try:
+            file_ids.append(uuid.UUID(item))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid file id")
+
+    FileIngestionService.update_pinned_order(db, user_id, file_ids)
     return {"success": True}
 
 

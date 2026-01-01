@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FileTerminal, MoreHorizontal, Pin, PinOff, Pencil, Download, Archive, ArchiveRestore, Trash2 } from 'lucide-svelte';
+  import { FileTerminal, MoreHorizontal, Pin, PinOff, Pencil, Download, Archive, ArchiveRestore, Trash2, GripVertical } from 'lucide-svelte';
   import type { WebsiteItem } from '$lib/stores/websites';
 
   export let site: WebsiteItem;
@@ -13,9 +13,42 @@
   export let onArchive: (site: WebsiteItem) => void;
   export let onDelete: (site: WebsiteItem) => void;
   export let formatDomain: (domain: string) => string;
+  export let showGrabHandle: boolean = false;
+  export let isDragOver: boolean = false;
+  export let onGrabStart: ((event: DragEvent) => void) | undefined = undefined;
+  export let onGrabOver: ((event: DragEvent) => void) | undefined = undefined;
+  export let onGrabDrop: ((event: DragEvent) => void) | undefined = undefined;
+  export let onGrabEnd: (() => void) | undefined = undefined;
+
+  function handleDragOver(event: DragEvent) {
+    if (!onGrabOver) return;
+    onGrabOver(event);
+  }
+
+  function handleDrop(event: DragEvent) {
+    if (!onGrabDrop) return;
+    onGrabDrop(event);
+  }
 </script>
 
-<div class="website-item">
+<div
+  class="website-item"
+  class:drag-over={isDragOver}
+  on:dragover={handleDragOver}
+  on:drop={handleDrop}
+>
+  {#if showGrabHandle}
+    <button
+      class="grab-handle"
+      draggable="true"
+      on:dragstart={onGrabStart}
+      on:dragend={onGrabEnd}
+      on:click|stopPropagation
+      aria-label="Reorder pinned website"
+    >
+      <GripVertical size={14} />
+    </button>
+  {/if}
   <button class="website-main" on:click={() => onOpen(site)}>
     <span class="website-icon">
       <FileTerminal />
@@ -79,6 +112,10 @@
     transition: background-color 0.2s ease;
   }
 
+  .website-item.drag-over {
+    background-color: color-mix(in oklab, var(--color-sidebar-accent) 60%, transparent);
+  }
+
   .website-item:hover {
     background-color: var(--color-sidebar-accent);
   }
@@ -113,6 +150,27 @@
 
   .website-item:hover .website-menu-btn {
     opacity: 1;
+  }
+
+  .grab-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    color: var(--color-muted-foreground);
+    cursor: grab;
+    border-radius: 0.375rem;
+    opacity: 0.4;
+  }
+
+  .grab-handle:active {
+    cursor: grabbing;
+  }
+
+  .website-item:hover .grab-handle {
+    opacity: 0.9;
   }
 
   .website-menu-btn:hover {

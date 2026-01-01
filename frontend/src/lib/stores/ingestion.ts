@@ -28,6 +28,17 @@ function sortByCreatedAt(items: IngestionListItem[]): IngestionListItem[] {
   return [...items].sort((a, b) => (b.file.created_at || '').localeCompare(a.file.created_at || ''));
 }
 
+function maxPinnedOrder(items: IngestionListItem[]): number {
+  let maxOrder = -1;
+  for (const item of items) {
+    if (item.file.pinned) {
+      const value = typeof item.file.pinned_order === 'number' ? item.file.pinned_order : -1;
+      if (value > maxOrder) maxOrder = value;
+    }
+  }
+  return maxOrder;
+}
+
 function persistCache(items: IngestionListItem[], localUploads: IngestionListItem[]) {
   const localIds = new Set(localUploads.map(item => item.file.id));
   const serverItems = items.filter(item => !localIds.has(item.file.id));
@@ -150,11 +161,36 @@ function createIngestionStore() {
     },
     updatePinned(fileId: string, pinned: boolean) {
       update(state => {
+        const nextPinnedOrder = pinned ? maxPinnedOrder(state.items) + 1 : null;
         const nextItems = state.items.map(item =>
           item.file.id === fileId
-            ? { ...item, file: { ...item.file, pinned } }
+            ? {
+                ...item,
+                file: {
+                  ...item.file,
+                  pinned,
+                  pinned_order: pinned ? (item.file.pinned_order ?? nextPinnedOrder) : null
+                }
+              }
             : item
         );
+        persistCache(nextItems, state.localUploads);
+        return {
+          ...state,
+          items: nextItems
+        };
+      });
+    },
+    setPinnedOrder(order: string[]) {
+      update(state => {
+        const orderMap = new Map(order.map((fileId, index) => [fileId, index]));
+        const nextItems = state.items.map(item => {
+          if (!orderMap.has(item.file.id)) return item;
+          return {
+            ...item,
+            file: { ...item.file, pinned_order: orderMap.get(item.file.id) ?? null }
+          };
+        });
         persistCache(nextItems, state.localUploads);
         return {
           ...state,
