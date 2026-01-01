@@ -30,7 +30,7 @@ def write_file(
     mode: str = "replace",
 ) -> Dict[str, Any]:
     """Write content to a file."""
-    return write_text(user_id, filename, content, mode=mode)
+    return write_text(user_id, filename, content, mode=mode, wait_for_ready=True)
 
 
 def main():
@@ -68,7 +68,12 @@ def main():
     args = parser.parse_args()
 
     try:
-        result = write_file(args.user_id, args.filename, args.content, args.mode)
+        result = write_file(
+            args.user_id,
+            args.filename,
+            args.content,
+            args.mode,
+        )
 
         output = {
             'success': True,

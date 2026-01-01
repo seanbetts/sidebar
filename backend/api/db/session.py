@@ -1,7 +1,7 @@
 """Database session management."""
 import os
 from fastapi import Depends
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 
@@ -12,11 +12,6 @@ from api.db.dependencies import get_current_user_id
 use_pooler = "pooler." in settings.database_url
 pool_size = settings.db_pool_size
 max_overflow = settings.db_max_overflow
-if use_pooler:
-    if os.getenv("DB_POOL_SIZE") is None:
-        pool_size = 1
-    if os.getenv("DB_MAX_OVERFLOW") is None:
-        max_overflow = 0
 
 engine = create_engine(
     settings.database_url,
@@ -28,6 +23,13 @@ engine = create_engine(
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
+
+
+@event.listens_for(Session, "after_begin")
+def _set_app_user_id(session: Session, transaction, connection) -> None:
+    user_id = session.info.get("app_user_id")
+    if user_id:
+        connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
 
 
 def get_db(
@@ -49,5 +51,8 @@ def set_session_user_id(db: Session, user_id: str | None) -> None:
         db: Active database session.
         user_id: User ID to set, or None to skip.
     """
-    if user_id:
-        db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+    if not user_id:
+        db.info.pop("app_user_id", None)
+        return
+    db.info["app_user_id"] = user_id
+    db.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})

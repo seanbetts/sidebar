@@ -98,8 +98,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = _build_database_url()
-    db_pool_size: int = int(os.getenv("DB_POOL_SIZE", "2"))
-    db_max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "4"))
+    db_pool_size: int = int(os.getenv("DB_POOL_SIZE", "15"))
+    db_max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "5"))
 
     # Claude API configuration
     anthropic_api_key: str  # Loaded from Doppler or environment

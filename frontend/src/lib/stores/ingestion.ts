@@ -24,6 +24,10 @@ function mergeWithLocalUploads(
   return [...localUploads, ...serverItems];
 }
 
+function sortByCreatedAt(items: IngestionListItem[]): IngestionListItem[] {
+  return [...items].sort((a, b) => (b.file.created_at || '').localeCompare(a.file.created_at || ''));
+}
+
 function persistCache(items: IngestionListItem[], localUploads: IngestionListItem[]) {
   const localIds = new Set(localUploads.map(item => item.file.id));
   const serverItems = items.filter(item => !localIds.has(item.file.id));
@@ -168,6 +172,19 @@ function createIngestionStore() {
         persistCache(nextItems, state.localUploads);
         return {
           ...state,
+          items: nextItems
+        };
+      });
+    },
+    upsertItem(item: IngestionListItem) {
+      update(state => {
+        const nextUploads = state.localUploads.filter(local => local.file.id !== item.file.id);
+        const filtered = state.items.filter(existing => existing.file.id !== item.file.id);
+        const nextItems = sortByCreatedAt([...filtered, item]);
+        persistCache(nextItems, nextUploads);
+        return {
+          ...state,
+          localUploads: nextUploads,
           items: nextItems
         };
       });

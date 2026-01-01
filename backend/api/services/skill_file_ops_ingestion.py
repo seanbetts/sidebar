@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import fnmatch
 import mimetypes
+import time
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Optional
 from uuid import uuid4
 
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
+from api.db.session import set_session_user_id
 from api.services.skill_file_ops_paths import (
     ensure_allowed_path,
     is_profile_images_path,
@@ -247,6 +249,8 @@ def write_text(
     content: str,
     *,
     mode: str = "replace",
+    wait_for_ready: bool = False,
+    timeout_seconds: float = 25.0,
 ) -> dict:
     """Write text content by creating an ingestion job."""
     normalized = normalize_path(path, allow_root=False)
@@ -303,6 +307,8 @@ def write_text(
                 deleted_at=None,
             )
             db.add(record)
+        db.flush()
+        set_session_user_id(db, user_id)
 
         job = _get_job(db, record.id)
         if job:
@@ -328,12 +334,32 @@ def write_text(
         db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
         db.commit()
 
+    if wait_for_ready:
+        deadline = time.monotonic() + timeout_seconds
+        last_status = None
+        while time.monotonic() < deadline:
+            with session_for_user(user_id) as db:
+                job = _get_job(db, record.id)
+                if not job:
+                    raise ValueError(f"Processing job missing for: {path}")
+                last_status = job.status
+                if job.status == "ready":
+                    break
+                if job.status in {"failed", "canceled"}:
+                    detail = job.error_message or job.error_code or job.status
+                    raise ValueError(f"File processing {job.status}: {detail}")
+            time.sleep(0.5)
+        else:
+            raise TimeoutError(f"File processing still {last_status} after {timeout_seconds:.0f}s")
+
     action = "created" if not existing else ("appended" if mode == "append" else "updated")
     return {
         "path": normalized,
         "action": action,
         "size": size,
         "lines": len(content.splitlines()),
+        "status": "ready" if wait_for_ready else (job.status if job else "queued"),
+        "file_id": str(record.id),
     }
 
 
@@ -373,6 +399,8 @@ def upload_file(
             deleted_at=None,
         )
         db.add(record)
+        db.flush()
+        set_session_user_id(db, user_id)
         db.add(
             FileProcessingJob(
                 file_id=record.id,

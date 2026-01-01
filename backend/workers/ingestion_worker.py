@@ -32,7 +32,7 @@ from docx import Document
 from python_calamine import CalamineWorkbook, CalamineError, ZipError, XmlError
 from tabulate import tabulate
 
-from api.db.session import SessionLocal
+from api.db.session import SessionLocal, set_session_user_id
 from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
 from api.config import settings
 from api.services.storage.service import get_storage_backend
@@ -257,7 +257,7 @@ def _start_heartbeat(job_id: str, user_id: str | None) -> Callable[[], None]:
     def _beat() -> None:
         with SessionLocal() as heartbeat_db:
             if user_id:
-                heartbeat_db.execute(text("SET app.user_id = :user_id"), {"user_id": str(user_id)})
+                set_session_user_id(heartbeat_db, str(user_id))
             while not stop_event.is_set():
                 job = heartbeat_db.query(FileProcessingJob).filter(FileProcessingJob.id == job_id).first()
                 if not job or job.status != "processing":
@@ -1620,7 +1620,7 @@ def worker_loop() -> None:
     while True:
         with SessionLocal() as db:
             if worker_user_id:
-                db.execute(text("SET app.user_id = :user_id"), {"user_id": worker_user_id})
+                set_session_user_id(db, worker_user_id)
             _requeue_stalled_jobs(db)
             job = _claim_job(db, worker_id)
             if not job:
@@ -1630,7 +1630,7 @@ def worker_loop() -> None:
             try:
                 record = _get_file(db, job)
                 if record.user_id:
-                    db.execute(text("SET app.user_id = :user_id"), {"user_id": str(record.user_id)})
+                    set_session_user_id(db, str(record.user_id))
                 stop_heartbeat = _start_heartbeat(str(job.id), str(record.user_id) if record.user_id else None)
                 try:
                     if record.source_url:
