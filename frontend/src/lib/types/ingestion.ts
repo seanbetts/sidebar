@@ -1,6 +1,7 @@
 export interface IngestedFileMeta {
   id: string;
   filename_original: string;
+  path?: string | null;
   mime_original: string;
   size_bytes: number;
   sha256?: string | null;

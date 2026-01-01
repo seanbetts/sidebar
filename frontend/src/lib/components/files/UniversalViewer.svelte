@@ -353,10 +353,28 @@
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
         'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
+        'application/msword': 'DOC',
+        'application/vnd.ms-powerpoint': 'PPT',
+        'application/rtf': 'RTF',
         'text/csv': 'CSV',
         'application/csv': 'CSV',
         'text/tab-separated-values': 'TSV',
-        'text/tsv': 'TSV'
+        'text/tsv': 'TSV',
+        'text/plain': 'TXT',
+        'text/markdown': 'MD',
+        'text/html': 'HTML',
+        'application/json': 'JSON',
+        'text/xml': 'XML',
+        'application/xml': 'XML',
+        'text/javascript': 'JS',
+        'application/javascript': 'JS',
+        'text/css': 'CSS',
+        'application/zip': 'ZIP',
+        'application/x-zip-compressed': 'ZIP',
+        'application/gzip': 'GZIP',
+        'application/epub+zip': 'EPUB',
+        'application/vnd.oasis.opendocument.text': 'ODT',
+        'application/vnd.oasis.opendocument.spreadsheet': 'ODS'
       } as Record<string, string>;
       if (normalized.startsWith('image/')) {
         const imageSubtype = normalized.split('/')[1] ?? 'image';
@@ -729,7 +747,7 @@
     </div>
   </div>
 
-  <div class="file-viewer-body" class:audio-body={isAudio} class:video-body={isVideo}>
+  <div class="file-viewer-body" class:audio-body={isAudio} class:video-body={isVideo} class:markdown-body={viewMode === 'markdown'}>
     {#if loading}
       <div class="viewer-placeholder">Loading file…</div>
     {:else if error}
@@ -983,6 +1001,12 @@
   }
 
   .file-viewer-body.video-body {
+    align-items: flex-start;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .file-viewer-body.markdown-body {
     align-items: flex-start;
     justify-content: center;
     overflow: hidden;
@@ -1274,6 +1298,7 @@
     font-size: 0.85rem;
     line-height: 1.6;
     white-space: pre-wrap;
+    align-self: flex-start;
   }
 
   .file-markdown-container {
@@ -1284,6 +1309,7 @@
     border-radius: 0.5rem;
     background: var(--color-card);
     border: 1px solid var(--color-border);
+    align-self: flex-start;
   }
 
   .file-markdown-container--media {
