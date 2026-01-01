@@ -636,8 +636,8 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [ ] Backup R2 storage bucket
 
 ### Phase 1: Fast-Track Processing
-- [ ] Add `should_fast_track()` function to worker
-- [ ] Implement `process_simple_file()` for text files
+- [x] Add `should_fast_track()` function to worker
+- [x] Implement `process_simple_file()` for text files
 - [ ] Test with sample .txt, .md, .json files
 - [ ] Verify ai.md generation works
 
@@ -651,9 +651,9 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [ ] Test each script independently
 
 ### Phase 3: Update fs Scripts
-- [ ] Create migration for `path` column
-- [ ] Update IngestedFile model
-- [ ] Update upload API to accept folder parameter
+- [x] Create migration for `path` column
+- [x] Update IngestedFile model
+- [x] Update upload API to accept folder parameter
 - [ ] Update fs scripts to use path instead of filename
 - [ ] Test hierarchical organization
 
