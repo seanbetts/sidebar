@@ -21,6 +21,7 @@
   export let hideExtensions: boolean = false;
   export let onFileClick: ((path: string) => void) | undefined = undefined;
   export let showActions: boolean = true;
+  export let forceExpand: boolean = false;
 
   let isEditing = false;
   let editedName = node.name;
@@ -28,7 +29,7 @@
   let editInput: HTMLInputElement | null = null;
   let folderOptions: { label: string; value: string; depth: number }[] = [];
 
-  $: isExpanded = node.expanded || false;
+  $: isExpanded = forceExpand || node.expanded || false;
   $: hasChildren = node.children && node.children.length > 0;
   $: itemType = node.type === 'directory' ? 'folder' : 'file';
 
@@ -155,6 +156,7 @@
       {hideExtensions}
       {onFileClick}
       {showActions}
+      {forceExpand}
     />
   {/each}
 {/if}

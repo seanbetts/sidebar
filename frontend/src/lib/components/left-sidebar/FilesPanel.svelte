@@ -32,7 +32,6 @@
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-  import type { FileNode } from '$lib/types/file';
   import type { IngestionListItem } from '$lib/types/ingestion';
 
   const basePath = 'documents';
@@ -68,6 +67,7 @@
       )
     : readyItems;
   $: pinnedItems = filteredReadyItems.filter(item => item.file.pinned);
+  $: unpinnedReadyItems = filteredReadyItems.filter(item => !item.file.pinned);
   const categoryOrder = [
     'audio',
     'documents',
@@ -97,12 +97,14 @@
     if (category === 'video') return FileVideoCamera;
     return FileText;
   }
-  $: categorizedItems = filteredReadyItems.reduce<Record<string, IngestionListItem[]>>((acc, item) => {
+  $: categorizedItems = unpinnedReadyItems.reduce<Record<string, IngestionListItem[]>>((acc, item) => {
     const category = item.file.category || 'other';
     if (!acc[category]) acc[category] = [];
     acc[category].push(item);
     return acc;
   }, {});
+
+  $: showPinnedSection = !searchQuery || pinnedItems.length > 0;
   let expandedCategories = new Set<string>();
   let openMenuKey: string | null = null;
   let isRenameOpen = false;
@@ -165,10 +167,6 @@
 
   // Data loading is now handled by parent Sidebar component
   // onMount removed to prevent duplicate loads and initial flicker
-
-  function handleToggle(path: string) {
-    treeStore.toggleExpanded(basePath, path);
-  }
 
   function toggleCategory(category: string) {
     const next = new Set(expandedCategories);
@@ -284,143 +282,187 @@
 {:else}
   <div class="workspace-list">
     <div class="workspace-main">
-      <div class="files-block">
-        <div class="files-block-title">Pinned</div>
-        {#if pinnedItems.length > 0}
-          <div class="files-block-list">
-            {#each pinnedItems as item (item.file.id)}
-              <div class="ingested-row" data-ingested-menu-root={`pinned-${item.file.id}`}>
-                <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
-                  <span class="ingested-icon">
-                    <svelte:component this={iconForCategory(item.file.category)} size={16} />
-                  </span>
-                  <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
-                </button>
-                <button
-                  class="ingested-menu"
-                  onclick={(event) => toggleMenu(event, `pinned-${item.file.id}`)}
-                  aria-label="File actions"
-                >
-                  <MoreHorizontal size={16} />
-                </button>
-                {#if openMenuKey === `pinned-${item.file.id}`}
-                  <div class="ingested-menu-dropdown">
-                    <button class="menu-item" onclick={() => handleRename(item)}>
-                      <Pencil size={16} />
-                      <span>Rename</span>
-                    </button>
-                    <button class="menu-item" onclick={() => handlePinToggle(item)}>
-                      {#if item.file.pinned}
-                        <PinOff size={16} />
-                        <span>Unpin</span>
-                      {:else}
-                        <Pin size={16} />
-                        <span>Pin</span>
-                      {/if}
-                    </button>
-                    <button class="menu-item" onclick={() => handleDownload(item)}>
-                      <Download size={16} />
-                      <span>Download</span>
-                    </button>
-                    <button class="menu-item" onclick={(event) => handleDelete(item, event)}>
-                      <Trash2 size={16} />
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <div class="files-empty">No pinned files</div>
-        {/if}
-      </div>
-      <div class="files-block">
-        <div class="files-block-title">Files</div>
-        {#if searchQuery}
-          <div class="workspace-results-label">Results</div>
-        {/if}
-      {#each categoryOrder as category}
-        {#if categorizedItems[category]?.length}
-          <div class="tree-node">
-            <div class="node-content">
-              <button class="node-button expandable" onclick={() => toggleCategory(category)}>
-                <span class="chevron">
-                  {#if expandedCategories.has(category)}
-                    <ChevronDown size={16} />
-                  {:else}
-                    <ChevronRight size={16} />
+      {#if showPinnedSection}
+        <div class="files-block">
+          <div class="files-block-title">Pinned</div>
+          {#if pinnedItems.length > 0}
+            <div class="files-block-list">
+              {#each pinnedItems as item (item.file.id)}
+                <div class="ingested-row" data-ingested-menu-root={`pinned-${item.file.id}`}>
+                  <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
+                    <span class="ingested-icon">
+                      <svelte:component this={iconForCategory(item.file.category)} size={16} />
+                    </span>
+                    <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                  </button>
+                  <button
+                    class="ingested-menu"
+                    onclick={(event) => toggleMenu(event, `pinned-${item.file.id}`)}
+                    aria-label="File actions"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                  {#if openMenuKey === `pinned-${item.file.id}`}
+                    <div class="ingested-menu-dropdown">
+                      <button class="menu-item" onclick={() => handleRename(item)}>
+                        <Pencil size={16} />
+                        <span>Rename</span>
+                      </button>
+                      <button class="menu-item" onclick={() => handlePinToggle(item)}>
+                        {#if item.file.pinned}
+                          <PinOff size={16} />
+                          <span>Unpin</span>
+                        {:else}
+                          <Pin size={16} />
+                          <span>Pin</span>
+                        {/if}
+                      </button>
+                      <button class="menu-item" onclick={() => handleDownload(item)}>
+                        <Download size={16} />
+                        <span>Download</span>
+                      </button>
+                      <button class="menu-item" onclick={(event) => handleDelete(item, event)}>
+                        <Trash2 size={16} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   {/if}
-                </span>
-                <span class="icon">
-                  {#if expandedCategories.has(category)}
-                    <FolderOpen size={16} />
-                  {:else}
-                    <Folder size={16} />
-                  {/if}
-                </span>
-                <span class="name">{categoryLabels[category] ?? 'Files'}</span>
-              </button>
+                </div>
+              {/each}
             </div>
-          </div>
-          {#if expandedCategories.has(category)}
-            {#each categorizedItems[category] as item (item.file.id)}
-              <div class="ingested-row ingested-row--nested" data-ingested-menu-root={`files-${item.file.id}`}>
-                <button class="ingested-item ingested-item--file ingested-item--nested" onclick={() => openViewer(item)}>
-                  <span class="ingested-icon">
-                    <svelte:component this={iconForCategory(category)} size={16} />
-                  </span>
-                  <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
-                </button>
-                <button
-                  class="ingested-menu"
-                  onclick={(event) => toggleMenu(event, `files-${item.file.id}`)}
-                  aria-label="File actions"
-                >
-                  <MoreHorizontal size={16} />
-                </button>
-                {#if openMenuKey === `files-${item.file.id}`}
-                  <div class="ingested-menu-dropdown">
-                    <button class="menu-item" onclick={() => handleRename(item)}>
-                      <Pencil size={16} />
-                      <span>Rename</span>
-                    </button>
-                    <button class="menu-item" onclick={() => handlePinToggle(item)}>
-                      {#if item.file.pinned}
-                        <PinOff size={16} />
-                        <span>Unpin</span>
-                      {:else}
-                        <Pin size={16} />
-                        <span>Pin</span>
-                      {/if}
-                    </button>
-                    <button class="menu-item" onclick={() => handleDownload(item)}>
-                      <Download size={16} />
-                      <span>Download</span>
-                    </button>
-                    <button class="menu-item" onclick={(event) => handleDelete(item, event)}>
-                      <Trash2 size={16} />
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                {/if}
-              </div>
-            {/each}
+          {:else}
+            <div class="files-empty">No pinned files</div>
           {/if}
+        </div>
+      {/if}
+      <div class="files-block">
+        {#if !searchQuery}
+          <div class="files-block-title">Files</div>
         {/if}
-      {/each}
-        {#if children.length > 0}
-          {#each children as node (node.path)}
-            <FileTreeNode
-              node={node}
-              level={0}
-              onToggle={handleToggle}
-              basePath={basePath}
-              hideExtensions={false}
-              showActions={true}
-            />
+        {#if searchQuery}
+          {#each categoryOrder as category}
+            {#if categorizedItems[category]?.length}
+              <div class="files-block-subtitle">{categoryLabels[category] ?? 'Files'}</div>
+              <div class="files-block-list">
+                {#each categorizedItems[category] as item (item.file.id)}
+                  <div class="ingested-row" data-ingested-menu-root={`files-${item.file.id}`}>
+                    <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
+                      <span class="ingested-icon">
+                        <svelte:component this={iconForCategory(category)} size={16} />
+                      </span>
+                      <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                    </button>
+                    <button
+                      class="ingested-menu"
+                      onclick={(event) => toggleMenu(event, `files-${item.file.id}`)}
+                      aria-label="File actions"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {#if openMenuKey === `files-${item.file.id}`}
+                      <div class="ingested-menu-dropdown">
+                        <button class="menu-item" onclick={() => handleRename(item)}>
+                          <Pencil size={16} />
+                          <span>Rename</span>
+                        </button>
+                        <button class="menu-item" onclick={() => handlePinToggle(item)}>
+                          {#if item.file.pinned}
+                            <PinOff size={16} />
+                            <span>Unpin</span>
+                          {:else}
+                            <Pin size={16} />
+                            <span>Pin</span>
+                          {/if}
+                        </button>
+                        <button class="menu-item" onclick={() => handleDownload(item)}>
+                          <Download size={16} />
+                          <span>Download</span>
+                        </button>
+                        <button class="menu-item" onclick={(event) => handleDelete(item, event)}>
+                          <Trash2 size={16} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
           {/each}
-        {:else if filteredReadyItems.length === 0}
+        {:else}
+          {#each categoryOrder as category}
+            {#if categorizedItems[category]?.length}
+              <div class="tree-node">
+                <div class="node-content">
+                  <button class="node-button expandable" onclick={() => toggleCategory(category)}>
+                    <span class="chevron">
+                      {#if expandedCategories.has(category)}
+                        <ChevronDown size={16} />
+                      {:else}
+                        <ChevronRight size={16} />
+                      {/if}
+                    </span>
+                    <span class="icon">
+                      {#if expandedCategories.has(category)}
+                        <FolderOpen size={16} />
+                      {:else}
+                        <Folder size={16} />
+                      {/if}
+                    </span>
+                    <span class="name">{categoryLabels[category] ?? 'Files'}</span>
+                  </button>
+                </div>
+              </div>
+              {#if expandedCategories.has(category)}
+                {#each categorizedItems[category] as item (item.file.id)}
+                  <div class="ingested-row ingested-row--nested" data-ingested-menu-root={`files-${item.file.id}`}>
+                    <button class="ingested-item ingested-item--file ingested-item--nested" onclick={() => openViewer(item)}>
+                      <span class="ingested-icon">
+                        <svelte:component this={iconForCategory(category)} size={16} />
+                      </span>
+                      <span class="ingested-name">{stripExtension(item.file.filename_original)}</span>
+                    </button>
+                    <button
+                      class="ingested-menu"
+                      onclick={(event) => toggleMenu(event, `files-${item.file.id}`)}
+                      aria-label="File actions"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {#if openMenuKey === `files-${item.file.id}`}
+                      <div class="ingested-menu-dropdown">
+                        <button class="menu-item" onclick={() => handleRename(item)}>
+                          <Pencil size={16} />
+                          <span>Rename</span>
+                        </button>
+                        <button class="menu-item" onclick={() => handlePinToggle(item)}>
+                          {#if item.file.pinned}
+                            <PinOff size={16} />
+                            <span>Unpin</span>
+                          {:else}
+                            <Pin size={16} />
+                            <span>Pin</span>
+                          {/if}
+                        </button>
+                        <button class="menu-item" onclick={() => handleDownload(item)}>
+                          <Download size={16} />
+                          <span>Download</span>
+                        </button>
+                        <button class="menu-item" onclick={(event) => handleDelete(item, event)}>
+                          <Trash2 size={16} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              {/if}
+            {/if}
+          {/each}
+        {/if}
+        {#if searchQuery && filteredReadyItems.length === 0}
+          <div class="files-empty">No matching files</div>
+        {:else if !searchQuery && filteredReadyItems.length === 0}
           <div class="files-empty">No files yet</div>
         {/if}
       </div>
@@ -456,7 +498,7 @@
         {/each}
       </div>
     {/if}
-    {#if filteredReadyItems.length > 0}
+    {#if readyItems.length > 0}
       <div class="workspace-uploads uploads-block">
         <Collapsible.Root defaultOpen={false} class="group/collapsible" data-collapsible-root>
           <div data-slot="sidebar-group" data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
@@ -472,7 +514,7 @@
             </Collapsible.Trigger>
             <Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
               <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
-                {#each filteredReadyItems as item (item.file.id)}
+                {#each readyItems as item (item.file.id)}
                   <div class="ingested-row" data-ingested-menu-root={`recent-${item.file.id}`}>
                     <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
                       <span class="ingested-icon">
@@ -576,6 +618,15 @@
     color: var(--color-muted-foreground);
     font-weight: 600;
     padding: 0 0.25rem;
+  }
+
+  .files-block-subtitle {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted-foreground);
+    font-weight: 600;
+    padding: 0.35rem 0.25rem 0.15rem;
   }
 
   .files-empty {
