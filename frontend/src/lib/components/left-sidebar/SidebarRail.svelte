@@ -101,7 +101,7 @@
     width: 40px;
     height: 40px;
     border-radius: 0.5rem;
-    border: 1px solid var(--color-sidebar-border);
+    border: 0px solid var(--color-sidebar-primary);
     background-color: transparent;
     color: var(--color-sidebar-foreground);
     cursor: pointer;
@@ -142,7 +142,7 @@
 
   .rail-btn.active {
     background-color: var(--color-sidebar-accent);
-    border-color: var(--color-sidebar-primary);
+    border-color: var(--color-sidebar-border);
   }
 
   .rail-footer {
