@@ -8,7 +8,7 @@ def get_fs_definitions() -> dict:
     """Return filesystem tool definitions."""
     return {
         "Browse Files": {
-            "description": "List files and directories in R2-backed storage with glob pattern support",
+            "description": "List ingested files and folders in R2-backed storage (paths map to ingested records).",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -24,7 +24,7 @@ def get_fs_definitions() -> dict:
             "validate_read": True,
         },
         "Read File": {
-            "description": "Read file content from R2-backed storage",
+            "description": "Read extracted text/ai.md content for ingested files (including PDFs). Returns frontmatter + text, not raw binary.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -40,7 +40,7 @@ def get_fs_definitions() -> dict:
             "validate_read": True,
         },
         "Write File": {
-            "description": "Write content to file in R2-backed storage for project files and documents. For persistent, searchable notes use Create Note instead.",
+            "description": "Create/update ingested text files (stored in R2 + DB). Use for files; use Create Note for notes.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -56,7 +56,7 @@ def get_fs_definitions() -> dict:
             "validate_write": True,
         },
         "Search Files": {
-            "description": "Search for files by name pattern or content in R2-backed storage",
+            "description": "Search ingested files by name or extracted text content (including PDF text).",
             "input_schema": {
                 "type": "object",
                 "properties": {
