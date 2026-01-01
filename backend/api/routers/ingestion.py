@@ -387,6 +387,9 @@ async def get_derivative_content(
     if not derivative:
         raise HTTPException(status_code=404, detail="Derivative not found")
 
+    # Release DB connection before fetching from storage.
+    db.close()
+
     storage = get_storage_backend()
     headers = {"Content-Disposition": "inline"}
     if derivative.mime == "application/pdf":
