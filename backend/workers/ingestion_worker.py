@@ -16,6 +16,7 @@ from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 import shutil
+from threading import Event, Thread
 from typing import Callable
 from uuid import uuid4
 
@@ -38,6 +39,7 @@ from api.services.storage.service import get_storage_backend
 
 
 LEASE_SECONDS = 180
+HEARTBEAT_SECONDS = 15
 SLEEP_SECONDS = 2
 MAX_ATTEMPTS = 3
 BACKOFF_BASE_SECONDS = 2
@@ -50,6 +52,52 @@ PIPELINE_STAGES = [
     "thumb",
     "finalizing",
 ]
+ALLOWED_MIME_EXACT = {
+    "application/pdf",
+    "application/json",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "text/csv",
+    "application/csv",
+    "text/tab-separated-values",
+    "text/tsv",
+}
+ALLOWED_OCTET_EXTENSIONS = {
+    ".pdf",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".bmp",
+    ".tiff",
+    ".tif",
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".aac",
+    ".flac",
+    ".ogg",
+    ".opus",
+    ".txt",
+    ".md",
+    ".markdown",
+    ".csv",
+    ".tsv",
+    ".json",
+    ".yml",
+    ".yaml",
+    ".log",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".xls",
+    ".xlsm",
+    ".xltx",
+    ".xltm",
+}
 
 logger = logging.getLogger("ingestion.worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -126,6 +174,40 @@ class DerivativePayload:
     content: bytes
 
 
+def _make_payload(kind: str, storage_key: str, mime: str, content: bytes) -> DerivativePayload:
+    return DerivativePayload(
+        kind=kind,
+        storage_key=storage_key,
+        mime=mime,
+        size_bytes=len(content),
+        sha256=sha256(content).hexdigest(),
+        content=content,
+    )
+
+
+def _build_ai_md_payload(record: IngestedFile, viewer_kind: str, extraction_text: str) -> DerivativePayload:
+    user_prefix = f"{record.user_id}/files/{record.id}"
+    ai_body = (
+        "---\n"
+        f"file_id: {record.id}\n"
+        f"source_filename: {record.filename_original}\n"
+        f"source_mime: {record.mime_original}\n"
+        f"created_at: {record.created_at.isoformat()}\n"
+        f"sha256: {record.sha256}\n"
+        "derivatives:\n"
+        f"  {viewer_kind}: true\n"
+        "---\n\n"
+        f"{extraction_text or 'No text extraction available.'}"
+    )
+    ai_bytes = ai_body.encode("utf-8")
+    return _make_payload(
+        kind="ai_md",
+        storage_key=f"{user_prefix}/ai/ai.md",
+        mime="text/markdown",
+        content=ai_bytes,
+    )
+
+
 class IngestionError(Exception):
     def __init__(self, code: str, message: str, retryable: bool = False):
         super().__init__(message)
@@ -167,6 +249,32 @@ def _refresh_lease(db, job: FileProcessingJob) -> None:
     job.lease_expires_at = _now() + timedelta(seconds=LEASE_SECONDS)
     job.updated_at = _now()
     db.commit()
+
+
+def _start_heartbeat(job_id: str, user_id: str | None) -> Callable[[], None]:
+    stop_event = Event()
+
+    def _beat() -> None:
+        with SessionLocal() as heartbeat_db:
+            if user_id:
+                heartbeat_db.execute(text("SET app.user_id = :user_id"), {"user_id": str(user_id)})
+            while not stop_event.is_set():
+                job = heartbeat_db.query(FileProcessingJob).filter(FileProcessingJob.id == job_id).first()
+                if not job or job.status != "processing":
+                    break
+                job.lease_expires_at = _now() + timedelta(seconds=LEASE_SECONDS)
+                job.updated_at = _now()
+                heartbeat_db.commit()
+                stop_event.wait(HEARTBEAT_SECONDS)
+
+    thread = Thread(target=_beat, daemon=True)
+    thread.start()
+
+    def _stop() -> None:
+        stop_event.set()
+        thread.join(timeout=HEARTBEAT_SECONDS)
+
+    return _stop
 
 
 def _set_stage(db, job: FileProcessingJob, stage: str) -> None:
@@ -277,6 +385,42 @@ def _cleanup_staging(file_id: str) -> None:
 
 def _derivative_dir(file_id: str) -> Path:
     return Path("/tmp/sidebar-ingestion") / file_id / "derived"
+
+
+def _storage_prefix(record: IngestedFile) -> str:
+    return f"{record.user_id}/files/{record.id}"
+
+
+def _relative_storage_key(record: IngestedFile, key: str) -> str:
+    prefix = f"{_storage_prefix(record)}/"
+    if key.startswith(prefix):
+        return key[len(prefix):]
+    return key.lstrip("/")
+
+
+def _write_derivatives_atomically(
+    storage,
+    record: IngestedFile,
+    derivatives: list[DerivativePayload],
+) -> None:
+    nonce = uuid4()
+    staging_prefix = f"{_storage_prefix(record)}/staging/{nonce}"
+    staged_pairs: list[tuple[str, str]] = []
+    try:
+        for item in derivatives:
+            relative_key = _relative_storage_key(record, item.storage_key)
+            staged_key = f"{staging_prefix}/{relative_key}"
+            storage.put_object(staged_key, item.content, content_type=item.mime)
+            staged_pairs.append((staged_key, item.storage_key))
+        for staged_key, final_key in staged_pairs:
+            storage.move_object(staged_key, final_key)
+    except Exception:
+        for staged_key, _ in staged_pairs:
+            try:
+                storage.delete_object(staged_key)
+            except Exception:
+                pass
+        raise
 
 
 def _load_audio_transcriber() -> Callable[..., dict]:
@@ -508,6 +652,27 @@ def _guess_text_mime(filename: str) -> str | None:
     if ext in {".xlsx", ".xlsm", ".xltx", ".xltm"}:
         return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return None
+
+
+def _normalize_mime(mime_original: str | None, filename: str) -> str:
+    mime = (mime_original or "application/octet-stream").split(";")[0].strip().lower()
+    if not mime:
+        mime = "application/octet-stream"
+    if mime == "application/octet-stream":
+        guessed = _guess_text_mime(filename)
+        if guessed:
+            mime = guessed
+    return mime
+
+
+def _is_allowed_file(mime: str, filename: str) -> bool:
+    if mime.startswith(("image/", "audio/", "text/")):
+        return True
+    if mime in ALLOWED_MIME_EXACT:
+        return True
+    if mime == "application/octet-stream":
+        return Path(filename).suffix.lower() in ALLOWED_OCTET_EXTENSIONS
+    return False
 
 
 def _run_libreoffice_convert(source_path: Path, output_dir: Path) -> Path:
@@ -1309,6 +1474,9 @@ def _build_youtube_derivatives(
 
 def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> None:
     logger.info("Processing YouTube file_id=%s url=%s", record.id, record.source_url)
+    transcript = ""
+    metadata: dict = {}
+    derivatives: list[DerivativePayload] | None = None
     for stage in PIPELINE_STAGES:
         db.refresh(job)
         if job.status in {"paused", "canceled"}:
@@ -1320,10 +1488,13 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
         if stage == "validating":
             if not record.source_url:
                 raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
-        elif stage in {"converting", "extracting", "ai_md", "thumb"}:
-            time.sleep(0.05)
-        elif stage == "finalizing":
+        elif stage == "extracting":
             transcript, metadata = _transcribe_youtube(record)
+        elif stage == "ai_md":
+            derivatives = _build_youtube_derivatives(record, transcript, metadata)
+        elif stage == "finalizing":
+            if derivatives is None:
+                raise IngestionError("DERIVATIVE_MISSING", "AI derivative missing", retryable=False)
             existing_meta = record.source_metadata or {}
             metadata = {**existing_meta, **metadata}
             metadata.setdefault("provider", "youtube")
@@ -1334,10 +1505,8 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
             record.source_metadata = metadata
             db.commit()
 
-            derivatives = _build_youtube_derivatives(record, transcript, metadata)
             storage = get_storage_backend()
-            for item in derivatives:
-                storage.put_object(item.storage_key, item.content, content_type=item.mime)
+            _write_derivatives_atomically(storage, record, derivatives)
 
             db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
             now = _now()
@@ -1386,57 +1555,185 @@ def worker_loop() -> None:
                 record = _get_file(db, job)
                 if record.user_id:
                     db.execute(text("SET app.user_id = :user_id"), {"user_id": str(record.user_id)})
-                if record.source_url:
-                    _process_youtube_job(db, job, record)
+                stop_heartbeat = _start_heartbeat(str(job.id), str(record.user_id) if record.user_id else None)
+                try:
+                    if record.source_url:
+                        _process_youtube_job(db, job, record)
+                        db.refresh(job)
+                        if job.status not in {"paused", "canceled"}:
+                            _mark_ready(db, job)
+                        continue
+
+                    source_path = _staging_path(str(record.id))
+                    if not source_path.exists():
+                        raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)
+
+                    logger.info("Processing file_id=%s name=%s", record.id, record.filename_original)
+                    mime = _normalize_mime(record.mime_original, record.filename_original)
+                    is_spreadsheet = (
+                        mime
+                        in {
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "application/vnd.ms-excel",
+                            "text/csv",
+                            "application/csv",
+                            "text/tab-separated-values",
+                            "text/tsv",
+                        }
+                        or record.filename_original.lower().endswith((".csv", ".tsv"))
+                    )
+                    source_bytes: bytes | None = None
+                    viewer_payload: DerivativePayload | None = None
+                    viewer_source_path: Path | None = None
+                    extraction_text = ""
+                    ai_payload: DerivativePayload | None = None
+                    thumb_payload: DerivativePayload | None = None
+
+                    for stage in PIPELINE_STAGES:
+                        db.refresh(job)
+                        if job.status in {"paused", "canceled"}:
+                            raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
+                        _set_stage(db, job, stage)
+                        logger.info("Stage %s file_id=%s", stage, record.id)
+                        _refresh_lease(db, job)
+
+                        if stage == "validating":
+                            if record.size_bytes <= 0:
+                                raise IngestionError("FILE_EMPTY", "Uploaded file is empty", retryable=False)
+                            if not _is_allowed_file(mime, record.filename_original):
+                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+                        elif stage == "converting":
+                            if mime == "application/pdf":
+                                if source_bytes is None:
+                                    source_bytes = source_path.read_bytes()
+                                viewer_payload = _make_payload(
+                                    kind="viewer_pdf",
+                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
+                                    mime="application/pdf",
+                                    content=source_bytes,
+                                )
+                                viewer_source_path = source_path
+                            elif mime.startswith("image/"):
+                                if source_bytes is None:
+                                    source_bytes = source_path.read_bytes()
+                                extension = _detect_extension(record.filename_original, mime)
+                                viewer_payload = _make_payload(
+                                    kind="image_original",
+                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/image{extension or ''}",
+                                    mime=mime,
+                                    content=source_bytes,
+                                )
+                                viewer_source_path = source_path
+                            elif mime.startswith("audio/"):
+                                if source_bytes is None:
+                                    source_bytes = source_path.read_bytes()
+                                extension = _detect_extension(record.filename_original, mime)
+                                viewer_payload = _make_payload(
+                                    kind="audio_original",
+                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/audio{extension or ''}",
+                                    mime=mime,
+                                    content=source_bytes,
+                                )
+                            elif mime in {
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            }:
+                                pdf_path = _run_libreoffice_convert(source_path, _derivative_dir(str(record.id)))
+                                pdf_bytes = pdf_path.read_bytes()
+                                viewer_payload = _make_payload(
+                                    kind="viewer_pdf",
+                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
+                                    mime="application/pdf",
+                                    content=pdf_bytes,
+                                )
+                                viewer_source_path = pdf_path
+                            elif mime.startswith("text/") or mime == "application/json":
+                                if source_bytes is None:
+                                    source_bytes = source_path.read_bytes()
+                                viewer_payload = _make_payload(
+                                    kind="text_original",
+                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/source.txt",
+                                    mime=mime,
+                                    content=source_bytes,
+                                )
+                            elif not is_spreadsheet:
+                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+                        elif stage == "extracting":
+                            if mime == "application/pdf":
+                                extraction_text = _extract_pdf_text(source_path)
+                            elif mime.startswith("image/"):
+                                extraction_text = "Image file. No text extraction available."
+                            elif mime.startswith("audio/"):
+                                extraction_text = _transcribe_audio(source_path, record)
+                            elif mime.endswith("wordprocessingml.document"):
+                                extraction_text = _extract_docx_text(source_path)
+                            elif mime.endswith("presentationml.presentation"):
+                                extraction_text = _extract_pptx_text(source_path)
+                            elif is_spreadsheet:
+                                data = _extract_spreadsheet_data(source_path, mime, record.filename_original)
+                                data_json = json.dumps(data, ensure_ascii=False)
+                                extraction_text = data_json
+                                data_bytes = data_json.encode("utf-8")
+                                viewer_payload = _make_payload(
+                                    kind="viewer_json",
+                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/data.json",
+                                    mime="application/json",
+                                    content=data_bytes,
+                                )
+                            elif mime.startswith("text/") or mime == "application/json":
+                                if source_bytes is None:
+                                    source_bytes = source_path.read_bytes()
+                                extraction_text = source_bytes.decode("utf-8", errors="ignore").strip()
+                            else:
+                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+                        elif stage == "ai_md":
+                            if viewer_payload is None:
+                                raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
+                            ai_payload = _build_ai_md_payload(record, viewer_payload.kind, extraction_text)
+                        elif stage == "thumb":
+                            thumb_bytes: bytes | None = None
+                            if viewer_payload and viewer_payload.kind == "viewer_pdf" and viewer_source_path:
+                                thumb_bytes = _generate_pdf_thumbnail(viewer_source_path, _derivative_dir(str(record.id)))
+                            elif viewer_payload and viewer_payload.kind == "image_original":
+                                thumb_bytes = _generate_image_thumbnail(source_path)
+                            if thumb_bytes:
+                                thumb_payload = _make_payload(
+                                    kind="thumb_png",
+                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/thumb.png",
+                                    mime="image/png",
+                                    content=thumb_bytes,
+                                )
+                        elif stage == "finalizing":
+                            if viewer_payload is None or ai_payload is None:
+                                raise IngestionError("DERIVATIVE_MISSING", "Required derivatives missing", retryable=False)
+                            derivatives = [viewer_payload, ai_payload]
+                            if thumb_payload:
+                                derivatives.append(thumb_payload)
+                            storage = get_storage_backend()
+                            _write_derivatives_atomically(storage, record, derivatives)
+
+                            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+                            now = _now()
+                            for item in derivatives:
+                                db.add(
+                                    FileDerivative(
+                                        file_id=record.id,
+                                        kind=item.kind,
+                                        storage_key=item.storage_key,
+                                        mime=item.mime,
+                                        size_bytes=item.size_bytes,
+                                        sha256=item.sha256,
+                                        created_at=now,
+                                    )
+                                )
+                            db.commit()
+
                     db.refresh(job)
                     if job.status not in {"paused", "canceled"}:
                         _mark_ready(db, job)
-                    continue
-
-                source_path = _staging_path(str(record.id))
-                if not source_path.exists():
-                    raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)
-
-                logger.info("Processing file_id=%s name=%s", record.id, record.filename_original)
-                for stage in PIPELINE_STAGES:
-                    db.refresh(job)
-                    if job.status in {"paused", "canceled"}:
-                        raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
-                    _set_stage(db, job, stage)
-                    logger.info("Stage %s file_id=%s", stage, record.id)
-                    _refresh_lease(db, job)
-
-                    if stage == "validating":
-                        if record.size_bytes <= 0:
-                            raise IngestionError("FILE_EMPTY", "Uploaded file is empty", retryable=False)
-                    elif stage in {"converting", "extracting", "ai_md", "thumb"}:
-                        time.sleep(0.05)
-                    elif stage == "finalizing":
-                        derivatives = _build_derivatives(record, source_path)
-                        storage = get_storage_backend()
-                        for item in derivatives:
-                            storage.put_object(item.storage_key, item.content, content_type=item.mime)
-
-                        db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
-                        now = _now()
-                        for item in derivatives:
-                            db.add(
-                                FileDerivative(
-                                    file_id=record.id,
-                                    kind=item.kind,
-                                    storage_key=item.storage_key,
-                                    mime=item.mime,
-                                    size_bytes=item.size_bytes,
-                                    sha256=item.sha256,
-                                    created_at=now,
-                                )
-                            )
-                        db.commit()
-
-                db.refresh(job)
-                if job.status not in {"paused", "canceled"}:
-                    _mark_ready(db, job)
-                    _cleanup_staging(str(record.id))
+                        _cleanup_staging(str(record.id))
+                finally:
+                    stop_heartbeat()
             except IngestionError as error:
                 if error.code == "JOB_HALTED":
                     continue

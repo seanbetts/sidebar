@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from api.models.file_ingestion import IngestedFile, FileProcessingJob
-from api.workers import ingestion_worker
+from workers import ingestion_worker
 
 
 def _make_ingested_file(test_db, file_id):
@@ -92,3 +92,16 @@ def test_requeue_stalled_jobs_marks_retryable(test_db):
     assert job.attempts == 1
     assert job.lease_expires_at is not None
     assert job.lease_expires_at > ingestion_worker._now()
+
+
+def test_is_allowed_file_accepts_supported_types():
+    assert ingestion_worker._is_allowed_file("application/pdf", "doc.pdf")
+    assert ingestion_worker._is_allowed_file("text/plain", "notes.txt")
+    assert ingestion_worker._is_allowed_file("image/png", "image.png")
+    assert ingestion_worker._is_allowed_file("audio/mpeg", "track.mp3")
+    assert ingestion_worker._is_allowed_file("application/octet-stream", "sheet.xlsx")
+
+
+def test_is_allowed_file_rejects_unsupported_types():
+    assert not ingestion_worker._is_allowed_file("video/mp4", "clip.mp4")
+    assert not ingestion_worker._is_allowed_file("application/octet-stream", "archive.zip")

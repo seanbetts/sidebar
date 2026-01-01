@@ -26,37 +26,37 @@
     </div>
   </button>
   <button class="website-menu-btn" on:click={(event) => onOpenMenu(event, site)} aria-label="More options">
-    <MoreHorizontal size={14} />
+    <MoreHorizontal size={16} />
   </button>
   {#if isMenuOpen}
     <div class="website-menu">
       <button class="menu-item" on:click={() => onPin(site)}>
         {#if site.pinned}
-          <PinOff size={14} />
+          <PinOff size={16} />
           <span>Unpin</span>
         {:else}
-          <Pin size={14} />
+          <Pin size={16} />
           <span>Pin</span>
         {/if}
       </button>
       <button class="menu-item" on:click={() => onRename(site)}>
-        <Pencil size={14} />
+        <Pencil size={16} />
         <span>Rename</span>
       </button>
       <button class="menu-item" on:click={() => onDownload(site)}>
-        <Download size={14} />
+        <Download size={16} />
         <span>Download</span>
       </button>
       <button class="menu-item" on:click={() => onArchive(site)}>
         {#if archived}
-          <ArchiveRestore size={14} />
+          <ArchiveRestore size={16} />
         {:else}
-          <Archive size={14} />
+          <Archive size={16} />
         {/if}
         <span>{archived ? 'Unarchive' : 'Archive'}</span>
       </button>
-      <button class="menu-item delete" on:click={() => onDelete(site)}>
-        <Trash2 size={14} />
+      <button class="menu-item" on:click={() => onDelete(site)}>
+        <Trash2 size={16} />
         <span>Delete</span>
       </button>
     </div>
@@ -141,7 +141,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     text-align: left;
     transition: background-color 0.2s;
     color: var(--color-popover-foreground);
@@ -149,10 +149,6 @@
 
   .menu-item:hover {
     background-color: var(--color-accent);
-  }
-
-  .menu-item.delete {
-    color: var(--color-destructive);
   }
 
   .website-icon {

@@ -153,7 +153,7 @@
           <Pencil size={16} />
           <span>Rename</span>
         </button>
-        <button class="menu-item delete" on:click={handleDelete}>
+        <button class="menu-item" on:click={handleDelete}>
           <Trash2 size={16} />
           <span>Delete</span>
         </button>
@@ -270,7 +270,7 @@
     border-radius: 0.375rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     z-index: 10;
-    min-width: 120px;
+    min-width: 150px;
   }
 
   .menu-item {
@@ -290,10 +290,6 @@
 
   .menu-item:hover {
     background-color: var(--color-accent);
-  }
-
-  .menu-item.delete {
-    color: var(--color-destructive);
   }
 
   .title-skeleton {
