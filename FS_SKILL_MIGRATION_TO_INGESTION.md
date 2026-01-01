@@ -165,6 +165,8 @@ async def upload_file(
 
 Migrate each `fs` script to use ingestion API instead of `file_objects`.
 
+Note: `mkdir.py` and `copy.py` were removed because ingestion-backed storage treats folders as implicit and does not support cheap server-side copies.
+
 #### 2.1: Update `list.py`
 
 **File**: `/backend/skills/fs/scripts/list.py`
@@ -654,7 +656,7 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [x] Create migration for `path` column
 - [x] Update IngestedFile model
 - [x] Update upload API to accept folder parameter
-- [ ] Update fs scripts to use path instead of filename
+- [x] Update fs scripts to use path instead of filename
 - [ ] Test hierarchical organization
 
 ### Phase 4: Data Migration
@@ -665,7 +667,7 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [ ] Test file access after migration
 
 ### Phase 5: Documentation
-- [ ] Update fs SKILL.md
+- [x] Update fs SKILL.md
 - [ ] Update API documentation
 - [ ] Add migration notes to changelog
 - [ ] Update developer guide
