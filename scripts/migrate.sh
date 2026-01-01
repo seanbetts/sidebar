@@ -195,6 +195,7 @@ configure_supabase() {
   export DATABASE_URL="postgresql://${pooler_user}:${password_encoded}@${pooler_host}:${pooler_port}/${db_name}?sslmode=${sslmode}"
   export DATABASE_URL_DIRECT="${DATABASE_URL//%/%%}"
   export APP_ENV="production"
+  echo
   echo "Using Supabase pooler: user=${pooler_user} host=${pooler_host} port=${pooler_port} db=${db_name}"
   use_doppler=0
 }
@@ -202,14 +203,15 @@ configure_supabase() {
 load_env
 detect_doppler
 
+if [[ "${1:-}" == "--supabase" ]]; then
+  use_supabase=1
+  export ALLOW_PROD_MIGRATIONS=true
+  shift
+fi
+
 if is_prod_db && [[ "${ALLOW_PROD_MIGRATIONS:-}" != "true" ]]; then
   echo "Refusing to run migrations against Supabase without ALLOW_PROD_MIGRATIONS=true"
   exit 1
-fi
-
-if [[ "${1:-}" == "--supabase" ]]; then
-  use_supabase=1
-  shift
 fi
 
 COMMAND="${1:-}"
