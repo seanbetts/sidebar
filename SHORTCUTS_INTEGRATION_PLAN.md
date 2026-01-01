@@ -5,16 +5,17 @@
 **V1 Scope:** Focused on essential quick capture workflows only. Advanced features moved to future development.
 
 **V1 Features:**
-- ✅ **Personal Access Token (PAT) auth** - Works with all existing endpoints
-- ✅ **Scratchpad quick capture** - Add to top with divider
-- ✅ **Notes creation** - Quick note capture with optional title
-- ✅ **Website saving** - Save URLs with auto-fetched content
+- ✅ **Personal Access Token (PAT) auth** - Managed in user settings
+- ✅ **Scratchpad quick capture** - Append by default; prepend for Shortcuts only
+- ✅ **Notes creation** - Quick note capture with optional title (title stored separately)
+- ✅ **Website saving** - Save URLs with auto-fetched content (fail if fetch fails)
+- ✅ **File ingestion (Shortcuts upload)** - Quick upload via multipart; originals are removed after ingestion
 
 **Moved to Future:**
 - 📋 Note templates (Phase 4)
 - 💬 Chat with sideBar (Phase 3)
 - 🔗 Webhooks (Phase 5)
-- 🎨 Management UI (Phase 6)
+- 🎨 Templates/Webhooks management UI (Phase 6)
 
 **V1 Implementation Time:** ~3 hours (Auth + Quick Capture only)
 
@@ -27,14 +28,12 @@ Enable seamless integration between sideBar and Apple Shortcuts for rapid captur
 **Core Philosophy:**
 - Quick capture from any Apple device (iPhone, iPad, Mac, Apple Watch)
 - Voice-first workflows via Siri
-- Template-driven structured content creation
-- Webhook-powered automation between sideBar and other apps
 - Zero-friction daily usage
 
 **V1 Capabilities:**
-1. **Quick Capture:** Add to scratchpad (top with divider), save websites, create notes via Shortcuts
-2. **Voice Integration:** Full Siri support for hands-free quick capture
-3. **Personal Access Token:** Simple, secure authentication for all Shortcuts
+1. **Quick Capture:** Add to scratchpad, save websites, create notes via Shortcuts
+2. **Personal Access Token:** Simple, secure authentication for all Shortcuts
+3. **File Ingestion:** Upload a file from Shortcuts to the ingestion pipeline
 
 ---
 
@@ -49,7 +48,7 @@ The existing `verify_bearer_token` middleware is enhanced to support BOTH:
 2. **Personal Access Token (PAT)** (new Shortcuts auth)
 
 ```
-PAT Storage: Environment variables (SHORTCUTS_API_TOKEN, SHORTCUTS_PAT_USER_ID)
+PAT Storage: User settings (refreshable; stored per-user)
 PAT Format: sb_pat_<32_random_chars>
 Usage: Authorization: Bearer <token> (same header for both auth types)
 Validation: Token prefix detection → secrets.compare_digest() for PAT, JWT validation for Supabase
@@ -59,7 +58,7 @@ Validation: Token prefix detection → secrets.compare_digest() for PAT, JWT val
 - ✅ **Reuse existing infrastructure** - All endpoints work with PAT, zero duplication
 - ✅ **Single auth dependency** - `verify_bearer_token` supports both token types
 - ✅ **Simple for Shortcuts** - Just use `Bearer sb_pat_xxx` header like JWT
-- ✅ **Personal use optimized** - PAT stored in env vars, maps to single user_id
+- ✅ **Personal use optimized** - PAT stored in user settings, maps to a single user_id
 - ✅ **Future-proof** - Can add more token types later without breaking changes
 
 ### Request Flow
@@ -82,13 +81,228 @@ Database + R2 Storage
 Other Apple Shortcuts
 ```
 
-**Key Insight:** No new endpoints needed for basic capture - just enhance existing ones with PAT support!
+**Key Insight:** Minimal new endpoints - reuse existing APIs wherever possible, with PAT support.
 
 ---
 
-## Database Schema
+## API Endpoints
 
-### Shortcut Templates
+### Strategy: Reuse + Enhance Existing Endpoints
+
+**Key Changes:**
+1. ✅ **Enhance existing endpoints** with optional parameters for Shortcuts
+2. ✅ **Unified auth** - All endpoints support PAT via `verify_bearer_token`
+3. 🆕 **Minimal new endpoints** - Only for features not covered by existing API
+4. ✅ **Backward compatible** - Existing UI/JWT auth continues to work
+
+---
+
+### Quick Capture Endpoints (Enhanced Existing)
+
+#### **Scratchpad** - `POST /api/scratchpad` (ENHANCED)
+Existing endpoint enhanced with prepend-with-divider behavior for Shortcuts.
+
+```http
+POST /api/scratchpad
+Authorization: Bearer sb_pat_...  # PAT now supported!
+Content-Type: application/json
+
+{
+  "content": "Text to add",
+  "mode": "prepend"  # NEW: prepend with divider, append, or replace
+}
+
+Response:
+{
+  "success": true,
+  "id": "uuid"
+}
+```
+
+**Scratchpad Modes:**
+- `"prepend"` (Shortcuts/PAT only): Add to TOP with `___` divider
+  ```markdown
+  # ✏️ Scratchpad
+
+  [NEW CONTENT]
+
+  ___
+
+  [EXISTING CONTENT]
+  ```
+- `"append"`: Add to bottom (default)
+- `"replace"`: Replace all content (existing behavior)
+
+**Changes:**
+- Add `mode` parameter with prepend-divider logic
+- Default to `"append"` globally
+- Force `"prepend"` when PAT auth is detected (unless `mode` is explicitly set)
+- Already supports PAT via enhanced `verify_bearer_token`
+
+---
+
+#### **Notes** - `POST /api/notes` (ENHANCED)
+Existing endpoint enhanced with `title` parameter.
+
+```http
+POST /api/notes
+Authorization: Bearer sb_pat_...  # PAT now supported!
+Content-Type: application/json
+
+{
+  "title": "Note title",  # NEW: optional explicit title
+  "content": "Markdown content",
+  "folder": "folder/path"  # Existing optional parameter
+}
+
+Response:
+{
+  "id": "uuid",
+  "title": "Note title",
+  "content": "...",
+  "folder": "folder/path",
+  "created_at": "2025-01-03T10:00:00Z"
+}
+```
+
+**Changes:**
+- Add optional `title` parameter (store in DB only)
+- H1 injection happens at render/export time, not on write
+- Already supports PAT via enhanced `verify_bearer_token`
+
+---
+
+#### **Websites** - `POST /api/websites/quick-save` (NEW LIGHTWEIGHT ENDPOINT)
+New simplified endpoint alongside existing `/api/websites/save` (skill-based).
+
+```http
+POST /api/websites/quick-save
+Authorization: Bearer sb_pat_...
+Content-Type: application/json
+
+{
+  "url": "https://example.com/article",
+  "title": "Optional title"  # Auto-fetched via Jina if omitted
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "job_id": "uuid"
+  }
+}
+```
+
+**Implementation:**
+- Extract Jina fetching logic to `JinaService`
+- Direct `WebsitesService.upsert_website()` call (no skill executor overhead)
+- Keep existing `/api/websites/save` for UI (skill-based, backward compatible)
+- Fail the request if Jina fetch fails (do not save empty content)
+- Return `202 Accepted` with a `job_id`; completion is async.
+- Provide a status endpoint for job completion (polling or webhook-triggered updates).
+
+---
+
+---
+
+## V1 Implementation Summary
+
+**Endpoints to Implement:**
+1. ✅ Enhanced `/api/scratchpad` - Prepend with divider mode for PAT/Shortcuts (append default)
+2. ✅ Enhanced `/api/notes` - Optional title parameter
+3. 🆕 New `/api/websites/quick-save` - Lightweight website saving
+4. 🆕 New `/api/ingestion/quick-upload` - Multipart file upload into ingestion
+
+**Total New Endpoints:** 1 (just websites!)
+**Total Enhanced Endpoints:** 2 (scratchpad, notes)
+**Total Implementation Time:** ~3 hours
+
+---
+
+## Future Development Ideas
+
+### Chat with sideBar
+
+**Why Future:** Chat requires non-streaming endpoint implementation and conversation management complexity. Focus v1 on quick capture only.
+
+**Endpoint:** `POST /api/chat/send`
+
+```http
+POST /api/chat/send
+Authorization: Bearer sb_pat_...
+Content-Type: application/json
+
+{
+  "message": "Question for Claude",
+  "conversation_id": "uuid",  # Optional - creates new if empty
+  "return_response": true     # Optional - wait for Claude response
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "conversation_id": "uuid",
+    "message_id": "uuid",
+    "response": {
+      "content": "Claude's response text",
+      "message_id": "uuid"
+    }
+  }
+}
+```
+
+**Implementation:**
+- Reuse `ClaudeClient` for non-streaming requests
+- Create conversation if needed
+- Optional blocking wait for response (for Siri voice workflows)
+
+---
+
+### Note Templates
+
+**Why Future:** Templates add significant complexity (database tables, rendering engine, CRUD endpoints). V1 focuses on simple quick capture.
+
+**Schema:** See "Future Schema (Templates & Webhooks)" below.
+
+**Endpoints:**
+- `GET /api/shortcuts/templates` - List templates
+- `POST /api/shortcuts/templates` - Create template
+- `POST /api/shortcuts/notes/from-template` - Create note from template
+
+**Example Use Case:**
+```
+Template: "meeting_notes"
+Variables: {title, attendees, discussion, action_items}
+Result: Structured meeting note with consistent format
+```
+
+---
+
+### Webhooks (Two-Way Automation)
+
+**Why Future:** Webhooks require event system, payload rendering, and external HTTP calls. Not essential for v1 quick capture.
+
+**Schema:** See "Future Schema (Templates & Webhooks)" below.
+
+**Supported Events:**
+- `note_created`, `note_updated`, `note_deleted`
+- `website_saved`, `website_deleted`
+- `scratchpad_updated`
+- `conversation_created`, `chat_message_sent`
+
+**Use Cases:**
+- Auto-export notes to Things 3
+- Trigger backup when important note created
+- Send notifications to other apps
+- Cross-app automation workflows
+
+---
+
+### Future Schema (Templates & Webhooks)
+
+#### Shortcut Templates
 
 ```sql
 CREATE TABLE shortcut_templates (
@@ -147,7 +361,7 @@ CREATE INDEX idx_templates_name ON shortcut_templates(user_id, name);
 }
 ```
 
-### Webhooks
+#### Webhooks
 
 ```sql
 CREATE TABLE shortcut_webhooks (
@@ -183,250 +397,11 @@ class WebhookEvent:
 
 ---
 
-## API Endpoints
-
-### Strategy: Reuse + Enhance Existing Endpoints
-
-**Key Changes:**
-1. ✅ **Enhance existing endpoints** with optional parameters for Shortcuts
-2. ✅ **Unified auth** - All endpoints support PAT via `verify_bearer_token`
-3. 🆕 **Minimal new endpoints** - Only for features not covered by existing API
-4. ✅ **Backward compatible** - Existing UI/JWT auth continues to work
-
----
-
-### Quick Capture Endpoints (Enhanced Existing)
-
-#### **Scratchpad** - `POST /api/scratchpad` (ENHANCED)
-Existing endpoint enhanced with prepend-with-divider behavior for Shortcuts.
-
-```http
-POST /api/scratchpad
-Authorization: Bearer sb_pat_...  # PAT now supported!
-Content-Type: application/json
-
-{
-  "content": "Text to add",
-  "mode": "prepend"  # NEW: prepend with divider, append, or replace
-}
-
-Response:
-{
-  "success": true,
-  "id": "uuid"
-}
-```
-
-**Scratchpad Modes:**
-- `"prepend"` (default for Shortcuts): Add to TOP with `___` divider
-  ```markdown
-  # ✏️ Scratchpad
-
-  [NEW CONTENT]
-
-  ___
-
-  [EXISTING CONTENT]
-  ```
-- `"append"`: Add to bottom (existing behavior)
-- `"replace"`: Replace all content (existing behavior)
-
-**Changes:**
-- Add `mode` parameter with prepend-divider logic
-- Default to `"prepend"` for quick capture workflows
-- Already supports PAT via enhanced `verify_bearer_token`
-
----
-
-#### **Notes** - `POST /api/notes` (ENHANCED)
-Existing endpoint enhanced with `title` parameter.
-
-```http
-POST /api/notes
-Authorization: Bearer sb_pat_...  # PAT now supported!
-Content-Type: application/json
-
-{
-  "title": "Note title",  # NEW: optional explicit title
-  "content": "Markdown content",
-  "folder": "folder/path"  # Existing optional parameter
-}
-
-Response:
-{
-  "id": "uuid",
-  "title": "Note title",
-  "content": "...",
-  "folder": "folder/path",
-  "created_at": "2025-01-03T10:00:00Z"
-}
-```
-
-**Changes:**
-- Add optional `title` parameter (prepends as H1 if provided)
-- Already supports PAT via enhanced `verify_bearer_token`
-
----
-
-#### **Websites** - `POST /api/websites` (NEW LIGHTWEIGHT ENDPOINT)
-New simplified endpoint alongside existing `/api/websites/save` (skill-based).
-
-```http
-POST /api/websites
-Authorization: Bearer sb_pat_...
-Content-Type: application/json
-
-{
-  "url": "https://example.com/article",
-  "title": "Optional title"  # Auto-fetched via Jina if omitted
-}
-
-Response:
-{
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "title": "Article Title",
-    "url": "https://example.com/article"
-  }
-}
-```
-
-**Implementation:**
-- Extract Jina fetching logic to `JinaService`
-- Direct `WebsitesService.upsert_website()` call (no skill executor overhead)
-- Keep existing `/api/websites/save` for UI (skill-based, backward compatible)
-
----
-
----
-
-## V1 Implementation Summary
-
-**Endpoints to Implement:**
-1. ✅ Enhanced `/api/scratchpad` - Prepend with divider mode
-2. ✅ Enhanced `/api/notes` - Optional title parameter
-3. 🆕 New `/api/websites` - Lightweight website saving
-
-**Total New Endpoints:** 1 (just websites!)
-**Total Enhanced Endpoints:** 2 (scratchpad, notes)
-**Total Implementation Time:** ~3 hours
-
----
-
-## Future Development Ideas
-
-### Chat with sideBar
-
-**Why Future:** Chat requires non-streaming endpoint implementation and conversation management complexity. Focus v1 on quick capture only.
-
-**Endpoint:** `POST /api/chat/send`
-
-```http
-POST /api/chat/send
-Authorization: Bearer sb_pat_...
-Content-Type: application/json
-
-{
-  "message": "Question for Claude",
-  "conversation_id": "uuid",  # Optional - creates new if empty
-  "return_response": true     # Optional - wait for Claude response
-}
-
-Response:
-{
-  "success": true,
-  "data": {
-    "conversation_id": "uuid",
-    "message_id": "uuid",
-    "response": {
-      "content": "Claude's response text",
-      "message_id": "uuid"
-    }
-  }
-}
-```
-
-**Implementation:**
-- Reuse `ClaudeClient` for non-streaming requests
-- Create conversation if needed
-- Optional blocking wait for response (for Siri voice workflows)
-
----
-
-### Note Templates
-
-**Why Future:** Templates add significant complexity (database tables, rendering engine, CRUD endpoints). V1 focuses on simple quick capture.
-
-**Database Schema:**
-```sql
-CREATE TABLE shortcut_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  name TEXT NOT NULL UNIQUE,
-  type TEXT NOT NULL,
-  template TEXT NOT NULL,
-  variables JSONB NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-**Endpoints:**
-- `GET /api/shortcuts/templates` - List templates
-- `POST /api/shortcuts/templates` - Create template
-- `POST /api/shortcuts/notes/from-template` - Create note from template
-
-**Example Use Case:**
-```
-Template: "meeting_notes"
-Variables: {title, attendees, discussion, action_items}
-Result: Structured meeting note with consistent format
-```
-
----
-
-### Webhooks (Two-Way Automation)
-
-**Why Future:** Webhooks require event system, payload rendering, and external HTTP calls. Not essential for v1 quick capture.
-
-**Database Schema:**
-```sql
-CREATE TABLE shortcut_webhooks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  name TEXT NOT NULL,
-  event TEXT NOT NULL,
-  callback_url TEXT NOT NULL,
-  payload_template JSONB,
-  enabled BOOLEAN DEFAULT true,
-  last_triggered_at TIMESTAMP,
-  trigger_count INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-**Supported Events:**
-- `note_created`, `note_updated`, `note_deleted`
-- `website_saved`, `website_deleted`
-- `scratchpad_updated`
-- `conversation_created`, `chat_message_sent`
-
-**Use Cases:**
-- Auto-export notes to Things 3
-- Trigger backup when important note created
-- Send notifications to other apps
-- Cross-app automation workflows
-
----
-
 ### Management UI
 
-**Why Future:** UI is nice-to-have. V1 can use env vars for token, no UI needed for basic functionality.
+**Why Future:** Templates/webhooks UI can wait; V1 only needs the PAT management UI.
 
 **Features:**
-- Token management (show, regenerate)
 - Template CRUD interface
 - Webhook CRUD interface
 - Usage statistics
@@ -471,23 +446,14 @@ CREATE TABLE shortcut_webhooks (
 backend/
   api/
     auth.py                 # ENHANCED: Add PAT support to verify_bearer_token
-    config.py               # ENHANCED: Add shortcuts_api_token, shortcuts_pat_user_id
     routers/
+      settings.py           # ENHANCED: PAT create/refresh endpoint
       scratchpad.py         # ENHANCED: Add mode parameter
       notes.py              # ENHANCED: Add title parameter
       websites.py           # ENHANCED: Add POST /api/websites (lightweight)
-      chat.py               # ENHANCED: Add POST /api/chat/send (non-streaming)
-      shortcuts.py          # NEW: Templates & webhooks endpoints only
     services/
       jina_service.py       # NEW: Extract Jina fetching from skill
-      template_service.py   # NEW: Template rendering
-      webhook_service.py    # NEW: Webhook triggering
-    models/
-      shortcut_template.py  # NEW: Template model
-      shortcut_webhook.py   # NEW: Webhook model
-    alembic/
-      versions/
-        YYYYMMDD_HHmm-NNN_add_shortcuts_tables.py  # NEW
+      user_settings_service.py  # ENHANCED: Store PAT in user settings
 
 frontend/
   src/
@@ -496,130 +462,45 @@ frontend/
         settings/
           shortcuts/
             ShortcutsSettings.svelte     # NEW: Token management UI
-            TemplateManager.svelte       # NEW: Template CRUD UI
-            WebhookManager.svelte        # NEW: Webhook CRUD UI
+
+Future (Phase 3+):
+- `backend/api/routers/shortcuts.py` (templates/webhooks)
+- `backend/api/services/template_service.py`
+- `backend/api/services/webhook_service.py`
+- `backend/api/models/shortcut_template.py`
+- `backend/api/models/shortcut_webhook.py`
+- Alembic migrations for templates/webhooks
+- Templates/Webhooks UI components
 ```
 
 ### Changes Summary
 
-**Enhanced Files:**
+**V1 Changes:**
 - `backend/api/auth.py` - Add PAT detection and validation
-- `backend/api/config.py` - Add PAT config
+- `backend/api/routers/settings.py` - Add PAT create/refresh endpoint
+- `backend/api/services/user_settings_service.py` - Store PAT in user settings
 - `backend/api/routers/scratchpad.py` - Add mode parameter
 - `backend/api/routers/notes.py` - Add title parameter
 - `backend/api/routers/websites.py` - Add lightweight POST endpoint
-- `backend/api/routers/chat.py` - Add non-streaming endpoint
-- `.env.example` - Document new env vars
-
-**New Files:**
 - `backend/api/services/jina_service.py` - Extracted Jina logic
+- `frontend/src/lib/components/settings/shortcuts/ShortcutsSettings.svelte` - PAT management UI
+
+**Future (Phase 3+):**
 - `backend/api/routers/shortcuts.py` - Templates & webhooks only
 - `backend/api/services/template_service.py` - Template rendering
 - `backend/api/services/webhook_service.py` - Webhook triggers
 - `backend/api/models/shortcut_template.py` - Template model
 - `backend/api/models/shortcut_webhook.py` - Webhook model
+- Alembic migrations for templates/webhooks
+- `backend/api/routers/chat.py` - Optional non-streaming chat endpoint
 
 ---
 
-### Enhanced Authentication
+### Authentication (V1)
 
-**File: `backend/api/auth.py` (ENHANCED)**
-
-```python
-"""Unified authentication for both MCP and REST endpoints."""
-import logging
-import secrets
-from fastapi import HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
-from api.config import settings
-from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
-
-bearer_scheme = HTTPBearer(auto_error=False)
-logger = logging.getLogger(__name__)
-
-
-async def verify_bearer_token(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
-) -> dict:
-    """Verify either Supabase JWT OR Shortcuts PAT token.
-
-    Supports both authentication methods:
-    1. Supabase JWT (existing web UI)
-    2. Personal Access Token (PAT) for Shortcuts (new)
-
-    Returns:
-        dict with 'sub' (user_id)
-    """
-    # Auth dev mode bypass
-    if settings.auth_dev_mode:
-        if not settings.allow_auth_dev_mode:
-            logger.warning("AUTH_DEV_MODE is enabled outside local/test environment.")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="AUTH_DEV_MODE requires APP_ENV=local",
-            )
-        return {"sub": settings.default_user_id}
-
-    if not credentials or not credentials.credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = credentials.credentials
-
-    # Check if it's a Shortcuts PAT (starts with sb_pat_)
-    if token.startswith("sb_pat_"):
-        if not settings.shortcuts_api_token:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Shortcuts API not configured"
-            )
-
-        # Constant-time comparison to prevent timing attacks
-        if not secrets.compare_digest(token, settings.shortcuts_api_token):
-            logger.warning("Invalid Shortcuts PAT token attempt")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid API token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # Return user_id for PAT
-        user_id = settings.shortcuts_pat_user_id or settings.default_user_id
-        logger.info(f"PAT authenticated for user: {user_id}")
-        return {"sub": user_id}
-
-    # Otherwise, validate as Supabase JWT
-    validator = SupabaseJWTValidator()
-    try:
-        return await validator.validate_token(token)
-    except JWTValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid JWT: {exc}",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
-```
-
-**File: `backend/api/config.py` (ENHANCED)**
-
-```python
-class Settings(BaseSettings):
-    # ... existing settings ...
-
-    # Shortcuts integration (NEW)
-    shortcuts_api_token: str = ""      # sb_pat_xxx format
-    shortcuts_pat_user_id: str = ""    # User ID for PAT requests
-
-    # Jina.ai integration (MOVED from skill)
-    jina_api_key: str = ""
-
-    class Config:
-        env_file = ".env"
-```
+- PAT stored in user settings and managed via Settings UI (refreshable/regenerable).
+- `verify_bearer_token` accepts JWT or PAT; PATs are stored plaintext (single active token per user) and looked up by token in user settings (DB) with constant-time comparison.
+- Consider caching PAT lookups per process to avoid a DB read on every request.
 
 ### Template Rendering Service
 
@@ -1231,56 +1112,16 @@ app.include_router(shortcuts.router, prefix="/api")
 
 ---
 
-## Configuration
+## Configuration (V1)
 
-### Environment Variables
-
-**Add to `.env.example`:**
-```bash
-# Shortcuts Integration (Personal Access Token)
-SHORTCUTS_API_TOKEN=sb_pat_generate_a_random_32_char_string_here
-SHORTCUTS_PAT_USER_ID=your_user_id_uuid_here
-
-# Jina.ai Integration (for website fetching)
-JINA_API_KEY=your_jina_api_key_here
-```
-
-**Generate PAT token:**
-```bash
-python -c "import secrets; print(f'sb_pat_{secrets.token_urlsafe(24)}')"
-```
-
-**Add to `backend/api/config.py`:**
-```python
-class Settings(BaseSettings):
-    # ... existing settings ...
-
-    # Shortcuts integration
-    shortcuts_api_token: str = ""       # sb_pat_xxx format
-    shortcuts_pat_user_id: str = ""     # User ID for PAT authentication
-
-    # Jina.ai integration (moved from skill)
-    jina_api_key: str = ""
-
-    class Config:
-        env_file = ".env"
-```
-
-**Add to `.env.local`** (for local development):
-```bash
-# Generate a PAT token
-SHORTCUTS_API_TOKEN=sb_pat_abcdefghijklmnopqrstuvwxyz123456
-
-# Your user ID (same as DEFAULT_USER_ID in dev mode)
-SHORTCUTS_PAT_USER_ID=81326b53-b7eb-42e2-b645-0c03cb5d5dd4
-
-# Jina API key (get from https://jina.ai/)
-JINA_API_KEY=jina_xxx...
-```
+- **PAT management:** Generate/refresh the PAT in the Settings UI and store it in user settings (DB). Shortcuts use that token in the Authorization header.
+- **Jina API key:** Keep `JINA_API_KEY` in env/config for website fetching.
 
 ---
 
 ## Example Apple Shortcuts
+
+**PAT:** Copy the token from Settings → Shortcuts in sideBar and use it in the Authorization header.
 
 ### 1. Add to Scratchpad (Top with Divider)
 
@@ -1380,17 +1221,14 @@ Actions:
 1. **Enhance `auth.py`** - Add PAT detection and validation (30 min)
    - Token prefix check (`sb_pat_`)
    - Constant-time comparison
-   - User ID mapping from env var
-2. **Update `config.py`** - Add PAT settings (10 min)
-   - `shortcuts_api_token`
-   - `shortcuts_pat_user_id`
-   - `jina_api_key` (moved from skill)
-3. **Update `.env.example`** and generate PAT (10 min)
+   - User ID mapping from user settings (DB)
+2. **Add PAT storage to user settings** (30 min)
+   - Create/refresh endpoint in Settings API
+   - Store token hash or plaintext (decide) + user_id
+3. **Add Settings UI** for PAT (20 min)
+   - Show current token (copy)
+   - Regenerate/rotate token
 4. **Test PAT auth** with existing endpoints (20 min)
-5. **Generate PAT token** for local dev (10 min)
-   ```bash
-   python -c "import secrets; print(f'sb_pat_{secrets.token_urlsafe(24)}')"
-   ```
 
 **Deliverable:** ✅ Can authenticate with PAT on ANY existing endpoint
 
@@ -1402,20 +1240,28 @@ Actions:
 
 1. **Enhance `/api/scratchpad`** - Add prepend-with-divider mode (30 min)
    - Prepend logic: new content + `\n\n___\n\n` + existing content
+   - Default to append; force prepend when PAT auth is detected
    - Keep title at top
    - Test with Shortcuts
 2. **Enhance `/api/notes`** - Add optional title parameter (20 min)
-   - If title provided, prepend as H1 to content
+   - Store title in DB only
+   - Inject H1 at render/export time
    - Test with Shortcuts
 3. **Create `JinaService`** - Extract from skill (30 min)
+   - Fail request if fetch fails (no null-content saves)
    - Fetch markdown from Jina.ai
    - Parse metadata (title, published_at)
-4. **Create `/api/websites`** - Lightweight endpoint (30 min)
+4. **Create `/api/websites/quick-save`** - Lightweight endpoint (30 min)
    - Use JinaService + WebsitesService.upsert_website()
    - No skill executor overhead
    - Test with Shortcuts
+5. **Create `/api/ingestion/quick-upload`** - Multipart upload endpoint (45 min)
+   - Accept `multipart/form-data` with `file`
+   - Create ingestion job + enqueue worker
+   - Return `202` with `job_id` and `file_id`
+   - Remove original file after ingestion completes (match UI behavior)
 
-**Deliverable:** ✅ Can add to scratchpad (top with divider), create notes, save websites from iPhone
+**Deliverable:** ✅ Can add to scratchpad (prepend with divider via PAT/Shortcuts), create notes, save websites, and ingest files from iPhone
 
 ---
 
@@ -1423,7 +1269,7 @@ Actions:
 
 **What You Get:**
 - ✅ PAT authentication on all endpoints
-- ✅ Scratchpad quick capture (top with divider)
+- ✅ Scratchpad quick capture (prepend with divider via PAT/Shortcuts)
 - ✅ Notes quick capture (with optional title)
 - ✅ Website saving (auto-fetch content)
 - ✅ Full Siri integration for all features
@@ -1433,16 +1279,16 @@ Actions:
 - 💬 Chat with sideBar
 - 📋 Note templates
 - 🔗 Webhooks
-- 🎨 Management UI
+- 🎨 Templates/Webhooks management UI
 
 ---
 
 ## V1 Success Criteria
 
 ✅ **Authentication:** Can authenticate with PAT on all existing endpoints
-✅ **Scratchpad:** Can add content to top of scratchpad with divider via Siri
+✅ **Scratchpad:** Can add content via Siri, using prepend-with-divider for PAT/Shortcuts
 ✅ **Notes:** Can create quick notes with optional title via Siri
 ✅ **Websites:** Can save websites from Safari share sheet with auto-fetched content
+✅ **Files:** Can upload a file from Shortcuts and see it ingested without keeping the original
 ✅ **Cross-device:** All shortcuts work on iPhone, iPad, Mac, Apple Watch
 ✅ **Voice-first:** All capture flows work hands-free via Siri
-
