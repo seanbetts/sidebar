@@ -559,8 +559,8 @@
         <SidebarSectionHeader
           title="Files"
           searchPlaceholder="Search files..."
-          onSearch={(query) => treeStore.searchFiles('.', query)}
-          onClear={() => treeStore.load('.', true)}
+          onSearch={(query) => treeStore.searchFiles('documents', query)}
+          onClear={() => treeStore.load('documents', true)}
         >
           <svelte:fragment slot="actions">
             <input

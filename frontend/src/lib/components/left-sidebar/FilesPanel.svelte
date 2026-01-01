@@ -35,13 +35,14 @@
   import type { FileNode } from '$lib/types/file';
   import type { IngestionListItem } from '$lib/types/ingestion';
 
-  const basePath = '.';
+  const basePath = 'documents';
 
   $: treeData = $treeStore.trees[basePath];
   $: children = treeData?.children || [];
   $: searchQuery = treeData?.searchQuery || '';
   // Show loading if explicitly loading OR if tree hasn't been initialized yet OR if ingestion is loading
   $: loading = (treeData?.loading ?? !treeData) || $ingestionStore.loading;
+  $: normalizedQuery = searchQuery.trim().toLowerCase();
   $: processingItems = ($ingestionStore.items || []).filter(
     item => !['ready', 'failed', 'canceled'].includes(item.job.status || '')
   );
@@ -51,7 +52,22 @@
   $: readyItems = ($ingestionStore.items || []).filter(
     item => item.job.status === 'ready' && item.recommended_viewer
   );
-  $: pinnedItems = readyItems.filter(item => item.file.pinned);
+  $: filteredProcessingItems = normalizedQuery
+    ? processingItems.filter(item =>
+        (item.file.filename_original || '').toLowerCase().includes(normalizedQuery)
+      )
+    : processingItems;
+  $: filteredFailedItems = normalizedQuery
+    ? failedItems.filter(item =>
+        (item.file.filename_original || '').toLowerCase().includes(normalizedQuery)
+      )
+    : failedItems;
+  $: filteredReadyItems = normalizedQuery
+    ? readyItems.filter(item =>
+        (item.file.filename_original || '').toLowerCase().includes(normalizedQuery)
+      )
+    : readyItems;
+  $: pinnedItems = filteredReadyItems.filter(item => item.file.pinned);
   const categoryOrder = [
     'audio',
     'documents',
@@ -81,7 +97,7 @@
     if (category === 'video') return FileVideoCamera;
     return FileText;
   }
-  $: categorizedItems = readyItems.reduce<Record<string, IngestionListItem[]>>((acc, item) => {
+  $: categorizedItems = filteredReadyItems.reduce<Record<string, IngestionListItem[]>>((acc, item) => {
     const category = item.file.category || 'other';
     if (!acc[category]) acc[category] = [];
     acc[category].push(item);
@@ -259,7 +275,7 @@
     title="Service unavailable"
     subtitle="Please try again later."
   />
-{:else if children.length === 0 && processingItems.length === 0 && failedItems.length === 0 && readyItems.length === 0}
+{:else if children.length === 0 && filteredProcessingItems.length === 0 && filteredFailedItems.length === 0 && filteredReadyItems.length === 0}
   <SidebarEmptyState
     icon={Folder}
     title="No files yet"
@@ -404,20 +420,20 @@
               showActions={true}
             />
           {/each}
-        {:else if readyItems.length === 0}
+        {:else if filteredReadyItems.length === 0}
           <div class="files-empty">No files yet</div>
         {/if}
       </div>
     </div>
-    {#if processingItems.length > 0}
+    {#if filteredProcessingItems.length > 0}
       <div class="workspace-uploads uploads-block">
-        <IngestionQueue items={processingItems} />
+        <IngestionQueue items={filteredProcessingItems} />
       </div>
     {/if}
-    {#if failedItems.length > 0}
+    {#if filteredFailedItems.length > 0}
       <div class="workspace-uploads uploads-block">
         <div class="workspace-results-label">Failed uploads</div>
-        {#each failedItems as item (item.file.id)}
+        {#each filteredFailedItems as item (item.file.id)}
           <div class="failed-item">
             <div class="failed-header">
               <div class="failed-name">{item.file.filename_original}</div>
@@ -440,7 +456,7 @@
         {/each}
       </div>
     {/if}
-    {#if readyItems.length > 0}
+    {#if filteredReadyItems.length > 0}
       <div class="workspace-uploads uploads-block">
         <Collapsible.Root defaultOpen={false} class="group/collapsible" data-collapsible-root>
           <div data-slot="sidebar-group" data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
@@ -456,7 +472,7 @@
             </Collapsible.Trigger>
             <Collapsible.Content data-slot="collapsible-content" class="archive-content pt-1">
               <div data-slot="sidebar-group-content" data-sidebar="group-content" class="w-full text-sm">
-                {#each readyItems as item (item.file.id)}
+                {#each filteredReadyItems as item (item.file.id)}
                   <div class="ingested-row" data-ingested-menu-root={`recent-${item.file.id}`}>
                     <button class="ingested-item ingested-item--file" onclick={() => openViewer(item)}>
                       <span class="ingested-icon">

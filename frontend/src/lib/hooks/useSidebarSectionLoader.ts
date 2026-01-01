@@ -26,7 +26,7 @@ export function useSidebarSectionLoader() {
 		const hasData = {
 			notes: treeState.trees?.['notes']?.loaded ?? false,
 			websites: websitesState.loaded ?? false,
-			workspace: treeState.trees?.['.']?.loaded ?? false,
+			workspace: treeState.trees?.['documents']?.loaded ?? false,
 			history: conversationsState.loaded ?? false
 		}[section];
 
@@ -45,7 +45,7 @@ export function useSidebarSectionLoader() {
 				websitesStore.load();
 				break;
 			case 'workspace':
-				treeStore.load('.');
+				treeStore.load('documents');
 				ingestionStore.load();
 				break;
 			case 'history':
