@@ -362,6 +362,8 @@
                   class="ingested-row"
                   class:drag-over={dragOverPinnedId === item.file.id}
                   data-ingested-menu-root={`pinned-${item.file.id}`}
+                  role="listitem"
+                  aria-label={`Pinned file ${stripExtension(item.file.filename_original)}`}
                   ondragover={(event) => handlePinnedDragOver(event, item.file.id)}
                   ondrop={(event) => handlePinnedDrop(event, item.file.id)}
                 >
@@ -418,6 +420,8 @@
               <div
                 class="pinned-drop-zone"
                 class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+                role="separator"
+                aria-label="Drop pinned file at end"
                 ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
                 ondrop={handlePinnedDropEnd}
               ></div>

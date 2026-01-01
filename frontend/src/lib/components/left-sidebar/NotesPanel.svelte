@@ -228,6 +228,8 @@
           <div
             class="pinned-drop-zone"
             class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+            role="separator"
+            aria-label="Drop pinned note at end"
             ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
             ondrop={handlePinnedDropEnd}
           ></div>

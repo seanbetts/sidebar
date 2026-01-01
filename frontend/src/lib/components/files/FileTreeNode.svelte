@@ -106,6 +106,8 @@
   class:drag-over={isDragOver}
   class:dragging={isDragging}
   style="padding-left: {level * 1}rem;"
+  role="listitem"
+  aria-label={`Pinned note ${displayName}`}
   ondragover={handleDragOver}
   ondrop={handleDrop}
 >

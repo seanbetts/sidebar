@@ -34,6 +34,8 @@
 <div
   class="website-item"
   class:drag-over={isDragOver}
+  role="listitem"
+  aria-label={`Pinned website ${site.title}`}
   ondragover={handleDragOver}
   ondrop={handleDrop}
 >
