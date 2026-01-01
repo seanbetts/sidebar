@@ -660,7 +660,7 @@ python scripts/move.py old.txt new.txt --user-id {uuid} --json
 - [ ] Test hierarchical organization
 
 ### Phase 4: Data Migration
-- [ ] Write migration script
+- [x] Write migration script
 - [ ] Test on development database
 - [ ] Run migration on production
 - [ ] Verify all files migrated successfully
