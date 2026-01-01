@@ -11,13 +11,14 @@ REPO_ROOT="$(pwd)"
 use_doppler=0
 
 load_env() {
+  if [[ -f ".env" ]]; then
+    set -a
+    source .env
+    set +a
+  fi
   if [[ -f ".env.local" ]]; then
     set -a
     source .env.local
-    set +a
-  elif [[ -f ".env" ]]; then
-    set -a
-    source .env
     set +a
   fi
 }
