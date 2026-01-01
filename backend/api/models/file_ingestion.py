@@ -17,11 +17,13 @@ class IngestedFile(Base):
         Index("idx_ingested_files_created_at", "created_at"),
         Index("idx_ingested_files_deleted_at", "deleted_at"),
         Index("idx_ingested_files_last_opened_at", "last_opened_at"),
+        Index("idx_ingested_files_path", "path"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(Text, nullable=False)
     filename_original = Column(Text, nullable=False)
+    path = Column(Text, nullable=True)
     mime_original = Column(Text, nullable=False)
     size_bytes = Column(BigInteger, nullable=False, default=0)
     sha256 = Column(Text, nullable=True)

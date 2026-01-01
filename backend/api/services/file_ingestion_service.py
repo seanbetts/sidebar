@@ -19,6 +19,7 @@ class FileIngestionService:
         user_id: str,
         *,
         filename_original: str,
+        path: Optional[str] = None,
         mime_original: str,
         size_bytes: int,
         sha256: Optional[str] = None,
@@ -30,11 +31,13 @@ class FileIngestionService:
         now = datetime.now(timezone.utc)
         if file_id is None:
             file_id = uuid.uuid4()
+        path_value = path or filename_original
 
         record = IngestedFile(
             id=file_id,
             user_id=user_id,
             filename_original=filename_original,
+            path=path_value,
             mime_original=mime_original,
             size_bytes=size_bytes,
             sha256=sha256,

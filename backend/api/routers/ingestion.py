@@ -9,7 +9,7 @@ import shutil
 import urllib.parse
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -53,6 +53,13 @@ def _staging_path(file_id: uuid.UUID) -> Path:
 def _safe_cleanup(path: Path) -> None:
     if path.exists():
         shutil.rmtree(path.parent, ignore_errors=True)
+
+
+def _build_ingestion_path(folder: str | None, filename: str) -> str:
+    clean_folder = (folder or "").strip().strip("/")
+    if clean_folder:
+        return f"{clean_folder}/{filename}"
+    return filename
 
 
 def _filter_user_derivatives(derivatives: list[dict], user_id: str) -> list[dict]:
@@ -157,6 +164,7 @@ def _user_message_for_error(error_code: str | None, status: str | None) -> str |
 @router.post("")
 async def upload_file(
     file: UploadFile = File(...),
+    folder: str = Form(default=""),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -185,10 +193,13 @@ async def upload_file(
         mime_original = mime_original.split(";")[0].strip().lower()
         if not mime_original:
             mime_original = "application/octet-stream"
+        filename = file.filename or "upload"
+        path = _build_ingestion_path(folder, filename)
         FileIngestionService.create_ingestion(
             db,
             user_id,
-            filename_original=file.filename or "upload",
+            filename_original=filename,
+            path=path,
             mime_original=mime_original,
             size_bytes=size,
             sha256=digest.hexdigest(),
@@ -273,14 +284,15 @@ async def list_ingestions(
                 "file": {
                     "id": str(record.id),
                     "filename_original": record.filename_original,
+                    "path": record.path,
                     "mime_original": record.mime_original,
                     "size_bytes": record.size_bytes,
-                "sha256": record.sha256,
-                "source_url": record.source_url,
-                "source_metadata": record.source_metadata,
-                "pinned": record.pinned,
-                "category": _category_for_file(record.filename_original, record.mime_original),
-                "created_at": record.created_at.isoformat(),
+                    "sha256": record.sha256,
+                    "source_url": record.source_url,
+                    "source_metadata": record.source_metadata,
+                    "pinned": record.pinned,
+                    "category": _category_for_file(record.filename_original, record.mime_original),
+                    "created_at": record.created_at.isoformat(),
                 },
                 "job": {
                     "status": job.status if job else None,
@@ -338,6 +350,7 @@ async def get_file_meta(
         "file": {
             "id": str(record.id),
             "filename_original": record.filename_original,
+            "path": record.path,
             "mime_original": record.mime_original,
             "size_bytes": record.size_bytes,
             "sha256": record.sha256,
