@@ -99,9 +99,6 @@ GET /api/ingestion/{file_id}/content?kind=viewer_pdf|thumb_png|ai_md|…
 
 Processing control
 
-POST /api/ingestion/{file_id}/reprocess
-	•	Enqueues a new job with the current extraction_version
-
 DELETE /api/ingestion/{file_id}
 	•	Soft-deletes metadata
 	•	Optionally schedules storage cleanup after a retention window
@@ -266,6 +263,7 @@ Retry and backoff
 	•	Reset stage attempts when moving to next stage
 	•	After max attempts, mark job failed and delete staged artifacts
 	•	Retryable errors vs non-retryable (e.g., unsupported file type is terminal)
+	•	User-triggered retries are disabled; re-upload to try again
 
 Error codes and user messaging
 
@@ -287,8 +285,9 @@ Implementation status
 	•	[x] ai.md generation with front matter
 	•	[x] Thumbnail generation for PDFs/images
 	•	[x] UI viewer + status polling + markdown toggle
-	•	[ ] Heartbeat/lease refresh during long-running work
-	•	[ ] Atomic storage finalization (no partial writes on failure)
-	•	[ ] Real work mapped to stage labels (validating, converting, extracting, ai_md, thumb, finalizing)
-	•	[ ] Explicit allowlist validation in Stage 0
-	•	[ ] Storage cleanup for failed staged writes
+	•	[x] Heartbeat/lease refresh during long-running work
+	•	[x] Atomic storage finalization (no partial writes on failure)
+	•	[x] Real work mapped to stage labels (validating, converting, extracting, ai_md, thumb, finalizing)
+	•	[x] Explicit allowlist validation in Stage 0
+	•	[x] Storage cleanup for failed staged writes
+	•	[x] Dependency pinning constraints file (`backend/api/constraints.txt`)
