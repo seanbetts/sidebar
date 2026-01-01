@@ -12,6 +12,7 @@
 	import { websitesStore } from '$lib/stores/websites';
 	import { editorStore, currentNoteId } from '$lib/stores/editor';
 	import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
+	import { ingestionStore } from '$lib/stores/ingestion';
 	import { conversationListStore } from '$lib/stores/conversations';
 	import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
@@ -433,6 +434,8 @@
 				);
 				if (status === 'ready') {
 					ingestionViewerStore.open(fileId);
+					void ingestionStore.load();
+					dispatchCacheEvent('file.uploaded');
 				}
 				if (!['ready', 'failed', 'canceled'].includes(status) && isMounted) {
 					const next = setTimeout(poll, 5000);
