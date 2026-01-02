@@ -11,9 +11,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2) Export a shared token and run the server:
+2) Install via sideBar (recommended):
+- In Settings → Things, click **Install Things Bridge**.
+- Run the downloaded `.command` file once.
+- The bridge will auto-start on login via launchd.
+- The installer places the bridge at `~/.sidebar/bridge/things_bridge.py`.
+- The installer creates a virtualenv under `~/.sidebar/bridge/venv`.
+
+Manual run (debug):
 ```
 export THINGS_BRIDGE_TOKEN=your-bridge-token
+export THINGS_BRIDGE_ID=your-bridge-id
 export THINGS_BRIDGE_PORT=8787
 python things_bridge.py
 ```

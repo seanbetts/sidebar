@@ -4,9 +4,11 @@ set -euo pipefail
 BACKEND_LOG="/tmp/sidebar-backend.log"
 FRONTEND_LOG="/tmp/sidebar-frontend.log"
 INGESTION_LOG="/tmp/sidebar-ingestion-worker.log"
+THINGS_BRIDGE_LOG="/tmp/sidebar-things-bridge.log"
 BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
 INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
+THINGS_BRIDGE_PID="/tmp/sidebar-things-bridge.pid"
 REPO_ROOT="$(pwd)"
 use_doppler=0
 
@@ -67,6 +69,11 @@ is_frontend_process() {
   fi
 }
 
+is_things_bridge_process() {
+  local command="$1"
+  [[ "${command}" == *"bridge/things_bridge.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
+}
+
 stop_pid() {
   local pid="$1"
   if kill -0 "${pid}" >/dev/null 2>&1; then
@@ -103,6 +110,12 @@ ensure_port_available() {
 
   if [[ "${role}" == "frontend" ]] && is_frontend_process "${command}"; then
     echo "Cleaning up stale frontend process on port ${port} (PID ${pid})..."
+    stop_pid "${pid}"
+    return
+  fi
+
+  if [[ "${role}" == "things_bridge" ]] && is_things_bridge_process "${command}"; then
+    echo "Cleaning up stale Things bridge process on port ${port} (PID ${pid})..."
     stop_pid "${pid}"
     return
   fi
@@ -145,6 +158,13 @@ start_ingestion_worker() {
     (cd backend && env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
   fi
   echo $! >"${INGESTION_PID}"
+}
+
+start_things_bridge() {
+  ensure_port_available 8787 things_bridge
+  echo "Starting Things bridge..."
+  (env THINGS_BACKEND_URL="${THINGS_BACKEND_URL:-http://localhost:8001}" python bridge/things_bridge.py) >"${THINGS_BRIDGE_LOG}" 2>&1 &
+  echo $! >"${THINGS_BRIDGE_PID}"
 }
 
 cleanup_ingestion_workers() {
@@ -212,6 +232,15 @@ cleanup_services() {
     fi
     rm -f "${INGESTION_PID}"
   fi
+
+  if [[ -f "${THINGS_BRIDGE_PID}" ]]; then
+    pid=$(cat "${THINGS_BRIDGE_PID}")
+    if kill -0 "${pid}" >/dev/null 2>&1; then
+      echo "Cleaning Things bridge (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+    rm -f "${THINGS_BRIDGE_PID}"
+  fi
 }
 
 status_service() {
@@ -244,6 +273,9 @@ show_logs() {
     ingestion)
       tail -n 200 "${INGESTION_LOG}" || true
       ;;
+    bridge)
+      tail -n 200 "${THINGS_BRIDGE_LOG}" || true
+      ;;
     *)
       echo "--- Backend logs (${BACKEND_LOG}) ---"
       tail -n 200 "${BACKEND_LOG}" || true
@@ -251,6 +283,8 @@ show_logs() {
       tail -n 200 "${FRONTEND_LOG}" || true
       echo "--- Ingestion worker logs (${INGESTION_LOG}) ---"
       tail -n 200 "${INGESTION_LOG}" || true
+      echo "--- Things bridge logs (${THINGS_BRIDGE_LOG}) ---"
+      tail -n 200 "${THINGS_BRIDGE_LOG}" || true
       ;;
   esac
 }
@@ -265,19 +299,23 @@ case "${command}" in
     start_backend
     start_frontend
     start_ingestion_worker
+    start_things_bridge
     ;;
   stop)
     stop_service "${BACKEND_PID}" "backend"
     stop_service "${FRONTEND_PID}" "frontend"
     stop_service "${INGESTION_PID}" "ingestion worker"
+    stop_service "${THINGS_BRIDGE_PID}" "Things bridge"
     ;;
   restart)
     stop_service "${BACKEND_PID}" "backend"
     stop_service "${FRONTEND_PID}" "frontend"
     stop_service "${INGESTION_PID}" "ingestion worker"
+    stop_service "${THINGS_BRIDGE_PID}" "Things bridge"
     start_backend
     start_frontend
     start_ingestion_worker
+    start_things_bridge
     ;;
   cleanup)
     cleanup_services
@@ -286,12 +324,13 @@ case "${command}" in
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}"
     status_service "${FRONTEND_PID}" "Frontend" "http://localhost:3000" "${FRONTEND_LOG}"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}"
+    status_service "${THINGS_BRIDGE_PID}" "Things bridge" "http://localhost:8787" "${THINGS_BRIDGE_LOG}"
     ;;
   logs)
     show_logs "${2:-}"
     ;;
   *)
-    echo "Usage: ./dev.sh [start|stop|restart|cleanup|status|logs [backend|frontend|ingestion]]"
+    echo "Usage: ./dev.sh [start|stop|restart|cleanup|status|logs [backend|frontend|ingestion|bridge]]"
     exit 1
     ;;
 esac

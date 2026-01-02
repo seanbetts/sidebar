@@ -6,6 +6,7 @@ from api.models.user_settings import UserSettings
 from api.models.user_memory import UserMemory
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 from api.models.things_bridge import ThingsBridge
+from api.models.things_bridge_install_token import ThingsBridgeInstallToken
 
 __all__ = [
     "Conversation",
@@ -17,4 +18,5 @@ __all__ = [
     "FileDerivative",
     "FileProcessingJob",
     "ThingsBridge",
+    "ThingsBridgeInstallToken",
 ]
