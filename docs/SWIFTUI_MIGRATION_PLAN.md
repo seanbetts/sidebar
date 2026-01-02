@@ -4,8 +4,9 @@
 
 Based on comprehensive analysis of the SvelteKit frontend, this document outlines a detailed roadmap for building a universal macOS/iOS/iPadOS app with full feature parity. This plan assumes an architect/director role working with an AI coding agent.
 
-**Total Estimated Effort**: 40-70 focused work sessions (120-260 hours)
-**Timeline**: 10-18 weeks at 3-4 sessions per week
+**Total Estimated Effort**: 36-51 planned sessions + buffer (40-70 total sessions accounting for complexity)
+**Total Hours**: 157-280 hours depending on markdown editor complexity and iteration needs
+**Timeline**: 12-18 weeks at 3-4 sessions per week (14 weeks realistic for MVP)
 **Complexity**: High (primarily due to native markdown editor and real-time streaming)
 
 ---
@@ -444,6 +445,21 @@ channel = supabase.channel("notes")
 - Handle external edits while user is editing (show banner: "This note was updated externally. Reload?")
 - Refresh tree on folder changes
 
+### Recommended Session Breakdown (Phase 4)
+Given the complexity of this phase, here's a suggested breakdown:
+
+- **Sessions 1-2**: File tree browser implementation with expand/collapse, search, and context menus
+- **Sessions 3-5**: RichTextKit integration, basic markdown editing, and toolbar setup
+- **Session 6-7**: Advanced formatting features (tables, links, code blocks) and customization
+- **Session 8-9**: Save/dirty state, auto-save debouncing, and note operations (create, rename, move, delete)
+- **Session 10**: Real-time sync, conflict handling, and integration testing
+
+**Critical Decision Point (After Session 5)**:
+Evaluate RichTextKit capabilities. If major feature gaps exist (especially for tables or complex formatting):
+- **Option A**: Continue with RichTextKit + workarounds for missing features
+- **Option B**: Switch to custom UITextView/NSTextView solution (adds 3-5 sessions)
+- **Option C**: Reduce scope (defer tables, advanced formatting to post-launch)
+
 ### Technical Decisions
 - **Editor library**: RichTextKit (extensible, maintained)
 - **Conflict resolution**: Last-write-wins with user notification
@@ -457,13 +473,13 @@ channel = supabase.channel("notes")
 
 ---
 
-## Phase 5: File Management & Ingestion (Deferred)
-**Sessions: 5-7 | Critical Path: No**
+## Phase 5: File Viewing (Upload & Ingestion Deferred)
+**Sessions: 4-6 | Critical Path: No**
 
 ### Objectives
-- Build file tree browser
-- Implement universal file viewer
-- Defer uploads/ingestion to a later phase
+- Build file tree browser for existing workspace files
+- Implement universal file viewer for all supported formats
+- **Note**: File uploads and ingestion processing are intentionally deferred to Phase 10 (post-MVP)
 
 ### Key Deliverables
 
@@ -995,17 +1011,19 @@ Same pattern as notes/conversations.
 | 2. Navigation | 3-4 | 6-16 hrs | Critical |
 | 3. Chat | 5-7 | 10-28 hrs | Critical |
 | 4. Note Editor | 7-10 | 14-40 hrs | Critical |
-| 5. Files (viewing only) | 4-6 | 8-24 hrs | Medium |
+| 5. File Viewing (uploads deferred) | 4-6 | 8-24 hrs | Medium |
 | 6. Websites | 2-3 | 4-12 hrs | Medium |
 | 7. Additional | 3-4 | 6-16 hrs | Medium |
 | 8. Platform | 5-7 | 10-28 hrs | High |
 | 9. Testing | 4-6 | 8-24 hrs | Critical |
-| **Total** | **40-70** | **120-260 hrs** | |
+| **Total (Planned)** | **36-51** | **72-204 hrs** | |
 
-**Assuming 3-4 sessions/week at 2-4 hours each:**
-- **Optimistic**: 10 weeks (40 sessions × 3 hrs = 120 hrs)
-- **Realistic**: 14 weeks (55 sessions × 3 hrs = 165 hrs)
-- **Conservative**: 18 weeks (70 sessions × 4 hrs = 280 hrs)
+**Note**: The planned breakdown above totals 36-51 sessions. However, the timeline estimates below include buffer time for unexpected complexity, iteration, and overruns (particularly in Phases 4 and 8), bringing the realistic total to 40-70 sessions.
+
+**Assuming 3-4 sessions/week at 3-4 hours each:**
+- **Optimistic**: 9-10 weeks (36-40 sessions × 3 hrs = 108-120 hrs)
+- **Realistic**: 12-14 weeks (45-55 sessions × 3.5 hrs = 157-192 hrs)
+- **Conservative**: 15-18 weeks (51-70 sessions × 4 hrs = 204-280 hrs)
 
 ---
 
@@ -1032,20 +1050,32 @@ You can parallelize:
 
 ## Key Decisions Requiring Input During Development
 
-1. **Markdown Editor Trade-offs** (Week 5)
-   - If RichTextKit is insufficient, decide: build custom vs. hybrid approach
+1. **Markdown Editor Evaluation** (Week 5-6, after Phase 4 Session 5) - **CRITICAL**
+   - Evaluate RichTextKit capabilities for tables, advanced formatting
+   - If major gaps exist, choose between:
+     - **Option A**: Continue with RichTextKit + workarounds (maintains timeline)
+     - **Option B**: Build custom UITextView/NSTextView wrapper (adds 3-5 sessions)
+     - **Option C**: Reduce scope - defer tables/advanced features to post-launch
+   - This decision impacts timeline by up to 1 month if custom solution needed
 
-2. **iPhone Navigation Pattern** (Week 10)
+2. **iPhone Navigation Pattern** (Week 10-11)
    - Tab bar vs. hamburger menu vs. gesture-based navigation
+   - Focus on chat + notes simplicity vs. attempting full feature parity
 
-3. **Offline Mode Scope** (Week 11)
+3. **Offline Mode Scope** (Week 11-12)
    - Read-only cached content vs. full offline editing with sync queue
+   - Queue-based approach may add 2-3 sessions to Phase 8
 
-4. **Animation Style** (Week 10)
-   - Subtle/minimal vs. playful/animated
+4. **Animation Style** (Week 10-11)
+   - Subtle/minimal (faster to implement) vs. playful/animated (adds polish)
 
-5. **App Icon & Branding** (Week 11)
+5. **App Icon & Branding** (Week 11-12)
    - Design app icon for App Store
+   - Consider hiring designer vs. AI-generated vs. self-designed
+
+6. **File Upload Timing** (Post-MVP)
+   - When to implement deferred Phase 10 (file uploads)
+   - Immediately after MVP or wait for user feedback
 
 ---
 
@@ -1085,6 +1115,15 @@ All libraries are actively maintained and have permissive licenses.
 
 Once core app is complete, consider:
 
+### Phase 10: File Upload & Ingestion (Deferred from Phase 5)
+- **File upload** with progress tracking
+- **Ingestion job polling** for processing status
+- **Upload queue management** with retry logic
+- **Background uploads** when app is backgrounded
+- **Error handling** for failed uploads
+- **Priority**: High - should be implemented after MVP is stable
+
+### Additional Future Enhancements
 1. **iOS Widgets**: Quick notes, recent conversations
 2. **Share Extension**: Save content to sideBar from Safari/other apps
 3. **Shortcuts Integration**: Siri shortcuts for common actions
@@ -1173,11 +1212,10 @@ This is an **ambitious but achievable** project. The web app is well-architected
 2. **SSE streaming** - test thoroughly
 3. **Platform-specific UX** - resist the urge to cut corners
 
-With a capable AI agent writing the code and architect/director oversight, the **10-week timeline is realistic**. The key is to:
+With a capable AI agent writing the code and architect/director oversight, a **12-14 week timeline is realistic** for a polished MVP. Allow up to 15-18 weeks if significant complexity arises in the markdown editor or SSE streaming requires substantial rework. The key is to:
 
 - **Start with Phase 1 foundation** - this sets up for success
 - **Test incrementally** - don't wait until the end
 - **Embrace platform conventions** - don't fight SwiftUI
 - **Prioritize core features** - chat and notes are most critical
-
-**Ready to begin?** Recommended starting point: Phase 1, Session 1: Xcode project setup and data models.
+- **Be ready to adjust scope** - Phase 4 markdown editor may require trade-offs
