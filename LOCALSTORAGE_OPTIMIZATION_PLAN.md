@@ -1,13 +1,13 @@
-# localStorage Optimization Plan
+# localStorage Optimization Plan (Trimmed for Realtime)
 
 ## Goal
 
-Improve frontend responsiveness and perceived performance by intelligently caching API responses and application state in localStorage, while maintaining data consistency and implementing proper cache invalidation strategies.
+Improve frontend responsiveness and perceived performance by caching only the pieces that still feel slow or reset on refresh, now that realtime sync keeps core data fresh.
 
 **Target Impact**:
 - Instant sidebar section population on repeat visits
 - Preserve user context across sessions (last conversation, expanded folders)
-- Reduce API load by 40-60% for repeat actions
+- Reduce API load for repeat actions without duplicating realtime logic
 - Zero perceived latency for cached UI components
 - Realtime events keep cached data fresh between sessions (see `docs/REALTIME_SYNC_PLAN.md`)
 
@@ -40,16 +40,13 @@ Improve frontend responsiveness and perceived performance by intelligently cachi
 ### What's NOT Cached (Opportunities)
 
 **High-Impact Data**:
-- Conversation list (loaded fresh on every 'history' section access)
-- Websites list (loaded fresh on every 'websites' section access)
+- Conversation list (loaded fresh on every history access)
 - Last active conversation ID (lost on page refresh)
 - File tree expansion state (folders collapse on refresh)
-- Notes tree structure (loaded fresh every time)
 
 **Medium-Impact Data**:
 - User settings/preferences
 - Recent chat messages (last N per conversation)
-- Memory/skills metadata
 
 **Current Load Pattern**:
 ```
@@ -61,7 +58,7 @@ If false → API call → Update store → Set loaded = true
 
 ---
 
-## Architecture & Patterns
+## Architecture & Patterns (Minimal)
 
 ### Cache Strategy Pattern
 
@@ -111,33 +108,17 @@ async function loadData<T>(
 ### Cache Invalidation Strategy
 
 **Invalidation Triggers**:
-1. **Mutation Events**: Clear cache when data changes
-2. **TTL Expiration**: Time-based expiration
-3. **Version Mismatch**: Detect schema changes
-4. **Manual Clear**: User logout, settings reset
+1. **TTL Expiration**: Time-based expiration
+2. **Manual Clear**: User logout, settings reset
+3. **Realtime Events**: Store updates should write-through to cache
 
 **Implementation**:
-```typescript
-// Cache metadata structure
-interface CacheMetadata {
-  data: unknown;
-  timestamp: number;
-  version: string;
-  ttl: number;
-}
-
-// Invalidation registry
-const invalidationMap = {
-  'conversations.list': ['conversation.created', 'conversation.deleted', 'conversation.title_updated'],
-  'websites.list': ['website.saved', 'website.deleted'],
-  'notes.tree': ['note.created', 'note.deleted', 'note.moved'],
-  'files.tree': ['file.uploaded', 'file.deleted', 'file.moved']
-};
-```
+- Use cache metadata (timestamp/ttl/version).
+- Realtime updates should set cache entries for the affected store.
 
 ---
 
-## Implementation Phases
+## Implementation Phases (Trimmed)
 
 ### Phase 1: Core Cache Utilities (2 hours)
 
@@ -342,96 +323,12 @@ export function getCacheStats(): {
 }
 ```
 
-### Realtime Integration (New)
+### Realtime Integration
 
 When realtime subscriptions are enabled:
 - Realtime events should update the in-memory store and write-through to localStorage.
-- TTL remains as a safety net, not the primary freshness mechanism.
+- TTL remains a safety net, not the primary freshness mechanism.
 - Background revalidation can be triggered on reconnect or app focus.
-
-#### 1.2 Cache Event System
-
-**New file**: `/frontend/src/lib/utils/cacheEvents.ts`
-
-```typescript
-/**
- * Cache invalidation event system
- */
-
-type CacheEventType =
-  | 'conversation.created'
-  | 'conversation.deleted'
-  | 'conversation.updated'
-  | 'website.saved'
-  | 'website.deleted'
-  | 'note.created'
-  | 'note.deleted'
-  | 'note.updated'
-  | 'note.moved'
-  | 'file.uploaded'
-  | 'file.deleted'
-  | 'memory.created'
-  | 'memory.updated'
-  | 'memory.deleted'
-  | 'user.logout';
-
-/**
- * Mapping of events to cache keys they should invalidate
- */
-const INVALIDATION_MAP: Record<CacheEventType, string[]> = {
-  'conversation.created': ['conversations.list'],
-  'conversation.deleted': ['conversations.list'],
-  'conversation.updated': ['conversations.list'],
-  'website.saved': ['websites.list'],
-  'website.deleted': ['websites.list'],
-  'note.created': ['notes.tree', 'files.notes'],
-  'note.deleted': ['notes.tree', 'files.notes'],
-  'note.updated': ['notes.tree', 'files.notes'],
-  'note.moved': ['notes.tree', 'files.notes'],
-  'file.uploaded': ['files.tree', 'files.workspace'],
-  'file.deleted': ['files.tree', 'files.workspace'],
-  'memory.created': ['memories.list'],
-  'memory.updated': ['memories.list'],
-  'memory.deleted': ['memories.list'],
-  'user.logout': ['*'] // Clear all caches
-};
-
-/**
- * Dispatch cache invalidation event
- */
-export function dispatchCacheEvent(eventType: CacheEventType): void {
-  const cacheKeys = INVALIDATION_MAP[eventType] || [];
-
-  if (cacheKeys.includes('*')) {
-    // Clear all caches
-    import('./cache').then(({ clearCaches }) => clearCaches());
-  } else {
-    // Invalidate specific caches
-    import('./cache').then(({ invalidateCaches }) => invalidateCaches(cacheKeys));
-  }
-
-  // Also dispatch custom event for listeners
-  window.dispatchEvent(new CustomEvent('cache:invalidate', {
-    detail: { eventType, cacheKeys }
-  }));
-}
-
-/**
- * Listen for cache invalidation events
- */
-export function onCacheInvalidate(
-  callback: (detail: { eventType: CacheEventType; cacheKeys: string[] }) => void
-): () => void {
-  const handler = ((event: CustomEvent) => {
-    callback(event.detail);
-  }) as EventListener;
-
-  window.addEventListener('cache:invalidate', handler);
-
-  // Return cleanup function
-  return () => window.removeEventListener('cache:invalidate', handler);
-}
-```
 
 ---
 
@@ -544,38 +441,9 @@ function createConversationListStore() {
 export const conversationListStore = createConversationListStore();
 ```
 
-#### 2.2 Wire Up SSE Events
+#### 2.2 Wire Up Realtime
 
-**File**: `/frontend/src/lib/components/chat/ChatWindow.svelte`
-
-**Add invalidation on conversation events**:
-
-```typescript
-import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
-
-// In SSE handlers, add after each relevant event:
-
-onComplete: async () => {
-  await chatStore.finishStreaming(assistantMessageId);
-
-  // Invalidate conversation list cache (new message = updated timestamp)
-  dispatchCacheEvent('conversation.updated');
-}
-```
-
-**File**: `/frontend/src/lib/stores/chat.ts`
-
-**Invalidate on conversation deletion**:
-
-```typescript
-async deleteConversation(conversationId: string) {
-  await fetch(`/api/conversations/${conversationId}`, { method: 'DELETE' });
-
-  // Invalidate cache
-  dispatchCacheEvent('conversation.deleted');
-  conversationListStore.invalidateCache();
-}
-```
+- Realtime conversation updates should write-through to the cache where applicable.
 
 ---
 
@@ -659,64 +527,11 @@ onMount(async () => {
 
 ---
 
-### Phase 4: Websites List Caching (0.5 hours)
-
-Same pattern as conversations.
-
-#### 4.1 Update Websites Store
-
-**File**: `/frontend/src/lib/stores/websites.ts`
-
-```typescript
-import { getCachedData, setCachedData, invalidateCache } from '$lib/utils/cache';
-
-const CACHE_KEY = 'websites.list';
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
-
-async load(forceRefresh = false) {
-  if (this.loaded && !forceRefresh) return;
-
-  // Try cache
-  if (!forceRefresh) {
-    const cached = getCachedData<Website[]>(CACHE_KEY, CACHE_TTL);
-    if (cached) {
-      set({ items: cached, loaded: true, active: get(this).active });
-      return;
-    }
-  }
-
-  // Fetch from API
-  const response = await fetch('/api/websites');
-  const items = await response.json();
-
-  setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL });
-  update(s => ({ ...s, items, loaded: true }));
-}
-```
-
-#### 4.2 Wire Up Invalidation
-
-**In SSE handlers** (`ChatWindow.svelte`):
-
-```typescript
-onWebsiteSaved: async () => {
-  await websitesStore.load();
-  dispatchCacheEvent('website.saved');
-},
-
-onWebsiteDeleted: async () => {
-  await websitesStore.load();
-  dispatchCacheEvent('website.deleted');
-}
-```
-
----
-
-### Phase 5: File Tree Expansion State (2 hours)
+### Phase 4: File Tree Expansion State (2 hours)
 
 Persist which folders are expanded.
 
-#### 5.1 Update Files Component
+#### 4.1 Update Files Component
 
 **File**: `/frontend/src/lib/components/workspace/FilesSection.svelte`
 
@@ -764,109 +579,11 @@ function toggleFolder(path: string) {
 
 ---
 
-### Phase 6: Notes Tree Caching (1 hour)
-
-Cache the file tree structure.
-
-#### 6.1 Update Files Store
-
-**File**: `/frontend/src/lib/stores/files.ts`
-
-```typescript
-const NOTES_TREE_CACHE_KEY = 'notes.tree';
-const WORKSPACE_TREE_CACHE_KEY = 'files.tree';
-const TREE_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-async load(section: 'notes' | 'workspace', forceRefresh = false) {
-  const cacheKey = section === 'notes' ? NOTES_TREE_CACHE_KEY : WORKSPACE_TREE_CACHE_KEY;
-
-  if (!forceRefresh) {
-    const cached = getCachedData<FileNode[]>(cacheKey, TREE_CACHE_TTL);
-    if (cached) {
-      update(s => {
-        s.trees[section] = { children: cached, loaded: true };
-        return s;
-      });
-      return;
-    }
-  }
-
-  // Fetch from API
-  const endpoint = section === 'notes' ? '/api/notes/tree' : '/api/files';
-  const response = await fetch(endpoint);
-  const tree = await response.json();
-
-  setCachedData(cacheKey, tree, { ttl: TREE_CACHE_TTL });
-  update(s => {
-    s.trees[section] = { children: tree, loaded: true };
-    return s;
-  });
-}
-```
-
----
-
-### Phase 7: Stale-While-Revalidate for Weather (1 hour)
-
-Improve weather caching to use stale data while fetching fresh.
-
-#### 7.1 Update Site Header Hook
-
-**File**: `/frontend/src/lib/hooks/useSiteHeaderData.ts`
-
-```typescript
-async function fetchWeather(coords: GeolocationCoordinates) {
-  const cacheKey = 'sidebar.weather';
-  const cacheTsKey = 'sidebar.weatherTs';
-  const WEATHER_TTL = 30 * 60 * 1000; // 30 minutes
-
-  // Check cache
-  const cachedTs = localStorage.getItem(cacheTsKey);
-  const cachedData = localStorage.getItem(cacheKey);
-
-  if (cachedTs && cachedData) {
-    const age = Date.now() - parseInt(cachedTs, 10);
-
-    // Return cached data immediately
-    const cached = JSON.parse(cachedData);
-
-    // If stale (>80% of TTL), revalidate in background
-    if (age > WEATHER_TTL * 0.8) {
-      // Don't await - fetch in background
-      revalidateWeather(coords).catch(console.error);
-    }
-
-    // Only reject cache if fully expired
-    if (age < WEATHER_TTL) {
-      return cached;
-    }
-  }
-
-  // No valid cache - fetch synchronously
-  return revalidateWeather(coords);
-}
-
-async function revalidateWeather(coords: GeolocationCoordinates) {
-  const response = await fetch(
-    `/api/weather?lat=${coords.latitude}&lon=${coords.longitude}`
-  );
-  const data = await response.json();
-
-  // Update cache
-  localStorage.setItem('sidebar.weather', JSON.stringify(data));
-  localStorage.setItem('sidebar.weatherTs', Date.now().toString());
-
-  return data;
-}
-```
-
----
-
-### Phase 8: Global Cache Cleanup (0.5 hours)
+### Phase 5: Global Cache Cleanup (0.5 hours)
 
 Add cleanup on logout and settings.
 
-#### 8.1 Logout Handler
+#### 5.1 Logout Handler
 
 **File**: `/frontend/src/routes/auth/logout/+server.ts`
 
@@ -879,14 +596,11 @@ export const POST: RequestHandler = async ({ locals }) => {
   // Clear all caches
   clearCaches();
 
-  // Dispatch logout event
-  dispatchCacheEvent('user.logout');
-
   throw redirect(303, '/auth/login');
 };
 ```
 
-#### 8.2 Add Cache Management to Settings
+#### 5.2 Add Cache Management to Settings
 
 **File**: `/frontend/src/lib/components/settings/SettingsDialog.svelte`
 
@@ -945,19 +659,12 @@ Add a "Storage & Cache" section:
   - [ ] Second load returns cached data
   - [ ] Cache invalidates on new message
   - [ ] Cache invalidates on conversation deletion
-- [ ] Websites list caching:
-  - [ ] Cache persists across page refreshes
-  - [ ] Invalidates on website saved/deleted
 - [ ] Last conversation persistence:
   - [ ] Restores on page load
   - [ ] Clears on logout
 - [ ] File tree expansion:
   - [ ] State persists across refreshes
   - [ ] Handles deeply nested paths
-- [ ] Stale-while-revalidate:
-  - [ ] Returns stale data immediately
-  - [ ] Revalidates in background
-  - [ ] Updates UI after revalidation
 
 ### Performance Tests
 
@@ -972,7 +679,6 @@ Add a "Storage & Cache" section:
 - [ ] Navigate to history → instant population
 - [ ] Refresh page → last conversation restored
 - [ ] Create new conversation → cache invalidates
-- [ ] Delete website → cache invalidates
 - [ ] Expand folders → state persists
 - [ ] Logout → all caches cleared
 
@@ -1046,14 +752,12 @@ If issues occur:
 ## Success Criteria
 
 - [ ] Conversation list loads instantly on repeat visits (<10ms)
-- [ ] Websites list loads instantly on repeat visits (<10ms)
 - [ ] Last conversation restored on page refresh
 - [ ] File tree expansion state persists across sessions
 - [ ] API call volume reduced by 40-60% for repeat actions
 - [ ] No localStorage quota errors for typical usage
-- [ ] Cache invalidation works correctly on all mutations
+- [ ] Cache write-through works correctly with realtime updates
 - [ ] Zero regressions in data consistency
-- [ ] Smooth user experience with stale-while-revalidate
 
 ---
 
@@ -1064,21 +768,18 @@ If issues occur:
 | 1 | Core cache utilities | 2 hours |
 | 2 | Conversation list caching | 1.5 hours |
 | 3 | Last conversation persistence | 1 hour |
-| 4 | Websites list caching | 0.5 hours |
-| 5 | File tree expansion state | 2 hours |
-| 6 | Notes tree caching | 1 hour |
-| 7 | Stale-while-revalidate weather | 1 hour |
-| 8 | Global cache cleanup | 0.5 hours |
-| **Testing** | Unit + integration tests | 2 hours |
+| 4 | File tree expansion state | 2 hours |
+| 5 | Global cache cleanup | 0.5 hours |
+| **Testing** | Unit + integration tests | 1.5 hours |
 | **Documentation** | Update docs | 0.5 hours |
 
-**Total**: ~12 hours
+**Total**: ~8 hours
 
 ---
 
 ## Future Enhancements
 
-### Phase 9: IndexedDB for Large Datasets (4+ hours)
+### Phase 6: IndexedDB for Large Datasets (4+ hours)
 
 For storing chat message history, file content, etc.
 
@@ -1092,7 +793,7 @@ For storing chat message history, file content, etc.
 - `idb` (Promise-based IndexedDB wrapper)
 - `dexie` (Full-featured IndexedDB library)
 
-### Phase 10: Service Worker Caching (6+ hours)
+### Phase 7: Service Worker Caching (6+ hours)
 
 For offline-first architecture.
 
@@ -1102,7 +803,7 @@ For offline-first architecture.
 - Push notifications
 - Network-first/cache-first strategies
 
-### Phase 11: Request Deduplication (2 hours)
+### Phase 8: Request Deduplication (2 hours)
 
 Prevent multiple identical API calls in flight.
 
