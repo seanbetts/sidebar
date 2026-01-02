@@ -10,6 +10,7 @@ from api.db.dependencies import get_current_user_id
 from api.db.session import get_db, set_session_user_id
 from api.models.things_bridge import ThingsBridge
 from api.services.things_bridge_service import ThingsBridgeService
+from api.services.things_bridge_client import ThingsBridgeClient
 
 
 router = APIRouter(prefix="/things", tags=["things"])
@@ -103,3 +104,38 @@ async def list_bridges(
         "activeBridgeId": active_id,
         "bridges": [_bridge_payload(bridge) for bridge in bridges],
     }
+
+
+def _get_active_bridge_or_503(db: Session, user_id: str) -> ThingsBridge:
+    bridge = ThingsBridgeService.select_active_bridge(db, user_id)
+    if not bridge:
+        raise HTTPException(status_code=503, detail="No active Things bridge available")
+    return bridge
+
+
+@router.get("/lists/{scope}")
+async def get_things_list(
+    scope: str,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Fetch a Things list from the active bridge."""
+    set_session_user_id(db, user_id)
+    bridge = _get_active_bridge_or_503(db, user_id)
+    client = ThingsBridgeClient(bridge)
+    return await client.get_list(scope)
+
+
+@router.post("/apply")
+async def apply_things_operation(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Apply an operation via the active Things bridge."""
+    set_session_user_id(db, user_id)
+    bridge = _get_active_bridge_or_503(db, user_id)
+    client = ThingsBridgeClient(bridge)
+    return await client.apply(request)
