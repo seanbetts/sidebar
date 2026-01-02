@@ -570,7 +570,28 @@
 
       <!-- Things Section -->
       <div class="panel-section" class:hidden={activeSection !== 'things'}>
-        <ThingsPanel />
+        <SidebarSectionHeader
+          title="Tasks"
+          searchPlaceholder="Search tasks..."
+          onSearch={(query) => {}}
+          onClear={() => {}}
+        >
+          <svelte:fragment slot="actions">
+            <Button
+              size="icon"
+              variant="ghost"
+              class="panel-action"
+              onclick={() => {}}
+              aria-label="New task"
+              title="New task"
+            >
+              <Plus size={16} />
+            </Button>
+          </svelte:fragment>
+        </SidebarSectionHeader>
+        <div class="things-content">
+          <ThingsPanel />
+        </div>
       </div>
 
       <!-- Workspace Section -->
@@ -714,6 +735,11 @@
     overflow-y: auto;
   }
 
-
+  .things-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+  }
 
 </style>

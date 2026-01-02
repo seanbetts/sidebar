@@ -64,9 +64,9 @@ function createThingsStore() {
 
   const toCountsMap = (counts: ThingsCountsResponse): Record<string, number> => {
     const map: Record<string, number> = {
-      inbox: counts.counts.inbox,
-      today: counts.counts.today,
-      upcoming: counts.counts.upcoming
+      inbox: counts.counts.inbox ?? 0,
+      today: counts.counts.today ?? 0,
+      upcoming: counts.counts.upcoming ?? 0
     };
     counts.areas.forEach((area) => {
       map[`area:${area.id}`] = area.count;
@@ -75,6 +75,17 @@ function createThingsStore() {
       map[`project:${project.id}`] = project.count;
     });
     return map;
+  };
+
+  const normalizeCountsCache = (
+    cached: ThingsCountsResponse | Record<string, number>
+  ): { map: Record<string, number>; todayCount: number } => {
+    if ('counts' in cached) {
+      const map = toCountsMap(cached);
+      return { map, todayCount: cached.counts.today ?? 0 };
+    }
+    const todayCount = cached.today ?? cached.inbox ?? 0;
+    return { map: cached, todayCount };
   };
 
   const applyCountsResponse = (counts: ThingsCountsResponse) => {
@@ -117,7 +128,7 @@ function createThingsStore() {
     const token = ++loadToken;
     const key = tasksCacheKey(selection);
     const cachedTasks = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
-    const cachedCounts = getCachedData<ThingsCountsResponse>(COUNTS_CACHE_KEY, {
+    const cachedCounts = getCachedData<ThingsCountsResponse | Record<string, number>>(COUNTS_CACHE_KEY, {
       ttl: CACHE_TTL,
       version: CACHE_VERSION
     });
@@ -140,10 +151,11 @@ function createThingsStore() {
       }));
     }
     if (cachedCounts) {
+      const normalized = normalizeCountsCache(cachedCounts);
       update((state) => ({
         ...state,
-        counts: toCountsMap(cachedCounts),
-        todayCount: cachedCounts.counts.today
+        counts: normalized.map,
+        todayCount: normalized.todayCount
       }));
     }
     if (cachedToday) {
@@ -207,15 +219,16 @@ function createThingsStore() {
     reset: () => set(defaultState),
     load: (selection: ThingsSelection) => loadSelection(selection),
     loadCounts: async (force: boolean = false) => {
-      const cached = getCachedData<ThingsCountsResponse>(COUNTS_CACHE_KEY, {
+      const cached = getCachedData<ThingsCountsResponse | Record<string, number>>(COUNTS_CACHE_KEY, {
         ttl: CACHE_TTL,
         version: CACHE_VERSION
       });
       if (cached) {
+        const normalized = normalizeCountsCache(cached);
         update((state) => ({
           ...state,
-          counts: toCountsMap(cached),
-          todayCount: cached.counts.today
+          counts: normalized.map,
+          todayCount: normalized.todayCount
         }));
         if (!force && !isCacheStale(COUNTS_CACHE_KEY, CACHE_TTL)) {
           return;

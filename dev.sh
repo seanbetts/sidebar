@@ -9,6 +9,8 @@ BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
 INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
 THINGS_BRIDGE_PID="/tmp/sidebar-things-bridge.pid"
+THINGS_BRIDGE_PLIST="$HOME/Library/LaunchAgents/com.sidebar.things-bridge.plist"
+THINGS_BRIDGE_LABEL="com.sidebar.things-bridge"
 REPO_ROOT="$(pwd)"
 use_doppler=0
 
@@ -71,7 +73,7 @@ is_frontend_process() {
 
 is_things_bridge_process() {
   local command="$1"
-  [[ "${command}" == *"bridge/things_bridge.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
+  [[ "${command}" == *"things_bridge.py"* ]]
 }
 
 stop_pid() {
@@ -93,6 +95,14 @@ ensure_port_available() {
 
   if ! port_in_use "${port}"; then
     return
+  fi
+
+  if [[ "${role}" == "things_bridge" ]] && [[ -f "${THINGS_BRIDGE_PLIST}" ]]; then
+    launchctl bootout "gui/$UID/${THINGS_BRIDGE_LABEL}" >/dev/null 2>&1 || true
+    sleep 1
+    if ! port_in_use "${port}"; then
+      return
+    fi
   fi
 
   pid=$(port_pid "${port}")
@@ -161,6 +171,12 @@ start_ingestion_worker() {
 }
 
 start_things_bridge() {
+  if [[ -f "${THINGS_BRIDGE_PLIST}" ]]; then
+    echo "Starting Things bridge via launchctl..."
+    launchctl bootstrap "gui/$UID" "${THINGS_BRIDGE_PLIST}" >/dev/null 2>&1 || true
+    launchctl kickstart -k "gui/$UID/${THINGS_BRIDGE_LABEL}" >/dev/null 2>&1 || true
+    return
+  fi
   ensure_port_available 8787 things_bridge
   echo "Starting Things bridge..."
   (env THINGS_BACKEND_URL="${THINGS_BACKEND_URL:-http://localhost:8001}" python bridge/things_bridge.py) >"${THINGS_BRIDGE_LOG}" 2>&1 &
@@ -197,6 +213,14 @@ stop_service() {
   else
     echo "${name} is not running."
   fi
+}
+
+stop_things_bridge() {
+  if [[ -f "${THINGS_BRIDGE_PLIST}" ]]; then
+    echo "Stopping Things bridge (launchctl)..."
+    launchctl bootout "gui/$UID/${THINGS_BRIDGE_LABEL}" >/dev/null 2>&1 || true
+  fi
+  stop_service "${THINGS_BRIDGE_PID}" "Things bridge"
 }
 
 cleanup_services() {
@@ -305,13 +329,13 @@ case "${command}" in
     stop_service "${BACKEND_PID}" "backend"
     stop_service "${FRONTEND_PID}" "frontend"
     stop_service "${INGESTION_PID}" "ingestion worker"
-    stop_service "${THINGS_BRIDGE_PID}" "Things bridge"
+    stop_things_bridge
     ;;
   restart)
     stop_service "${BACKEND_PID}" "backend"
     stop_service "${FRONTEND_PID}" "frontend"
     stop_service "${INGESTION_PID}" "ingestion worker"
-    stop_service "${THINGS_BRIDGE_PID}" "Things bridge"
+    stop_things_bridge
     start_backend
     start_frontend
     start_ingestion_worker

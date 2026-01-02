@@ -8,7 +8,7 @@ import subprocess
 import threading
 import time
 from urllib import request as urlrequest
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import FastAPI, Header, HTTPException, status
 
@@ -22,7 +22,7 @@ BRIDGE_ID = os.getenv("THINGS_BRIDGE_ID", "")
 HEARTBEAT_INTERVAL = int(os.getenv("THINGS_BRIDGE_HEARTBEAT_SECONDS", "60"))
 
 
-def require_token(x_things_token: str | None = Header(default=None)) -> None:
+def require_token(x_things_token: Optional[str] = Header(default=None)) -> None:
     token = _get_bridge_token()
     if not token:
         raise HTTPException(
@@ -279,17 +279,40 @@ def _build_counts_script() -> str:
         return fallback;
       }}
     }}
+    const projectIds = {{}};
     function isTask(t) {{
       try {{
+        const todoId = safe(() => String(t.id()), "");
+        if (todoId && projectIds[todoId]) {{
+          return false;
+        }}
+        const className = String(t.class && t.class());
+        if (className && className.toLowerCase().includes("project")) {{
+          return false;
+        }}
+        const hasChildren = safe(() => t.toDos && typeof t.toDos === "function", false);
+        if (hasChildren) {{
+          return false;
+        }}
         return String(t.status()) !== "project";
       }} catch (e) {{
         return true;
       }}
     }}
-    function countTasks(list) {{
-      if (!list) return 0;
-      const tasks = list.toDos();
-      return tasks.filter(isTask).length;
+    function countTasks(todos) {{
+      if (!todos) return 0;
+      let count = 0;
+      for (let i = 0; i < todos.length; i += 1) {{
+        if (isTask(todos[i])) count += 1;
+      }}
+      return count;
+    }}
+    function countProjectTasks(project) {{
+      return safe(() => countTasks(project.toDos()), 0);
+    }}
+    function countAreaTasks(area) {{
+      const areaTodos = safe(() => area.toDos(), []);
+      return countTasks(areaTodos);
     }}
 
     const inbox = app.lists.byName("Inbox");
@@ -298,21 +321,29 @@ def _build_counts_script() -> str:
 
     const projects = app.projects();
     const areas = app.areas();
+    for (let i = 0; i < projects.length; i += 1) {{
+      const projectId = safe(() => String(projects[i].id()), "");
+      if (projectId) projectIds[projectId] = true;
+    }}
 
     const payload = {{
       generatedAt: new Date().toISOString(),
       counts: {{
-        inbox: countTasks(inbox),
-        today: countTasks(today),
-        upcoming: countTasks(upcoming)
+        inbox: countTasks(safe(() => inbox.toDos(), [])),
+        today: countTasks(safe(() => today.toDos(), [])),
+        upcoming: countTasks(safe(() => upcoming.toDos(), []))
       }},
-      projects: projects.map(p => {{
-        id: String(p.id()),
-        count: safe(() => p.toDos().filter(isTask).length, 0)
+      projects: projects.map(function(p) {{
+        return {{
+          id: String(p.id()),
+          count: countProjectTasks(p)
+        }};
       }}),
-      areas: areas.map(a => {{
-        id: String(a.id()),
-        count: safe(() => a.toDos().filter(isTask).length, 0)
+      areas: areas.map(function(a) {{
+        return {{
+          id: String(a.id()),
+          count: countAreaTasks(a)
+        }};
       }})
     }};
 
@@ -379,35 +410,35 @@ async def health() -> dict:
 
 
 @app.get("/lists/{scope}")
-async def get_list(scope: str, x_things_token: str | None = Header(default=None)) -> dict:
+async def get_list(scope: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_list_script(scope)
     return _run_jxa(script)
 
 
 @app.post("/apply")
-async def apply_operation(request: dict, x_things_token: str | None = Header(default=None)) -> dict:
+async def apply_operation(request: dict, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_apply_script(request)
     return _run_jxa(script)
 
 
 @app.get("/projects/{project_id}/tasks")
-async def get_project_tasks(project_id: str, x_things_token: str | None = Header(default=None)) -> dict:
+async def get_project_tasks(project_id: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_project_tasks_script(project_id)
     return _run_jxa(script)
 
 
 @app.get("/areas/{area_id}/tasks")
-async def get_area_tasks(area_id: str, x_things_token: str | None = Header(default=None)) -> dict:
+async def get_area_tasks(area_id: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_area_tasks_script(area_id)
     return _run_jxa(script)
 
 
 @app.get("/counts")
-async def get_counts(x_things_token: str | None = Header(default=None)) -> dict:
+async def get_counts(x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_counts_script()
     return _run_jxa(script)
