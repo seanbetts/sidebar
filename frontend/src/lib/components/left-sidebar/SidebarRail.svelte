@@ -33,6 +33,15 @@
       <FileText size={18} />
     </button>
     <button
+      on:click={() => onOpenSection?.('things')}
+      class="rail-btn"
+      class:active={activeSection === 'things'}
+      aria-label="Tasks"
+      title="Tasks"
+    >
+      <CheckSquare size={18} />
+    </button>
+    <button
       on:click={() => onOpenSection?.('websites')}
       class="rail-btn"
       class:active={activeSection === 'websites'}
@@ -58,15 +67,6 @@
       title="Chat"
     >
       <MessageSquare size={18} />
-    </button>
-    <button
-      on:click={() => onOpenSection?.('things')}
-      class="rail-btn"
-      class:active={activeSection === 'things'}
-      aria-label="To Do"
-      title="To Do"
-    >
-      <CheckSquare size={18} />
     </button>
   </div>
 
