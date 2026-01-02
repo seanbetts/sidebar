@@ -8,6 +8,7 @@
   import SettingsSkillsSection from '$lib/components/left-sidebar/panels/settings/SettingsSkillsSection.svelte';
   import SettingsShortcutsSection from '$lib/components/left-sidebar/panels/settings/SettingsShortcutsSection.svelte';
   import SettingsStorageSection from '$lib/components/left-sidebar/panels/settings/SettingsStorageSection.svelte';
+  import { clearCaches, clearInFlight, clearMemoryCache } from '$lib/utils/cache';
 
   export let open = false;
   export let isLoadingSettings = false;
@@ -49,6 +50,12 @@
   export let allSkillsEnabled = false;
   export let toggleAllSkills: (enabled: boolean) => void;
   export let toggleSkill: (id: string, enabled: boolean) => void;
+
+  function handleLogout() {
+    clearInFlight();
+    clearMemoryCache();
+    clearCaches();
+  }
 </script>
 
 <AlertDialog.Root bind:open>
@@ -136,7 +143,7 @@
       </div>
     </div>
     <AlertDialog.Footer class="settings-footer">
-      <form method="get" action="/auth/logout">
+      <form method="get" action="/auth/logout" on:submit={handleLogout}>
         <div class="settings-logout">
           <Button
             type="submit"
