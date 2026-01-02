@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from api.routers import health, chat, conversations, files, ingestion, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories
+from api.routers import health, chat, conversations, files, ingestion, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories, things
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
 from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
@@ -134,6 +134,7 @@ app.include_router(memories.router, prefix="/api", tags=["memories"])
 app.include_router(places.router, prefix="/api", tags=["places"])
 app.include_router(skills.router, prefix="/api", tags=["skills"])
 app.include_router(weather.router, prefix="/api", tags=["weather"])
+app.include_router(things.router, prefix="/api", tags=["things"])
 
 # Mount MCP endpoint (auth handled by middleware)
 # FastMCP creates its own /mcp route, so we mount at root

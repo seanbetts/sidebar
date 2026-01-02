@@ -130,6 +130,9 @@ class Settings(BaseSettings):
     r2_access_key: str = ""
     r2_secret_access_key: str = ""
 
+    # Things bridge
+    things_bridge_stale_seconds: int = int(os.getenv("THINGS_BRIDGE_STALE_SECONDS", "120"))
+
     # Future JWT config (Phase 2)
     # jwt_secret: str = None
     # jwt_algorithm: str = "HS256"

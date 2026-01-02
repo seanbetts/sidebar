@@ -66,6 +66,51 @@ This avoids relying on a single always-on host and improves availability across 
 
 ---
 
+## Bridge Registry (Schema + API)
+
+**Table**: `things_bridges`
+- `id` (uuid, primary key)
+- `user_id` (text)
+- `device_id` (text, unique per user)
+- `device_name` (text)
+- `base_url` (text)
+- `bridge_token` (text) — shared secret for backend → bridge calls
+- `last_seen_at` (timestamptz)
+- `created_at`, `updated_at` (timestamptz)
+
+**Active bridge selection**
+- Choose the **most recently seen** bridge within a staleness window (e.g. 2 minutes).
+- If none are fresh, show “bridge offline”.
+
+**API contracts**
+```
+POST /api/things/bridges/register
+Body: {
+  "deviceId": "mac-studio",
+  "deviceName": "Mac Studio",
+  "baseUrl": "https://bridge-home.example.com",
+  "capabilities": { "read": true, "write": true }
+}
+Response: {
+  "bridgeId": "uuid",
+  "bridgeToken": "secret",
+  "lastSeenAt": "2026-01-10T12:00:00Z"
+}
+
+POST /api/things/bridges/heartbeat
+Body: { "bridgeId": "uuid" }
+Response: { "lastSeenAt": "2026-01-10T12:01:00Z" }
+
+GET /api/things/bridges
+Response: [{ "bridgeId": "uuid", "deviceName": "...", "lastSeenAt": "...", "baseUrl": "..." }]
+```
+
+Notes:
+- Register is idempotent by `device_id` and reuses existing `bridge_token`.
+- Heartbeats should be sent every 30–60 seconds while the bridge is running.
+
+---
+
 ## Decision Matrix
 
 | Option | Read Coverage | Write Coverage | Reliability | Complexity | UX Latency | Future-Proof | Notes |
