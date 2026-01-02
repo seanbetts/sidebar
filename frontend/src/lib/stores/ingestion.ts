@@ -212,6 +212,34 @@ function createIngestionStore() {
         };
       });
     },
+    updateFileFields(fileId: string, patch: Partial<IngestionListItem['file']>) {
+      update(state => {
+        const nextItems = state.items.map(item =>
+          item.file.id === fileId
+            ? { ...item, file: { ...item.file, ...patch } }
+            : item
+        );
+        persistCache(nextItems, state.localUploads);
+        return {
+          ...state,
+          items: nextItems
+        };
+      });
+    },
+    updateJob(fileId: string, patch: Partial<IngestionListItem['job']>) {
+      update(state => {
+        const nextItems = state.items.map(item =>
+          item.file.id === fileId
+            ? { ...item, job: { ...item.job, ...patch } }
+            : item
+        );
+        persistCache(nextItems, state.localUploads);
+        return {
+          ...state,
+          items: nextItems
+        };
+      });
+    },
     upsertItem(item: IngestionListItem) {
       update(state => {
         const nextUploads = state.localUploads.filter(local => local.file.id !== item.file.id);
