@@ -23,6 +23,12 @@ class ThingsBridgeClient:
     async def apply(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", "/apply", json=payload)
 
+    async def project_tasks(self, project_id: str) -> dict[str, Any]:
+        return await self._request("GET", f"/projects/{project_id}/tasks")
+
+    async def area_tasks(self, area_id: str) -> dict[str, Any]:
+        return await self._request("GET", f"/areas/{area_id}/tasks")
+
     async def _request(self, method: str, path: str, json: dict | None = None) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         headers = {"X-Things-Token": self.bridge.bridge_token}

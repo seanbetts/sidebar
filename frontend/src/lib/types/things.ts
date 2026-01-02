@@ -13,3 +13,39 @@ export type ThingsBridgeStatus = {
   activeBridge: ThingsBridgeInfo | null;
   bridges: ThingsBridgeInfo[];
 };
+
+export type ThingsTask = {
+  id: string;
+  title: string;
+  status: string;
+  deadline?: string | null;
+  deadlineStart?: string | null;
+  notes?: string | null;
+  projectId?: string | null;
+  areaId?: string | null;
+  repeating?: boolean;
+  tags?: string[];
+  updatedAt?: string | null;
+};
+
+export type ThingsProject = {
+  id: string;
+  title: string;
+  areaId?: string | null;
+  status: string;
+  updatedAt?: string | null;
+};
+
+export type ThingsArea = {
+  id: string;
+  title: string;
+  updatedAt?: string | null;
+};
+
+export type ThingsListResponse = {
+  scope: string;
+  generatedAt?: string;
+  tasks: ThingsTask[];
+  projects?: ThingsProject[];
+  areas?: ThingsArea[];
+};

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MessageSquare, FileText, Globe, Menu, FolderOpen } from 'lucide-svelte';
+  import { MessageSquare, FileText, Globe, Menu, FolderOpen, CheckSquare } from 'lucide-svelte';
   import type { SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
 
   export let isCollapsed = false;
@@ -58,6 +58,15 @@
       title="Chat"
     >
       <MessageSquare size={18} />
+    </button>
+    <button
+      on:click={() => onOpenSection?.('things')}
+      class="rail-btn"
+      class:active={activeSection === 'things'}
+      aria-label="To Do"
+      title="To Do"
+    >
+      <CheckSquare size={18} />
     </button>
   </div>
 
