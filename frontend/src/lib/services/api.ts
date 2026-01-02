@@ -427,6 +427,13 @@ class ThingsAPI {
 
   async counts(): Promise<ThingsCountsResponse> {
     const response = await fetch(`${this.baseUrl}/counts`);
+    if (response.status === 404) {
+      return {
+        counts: { inbox: 0, today: 0, upcoming: 0 },
+        projects: [],
+        areas: []
+      };
+    }
     if (!response.ok) throw new Error('Failed to load Things counts');
     return response.json();
   }

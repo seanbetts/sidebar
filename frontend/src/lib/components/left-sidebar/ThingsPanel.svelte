@@ -1,9 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { thingsStore, type ThingsSelection } from '$lib/stores/things';
-  import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { CalendarCheck, CalendarClock, Inbox, Layers, List, Plus } from 'lucide-svelte';
+  import { CalendarCheck, CalendarClock, Inbox, Layers, List } from 'lucide-svelte';
 
   let selection: ThingsSelection = { type: 'today' };
   let tasksCount = 0;
@@ -20,10 +18,6 @@
   }));
   $: orphanProjects = projects.filter((project) => !project.areaId);
 
-  function handleNewTask() {
-    // TODO: wire task creation
-  }
-
   function select(selection: ThingsSelection) {
     thingsStore.load(selection);
   }
@@ -33,22 +27,7 @@
   });
 </script>
 
-<div class="things-panel">
-  <SidebarSectionHeader title="Tasks">
-    <svelte:fragment slot="actions">
-      <Button
-        size="icon"
-        variant="ghost"
-        class="panel-action"
-        onclick={handleNewTask}
-        aria-label="New task"
-        title="New task"
-      >
-        <Plus size={16} />
-      </Button>
-    </svelte:fragment>
-  </SidebarSectionHeader>
-  <div class="things-sections">
+<div class="things-sections">
     <button
       class="things-item"
       class:active={selection.type === 'inbox'}
@@ -129,28 +108,20 @@
         </button>
       {/each}
     {/if}
-  </div>
   {#if error}
     <div class="things-error">{error}</div>
   {/if}
 </div>
 
 <style>
-  .things-panel {
+  .things-sections {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    gap: 0.75rem;
-    padding: 0.75rem 0.5rem 0.5rem;
-  }
-
-  .things-sections {
-    display: flex;
-    flex-direction: column;
     overflow-y: auto;
-    min-height: 0;
     gap: 0.35rem;
+    padding: 0.75rem 0.5rem 0.5rem;
   }
 
   .things-item {
