@@ -211,8 +211,12 @@
     try {
       const { file_id } = await ingestionAPI.ingestYoutube(url);
       ingestionStore.removeLocalUpload(tempId);
-      await ingestionStore.load();
-      ingestionStore.startPolling();
+      const meta = await ingestionAPI.get(file_id);
+      ingestionStore.upsertItem({
+        file: meta.file,
+        job: meta.job,
+        recommended_viewer: meta.recommended_viewer
+      });
       dispatchCacheEvent('file.uploaded');
       websitesStore.clearActive();
       editorStore.reset();
@@ -262,8 +266,12 @@
         });
       });
       ingestionStore.removeLocalUpload(tempId);
-      await ingestionStore.load();
-      ingestionStore.startPolling();
+      const meta = await ingestionAPI.get(file_id);
+      ingestionStore.upsertItem({
+        file: meta.file,
+        job: meta.job,
+        recommended_viewer: meta.recommended_viewer
+      });
       dispatchCacheEvent('file.uploaded');
       websitesStore.clearActive();
       editorStore.reset();
@@ -326,7 +334,6 @@
 
       const websiteId = data?.data?.id;
 
-      await websitesStore.load(true);
       dispatchCacheEvent('website.saved');
       if (websiteId) {
         ingestionViewerStore.clearActive();
