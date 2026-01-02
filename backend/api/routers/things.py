@@ -106,6 +106,23 @@ async def list_bridges(
     }
 
 
+@router.get("/bridges/status")
+async def bridge_status(
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Return current active bridge status for the user."""
+    set_session_user_id(db, user_id)
+    bridges = ThingsBridgeService.list_bridges(db, user_id)
+    active = ThingsBridgeService.select_active_bridge(db, user_id)
+    return {
+        "activeBridgeId": str(active.id) if active else None,
+        "activeBridge": _bridge_payload(active) if active else None,
+        "bridges": [_bridge_payload(bridge) for bridge in bridges],
+    }
+
+
 def _get_active_bridge_or_503(db: Session, user_id: str) -> ThingsBridge:
     bridge = ThingsBridgeService.select_active_bridge(db, user_id)
     if not bridge:
