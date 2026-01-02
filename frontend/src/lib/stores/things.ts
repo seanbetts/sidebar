@@ -1,7 +1,13 @@
 import { writable } from 'svelte/store';
 import { thingsAPI } from '$lib/services/api';
 import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
-import type { ThingsArea, ThingsListResponse, ThingsProject, ThingsTask } from '$lib/types/things';
+import type {
+  ThingsArea,
+  ThingsCountsResponse,
+  ThingsListResponse,
+  ThingsProject,
+  ThingsTask
+} from '$lib/types/things';
 
 export type ThingsSelection =
   | { type: 'inbox' }
@@ -15,6 +21,8 @@ type ThingsState = {
   tasks: ThingsTask[];
   areas: ThingsArea[];
   projects: ThingsProject[];
+  todayCount: number;
+  counts: Record<string, number>;
   isLoading: boolean;
   error: string;
 };
@@ -27,12 +35,15 @@ type ThingsMetaCache = {
 const CACHE_TTL = 2 * 60 * 1000;
 const CACHE_VERSION = '1.0';
 const META_CACHE_KEY = 'things.meta';
+const COUNTS_CACHE_KEY = 'things.counts';
 
 const defaultState: ThingsState = {
   selection: { type: 'today' },
   tasks: [],
   areas: [],
   projects: [],
+  todayCount: 0,
+  counts: {},
   isLoading: false,
   error: ''
 };
@@ -41,12 +52,54 @@ function createThingsStore() {
   const { subscribe, set, update } = writable<ThingsState>(defaultState);
   let loadToken = 0;
 
-  const applyResponse = (response: ThingsListResponse) => {
+  const selectionCount = (
+    selection: ThingsSelection,
+    tasks: ThingsTask[],
+    projects: ThingsProject[]
+  ) => {
+    if (selection.type !== 'area') return tasks.length;
+    const projectIds = new Set(projects.map((project) => project.id));
+    return tasks.filter((task) => !projectIds.has(task.id) && task.status !== 'project').length;
+  };
+
+  const toCountsMap = (counts: ThingsCountsResponse): Record<string, number> => {
+    const map: Record<string, number> = {
+      inbox: counts.counts.inbox,
+      today: counts.counts.today,
+      upcoming: counts.counts.upcoming
+    };
+    counts.areas.forEach((area) => {
+      map[`area:${area.id}`] = area.count;
+    });
+    counts.projects.forEach((project) => {
+      map[`project:${project.id}`] = project.count;
+    });
+    return map;
+  };
+
+  const applyCountsResponse = (counts: ThingsCountsResponse) => {
+    const map = toCountsMap(counts);
+    update((state) => ({
+      ...state,
+      counts: map,
+      todayCount: counts.counts.today
+    }));
+    setCachedData(COUNTS_CACHE_KEY, counts, { ttl: CACHE_TTL, version: CACHE_VERSION });
+  };
+
+  const applyResponse = (response: ThingsListResponse, selection: ThingsSelection) => {
+    const key = selectionKey(selection);
     update((state) => ({
       ...state,
       tasks: response.tasks ?? [],
       areas: response.areas ?? state.areas,
       projects: response.projects ?? state.projects,
+      todayCount:
+        response.scope === 'today' ? (response.tasks ?? []).length : state.todayCount,
+      counts: {
+        ...state.counts,
+        [key]: selectionCount(selection, response.tasks ?? [], response.projects ?? state.projects)
+      },
       error: ''
     }));
   };
@@ -64,6 +117,17 @@ function createThingsStore() {
     const token = ++loadToken;
     const key = tasksCacheKey(selection);
     const cachedTasks = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
+    const cachedCounts = getCachedData<ThingsCountsResponse>(COUNTS_CACHE_KEY, {
+      ttl: CACHE_TTL,
+      version: CACHE_VERSION
+    });
+    const cachedToday =
+      selection.type === 'today'
+        ? cachedTasks
+        : getCachedData<ThingsTask[]>(tasksCacheKey({ type: 'today' }), {
+            ttl: CACHE_TTL,
+            version: CACHE_VERSION
+          });
     const cachedMeta = getCachedData<ThingsMetaCache>(META_CACHE_KEY, {
       ttl: CACHE_TTL,
       version: CACHE_VERSION
@@ -75,13 +139,31 @@ function createThingsStore() {
         projects: cachedMeta.projects
       }));
     }
+    if (cachedCounts) {
+      update((state) => ({
+        ...state,
+        counts: toCountsMap(cachedCounts),
+        todayCount: cachedCounts.counts.today
+      }));
+    }
+    if (cachedToday) {
+      update((state) => ({
+        ...state,
+        todayCount: cachedToday.length
+      }));
+    }
     if (cachedTasks) {
+      const cachedCount = selectionCount(selection, cachedTasks, cachedMeta?.projects ?? []);
       update((state) => ({
         ...state,
         selection,
         tasks: cachedTasks,
         isLoading: false,
-        error: ''
+        error: '',
+        counts: {
+          ...state.counts,
+          [selectionKey(selection)]: cachedCount
+        }
       }));
       if (!isCacheStale(key, CACHE_TTL)) {
         return;
@@ -107,7 +189,7 @@ function createThingsStore() {
           { ttl: CACHE_TTL, version: CACHE_VERSION }
         );
       }
-      applyResponse(response);
+      applyResponse(response, selection);
     } catch (error) {
       if (token !== loadToken) return;
       update((state) => ({
@@ -124,17 +206,76 @@ function createThingsStore() {
     subscribe,
     reset: () => set(defaultState),
     load: (selection: ThingsSelection) => loadSelection(selection),
+    loadCounts: async (force: boolean = false) => {
+      const cached = getCachedData<ThingsCountsResponse>(COUNTS_CACHE_KEY, {
+        ttl: CACHE_TTL,
+        version: CACHE_VERSION
+      });
+      if (cached) {
+        update((state) => ({
+          ...state,
+          counts: toCountsMap(cached),
+          todayCount: cached.counts.today
+        }));
+        if (!force && !isCacheStale(COUNTS_CACHE_KEY, CACHE_TTL)) {
+          return;
+        }
+      } else if (!force && !isCacheStale(COUNTS_CACHE_KEY, CACHE_TTL)) {
+        return;
+      }
+      try {
+        const response = await thingsAPI.counts();
+        applyCountsResponse(response);
+      } catch (error) {
+        update((state) => ({
+          ...state,
+          error: error instanceof Error ? error.message : 'Failed to load Things counts'
+        }));
+      }
+    },
     completeTask: async (taskId: string) => {
       await thingsAPI.apply({ op: 'complete', id: taskId });
       update((state) => {
         const nextTasks = state.tasks.filter((task) => task.id !== taskId);
+        const key = selectionKey(state.selection);
         setCachedData(tasksCacheKey(state.selection), nextTasks, {
           ttl: CACHE_TTL,
           version: CACHE_VERSION
         });
+        const nextCounts = {
+          ...state.counts,
+          [key]: nextTasks.length
+        };
+        const cachedCounts = getCachedData<ThingsCountsResponse>(COUNTS_CACHE_KEY, {
+          ttl: CACHE_TTL,
+          version: CACHE_VERSION
+        });
+        if (cachedCounts) {
+          const updatedCounts = { ...cachedCounts };
+          if (key === 'today') {
+            updatedCounts.counts.today = nextTasks.length;
+          } else if (key === 'inbox') {
+            updatedCounts.counts.inbox = nextTasks.length;
+          } else if (key === 'upcoming') {
+            updatedCounts.counts.upcoming = nextTasks.length;
+          } else if (key.startsWith('area:')) {
+            const areaId = key.split(':')[1];
+            updatedCounts.areas = updatedCounts.areas.map((area) =>
+              area.id === areaId ? { ...area, count: nextTasks.length } : area
+            );
+          } else if (key.startsWith('project:')) {
+            const projectId = key.split(':')[1];
+            updatedCounts.projects = updatedCounts.projects.map((project) =>
+              project.id === projectId ? { ...project, count: nextTasks.length } : project
+            );
+          }
+          setCachedData(COUNTS_CACHE_KEY, updatedCounts, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        }
         return {
           ...state,
-          tasks: nextTasks
+          tasks: nextTasks,
+          counts: nextCounts,
+          todayCount: state.selection.type === 'today' ? nextTasks.length : state.todayCount
         };
       });
     }

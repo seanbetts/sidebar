@@ -266,6 +266,60 @@ def _build_area_tasks_script(area_id: str) -> str:
     """
 
 
+def _build_counts_script() -> str:
+    return f"""
+    const app = Application("{THINGS_APP_NAME}");
+    app.includeStandardAdditions = true;
+
+    function safe(fn, fallback) {{
+      try {{
+        const value = fn();
+        return value === undefined ? fallback : value;
+      }} catch (e) {{
+        return fallback;
+      }}
+    }}
+    function isTask(t) {{
+      try {{
+        return String(t.status()) !== "project";
+      }} catch (e) {{
+        return true;
+      }}
+    }}
+    function countTasks(list) {{
+      if (!list) return 0;
+      const tasks = list.toDos();
+      return tasks.filter(isTask).length;
+    }}
+
+    const inbox = app.lists.byName("Inbox");
+    const today = app.lists.byName("Today");
+    const upcoming = app.lists.byName("Upcoming");
+
+    const projects = app.projects();
+    const areas = app.areas();
+
+    const payload = {{
+      generatedAt: new Date().toISOString(),
+      counts: {{
+        inbox: countTasks(inbox),
+        today: countTasks(today),
+        upcoming: countTasks(upcoming)
+      }},
+      projects: projects.map(p => {{
+        id: String(p.id()),
+        count: safe(() => p.toDos().filter(isTask).length, 0)
+      }}),
+      areas: areas.map(a => {{
+        id: String(a.id()),
+        count: safe(() => a.toDos().filter(isTask).length, 0)
+      }})
+    }};
+
+    JSON.stringify(payload);
+    """
+
+
 def _build_apply_script(payload: dict[str, Any]) -> str:
     op = payload.get("op")
     todo_id = payload.get("id")
@@ -349,6 +403,13 @@ async def get_project_tasks(project_id: str, x_things_token: str | None = Header
 async def get_area_tasks(area_id: str, x_things_token: str | None = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_area_tasks_script(area_id)
+    return _run_jxa(script)
+
+
+@app.get("/counts")
+async def get_counts(x_things_token: str | None = Header(default=None)) -> dict:
+    require_token(x_things_token)
+    script = _build_counts_script()
     return _run_jxa(script)
 
 

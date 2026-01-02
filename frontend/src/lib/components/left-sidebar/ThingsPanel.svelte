@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { thingsStore, type ThingsSelection } from '$lib/stores/things';
   import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -6,12 +7,13 @@
 
   let selection: ThingsSelection = { type: 'today' };
   let tasksCount = 0;
+  let counts: Record<string, number> = {};
   let areas: Array<{ id: string; title: string }> = [];
   let projects: Array<{ id: string; title: string; areaId?: string | null }> = [];
   let error = '';
 
-  $: ({ selection, areas, projects, error } = $thingsStore);
-  $: tasksCount = $thingsStore.tasks.length;
+  $: ({ selection, areas, projects, error, counts } = $thingsStore);
+  $: tasksCount = $thingsStore.todayCount;
   $: projectsByArea = areas.map((area) => ({
     area,
     projects: projects.filter((project) => project.areaId === area.id)
@@ -25,6 +27,10 @@
   function select(selection: ThingsSelection) {
     thingsStore.load(selection);
   }
+
+  onMount(() => {
+    thingsStore.loadCounts();
+  });
 </script>
 
 <div class="things-panel">
@@ -52,6 +58,7 @@
         <Inbox size={14} />
         Inbox
       </span>
+      <span class="meta">{counts['inbox'] ?? 0}</span>
     </button>
     <button
       class="things-item"
@@ -62,7 +69,7 @@
         <CalendarCheck size={14} />
         Today
       </span>
-      <span class="meta">{selection.type === 'today' ? tasksCount : ''}</span>
+      <span class="meta">{tasksCount}</span>
     </button>
     <button
       class="things-item"
@@ -73,6 +80,7 @@
         <CalendarClock size={14} />
         Upcoming
       </span>
+      <span class="meta">{counts['upcoming'] ?? 0}</span>
     </button>
     <div class="things-section-label">Areas</div>
     {#if projectsByArea.length === 0}
@@ -88,6 +96,7 @@
             <Layers size={14} />
             {group.area.title}
           </span>
+          <span class="meta">{counts[`area:${group.area.id}`] ?? 0}</span>
         </button>
         {#each group.projects as project}
           <button
@@ -99,6 +108,7 @@
               <List size={14} />
               {project.title}
             </span>
+            <span class="meta">{counts[`project:${project.id}`] ?? 0}</span>
           </button>
         {/each}
       {/each}
@@ -115,6 +125,7 @@
             <List size={14} />
             {project.title}
           </span>
+          <span class="meta">{counts[`project:${project.id}`] ?? 0}</span>
         </button>
       {/each}
     {/if}
