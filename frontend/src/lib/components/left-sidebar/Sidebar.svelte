@@ -104,11 +104,14 @@
       openSection('notes');
     } else if (event.key === '2') {
       event.preventDefault();
-      openSection('websites');
+      openSection('things');
     } else if (event.key === '3') {
       event.preventDefault();
-      openSection('workspace');
+      openSection('websites');
     } else if (event.key === '4') {
+      event.preventDefault();
+      openSection('workspace');
+    } else if (event.key === '5') {
       event.preventDefault();
       openSection('history');
     }

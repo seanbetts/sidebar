@@ -3,6 +3,7 @@ import { thingsAPI } from '$lib/services/api';
 import type { ThingsArea, ThingsListResponse, ThingsProject, ThingsTask } from '$lib/types/things';
 
 export type ThingsSelection =
+  | { type: 'inbox' }
   | { type: 'today' }
   | { type: 'upcoming' }
   | { type: 'area'; id: string }
@@ -29,6 +30,8 @@ const defaultState: ThingsState = {
 function createThingsStore() {
   const { subscribe, set, update } = writable<ThingsState>(defaultState);
   let loadToken = 0;
+  const cache = new Map<string, { tasks: ThingsTask[]; timestamp: number }>();
+  const cacheTtlMs = 30_000;
 
   const applyResponse = (response: ThingsListResponse) => {
     update((state) => ({
@@ -40,12 +43,31 @@ function createThingsStore() {
     }));
   };
 
+  const selectionKey = (selection: ThingsSelection) => {
+    if (selection.type === 'area' || selection.type === 'project') {
+      return `${selection.type}:${selection.id}`;
+    }
+    return selection.type;
+  };
+
   const loadSelection = async (selection: ThingsSelection) => {
     const token = ++loadToken;
+    const key = selectionKey(selection);
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.timestamp < cacheTtlMs) {
+      update((state) => ({
+        ...state,
+        selection,
+        tasks: cached.tasks,
+        isLoading: false,
+        error: ''
+      }));
+      return;
+    }
     update((state) => ({ ...state, selection, isLoading: true, error: '' }));
     try {
       let response: ThingsListResponse;
-      if (selection.type === 'today' || selection.type === 'upcoming') {
+      if (selection.type === 'today' || selection.type === 'upcoming' || selection.type === 'inbox') {
         response = await thingsAPI.list(selection.type);
       } else if (selection.type === 'area') {
         response = await thingsAPI.areaTasks(selection.id);
@@ -53,6 +75,7 @@ function createThingsStore() {
         response = await thingsAPI.projectTasks(selection.id);
       }
       if (token !== loadToken) return;
+      cache.set(key, { tasks: response.tasks ?? [], timestamp: Date.now() });
       applyResponse(response);
     } catch (error) {
       if (token !== loadToken) return;
