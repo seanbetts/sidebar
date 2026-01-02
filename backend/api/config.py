@@ -132,6 +132,7 @@ class Settings(BaseSettings):
 
     # Things bridge
     things_bridge_stale_seconds: int = int(os.getenv("THINGS_BRIDGE_STALE_SECONDS", "120"))
+    things_bridge_timeout_seconds: int = int(os.getenv("THINGS_BRIDGE_TIMEOUT_SECONDS", "10"))
 
     # Future JWT config (Phase 2)
     # jwt_secret: str = None
