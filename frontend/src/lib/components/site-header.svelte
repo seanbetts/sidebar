@@ -35,21 +35,22 @@
 			<div class="title">sideBar</div>
 			<div class="subtitle">Workspace</div>
 		</div>
+		<div
+			class="things-status"
+			aria-live="polite"
+			title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ""}
+		>
+			<span class="label">Bridge</span>
+			<span
+				class="dot"
+				class:online={bridgeStatus === "online"}
+				class:offline={bridgeStatus === "offline"}
+				class:loading={bridgeStatus === "loading"}
+			></span>
+		</div>
 	</div>
 	<div class="actions">
 		<div class="datetime-group">
-			<div
-				class="things-status"
-				aria-live="polite"
-				title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ""}
-			>
-				<span
-					class="dot"
-					class:online={bridgeStatus === "online"}
-					class:offline={bridgeStatus === "offline"}
-				></span>
-				<span class="label">Bridge</span>
-			</div>
 			<span class="date">{currentDate}</span>
 			<span class="time">{currentTime}</span>
 			{#if liveLocation}
@@ -142,7 +143,7 @@
 
 	.datetime-group {
 		display: grid;
-		grid-template-columns: auto auto auto;
+		grid-template-columns: auto auto;
 		row-gap: 0.1rem;
 		column-gap: 0.8rem;
 		margin-right: 1.25rem;
@@ -150,11 +151,11 @@
 	}
 
 	.things-status {
-		grid-row: 1 / span 2;
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.5rem;
 		padding: 0.2rem 0.5rem;
+		margin-left: 0.6rem;
 		border-radius: 999px;
 		border: 1px solid var(--color-border);
 		color: var(--color-muted-foreground);
@@ -176,6 +177,10 @@
 
 	.things-status .dot.offline {
 		background: #ef4444;
+	}
+
+	.things-status .dot.loading {
+		background: #f59e0b;
 	}
 
 	.datetime-group .date {

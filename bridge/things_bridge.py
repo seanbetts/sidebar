@@ -17,19 +17,19 @@ app = FastAPI(title="sideBar Things Bridge", version="0.1.0")
 
 BRIDGE_TOKEN = os.getenv("THINGS_BRIDGE_TOKEN", "")
 THINGS_APP_NAME = os.getenv("THINGS_APP_NAME", "Things3")
-BACKEND_URL = os.getenv("THINGS_BACKEND_URL", "")
-BACKEND_TOKEN = os.getenv("THINGS_BACKEND_TOKEN", "")
+BACKEND_URL = os.getenv("THINGS_BACKEND_URL", "http://localhost:8001")
 BRIDGE_ID = os.getenv("THINGS_BRIDGE_ID", "")
 HEARTBEAT_INTERVAL = int(os.getenv("THINGS_BRIDGE_HEARTBEAT_SECONDS", "60"))
 
 
 def require_token(x_things_token: str | None = Header(default=None)) -> None:
-    if not BRIDGE_TOKEN:
+    token = _get_bridge_token()
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="THINGS_BRIDGE_TOKEN is not set",
         )
-    if not x_things_token or x_things_token != BRIDGE_TOKEN:
+    if not x_things_token or x_things_token != token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bridge token")
 
 
@@ -58,14 +58,20 @@ def _run_jxa(script: str) -> dict[str, Any]:
 
 
 def _heartbeat_loop() -> None:
-    if not BACKEND_URL or not BACKEND_TOKEN or not BRIDGE_ID:
+    bridge_id = BRIDGE_ID
+    bridge_token = _get_bridge_token()
+    if not bridge_id or not bridge_token:
+        bridge_id = bridge_id or _read_keychain_value("bridge-id")
+        bridge_token = bridge_token or _read_keychain_value("bridge-token")
+    if not BACKEND_URL or not bridge_id or not bridge_token:
         return
     url = f"{BACKEND_URL.rstrip('/')}/api/things/bridges/heartbeat"
     headers = {
-        "Authorization": f"Bearer {BACKEND_TOKEN}",
+        "X-Bridge-Id": bridge_id,
+        "X-Bridge-Token": bridge_token,
         "Content-Type": "application/json",
     }
-    payload = json.dumps({"bridgeId": BRIDGE_ID}).encode("utf-8")
+    payload = json.dumps({"bridgeId": bridge_id}).encode("utf-8")
     while True:
         try:
             req = urlrequest.Request(url, data=payload, headers=headers, method="POST")
@@ -194,6 +200,23 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
     """
 
 
+def _read_keychain_value(account: str) -> str:
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password", "-s", "sidebar-things-bridge", "-a", account, "-w"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return ""
+
+
+def _get_bridge_token() -> str:
+    return BRIDGE_TOKEN or _read_keychain_value("bridge-token")
+
+
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
@@ -217,7 +240,7 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.getenv("THINGS_BRIDGE_PORT", "8787"))
-    if BACKEND_URL and BACKEND_TOKEN and BRIDGE_ID:
+    if BACKEND_URL:
         thread = threading.Thread(target=_heartbeat_loop, daemon=True)
         thread.start()
     uvicorn.run(app, host="127.0.0.1", port=port)

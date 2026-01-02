@@ -73,6 +73,34 @@ async def auth_middleware(request: Request, call_next):
         response = await call_next(request)
         return response
 
+    # Allow Things bridge heartbeat or install with bridge token headers.
+    if request.url.path in {"/api/things/bridges/heartbeat", "/api/things/bridges/install"}:
+        bridge_id = request.headers.get("X-Bridge-Id")
+        bridge_token = request.headers.get("X-Bridge-Token")
+        if bridge_id and bridge_token:
+            from api.db.session import SessionLocal
+            from api.models.things_bridge import ThingsBridge
+            with SessionLocal() as db:
+                record = (
+                    db.query(ThingsBridge)
+                    .filter(
+                        ThingsBridge.id == bridge_id,
+                        ThingsBridge.bridge_token == bridge_token,
+                    )
+                    .first()
+                )
+            if record:
+                request.state.user_id = record.user_id
+                response = await call_next(request)
+                return response
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid bridge token"},
+            )
+        if request.url.path == "/api/things/bridges/install" and request.headers.get("X-Install-Token"):
+            response = await call_next(request)
+            return response
+
     # Check for Authorization header
     auth_header = request.headers.get("Authorization")
     if not auth_header:

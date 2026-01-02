@@ -7,6 +7,7 @@
   import SettingsSystemSection from '$lib/components/left-sidebar/panels/settings/SettingsSystemSection.svelte';
   import SettingsSkillsSection from '$lib/components/left-sidebar/panels/settings/SettingsSkillsSection.svelte';
   import SettingsShortcutsSection from '$lib/components/left-sidebar/panels/settings/SettingsShortcutsSection.svelte';
+  import SettingsThingsSection from '$lib/components/left-sidebar/panels/settings/SettingsThingsSection.svelte';
   import SettingsStorageSection from '$lib/components/left-sidebar/panels/settings/SettingsStorageSection.svelte';
   import { clearCaches, clearInFlight, clearMemoryCache } from '$lib/utils/cache';
 
@@ -126,6 +127,8 @@
           <SettingsStorageSection />
         {:else if activeSettingsSection === 'shortcuts'}
           <SettingsShortcutsSection />
+        {:else if activeSettingsSection === 'things'}
+          <SettingsThingsSection />
         {:else if activeSettingsSection === 'memory'}
           <MemorySettings />
         {:else}
