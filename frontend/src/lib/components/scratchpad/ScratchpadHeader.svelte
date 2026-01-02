@@ -9,8 +9,6 @@
 		<span class="status">Saving...</span>
 	{:else if saveError}
 		<span class="status error">{saveError}</span>
-	{:else}
-		<span class="status">Auto-save</span>
 	{/if}
 </div>
 
@@ -22,6 +20,7 @@
 		gap: 1rem;
 		border-bottom: 1px solid var(--color-border);
 		padding-bottom: 0.5rem;
+		padding-right: 1rem;
 		overflow: hidden;
 		width: 100%;
 		max-width: 100%;
