@@ -17,11 +17,10 @@
 	let weatherIsDay: number | null = null;
 	const thingsStatus = useThingsBridgeStatus();
 	let bridgeStatus: "loading" | "online" | "offline" = "loading";
-	let bridgeName = "";
 	let bridgeSeenAt: string | null = null;
 
 	$: ({ currentDate, currentTime, liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
-	$: ({ status: bridgeStatus, deviceName: bridgeName, lastSeenAt: bridgeSeenAt } = $thingsStatus);
+	$: ({ status: bridgeStatus, lastSeenAt: bridgeSeenAt } = $thingsStatus);
 
 	function handleLayoutSwap() {
 		layoutStore.toggleMode();
@@ -39,6 +38,18 @@
 	</div>
 	<div class="actions">
 		<div class="datetime-group">
+			<div
+				class="things-status"
+				aria-live="polite"
+				title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ""}
+			>
+				<span
+					class="dot"
+					class:online={bridgeStatus === "online"}
+					class:offline={bridgeStatus === "offline"}
+				></span>
+				<span class="label">Bridge</span>
+			</div>
 			<span class="date">{currentDate}</span>
 			<span class="time">{currentTime}</span>
 			{#if liveLocation}
@@ -50,12 +61,6 @@
 					<span class="weather-temp">{weatherTemp}</span>
 				</span>
 			{/if}
-		</div>
-		<div class="things-status" aria-live="polite" title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ''}>
-			<span class="dot" class:online={bridgeStatus === "online"}></span>
-			<span class="label">
-				Things {bridgeStatus === "online" ? bridgeName : "offline"}
-			</span>
 		</div>
 		<Button
 			size="icon"
@@ -137,14 +142,15 @@
 
 	.datetime-group {
 		display: grid;
-		grid-template-columns: auto auto;
+		grid-template-columns: auto auto auto;
 		row-gap: 0.1rem;
-		column-gap: 1rem;
+		column-gap: 0.8rem;
 		margin-right: 1.25rem;
 		align-items: center;
 	}
 
 	.things-status {
+		grid-row: 1 / span 2;
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
@@ -165,7 +171,11 @@
 	}
 
 	.things-status .dot.online {
-		background: var(--color-primary);
+		background: #22c55e;
+	}
+
+	.things-status .dot.offline {
+		background: #ef4444;
 	}
 
 	.datetime-group .date {
