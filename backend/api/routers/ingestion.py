@@ -14,6 +14,7 @@ from fastapi.responses import Response, JSONResponse
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
+from api.config import settings
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.services.file_ingestion_service import FileIngestionService
@@ -55,6 +56,10 @@ def _safe_cleanup(path: Path) -> None:
         shutil.rmtree(path.parent, ignore_errors=True)
 
 
+def _staging_storage_key(user_id: str, file_id: uuid.UUID) -> str:
+    return f"{user_id}/files/{file_id}/staging/source"
+
+
 async def _handle_upload(
     file: UploadFile,
     folder: str,
@@ -68,6 +73,8 @@ async def _handle_upload(
     digest = sha256()
     size = 0
 
+    storage = None
+    staged_key: str | None = None
     try:
         with staging_path.open("wb") as target:
             while True:
@@ -96,12 +103,20 @@ async def _handle_upload(
             sha256=digest.hexdigest(),
             file_id=file_id,
         )
+        if settings.storage_backend.lower() == "r2":
+            storage = get_storage_backend()
+            staged_key = _staging_storage_key(user_id, file_id)
+            storage.put_object(staged_key, staging_path.read_bytes(), content_type=mime_original)
     except HTTPException:
         _safe_cleanup(staging_path)
+        if staged_key and storage:
+            storage.delete_object(staged_key)
         raise
     except Exception as exc:
         logger.exception("Ingestion upload failed")
         _safe_cleanup(staging_path)
+        if staged_key and storage:
+            storage.delete_object(staged_key)
         raise HTTPException(status_code=500, detail="Upload failed") from exc
 
     return file_id, job.id

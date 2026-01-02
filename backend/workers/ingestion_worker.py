@@ -377,10 +377,37 @@ def _staging_path(file_id: str) -> Path:
     return Path("/tmp/sidebar-ingestion") / file_id / "source"
 
 
-def _cleanup_staging(file_id: str) -> None:
+def _staging_storage_key(user_id: str, file_id: str) -> str:
+    return f"{user_id}/files/{file_id}/staging/source"
+
+
+def _cleanup_staging(file_id: str, user_id: str | None = None) -> None:
     staging_root = Path("/tmp/sidebar-ingestion") / file_id
     if staging_root.exists():
         shutil.rmtree(staging_root, ignore_errors=True)
+    if user_id:
+        try:
+            storage = get_storage_backend()
+            key = _staging_storage_key(user_id, file_id)
+            if storage.object_exists(key):
+                storage.delete_object(key)
+        except Exception:
+            logger.exception("Failed to cleanup staging object file_id=%s", file_id)
+
+
+def _ensure_source_path(record: IngestedFile) -> Path:
+    source_path = _staging_path(str(record.id))
+    if source_path.exists():
+        return source_path
+    if not record.user_id:
+        raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)
+    storage = get_storage_backend()
+    key = _staging_storage_key(record.user_id, str(record.id))
+    if storage.object_exists(key):
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        source_path.write_bytes(storage.get_object(key))
+        return source_path
+    raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)
 
 
 def _derivative_dir(file_id: str) -> Path:
@@ -1627,6 +1654,7 @@ def worker_loop() -> None:
                 time.sleep(SLEEP_SECONDS)
                 continue
 
+            record: IngestedFile | None = None
             try:
                 record = _get_file(db, job)
                 if record.user_id:
@@ -1640,9 +1668,7 @@ def worker_loop() -> None:
                             _mark_ready(db, job)
                         continue
 
-                    source_path = _staging_path(str(record.id))
-                    if not source_path.exists():
-                        raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)
+                    source_path = _ensure_source_path(record)
 
                     logger.info("Processing file_id=%s name=%s", record.id, record.filename_original)
                     mime = _normalize_mime(record.mime_original, record.filename_original)
@@ -1663,7 +1689,7 @@ def worker_loop() -> None:
                         db.refresh(job)
                         if job.status not in {"paused", "canceled"}:
                             _mark_ready(db, job)
-                            _cleanup_staging(str(record.id))
+                            _cleanup_staging(str(record.id), str(record.user_id))
                         continue
                     source_bytes: bytes | None = None
                     viewer_payload: DerivativePayload | None = None
@@ -1814,7 +1840,7 @@ def worker_loop() -> None:
                     db.refresh(job)
                     if job.status not in {"paused", "canceled"}:
                         _mark_ready(db, job)
-                        _cleanup_staging(str(record.id))
+                        _cleanup_staging(str(record.id), str(record.user_id))
                 finally:
                     stop_heartbeat()
             except IngestionError as error:
@@ -1823,13 +1849,13 @@ def worker_loop() -> None:
                 db.rollback()
                 _retry_or_fail(db, job, error)
                 if job.status == "failed" and _should_cleanup_after_failure(error):
-                    _cleanup_staging(str(job.file_id))
+                    _cleanup_staging(str(job.file_id), str(record.user_id) if record else None)
             except Exception as error:
                 unknown_error = IngestionError("UNKNOWN_ERROR", str(error), retryable=True)
                 db.rollback()
                 _retry_or_fail(db, job, unknown_error)
                 if job.status == "failed" and _should_cleanup_after_failure(unknown_error):
-                    _cleanup_staging(str(job.file_id))
+                    _cleanup_staging(str(job.file_id), str(record.user_id) if record else None)
         time.sleep(SLEEP_SECONDS)
 
 
