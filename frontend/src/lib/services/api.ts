@@ -1,7 +1,7 @@
 import type { Message } from '$lib/types/chat';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
-import type { ThingsBridgeStatus, ThingsListResponse } from '$lib/types/things';
+import type { ThingsBridgeStatus, ThingsCountsResponse, ThingsListResponse } from '$lib/types/things';
 
 /**
  * API service for conversations.
@@ -422,6 +422,12 @@ class ThingsAPI {
   async areaTasks(areaId: string): Promise<ThingsListResponse> {
     const response = await fetch(`${this.baseUrl}/areas/${areaId}/tasks`);
     if (!response.ok) throw new Error('Failed to load Things area tasks');
+    return response.json();
+  }
+
+  async counts(): Promise<ThingsCountsResponse> {
+    const response = await fetch(`${this.baseUrl}/counts`);
+    if (!response.ok) throw new Error('Failed to load Things counts');
     return response.json();
   }
 

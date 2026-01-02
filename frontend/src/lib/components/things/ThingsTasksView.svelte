@@ -17,6 +17,7 @@
   let isLoading = false;
   let error = '';
   let sections: TaskSection[] = [];
+  let totalCount = 0;
   let projectTitleById = new Map<string, string>();
   let areaTitleById = new Map<string, string>();
   let selectionType: ThingsTaskViewType = 'today';
@@ -68,6 +69,7 @@
       selectionLabel = 'Tasks';
       sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
     }
+    totalCount = sections.reduce((sum, section) => sum + section.tasks.length, 0);
   }
 
   function startOfDay(date: Date) {
@@ -272,7 +274,7 @@
       <svelte:component this={titleIcon} size={18} />
       <span>{selectionLabel}</span>
     </div>
-    <span class="count">{tasks.length}</span>
+    <span class="count">{totalCount}</span>
   </div>
 
   {#if isLoading}

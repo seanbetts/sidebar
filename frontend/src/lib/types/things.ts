@@ -49,3 +49,14 @@ export type ThingsListResponse = {
   projects?: ThingsProject[];
   areas?: ThingsArea[];
 };
+
+export type ThingsCountsResponse = {
+  generatedAt?: string;
+  counts: {
+    inbox: number;
+    today: number;
+    upcoming: number;
+  };
+  projects: Array<{ id: string; count: number }>;
+  areas: Array<{ id: string; count: number }>;
+};

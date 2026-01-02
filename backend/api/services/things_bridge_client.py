@@ -29,6 +29,9 @@ class ThingsBridgeClient:
     async def area_tasks(self, area_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/areas/{area_id}/tasks")
 
+    async def counts(self) -> dict[str, Any]:
+        return await self._request("GET", "/counts")
+
     async def _request(self, method: str, path: str, json: dict | None = None) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         headers = {"X-Things-Token": self.bridge.bridge_token}
