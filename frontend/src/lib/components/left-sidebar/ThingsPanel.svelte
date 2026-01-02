@@ -8,10 +8,9 @@
   let tasksCount = 0;
   let areas: Array<{ id: string; title: string }> = [];
   let projects: Array<{ id: string; title: string; areaId?: string | null }> = [];
-  let isLoading = false;
   let error = '';
 
-  $: ({ selection, areas, projects, isLoading, error } = $thingsStore);
+  $: ({ selection, areas, projects, error } = $thingsStore);
   $: tasksCount = $thingsStore.tasks.length;
   $: projectsByArea = areas.map((area) => ({
     area,

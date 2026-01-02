@@ -1,14 +1,28 @@
 <script lang="ts">
   import { thingsStore } from '$lib/stores/things';
+  import type { ThingsArea, ThingsProject, ThingsTask } from '$lib/types/things';
   import { Check, CalendarCheck, CalendarClock, Inbox, Layers, List } from 'lucide-svelte';
 
-  let tasks = [];
+  type TaskSection = {
+    id: string;
+    title: string;
+    tasks: ThingsTask[];
+  };
+
+  let tasks: ThingsTask[] = [];
   let selectionLabel = 'Today';
   let titleIcon = CalendarCheck;
-  let areas = [];
-  let projects = [];
+  let areas: ThingsArea[] = [];
+  let projects: ThingsProject[] = [];
   let isLoading = false;
   let error = '';
+  let sections: TaskSection[] = [];
+  let projectTitleById = new Map<string, string>();
+  let selectionType: ThingsTaskViewType = 'today';
+
+  type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project';
+
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
   $: {
     const state = $thingsStore;
@@ -17,24 +31,194 @@
     projects = state.projects;
     isLoading = state.isLoading;
     error = state.error;
-    if (state.selection.type === 'today') {
+    selectionType = state.selection.type;
+    projectTitleById = new Map(projects.map((project) => [project.id, project.title]));
+    if (selectionType === 'today') {
       selectionLabel = 'Today';
       titleIcon = CalendarCheck;
-    } else if (state.selection.type === 'upcoming') {
+      sections = buildTodaySections(tasks, areas);
+    } else if (selectionType === 'upcoming') {
       selectionLabel = 'Upcoming';
       titleIcon = CalendarClock;
-    } else if (state.selection.type === 'inbox') {
+      sections = buildUpcomingSections(tasks);
+    } else if (selectionType === 'inbox') {
       selectionLabel = 'Inbox';
       titleIcon = Inbox;
-    } else if (state.selection.type === 'area') {
+      sections = tasks.length ? [{ id: 'all', title: '', tasks }] : [];
+    } else if (selectionType === 'area') {
       selectionLabel = areas.find((area) => area.id === state.selection.id)?.title || 'Area';
       titleIcon = Layers;
-    } else if (state.selection.type === 'project') {
+      sections = tasks.length ? [{ id: 'all', title: '', tasks }] : [];
+    } else if (selectionType === 'project') {
       selectionLabel = projects.find((project) => project.id === state.selection.id)?.title || 'Project';
       titleIcon = List;
+      sections = tasks.length ? [{ id: 'all', title: '', tasks }] : [];
     } else {
       selectionLabel = 'Tasks';
+      sections = tasks.length ? [{ id: 'all', title: '', tasks }] : [];
     }
+  }
+
+  function startOfDay(date: Date) {
+    const next = new Date(date);
+    next.setHours(0, 0, 0, 0);
+    return next;
+  }
+
+  function formatDateKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function formatDayLabel(date: Date, dayDiff: number): string {
+    if (dayDiff === 0) return 'Today';
+    if (dayDiff === 1) return 'Tomorrow';
+    return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  }
+
+  function formatWeekLabel(date: Date): string {
+    const label = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `Week of ${label}`;
+  }
+
+  function formatMonthLabel(date: Date): string {
+    return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  }
+
+  function addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  function taskDeadline(task: ThingsTask): string | null {
+    return task.deadline ?? task.deadlineStart ?? null;
+  }
+
+  function parseTaskDate(task: ThingsTask): Date | null {
+    const deadline = taskDeadline(task);
+    if (!deadline) return null;
+    return new Date(`${deadline.slice(0, 10)}T00:00:00`);
+  }
+
+  function buildTodaySections(tasks: ThingsTask[], areas: ThingsArea[]): TaskSection[] {
+    const sections: TaskSection[] = [];
+    const tasksByArea = new Map<string, ThingsTask[]>();
+    const unassigned: ThingsTask[] = [];
+
+    areas.forEach((area) => tasksByArea.set(area.id, []));
+    tasks.forEach((task) => {
+      if (task.areaId && tasksByArea.has(task.areaId)) {
+        tasksByArea.get(task.areaId)?.push(task);
+      } else {
+        unassigned.push(task);
+      }
+    });
+
+    areas.forEach((area) => {
+      const bucket = tasksByArea.get(area.id) ?? [];
+      if (bucket.length) {
+        sections.push({ id: area.id, title: area.title, tasks: bucket });
+      }
+    });
+
+    if (unassigned.length) {
+      sections.push({ id: 'other', title: 'Other', tasks: unassigned });
+    }
+
+    return sections;
+  }
+
+  function buildUpcomingSections(tasks: ThingsTask[]): TaskSection[] {
+    const today = startOfDay(new Date());
+    const overdue: ThingsTask[] = [];
+    const undated: ThingsTask[] = [];
+    const daily = new Map<string, TaskSection>();
+    const weekly = new Map<number, TaskSection>();
+    const monthly = new Map<string, { date: Date; section: TaskSection }>();
+
+    const sorted = [...tasks].sort((a, b) => {
+      const dateA = parseTaskDate(a);
+      const dateB = parseTaskDate(b);
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    sorted.forEach((task) => {
+      const date = parseTaskDate(task);
+      if (!date) {
+        undated.push(task);
+        return;
+      }
+      const dayDiff = Math.floor((startOfDay(date).getTime() - today.getTime()) / MS_PER_DAY);
+      if (dayDiff < 0) {
+        overdue.push(task);
+        return;
+      }
+      if (dayDiff <= 6) {
+        const key = formatDateKey(date);
+        const label = formatDayLabel(date, dayDiff);
+        const section = daily.get(key) ?? { id: key, title: label, tasks: [] };
+        section.tasks.push(task);
+        daily.set(key, section);
+        return;
+      }
+      if (dayDiff <= 27) {
+        const weekIndex = Math.floor(dayDiff / 7);
+        const weekStart = addDays(today, weekIndex * 7);
+        const label = formatWeekLabel(weekStart);
+        const section = weekly.get(weekIndex) ?? { id: `week-${weekIndex}`, title: label, tasks: [] };
+        section.tasks.push(task);
+        weekly.set(weekIndex, section);
+        return;
+      }
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      const existing = monthly.get(monthKey);
+      if (existing) {
+        existing.section.tasks.push(task);
+      } else {
+        monthly.set(monthKey, {
+          date,
+          section: { id: `month-${monthKey}`, title: formatMonthLabel(date), tasks: [task] }
+        });
+      }
+    });
+
+    const sections: TaskSection[] = [];
+    if (overdue.length) {
+      sections.push({ id: 'overdue', title: 'Overdue', tasks: overdue });
+    }
+    for (let i = 0; i <= 6; i += 1) {
+      const date = addDays(today, i);
+      const key = formatDateKey(date);
+      const section = daily.get(key);
+      if (section) sections.push(section);
+    }
+    for (let weekIndex = 1; weekIndex <= 3; weekIndex += 1) {
+      const section = weekly.get(weekIndex);
+      if (section) sections.push(section);
+    }
+    const monthSections = [...monthly.values()].sort((a, b) => a.date.getTime() - b.date.getTime());
+    monthSections.forEach((entry) => sections.push(entry.section));
+    if (undated.length) {
+      sections.push({ id: 'undated', title: 'No date', tasks: undated });
+    }
+    return sections;
+  }
+
+  function taskSubtitle(task: ThingsTask): string {
+    const projectTitle = task.projectId ? projectTitleById.get(task.projectId) : '';
+    if (selectionType === 'today' || selectionType === 'upcoming') {
+      return projectTitle ?? '';
+    }
+    if (taskDeadline(task)) {
+      return `Due ${taskDeadline(task)?.slice(0, 10)}`;
+    }
+    return projectTitle ?? '';
   }
 
   async function handleComplete(taskId: string) {
@@ -65,21 +249,28 @@
     </div>
   {:else}
     <div class="things-content">
-      <ul class="things-list">
-        {#each tasks as task}
-          <li class="things-task">
-            <button class="check" onclick={() => handleComplete(task.id)} aria-label="Complete task">
-              <Check size={14} />
-            </button>
-            <div class="content">
-              <div class="task-title">{task.title}</div>
-              {#if task.deadline}
-                <div class="meta">Due {task.deadline.slice(0, 10)}</div>
-              {/if}
-            </div>
-          </li>
-        {/each}
-      </ul>
+      {#each sections as section}
+        <div class="things-section">
+          {#if section.title}
+            <div class="things-section-title">{section.title}</div>
+          {/if}
+          <ul class="things-list">
+            {#each section.tasks as task}
+              <li class="things-task">
+                <button class="check" onclick={() => handleComplete(task.id)} aria-label="Complete task">
+                  <Check size={14} />
+                </button>
+                <div class="content">
+                  <div class="task-title">{task.title}</div>
+                  {#if taskSubtitle(task)}
+                    <div class="meta">{taskSubtitle(task)}</div>
+                  {/if}
+                </div>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/each}
     </div>
   {/if}
 </div>
@@ -97,18 +288,19 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.25rem 2rem 1rem;
+    padding: 0.5rem 1.5rem;
+    min-height: 57px;
     border-bottom: 1px solid var(--color-border);
-    background: var(--color-card);
+    background-color: var(--color-card);
   }
 
   .title {
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
-    font-size: 1.1rem;
+    gap: 0.75rem;
+    font-size: 1.125rem;
     font-weight: 600;
-    letter-spacing: 0.01em;
+    line-height: 1.2;
   }
 
   .count {
@@ -123,13 +315,23 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    padding: 1.5rem 0;
   }
 
   .things-content {
     max-width: 720px;
     width: 100%;
-    margin: 0 2rem;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .things-section-title {
+    font-size: 0.85rem;
+    color: var(--color-muted-foreground);
+    font-weight: 600;
+    margin-bottom: 0.65rem;
   }
 
   .things-task {
@@ -175,9 +377,13 @@
     color: var(--color-muted-foreground);
     padding: 1.5rem 2rem;
     max-width: 720px;
+    margin: 0 auto;
   }
 
   .things-error {
     color: #d55b5b;
+    padding: 1.5rem 2rem;
+    max-width: 720px;
+    margin: 0 auto;
   }
 </style>

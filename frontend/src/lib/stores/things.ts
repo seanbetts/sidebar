@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { thingsAPI } from '$lib/services/api';
+import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
 import type { ThingsArea, ThingsListResponse, ThingsProject, ThingsTask } from '$lib/types/things';
 
 export type ThingsSelection =
@@ -18,6 +19,15 @@ type ThingsState = {
   error: string;
 };
 
+type ThingsMetaCache = {
+  areas: ThingsArea[];
+  projects: ThingsProject[];
+};
+
+const CACHE_TTL = 2 * 60 * 1000;
+const CACHE_VERSION = '1.0';
+const META_CACHE_KEY = 'things.meta';
+
 const defaultState: ThingsState = {
   selection: { type: 'today' },
   tasks: [],
@@ -30,8 +40,6 @@ const defaultState: ThingsState = {
 function createThingsStore() {
   const { subscribe, set, update } = writable<ThingsState>(defaultState);
   let loadToken = 0;
-  const cache = new Map<string, { tasks: ThingsTask[]; timestamp: number }>();
-  const cacheTtlMs = 30_000;
 
   const applyResponse = (response: ThingsListResponse) => {
     update((state) => ({
@@ -50,21 +58,37 @@ function createThingsStore() {
     return selection.type;
   };
 
+  const tasksCacheKey = (selection: ThingsSelection) => `things.tasks.${selectionKey(selection)}`;
+
   const loadSelection = async (selection: ThingsSelection) => {
     const token = ++loadToken;
-    const key = selectionKey(selection);
-    const cached = cache.get(key);
-    if (cached && Date.now() - cached.timestamp < cacheTtlMs) {
+    const key = tasksCacheKey(selection);
+    const cachedTasks = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
+    const cachedMeta = getCachedData<ThingsMetaCache>(META_CACHE_KEY, {
+      ttl: CACHE_TTL,
+      version: CACHE_VERSION
+    });
+    if (cachedMeta) {
+      update((state) => ({
+        ...state,
+        areas: cachedMeta.areas,
+        projects: cachedMeta.projects
+      }));
+    }
+    if (cachedTasks) {
       update((state) => ({
         ...state,
         selection,
-        tasks: cached.tasks,
+        tasks: cachedTasks,
         isLoading: false,
         error: ''
       }));
-      return;
+      if (!isCacheStale(key, CACHE_TTL)) {
+        return;
+      }
+    } else {
+      update((state) => ({ ...state, selection, isLoading: true, error: '' }));
     }
-    update((state) => ({ ...state, selection, isLoading: true, error: '' }));
     try {
       let response: ThingsListResponse;
       if (selection.type === 'today' || selection.type === 'upcoming' || selection.type === 'inbox') {
@@ -75,7 +99,14 @@ function createThingsStore() {
         response = await thingsAPI.projectTasks(selection.id);
       }
       if (token !== loadToken) return;
-      cache.set(key, { tasks: response.tasks ?? [], timestamp: Date.now() });
+      setCachedData(key, response.tasks ?? [], { ttl: CACHE_TTL, version: CACHE_VERSION });
+      if (response.areas && response.projects) {
+        setCachedData(
+          META_CACHE_KEY,
+          { areas: response.areas ?? [], projects: response.projects ?? [] },
+          { ttl: CACHE_TTL, version: CACHE_VERSION }
+        );
+      }
       applyResponse(response);
     } catch (error) {
       if (token !== loadToken) return;
@@ -95,10 +126,17 @@ function createThingsStore() {
     load: (selection: ThingsSelection) => loadSelection(selection),
     completeTask: async (taskId: string) => {
       await thingsAPI.apply({ op: 'complete', id: taskId });
-      update((state) => ({
-        ...state,
-        tasks: state.tasks.filter((task) => task.id !== taskId)
-      }));
+      update((state) => {
+        const nextTasks = state.tasks.filter((task) => task.id !== taskId);
+        setCachedData(tasksCacheKey(state.selection), nextTasks, {
+          ttl: CACHE_TTL,
+          version: CACHE_VERSION
+        });
+        return {
+          ...state,
+          tasks: nextTasks
+        };
+      });
     }
   };
 }
