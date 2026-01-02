@@ -263,13 +263,21 @@ async def create_note(
         HTTPException: 400 if content is missing.
     """
     content = request.get("content")
+    title = request.get("title") or None
     path = request.get("path", "")
     folder = (request.get("folder") or "").strip("/")
 
     if content is None:
         raise HTTPException(status_code=400, detail="content required")
 
-    return NotesWorkspaceService.create_note(db, user_id, content, path=path, folder=folder)
+    return NotesWorkspaceService.create_note(
+        db,
+        user_id,
+        content,
+        title=title,
+        path=path,
+        folder=folder
+    )
 
 
 @router.patch("/{note_id}/rename")
