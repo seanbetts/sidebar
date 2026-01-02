@@ -15,9 +15,25 @@ export function initAuth(
   const supabase = initSupabaseClient(supabaseUrl, supabaseAnonKey);
   session.set(initialSession);
   user.set(initialUser);
+  if (initialSession?.access_token) {
+    supabase.realtime.setAuth(initialSession.access_token);
+  }
+
+  // Ensure we hydrate the session on first load (onAuthStateChange may not fire).
+  supabase.auth.getSession().then(({ data }) => {
+    if (data?.session) {
+      session.set(data.session);
+      supabase.realtime.setAuth(data.session.access_token);
+    }
+  }).catch((error) => {
+    console.warn('Failed to load initial session:', error);
+  });
 
   supabase.auth.onAuthStateChange(async (_event, newSession) => {
     session.set(newSession);
+    if (newSession?.access_token) {
+      supabase.realtime.setAuth(newSession.access_token);
+    }
     try {
       const { data, error } = await supabase.auth.getUser();
       if (error) {

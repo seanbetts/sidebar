@@ -34,7 +34,7 @@
 		);
 		stopRealtimeListener = user.subscribe((currentUser) => {
 			if (currentUser?.id) {
-				startRealtime(currentUser.id);
+				void startRealtime(currentUser.id);
 			} else {
 				stopRealtime();
 			}
