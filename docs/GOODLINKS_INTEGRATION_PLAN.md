@@ -4,7 +4,7 @@
 
 Sync links saved in GoodLinks into the app so they can be rendered as markdown documents (and shared with AI agents).
 
-**Status**: Deferred until the Things integration is complete.
+**Status**: Deferred until the Things integration and multi-bridge hosting are stable.
 
 ---
 
@@ -12,6 +12,7 @@ Sync links saved in GoodLinks into the app so they can be rendered as markdown d
 
 ### Why GoodLinks is deferred
 - Current priority is Things (read + write).
+- Bridge hosting/selection needs to be proven across multiple Macs first.
 - GoodLinks can follow the same macOS bridge pattern later.
 
 ### Proposed Architecture (when revisited)
@@ -35,4 +36,3 @@ POST /goodlinks/save
   - starred: true
   - summary: Optional summary
 ```
-
