@@ -110,6 +110,7 @@ import { SquarePen } from 'lucide-svelte';
 
 	async function saveScratchpadContent(markdown: string) {
 		const cleanedMarkdown = removeEmptyTaskItems(markdown);
+		const body = stripHeading(cleanedMarkdown).trim();
 		const content = withHeading(cleanedMarkdown);
 		if (content === lastSavedContent) return;
 
@@ -120,7 +121,8 @@ import { SquarePen } from 'lucide-svelte';
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					content
+					content,
+					...(body ? {} : { mode: 'replace' })
 				})
 			});
 

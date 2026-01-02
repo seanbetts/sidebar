@@ -232,6 +232,7 @@ class NotesWorkspaceService:
         user_id: str,
         content: str,
         *,
+        title: str | None = None,
         path: str = "",
         folder: str = "",
     ) -> dict:
@@ -252,7 +253,13 @@ class NotesWorkspaceService:
             folder_path = Path(path).parent.as_posix()
             resolved_folder = "" if folder_path == "." else folder_path
 
-        created = NotesService.create_note(db, user_id, content, folder=resolved_folder)
+        created = NotesService.create_note(
+            db,
+            user_id,
+            content,
+            title=title,
+            folder=resolved_folder
+        )
         try:
             note_id = getattr(created, "_snapshot_id", created.id)
             updated_at = getattr(created, "_snapshot_updated_at", created.updated_at)
