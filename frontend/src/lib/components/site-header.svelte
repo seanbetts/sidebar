@@ -126,7 +126,7 @@
 	.datetime-group {
 		display: grid;
 		grid-template-columns: auto auto;
-		row-gap: 0.35rem;
+		row-gap: 0.1rem;
 		column-gap: 1rem;
 		margin-right: 1.25rem;
 		align-items: center;
