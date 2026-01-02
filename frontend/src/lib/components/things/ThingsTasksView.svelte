@@ -1,7 +1,7 @@
 <script lang="ts">
   import { thingsStore } from '$lib/stores/things';
   import type { ThingsArea, ThingsProject, ThingsTask } from '$lib/types/things';
-  import { Check, CalendarCheck, CalendarClock, Inbox, Layers, List } from 'lucide-svelte';
+  import { Check, CalendarCheck, CalendarClock, Inbox, Layers, List, Repeat } from 'lucide-svelte';
 
   type TaskSection = {
     id: string;
@@ -33,31 +33,36 @@
     isLoading = state.isLoading;
     error = state.error;
     selectionType = state.selection.type;
+    const projectIds = new Set(projects.map((project) => project.id));
+    const visibleTasks =
+      selectionType === 'area'
+        ? tasks.filter((task) => !projectIds.has(task.id) && task.status !== 'project')
+        : tasks;
     projectTitleById = new Map(projects.map((project) => [project.id, project.title]));
     areaTitleById = new Map(areas.map((area) => [area.id, area.title]));
     if (selectionType === 'today') {
       selectionLabel = 'Today';
       titleIcon = CalendarCheck;
-      sections = buildTodaySections(tasks, areas);
+      sections = buildTodaySections(visibleTasks, areas);
     } else if (selectionType === 'upcoming') {
       selectionLabel = 'Upcoming';
       titleIcon = CalendarClock;
-      sections = buildUpcomingSections(tasks);
+      sections = buildUpcomingSections(visibleTasks);
     } else if (selectionType === 'inbox') {
       selectionLabel = 'Inbox';
       titleIcon = Inbox;
-      sections = tasks.length ? [{ id: 'all', title: '', tasks }] : [];
+      sections = visibleTasks.length ? [{ id: 'all', title: '', tasks: visibleTasks }] : [];
     } else if (selectionType === 'area') {
       selectionLabel = areas.find((area) => area.id === state.selection.id)?.title || 'Area';
       titleIcon = Layers;
-      sections = tasks.length ? [{ id: 'all', title: '', tasks }] : [];
+      sections = visibleTasks.length ? [{ id: 'all', title: '', tasks: visibleTasks }] : [];
     } else if (selectionType === 'project') {
       selectionLabel = projects.find((project) => project.id === state.selection.id)?.title || 'Project';
       titleIcon = List;
-      sections = tasks.length ? [{ id: 'all', title: '', tasks }] : [];
+      sections = visibleTasks.length ? [{ id: 'all', title: '', tasks: visibleTasks }] : [];
     } else {
       selectionLabel = 'Tasks';
-      sections = tasks.length ? [{ id: 'all', title: '', tasks }] : [];
+      sections = visibleTasks.length ? [{ id: 'all', title: '', tasks: visibleTasks }] : [];
     }
   }
 
@@ -282,15 +287,20 @@
                     <Check size={14} />
                   </button>
                   <div class="content">
-                    <div class="task-title">{task.title}</div>
+                    <div class="task-title">
+                      <span>{task.title}</span>
+                      {#if task.repeating}
+                        <Repeat size={14} class="repeat-icon" />
+                      {/if}
+                    </div>
                     {#if taskSubtitle(task)}
                       <div class="meta">{taskSubtitle(task)}</div>
                     {/if}
                   </div>
                 </div>
-                {#if selectionType === 'area' && dueLabel(task)}
+                {#if selectionType === 'area' || selectionType === 'project'}
                   <div class="task-right">
-                    <span class="due-pill">{dueLabel(task)}</span>
+                    <span class="due-pill">{dueLabel(task) ?? 'No Date'}</span>
                   </div>
                 {/if}
               </li>
@@ -374,7 +384,7 @@
 
   .task-left {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.75rem;
     flex: 1;
     min-width: 0;
@@ -405,8 +415,15 @@
   }
 
   .task-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 0.95rem;
     font-weight: 500;
+  }
+
+  .repeat-icon {
+    color: var(--color-muted-foreground);
   }
 
   .meta {
