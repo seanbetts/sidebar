@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { useSiteHeaderData } from "$lib/hooks/useSiteHeaderData";
+	import { useThingsBridgeStatus } from "$lib/hooks/useThingsBridgeStatus";
 	import ModeToggle from "$lib/components/mode-toggle.svelte";
 	import ScratchpadPopover from "$lib/components/scratchpad-popover.svelte";
 	import { Button } from "$lib/components/ui/button";
@@ -14,8 +15,13 @@
 	let weatherTemp = "";
 	let weatherCode: number | null = null;
 	let weatherIsDay: number | null = null;
+	const thingsStatus = useThingsBridgeStatus();
+	let bridgeStatus: "loading" | "online" | "offline" = "loading";
+	let bridgeName = "";
+	let bridgeSeenAt: string | null = null;
 
 	$: ({ currentDate, currentTime, liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
+	$: ({ status: bridgeStatus, deviceName: bridgeName, lastSeenAt: bridgeSeenAt } = $thingsStatus);
 
 	function handleLayoutSwap() {
 		layoutStore.toggleMode();
@@ -44,6 +50,12 @@
 					<span class="weather-temp">{weatherTemp}</span>
 				</span>
 			{/if}
+		</div>
+		<div class="things-status" aria-live="polite" title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ''}>
+			<span class="dot" class:online={bridgeStatus === "online"}></span>
+			<span class="label">
+				Things {bridgeStatus === "online" ? bridgeName : "offline"}
+			</span>
 		</div>
 		<Button
 			size="icon"
@@ -132,6 +144,30 @@
 		align-items: center;
 	}
 
+	.things-status {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.2rem 0.5rem;
+		border-radius: 999px;
+		border: 1px solid var(--color-border);
+		color: var(--color-muted-foreground);
+		font-size: 0.7rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	.things-status .dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 999px;
+		background: var(--color-muted-foreground);
+	}
+
+	.things-status .dot.online {
+		background: var(--color-primary);
+	}
+
 	.datetime-group .date {
 		text-align: right;
 	}
@@ -181,6 +217,9 @@
 
 	@media (max-width: 900px) {
 		:global(.swap-button) {
+			display: none;
+		}
+		.things-status {
 			display: none;
 		}
 	}

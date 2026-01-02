@@ -1,6 +1,7 @@
 import type { Message } from '$lib/types/chat';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
+import type { ThingsBridgeStatus } from '$lib/types/things';
 
 /**
  * API service for conversations.
@@ -391,3 +392,20 @@ class WebsitesAPI {
 
 export const notesAPI = new NotesAPI();
 export const websitesAPI = new WebsitesAPI();
+
+/**
+ * API service for Things bridge status.
+ */
+class ThingsAPI {
+  private get baseUrl(): string {
+    return '/api/things';
+  }
+
+  async status(): Promise<ThingsBridgeStatus> {
+    const response = await fetch(`${this.baseUrl}/bridges/status`);
+    if (!response.ok) throw new Error('Failed to load Things bridge status');
+    return response.json();
+  }
+}
+
+export const thingsAPI = new ThingsAPI();
