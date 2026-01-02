@@ -68,6 +68,7 @@ Each store gets a small handler to apply realtime events:
 ### Auth
 - Use Supabase anon key + access token from current session.
 - Ensure Realtime uses the current logged-in user.
+ - Add SELECT policies using `auth.uid()` for tables used by realtime subscriptions.
 
 ---
 

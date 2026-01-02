@@ -4,17 +4,19 @@
 	import SiteHeader from '$lib/components/site-header.svelte';
 	import HoldingPage from '$lib/components/HoldingPage.svelte';
 	import { Toaster } from 'svelte-sonner';
-	import { initAuth } from '$lib/stores/auth';
+	import { initAuth, user } from '$lib/stores/auth';
 	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { chatStore } from '$lib/stores/chat';
 	import { get } from 'svelte/store';
 	import { clearCaches, clearInFlight, clearMemoryCache, listenForStorageEvents } from '$lib/utils/cache';
 	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
+	import { startRealtime, stopRealtime } from '$lib/realtime/realtime';
 
 	let { data, children } = $props();
 	let healthChecked = false;
 	let stopStorageListener: (() => void) | null = null;
+	let stopRealtimeListener: (() => void) | null = null;
 
 	onMount(() => {
 		const storedTheme = getStoredTheme();
@@ -30,6 +32,13 @@
 			data.supabaseUrl,
 			data.supabaseAnonKey
 		);
+		stopRealtimeListener = user.subscribe((currentUser) => {
+			if (currentUser?.id) {
+				startRealtime(currentUser.id);
+			} else {
+				stopRealtime();
+			}
+		});
 		stopStorageListener = listenForStorageEvents();
 		if (!data.isAuthenticated) {
 			clearCaches();
@@ -43,6 +52,8 @@
 
 	onDestroy(() => {
 		stopStorageListener?.();
+		stopRealtimeListener?.();
+		stopRealtime();
 	});
 
 	async function checkHealth() {

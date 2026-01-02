@@ -147,6 +147,32 @@ function createWebsitesStore() {
       set({ items: [], loading: false, error: null, active: null, loadingDetail: false, searchQuery: '', loaded: false });
     },
 
+    upsertFromRealtime(item: WebsiteItem) {
+      update(state => {
+        const existingIndex = state.items.findIndex(existing => existing.id === item.id);
+        const existing = existingIndex >= 0 ? state.items[existingIndex] : null;
+        const incomingUpdatedAt = item.updated_at || item.saved_at || null;
+        const existingUpdatedAt = existing?.updated_at || existing?.saved_at || null;
+        if (existing && incomingUpdatedAt && existingUpdatedAt) {
+          const incomingTime = new Date(incomingUpdatedAt).getTime();
+          const existingTime = new Date(existingUpdatedAt).getTime();
+          if (Number.isFinite(incomingTime) && Number.isFinite(existingTime) && incomingTime < existingTime) {
+            return state;
+          }
+        }
+
+        const nextItems = existing
+          ? state.items.map(existingItem => (existingItem.id === item.id ? { ...existingItem, ...item } : existingItem))
+          : [item, ...state.items];
+        setCachedData(CACHE_KEY, nextItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
+
+        const nextActive =
+          state.active && state.active.id === item.id ? { ...state.active, ...item } : state.active;
+
+        return { ...state, items: nextItems, active: nextActive };
+      });
+    },
+
     renameLocal(id: string, title: string) {
       update(state => {
         const items = state.items.map(item => (item.id === id ? { ...item, title } : item));

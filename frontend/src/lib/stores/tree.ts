@@ -639,7 +639,15 @@ function createTreeStore() {
       }
     },
 
-    addNoteNode(payload: { id: string; name: string; folder?: string; modified?: number }) {
+    addNoteNode(payload: {
+      id: string;
+      name: string;
+      folder?: string;
+      modified?: number;
+      pinned?: boolean;
+      pinned_order?: number | null;
+      archived?: boolean;
+    }) {
       update(state => {
         const tree = state.trees['notes'] || { children: [], expandedPaths: new Set(), loading: false };
         const searchQuery = tree.searchQuery || '';
@@ -678,7 +686,10 @@ function createTreeStore() {
           name: payload.name,
           path: payload.id,
           type: 'file',
-          modified: payload.modified ? new Date(payload.modified * 1000).toISOString() : undefined
+          modified: payload.modified ? new Date(payload.modified * 1000).toISOString() : undefined,
+          pinned: payload.pinned,
+          pinned_order: payload.pinned_order ?? null,
+          archived: payload.archived
         };
 
         const existingIndex = current.findIndex(node => node.type === 'file' && node.path === payload.id);
@@ -695,6 +706,36 @@ function createTreeStore() {
             notes: {
               ...tree,
               children: sortedChildren
+            }
+          }
+        };
+      });
+      const updatedTree = get({ subscribe }).trees['notes'];
+      if (updatedTree?.children) {
+        setCachedData(getTreeCacheKey('notes'), updatedTree.children, {
+          ttl: TREE_CACHE_TTL,
+          version: TREE_CACHE_VERSION
+        });
+      }
+    },
+
+    updateNoteFields(noteId: string, updates: Partial<FileNode>) {
+      update(state => {
+        const tree = state.trees['notes'];
+        if (!tree?.children) return state;
+
+        const result = updateNoteInTree(tree.children, noteId, (node) => ({
+          ...node,
+          ...updates
+        }));
+        if (!result.changed) return state;
+
+        return {
+          trees: {
+            ...state.trees,
+            notes: {
+              ...tree,
+              children: result.nodes
             }
           }
         };

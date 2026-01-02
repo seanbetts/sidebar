@@ -55,6 +55,9 @@ function createIngestionViewerStore() {
         };
       });
     },
+    setActive(meta: IngestionMetaResponse) {
+      update(state => ({ ...state, active: meta, loading: false, error: null }));
+    },
     updatePinned(fileId: string, pinned: boolean) {
       update(state => {
         if (!state.active || state.active.file.id !== fileId) {
