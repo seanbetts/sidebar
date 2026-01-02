@@ -72,70 +72,69 @@ Steps:
 
 ---
 
-## 3) Quick Save Website — Share Sheet
+## 3) Save to sideBar (URL or File) — Share Sheet
 
-**Input:** URLs
+**Input:** URLs, Files
+
+This shortcut accepts either a URL or a file and routes it to the correct endpoint.
 
 Steps:
-1. Receive Shortcut Input (URLs)
-2. Get Contents of URL
-   - URL: `https://sidebar-api.fly.dev/api/websites/quick-save`
-   - Method: POST
-   - Headers:
-     - `Authorization` = `Bearer sb_pat_...`
-     - `Content-Type` = `application/json`
-   - Request Body: JSON
-     - `url` = Shortcut Input
-3. Get Dictionary Value
-   - Key: `data`
-4. Get Dictionary Value
-   - From `data`, key: `job_id`
-5. Repeat 10 Times
-   - Wait 2 seconds
+1. Receive Shortcut Input (URLs, Files)
+2. If Shortcut Input is URL
    - Get Contents of URL
-     - URL: `https://sidebar-api.fly.dev/api/websites/quick-save/{job_id}`
-     - Method: GET
+     - URL: `https://sidebar-api.fly.dev/api/websites/quick-save`
+     - Method: POST
      - Headers:
        - `Authorization` = `Bearer sb_pat_...`
+       - `Content-Type` = `application/json`
+     - Request Body: JSON
+       - `url` = Shortcut Input
    - Get Dictionary Value
-     - Key: `status`
-   - If `status` is `failed`
+     - Key: `data`
+   - Get Dictionary Value
+     - From `data`, key: `job_id`
+   - Repeat 10 Times
+     - Wait 2 seconds
+     - Get Contents of URL
+       - URL: `https://sidebar-api.fly.dev/api/websites/quick-save/{job_id}`
+       - Method: GET
+       - Headers:
+         - `Authorization` = `Bearer sb_pat_...`
+     - Get Dictionary Value
+       - Key: `status`
+     - If `status` is `failed`
+       - Show Notification
+         - Title: `Website save failed`
+         - Body: `Could not fetch content.`
+       - Exit Repeat
+     - If `status` is `completed`
+       - Show Notification
+         - Title: `Website saved`
+         - Body: `Saved to sideBar.`
+       - Exit Repeat
+3. Otherwise If Shortcut Input is File
+   - Get Contents of URL
+     - URL: `https://sidebar-api.fly.dev/api/ingestion/quick-upload`
+     - Method: POST
+     - Headers:
+       - `Authorization` = `Bearer sb_pat_...`
+     - Request Body: Form
+       - Field name: `file`
+       - Value: Shortcut Input
+   - Get Dictionary Value
+     - Key: `error`
+   - If `error` has any value
      - Show Notification
-       - Title: `Website save failed`
-       - Body: `Could not fetch content.`
-     - Exit Repeat
-   - If `status` is `completed`
+       - Title: `Upload failed`
+       - Body: `Could not upload file.`
+   - Otherwise
      - Show Notification
-       - Title: `Website saved`
-       - Body: `Saved to sideBar.`
-     - Exit Repeat
-
----
-
-## 4) Quick Upload File — Share Sheet
-
-**Input:** Files
-
-Steps:
-1. Receive Shortcut Input (Files)
-2. Get Contents of URL
-   - URL: `https://sidebar-api.fly.dev/api/ingestion/quick-upload`
-   - Method: POST
-   - Headers:
-     - `Authorization` = `Bearer sb_pat_...`
-   - Request Body: Form
-     - Field name: `file`
-     - Value: Shortcut Input
-3. Get Dictionary Value
-   - Key: `error`
-4. If `error` has any value
+       - Title: `File uploaded`
+       - Body: `Ingestion started.`
+4. Otherwise
    - Show Notification
-     - Title: `Upload failed`
-     - Body: `Could not upload file.`
-5. Otherwise
-   - Show Notification
-     - Title: `File uploaded`
-     - Body: `Ingestion started.`
+     - Title: `Unsupported input`
+     - Body: `Share a URL or a file.`
 
 ---
 
