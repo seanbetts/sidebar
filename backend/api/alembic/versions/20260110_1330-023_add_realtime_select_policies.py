@@ -14,9 +14,9 @@ depends_on = None
 
 
 POLICIES = [
-    ("notes", "notes_realtime_select", "user_id = auth.uid()"),
-    ("websites", "websites_realtime_select", "user_id = auth.uid()"),
-    ("ingested_files", "ingested_files_realtime_select", "user_id = auth.uid()"),
+    ("notes", "notes_realtime_select", "user_id = auth.uid()::text"),
+    ("websites", "websites_realtime_select", "user_id = auth.uid()::text"),
+    ("ingested_files", "ingested_files_realtime_select", "user_id = auth.uid()::text"),
 ]
 
 
@@ -41,7 +41,7 @@ def upgrade() -> None:
         USING (
             file_id IN (
                 SELECT id FROM ingested_files
-                WHERE user_id = auth.uid()
+                WHERE user_id = auth.uid()::text
             )
         )
         """
