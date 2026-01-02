@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import threading
+import time
+from urllib import request as urlrequest
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, status
@@ -14,6 +17,10 @@ app = FastAPI(title="sideBar Things Bridge", version="0.1.0")
 
 BRIDGE_TOKEN = os.getenv("THINGS_BRIDGE_TOKEN", "")
 THINGS_APP_NAME = os.getenv("THINGS_APP_NAME", "Things3")
+BACKEND_URL = os.getenv("THINGS_BACKEND_URL", "")
+BACKEND_TOKEN = os.getenv("THINGS_BACKEND_TOKEN", "")
+BRIDGE_ID = os.getenv("THINGS_BRIDGE_ID", "")
+HEARTBEAT_INTERVAL = int(os.getenv("THINGS_BRIDGE_HEARTBEAT_SECONDS", "60"))
 
 
 def require_token(x_things_token: str | None = Header(default=None)) -> None:
@@ -48,6 +55,25 @@ def _run_jxa(script: str) -> dict[str, Any]:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Things AppleScript returned invalid JSON",
         ) from exc
+
+
+def _heartbeat_loop() -> None:
+    if not BACKEND_URL or not BACKEND_TOKEN or not BRIDGE_ID:
+        return
+    url = f"{BACKEND_URL.rstrip('/')}/api/things/bridges/heartbeat"
+    headers = {
+        "Authorization": f"Bearer {BACKEND_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = json.dumps({"bridgeId": BRIDGE_ID}).encode("utf-8")
+    while True:
+        try:
+            req = urlrequest.Request(url, data=payload, headers=headers, method="POST")
+            with urlrequest.urlopen(req, timeout=10):
+                pass
+        except Exception:
+            pass
+        time.sleep(HEARTBEAT_INTERVAL)
 
 
 def _build_list_script(scope: str) -> str:
@@ -191,4 +217,7 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.getenv("THINGS_BRIDGE_PORT", "8787"))
+    if BACKEND_URL and BACKEND_TOKEN and BRIDGE_ID:
+        thread = threading.Thread(target=_heartbeat_loop, daemon=True)
+        thread.start()
     uvicorn.run(app, host="127.0.0.1", port=port)
