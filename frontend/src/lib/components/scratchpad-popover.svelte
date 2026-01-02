@@ -122,7 +122,7 @@ import { SquarePen } from 'lucide-svelte';
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					content,
-					...(body ? {} : { mode: 'replace' })
+					mode: 'replace'
 				})
 			});
 
