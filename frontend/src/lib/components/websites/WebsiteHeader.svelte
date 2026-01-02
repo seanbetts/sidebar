@@ -21,7 +21,7 @@
   {#if website}
     <div class="website-meta">
       <div class="title-row">
-        <FileTerminal size={18} />
+        <FileTerminal size={20} />
         <span class="title-text">{website.title}</span>
       </div>
       <div class="website-meta-row">
