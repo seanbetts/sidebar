@@ -3,8 +3,9 @@ import { conversationListStore } from '$lib/stores/conversations';
 import { treeStore } from '$lib/stores/tree';
 import { websitesStore } from '$lib/stores/websites';
 import { ingestionStore } from '$lib/stores/ingestion';
+import { thingsStore } from '$lib/stores/things';
 
-export type SidebarSection = 'history' | 'notes' | 'websites' | 'workspace';
+export type SidebarSection = 'history' | 'notes' | 'websites' | 'workspace' | 'things';
 
 /**
  * Lazily load sidebar section data on first open.
@@ -27,7 +28,8 @@ export function useSidebarSectionLoader() {
 			notes: treeState.trees?.['notes']?.loaded ?? false,
 			websites: websitesState.loaded ?? false,
 			workspace: treeState.trees?.['documents']?.loaded ?? false,
-			history: conversationsState.loaded ?? false
+			history: conversationsState.loaded ?? false,
+			things: false
 		}[section];
 
 		if (hasData) {
@@ -50,6 +52,9 @@ export function useSidebarSectionLoader() {
 				break;
 			case 'history':
 				conversationListStore.load();
+				break;
+			case 'things':
+				thingsStore.load({ type: 'today' });
 				break;
 		}
 	};

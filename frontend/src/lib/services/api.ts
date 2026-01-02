@@ -1,7 +1,7 @@
 import type { Message } from '$lib/types/chat';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
-import type { ThingsBridgeStatus } from '$lib/types/things';
+import type { ThingsBridgeStatus, ThingsListResponse } from '$lib/types/things';
 
 /**
  * API service for conversations.
@@ -405,6 +405,33 @@ class ThingsAPI {
     const response = await fetch(`${this.baseUrl}/bridges/status`);
     if (!response.ok) throw new Error('Failed to load Things bridge status');
     return response.json();
+  }
+
+  async list(scope: string): Promise<ThingsListResponse> {
+    const response = await fetch(`${this.baseUrl}/lists/${scope}`);
+    if (!response.ok) throw new Error('Failed to load Things list');
+    return response.json();
+  }
+
+  async projectTasks(projectId: string): Promise<ThingsListResponse> {
+    const response = await fetch(`${this.baseUrl}/projects/${projectId}/tasks`);
+    if (!response.ok) throw new Error('Failed to load Things project tasks');
+    return response.json();
+  }
+
+  async areaTasks(areaId: string): Promise<ThingsListResponse> {
+    const response = await fetch(`${this.baseUrl}/areas/${areaId}/tasks`);
+    if (!response.ok) throw new Error('Failed to load Things area tasks');
+    return response.json();
+  }
+
+  async apply(payload: Record<string, unknown>): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('Failed to apply Things operation');
   }
 }
 

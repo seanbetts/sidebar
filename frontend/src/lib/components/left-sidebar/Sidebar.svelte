@@ -13,6 +13,7 @@
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
+  import ThingsPanel from '$lib/components/left-sidebar/ThingsPanel.svelte';
   import SettingsDialogContainer from '$lib/components/left-sidebar/panels/SettingsDialogContainer.svelte';
   import { useSidebarSectionLoader, type SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
   import SidebarRail from '$lib/components/left-sidebar/SidebarRail.svelte';
@@ -25,6 +26,7 @@
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import { Button } from '$lib/components/ui/button';
   import { ingestionAPI } from '$lib/services/api';
+  import { sidebarSectionStore } from '$lib/stores/sidebar-section';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -77,6 +79,7 @@
   onMount(() => {
     // Mark as mounted to enable reactive data loading
     isMounted = true;
+    sidebarSectionStore.set(activeSection);
 
     if (typeof window !== 'undefined') {
       window.addEventListener('keydown', handleSectionShortcut);
@@ -123,6 +126,7 @@
 
   function openSection(section: SidebarSection) {
     activeSection = section;
+    sidebarSectionStore.set(section);
     isCollapsed = false;
   }
 
@@ -559,6 +563,11 @@
         <div class="files-content">
           <WebsitesPanel />
         </div>
+      </div>
+
+      <!-- Things Section -->
+      <div class="panel-section" class:hidden={activeSection !== 'things'}>
+        <ThingsPanel />
       </div>
 
       <!-- Workspace Section -->

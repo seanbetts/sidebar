@@ -58,7 +58,7 @@ def _run_jxa(script: str) -> dict[str, Any]:
 
 
 def _heartbeat_loop() -> None:
-    bridge_id = BRIDGE_ID
+    bridge_id = _get_bridge_id()
     bridge_token = _get_bridge_token()
     if not bridge_id or not bridge_token:
         bridge_id = bridge_id or _read_keychain_value("bridge-id")
@@ -168,6 +168,104 @@ def _build_list_script(scope: str) -> str:
     """
 
 
+def _build_project_tasks_script(project_id: str) -> str:
+    return f"""
+    const app = Application("{THINGS_APP_NAME}");
+    app.includeStandardAdditions = true;
+
+    function toIso(value) {{
+      if (!value) return null;
+      try {{ return (new Date(value)).toISOString(); }} catch (e) {{ return null; }}
+    }}
+    function safe(fn, fallback) {{
+      try {{
+        const value = fn();
+        return value === undefined ? fallback : value;
+      }} catch (e) {{
+        return fallback;
+      }}
+    }}
+    function normalizeTodo(t) {{
+      return {{
+        id: String(t.id()),
+        title: String(t.name()),
+        status: String(t.status()),
+        deadline: safe(() => toIso(t.dueDate()), null),
+        deadlineStart: safe(() => toIso(t.activationDate()), null),
+        notes: safe(() => String(t.notes()), null),
+        projectId: safe(() => {{
+          const p = t.project();
+          return p ? String(p.id()) : null;
+        }}, null),
+        areaId: safe(() => {{
+          const a = t.area();
+          return a ? String(a.id()) : null;
+        }}, null),
+        repeating: safe(() => Boolean(t.repeating()), false),
+        tags: safe(() => t.tags().map(tag => String(tag.name())), []),
+        updatedAt: safe(() => toIso(t.modificationDate()), null)
+      }};
+    }}
+
+    const project = app.projects.byId("{project_id}");
+    const tasks = project ? project.toDos() : [];
+    JSON.stringify({{
+      scope: "project",
+      generatedAt: new Date().toISOString(),
+      tasks: tasks.map(normalizeTodo)
+    }});
+    """
+
+
+def _build_area_tasks_script(area_id: str) -> str:
+    return f"""
+    const app = Application("{THINGS_APP_NAME}");
+    app.includeStandardAdditions = true;
+
+    function toIso(value) {{
+      if (!value) return null;
+      try {{ return (new Date(value)).toISOString(); }} catch (e) {{ return null; }}
+    }}
+    function safe(fn, fallback) {{
+      try {{
+        const value = fn();
+        return value === undefined ? fallback : value;
+      }} catch (e) {{
+        return fallback;
+      }}
+    }}
+    function normalizeTodo(t) {{
+      return {{
+        id: String(t.id()),
+        title: String(t.name()),
+        status: String(t.status()),
+        deadline: safe(() => toIso(t.dueDate()), null),
+        deadlineStart: safe(() => toIso(t.activationDate()), null),
+        notes: safe(() => String(t.notes()), null),
+        projectId: safe(() => {{
+          const p = t.project();
+          return p ? String(p.id()) : null;
+        }}, null),
+        areaId: safe(() => {{
+          const a = t.area();
+          return a ? String(a.id()) : null;
+        }}, null),
+        repeating: safe(() => Boolean(t.repeating()), false),
+        tags: safe(() => t.tags().map(tag => String(tag.name())), []),
+        updatedAt: safe(() => toIso(t.modificationDate()), null)
+      }};
+    }}
+
+    const area = app.areas.byId("{area_id}");
+    const tasks = area ? area.toDos() : [];
+    JSON.stringify({{
+      scope: "area",
+      generatedAt: new Date().toISOString(),
+      tasks: tasks.map(normalizeTodo)
+    }});
+    """
+
+
 def _build_apply_script(payload: dict[str, Any]) -> str:
     op = payload.get("op")
     todo_id = payload.get("id")
@@ -217,6 +315,10 @@ def _get_bridge_token() -> str:
     return BRIDGE_TOKEN or _read_keychain_value("bridge-token")
 
 
+def _get_bridge_id() -> str:
+    return BRIDGE_ID or _read_keychain_value("bridge-id")
+
+
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
@@ -233,6 +335,20 @@ async def get_list(scope: str, x_things_token: str | None = Header(default=None)
 async def apply_operation(request: dict, x_things_token: str | None = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_apply_script(request)
+    return _run_jxa(script)
+
+
+@app.get("/projects/{project_id}/tasks")
+async def get_project_tasks(project_id: str, x_things_token: str | None = Header(default=None)) -> dict:
+    require_token(x_things_token)
+    script = _build_project_tasks_script(project_id)
+    return _run_jxa(script)
+
+
+@app.get("/areas/{area_id}/tasks")
+async def get_area_tasks(area_id: str, x_things_token: str | None = Header(default=None)) -> dict:
+    require_token(x_things_token)
+    script = _build_area_tasks_script(area_id)
     return _run_jxa(script)
 
 
