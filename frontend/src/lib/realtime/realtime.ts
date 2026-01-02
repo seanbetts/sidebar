@@ -6,17 +6,37 @@ import { ingestionStore } from '$lib/stores/ingestion';
 import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 import { scratchpadStore } from '$lib/stores/scratchpad';
 import { get } from 'svelte/store';
+import { session } from '$lib/stores/auth';
 
 const SCRATCHPAD_TITLE = '✏️ Scratchpad';
 let activeUserId: string | null = null;
+let activeAccessToken: string | null = null;
 let channels: RealtimeChannel[] = [];
 let ingestionRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let sessionListener: (() => void) | null = null;
 
 function stopIngestionRefreshTimer() {
   if (ingestionRefreshTimer) {
     clearTimeout(ingestionRefreshTimer);
     ingestionRefreshTimer = null;
   }
+}
+
+function stopSessionListener() {
+  if (sessionListener) {
+    sessionListener();
+    sessionListener = null;
+  }
+}
+
+function watchForSession(userId: string) {
+  if (sessionListener) return;
+  sessionListener = session.subscribe((value) => {
+    if (value?.access_token) {
+      stopSessionListener();
+      void startRealtime(userId);
+    }
+  });
 }
 
 function scheduleIngestionRefresh() {
@@ -184,7 +204,9 @@ function handleFileJobChange(payload: RealtimePostgresChangesPayload<any>) {
 export function stopRealtime() {
   if (!channels.length) {
     activeUserId = null;
+    activeAccessToken = null;
     stopIngestionRefreshTimer();
+    stopSessionListener();
     return;
   }
   const supabase = getSupabaseClient();
@@ -193,20 +215,34 @@ export function stopRealtime() {
   });
   channels = [];
   activeUserId = null;
+  activeAccessToken = null;
   stopIngestionRefreshTimer();
+  stopSessionListener();
 }
 
-export function startRealtime(userId: string | null) {
+export async function startRealtime(userId: string | null) {
   if (!userId) {
     stopRealtime();
     return;
   }
-  if (activeUserId === userId) return;
+  const token = get(session)?.access_token ?? null;
+  if (!token) {
+    activeUserId = userId;
+    activeAccessToken = null;
+    watchForSession(userId);
+    return;
+  }
+
+  if (activeUserId === userId && token === activeAccessToken && channels.length) {
+    return;
+  }
 
   stopRealtime();
   activeUserId = userId;
+  activeAccessToken = token;
 
   const supabase = getSupabaseClient();
+  supabase.realtime.setAuth(token);
 
   const notesChannel = supabase
     .channel(`notes-${userId}`)
@@ -244,5 +280,7 @@ export function startRealtime(userId: string | null) {
     }, handleFileJobChange);
 
   channels = [notesChannel, websitesChannel, ingestedFilesChannel, jobsChannel];
-  channels.forEach(channel => channel.subscribe());
+  channels.forEach(channel => {
+    channel.subscribe();
+  });
 }
