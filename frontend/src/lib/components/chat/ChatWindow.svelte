@@ -216,8 +216,6 @@
 								name: `${data.title}.md`,
 								folder: data.folder
 							});
-						} else {
-							await treeStore.load('notes', true);
 						}
 						if (data?.id) {
 							await editorStore.loadNote('notes', data.id, { source: 'ai' });
@@ -242,7 +240,6 @@
 
 					onWebsiteSaved: async () => {
 						dispatchCacheEvent('website.saved');
-						await websitesStore.load(true);
 					},
 
 					onNoteDeleted: async (data) => {
@@ -253,8 +250,6 @@
 						dispatchCacheEvent('note.deleted');
 						if (data?.id) {
 							treeStore.removeNode?.('notes', data.id);
-						} else {
-							await treeStore.load('notes', true);
 						}
 					},
 
@@ -262,8 +257,6 @@
 						dispatchCacheEvent('website.deleted');
 						if (data?.id) {
 							websitesStore.removeLocal?.(data.id);
-						} else {
-							await websitesStore.load(true);
 						}
 					},
 
@@ -442,7 +435,11 @@
 				);
 				if (status === 'ready') {
 					ingestionViewerStore.open(fileId);
-					void ingestionStore.load();
+					ingestionStore.upsertItem({
+						file: data.file,
+						job: data.job,
+						recommended_viewer: data.recommended_viewer
+					});
 					dispatchCacheEvent('file.uploaded');
 				}
 				if (!['ready', 'failed', 'canceled'].includes(status) && isMounted) {

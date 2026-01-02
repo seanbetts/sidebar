@@ -96,12 +96,26 @@ function createWebsitesStore() {
       update(state => ({ ...state, loadingDetail: true, error: null }));
       try {
         const data = await websitesAPI.get(id);
+        const summary: WebsiteItem = {
+          id: data.id,
+          title: data.title,
+          url: data.url,
+          domain: data.domain,
+          saved_at: data.saved_at,
+          published_at: data.published_at,
+          pinned: data.pinned ?? false,
+          pinned_order: data.pinned_order ?? null,
+          archived: data.archived ?? false,
+          updated_at: data.updated_at,
+          last_opened_at: data.last_opened_at
+        };
         update(state => ({
           ...state,
           active: data,
           loadingDetail: false,
           error: null
         }));
+        this.upsertFromRealtime(summary);
       } catch (error) {
         console.error('Failed to load website:', error);
         update(state => ({ ...state, loadingDetail: false, error: 'Failed to load website' }));

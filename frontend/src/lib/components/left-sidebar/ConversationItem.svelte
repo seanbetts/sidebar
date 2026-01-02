@@ -37,7 +37,7 @@
       try {
         await conversationsAPI.update(conversation.id, { title: editedTitle.trim() });
         conversation.title = editedTitle.trim();
-        await conversationListStore.refresh();
+        conversationListStore.updateConversationTitle(conversation.id, conversation.title, false);
       } catch (error) {
         console.error('Failed to rename conversation:', error);
         editedTitle = conversation.title;

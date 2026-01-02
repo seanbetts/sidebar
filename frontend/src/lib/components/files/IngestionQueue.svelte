@@ -23,7 +23,12 @@
   async function handlePause(fileId: string) {
     try {
       await ingestionAPI.pause(fileId);
-      await ingestionStore.load();
+      const meta = await ingestionAPI.get(fileId);
+      ingestionStore.upsertItem({
+        file: meta.file,
+        job: meta.job,
+        recommended_viewer: meta.recommended_viewer
+      });
     } catch (error) {
       console.error('Failed to pause ingestion:', error);
     }
@@ -32,7 +37,12 @@
   async function handleResume(fileId: string) {
     try {
       await ingestionAPI.resume(fileId);
-      await ingestionStore.load();
+      const meta = await ingestionAPI.get(fileId);
+      ingestionStore.upsertItem({
+        file: meta.file,
+        job: meta.job,
+        recommended_viewer: meta.recommended_viewer
+      });
     } catch (error) {
       console.error('Failed to resume ingestion:', error);
     }
@@ -41,7 +51,12 @@
   async function handleCancel(fileId: string) {
     try {
       await ingestionAPI.cancel(fileId);
-      await ingestionStore.load();
+      const meta = await ingestionAPI.get(fileId);
+      ingestionStore.upsertItem({
+        file: meta.file,
+        job: meta.job,
+        recommended_viewer: meta.recommended_viewer
+      });
     } catch (error) {
       console.error('Failed to cancel ingestion:', error);
     }
