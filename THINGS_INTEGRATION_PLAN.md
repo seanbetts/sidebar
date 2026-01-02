@@ -11,6 +11,19 @@ Key direction changes:
 
 ---
 
+## Current Workflow Fit
+
+This integration should reflect the current Things usage patterns:
+- Day-to-day work happens in **Today**.
+- Every task has a **deadline** (drives Today) and some **repeat**.
+- Tasks live under two **Areas** (Home, Work) with multiple projects.
+- Daily flow is **complete** or **defer** to a later date.
+- Things remains the cross-device sync source until a native sideBar app exists.
+
+Implication: build a **Today-first UI** that supports complete/defer/adjust-deadline, while leaving recurring rules and full task authoring in Things for now.
+
+---
+
 ## Long-Term Architecture Considerations
 
 ### 1) Native App Future
@@ -41,6 +54,18 @@ If we do this, Things remains the source of truth, and the mirror is **eventuall
 
 ---
 
+## Decision Matrix
+
+| Option | Read Coverage | Write Coverage | Reliability | Complexity | UX Latency | Future-Proof | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| AppleScript API | Good | Good | Medium | Medium | Medium | Medium | Best macOS v1; no iOS; can be brittle with permissions. |
+| Direct DB Read | Excellent | None | Low-Medium | High | Fast | Low | Schema changes and locking risks; macOS only. |
+| Native App | Good | Good | High | High | Fast | High | Most future-proof; supports share sheet + local mirror. |
+
+Recommended path: start with AppleScript/URL scheme for v1, add a local mirror for speed and AI snapshots, and keep direct DB reads as a last-resort optimization.
+
+---
+
 ## Recommended Approach (Phased)
 
 ### Phase 1: Mac Host Bridge (Read + Write via AppleScript / URL Scheme)
@@ -50,8 +75,20 @@ If we do this, Things remains the source of truth, and the mirror is **eventuall
 Bridge runs on macOS and exposes HTTP to the FastAPI backend.
 
 #### Bridge Responsibilities
-- Read Things data (Today/Inbox/Upcoming/Projects/Areas)
-- Apply mutations via:
+- Read Things data with **Today-first scope** (Today + project/area context)
+- Apply mutations needed for daily flow:
+  - complete task
+  - defer task (adjust deadline)
+  - set deadline
+- Use Things URL scheme when possible, AppleScript otherwise
+
+#### Explicit v1 Non-Goals
+- Creating recurring tasks or editing repeat rules
+- Full task authoring from sideBar (outside Today flow)
+- Non-Today list management (Someday/Anytime)
+
+#### Bridge Execution
+Apply mutations via:
   - Things URL scheme when possible
   - AppleScript for fields not supported by URL scheme
 
@@ -129,4 +166,3 @@ If URL scheme doesn’t support a mutation, use AppleScript.
 - Should Things task edits in the UI apply immediately or require a “Sync” button?
 - How should conflicts be surfaced (Things updated elsewhere)?
 - What is the minimal schema required for AI snapshots?
-
