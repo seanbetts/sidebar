@@ -38,31 +38,35 @@
       selectionType === 'area'
         ? tasks.filter((task) => !projectIds.has(task.id) && task.status !== 'project')
         : tasks;
+    const sortedTasks =
+      selectionType === 'area' || selectionType === 'project'
+        ? sortByDueDate(visibleTasks)
+        : visibleTasks;
     projectTitleById = new Map(projects.map((project) => [project.id, project.title]));
     areaTitleById = new Map(areas.map((area) => [area.id, area.title]));
     if (selectionType === 'today') {
       selectionLabel = 'Today';
       titleIcon = CalendarCheck;
-      sections = buildTodaySections(visibleTasks, areas);
+      sections = buildTodaySections(sortedTasks, areas);
     } else if (selectionType === 'upcoming') {
       selectionLabel = 'Upcoming';
       titleIcon = CalendarClock;
-      sections = buildUpcomingSections(visibleTasks);
+      sections = buildUpcomingSections(sortedTasks);
     } else if (selectionType === 'inbox') {
       selectionLabel = 'Inbox';
       titleIcon = Inbox;
-      sections = visibleTasks.length ? [{ id: 'all', title: '', tasks: visibleTasks }] : [];
+      sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
     } else if (selectionType === 'area') {
       selectionLabel = areas.find((area) => area.id === state.selection.id)?.title || 'Area';
       titleIcon = Layers;
-      sections = visibleTasks.length ? [{ id: 'all', title: '', tasks: visibleTasks }] : [];
+      sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
     } else if (selectionType === 'project') {
       selectionLabel = projects.find((project) => project.id === state.selection.id)?.title || 'Project';
       titleIcon = List;
-      sections = visibleTasks.length ? [{ id: 'all', title: '', tasks: visibleTasks }] : [];
+      sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
     } else {
       selectionLabel = 'Tasks';
-      sections = visibleTasks.length ? [{ id: 'all', title: '', tasks: visibleTasks }] : [];
+      sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
     }
   }
 
@@ -217,11 +221,22 @@
     return sections;
   }
 
+  function sortByDueDate(tasks: ThingsTask[]): ThingsTask[] {
+    return [...tasks].sort((a, b) => {
+      const dateA = parseTaskDate(a);
+      const dateB = parseTaskDate(b);
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateA.getTime() - dateB.getTime();
+    });
+  }
+
   function taskSubtitle(task: ThingsTask): string {
     const projectTitle = task.projectId ? projectTitleById.get(task.projectId) : '';
     const areaTitle = task.areaId ? areaTitleById.get(task.areaId) : '';
     if (selectionType === 'project') {
-      return '';
+      return projectTitle || selectionLabel;
     }
     if (selectionType === 'area') {
       return projectTitle || areaTitle || '';
