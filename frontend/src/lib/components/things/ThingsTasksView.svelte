@@ -18,6 +18,7 @@
   let error = '';
   let sections: TaskSection[] = [];
   let projectTitleById = new Map<string, string>();
+  let areaTitleById = new Map<string, string>();
   let selectionType: ThingsTaskViewType = 'today';
 
   type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project';
@@ -33,6 +34,7 @@
     error = state.error;
     selectionType = state.selection.type;
     projectTitleById = new Map(projects.map((project) => [project.id, project.title]));
+    areaTitleById = new Map(areas.map((area) => [area.id, area.title]));
     if (selectionType === 'today') {
       selectionLabel = 'Today';
       titleIcon = CalendarCheck;
@@ -212,13 +214,31 @@
 
   function taskSubtitle(task: ThingsTask): string {
     const projectTitle = task.projectId ? projectTitleById.get(task.projectId) : '';
+    const areaTitle = task.areaId ? areaTitleById.get(task.areaId) : '';
+    if (selectionType === 'project') {
+      return '';
+    }
+    if (selectionType === 'area') {
+      return projectTitle || areaTitle || '';
+    }
     if (selectionType === 'today' || selectionType === 'upcoming') {
-      return projectTitle ?? '';
+      return projectTitle || areaTitle || '';
     }
     if (taskDeadline(task)) {
       return `Due ${taskDeadline(task)?.slice(0, 10)}`;
     }
-    return projectTitle ?? '';
+    return projectTitle || areaTitle || '';
+  }
+
+  function dueLabel(task: ThingsTask): string | null {
+    const date = parseTaskDate(task);
+    if (!date) return null;
+    const today = startOfDay(new Date());
+    const dayDiff = Math.floor((startOfDay(date).getTime() - today.getTime()) / MS_PER_DAY);
+    if (dayDiff >= 0 && dayDiff <= 6) {
+      return date.toLocaleDateString(undefined, { weekday: 'short' });
+    }
+    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   }
 
   async function handleComplete(taskId: string) {
@@ -257,15 +277,22 @@
           <ul class="things-list">
             {#each section.tasks as task}
               <li class="things-task">
-                <button class="check" onclick={() => handleComplete(task.id)} aria-label="Complete task">
-                  <Check size={14} />
-                </button>
-                <div class="content">
-                  <div class="task-title">{task.title}</div>
-                  {#if taskSubtitle(task)}
-                    <div class="meta">{taskSubtitle(task)}</div>
-                  {/if}
+                <div class="task-left">
+                  <button class="check" onclick={() => handleComplete(task.id)} aria-label="Complete task">
+                    <Check size={14} />
+                  </button>
+                  <div class="content">
+                    <div class="task-title">{task.title}</div>
+                    {#if taskSubtitle(task)}
+                      <div class="meta">{taskSubtitle(task)}</div>
+                    {/if}
+                  </div>
                 </div>
+                {#if selectionType === 'area' && dueLabel(task)}
+                  <div class="task-right">
+                    <span class="due-pill">{dueLabel(task)}</span>
+                  </div>
+                {/if}
               </li>
             {/each}
           </ul>
@@ -336,12 +363,27 @@
 
   .things-task {
     display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     padding: 0.6rem 0.75rem;
     border: 1px solid var(--color-border);
     border-radius: 0.75rem;
     background: var(--color-card);
+  }
+
+  .task-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .task-right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
   }
 
   .check {
@@ -371,6 +413,16 @@
     font-size: 0.75rem;
     color: var(--color-muted-foreground);
     margin-top: 0.15rem;
+    text-transform: uppercase;
+  }
+
+  .due-pill {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    color: var(--color-muted-foreground);
+    background: var(--color-secondary);
   }
 
   .things-state {
