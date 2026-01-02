@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { thingsStore, type ThingsSelection } from '$lib/stores/things';
-  import { CalendarCheck, CalendarClock, Inbox, Layers, List } from 'lucide-svelte';
+  import { CalendarCheck, CalendarClock, Check, Inbox, Layers, List } from 'lucide-svelte';
 
   let selection: ThingsSelection = { type: 'today' };
   let tasksCount = 0;
@@ -37,7 +37,13 @@
         <Inbox size={14} />
         Inbox
       </span>
-      <span class="meta">{counts['inbox'] ?? 0}</span>
+      <span class="meta">
+        {#if (counts['inbox'] ?? 0) === 0}
+          <Check size={12} />
+        {:else}
+          {counts['inbox'] ?? 0}
+        {/if}
+      </span>
     </button>
     <button
       class="things-item"
@@ -48,7 +54,13 @@
         <CalendarCheck size={14} />
         Today
       </span>
-      <span class="meta">{tasksCount}</span>
+      <span class="meta">
+        {#if tasksCount === 0}
+          <Check size={12} />
+        {:else}
+          {tasksCount}
+        {/if}
+      </span>
     </button>
     <button
       class="things-item"
@@ -59,9 +71,15 @@
         <CalendarClock size={14} />
         Upcoming
       </span>
-      <span class="meta">{counts['upcoming'] ?? 0}</span>
+      <span class="meta">
+        {#if (counts['upcoming'] ?? 0) === 0}
+          <Check size={12} />
+        {:else}
+          {counts['upcoming'] ?? 0}
+        {/if}
+      </span>
     </button>
-    <div class="things-section-label">Areas</div>
+    <div class="things-divider"></div>
     {#if projectsByArea.length === 0}
       <div class="things-empty">No areas</div>
     {:else}
@@ -75,7 +93,13 @@
             <Layers size={14} />
             {group.area.title}
           </span>
-          <span class="meta">{counts[`area:${group.area.id}`] ?? 0}</span>
+          <span class="meta">
+            {#if (counts[`area:${group.area.id}`] ?? 0) === 0}
+              <Check size={12} />
+            {:else}
+              {counts[`area:${group.area.id}`] ?? 0}
+            {/if}
+          </span>
         </button>
         {#each group.projects as project}
           <button
@@ -87,7 +111,13 @@
               <List size={14} />
               {project.title}
             </span>
-            <span class="meta">{counts[`project:${project.id}`] ?? 0}</span>
+            <span class="meta">
+              {#if (counts[`project:${project.id}`] ?? 0) === 0}
+                <Check size={12} />
+              {:else}
+                {counts[`project:${project.id}`] ?? 0}
+              {/if}
+            </span>
           </button>
         {/each}
       {/each}
@@ -104,7 +134,13 @@
             <List size={14} />
             {project.title}
           </span>
-          <span class="meta">{counts[`project:${project.id}`] ?? 0}</span>
+          <span class="meta">
+            {#if (counts[`project:${project.id}`] ?? 0) === 0}
+              <Check size={12} />
+            {:else}
+              {counts[`project:${project.id}`] ?? 0}
+            {/if}
+          </span>
         </button>
       {/each}
     {/if}
@@ -167,6 +203,12 @@
     text-transform: uppercase;
     color: var(--color-muted-foreground);
     margin-top: 0.4rem;
+  }
+
+  .things-divider {
+    height: 1px;
+    background: var(--color-sidebar-border);
+    margin: 0.5rem 0.25rem 0.35rem;
   }
 
   .things-empty {

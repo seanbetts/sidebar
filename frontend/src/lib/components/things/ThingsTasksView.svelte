@@ -18,6 +18,7 @@
   let error = '';
   let sections: TaskSection[] = [];
   let totalCount = 0;
+  let hasLoaded = false;
   let projectTitleById = new Map<string, string>();
   let areaTitleById = new Map<string, string>();
   let selectionType: ThingsTaskViewType = 'today';
@@ -70,6 +71,7 @@
       sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
     }
     totalCount = sections.reduce((sum, section) => sum + section.tasks.length, 0);
+    hasLoaded = !isLoading;
   }
 
   function startOfDay(date: Date) {
@@ -271,10 +273,18 @@
 <div class="things-view">
   <div class="things-view-titlebar">
     <div class="title">
-      <svelte:component this={titleIcon} size={18} />
+      <svelte:component this={titleIcon} size={20} />
       <span>{selectionLabel}</span>
     </div>
-    <span class="count">{totalCount}</span>
+    {#if hasLoaded}
+      <span class="count">
+        {#if totalCount === 0}
+          <Check size={16} />
+        {:else}
+          {totalCount} tasks
+        {/if}
+      </span>
+    {/if}
   </div>
 
   {#if isLoading}
@@ -283,6 +293,7 @@
     <div class="things-error">{error}</div>
   {:else if tasks.length === 0}
     <div class="things-state">
+      <img class="things-empty-logo" src="/images/logo.svg" alt="sideBar" />
       {#if selectionLabel === 'Today'}
         All done for the day
       {:else}
@@ -460,10 +471,25 @@
   }
 
   .things-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
     color: var(--color-muted-foreground);
     padding: 1.5rem 2rem;
     max-width: 720px;
     margin: 0 auto;
+  }
+
+  .things-empty-logo {
+    height: 3.25rem;
+    width: auto;
+    margin-bottom: 0.75rem;
+    opacity: 0.7;
+  }
+
+  :global(.dark) .things-empty-logo {
+    filter: invert(1);
   }
 
   .things-error {
