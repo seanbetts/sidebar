@@ -202,7 +202,7 @@ Only if needed:
   ```
   THINGS_BRIDGE_URL=http://192.168.5.2:8787
   THINGS_BRIDGE_TOKEN=...
-  ```
+```
 
 ---
 
@@ -215,6 +215,71 @@ We need AppleScript/URL coverage for:
 - Renaming and moving tasks between projects
 
 If URL scheme doesn’t support a mutation, use AppleScript.
+
+---
+
+## Bridge Data Schema (v1)
+
+The bridge returns a **normalized payload** so the backend/UI stay stable even if AppleScript/URL details change.
+
+### Core Entities
+
+**Task**
+```
+{
+  "id": "things-task-id",
+  "title": "Call supplier",
+  "status": "open|completed|canceled",
+  "deadline": "2026-01-10",
+  "deadlineStart": "2026-01-10",
+  "notes": "optional notes",
+  "projectId": "things-project-id",
+  "areaId": "things-area-id",
+  "repeating": true,
+  "tags": ["phone", "ops"],
+  "updatedAt": "2026-01-10T10:00:00Z"
+}
+```
+
+**Project**
+```
+{
+  "id": "things-project-id",
+  "title": "Marketing Ops",
+  "areaId": "things-area-id",
+  "status": "open|completed|canceled",
+  "updatedAt": "2026-01-10T10:00:00Z"
+}
+```
+
+**Area**
+```
+{
+  "id": "things-area-id",
+  "title": "Work",
+  "updatedAt": "2026-01-10T10:00:00Z"
+}
+```
+
+### List Response Shape
+
+**GET /lists/{scope}**
+```
+{
+  "scope": "today",
+  "generatedAt": "2026-01-10T10:00:00Z",
+  "tasks": [ ...Task ],
+  "projects": [ ...Project ],
+  "areas": [ ...Area ]
+}
+```
+
+Scope values: `today | inbox | upcoming | projects | areas`
+
+Notes:
+- `deadline` and `deadlineStart` are optional; use ISO date strings.
+- `repeating` is a boolean flag only (no rule parsing in v1).
+- `projectId`/`areaId` let the UI render context for Today tasks.
 
 ---
 
