@@ -54,6 +54,18 @@ If we do this, Things remains the source of truth, and the mirror is **eventuall
 
 ---
 
+## Bridge Deployment Model
+
+Plan for **multiple bridges** (e.g., Work MacBook + Home Mac Studio) to ensure coverage:
+- Each bridge registers with a `device_id` and sends a periodic heartbeat.
+- Backend selects the **most recently seen** bridge for requests.
+- If no bridge is online, UI shows a “bridge offline” state and falls back to cached data.
+- Things Cloud keeps devices in sync, so any online bridge can serve the latest data.
+
+This avoids relying on a single always-on host and improves availability across locations.
+
+---
+
 ## Decision Matrix
 
 | Option | Read Coverage | Write Coverage | Reliability | Complexity | UX Latency | Future-Proof | Notes |
