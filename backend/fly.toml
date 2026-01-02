@@ -17,6 +17,7 @@ primary_region = "lhr"
   SUPABASE_SSLMODE = "require"
   R2_ENDPOINT = "https://your-r2-account-id.r2.cloudflarestorage.com/"
   R2_BUCKET = "sidebar"
+  STORAGE_BACKEND = "r2"
 
 [http_service]
   internal_port = 8001
