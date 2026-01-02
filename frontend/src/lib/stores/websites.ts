@@ -67,9 +67,7 @@ function createWebsitesStore() {
             searchQuery: '',
             loaded: true
           }));
-          if (isCacheStale(CACHE_KEY, CACHE_TTL)) {
-            this.revalidateInBackground();
-          }
+          this.revalidateInBackground();
           return;
         }
         if (currentState.loaded) {
