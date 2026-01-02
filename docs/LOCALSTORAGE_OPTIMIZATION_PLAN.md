@@ -9,6 +9,7 @@ Improve frontend responsiveness and perceived performance by intelligently cachi
 - Preserve user context across sessions (last conversation, expanded folders)
 - Reduce API load by 40-60% for repeat actions
 - Zero perceived latency for cached UI components
+- Realtime events keep cached data fresh between sessions (see `docs/REALTIME_SYNC_PLAN.md`)
 
 ---
 
@@ -70,6 +71,7 @@ Use a **tiered caching approach**:
 // Tier 1: Memory (Svelte stores) - fastest
 // Tier 2: localStorage - fast, persistent
 // Tier 3: API - authoritative source
+// Realtime events (Supabase) update Tier 1 + Tier 2 between API fetches
 
 async function loadData<T>(
   cacheKey: string,
@@ -339,6 +341,13 @@ export function getCacheStats(): {
   };
 }
 ```
+
+### Realtime Integration (New)
+
+When realtime subscriptions are enabled:
+- Realtime events should update the in-memory store and write-through to localStorage.
+- TTL remains as a safety net, not the primary freshness mechanism.
+- Background revalidation can be triggered on reconnect or app focus.
 
 #### 1.2 Cache Event System
 
