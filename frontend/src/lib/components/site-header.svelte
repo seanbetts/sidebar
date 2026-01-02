@@ -33,23 +33,17 @@
 	</div>
 	<div class="actions">
 		<div class="datetime-group">
-			{#if weatherTemp || liveLocation}
-				<div class="weather-location">
-					{#if weatherTemp}
-						<span class="weather">
-							<svelte:component this={resolveWeatherIcon(weatherCode, weatherIsDay)} size={20} />
-							<span class="weather-temp">{weatherTemp}</span>
-						</span>
-					{/if}
-					{#if liveLocation}
-						<span class="location">{liveLocation}</span>
-					{/if}
-				</div>
+			<span class="date">{currentDate}</span>
+			<span class="time">{currentTime}</span>
+			{#if liveLocation}
+				<span class="location">{liveLocation}</span>
 			{/if}
-			<div class="datetime">
-				<span class="date">{currentDate}</span>
-				<span class="time">{currentTime}</span>
-			</div>
+			{#if weatherTemp}
+				<span class="weather">
+					<svelte:component this={resolveWeatherIcon(weatherCode, weatherIsDay)} size={16} />
+					<span class="weather-temp">{weatherTemp}</span>
+				</span>
+			{/if}
 		</div>
 		<Button
 			size="icon"
@@ -130,24 +124,28 @@
 	}
 
 	.datetime-group {
-		display: flex;
-		align-items: center;
-		gap: 1.25rem;
+		display: grid;
+		grid-template-columns: auto auto;
+		row-gap: 0.35rem;
+		column-gap: 1rem;
 		margin-right: 1.25rem;
+		align-items: center;
 	}
 
-	.weather-location {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		gap: 0.15rem;
+	.datetime-group .date {
+		text-align: right;
 	}
 
-	.datetime {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		gap: 0.1rem;
+	.datetime-group .location {
+		text-align: right;
+	}
+
+	.datetime-group .time {
+		text-align: right;
+	}
+
+	.datetime-group .weather {
+		justify-self: end;
 	}
 
 	.location {
@@ -161,15 +159,15 @@
 	.weather {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.7rem;
+		gap: 0.4rem;
 		color: var(--color-foreground);
 		font-size: 0.95rem;
 		font-weight: 600;
 	}
 
 	.weather :global(svg) {
-		width: 20px;
-		height: 20px;
+		width: 16px;
+		height: 16px;
 	}
 
 	:global(.swap-button) {
