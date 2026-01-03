@@ -147,9 +147,6 @@
         </button>
       {/each}
     {/if}
-  {#if error}
-    <div class="things-error">{error}</div>
-  {/if}
   {#if diagnostics && !diagnostics.dbAccess}
     <div class="things-diagnostics">
       Things bridge running without Things DB access. Repeating task metadata unavailable.
@@ -228,11 +225,6 @@
   .things-meta {
     font-size: 0.8rem;
     color: var(--color-muted-foreground);
-  }
-
-  .things-error {
-    font-size: 0.8rem;
-    color: #d55b5b;
   }
 
   .things-diagnostics {
