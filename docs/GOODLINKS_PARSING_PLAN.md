@@ -315,29 +315,32 @@ post_rules, _ = rule_engine.match_rules(url, readability_html, phase='post')
 
 This prevents false matches and ensures selectors work reliably.
 
-### 6. **Rule Logging & Debugging**
+### 6. **Minimal Operational Metadata**
 
-**Our Addition**: Track which rules fired for every save.
+**Philosophy**: No debugging metadata or rule tracking. Keep database clean and focused.
 
-**Stored in metadata_ JSONB**:
+**Stored in metadata_ JSONB** (minimal operational fields only):
 ```json
 {
-  "matched_rules": {
-    "pre": ["cookie-banners", "wsj-paywall"],
-    "post": ["theguardian"]
-  },
-  "host_context": {
-    "host_raw": "www.theguardian.com",
-    "host_nw": "theguardian.com"
-  }
+  "parser_version": "1.0",
+  "used_js_rendering": true,
+  "content_hash": "a1b2c3d4e5f6g7h8"
 }
 ```
 
-This enables:
-- Debugging which rules fired
-- A/B testing rule changes
-- Rule effectiveness analytics
-- Continuous improvement
+**What We Store**:
+- `parser_version` - For migration tracking
+- `used_js_rendering` - Operational flag (did we use Playwright?)
+- `content_hash` - For deduplication
+
+**What We Don't Store**:
+- ❌ Matched rule IDs
+- ❌ Rule signatures
+- ❌ DOM selector matches
+- ❌ Action counts
+- ❌ Debug flags
+
+**Rationale**: The output is the truth. If parsing failed, fix the rules and re-parse. No need for per-save debugging artifacts.
 
 ### 7. **Image Format & Caption Preservation**
 
@@ -388,53 +391,160 @@ meta.update(rule_metadata_overrides)
 ### What We've Improved Beyond GoodLinks
 
 1. **Explicit YAML Schema**: More readable than GoodLinks' compact JSON
-2. **Phase Labels**: Clear `pre`/`post` vs. implicit behavior
-3. **Rendering Control**: Per-rule JS rendering flags
+2. **Phase Labels**: Clear `pre`/`post`/`both` vs. implicit behavior
+3. **Hard Rendering Control**: Per-rule JS rendering with `mode: auto|force|never`
 4. **Rich Frontmatter**: YAML frontmatter optimized for AI consumption
-5. **Rule Analytics**: Matched rules stored for continuous improvement
+5. **Minimal Metadata**: Clean database with only operational fields (no debug clutter)
 6. **Trigger Mode Control**: Explicit `mode: any` for platform rules that should fire on DOM signature alone
 7. **Text Contains Triggers**: `dom.any_text_contains` for string-based matching
-8. **Structured Discard**: Discarded content saves with frontmatter explaining why
-9. **Hero Image Extraction**: Automatically extracts and includes featured images at top of content with fallback to OpenGraph
+8. **Structured Discard**: Discarded content returns Markdown with `discarded: true` in frontmatter
+9. **Hero Image Extraction**: Deterministic priority (in-article → og:image → twitter:image)
+10. **Include Reinsertion**: Complete v1 implementation with sanitization and anchored insertion
+11. **Text/Markdown Output**: Clean API contract (input: URL, output: Markdown)
 
 ---
 
 ## Critical Implementation Details (Final Fixes)
 
-### 1. **selector_overrides Actually Scope HTML**
+### 1. **selector_overrides (we / a) Are Hard Scoping Constraints**
 
-**Problem**: Originally, `wrapper` and `article` selectors were captured but never applied.
+**GoodLinks Fields**: `we` (wrapper), `a` (article root)
 
-**Solution**: In pre-phase, we now **extract and scope the HTML** to the specified element before passing to Readability:
+**Critical Invariant**: Scoping is enforced as a **hard constraint in both phases**.
+
+**Pre-Phase** (before Readability):
+- If `wrapper` or `article` is defined, **extract that subtree** from the DOM
+- Wrap in minimal document structure
+- Pass ONLY the scoped subtree to Readability
+- Readability **never sees content outside the scope**
+
+**Post-Phase** (after Readability):
+- All transforms and removals **operate within the scoped subtree only**
+- If a `wrapper`/`article` was applied in pre-phase, post-phase rules respect that boundary
+
+**Implementation**:
 
 ```python
-if scope_selector:
-    scoped_elems = tree.cssselect(scope_selector)
-    if scoped_elems:
-        # Replace entire tree with scoped element
-        scoped_elem = scoped_elems[0]
-        new_doc = lxml_html.Element('html')
-        body = lxml_html.SubElement(new_doc, 'body')
-        body.append(scoped_elem)
-        tree = new_doc  # Readability sees ONLY this scope
+# PRE-PHASE: Scope HTML before Readability
+if phase == 'pre' and 'selector_overrides' in rule:
+    overrides = rule['selector_overrides']
+
+    # Prefer article over wrapper
+    scope_selector = overrides.get('article') or overrides.get('wrapper')
+
+    if scope_selector:
+        try:
+            scoped_elems = tree.cssselect(scope_selector)
+            if scoped_elems:
+                # HARD CONSTRAINT: Replace tree with scoped element
+                scoped_elem = scoped_elems[0]
+
+                # Create minimal wrapper
+                new_doc = lxml_html.Element('html')
+                body = lxml_html.SubElement(new_doc, 'body')
+                body.append(scoped_elem)
+                tree = new_doc
+
+                # Readability sees ONLY this scope
+                metadata_overrides['scoped_to'] = scope_selector
+        except Exception:
+            pass
+
+# POST-PHASE: All transforms respect scoping
+# (Post-phase rules operate on Readability output, which is already scoped)
 ```
 
-**Example Use**: WSJ paywall rules can scope to `#main-content` so Readability ignores paywall scaffolding.
+**Why This Matters**:
+- WSJ paywall rules: Scope to `#main-content`, ignore entire paywall scaffold
+- Medium: Scope to `.article-content`, ignore sidebars/ads
+- "we-only" rules (rules with ONLY a wrapper selector) work because scoping alone changes what Readability extracts
 
-### 2. **include Implementation Clarified**
+**This is a requirement for GoodLinks-parity**: Without scoping as a hard constraint, many real-world rules become inert.
 
-**Problem**: `elem.set('data-include', 'true')` does nothing for Readability.
+### 2. **include Reinsertion (v1 Complete Implementation)**
 
-**Solution**: We've implemented a **partial solution**:
-- Pre-phase: Store included elements in metadata for potential reinsertion
-- Post-phase: Would require access to raw DOM for reinsertion (not implemented yet)
+**Problem**: `elem.set('data-include', 'true')` does nothing for Readability. GoodLinks' `i` field forces content back into the extracted article.
 
-**Current Behavior**: `include` stores elements but doesn't guarantee preservation. For most cases, use `selector_overrides` to scope appropriately instead.
+**Solution**: Complete post-extraction reinsertion pipeline.
 
-**Future Enhancement**: Implement post-extraction reinsertion by:
-1. Keeping raw DOM copy
-2. After Readability, pull `include` selectors from raw DOM
-3. Insert into extracted content at anchored positions
+**Implementation**:
+
+```python
+def apply_include_reinsertion(
+    extracted_html: str,
+    original_dom: Element,
+    include_selectors: List[str],
+    removal_rules: List[str]
+) -> str:
+    """
+    Reinsert forcibly included elements after Readability extraction.
+
+    Args:
+        extracted_html: Clean HTML from Readability
+        original_dom: Saved copy of pre-Readability DOM
+        include_selectors: List of CSS selectors to force include
+        removal_rules: Removal selectors to sanitize included elements
+
+    Returns:
+        Modified extracted HTML with reinserted elements
+    """
+    from lxml import html as lxml_html
+
+    extracted_tree = lxml_html.fromstring(extracted_html)
+
+    for selector in include_selectors:
+        try:
+            # Find matching nodes in original DOM
+            included_nodes = original_dom.cssselect(selector)
+
+            for node in included_nodes:
+                # Clone the node
+                cloned = deepcopy(node)
+
+                # Sanitize with removal rules (same as main pipeline)
+                for removal_selector in removal_rules:
+                    for elem in cloned.cssselect(removal_selector):
+                        parent = elem.getparent()
+                        if parent is not None:
+                            parent.remove(elem)
+
+                # Find insertion point in extracted content
+                # Strategy: Insert after closest preceding heading
+                headings = extracted_tree.cssselect('h1, h2, h3, h4, h5, h6')
+
+                if headings:
+                    # Insert after last heading (safest anchor)
+                    last_heading = headings[-1]
+                    parent = last_heading.getparent()
+                    if parent is not None:
+                        insert_index = parent.index(last_heading) + 1
+                        parent.insert(insert_index, cloned)
+                else:
+                    # No headings - append to body
+                    body = extracted_tree.find('.//body')
+                    if body is not None:
+                        body.append(cloned)
+                    else:
+                        # No body tag, append to root
+                        extracted_tree.append(cloned)
+        except Exception:
+            # Failed to reinsert - log but don't crash pipeline
+            continue
+
+    return lxml_html.tostring(extracted_tree, encoding='unicode')
+```
+
+**Pipeline Integration**:
+1. **Pre-phase**: Collect `include` selectors from matched rules
+2. **Before Readability**: Save parsed copy of original DOM
+3. **After Readability**: Reinsert included elements with sanitization
+4. **Post-phase rules**: Operate on DOM with reinserted elements
+
+**Deterministic & Safe**:
+- Sanitization uses same removal rules as main pipeline
+- Insertion anchors to headings (predictable)
+- Fallback to append (never crashes)
+- No `data-include` tagging (Readability ignores it anyway)
 
 ### 3. **Trigger Mode: any vs all**
 
@@ -1480,20 +1590,12 @@ author: {author}
                        except Exception:
                            continue
 
-               # Force inclusions (pre-phase: store for later, post-phase: reinject)
+               # Force inclusions (collect selectors, reinsertion happens after Readability)
                if 'include' in rule:
-                   if phase == 'pre':
-                       # Store elements to forcibly include
-                       for selector in rule['include']:
-                           try:
-                               for elem in tree.cssselect(selector):
-                                   # Clone element for later reinsertion
-                                   included_elements.append(elem)
-                                   metadata_overrides['has_includes'] = True
-                           except Exception:
-                               continue
-                   # NOTE: Post-phase reinsertion would require access to raw DOM
-                   # For now, include only works in pre-phase as element preservation
+                   # Store selectors for post-Readability reinsertion
+                   if 'include_selectors' not in metadata_overrides:
+                       metadata_overrides['include_selectors'] = []
+                   metadata_overrides['include_selectors'].extend(rule['include'])
 
                # Complex actions
                if 'actions' in rule:
@@ -1513,13 +1615,6 @@ author: {author}
                                metadata_overrides[field] = value.strip()
                        except Exception:
                            continue
-
-           # Store included elements for potential post-Readability reinsertion
-           if included_elements:
-               metadata_overrides['included_elements_html'] = [
-                   lxml_html.tostring(elem, encoding='unicode')
-                   for elem in included_elements
-               ]
 
            return lxml_html.tostring(tree, encoding='unicode'), metadata_overrides
 
@@ -1745,80 +1840,81 @@ author: {author}
 4. **Integrate into Pipeline** (`save_url.py`):
    ```python
    from parsers.rule_engine import RuleEngine
+   from parsers.include_reinsertion import apply_include_reinsertion
 
    # Initialize once (module-level)
    rule_engine = RuleEngine(Path(__file__).parent / "parsers" / "rules")
 
-   def save_url_local(url: str, user_id: str) -> Dict[str, Any]:
-       # 1. Fetch HTML
-       html, final_url = fetcher.fetch_html(url)
+   def save_url_local(url: str, user_id: str) -> str:
+       """
+       Parse URL and return Markdown with YAML frontmatter.
 
-       # Track matched rules for debugging
-       matched_rule_ids = {"pre": [], "post": []}
+       Args:
+           url: URL to parse
+           user_id: User ID for database storage
+
+       Returns:
+           text/markdown content (frontmatter + body)
+       """
+       # 1. Fetch HTML (with JS rendering control)
+       html, final_url, used_js_rendering = fetch_with_rendering_control(
+           url,
+           rule_engine
+       )
+
+       # Save original DOM for include reinsertion
+       from lxml import html as lxml_html
+       original_dom = lxml_html.fromstring(html)
+
        all_metadata_overrides = {}
+       include_selectors = []
+       removal_selectors = []
 
        # 2. PHASE 1: PRE-READABILITY RULES
        pre_rules, context = rule_engine.match_rules(final_url, html, phase='pre')
-       matched_rule_ids['pre'] = [r['id'] for r in pre_rules]
 
        if pre_rules:
            html, pre_metadata = rule_engine.apply_rules(html, pre_rules, phase='pre')
 
-           # Check for discard flag
+           # Collect include selectors
+           if 'include_selectors' in pre_metadata:
+               include_selectors.extend(pre_metadata['include_selectors'])
+
+           # Collect removal selectors for sanitization
+           for rule in pre_rules:
+               if 'remove' in rule:
+                   removal_selectors.extend(rule['remove'])
+
+           # Check for discard
            if pre_metadata.get('discarded'):
-               # Generate frontmatter for discarded content
+               # Return Markdown with discard frontmatter
                discard_fm = frontmatter.generate_frontmatter({
                    "source": final_url,
                    "domain": context["host_nw"],
                    "discarded": True,
-                   "reason": pre_metadata.get('reason', 'Content discarded by rule'),
-                   "rule_id": pre_metadata.get('rule_id'),
+                   "discard_reason": pre_metadata.get('reason', 'Content discarded by parsing rule'),
                    "saved_at": datetime.now(timezone.utc).isoformat()
                })
-
-               # Save minimal record
-               db = SessionLocal()
-               set_session_user_id(db, user_id)
-               try:
-                   website = WebsitesService.upsert_website(
-                       db,
-                       user_id,
-                       url=normalize_url(final_url),
-                       url_full=final_url,
-                       title="[Discarded]",
-                       content=discard_fm + "\n[Content discarded by parsing rule]",
-                       source=final_url,
-                       saved_at=datetime.now(timezone.utc),
-                       published_at=None,
-                       pinned=False,
-                       archived=True,  # Auto-archive discarded content
-                   )
-                   website.metadata_['discarded'] = True
-                   website.metadata_['matched_rules'] = matched_rule_ids
-                   db.commit()
-
-                   return {
-                       "id": str(website.id),
-                       "title": "[Discarded]",
-                       "url": website.url,
-                       "domain": website.domain,
-                       "discarded": True
-                   }
-               finally:
-                   db.close()
+               # Save to DB and return Markdown
+               save_to_database(user_id, final_url, discard_fm + "\n", context, used_js_rendering)
+               return discard_fm + "\n"
 
            all_metadata_overrides.update(pre_metadata)
 
-       # 3. Readability extraction
+       # 3. Readability extraction (sees scoped HTML if selector_overrides applied)
        article = readability.extract_article(html, final_url)
 
-       # 4. PHASE 2: POST-READABILITY RULES
-       post_rules, _ = rule_engine.match_rules(
-           final_url,
-           article["content"],
-           phase='post'
-       )
-       matched_rule_ids['post'] = [r['id'] for r in post_rules]
+       # 4. Include reinsertion (if any include selectors collected)
+       if include_selectors:
+           article["content"] = apply_include_reinsertion(
+               article["content"],
+               original_dom,
+               include_selectors,
+               removal_selectors
+           )
+
+       # 5. PHASE 2: POST-READABILITY RULES (operate on DOM with reinserted elements)
+       post_rules, _ = rule_engine.match_rules(final_url, article["content"], phase='post')
 
        if post_rules:
            article["content"], post_metadata = rule_engine.apply_rules(
@@ -1827,107 +1923,200 @@ author: {author}
                phase='post'
            )
 
-           # Check for discard in post-phase too
+           # Check for discard in post-phase
            if post_metadata.get('discarded'):
-               # Same discard handling as pre-phase
                discard_fm = frontmatter.generate_frontmatter({
                    "source": final_url,
                    "domain": context["host_nw"],
                    "discarded": True,
-                   "reason": post_metadata.get('reason', 'Content discarded by rule'),
-                   "rule_id": post_metadata.get('rule_id'),
+                   "discard_reason": post_metadata.get('reason', 'Content discarded by parsing rule'),
                    "saved_at": datetime.now(timezone.utc).isoformat()
                })
-
-               db = SessionLocal()
-               set_session_user_id(db, user_id)
-               try:
-                   website = WebsitesService.upsert_website(
-                       db,
-                       user_id,
-                       url=normalize_url(final_url),
-                       url_full=final_url,
-                       title="[Discarded]",
-                       content=discard_fm + "\n[Content discarded by parsing rule]",
-                       source=final_url,
-                       saved_at=datetime.now(timezone.utc),
-                       published_at=None,
-                       pinned=False,
-                       archived=True,
-                   )
-                   website.metadata_['discarded'] = True
-                   website.metadata_['matched_rules'] = matched_rule_ids
-                   db.commit()
-
-                   return {
-                       "id": str(website.id),
-                       "title": "[Discarded]",
-                       "url": website.url,
-                       "domain": website.domain,
-                       "discarded": True
-                   }
-               finally:
-                   db.close()
+               save_to_database(user_id, final_url, discard_fm + "\n", context, used_js_rendering)
+               return discard_fm + "\n"
 
            all_metadata_overrides.update(post_metadata)
 
-       # 5. Extract metadata (rule overrides take priority)
+       # 6. Extract metadata (rule overrides win)
        meta = metadata.extract_metadata(html, final_url)
-       meta.update(all_metadata_overrides)  # Rule overrides win
+       meta.update(all_metadata_overrides)
 
-       # 6. Convert to markdown
+       # 7. Extract hero image (deterministic priority order)
+       hero_image = extract_hero_image_deterministic(article["content"], meta)
+
+       # 8. Convert to markdown
        md_content = markdown.html_to_markdown(article["content"])
 
-       # 7. Calculate word count
-       word_count = len(md_content.split())
+       # 9. Prepend hero image if found
+       if hero_image:
+           hero_markdown = f'[![Hero]({hero_image})]({hero_image})\n\n'
+           md_content = hero_markdown + md_content
 
-       # 8. Generate frontmatter
+       # 10. Generate frontmatter
        fm_data = {
            "source": final_url,
            "title": article["title"] or meta.get("title"),
            "author": meta.get("author"),
            "published_date": meta.get("published_date"),
            "domain": context["host_nw"],
-           "word_count": word_count,
+           "word_count": len(md_content.split()),
+           "hero_image": hero_image,
            "tags": [],  # TODO: Auto-tagging in Phase 4
            "saved_at": datetime.now(timezone.utc).isoformat()
        }
        fm = frontmatter.generate_frontmatter(fm_data)
 
-       # 9. Combine frontmatter + content
-       full_content = fm + "\n" + md_content
+       # 11. Combine frontmatter + content
+       full_markdown = fm + "\n" + md_content
 
-       # 10. Save to database
+       # 12. Save to database
+       save_to_database(user_id, final_url, full_markdown, context, used_js_rendering)
+
+       # 13. Return Markdown (text/markdown)
+       return full_markdown
+
+
+   def fetch_with_rendering_control(url: str, rule_engine: RuleEngine) -> Tuple[str, str, bool]:
+       """
+       Fetch HTML with hard rendering.mode control flow.
+
+       Returns:
+           (html, final_url, used_js_rendering)
+       """
+       # Initial fetch
+       html, final_url = fetcher.fetch_html(url)
+
+       # Match rules to check rendering requirements
+       pre_rules, _ = rule_engine.match_rules(final_url, html, phase='pre')
+
+       # Determine rendering mode (HARD CONTROL FLOW)
+       rendering_mode = 'auto'  # Default
+       wait_for = None
+       timeout = 30000
+
+       for rule in pre_rules:
+           if 'rendering' in rule:
+               rule_mode = rule['rendering'].get('mode', 'auto')
+               if rule_mode == 'force':
+                   # Any rule with force → MUST use Playwright
+                   rendering_mode = 'force'
+                   wait_for = rule['rendering'].get('wait_for')
+                   timeout = rule['rendering'].get('timeout', 30000)
+                   break
+               elif rule_mode == 'never':
+                   # Any rule with never → NEVER use Playwright
+                   rendering_mode = 'never'
+
+       # Apply rendering logic
+       used_js_rendering = False
+
+       if rendering_mode == 'force':
+           # MUST render with JS
+           html, final_url = js_renderer.render_with_js(url, wait_for, timeout)
+           used_js_rendering = True
+
+       elif rendering_mode == 'auto':
+           # Use heuristic only when all rules are auto
+           if fetcher.requires_js_rendering(html):
+               html, final_url = js_renderer.render_with_js(url)
+               used_js_rendering = True
+
+       # rendering_mode == 'never': already have HTML, don't render
+
+       return html, final_url, used_js_rendering
+
+
+   def extract_hero_image_deterministic(
+       readability_html: str,
+       meta: Dict[str, Any]
+   ) -> Optional[str]:
+       """
+       Extract hero image with deterministic priority.
+
+       Priority:
+       1. First meaningful in-article image (post-rules)
+       2. OpenGraph og:image
+       3. Twitter twitter:image
+
+       Returns:
+           Hero image URL or None (URL only, no download/proxy)
+       """
+       from lxml import html as lxml_html
+
+       tree = lxml_html.fromstring(readability_html)
+
+       # Priority 1: First meaningful in-article image
+       images = tree.cssselect('img')
+       for img in images:
+           src = img.get('src')
+           if src and src.startswith(('http://', 'https://', '//')):
+               # Basic validation: not a tracking pixel
+               width = img.get('width')
+               height = img.get('height')
+               if width and height:
+                   try:
+                       if int(width) < 50 or int(height) < 50:
+                           continue  # Skip tiny images
+                   except ValueError:
+                       pass
+               return src
+
+       # Priority 2: OpenGraph image
+       og_image = meta.get("hero_image")  # Already extracted from og:image
+       if og_image and og_image.startswith(('http://', 'https://')):
+           return og_image
+
+       return None
+
+
+   def save_to_database(
+       user_id: str,
+       url: str,
+       markdown_content: str,
+       context: Dict,
+       used_js_rendering: bool
+   ):
+       """
+       Save parsed content to database.
+
+       Stores minimal operational metadata only:
+       - parser_version
+       - used_js_rendering
+       - content_hash (for deduplication)
+       """
+       # Parse frontmatter to extract title, published_date
+       import yaml
+       parts = markdown_content.split('---\n', 2)
+       if len(parts) >= 3:
+           fm_data = yaml.safe_load(parts[1])
+       else:
+           fm_data = {}
+
        db = SessionLocal()
        set_session_user_id(db, user_id)
        try:
            website = WebsitesService.upsert_website(
                db,
                user_id,
-               url=normalize_url(final_url),
-               url_full=final_url,
-               title=fm_data["title"],
-               content=full_content,  # Now includes frontmatter
-               source=final_url,
+               url=normalize_url(url),
+               url_full=url,
+               title=fm_data.get("title", "[Untitled]"),
+               content=markdown_content,
+               source=url,
                saved_at=datetime.now(timezone.utc),
                published_at=parse_published_at(fm_data.get("published_date")),
                pinned=False,
-               archived=False,
+               archived=fm_data.get("discarded", False),
            )
 
-           # Store matched rules in metadata for debugging/analysis
-           website.metadata_['matched_rules'] = matched_rule_ids
-           website.metadata_['host_context'] = context
-           db.commit()
+           # Minimal operational metadata only
+           website.metadata_['parser_version'] = '1.0'
+           website.metadata_['used_js_rendering'] = used_js_rendering
+           website.metadata_['content_hash'] = hashlib.sha256(
+               markdown_content.encode()
+           ).hexdigest()[:16]
 
-           return {
-               "id": str(website.id),
-               "title": website.title,
-               "url": website.url,
-               "domain": website.domain,
-               "word_count": word_count,
-               "matched_rules": matched_rule_ids  # Return for logging
-           }
+           db.commit()
        finally:
            db.close()
    ```
