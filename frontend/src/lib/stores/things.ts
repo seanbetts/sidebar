@@ -436,6 +436,26 @@ function createThingsStore() {
           todayCount: state.selection.type === 'today' ? nextTasks.length : state.todayCount
         };
       });
+    },
+    setDueDate: async (taskId: string, dueDate: string, op: 'set_due' | 'defer' = 'set_due') => {
+      await thingsAPI.apply({ op, id: taskId, due_date: dueDate });
+      const state = get({ subscribe });
+      await loadSelection(state.selection, { force: true, silent: true, notify: false });
+      if (state.selection.type !== 'today') {
+        await loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
+      }
+      if (state.selection.type !== 'upcoming') {
+        await loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
+      }
+      try {
+        const counts = await thingsAPI.counts();
+        applyCountsResponse(counts);
+      } catch {
+        update((current) => ({
+          ...current,
+          error: 'Failed to update Things counts'
+        }));
+      }
     }
   };
 }

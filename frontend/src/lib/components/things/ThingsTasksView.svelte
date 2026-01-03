@@ -2,7 +2,34 @@
   import { onDestroy, onMount } from 'svelte';
   import { thingsStore, type ThingsSelection } from '$lib/stores/things';
   import type { ThingsArea, ThingsProject, ThingsTask } from '$lib/types/things';
-  import { Check, CalendarCheck, CalendarClock, Inbox, Layers, List, Repeat } from 'lucide-svelte';
+  import {
+    Check,
+    CalendarCheck,
+    CalendarClock,
+    CalendarPlus,
+    Inbox,
+    Layers,
+    List,
+    MoreHorizontal,
+    Repeat
+  } from 'lucide-svelte';
+  import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+  } from '$lib/components/ui/dropdown-menu';
+  import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+  } from '$lib/components/ui/alert-dialog';
 
   type TaskSection = {
     id: string;
@@ -24,8 +51,11 @@
   let areaTitleById = new Map<string, string>();
   let selectionType: ThingsTaskViewType = 'today';
   let selection: ThingsSelection = { type: 'today' };
-  let completing = new Set<string>();
+  let busyTasks = new Set<string>();
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
+  let showDueDialog = false;
+  let dueTask: ThingsTask | null = null;
+  let dueDateValue = '';
 
   type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project';
 
@@ -111,6 +141,15 @@
     const next = new Date(date);
     next.setDate(next.getDate() + days);
     return next;
+  }
+
+  function nextWeekday(date: Date, targetDay: number): Date {
+    const currentDay = date.getDay();
+    let daysAhead = (targetDay - currentDay + 7) % 7;
+    if (daysAhead === 0) {
+      daysAhead = 7;
+    }
+    return addDays(date, daysAhead);
   }
 
   function taskDeadline(task: ThingsTask): string | null {
@@ -276,17 +315,49 @@
     return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   }
 
-  async function handleComplete(taskId: string) {
-    if (completing.has(taskId)) return;
-    completing = new Set(completing).add(taskId);
+  function openDueDialog(task: ThingsTask) {
+    dueTask = task;
+    dueDateValue = (taskDeadline(task) ?? formatDateKey(new Date())).slice(0, 10);
+    showDueDialog = true;
+  }
+
+  function closeDueDialog() {
+    showDueDialog = false;
+    dueTask = null;
+    dueDateValue = '';
+  }
+
+  async function handleSetDueDate() {
+    if (!dueTask || !dueDateValue) return;
+    await runTaskUpdate(dueTask.id, () => thingsStore.setDueDate(dueTask.id, dueDateValue, 'set_due'));
+    closeDueDialog();
+  }
+
+  async function handleDefer(task: ThingsTask, days: number) {
+    const dateValue = formatDateKey(addDays(new Date(), days));
+    await runTaskUpdate(task.id, () => thingsStore.setDueDate(task.id, dateValue, 'defer'));
+  }
+
+  async function handleDeferToWeekday(task: ThingsTask, targetDay: number) {
+    const dateValue = formatDateKey(nextWeekday(new Date(), targetDay));
+    await runTaskUpdate(task.id, () => thingsStore.setDueDate(task.id, dateValue, 'defer'));
+  }
+
+  async function runTaskUpdate(taskId: string, action: () => Promise<void>) {
+    if (busyTasks.has(taskId)) return;
+    busyTasks = new Set(busyTasks).add(taskId);
     await new Promise((resolve) => setTimeout(resolve, 180));
     try {
-      await thingsStore.completeTask(taskId);
+      await action();
     } finally {
-      const next = new Set(completing);
+      const next = new Set(busyTasks);
       next.delete(taskId);
-      completing = next;
+      busyTasks = next;
     }
+  }
+
+  async function handleComplete(taskId: string) {
+    await runTaskUpdate(taskId, () => thingsStore.completeTask(taskId));
   }
 
   const refreshTasks = () => {
@@ -356,7 +427,7 @@
           {/if}
           <ul class="things-list">
             {#each section.tasks as task}
-              <li class="things-task" class:completing={completing.has(task.id)}>
+              <li class="things-task" class:completing={busyTasks.has(task.id)}>
                 <div class="task-left">
                   {#if task.repeatTemplate}
                     <span class="repeat-badge" aria-label="Repeating task">
@@ -365,10 +436,10 @@
                   {:else}
                     <button
                       class="check"
-                      class:completing={completing.has(task.id)}
+                      class:completing={busyTasks.has(task.id)}
                       onclick={() => handleComplete(task.id)}
                       aria-label="Complete task"
-                      disabled={completing.has(task.id)}
+                      disabled={busyTasks.has(task.id)}
                     >
                       <Check size={14} />
                     </button>
@@ -385,11 +456,55 @@
                     {/if}
                   </div>
                 </div>
-                {#if selectionType === 'area' || selectionType === 'project'}
-                  <div class="task-right">
+                <div class="task-right">
+                  {#if selectionType === 'area' || selectionType === 'project'}
                     <span class="due-pill">{dueLabel(task) ?? 'No Date'}</span>
-                  </div>
-                {/if}
+                  {/if}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      class="task-menu-btn"
+                      aria-label="Task options"
+                      disabled={task.repeatTemplate}
+                    >
+                      <MoreHorizontal size={16} />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent class="task-menu" align="end" sideOffset={6}>
+                      <DropdownMenuItem
+                        class="task-menu-item"
+                        onclick={() => handleDefer(task, 1)}
+                        disabled={task.repeatTemplate}
+                      >
+                        <CalendarClock size={14} />
+                        Defer to tomorrow
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        class="task-menu-item"
+                        onclick={() => handleDeferToWeekday(task, 5)}
+                        disabled={task.repeatTemplate}
+                      >
+                        <CalendarClock size={14} />
+                        Defer to Friday
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        class="task-menu-item"
+                        onclick={() => handleDeferToWeekday(task, 6)}
+                        disabled={task.repeatTemplate}
+                      >
+                        <CalendarClock size={14} />
+                        Defer to weekend
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        class="task-menu-item"
+                        onclick={() => openDueDialog(task)}
+                        disabled={task.repeatTemplate}
+                      >
+                        <CalendarPlus size={14} />
+                        Set due date…
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </li>
             {/each}
           </ul>
@@ -398,6 +513,24 @@
     </div>
   {/if}
 </div>
+
+<AlertDialog bind:open={showDueDialog}>
+  <AlertDialogContent class="task-due-dialog">
+    <AlertDialogHeader>
+      <AlertDialogTitle>Set due date</AlertDialogTitle>
+      <AlertDialogDescription>
+        Choose a due date for {dueTask?.title ?? 'this task'}.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <input class="task-date-input" type="date" bind:value={dueDateValue} />
+    <AlertDialogFooter>
+      <AlertDialogCancel onclick={closeDueDialog}>Cancel</AlertDialogCancel>
+      <AlertDialogAction onclick={handleSetDueDate} disabled={!dueDateValue}>
+        Save
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
 
 <style>
   .things-view {
@@ -489,6 +622,7 @@
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    gap: 0.5rem;
   }
 
   .check {
@@ -557,6 +691,61 @@
     border: 1px solid var(--color-border);
     color: var(--color-muted-foreground);
     background: var(--color-secondary);
+  }
+
+  .task-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-muted-foreground);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      background 160ms ease;
+  }
+
+  .things-task:hover .task-menu-btn,
+  .task-menu-btn:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .task-menu-btn:hover {
+    color: var(--color-foreground);
+    border-color: var(--color-border);
+    background: var(--color-secondary);
+  }
+
+  :global(.task-menu) {
+    min-width: 190px;
+  }
+
+  :global(.task-menu-item) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .task-due-dialog {
+    max-width: 420px;
+  }
+
+  .task-date-input {
+    width: 100%;
+    margin-top: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    padding: 0.5rem 0.75rem;
+    color: var(--color-foreground);
   }
 
   .things-state {
