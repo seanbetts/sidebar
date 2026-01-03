@@ -467,6 +467,7 @@
   function cancelRename() {
     editingTaskId = null;
     renameValue = '';
+    renameInput?.blur();
   }
 
   async function commitRename(task: ThingsTask) {
@@ -477,6 +478,7 @@
     }
     await runTaskUpdate(task.id, () => thingsStore.renameTask(task.id, nextTitle));
     cancelRename();
+    renameInput?.blur();
   }
 
   $: if (editingTaskId && renameInput) {
