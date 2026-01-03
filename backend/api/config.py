@@ -134,6 +134,7 @@ class Settings(BaseSettings):
     things_bridge_stale_seconds: int = int(os.getenv("THINGS_BRIDGE_STALE_SECONDS", "120"))
     things_bridge_timeout_seconds: int = int(os.getenv("THINGS_BRIDGE_TIMEOUT_SECONDS", "10"))
     things_bridge_backend_url: str = os.getenv("THINGS_BRIDGE_BACKEND_URL", "http://localhost:8001")
+    things_bridge_device_id: str | None = os.getenv("THINGS_BRIDGE_DEVICE_ID") or None
 
     # Future JWT config (Phase 2)
     # jwt_secret: str = None

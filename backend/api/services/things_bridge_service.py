@@ -92,12 +92,13 @@ class ThingsBridgeService:
     def select_active_bridge(db: Session, user_id: str) -> Optional[ThingsBridge]:
         """Pick the most recently seen bridge within the staleness window."""
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=settings.things_bridge_stale_seconds)
-        return (
+        query = (
             db.query(ThingsBridge)
             .filter(
                 ThingsBridge.user_id == user_id,
                 ThingsBridge.last_seen_at >= cutoff,
             )
-            .order_by(ThingsBridge.last_seen_at.desc())
-            .first()
         )
+        if settings.things_bridge_device_id:
+            query = query.filter(ThingsBridge.device_id == settings.things_bridge_device_id)
+        return query.order_by(ThingsBridge.last_seen_at.desc()).first()
