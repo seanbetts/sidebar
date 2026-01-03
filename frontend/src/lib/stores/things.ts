@@ -28,6 +28,7 @@ type ThingsState = {
   diagnostics: ThingsBridgeDiagnostics | null;
   syncNotice: string;
   isLoading: boolean;
+  searchPending: boolean;
   error: string;
 };
 
@@ -52,6 +53,7 @@ const defaultState: ThingsState = {
   diagnostics: null,
   syncNotice: '',
   isLoading: false,
+  searchPending: false,
   error: ''
 };
 
@@ -332,6 +334,7 @@ function createThingsStore() {
           selection,
           tasks: cachedTasks,
           isLoading: showSearchLoading ? true : false,
+          searchPending: showSearchLoading ? true : state.searchPending,
           error: '',
           counts: {
             ...state.counts,
@@ -360,6 +363,7 @@ function createThingsStore() {
           selection,
           tasks: clearTasks ? [] : state.tasks,
           isLoading: silentFetch ? state.isLoading : true,
+          searchPending: selection.type === 'search' ? true : state.searchPending,
           error: ''
         }));
       }
@@ -420,7 +424,11 @@ function createThingsStore() {
       } finally {
       if (usesToken && token !== loadToken) return;
       if (!silent) {
-        update((state) => ({ ...state, isLoading: false }));
+        update((state) => ({
+          ...state,
+          isLoading: false,
+          searchPending: selection.type === 'search' ? false : state.searchPending
+        }));
       }
       }
     })();
