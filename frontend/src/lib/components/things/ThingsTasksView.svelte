@@ -568,17 +568,6 @@
     </div>
   {:else if error}
     <div class="things-error">{error}</div>
-  {:else if tasks.length === 0}
-    <div class="things-state">
-      <img class="things-empty-logo" src="/images/logo.svg" alt="sideBar" />
-      {#if selectionLabel === 'Today'}
-        All done for the day
-      {:else if selectionType === 'search'}
-        No results for "{selectionQuery}"
-      {:else}
-        No tasks to show.
-      {/if}
-    </div>
   {:else}
     <div class="things-content">
       {#if newTaskDraft && showDraft}
@@ -656,113 +645,126 @@
           </div>
         </div>
       {/if}
-      {#each sections as section}
-        <div class="things-section">
-          {#if section.title}
-            <div class="things-section-title">{section.title}</div>
+      {#if tasks.length === 0}
+        <div class="things-state">
+          <img class="things-empty-logo" src="/images/logo.svg" alt="sideBar" />
+          {#if selectionLabel === 'Today'}
+            All done for the day
+          {:else if selectionType === 'search'}
+            No results for "{selectionQuery}"
+          {:else}
+            No tasks to show.
           {/if}
-          <ul class="things-list">
-            {#each section.tasks as task}
-              <li class="things-task" class:completing={busyTasks.has(task.id)}>
-                <div class="task-left">
-                  {#if task.repeatTemplate}
-                    <span class="repeat-badge" aria-label="Repeating task">
-                      <Repeat size={14} />
-                    </span>
-                  {:else}
-                    <button
-                      class="check"
-                      class:completing={busyTasks.has(task.id)}
-                      onclick={() => handleComplete(task.id)}
-                      aria-label="Complete task"
-                      disabled={busyTasks.has(task.id)}
-                    >
-                      <Circle size={14} />
-                    </button>
-                  {/if}
-                  <div class="content">
-                    <div class="task-title">
-                      <span>{task.title}</span>
-                      {#if task.notes}
-                        <span class="notes-icon" aria-label="Task notes">
-                          <FileText size={14} />
-                          <span class="notes-tooltip">{task.notes}</span>
-                        </span>
-                      {/if}
-                      {#if task.repeating && !task.repeatTemplate}
-                        <Repeat size={14} class="repeat-icon" />
+        </div>
+      {:else}
+        {#each sections as section}
+          <div class="things-section">
+            {#if section.title}
+              <div class="things-section-title">{section.title}</div>
+            {/if}
+            <ul class="things-list">
+              {#each section.tasks as task}
+                <li class="things-task" class:completing={busyTasks.has(task.id)}>
+                  <div class="task-left">
+                    {#if task.repeatTemplate}
+                      <span class="repeat-badge" aria-label="Repeating task">
+                        <Repeat size={14} />
+                      </span>
+                    {:else}
+                      <button
+                        class="check"
+                        class:completing={busyTasks.has(task.id)}
+                        onclick={() => handleComplete(task.id)}
+                        aria-label="Complete task"
+                        disabled={busyTasks.has(task.id)}
+                      >
+                        <Circle size={14} />
+                      </button>
+                    {/if}
+                    <div class="content">
+                      <div class="task-title">
+                        <span>{task.title}</span>
+                        {#if task.notes}
+                          <span class="notes-icon" aria-label="Task notes">
+                            <FileText size={14} />
+                            <span class="notes-tooltip">{task.notes}</span>
+                          </span>
+                        {/if}
+                        {#if task.repeating && !task.repeatTemplate}
+                          <Repeat size={14} class="repeat-icon" />
+                        {/if}
+                      </div>
+                      {#if taskSubtitle(task)}
+                        <div class="meta">{taskSubtitle(task)}</div>
                       {/if}
                     </div>
-                    {#if taskSubtitle(task)}
-                      <div class="meta">{taskSubtitle(task)}</div>
-                    {/if}
                   </div>
-                </div>
-                <div class="task-right">
-                  {#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
-                    <span class="due-pill">{dueLabel(task) ?? 'No Date'}</span>
-                  {/if}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      class="task-menu-btn"
-                      aria-label="Task options"
-                      disabled={task.repeatTemplate}
-                    >
-                      <MoreHorizontal size={16} />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent class="task-menu" align="end" sideOffset={6}>
-                      {#if selectionType !== 'today'}
+                  <div class="task-right">
+                    {#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
+                      <span class="due-pill">{dueLabel(task) ?? 'No Date'}</span>
+                    {/if}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        class="task-menu-btn"
+                        aria-label="Task options"
+                        disabled={task.repeatTemplate}
+                      >
+                        <MoreHorizontal size={16} />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent class="task-menu" align="end" sideOffset={6}>
+                        {#if selectionType !== 'today'}
+                          <DropdownMenuItem
+                            class="task-menu-item"
+                            onclick={() => handleSetDueToday(task)}
+                            disabled={task.repeatTemplate}
+                          >
+                            <CalendarCheck size={14} />
+                            Set due today
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        {/if}
                         <DropdownMenuItem
                           class="task-menu-item"
-                          onclick={() => handleSetDueToday(task)}
+                          onclick={() => handleDefer(task, 1)}
                           disabled={task.repeatTemplate}
                         >
-                          <CalendarCheck size={14} />
-                          Set due today
+                          <CalendarClock size={14} />
+                          Defer to tomorrow
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          class="task-menu-item"
+                          onclick={() => handleDeferToWeekday(task, 5)}
+                          disabled={task.repeatTemplate}
+                        >
+                          <CalendarClock size={14} />
+                          Defer to Friday
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          class="task-menu-item"
+                          onclick={() => handleDeferToWeekday(task, 6)}
+                          disabled={task.repeatTemplate}
+                        >
+                          <CalendarClock size={14} />
+                          Defer to weekend
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                      {/if}
-                      <DropdownMenuItem
-                        class="task-menu-item"
-                        onclick={() => handleDefer(task, 1)}
-                        disabled={task.repeatTemplate}
-                      >
-                        <CalendarClock size={14} />
-                        Defer to tomorrow
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        class="task-menu-item"
-                        onclick={() => handleDeferToWeekday(task, 5)}
-                        disabled={task.repeatTemplate}
-                      >
-                        <CalendarClock size={14} />
-                        Defer to Friday
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        class="task-menu-item"
-                        onclick={() => handleDeferToWeekday(task, 6)}
-                        disabled={task.repeatTemplate}
-                      >
-                        <CalendarClock size={14} />
-                        Defer to weekend
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        class="task-menu-item"
-                        onclick={() => openDueDialog(task)}
-                        disabled={task.repeatTemplate}
-                      >
-                        <CalendarPlus size={14} />
-                        Set due date…
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </li>
-            {/each}
-          </ul>
-        </div>
-      {/each}
+                        <DropdownMenuItem
+                          class="task-menu-item"
+                          onclick={() => openDueDialog(task)}
+                          disabled={task.repeatTemplate}
+                        >
+                          <CalendarPlus size={14} />
+                          Set due date…
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/each}
+      {/if}
     </div>
   {/if}
 </div>
