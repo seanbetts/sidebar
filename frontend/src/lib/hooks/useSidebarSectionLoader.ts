@@ -13,13 +13,7 @@ export type SidebarSection = 'history' | 'notes' | 'websites' | 'workspace' | 't
  * @returns Loader for section data.
  */
 export function useSidebarSectionLoader() {
-	const loadedSections = new Set<SidebarSection>();
-
 	const loadSectionData = (section: SidebarSection) => {
-		if (loadedSections.has(section)) {
-			return;
-		}
-
 		const treeState = get(treeStore);
 		const websitesState = get(websitesStore);
 		const conversationsState = get(conversationListStore);
@@ -33,11 +27,8 @@ export function useSidebarSectionLoader() {
 		}[section];
 
 		if (hasData) {
-			loadedSections.add(section);
 			return;
 		}
-
-		loadedSections.add(section);
 
 		switch (section) {
 			case 'notes':

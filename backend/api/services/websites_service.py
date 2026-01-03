@@ -7,6 +7,7 @@ from typing import Iterable, Optional
 from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.website import Website
 
@@ -182,6 +183,7 @@ class WebsitesService:
             if "pinned" not in metadata:
                 metadata["pinned"] = pinned
             website.metadata_ = metadata
+            flag_modified(website, "metadata_")
             if website.deleted_at is not None:
                 website.deleted_at = None
             website.updated_at = now
@@ -324,6 +326,7 @@ class WebsitesService:
         else:
             metadata.pop("pinned_order", None)
         website.metadata_ = metadata
+        flag_modified(website, "metadata_")
         website.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(website)
@@ -353,6 +356,7 @@ class WebsitesService:
             metadata["pinned"] = True
             metadata["pinned_order"] = order_map.get(website.id)
             website.metadata_ = metadata
+            flag_modified(website, "metadata_")
             website.updated_at = datetime.now(timezone.utc)
         db.commit()
 
@@ -390,6 +394,7 @@ class WebsitesService:
             raise WebsiteNotFoundError(f"Website not found: {website_id}")
 
         website.metadata_ = {**(website.metadata_ or {}), "archived": archived}
+        flag_modified(website, "metadata_")
         website.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(website)
