@@ -4,6 +4,7 @@
   import type { ThingsArea, ThingsProject, ThingsTask } from '$lib/types/things';
   import {
     Check,
+    Circle,
     CalendarCheck,
     CalendarClock,
     CalendarPlus,
@@ -446,7 +447,7 @@
                       aria-label="Complete task"
                       disabled={busyTasks.has(task.id)}
                     >
-                      <Check size={14} />
+                      <Circle size={14} />
                     </button>
                   {/if}
                   <div class="content">
