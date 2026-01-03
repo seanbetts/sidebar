@@ -54,6 +54,8 @@ const defaultState: ThingsState = {
 function createThingsStore() {
   const { subscribe, set, update } = writable<ThingsState>(defaultState);
   let loadToken = 0;
+  let hasPreloaded = false;
+  let lastMeta: ThingsMetaCache = { areas: [], projects: [] };
 
   const selectionCount = (
     selection: ThingsSelection,
@@ -103,6 +105,10 @@ function createThingsStore() {
 
   const applyResponse = (response: ThingsListResponse, selection: ThingsSelection) => {
     const key = selectionKey(selection);
+    lastMeta = {
+      areas: response.areas ?? lastMeta.areas,
+      projects: response.projects ?? lastMeta.projects
+    };
     update((state) => ({
       ...state,
       tasks: response.tasks ?? [],
@@ -118,6 +124,29 @@ function createThingsStore() {
     }));
   };
 
+  const isSameSelection = (a: ThingsSelection, b: ThingsSelection) => {
+    if (a.type !== b.type) return false;
+    if (a.type === 'area' || a.type === 'project') {
+      return a.id === (b as { id: string }).id;
+    }
+    return true;
+  };
+
+  const preloadAllSelections = (current: ThingsSelection) => {
+    if (hasPreloaded) return;
+    hasPreloaded = true;
+    const baseSelections: ThingsSelection[] = [{ type: 'inbox' }, { type: 'today' }, { type: 'upcoming' }];
+    const areaSelections = lastMeta.areas.map((area) => ({ type: 'area', id: area.id }) as ThingsSelection);
+    const projectSelections = lastMeta.projects.map(
+      (project) => ({ type: 'project', id: project.id }) as ThingsSelection
+    );
+    const allSelections = [...baseSelections, ...areaSelections, ...projectSelections];
+    allSelections.forEach((selection) => {
+      if (isSameSelection(selection, current)) return;
+      void loadSelection(selection, { silent: true });
+    });
+  };
+
   const selectionKey = (selection: ThingsSelection) => {
     if (selection.type === 'area' || selection.type === 'project') {
       return `${selection.type}:${selection.id}`;
@@ -127,7 +156,12 @@ function createThingsStore() {
 
   const tasksCacheKey = (selection: ThingsSelection) => `things.tasks.${selectionKey(selection)}`;
 
-  const loadSelection = async (selection: ThingsSelection) => {
+  const loadSelection = async (
+    selection: ThingsSelection,
+    options?: { force?: boolean; silent?: boolean }
+  ) => {
+    const force = options?.force ?? false;
+    const silent = options?.silent ?? false;
     const token = ++loadToken;
     const key = tasksCacheKey(selection);
     const cachedTasks = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
@@ -167,7 +201,7 @@ function createThingsStore() {
         todayCount: cachedToday.length
       }));
     }
-    if (cachedTasks) {
+    if (!force && cachedTasks) {
       const cachedCount = selectionCount(selection, cachedTasks, cachedMeta?.projects ?? []);
       update((state) => ({
         ...state,
@@ -184,7 +218,12 @@ function createThingsStore() {
         return;
       }
     } else {
-      update((state) => ({ ...state, selection, isLoading: true, error: '' }));
+      update((state) => ({
+        ...state,
+        selection,
+        isLoading: silent ? state.isLoading : true,
+        error: ''
+      }));
     }
     try {
       let response: ThingsListResponse;
@@ -204,23 +243,38 @@ function createThingsStore() {
           { ttl: CACHE_TTL, version: CACHE_VERSION }
         );
       }
-      applyResponse(response, selection);
+      if (!silent) {
+        applyResponse(response, selection);
+      } else {
+        const cached = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        if (!cached || JSON.stringify(cached) !== JSON.stringify(response.tasks ?? [])) {
+          applyResponse(response, selection);
+        }
+      }
+      if (!silent) {
+        preloadAllSelections(selection);
+      }
     } catch (error) {
       if (token !== loadToken) return;
-      update((state) => ({
-        ...state,
-        error: error instanceof Error ? error.message : 'Failed to load Things data'
-      }));
+      if (!silent) {
+        update((state) => ({
+          ...state,
+          error: error instanceof Error ? error.message : 'Failed to load Things data'
+        }));
+      }
     } finally {
       if (token !== loadToken) return;
-      update((state) => ({ ...state, isLoading: false }));
+      if (!silent) {
+        update((state) => ({ ...state, isLoading: false }));
+      }
     }
   };
 
   return {
     subscribe,
     reset: () => set(defaultState),
-    load: (selection: ThingsSelection) => loadSelection(selection),
+    load: (selection: ThingsSelection, options?: { force?: boolean; silent?: boolean }) =>
+      loadSelection(selection, options),
     loadCounts: async (force: boolean = false) => {
       const cached = getCachedData<ThingsCountsResponse | Record<string, number>>(COUNTS_CACHE_KEY, {
         ttl: CACHE_TTL,
