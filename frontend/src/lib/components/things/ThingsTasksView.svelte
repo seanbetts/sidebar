@@ -882,10 +882,10 @@
                         Set due date…
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem class="task-menu-item" onclick={() => openTrashDialog(task)}>
-                        <Trash2 size={14} />
-                        Move to trash
-                      </DropdownMenuItem>
+                        <DropdownMenuItem class="task-menu-item" onclick={() => openTrashDialog(task)}>
+                          <Trash2 size={14} />
+                          Delete
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -971,14 +971,14 @@
 <AlertDialog bind:open={showTrashDialog}>
   <AlertDialogContent class="task-trash-dialog">
     <AlertDialogHeader>
-      <AlertDialogTitle>Move to trash</AlertDialogTitle>
+      <AlertDialogTitle>Delete task</AlertDialogTitle>
       <AlertDialogDescription>
-        Move {trashTask?.title ?? 'this task'} to the Things Trash?
+        Delete {trashTask?.title ?? 'this task'}? This will move it to the Things Trash.
       </AlertDialogDescription>
     </AlertDialogHeader>
     <AlertDialogFooter>
       <AlertDialogCancel onclick={closeTrashDialog}>Cancel</AlertDialogCancel>
-      <AlertDialogAction onclick={confirmTrash}>Move to trash</AlertDialogAction>
+      <AlertDialogAction onclick={confirmTrash}>Delete</AlertDialogAction>
     </AlertDialogFooter>
   </AlertDialogContent>
 </AlertDialog>
