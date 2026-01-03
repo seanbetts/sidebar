@@ -25,6 +25,7 @@ type ThingsState = {
   todayCount: number;
   counts: Record<string, number>;
   diagnostics: ThingsBridgeDiagnostics | null;
+  syncNotice: string;
   isLoading: boolean;
   error: string;
 };
@@ -47,6 +48,7 @@ const defaultState: ThingsState = {
   todayCount: 0,
   counts: {},
   diagnostics: null,
+  syncNotice: '',
   isLoading: false,
   error: ''
 };
@@ -56,6 +58,17 @@ function createThingsStore() {
   let loadToken = 0;
   let hasPreloaded = false;
   let lastMeta: ThingsMetaCache = { areas: [], projects: [] };
+  let syncNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const setSyncNotice = (message: string) => {
+    if (syncNoticeTimer) {
+      clearTimeout(syncNoticeTimer);
+    }
+    update((state) => ({ ...state, syncNotice: message }));
+    syncNoticeTimer = setTimeout(() => {
+      update((state) => ({ ...state, syncNotice: '' }));
+    }, 6000);
+  };
 
   const selectionCount = (
     selection: ThingsSelection,
@@ -143,7 +156,7 @@ function createThingsStore() {
     const allSelections = [...baseSelections, ...areaSelections, ...projectSelections];
     allSelections.forEach((selection) => {
       if (isSameSelection(selection, current)) return;
-      void loadSelection(selection, { silent: true });
+      void loadSelection(selection, { silent: true, notify: false });
     });
   };
 
@@ -158,10 +171,11 @@ function createThingsStore() {
 
   const loadSelection = async (
     selection: ThingsSelection,
-    options?: { force?: boolean; silent?: boolean }
+    options?: { force?: boolean; silent?: boolean; notify?: boolean }
   ) => {
     const force = options?.force ?? false;
     const silent = options?.silent ?? false;
+    const notify = options?.notify ?? true;
     const token = ++loadToken;
     const key = tasksCacheKey(selection);
     const cachedTasks = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
@@ -247,8 +261,12 @@ function createThingsStore() {
         applyResponse(response, selection);
       } else {
         const cached = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
-        if (!cached || JSON.stringify(cached) !== JSON.stringify(response.tasks ?? [])) {
+        const changed = !cached || JSON.stringify(cached) !== JSON.stringify(response.tasks ?? []);
+        if (changed) {
           applyResponse(response, selection);
+          if (notify) {
+            setSyncNotice('Tasks updated in Things');
+          }
         }
       }
       if (!silent) {
@@ -273,7 +291,7 @@ function createThingsStore() {
   return {
     subscribe,
     reset: () => set(defaultState),
-    load: (selection: ThingsSelection, options?: { force?: boolean; silent?: boolean }) =>
+    load: (selection: ThingsSelection, options?: { force?: boolean; silent?: boolean; notify?: boolean }) =>
       loadSelection(selection, options),
     loadCounts: async (force: boolean = false) => {
       const cached = getCachedData<ThingsCountsResponse | Record<string, number>>(COUNTS_CACHE_KEY, {
