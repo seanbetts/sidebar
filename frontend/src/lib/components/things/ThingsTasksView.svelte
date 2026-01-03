@@ -269,27 +269,57 @@
 
   function buildTodaySections(tasks: ThingsTask[], areas: ThingsArea[]): TaskSection[] {
     const sections: TaskSection[] = [];
-    const tasksByArea = new Map<string, ThingsTask[]>();
-    const unassigned: ThingsTask[] = [];
+    const buckets = new Map<string, { title: string; tasks: ThingsTask[] }>();
 
-    areas.forEach((area) => tasksByArea.set(area.id, []));
+    areas.forEach((area) => {
+      buckets.set(`area:${area.id}`, { title: area.title, tasks: [] });
+    });
+
     tasks.forEach((task) => {
-      if (task.areaId && tasksByArea.has(task.areaId)) {
-        tasksByArea.get(task.areaId)?.push(task);
-      } else {
-        unassigned.push(task);
+      const project = task.projectId ? projects.find((item) => item.id === task.projectId) : null;
+      const areaId = task.areaId ?? project?.areaId ?? null;
+      if (areaId) {
+        const key = `area:${areaId}`;
+        if (!buckets.has(key)) {
+          const title = areaTitleById.get(areaId) ?? 'Area';
+          buckets.set(key, { title, tasks: [] });
+        }
+        buckets.get(key)?.tasks.push(task);
+        return;
       }
+      if (task.projectId) {
+        const key = `project:${task.projectId}`;
+        if (!buckets.has(key)) {
+          buckets.set(key, {
+            title: projectTitleById.get(task.projectId) ?? 'Project',
+            tasks: []
+          });
+        }
+        buckets.get(key)?.tasks.push(task);
+        return;
+      }
+      if (!buckets.has('other')) {
+        buckets.set('other', { title: 'Other', tasks: [] });
+      }
+      buckets.get('other')?.tasks.push(task);
     });
 
     areas.forEach((area) => {
-      const bucket = tasksByArea.get(area.id) ?? [];
-      if (bucket.length) {
-        sections.push({ id: area.id, title: area.title, tasks: bucket });
+      const bucket = buckets.get(`area:${area.id}`);
+      if (bucket?.tasks.length) {
+        sections.push({ id: area.id, title: bucket.title, tasks: bucket.tasks });
       }
     });
 
-    if (unassigned.length) {
-      sections.push({ id: 'other', title: 'Other', tasks: unassigned });
+    buckets.forEach((bucket, key) => {
+      if (key.startsWith('project:') && bucket.tasks.length) {
+        sections.push({ id: key, title: bucket.title, tasks: bucket.tasks });
+      }
+    });
+
+    const other = buckets.get('other');
+    if (other?.tasks.length) {
+      sections.push({ id: 'other', title: other.title, tasks: other.tasks });
     }
 
     return sections;
