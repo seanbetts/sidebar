@@ -198,6 +198,35 @@ Most pages require no special handling. A small minority benefit enormously from
 
 ---
 
+## Conceptual Model: Deterministic Reshaping, Not Understanding
+
+**Critical Philosophy**: This parsing system is **not trying to "understand" web pages**. It is **deterministically reshaping the DOM** using:
+
+1. **A trusted baseline extractor** (Arc90 Readability)
+2. **A small number of explicit rules** (declarative YAML)
+3. **Applied in a predictable order** (pre-phase → Readability → post-phase)
+
+### Why This Mental Model Matters
+
+**Engineering, Not Inference**:
+- We don't use heuristics to "guess" article boundaries
+- We don't use ML models to "interpret" page structure
+- We use deterministic DOM transformations that work the same way every time
+
+**Scales Cleanly**:
+- Most pages (90%+) require **zero custom rules**
+- A small minority (10%) benefit from **targeted, cheap fixes**
+- Rules are **site-specific** or **platform-specific**, not page-specific
+
+**Debuggable & Inspectable**:
+- Every transformation is explicit in YAML
+- Rule matches are logged in `metadata_` for analysis
+- No black-box AI making unpredictable decisions
+
+**This is why GoodLinks works so well**: It treats parsing as an **engineering problem** with **deterministic solutions**, not a pattern recognition problem requiring constant retraining.
+
+---
+
 ## Key Architectural Alignments with GoodLinks
 
 This implementation plan closely mirrors GoodLinks' proven architecture in these critical ways:
@@ -363,6 +392,108 @@ meta.update(rule_metadata_overrides)
 3. **Rendering Control**: Per-rule JS rendering flags
 4. **Rich Frontmatter**: YAML frontmatter optimized for AI consumption
 5. **Rule Analytics**: Matched rules stored for continuous improvement
+6. **Trigger Mode Control**: Explicit `mode: any` for platform rules that should fire on DOM signature alone
+7. **Text Contains Triggers**: `dom.any_text_contains` for string-based matching
+8. **Structured Discard**: Discarded content saves with frontmatter explaining why
+9. **Hero Image Extraction**: Automatically extracts and includes featured images at top of content with fallback to OpenGraph
+
+---
+
+## Critical Implementation Details (Final Fixes)
+
+### 1. **selector_overrides Actually Scope HTML**
+
+**Problem**: Originally, `wrapper` and `article` selectors were captured but never applied.
+
+**Solution**: In pre-phase, we now **extract and scope the HTML** to the specified element before passing to Readability:
+
+```python
+if scope_selector:
+    scoped_elems = tree.cssselect(scope_selector)
+    if scoped_elems:
+        # Replace entire tree with scoped element
+        scoped_elem = scoped_elems[0]
+        new_doc = lxml_html.Element('html')
+        body = lxml_html.SubElement(new_doc, 'body')
+        body.append(scoped_elem)
+        tree = new_doc  # Readability sees ONLY this scope
+```
+
+**Example Use**: WSJ paywall rules can scope to `#main-content` so Readability ignores paywall scaffolding.
+
+### 2. **include Implementation Clarified**
+
+**Problem**: `elem.set('data-include', 'true')` does nothing for Readability.
+
+**Solution**: We've implemented a **partial solution**:
+- Pre-phase: Store included elements in metadata for potential reinsertion
+- Post-phase: Would require access to raw DOM for reinsertion (not implemented yet)
+
+**Current Behavior**: `include` stores elements but doesn't guarantee preservation. For most cases, use `selector_overrides` to scope appropriately instead.
+
+**Future Enhancement**: Implement post-extraction reinsertion by:
+1. Keeping raw DOM copy
+2. After Readability, pull `include` selectors from raw DOM
+3. Insert into extracted content at anchored positions
+
+### 3. **Trigger Mode: any vs all**
+
+**Problem**: Original logic required BOTH host AND dom to match if both specified. This is too strict for platform rules that should fire on DOM signature alone (e.g., Swiper on any site).
+
+**Solution**: Added `trigger.mode`:
+
+```yaml
+# Platform rule - fires on ANY site with Swiper
+- id: swiper-carousel
+  phase: post
+  trigger:
+    mode: any  # Fire if dom OR host matches (dom is enough)
+    dom:
+      any: [".swiper-slide-duplicate"]
+  remove: [".swiper-slide-duplicate"]
+```
+
+**Default**: `mode: all` (both must match, backward compatible).
+
+### 4. **Text-Based Triggers**
+
+**Added**: `dom.any_text_contains` for string matching:
+
+```yaml
+- id: amp-detector
+  phase: pre
+  trigger:
+    dom:
+      any_text_contains: ["⚡ AMP", "Accelerated Mobile Page"]
+  # Handle AMP pages specially
+```
+
+**Use Case**: Detect AMP pages, regional variants, or content types by text tokens when CSS selectors are unreliable.
+
+### 5. **Discard Returns Structured Frontmatter**
+
+**Problem**: Discard returned empty string with no context.
+
+**Solution**: Generates YAML frontmatter explaining discard:
+
+```yaml
+---
+source: https://example.com/spam
+domain: example.com
+discarded: true
+reason: Content discarded by rule
+rule_id: spam-detector
+saved_at: 2025-03-19T10:00:00Z
+---
+
+[Content discarded by parsing rule]
+```
+
+**Behavior**: Discarded content is:
+- Saved to database with minimal record
+- Auto-archived for review
+- Flagged in `metadata_['discarded']`
+- Returned with `discarded: true` in API response
 
 ---
 
@@ -424,9 +555,12 @@ author: John Doe
 published_date: 2025-03-19
 domain: example.com
 word_count: 1543
+hero_image: https://example.com/images/hero.jpg
 tags: [technology, ai]
 saved_at: 2025-03-19T10:30:00Z
 ---
+
+[![Article hero image](https://example.com/images/hero.jpg)](https://example.com/images/hero.jpg)
 
 # Article Title
 
@@ -443,6 +577,7 @@ Article content in clean markdown...
 | `published_date` | ISO 8601 | Meta tags → JSON-LD | No |
 | `domain` | String | Extracted from URL | Yes |
 | `word_count` | Integer | Calculated from content | Yes |
+| `hero_image` | URL | First image in content → og:image | No |
 | `tags` | Array | Auto-generated + manual | No |
 | `saved_at` | ISO 8601 | Current timestamp | Yes |
 
@@ -553,7 +688,7 @@ author: {author}
        - author (article:author, meta[name="author"])
        - published_date (article:published_time, meta[name="date"])
        - description (og:description)
-       - image (og:image)
+       - hero_image (first image from content, fallback to og:image)
 
        Also checks JSON-LD structured data.
        """
@@ -586,8 +721,51 @@ author: {author}
                meta.get("twitter:title") or
                soup.find("title")
            ),
+           "hero_image": (
+               meta.get("og:image") or
+               meta.get("twitter:image")
+           ),
            # ... more fields
        }
+
+   def extract_hero_image(
+       readability_html: str,
+       fallback_og_image: Optional[str]
+   ) -> Optional[str]:
+       """
+       Extract hero/featured image for the article.
+
+       Strategy:
+       1. If Readability kept at least one image → use first as hero
+       2. Else: Fall back to OpenGraph og:image
+       3. Validate URL exists (basic check)
+
+       Args:
+           readability_html: HTML content after Readability extraction
+           fallback_og_image: OpenGraph image URL from metadata
+
+       Returns:
+           Hero image URL or None
+       """
+       from lxml import html as lxml_html
+
+       tree = lxml_html.fromstring(readability_html)
+
+       # Try to find first image in Readability output
+       images = tree.cssselect('img')
+       if images:
+           first_img_src = images[0].get('src')
+           if first_img_src:
+               # Basic validation: check if URL looks valid
+               if first_img_src.startswith(('http://', 'https://', '//')):
+                   return first_img_src
+
+       # Fallback to OpenGraph image
+       if fallback_og_image:
+           if fallback_og_image.startswith(('http://', 'https://')):
+               return fallback_og_image
+
+       return None
    ```
 
 6. **Implement `markdown.py`** (with custom image handler):
@@ -704,13 +882,25 @@ author: {author}
        # 3. Extract metadata
        meta = metadata.extract_metadata(html, final_url)
 
-       # 4. Convert to markdown
+       # 4. Extract hero image (from Readability output, fallback to OG)
+       hero_image = metadata.extract_hero_image(
+           article["content"],
+           meta.get("hero_image")
+       )
+
+       # 5. Convert to markdown
        md_content = markdown.html_to_markdown(article["content"])
 
-       # 5. Calculate word count
+       # 6. Prepend hero image to content if found
+       if hero_image:
+           # Add clickable hero image at top of content
+           hero_markdown = f'[![Article hero image]({hero_image})]({hero_image})\n\n'
+           md_content = hero_markdown + md_content
+
+       # 7. Calculate word count
        word_count = len(md_content.split())
 
-       # 6. Generate frontmatter
+       # 8. Generate frontmatter
        fm_data = {
            "source": final_url,
            "title": article["title"] or meta["title"],
@@ -718,15 +908,16 @@ author: {author}
            "published_date": meta.get("published_date"),
            "domain": urlparse(final_url).netloc,
            "word_count": word_count,
+           "hero_image": hero_image,  # Include in frontmatter
            "tags": [],  # TODO: Auto-tagging in Phase 3
            "saved_at": datetime.now(timezone.utc).isoformat()
        }
        fm = frontmatter.generate_frontmatter(fm_data)
 
-       # 7. Combine frontmatter + content
+       # 9. Combine frontmatter + content
        full_content = fm + "\n" + md_content
 
-       # 8. Save to database
+       # 10. Save to database
        db = SessionLocal()
        set_session_user_id(db, user_id)
        try:
@@ -736,7 +927,7 @@ author: {author}
                url=normalize_url(final_url),
                url_full=final_url,
                title=fm_data["title"],
-               content=full_content,  # Now includes frontmatter
+               content=full_content,  # Now includes frontmatter + hero image
                source=final_url,
                saved_at=datetime.now(timezone.utc),
                published_at=parse_published_at(fm_data.get("published_date")),
@@ -869,11 +1060,15 @@ author: {author}
 
    ```yaml
    - id: string              # Unique rule identifier
-     phase: pre|post         # When to apply (pre or post Readability)
-     priority: int           # Higher = runs first
+     phase: pre|post|both    # When to apply:
+                             # pre = before Readability (on raw/rendered DOM)
+                             # post = after Readability (on extracted content)
+                             # both = run in both phases
+     priority: int           # Higher = runs first (within phase)
 
      # Triggering (host OR dom OR both)
      trigger:
+       mode: all|any                 # all = both must match, any = either matches (default: all)
        host:
          equals: "domain.com"        # Exact match (after normalization)
          equals_nw: "domain.com"     # Match without www
@@ -881,12 +1076,15 @@ author: {author}
        dom:
          any: [".selector"]          # Match if ANY selector exists
          all: [".selector"]          # Match if ALL selectors exist
+         any_text_contains: ["token"]  # Match if text content contains any token
 
      # Rendering control (optional)
      rendering:
-       js_required: bool             # Force JS rendering
-       js_never: bool                # Never use JS rendering
-       wait_for: ".selector"         # Wait for selector before continuing
+       mode: auto|force|never        # JS rendering decision
+                                     # auto = use heuristic (default)
+                                     # force = always render with Playwright
+                                     # never = never use JS, even if heuristic suggests it
+       wait_for: ".selector"         # Wait for selector before continuing (force mode)
        timeout: int                  # Override default timeout (ms)
 
      # Selector overrides (pre-Readability only)
@@ -901,29 +1099,66 @@ author: {author}
      include: [".selector"]          # Force include (GoodLinks 'i')
 
      # Complex transformations (both phases)
-     actions:                        # Transform actions (GoodLinks 'ac')
-       - op: retag                   # Change tag name
+     # Actions are a mini-DSL for DOM manipulation, matching GoodLinks 'ac' field
+     actions:
+       # Tag manipulation
+       - op: retag                   # Change tag name (GoodLinks 'rt')
          selector: ".class"
          tag: "figcaption"
 
+       # Container operations
        - op: wrap                    # Wrap in container
          selector: "img"
          wrapper_tag: "figure"
 
-       - op: unwrap                  # Remove wrapper, keep children
+       - op: unwrap                  # Remove wrapper, keep children (GoodLinks 'rc')
          selector: ".container"
 
-       - op: move                    # Move to different parent
+       - op: remove_container        # Remove container, keep children (alias for unwrap)
+         selector: ".wrapper"
+
+       # Parent/ancestor operations
+       - op: remove_parent           # Remove immediate parent (GoodLinks 'rp')
+         selector: ".child"
+
+       - op: remove_outer_parent     # Remove grandparent (GoodLinks 'rop')
+         selector: ".child"
+
+       - op: remove_to_parent        # Remove up to specific parent (GoodLinks 'rtp')
+         selector: ".child"
+         parent: ".ancestor"
+
+       # Movement operations
+       - op: move                    # Move to different parent (GoodLinks 't', 'tp')
          selector: ".child"
          target: ".new-parent"
+         position: append|prepend|before|after  # Optional
 
-       - op: remove_attrs            # Strip attributes
+       # Attribute operations
+       - op: remove_attrs            # Strip attributes (GoodLinks 'ra')
          selector: "div"
          attrs: ["style", "class"]
 
+       - op: set_attr                # Set attribute value
+         selector: "a"
+         attr: "target"
+         value: "_blank"
+
+       # Content operations
        - op: replace_with_text       # Replace with text template
          selector: "iframe"
          template: "[Embedded: {src}]"
+
+       # Grouping operations (GoodLinks 'g', 'gs')
+       - op: group_siblings          # Group consecutive siblings
+         selector: "p.caption"
+         wrapper_tag: "div"
+         class: "caption-group"
+
+       # Priority/ordering (GoodLinks 'p', 'ts')
+       - op: reorder                 # Change element order
+         selector: ".reorder-me"
+         method: move_to_top|move_to_bottom
 
      # Metadata extraction overrides (both phases)
      metadata:                       # Metadata overrides (GoodLinks 'm')
@@ -1003,7 +1238,7 @@ author: {author}
        host:
          equals: "react.dev"
      rendering:
-       js_required: true
+       mode: force               # Always use Playwright for React docs
        wait_for: ".main-content"
        timeout: 45000
    ```
@@ -1030,8 +1265,9 @@ author: {author}
    class RuleEngine:
        def __init__(self, rules_dir: Path):
            self.rules = self._load_rules(rules_dir)
-           self.pre_rules = [r for r in self.rules if r.get('phase') == 'pre']
-           self.post_rules = [r for r in self.rules if r.get('phase') == 'post']
+           # Rules can be pre, post, or both
+           self.pre_rules = [r for r in self.rules if r.get('phase') in ('pre', 'both')]
+           self.post_rules = [r for r in self.rules if r.get('phase') in ('post', 'both')]
 
        def _load_rules(self, rules_dir: Path) -> List[Dict]:
            """Load all YAML rule files."""
@@ -1149,13 +1385,27 @@ author: {author}
                    except Exception:
                        pass
 
-           # Logic: If both host and dom triggers specified, both must match
-           # If only one specified, that one must match
+               # Match if text content contains any token
+               if 'any_text_contains' in dom_config:
+                   try:
+                       text_content = tree.text_content().lower()
+                       for token in dom_config['any_text_contains']:
+                           if token.lower() in text_content:
+                               dom_match = True
+                               break
+                   except Exception:
+                       pass
+
+           # Trigger combination logic based on mode
            has_host_trigger = 'host' in trigger
            has_dom_trigger = 'dom' in trigger
+           mode = trigger.get('mode', 'all')  # Default: all must match
 
            if has_host_trigger and has_dom_trigger:
-               return host_match and dom_match
+               if mode == 'any':
+                   return host_match or dom_match  # Either is sufficient
+               else:  # mode == 'all'
+                   return host_match and dom_match  # Both must match
            elif has_host_trigger:
                return host_match
            elif has_dom_trigger:
@@ -1178,20 +1428,46 @@ author: {author}
            tree = lxml_html.fromstring(html)
            metadata_overrides = {}
 
+           # Track elements to forcibly include (for post-extraction reinsertion)
+           included_elements = []
+
            for rule in rules:
                # Check for discard flag
                if rule.get('discard'):
-                   # Special handling: return empty content
-                   return "", {"discarded": True}
+                   # Return minimal frontmatter indicating discard
+                   discard_frontmatter = {
+                       "discarded": True,
+                       "reason": "Rule flagged content as discard",
+                       "rule_id": rule.get('id')
+                   }
+                   return "", discard_frontmatter
 
                # Selector overrides (pre-phase only)
+               # CRITICAL: Actually scope the HTML to wrapper/article
                if phase == 'pre' and 'selector_overrides' in rule:
                    overrides = rule['selector_overrides']
-                   # Store for Readability configuration
-                   if 'wrapper' in overrides:
-                       metadata_overrides['wrapper_selector'] = overrides['wrapper']
-                   if 'article' in overrides:
-                       metadata_overrides['article_selector'] = overrides['article']
+
+                   # Prefer article over wrapper
+                   scope_selector = overrides.get('article') or overrides.get('wrapper')
+
+                   if scope_selector:
+                       try:
+                           scoped_elems = tree.cssselect(scope_selector)
+                           if scoped_elems:
+                               # Replace tree with scoped element
+                               # Wrap in minimal document structure
+                               scoped_elem = scoped_elems[0]
+
+                               # Create minimal wrapper
+                               new_doc = lxml_html.Element('html')
+                               body = lxml_html.SubElement(new_doc, 'body')
+                               body.append(scoped_elem)
+                               tree = new_doc
+
+                               # Store for logging
+                               metadata_overrides['scoped_to'] = scope_selector
+                       except Exception:
+                           pass
 
                # Simple removals
                if 'remove' in rule:
@@ -1204,15 +1480,20 @@ author: {author}
                        except Exception:
                            continue
 
-               # Force inclusions
+               # Force inclusions (pre-phase: store for later, post-phase: reinject)
                if 'include' in rule:
-                   for selector in rule['include']:
-                       try:
-                           for elem in tree.cssselect(selector):
-                               # Mark for Readability to preserve
-                               elem.set('data-include', 'true')
-                       except Exception:
-                           continue
+                   if phase == 'pre':
+                       # Store elements to forcibly include
+                       for selector in rule['include']:
+                           try:
+                               for elem in tree.cssselect(selector):
+                                   # Clone element for later reinsertion
+                                   included_elements.append(elem)
+                                   metadata_overrides['has_includes'] = True
+                           except Exception:
+                               continue
+                   # NOTE: Post-phase reinsertion would require access to raw DOM
+                   # For now, include only works in pre-phase as element preservation
 
                # Complex actions
                if 'actions' in rule:
@@ -1233,10 +1514,22 @@ author: {author}
                        except Exception:
                            continue
 
+           # Store included elements for potential post-Readability reinsertion
+           if included_elements:
+               metadata_overrides['included_elements_html'] = [
+                   lxml_html.tostring(elem, encoding='unicode')
+                   for elem in included_elements
+               ]
+
            return lxml_html.tostring(tree, encoding='unicode'), metadata_overrides
 
        def _apply_action(self, tree: Element, action: Dict):
-           """Apply individual transform action."""
+           """
+           Apply individual transform action.
+
+           This is a mini-DSL for DOM transformations, matching GoodLinks 'ac' field.
+           Unknown operations log and no-op to ensure pipeline stability.
+           """
            op = action.get('op')
            selector = action.get('selector')
 
@@ -1246,27 +1539,32 @@ author: {author}
            try:
                elements = tree.cssselect(selector)
            except Exception:
+               # Invalid selector - log and continue
                return
 
+           # Tag manipulation
            if op == 'retag':
-               # Change tag name
                new_tag = action.get('tag')
-               for elem in elements:
-                   elem.tag = new_tag
+               if new_tag:
+                   for elem in elements:
+                       elem.tag = new_tag
 
+           # Container operations
            elif op == 'wrap':
-               # Wrap in container
                wrapper_tag = action.get('wrapper_tag')
+               wrapper_class = action.get('class')
                for elem in elements:
                    wrapper = lxml_html.Element(wrapper_tag)
+                   if wrapper_class:
+                       wrapper.set('class', wrapper_class)
                    parent = elem.getparent()
                    if parent is not None:
                        parent.insert(parent.index(elem), wrapper)
                        parent.remove(elem)
                        wrapper.append(elem)
 
-           elif op == 'unwrap':
-               # Remove wrapper, keep children
+           elif op in ('unwrap', 'remove_container'):
+               # Remove wrapper, keep children (GoodLinks 'rc')
                for elem in elements:
                    parent = elem.getparent()
                    if parent is not None:
@@ -1276,31 +1574,105 @@ author: {author}
                            index += 1
                        parent.remove(elem)
 
+           # Parent/ancestor operations
+           elif op == 'remove_parent':
+               # Remove immediate parent (GoodLinks 'rp')
+               for elem in elements:
+                   parent = elem.getparent()
+                   if parent is not None:
+                       grandparent = parent.getparent()
+                       if grandparent is not None:
+                           index = grandparent.index(parent)
+                           # Move children to grandparent
+                           for child in parent:
+                               grandparent.insert(index, child)
+                               index += 1
+                           grandparent.remove(parent)
+
+           elif op == 'remove_outer_parent':
+               # Remove grandparent (GoodLinks 'rop')
+               for elem in elements:
+                   parent = elem.getparent()
+                   if parent is not None:
+                       grandparent = parent.getparent()
+                       if grandparent is not None:
+                           great_grandparent = grandparent.getparent()
+                           if great_grandparent is not None:
+                               index = great_grandparent.index(grandparent)
+                               # Move children to great-grandparent
+                               for child in grandparent:
+                                   great_grandparent.insert(index, child)
+                                   index += 1
+                               great_grandparent.remove(grandparent)
+
+           elif op == 'remove_to_parent':
+               # Remove up to specific parent (GoodLinks 'rtp')
+               parent_selector = action.get('parent')
+               if parent_selector:
+                   for elem in elements:
+                       current = elem.getparent()
+                       while current is not None:
+                           if current.cssselect(parent_selector):
+                               # Found target parent, stop
+                               break
+                           parent_of_current = current.getparent()
+                           if parent_of_current is not None:
+                               index = parent_of_current.index(current)
+                               for child in current:
+                                   parent_of_current.insert(index, child)
+                                   index += 1
+                               parent_of_current.remove(current)
+                           current = parent_of_current
+
+           # Movement operations
            elif op == 'move':
-               # Move to different parent
+               # Move to different parent (GoodLinks 't', 'tp')
                target_selector = action.get('target')
+               position = action.get('position', 'append')
                target_elements = tree.cssselect(target_selector)
+
                if target_elements:
                    target = target_elements[0]
                    for elem in elements:
                        parent = elem.getparent()
                        if parent is not None:
                            parent.remove(elem)
-                           target.append(elem)
 
+                           if position == 'prepend':
+                               target.insert(0, elem)
+                           elif position == 'before':
+                               target_parent = target.getparent()
+                               if target_parent is not None:
+                                   target_parent.insert(target_parent.index(target), elem)
+                           elif position == 'after':
+                               target_parent = target.getparent()
+                               if target_parent is not None:
+                                   target_parent.insert(target_parent.index(target) + 1, elem)
+                           else:  # append (default)
+                               target.append(elem)
+
+           # Attribute operations
            elif op == 'remove_attrs':
-               # Strip attributes
+               # Strip attributes (GoodLinks 'ra')
                attrs = action.get('attrs', [])
                for elem in elements:
                    for attr in attrs:
                        if attr in elem.attrib:
                            del elem.attrib[attr]
 
+           elif op == 'set_attr':
+               # Set attribute value
+               attr = action.get('attr')
+               value = action.get('value')
+               if attr and value:
+                   for elem in elements:
+                       elem.set(attr, value)
+
+           # Content operations
            elif op == 'replace_with_text':
                # Replace with text template
                template = action.get('template', '')
                for elem in elements:
-                   # Extract attributes for template
                    text = template
                    for key, value in elem.attrib.items():
                        text = text.replace(f'{{{key}}}', value)
@@ -1310,6 +1682,64 @@ author: {author}
                        text_elem = lxml_html.Element('p')
                        text_elem.text = text
                        parent.replace(elem, text_elem)
+
+           # Grouping operations (GoodLinks 'g', 'gs')
+           elif op == 'group_siblings':
+               # Group consecutive siblings matching selector
+               wrapper_tag = action.get('wrapper_tag', 'div')
+               wrapper_class = action.get('class')
+
+               if elements:
+                   # Group consecutive matching elements
+                   groups = []
+                   current_group = [elements[0]]
+
+                   for i in range(1, len(elements)):
+                       prev_elem = elements[i-1]
+                       curr_elem = elements[i]
+
+                       # Check if consecutive siblings
+                       if (prev_elem.getparent() == curr_elem.getparent() and
+                           prev_elem.getnext() == curr_elem):
+                           current_group.append(curr_elem)
+                       else:
+                           groups.append(current_group)
+                           current_group = [curr_elem]
+
+                   groups.append(current_group)
+
+                   # Wrap each group
+                   for group in groups:
+                       if len(group) > 1:  # Only wrap if multiple siblings
+                           first = group[0]
+                           parent = first.getparent()
+                           if parent is not None:
+                               wrapper = lxml_html.Element(wrapper_tag)
+                               if wrapper_class:
+                                   wrapper.set('class', wrapper_class)
+
+                               parent.insert(parent.index(first), wrapper)
+                               for elem in group:
+                                   parent.remove(elem)
+                                   wrapper.append(elem)
+
+           # Priority/ordering (GoodLinks 'p', 'ts')
+           elif op == 'reorder':
+               # Change element order
+               method = action.get('method', 'move_to_top')
+               for elem in elements:
+                   parent = elem.getparent()
+                   if parent is not None:
+                       parent.remove(elem)
+                       if method == 'move_to_top':
+                           parent.insert(0, elem)
+                       elif method == 'move_to_bottom':
+                           parent.append(elem)
+
+           # Unknown operation - log and no-op
+           else:
+               # In production, log: f"Unknown action operation: {op}"
+               pass
    ```
 
 4. **Integrate into Pipeline** (`save_url.py`):
@@ -1333,6 +1763,50 @@ author: {author}
 
        if pre_rules:
            html, pre_metadata = rule_engine.apply_rules(html, pre_rules, phase='pre')
+
+           # Check for discard flag
+           if pre_metadata.get('discarded'):
+               # Generate frontmatter for discarded content
+               discard_fm = frontmatter.generate_frontmatter({
+                   "source": final_url,
+                   "domain": context["host_nw"],
+                   "discarded": True,
+                   "reason": pre_metadata.get('reason', 'Content discarded by rule'),
+                   "rule_id": pre_metadata.get('rule_id'),
+                   "saved_at": datetime.now(timezone.utc).isoformat()
+               })
+
+               # Save minimal record
+               db = SessionLocal()
+               set_session_user_id(db, user_id)
+               try:
+                   website = WebsitesService.upsert_website(
+                       db,
+                       user_id,
+                       url=normalize_url(final_url),
+                       url_full=final_url,
+                       title="[Discarded]",
+                       content=discard_fm + "\n[Content discarded by parsing rule]",
+                       source=final_url,
+                       saved_at=datetime.now(timezone.utc),
+                       published_at=None,
+                       pinned=False,
+                       archived=True,  # Auto-archive discarded content
+                   )
+                   website.metadata_['discarded'] = True
+                   website.metadata_['matched_rules'] = matched_rule_ids
+                   db.commit()
+
+                   return {
+                       "id": str(website.id),
+                       "title": "[Discarded]",
+                       "url": website.url,
+                       "domain": website.domain,
+                       "discarded": True
+                   }
+               finally:
+                   db.close()
+
            all_metadata_overrides.update(pre_metadata)
 
        # 3. Readability extraction
@@ -1352,6 +1826,49 @@ author: {author}
                post_rules,
                phase='post'
            )
+
+           # Check for discard in post-phase too
+           if post_metadata.get('discarded'):
+               # Same discard handling as pre-phase
+               discard_fm = frontmatter.generate_frontmatter({
+                   "source": final_url,
+                   "domain": context["host_nw"],
+                   "discarded": True,
+                   "reason": post_metadata.get('reason', 'Content discarded by rule'),
+                   "rule_id": post_metadata.get('rule_id'),
+                   "saved_at": datetime.now(timezone.utc).isoformat()
+               })
+
+               db = SessionLocal()
+               set_session_user_id(db, user_id)
+               try:
+                   website = WebsitesService.upsert_website(
+                       db,
+                       user_id,
+                       url=normalize_url(final_url),
+                       url_full=final_url,
+                       title="[Discarded]",
+                       content=discard_fm + "\n[Content discarded by parsing rule]",
+                       source=final_url,
+                       saved_at=datetime.now(timezone.utc),
+                       published_at=None,
+                       pinned=False,
+                       archived=True,
+                   )
+                   website.metadata_['discarded'] = True
+                   website.metadata_['matched_rules'] = matched_rule_ids
+                   db.commit()
+
+                   return {
+                       "id": str(website.id),
+                       "title": "[Discarded]",
+                       "url": website.url,
+                       "domain": website.domain,
+                       "discarded": True
+                   }
+               finally:
+                   db.close()
+
            all_metadata_overrides.update(post_metadata)
 
        # 5. Extract metadata (rule overrides take priority)
@@ -2151,10 +2668,13 @@ author: John Doe
 published_date: 2025-03-19T10:00:00Z
 domain: example.com
 word_count: 1543
+hero_image: https://example.com/images/hero.jpg
 reading_time: 8 min
 tags: [technology, ai, programming]
 saved_at: 2025-03-19T15:30:00Z
 ---
+
+[![Article hero image](https://example.com/images/hero.jpg)](https://example.com/images/hero.jpg)
 
 # Article Title
 
