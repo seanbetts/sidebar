@@ -676,9 +676,42 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
     op = payload.get("op")
     todo_id = payload.get("id")
     deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
-    if not op or not todo_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="op and id are required")
+    if not op:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="op is required")
+    if op != "add" and not todo_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="id is required")
     deadline_value = json.dumps(deadline)
+    if op == "add":
+        title = (payload.get("title") or "").strip()
+        notes = payload.get("notes") or ""
+        list_id = payload.get("list_id") or payload.get("listId")
+        if not title:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="title is required")
+        title_value = json.dumps(title)
+        notes_value = json.dumps(notes)
+        list_value = json.dumps(list_id)
+        return f"""
+    const app = Application("{THINGS_APP_NAME}");
+    app.includeStandardAdditions = true;
+    const props = {{ name: {title_value} }};
+    if ({notes_value} && {notes_value}.length) {{
+      props.notes = {notes_value};
+    }}
+    const todo = app.make({{ new: "to do", withProperties: props }});
+    if ({deadline_value} !== null) {{
+      todo.activationDate = new Date({deadline_value});
+    }}
+    if ({list_value} !== null) {{
+      const project = app.projects.byId({list_value});
+      const area = app.areas.byId({list_value});
+      if (project && project.exists()) {{
+        todo.project = project;
+      }} else if (area && area.exists()) {{
+        todo.area = area;
+      }}
+    }}
+    JSON.stringify({{"status":"ok","id":String(todo.id())}});
+    """
     return f"""
     const app = Application("{THINGS_APP_NAME}");
     app.includeStandardAdditions = true;
@@ -723,32 +756,61 @@ def _get_things_url_token() -> str:
 
 def _apply_via_url(payload: dict[str, Any]) -> bool:
     token = _get_things_url_token()
-    if not token:
-        return False
     op = payload.get("op")
     todo_id = payload.get("id")
-    if not op or not todo_id:
+    if not op:
         return False
     if op == "complete":
+        if not token:
+            return False
+        if not todo_id:
+            return False
         params = {"auth-token": token, "id": todo_id, "completed": "true"}
     elif op == "set_due":
+        if not token:
+            return False
+        if not todo_id:
+            return False
         deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
         if not deadline:
             return False
         deadline_value = str(deadline)[:10]
         params = {"auth-token": token, "id": todo_id, "when": deadline_value}
     elif op == "defer":
+        if not token:
+            return False
+        if not todo_id:
+            return False
         deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
         if not deadline:
             return False
         deadline_value = str(deadline)[:10]
         params = {"auth-token": token, "id": todo_id, "when": deadline_value}
+    elif op == "add":
+        title = (payload.get("title") or "").strip()
+        if not title:
+            return False
+        notes = payload.get("notes") or ""
+        deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
+        list_id = payload.get("list_id") or payload.get("listId")
+        params = {"title": title}
+        if notes:
+            params["notes"] = notes
+        if deadline:
+            params["when"] = str(deadline)[:10]
+        if list_id:
+            params["list-id"] = str(list_id)
     else:
         return False
     query = urlencode(params, quote_via=quote)
     url = f"things:///update?{query}"
+    if op == "add":
+        url = f"things:///add?{query}"
     try:
-        subprocess.run(["open", url], check=True)
+        if op == "add":
+            subprocess.run(["open", "-g", url], check=True)
+        else:
+            subprocess.run(["open", url], check=True)
     except subprocess.CalledProcessError:
         return False
     return True
