@@ -352,9 +352,11 @@ function createThingsStore() {
       }
     } else {
       if (!silentFetch || isCurrent) {
+        const clearTasks = selection.type === 'search';
         update((state) => ({
           ...state,
           selection,
+          tasks: clearTasks ? [] : state.tasks,
           isLoading: silentFetch ? state.isLoading : true,
           error: ''
         }));
