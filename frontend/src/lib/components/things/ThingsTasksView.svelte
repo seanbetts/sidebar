@@ -503,8 +503,9 @@
                     <div class="task-title">
                       <span>{task.title}</span>
                       {#if task.notes}
-                        <span class="notes-icon" title={task.notes} aria-label="Task notes">
+                        <span class="notes-icon" aria-label="Task notes">
                           <FileText size={14} />
+                          <span class="notes-tooltip">{task.notes}</span>
                         </span>
                       {/if}
                       {#if task.repeating && !task.repeatTemplate}
@@ -745,6 +746,34 @@
     display: inline-flex;
     align-items: center;
     opacity: 0.75;
+    position: relative;
+  }
+
+  .notes-tooltip {
+    position: absolute;
+    bottom: 140%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-popover);
+    color: var(--color-popover-foreground);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.65rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    width: max-content;
+    max-width: 260px;
+    white-space: pre-wrap;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    z-index: 2;
+  }
+
+  .notes-icon:hover .notes-tooltip,
+  .notes-icon:focus-within .notes-tooltip {
+    opacity: 1;
   }
 
   .task-title {
