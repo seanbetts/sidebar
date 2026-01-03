@@ -593,7 +593,7 @@
               <select
                 class="new-task-select"
                 bind:value={draftListId}
-                on:change={(event) => handleDraftListChange((event.currentTarget as HTMLSelectElement).value)}
+                onchange={(event) => handleDraftListChange((event.currentTarget as HTMLSelectElement).value)}
                 disabled={draftSaving}
               >
                 <option value="">No list</option>
