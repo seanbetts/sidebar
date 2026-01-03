@@ -291,8 +291,6 @@ Notes:
 ## Open Questions for Implementation
 
 - Should Things task edits in the UI apply immediately or require a “Sync” button?
-- How should conflicts be surfaced (Things updated elsewhere)?
-- What is the minimal schema required for AI snapshots?
 
 ---
 
@@ -304,11 +302,10 @@ Completed
 - Today-first UI with Areas/Projects and task completion.
 - Repeating metadata + due dates via local Things DB (with diagnostics).
 - Multi-bridge support (most-recent heartbeat).
+- Defer/set due date UI (uses `when`, no deadlines).
+- URL scheme usage for writes (token in settings).
+- AI markdown snapshot for Today + Tomorrow (with completed today).
+- Conflict handling/staleness warning for Things updates.
 
-Partially complete
-- Defer/adjust deadline UI (backend supports `set_due`, UI not yet).
-- URL scheme usage (currently AppleScript only).
-
-Deferred
+Not planned
 - Sidebar DB mirror.
-- AI markdown snapshot.
