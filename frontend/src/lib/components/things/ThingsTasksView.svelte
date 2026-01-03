@@ -343,6 +343,11 @@
     await runTaskUpdate(task.id, () => thingsStore.setDueDate(task.id, dateValue, 'defer'));
   }
 
+  async function handleSetDueToday(task: ThingsTask) {
+    const dateValue = formatDateKey(new Date());
+    await runTaskUpdate(task.id, () => thingsStore.setDueDate(task.id, dateValue, 'set_due'));
+  }
+
   async function runTaskUpdate(taskId: string, action: () => Promise<void>) {
     if (busyTasks.has(taskId)) return;
     busyTasks = new Set(busyTasks).add(taskId);
@@ -469,6 +474,17 @@
                       <MoreHorizontal size={16} />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent class="task-menu" align="end" sideOffset={6}>
+                      {#if selectionType !== 'today'}
+                        <DropdownMenuItem
+                          class="task-menu-item"
+                          onclick={() => handleSetDueToday(task)}
+                          disabled={task.repeatTemplate}
+                        >
+                          <CalendarCheck size={14} />
+                          Set due today
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      {/if}
                       <DropdownMenuItem
                         class="task-menu-item"
                         onclick={() => handleDefer(task, 1)}
