@@ -846,7 +846,7 @@
 
   .ingested-item--file {
     justify-content: flex-start;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     min-width: 0;
     overflow: hidden;
   }
@@ -870,7 +870,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     color: var(--color-sidebar-foreground);
     transition: background-color 0.2s;
     text-align: left;
@@ -912,7 +912,7 @@
   }
 
   .ingested-item--file .ingested-name {
-    font-size: 0.875rem;
+    font-size: 0.87rem;
   }
 
   .ingested-menu {
@@ -960,7 +960,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     text-align: left;
     transition: background-color 0.2s;
     color: var(--color-popover-foreground);

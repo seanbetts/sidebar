@@ -190,7 +190,7 @@
 
   .title {
     font-weight: 500;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     margin-bottom: 0.25rem;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -201,7 +201,7 @@
   .title-input {
     width: 100%;
     font-weight: 500;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     margin-bottom: 0.25rem;
     padding: 0.25rem 0.5rem;
     background-color: var(--color-sidebar-accent);
@@ -285,11 +285,11 @@
 
   .title-skeleton {
     margin-bottom: 0.25rem;
-    height: 0.875rem;
+    height: 0.85rem;
     display: flex;
     align-items: center;
     font-weight: 500;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     color: transparent;
     background: linear-gradient(
       90deg,
