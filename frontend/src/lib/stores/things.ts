@@ -62,6 +62,7 @@ function createThingsStore() {
   let syncNoticeTimer: ReturnType<typeof setTimeout> | null = null;
   let diagnosticsLoadedAt = 0;
   let diagnosticsInFlight: Promise<void> | null = null;
+  const selectionInFlight = new Map<string, Promise<void>>();
 
   const setSyncNotice = (message: string) => {
     if (syncNoticeTimer) {
@@ -194,6 +195,70 @@ function createThingsStore() {
 
   const tasksCacheKey = (selection: ThingsSelection) => `things.tasks.${selectionKey(selection)}`;
 
+  const normalizeDateKey = (value: string) => value.slice(0, 10);
+
+  const classifyDueBucket = (value: string): 'today' | 'upcoming' => {
+    const date = new Date(`${normalizeDateKey(value)}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date.getTime() === today.getTime() ? 'today' : 'upcoming';
+  };
+
+  const updateTaskCaches = (taskId: string, task: ThingsTask, dueDate: string) => {
+    const todayKey = tasksCacheKey({ type: 'today' });
+    const upcomingKey = tasksCacheKey({ type: 'upcoming' });
+    const todayTasks = getCachedData<ThingsTask[]>(todayKey, { ttl: CACHE_TTL, version: CACHE_VERSION }) ?? [];
+    const upcomingTasks =
+      getCachedData<ThingsTask[]>(upcomingKey, { ttl: CACHE_TTL, version: CACHE_VERSION }) ?? [];
+    const targetBucket = classifyDueBucket(dueDate);
+
+    const nextToday = todayTasks.filter((item) => item.id !== taskId);
+    const nextUpcoming = upcomingTasks.filter((item) => item.id !== taskId);
+
+    if (targetBucket === 'today') {
+      nextToday.unshift(task);
+    } else {
+      nextUpcoming.unshift(task);
+    }
+
+    setCachedData(todayKey, nextToday, { ttl: CACHE_TTL, version: CACHE_VERSION });
+    setCachedData(upcomingKey, nextUpcoming, { ttl: CACHE_TTL, version: CACHE_VERSION });
+
+    update((state) => {
+      let nextTasks = state.tasks;
+      const selectionType = state.selection.type;
+      if (selectionType === 'today') {
+        nextTasks = nextToday;
+      } else if (selectionType === 'upcoming') {
+        nextTasks = nextUpcoming;
+      } else if (state.selection.type === 'area' || state.selection.type === 'project') {
+        nextTasks = state.tasks.filter((item) => item.id !== taskId);
+      }
+      const nextCounts = {
+        ...state.counts,
+        today: nextToday.length,
+        upcoming: nextUpcoming.length
+      };
+      return {
+        ...state,
+        tasks: nextTasks,
+        counts: nextCounts,
+        todayCount: nextToday.length
+      };
+    });
+
+    const cachedCounts = getCachedData<ThingsCountsResponse>(COUNTS_CACHE_KEY, {
+      ttl: CACHE_TTL,
+      version: CACHE_VERSION
+    });
+    if (cachedCounts) {
+      const updatedCounts = { ...cachedCounts };
+      updatedCounts.counts.today = nextToday.length;
+      updatedCounts.counts.upcoming = nextUpcoming.length;
+      setCachedData(COUNTS_CACHE_KEY, updatedCounts, { ttl: CACHE_TTL, version: CACHE_VERSION });
+    }
+  };
+
   const loadSelection = async (
     selection: ThingsSelection,
     options?: { force?: boolean; silent?: boolean; notify?: boolean }
@@ -203,9 +268,25 @@ function createThingsStore() {
     const notify = options?.notify ?? true;
     const currentState = get({ subscribe });
     const isCurrent = isSameSelection(selection, currentState.selection);
-    const usesToken = !silent || isCurrent;
-    const token = usesToken ? ++loadToken : loadToken;
+    let silentFetch = silent;
+    let notifyFetch = notify;
+    let revalidateOnly = false;
+    let usesToken = false;
+    let token = loadToken;
     const key = tasksCacheKey(selection);
+    const inFlight = selectionInFlight.get(key);
+    if (inFlight && !force) {
+      if (!silent) {
+        update((state) => ({
+          ...state,
+          selection,
+          isLoading: state.isLoading || !isCurrent,
+          error: ''
+        }));
+      }
+      await inFlight;
+      return;
+    }
     const cachedTasks = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
     const cachedCounts = getCachedData<ThingsCountsResponse | Record<string, number>>(COUNTS_CACHE_KEY, {
       ttl: CACHE_TTL,
@@ -267,19 +348,24 @@ function createThingsStore() {
         }));
       }
       if (!isCacheStale(key, CACHE_TTL)) {
-        return;
+        revalidateOnly = true;
+        silentFetch = true;
+        notifyFetch = false;
       }
     } else {
-      if (!silent || isCurrent) {
+      if (!silentFetch || isCurrent) {
         update((state) => ({
           ...state,
           selection,
-          isLoading: silent ? state.isLoading : true,
+          isLoading: silentFetch ? state.isLoading : true,
           error: ''
         }));
       }
     }
-    try {
+    usesToken = !silentFetch || isCurrent;
+    token = usesToken ? ++loadToken : loadToken;
+    const request = (async () => {
+      try {
       let response: ThingsListResponse;
       if (selection.type === 'today' || selection.type === 'upcoming' || selection.type === 'inbox') {
         response = await thingsAPI.list(selection.type);
@@ -297,22 +383,22 @@ function createThingsStore() {
           { ttl: CACHE_TTL, version: CACHE_VERSION }
         );
       }
-      if (!silent || isCurrent) {
+      if (!silentFetch || isCurrent) {
         applyResponse(response, selection);
       } else {
         const cached = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
         const changed = !cached || JSON.stringify(cached) !== JSON.stringify(response.tasks ?? []);
         if (changed) {
           applyMetaCountsOnly(response, selection);
-          if (notify) {
+          if (notifyFetch) {
             setSyncNotice('Tasks updated in Things');
           }
         }
       }
-      if (!silent) {
+      if (!silentFetch) {
         preloadAllSelections(selection);
       }
-    } catch (error) {
+      } catch (error) {
       if (usesToken && token !== loadToken) return;
       if (!silent) {
         update((state) => ({
@@ -320,10 +406,20 @@ function createThingsStore() {
           error: error instanceof Error ? error.message : 'Failed to load Things data'
         }));
       }
-    } finally {
+      } finally {
       if (usesToken && token !== loadToken) return;
       if (!silent) {
         update((state) => ({ ...state, isLoading: false }));
+      }
+      }
+    })();
+
+    selectionInFlight.set(key, request);
+    try {
+      await request;
+    } finally {
+      if (selectionInFlight.get(key) === request) {
+        selectionInFlight.delete(key);
       }
     }
   };
@@ -440,22 +536,31 @@ function createThingsStore() {
     setDueDate: async (taskId: string, dueDate: string, op: 'set_due' | 'defer' = 'set_due') => {
       await thingsAPI.apply({ op, id: taskId, due_date: dueDate });
       const state = get({ subscribe });
-      await loadSelection(state.selection, { force: true, silent: true, notify: false });
+      const currentTask = state.tasks.find((task) => task.id === taskId);
+      if (currentTask) {
+        const updatedTask: ThingsTask = {
+          ...currentTask,
+          deadline: op === 'set_due' ? dueDate : currentTask.deadline,
+          deadlineStart: op === 'defer' ? dueDate : currentTask.deadlineStart
+        };
+        updateTaskCaches(taskId, updatedTask, dueDate);
+      }
+      void loadSelection(state.selection, { force: true, silent: true, notify: false });
       if (state.selection.type !== 'today') {
-        await loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
+        void loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
       }
       if (state.selection.type !== 'upcoming') {
-        await loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
+        void loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
       }
-      try {
-        const counts = await thingsAPI.counts();
-        applyCountsResponse(counts);
-      } catch {
-        update((current) => ({
-          ...current,
-          error: 'Failed to update Things counts'
-        }));
-      }
+      void thingsAPI
+        .counts()
+        .then(applyCountsResponse)
+        .catch(() => {
+          update((current) => ({
+            ...current,
+            error: 'Failed to update Things counts'
+          }));
+        });
     }
   };
 }
