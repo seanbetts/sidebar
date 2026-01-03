@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 from fastapi import HTTPException, status
@@ -37,6 +38,9 @@ class ThingsBridgeClient:
 
     async def completed_today(self) -> dict[str, Any]:
         return await self._request("GET", "/completed/today")
+
+    async def search(self, query: str) -> dict[str, Any]:
+        return await self._request("GET", f"/search?query={quote(query)}")
 
     async def set_url_token(self, token: str) -> dict[str, Any]:
         return await self._request("POST", "/url-token", json={"token": token})

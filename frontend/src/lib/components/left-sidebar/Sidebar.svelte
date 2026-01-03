@@ -573,8 +573,8 @@
         <SidebarSectionHeader
           title="Tasks"
           searchPlaceholder="Search tasks..."
-          onSearch={(query) => {}}
-          onClear={() => {}}
+          onSearch={(query) => thingsStore.search(query)}
+          onClear={() => thingsStore.clearSearch()}
         >
           <svelte:fragment slot="actions">
             <Button

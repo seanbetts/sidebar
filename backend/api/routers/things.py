@@ -315,6 +315,23 @@ async def get_things_list(
     return response
 
 
+@router.get("/search")
+async def search_things_tasks(
+    query: str,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Search Things tasks via the active bridge."""
+    query = query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="query required")
+    set_session_user_id(db, user_id)
+    bridge = _get_active_bridge_or_503(db, user_id)
+    client = ThingsBridgeClient(bridge)
+    return await client.search(query)
+
+
 @router.post("/apply")
 async def apply_things_operation(
     request: dict,

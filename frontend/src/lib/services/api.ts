@@ -430,6 +430,12 @@ class ThingsAPI {
     return response.json();
   }
 
+  async search(query: string): Promise<ThingsListResponse> {
+    const response = await fetch(`${this.baseUrl}/search?query=${encodeURIComponent(query)}`);
+    if (!response.ok) throw new Error('Failed to search Things tasks');
+    return response.json();
+  }
+
   async counts(): Promise<ThingsCountsResponse> {
     const response = await fetch(`${this.baseUrl}/counts`);
     if (response.status === 404) {
