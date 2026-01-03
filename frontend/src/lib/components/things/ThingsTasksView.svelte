@@ -311,15 +311,18 @@
             {#each section.tasks as task}
               <li class="things-task">
                 <div class="task-left">
-                  <button class="check" onclick={() => handleComplete(task.id)} aria-label="Complete task">
-                    <Check size={14} />
-                  </button>
+                  {#if task.repeating}
+                    <span class="repeat-badge" aria-label="Repeating task">
+                      <Repeat size={14} />
+                    </span>
+                  {:else}
+                    <button class="check" onclick={() => handleComplete(task.id)} aria-label="Complete task">
+                      <Check size={14} />
+                    </button>
+                  {/if}
                   <div class="content">
                     <div class="task-title">
                       <span>{task.title}</span>
-                      {#if task.repeating}
-                        <Repeat size={14} class="repeat-icon" />
-                      {/if}
                     </div>
                     {#if taskSubtitle(task)}
                       <div class="meta">{taskSubtitle(task)}</div>
@@ -442,16 +445,24 @@
     border-color: var(--color-foreground);
   }
 
+  .repeat-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    color: var(--color-muted-foreground);
+    background: var(--color-secondary);
+  }
+
   .task-title {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     font-size: 0.95rem;
     font-weight: 500;
-  }
-
-  .repeat-icon {
-    color: var(--color-muted-foreground);
   }
 
   .meta {
