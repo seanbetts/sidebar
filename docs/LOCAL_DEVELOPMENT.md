@@ -95,6 +95,26 @@ tail -n 200 /tmp/sidebar-backend.log
 cd backend && uv sync
 ```
 
+### Managed Network / SSL Interception
+
+If your network intercepts TLS and you do not have the corporate root CA, installs can fail.
+
+```bash
+# Backend fallback (dev.sh handles this automatically when uv fails)
+./dev.sh start
+
+# Frontend installs
+cd frontend
+npm config set strict-ssl false
+npm install
+```
+
+If pip shows `--user` install errors inside a venv, clear the global setting:
+
+```bash
+pip config unset global.user
+```
+
 ### Frontend Proxy Not Working
 
 ```bash

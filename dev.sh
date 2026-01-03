@@ -44,6 +44,26 @@ port_in_use() {
   fi
 }
 
+install_backend_deps_fallback() {
+  local venv="${REPO_ROOT}/backend/.venv"
+  local deps_file="/tmp/sidebar-backend-deps.txt"
+
+  if [[ ! -d "${venv}" ]]; then
+    python3 -m venv "${venv}"
+  fi
+
+  if ! "${venv}/bin/python" -m pip --version >/dev/null 2>&1; then
+    "${venv}/bin/python" -m ensurepip --upgrade
+  fi
+
+  "${venv}/bin/python" -c 'import tomllib, pathlib; data = tomllib.loads(pathlib.Path("pyproject.toml").read_text()); print("\n".join(data["project"]["dependencies"]))' >"${deps_file}"
+  PIP_CONFIG_FILE=/dev/null PIP_USER=0 "${venv}/bin/python" -m pip install \
+    --trusted-host pypi.org \
+    --trusted-host pypi.python.org \
+    --trusted-host files.pythonhosted.org \
+    -r "${deps_file}"
+}
+
 port_pid() {
   local port="$1"
   if ! command -v lsof >/dev/null 2>&1; then
@@ -140,11 +160,21 @@ ensure_port_available() {
 start_backend() {
   ensure_port_available 8001 backend
   echo "Starting backend..."
-  if [[ ${use_doppler} -eq 1 ]]; then
-    (cd backend && doppler run -- uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0) >"${BACKEND_LOG}" 2>&1 &
-  else
-    (cd backend && uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0) >"${BACKEND_LOG}" 2>&1 &
-  fi
+  (cd backend && {
+    if [[ ${use_doppler} -eq 1 ]]; then
+      doppler run -- uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
+    else
+      uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
+    fi
+  } || {
+    echo "uv run failed; falling back to pip install with trusted hosts..."
+    install_backend_deps_fallback
+    if [[ ${use_doppler} -eq 1 ]]; then
+      doppler run -- "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
+    else
+      "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
+    fi
+  }) >"${BACKEND_LOG}" 2>&1 &
   echo $! >"${BACKEND_PID}"
 }
 
@@ -179,7 +209,7 @@ start_things_bridge() {
     return
   fi
   echo "Starting Things bridge..."
-  (env THINGS_BACKEND_URL="${THINGS_BACKEND_URL:-http://localhost:8001}" python bridge/things_bridge.py) >"${THINGS_BRIDGE_LOG}" 2>&1 &
+  (env THINGS_BACKEND_URL="${THINGS_BACKEND_URL:-http://localhost:8001}" python3 bridge/things_bridge.py) >"${THINGS_BRIDGE_LOG}" 2>&1 &
   echo $! >"${THINGS_BRIDGE_PID}"
 }
 
