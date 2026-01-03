@@ -14,7 +14,9 @@
     FileText,
     MoreHorizontal,
     Repeat,
-    Search
+    Search,
+    Pencil,
+    Trash2
   } from 'lucide-svelte';
   import {
     DropdownMenu,
@@ -61,6 +63,17 @@
   let showDueDialog = false;
   let dueTask: ThingsTask | null = null;
   let dueDateValue = '';
+  let editingTaskId: string | null = null;
+  let renameValue = '';
+  let showNotesDialog = false;
+  let notesTask: ThingsTask | null = null;
+  let notesValue = '';
+  let showMoveDialog = false;
+  let moveTask: ThingsTask | null = null;
+  let moveListId = '';
+  let moveListName = '';
+  let showTrashDialog = false;
+  let trashTask: ThingsTask | null = null;
   let newTaskDraft: ThingsNewTaskDraft | null = null;
   let activeDraft: ThingsNewTaskDraft | null = null;
   let draftTitle = '';
@@ -445,6 +458,86 @@
     dueDateValue = '';
   }
 
+  function startRename(task: ThingsTask) {
+    editingTaskId = task.id;
+    renameValue = task.title;
+  }
+
+  function cancelRename() {
+    editingTaskId = null;
+    renameValue = '';
+  }
+
+  async function commitRename(task: ThingsTask) {
+    const nextTitle = renameValue.trim();
+    if (!nextTitle || nextTitle === task.title) {
+      cancelRename();
+      return;
+    }
+    await runTaskUpdate(task.id, () => thingsStore.renameTask(task.id, nextTitle));
+    cancelRename();
+  }
+
+  function openNotesDialog(task: ThingsTask) {
+    notesTask = task;
+    notesValue = task.notes ?? '';
+    showNotesDialog = true;
+  }
+
+  function closeNotesDialog() {
+    showNotesDialog = false;
+    notesTask = null;
+    notesValue = '';
+  }
+
+  async function saveNotes() {
+    if (!notesTask) return;
+    await runTaskUpdate(notesTask.id, () => thingsStore.updateNotes(notesTask.id, notesValue));
+    closeNotesDialog();
+  }
+
+  function openMoveDialog(task: ThingsTask) {
+    moveTask = task;
+    moveListId = task.projectId ?? task.areaId ?? '';
+    moveListName =
+      (moveListId && (projectTitleById.get(moveListId) ?? areaTitleById.get(moveListId))) ?? '';
+    showMoveDialog = true;
+  }
+
+  function closeMoveDialog() {
+    showMoveDialog = false;
+    moveTask = null;
+    moveListId = '';
+    moveListName = '';
+  }
+
+  function handleMoveListChange(value: string) {
+    moveListId = value;
+    moveListName = projectTitleById.get(value) ?? areaTitleById.get(value) ?? '';
+  }
+
+  async function commitMove() {
+    if (!moveTask || !moveListId) return;
+    await runTaskUpdate(moveTask.id, () => thingsStore.moveTask(moveTask.id, moveListId, moveListName));
+    closeMoveDialog();
+  }
+
+  function openTrashDialog(task: ThingsTask) {
+    trashTask = task;
+    showTrashDialog = true;
+  }
+
+  function closeTrashDialog() {
+    trashTask = null;
+    showTrashDialog = false;
+  }
+
+  async function confirmTrash() {
+    if (!trashTask) return;
+    await runTaskUpdate(trashTask.id, () => thingsStore.trashTask(trashTask.id));
+    closeTrashDialog();
+  }
+
   async function handleSetDueDate() {
     if (!dueTask || !dueDateValue) return;
     await runTaskUpdate(dueTask.id, () => thingsStore.setDueDate(dueTask.id, dueDateValue, 'set_due'));
@@ -682,14 +775,33 @@
                       </button>
                     {/if}
                     <div class="content">
-                      <div class="task-title">
+                    <div class="task-title">
+                      {#if editingTaskId === task.id}
+                        <input
+                          class="task-rename-input"
+                          type="text"
+                          bind:value={renameValue}
+                          onkeydown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              commitRename(task);
+                            }
+                            if (event.key === 'Escape') {
+                              event.preventDefault();
+                              cancelRename();
+                            }
+                          }}
+                          onblur={() => commitRename(task)}
+                        />
+                      {:else}
                         <span>{task.title}</span>
-                        {#if task.notes}
-                          <span class="notes-icon" aria-label="Task notes">
-                            <FileText size={14} />
-                            <span class="notes-tooltip">{task.notes}</span>
-                          </span>
-                        {/if}
+                      {/if}
+                      {#if task.notes}
+                        <span class="notes-icon" aria-label="Task notes">
+                          <FileText size={14} />
+                          <span class="notes-tooltip">{task.notes}</span>
+                        </span>
+                      {/if}
                         {#if task.repeating && !task.repeatTemplate}
                           <Repeat size={14} class="repeat-icon" />
                         {/if}
@@ -712,6 +824,19 @@
                         <MoreHorizontal size={16} />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent class="task-menu" align="end" sideOffset={6}>
+                        <DropdownMenuItem class="task-menu-item" onclick={() => startRename(task)}>
+                          <Pencil size={14} />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem class="task-menu-item" onclick={() => openNotesDialog(task)}>
+                          <FileText size={14} />
+                          Edit notes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem class="task-menu-item" onclick={() => openMoveDialog(task)}>
+                          <Layers size={14} />
+                          Move to…
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         {#if selectionType !== 'today'}
                           <DropdownMenuItem
                             class="task-menu-item"
@@ -748,18 +873,23 @@
                           Defer to weekend
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          class="task-menu-item"
-                          onclick={() => openDueDialog(task)}
-                          disabled={task.repeatTemplate}
-                        >
-                          <CalendarPlus size={14} />
-                          Set due date…
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </li>
+                      <DropdownMenuItem
+                        class="task-menu-item"
+                        onclick={() => openDueDialog(task)}
+                        disabled={task.repeatTemplate}
+                      >
+                        <CalendarPlus size={14} />
+                        Set due date…
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem class="task-menu-item" onclick={() => openTrashDialog(task)}>
+                        <Trash2 size={14} />
+                        Move to trash
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </li>
               {/each}
             </ul>
           </div>
@@ -783,6 +913,72 @@
       <AlertDialogAction onclick={handleSetDueDate} disabled={!dueDateValue}>
         Save
       </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+<AlertDialog bind:open={showNotesDialog}>
+  <AlertDialogContent class="task-notes-dialog">
+    <AlertDialogHeader>
+      <AlertDialogTitle>Edit notes</AlertDialogTitle>
+      <AlertDialogDescription>
+        Update notes for {notesTask?.title ?? 'this task'}.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <textarea class="task-notes-input" rows="6" bind:value={notesValue}></textarea>
+    <AlertDialogFooter>
+      <AlertDialogCancel onclick={closeNotesDialog}>Cancel</AlertDialogCancel>
+      <AlertDialogAction onclick={saveNotes}>Save</AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+<AlertDialog bind:open={showMoveDialog}>
+  <AlertDialogContent class="task-move-dialog">
+    <AlertDialogHeader>
+      <AlertDialogTitle>Move task</AlertDialogTitle>
+      <AlertDialogDescription>
+        Choose a new area or project for {moveTask?.title ?? 'this task'}.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <select
+      class="task-move-select"
+      bind:value={moveListId}
+      onchange={(event) => handleMoveListChange((event.currentTarget as HTMLSelectElement).value)}
+    >
+      <option value="">Select area or project</option>
+      {#each areaOptions as area}
+        <option value={area.id}>{area.title}</option>
+        {#each projectsByArea.get(area.id) ?? [] as project}
+          <option value={project.id}>- {project.title}</option>
+        {/each}
+      {/each}
+      {#if orphanProjects.length}
+        {#each orphanProjects as project}
+          <option value={project.id}>- {project.title}</option>
+        {/each}
+      {/if}
+    </select>
+    <AlertDialogFooter>
+      <AlertDialogCancel onclick={closeMoveDialog}>Cancel</AlertDialogCancel>
+      <AlertDialogAction onclick={commitMove} disabled={!moveListId}>
+        Move
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+<AlertDialog bind:open={showTrashDialog}>
+  <AlertDialogContent class="task-trash-dialog">
+    <AlertDialogHeader>
+      <AlertDialogTitle>Move to trash</AlertDialogTitle>
+      <AlertDialogDescription>
+        Move {trashTask?.title ?? 'this task'} to the Things Trash?
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel onclick={closeTrashDialog}>Cancel</AlertDialogCancel>
+      <AlertDialogAction onclick={confirmTrash}>Move to trash</AlertDialogAction>
     </AlertDialogFooter>
   </AlertDialogContent>
 </AlertDialog>
@@ -1036,6 +1232,50 @@
     background: transparent;
     padding: 0.5rem 0.75rem;
     color: var(--color-foreground);
+  }
+
+  .task-rename-input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    padding: 0.2rem 0.45rem;
+    color: var(--color-foreground);
+    font-size: 0.95rem;
+  }
+
+  .task-notes-dialog,
+  .task-move-dialog,
+  .task-trash-dialog {
+    max-width: 460px;
+  }
+
+  .task-notes-input {
+    width: 100%;
+    margin-top: 0.75rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    padding: 0.6rem 0.75rem;
+    color: var(--color-foreground);
+    resize: vertical;
+  }
+
+  .task-move-select {
+    width: 100%;
+    margin-top: 0.75rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    padding: 0.6rem 0.75rem;
+    color: var(--color-foreground);
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 0.9rem;
+    padding-right: 2.5rem;
   }
 
   .new-task-card {
