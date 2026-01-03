@@ -447,7 +447,11 @@
   {#if isLoading}
     <div class="things-state">
       <List size={28} class="things-loading-icon" />
-      Loading tasks…
+      {#if selectionType === 'search'}
+        Loading search results…
+      {:else}
+        Loading tasks…
+      {/if}
     </div>
   {:else if error}
     <div class="things-error">{error}</div>
