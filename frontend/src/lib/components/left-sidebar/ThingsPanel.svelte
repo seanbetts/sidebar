@@ -22,7 +22,6 @@
 
   function select(selection: ThingsSelection) {
     thingsStore.load(selection);
-    thingsStore.loadDiagnostics();
   }
 
   onMount(() => {
