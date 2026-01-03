@@ -96,6 +96,39 @@ def _find_things_db() -> Optional[Path]:
     return max(candidates, key=lambda path: path.stat().st_mtime)
 
 
+def _check_db_access() -> dict[str, Any]:
+    db_path = _find_things_db()
+    if not db_path:
+        return {"dbAccess": False, "dbPath": None, "dbError": "Things DB not found"}
+    required = {
+        "uuid",
+        "startDate",
+        "deadline",
+        "rt1_recurrenceRule",
+        "rt1_nextInstanceStartDate",
+        "rt1_repeatingTemplate",
+    }
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.execute("PRAGMA table_info(TMTask)")
+        columns = {row[1] for row in cursor.fetchall()}
+        missing = sorted(required - columns)
+        if missing:
+            return {
+                "dbAccess": False,
+                "dbPath": str(db_path),
+                "dbError": f"Missing columns in TMTask: {', '.join(missing)}",
+            }
+        return {"dbAccess": True, "dbPath": str(db_path), "dbError": None}
+    except sqlite3.Error as exc:
+        return {"dbAccess": False, "dbPath": str(db_path), "dbError": str(exc)}
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
 def _read_task_metadata(task_ids: list[str]) -> dict[str, dict[str, Any]]:
     if not task_ids:
         return {}
@@ -562,6 +595,12 @@ async def get_counts(x_things_token: Optional[str] = Header(default=None)) -> di
     require_token(x_things_token)
     script = _build_counts_script()
     return _run_jxa(script)
+
+
+@app.get("/diagnostics")
+async def get_diagnostics(x_things_token: Optional[str] = Header(default=None)) -> dict:
+    require_token(x_things_token)
+    return _check_db_access()
 
 
 if __name__ == "__main__":

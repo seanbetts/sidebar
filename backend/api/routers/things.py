@@ -333,3 +333,16 @@ async def get_counts(
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
     return await client.counts()
+
+
+@router.get("/diagnostics")
+async def get_diagnostics(
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Fetch Things bridge diagnostics via the active bridge."""
+    set_session_user_id(db, user_id)
+    bridge = _get_active_bridge_or_503(db, user_id)
+    client = ThingsBridgeClient(bridge)
+    return await client.diagnostics()

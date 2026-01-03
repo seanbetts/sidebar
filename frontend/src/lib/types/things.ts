@@ -61,3 +61,9 @@ export type ThingsCountsResponse = {
   projects: Array<{ id: string; count: number }>;
   areas: Array<{ id: string; count: number }>;
 };
+
+export type ThingsBridgeDiagnostics = {
+  dbAccess: boolean;
+  dbPath: string | null;
+  dbError: string | null;
+};

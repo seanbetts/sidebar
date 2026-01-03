@@ -8,9 +8,10 @@
   let counts: Record<string, number> = {};
   let areas: Array<{ id: string; title: string }> = [];
   let projects: Array<{ id: string; title: string; areaId?: string | null }> = [];
+  let diagnostics = null;
   let error = '';
 
-  $: ({ selection, areas, projects, error, counts } = $thingsStore);
+  $: ({ selection, areas, projects, error, counts, diagnostics } = $thingsStore);
   $: tasksCount = $thingsStore.todayCount;
   $: projectsByArea = areas.map((area) => ({
     area,
@@ -20,10 +21,12 @@
 
   function select(selection: ThingsSelection) {
     thingsStore.load(selection);
+    thingsStore.loadDiagnostics();
   }
 
   onMount(() => {
     thingsStore.loadCounts();
+    thingsStore.loadDiagnostics();
   });
 </script>
 
@@ -147,6 +150,11 @@
   {#if error}
     <div class="things-error">{error}</div>
   {/if}
+  {#if diagnostics && !diagnostics.dbAccess}
+    <div class="things-diagnostics">
+      Things bridge running without Things DB access. Repeating task metadata unavailable.
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -225,6 +233,13 @@
   .things-error {
     font-size: 0.8rem;
     color: #d55b5b;
+  }
+
+  .things-diagnostics {
+    margin-top: auto;
+    padding: 0.6rem 0.5rem 0.2rem;
+    font-size: 0.72rem;
+    color: var(--color-muted-foreground);
   }
 
   .meta {
