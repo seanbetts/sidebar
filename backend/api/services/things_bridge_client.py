@@ -32,6 +32,9 @@ class ThingsBridgeClient:
     async def counts(self) -> dict[str, Any]:
         return await self._request("GET", "/counts")
 
+    async def diagnostics(self) -> dict[str, Any]:
+        return await self._request("GET", "/diagnostics")
+
     async def _request(self, method: str, path: str, json: dict | None = None) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         headers = {"X-Things-Token": self.bridge.bridge_token}

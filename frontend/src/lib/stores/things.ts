@@ -3,6 +3,7 @@ import { thingsAPI } from '$lib/services/api';
 import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
 import type {
   ThingsArea,
+  ThingsBridgeDiagnostics,
   ThingsCountsResponse,
   ThingsListResponse,
   ThingsProject,
@@ -23,6 +24,7 @@ type ThingsState = {
   projects: ThingsProject[];
   todayCount: number;
   counts: Record<string, number>;
+  diagnostics: ThingsBridgeDiagnostics | null;
   isLoading: boolean;
   error: string;
 };
@@ -44,6 +46,7 @@ const defaultState: ThingsState = {
   projects: [],
   todayCount: 0,
   counts: {},
+  diagnostics: null,
   isLoading: false,
   error: ''
 };
@@ -243,6 +246,21 @@ function createThingsStore() {
         update((state) => ({
           ...state,
           error: error instanceof Error ? error.message : 'Failed to load Things counts'
+        }));
+      }
+    },
+    loadDiagnostics: async () => {
+      try {
+        const response = await thingsAPI.diagnostics();
+        update((state) => ({ ...state, diagnostics: response }));
+      } catch (error) {
+        update((state) => ({
+          ...state,
+          diagnostics: {
+            dbAccess: false,
+            dbPath: null,
+            dbError: error instanceof Error ? error.message : 'Failed to load diagnostics'
+          }
         }));
       }
     },

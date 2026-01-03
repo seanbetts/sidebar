@@ -1,7 +1,12 @@
 import type { Message } from '$lib/types/chat';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
-import type { ThingsBridgeStatus, ThingsCountsResponse, ThingsListResponse } from '$lib/types/things';
+import type {
+  ThingsBridgeDiagnostics,
+  ThingsBridgeStatus,
+  ThingsCountsResponse,
+  ThingsListResponse
+} from '$lib/types/things';
 
 /**
  * API service for conversations.
@@ -435,6 +440,15 @@ class ThingsAPI {
       };
     }
     if (!response.ok) throw new Error('Failed to load Things counts');
+    return response.json();
+  }
+
+  async diagnostics(): Promise<ThingsBridgeDiagnostics> {
+    const response = await fetch(`${this.baseUrl}/diagnostics`);
+    if (response.status === 404) {
+      return { dbAccess: false, dbPath: null, dbError: 'Diagnostics unavailable' };
+    }
+    if (!response.ok) throw new Error('Failed to load Things diagnostics');
     return response.json();
   }
 
