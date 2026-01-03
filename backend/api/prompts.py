@@ -308,9 +308,7 @@ def build_prompt_variables(
         if settings_record and settings_record.things_ai_snapshot
         else ""
     )
-    things_snapshot_block = (
-        f"<things_tasks>\n{things_snapshot}\n</things_tasks>" if things_snapshot else ""
-    )
+    things_snapshot_block = f"<tasks>\n{things_snapshot}\n</tasks>" if things_snapshot else ""
 
     return {
         "owner": owner,

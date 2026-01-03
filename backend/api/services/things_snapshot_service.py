@@ -20,12 +20,12 @@ class ThingsSnapshotService:
         area_map = {area.get("id"): area.get("title") for area in areas}
         project_map = {project.get("id"): project.get("title") for project in projects}
 
-        def format_task(task: dict[str, Any]) -> list[str]:
+        def format_task(task: dict[str, Any], *, checked: bool) -> list[str]:
             title = task.get("title") or "Untitled task"
             area = area_map.get(task.get("areaId"))
             project = project_map.get(task.get("projectId"))
-            context = " / ".join([value for value in [area, project] if value])
-            label = f"- {title}"
+            context = "/".join([value for value in [area, project] if value])
+            label = f"- [{'x' if checked else ' '}] {title}"
             if context:
                 label = f"{label} ({context})"
             lines = [label]
@@ -35,31 +35,28 @@ class ThingsSnapshotService:
             return lines
 
         blocks: list[str] = []
-        blocks.append("Things tasks snapshot (Today + Tomorrow).")
-
-        blocks.append("")
         blocks.append("Today")
         if today_tasks:
             for task in today_tasks:
-                blocks.extend(format_task(task))
+                blocks.extend(format_task(task, checked=False))
         else:
-            blocks.append("- None")
+            blocks.append("- [ ] None")
 
         blocks.append("")
         blocks.append("Tomorrow")
         if tomorrow_tasks:
             for task in tomorrow_tasks:
-                blocks.extend(format_task(task))
+                blocks.extend(format_task(task, checked=False))
         else:
-            blocks.append("- None")
+            blocks.append("- [ ] None")
 
         blocks.append("")
         blocks.append("Completed today")
         if completed_today:
             for task in completed_today:
-                blocks.extend(format_task(task))
+                blocks.extend(format_task(task, checked=True))
         else:
-            blocks.append("- None")
+            blocks.append("- [ ] None")
 
         return "\n".join(blocks).strip()
 
