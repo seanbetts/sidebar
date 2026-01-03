@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import subprocess
 import threading
 import time
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from urllib import request as urlrequest
 from typing import Any, Optional
 
@@ -55,6 +59,115 @@ def _run_jxa(script: str) -> dict[str, Any]:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Things AppleScript returned invalid JSON",
         ) from exc
+
+
+def _things_date_to_iso(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    try:
+        raw = float(value)
+    except (TypeError, ValueError):
+        return None
+    # Things DB stores some dates as day-based ticks relative to 2001-01-01.
+    # Empirically: date = 2001-01-01 + ((raw - 131611392) / 128) days.
+    if 1e7 < raw < 2e9:
+        base_units = 131611392
+        days = (raw - base_units) / 128
+        if 0 <= days <= 365 * 200:
+            base = datetime(2001, 1, 1, tzinfo=timezone.utc)
+            dt = base + timedelta(days=days)
+            return dt.isoformat().replace("+00:00", "Z")
+    if raw > 1e10:
+        raw = raw / 1000.0
+    base = datetime(2001, 1, 1, tzinfo=timezone.utc)
+    dt = base + timedelta(seconds=raw)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+def _find_things_db() -> Optional[Path]:
+    base = Path.home() / "Library" / "Group Containers" / "JLMPQHK86H.com.culturedcode.ThingsMac"
+    if not base.exists():
+        print(f"Things bridge: Things DB base not found at {base}", file=sys.stderr)
+        return None
+    candidates = list(base.glob("ThingsData-*/Things Database.thingsdatabase/main.sqlite"))
+    if not candidates:
+        print(f"Things bridge: Things DB not found under {base}", file=sys.stderr)
+        return None
+    return max(candidates, key=lambda path: path.stat().st_mtime)
+
+
+def _read_task_metadata(task_ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not task_ids:
+        return {}
+    db_path = _find_things_db()
+    if not db_path:
+        return {}
+    placeholders = ",".join(["?"] * len(task_ids))
+    query = f"""
+        SELECT uuid,
+               startDate,
+               deadline,
+               rt1_recurrenceRule,
+               rt1_nextInstanceStartDate,
+               rt1_repeatingTemplate
+        FROM TMTask
+        WHERE uuid IN ({placeholders})
+    """
+    metadata: dict[str, dict[str, Any]] = {}
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.execute(query, task_ids)
+        for row in cursor.fetchall():
+            task_id, start_date, deadline, recurrence_rule, next_instance, repeating_template = row
+            is_repeating = bool(recurrence_rule or repeating_template)
+            deadline_iso = _things_date_to_iso(deadline)
+            next_instance_iso = _things_date_to_iso(next_instance) if is_repeating else None
+            if not deadline_iso and next_instance_iso:
+                try:
+                    next_dt = datetime.fromisoformat(next_instance_iso.replace("Z", "+00:00"))
+                    if next_dt >= datetime(2010, 1, 1, tzinfo=timezone.utc):
+                        deadline_iso = next_instance_iso
+                except ValueError:
+                    pass
+            if not deadline_iso:
+                deadline_iso = _things_date_to_iso(start_date)
+            metadata[str(task_id)] = {
+                "repeating": is_repeating,
+                "deadline": deadline_iso,
+                "deadline_start": _things_date_to_iso(start_date),
+            }
+    except sqlite3.Error as exc:
+        print(f"Things bridge: failed to read Things DB: {exc}", file=sys.stderr)
+        return {}
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+    return metadata
+
+
+def _enrich_tasks_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    tasks = payload.get("tasks")
+    if not isinstance(tasks, list):
+        return payload
+    task_ids = [task.get("id") for task in tasks if isinstance(task, dict) and task.get("id")]
+    metadata = _read_task_metadata(task_ids)
+    if not metadata:
+        return payload
+    for task in tasks:
+        if not isinstance(task, dict):
+            continue
+        info = metadata.get(task.get("id", ""))
+        if not info:
+            continue
+        if info.get("repeating") is not None:
+            task["repeating"] = info["repeating"]
+        if not task.get("deadline") and info.get("deadline"):
+            task["deadline"] = info["deadline"]
+        if not task.get("deadlineStart") and info.get("deadline_start"):
+            task["deadlineStart"] = info["deadline_start"]
+    return payload
 
 
 def _heartbeat_loop() -> None:
@@ -413,7 +526,8 @@ async def health() -> dict:
 async def get_list(scope: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_list_script(scope)
-    return _run_jxa(script)
+    payload = _run_jxa(script)
+    return _enrich_tasks_payload(payload)
 
 
 @app.post("/apply")
@@ -427,14 +541,16 @@ async def apply_operation(request: dict, x_things_token: Optional[str] = Header(
 async def get_project_tasks(project_id: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_project_tasks_script(project_id)
-    return _run_jxa(script)
+    payload = _run_jxa(script)
+    return _enrich_tasks_payload(payload)
 
 
 @app.get("/areas/{area_id}/tasks")
 async def get_area_tasks(area_id: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_area_tasks_script(area_id)
-    return _run_jxa(script)
+    payload = _run_jxa(script)
+    return _enrich_tasks_payload(payload)
 
 
 @app.get("/counts")
