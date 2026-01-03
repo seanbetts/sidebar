@@ -303,6 +303,14 @@ def build_prompt_variables(
     current_time = f"{now.strftime('%H:%M')} {timezone_label}"
     formatted_levels = _format_location_levels(current_location_levels)
     formatted_weather = _format_weather(current_weather)
+    things_snapshot = (
+        settings_record.things_ai_snapshot.strip()
+        if settings_record and settings_record.things_ai_snapshot
+        else ""
+    )
+    things_snapshot_block = (
+        f"<things_tasks>\n{things_snapshot}\n</things_tasks>" if things_snapshot else ""
+    )
 
     return {
         "owner": owner,
@@ -326,6 +334,7 @@ def build_prompt_variables(
         "current_weather": formatted_weather,
         "home_location": home_location,
         "operating_system": operating_system,
+        "thingsSnapshot": things_snapshot_block,
     }
 
 

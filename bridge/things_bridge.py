@@ -42,7 +42,12 @@ def require_token(x_things_token: Optional[str] = Header(default=None)) -> None:
 def _run_jxa(script: str) -> dict[str, Any]:
     command = ["osascript", "-l", "JavaScript", "-e", script]
     try:
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=10)
+    except subprocess.TimeoutExpired as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Things AppleScript timed out",
+        ) from exc
     except subprocess.CalledProcessError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -272,6 +277,29 @@ def _build_list_script(scope: str) -> str:
         updatedAt: safe(() => toIso(t.modificationDate()), null)
       }};
     }}
+
+    function normalizeCompleted(t) {{
+      return {{
+        id: String(t.id()),
+        title: String(t.name()),
+        status: String(t.status()),
+        deadline: safe(() => toIso(t.dueDate()), null),
+        deadlineStart: safe(() => toIso(t.activationDate()), null),
+        notes: safe(() => String(t.notes()), null),
+        projectId: safe(() => {{
+          const p = t.project();
+          return p ? String(p.id()) : null;
+        }}, null),
+        areaId: safe(() => {{
+          const a = t.area();
+          return a ? String(a.id()) : null;
+        }}, null),
+        repeating: safe(() => Boolean(t.repeating()), false),
+        tags: safe(() => t.tags().map(tag => String(tag.name())), []),
+        updatedAt: safe(() => toIso(t.modificationDate()), null),
+        completedAt: safe(() => toIso(t.completionDate()), null)
+      }};
+    }}
     function normalizeProject(p) {{
       return {{
         id: String(p.id()),
@@ -293,6 +321,7 @@ def _build_list_script(scope: str) -> str:
     }}
 
     let tasks = [];
+    let completedToday = [];
     switch ("{scope}") {{
       case "today":
         tasks = app.lists.byName("Today").toDos();
@@ -314,7 +343,65 @@ def _build_list_script(scope: str) -> str:
       generatedAt: new Date().toISOString(),
       tasks: tasks.map(normalizeTodo),
       projects: projects.map(normalizeProject),
-      areas: areas.map(normalizeArea)
+      areas: areas.map(normalizeArea),
+      completedToday: completedToday
+    }};
+    JSON.stringify(payload);
+    """
+
+
+def _build_completed_today_script() -> str:
+    return f"""
+    const app = Application("{THINGS_APP_NAME}");
+    app.includeStandardAdditions = true;
+
+    function toIso(value) {{
+      if (!value) return null;
+      try {{ return (new Date(value)).toISOString(); }} catch (e) {{ return null; }}
+    }}
+    function safe(fn, fallback) {{
+      try {{
+        const value = fn();
+        return value === undefined ? fallback : value;
+      }} catch (e) {{
+        return fallback;
+      }}
+    }}
+    function normalizeCompleted(t) {{
+      return {{
+        id: String(t.id()),
+        title: String(t.name()),
+        status: String(t.status()),
+        deadline: safe(() => toIso(t.dueDate()), null),
+        deadlineStart: safe(() => toIso(t.activationDate()), null),
+        notes: safe(() => String(t.notes()), null),
+        projectId: safe(() => {{
+          const p = t.project();
+          return p ? String(p.id()) : null;
+        }}, null),
+        areaId: safe(() => {{
+          const a = t.area();
+          return a ? String(a.id()) : null;
+        }}, null),
+        repeating: safe(() => Boolean(t.repeating()), false),
+        tags: safe(() => t.tags().map(tag => String(tag.name())), []),
+        updatedAt: safe(() => toIso(t.modificationDate()), null),
+        completedAt: safe(() => toIso(t.completionDate()), null)
+      }};
+    }}
+
+    const logbook = app.lists.byName("Logbook");
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start.getTime());
+    end.setDate(end.getDate() + 1);
+    const completed = logbook
+      ? logbook.toDos.whose({{ completionDate: {{ '>=': start, '<': end }} }})()
+      : [];
+    const completedToday = completed.map(normalizeCompleted);
+    const payload = {{
+      generatedAt: new Date().toISOString(),
+      tasks: completedToday
     }};
     JSON.stringify(payload);
     """
@@ -660,6 +747,13 @@ async def get_area_tasks(area_id: str, x_things_token: Optional[str] = Header(de
 async def get_counts(x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_counts_script()
+    return _run_jxa(script)
+
+
+@app.get("/completed/today")
+async def get_completed_today(x_things_token: Optional[str] = Header(default=None)) -> dict:
+    require_token(x_things_token)
+    script = _build_completed_today_script()
     return _run_jxa(script)
 
 
