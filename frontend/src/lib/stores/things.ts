@@ -15,7 +15,8 @@ export type ThingsSelection =
   | { type: 'today' }
   | { type: 'upcoming' }
   | { type: 'area'; id: string }
-  | { type: 'project'; id: string };
+  | { type: 'project'; id: string }
+  | { type: 'search'; query: string };
 
 type ThingsState = {
   selection: ThingsSelection;
@@ -59,6 +60,7 @@ function createThingsStore() {
   let loadToken = 0;
   let hasPreloaded = false;
   let lastMeta: ThingsMetaCache = { areas: [], projects: [] };
+  let lastNonSearchSelection: ThingsSelection = { type: 'today' };
   let syncNoticeTimer: ReturnType<typeof setTimeout> | null = null;
   let diagnosticsLoadedAt = 0;
   let diagnosticsInFlight: Promise<void> | null = null;
@@ -170,6 +172,9 @@ function createThingsStore() {
     if (a.type === 'area' || a.type === 'project') {
       return a.id === (b as { id: string }).id;
     }
+    if (a.type === 'search') {
+      return a.query === (b as { query: string }).query;
+    }
     return true;
   };
 
@@ -189,6 +194,9 @@ function createThingsStore() {
   const selectionKey = (selection: ThingsSelection) => {
     if (selection.type === 'area' || selection.type === 'project') {
       return `${selection.type}:${selection.id}`;
+    }
+    if (selection.type === 'search') {
+      return `search:${selection.query.toLowerCase()}`;
     }
     return selection.type;
   };
@@ -263,6 +271,9 @@ function createThingsStore() {
     selection: ThingsSelection,
     options?: { force?: boolean; silent?: boolean; notify?: boolean }
   ) => {
+    if (selection.type !== 'search') {
+      lastNonSearchSelection = selection;
+    }
     const force = options?.force ?? false;
     const silent = options?.silent ?? false;
     const notify = options?.notify ?? true;
@@ -363,8 +374,10 @@ function createThingsStore() {
         response = await thingsAPI.list(selection.type);
       } else if (selection.type === 'area') {
         response = await thingsAPI.areaTasks(selection.id);
-      } else {
+      } else if (selection.type === 'project') {
         response = await thingsAPI.projectTasks(selection.id);
+      } else {
+        response = await thingsAPI.search(selection.query);
       }
       if (usesToken && token !== loadToken) return;
       setCachedData(key, response.tasks ?? [], { ttl: CACHE_TTL, version: CACHE_VERSION });
@@ -481,6 +494,14 @@ function createThingsStore() {
       })();
       await diagnosticsInFlight;
     },
+    search: (query: string) => {
+      const trimmed = query.trim();
+      if (!trimmed) {
+        return loadSelection(lastNonSearchSelection);
+      }
+      return loadSelection({ type: 'search', query: trimmed });
+    },
+    clearSearch: () => loadSelection(lastNonSearchSelection),
     completeTask: async (taskId: string) => {
       await thingsAPI.apply({ op: 'complete', id: taskId });
       update((state) => {

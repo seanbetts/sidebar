@@ -350,6 +350,88 @@ def _build_list_script(scope: str) -> str:
     """
 
 
+def _build_search_script(query: str) -> str:
+    query_json = json.dumps(query)
+    return f"""
+    const app = Application("{THINGS_APP_NAME}");
+    app.includeStandardAdditions = true;
+
+    function toIso(value) {{
+      if (!value) return null;
+      try {{ return (new Date(value)).toISOString(); }} catch (e) {{ return null; }}
+    }}
+    function safe(fn, fallback) {{
+      try {{
+        const value = fn();
+        return value === undefined ? fallback : value;
+      }} catch (e) {{
+        return fallback;
+      }}
+    }}
+    function normalizeTodo(t) {{
+      return {{
+        id: String(t.id()),
+        title: String(t.name()),
+        status: String(t.status()),
+        deadline: safe(() => toIso(t.dueDate()), null),
+        deadlineStart: safe(() => toIso(t.activationDate()), null),
+        notes: safe(() => String(t.notes()), null),
+        projectId: safe(() => {{
+          const p = t.project();
+          return p ? String(p.id()) : null;
+        }}, null),
+        areaId: safe(() => {{
+          const a = t.area();
+          return a ? String(a.id()) : null;
+        }}, null),
+        repeating: safe(() => Boolean(t.repeating()), false),
+        tags: safe(() => t.tags().map(tag => String(tag.name())), []),
+        updatedAt: safe(() => toIso(t.modificationDate()), null)
+      }};
+    }}
+    function normalizeProject(p) {{
+      return {{
+        id: String(p.id()),
+        title: String(p.name()),
+        areaId: safe(() => {{
+          const a = p.area();
+          return a ? String(a.id()) : null;
+        }}, null),
+        status: String(p.status()),
+        updatedAt: safe(() => toIso(p.modificationDate()), null)
+      }};
+    }}
+    function normalizeArea(a) {{
+      return {{
+        id: String(a.id()),
+        title: String(a.name()),
+        updatedAt: safe(() => toIso(a.modificationDate()), null)
+      }};
+    }}
+
+    const query = String({query_json}).toLowerCase();
+    const allTodos = app.toDos();
+    const tasks = allTodos.filter((t) => {{
+      const status = String(t.status());
+      if (status === "completed" || status === "canceled") return false;
+      const title = safe(() => String(t.name()), "").toLowerCase();
+      const notes = safe(() => String(t.notes()), "").toLowerCase();
+      return title.includes(query) || notes.includes(query);
+    }});
+
+    const projects = app.projects();
+    const areas = app.areas();
+    const payload = {{
+      scope: "search",
+      generatedAt: new Date().toISOString(),
+      tasks: tasks.map(normalizeTodo),
+      projects: projects.map(normalizeProject),
+      areas: areas.map(normalizeArea)
+    }};
+    JSON.stringify(payload);
+    """
+
+
 def _build_completed_today_script() -> str:
     return f"""
     const app = Application("{THINGS_APP_NAME}");
@@ -689,6 +771,17 @@ async def health() -> dict:
 async def get_list(scope: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_list_script(scope)
+    payload = _run_jxa(script)
+    return _enrich_tasks_payload(payload)
+
+
+@app.get("/search")
+async def search_tasks(query: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
+    require_token(x_things_token)
+    query = query.strip()
+    if not query:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query required")
+    script = _build_search_script(query)
     payload = _run_jxa(script)
     return _enrich_tasks_payload(payload)
 

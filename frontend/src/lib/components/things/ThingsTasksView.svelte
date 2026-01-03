@@ -12,7 +12,8 @@
     Layers,
     List,
     MoreHorizontal,
-    Repeat
+    Repeat,
+    Search
   } from 'lucide-svelte';
   import {
     DropdownMenu,
@@ -41,6 +42,7 @@
   let tasks: ThingsTask[] = [];
   let selectionLabel = 'Today';
   let titleIcon = CalendarCheck;
+  let selectionQuery = '';
   let areas: ThingsArea[] = [];
   let projects: ThingsProject[] = [];
   let isLoading = false;
@@ -58,7 +60,7 @@
   let dueTask: ThingsTask | null = null;
   let dueDateValue = '';
 
-  type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project';
+  type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
 
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -72,16 +74,19 @@
     error = state.error;
     selectionType = state.selection.type;
     const projectIds = new Set(projects.map((project) => project.id));
+    const filteredTasks = tasks.filter((task) => task.status !== 'project');
     const visibleTasks =
-      selectionType === 'area'
-        ? tasks.filter((task) => !projectIds.has(task.id) && task.status !== 'project')
-        : tasks;
+      selectionType === 'area' || selectionType === 'search'
+        ? filteredTasks.filter((task) => !projectIds.has(task.id))
+        : filteredTasks;
     const sortedTasks =
-      selectionType === 'area' || selectionType === 'project'
+      selectionType === 'area' || selectionType === 'project' || selectionType === 'search'
         ? sortByDueDate(visibleTasks)
         : visibleTasks;
     projectTitleById = new Map(projects.map((project) => [project.id, project.title]));
     areaTitleById = new Map(areas.map((area) => [area.id, area.title]));
+    selectionQuery =
+      selectionType === 'search' && 'query' in state.selection ? state.selection.query : '';
     if (selectionType === 'today') {
       selectionLabel = 'Today';
       titleIcon = CalendarCheck;
@@ -102,6 +107,10 @@
       selectionLabel = projects.find((project) => project.id === state.selection.id)?.title || 'Project';
       titleIcon = List;
       sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
+    } else if (selectionType === 'search') {
+      selectionLabel = selectionQuery ? `Search: ${selectionQuery}` : 'Search';
+      titleIcon = Search;
+      sections = buildSearchSections(sortedTasks, areas);
     } else {
       selectionLabel = 'Tasks';
       sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
@@ -188,6 +197,30 @@
       sections.push({ id: 'other', title: 'Other', tasks: unassigned });
     }
 
+    return sections;
+  }
+
+  function buildSearchSections(tasks: ThingsTask[], areas: ThingsArea[]): TaskSection[] {
+    const sections: TaskSection[] = [];
+    const tasksByArea = new Map<string, ThingsTask[]>();
+    const unassigned: ThingsTask[] = [];
+    areas.forEach((area) => tasksByArea.set(area.id, []));
+    tasks.forEach((task) => {
+      if (task.areaId && tasksByArea.has(task.areaId)) {
+        tasksByArea.get(task.areaId)?.push(task);
+      } else {
+        unassigned.push(task);
+      }
+    });
+    areas.forEach((area) => {
+      const bucket = tasksByArea.get(area.id) ?? [];
+      if (bucket.length) {
+        sections.push({ id: area.id, title: area.title, tasks: sortByDueDate(bucket) });
+      }
+    });
+    if (unassigned.length) {
+      sections.push({ id: 'other', title: 'Other', tasks: sortByDueDate(unassigned) });
+    }
     return sections;
   }
 
@@ -291,6 +324,9 @@
       return projectTitle || areaTitle || '';
     }
     if (selectionType === 'today' || selectionType === 'upcoming') {
+      return projectTitle || areaTitle || '';
+    }
+    if (selectionType === 'search') {
       return projectTitle || areaTitle || '';
     }
     if (taskDeadline(task)) {
@@ -420,6 +456,8 @@
       <img class="things-empty-logo" src="/images/logo.svg" alt="sideBar" />
       {#if selectionLabel === 'Today'}
         All done for the day
+      {:else if selectionType === 'search'}
+        No results for "{selectionQuery}"
       {:else}
         No tasks to show.
       {/if}
@@ -463,7 +501,7 @@
                   </div>
                 </div>
                 <div class="task-right">
-                  {#if selectionType === 'area' || selectionType === 'project'}
+                  {#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
                     <span class="due-pill">{dueLabel(task) ?? 'No Date'}</span>
                   {/if}
                   <DropdownMenu>
