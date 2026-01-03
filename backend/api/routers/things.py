@@ -294,6 +294,23 @@ async def apply_things_operation(
     return await client.apply(request)
 
 
+@router.post("/bridges/url-token")
+async def set_url_token(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Store the Things URL auth token on the active bridge."""
+    token = (request.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="token required")
+    set_session_user_id(db, user_id)
+    bridge = _get_active_bridge_or_503(db, user_id)
+    client = ThingsBridgeClient(bridge)
+    return await client.set_url_token(token)
+
+
 @router.get("/projects/{project_id}/tasks")
 async def get_project_tasks(
     project_id: str,

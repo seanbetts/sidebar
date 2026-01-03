@@ -609,6 +609,37 @@ async def apply_operation(request: dict, x_things_token: Optional[str] = Header(
     return _run_jxa(script)
 
 
+@app.post("/url-token")
+async def set_url_token(request: dict, x_things_token: Optional[str] = Header(default=None)) -> dict:
+    require_token(x_things_token)
+    token = (request.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="token is required")
+    try:
+        subprocess.run(
+            [
+                "security",
+                "add-generic-password",
+                "-a",
+                "things-url-token",
+                "-s",
+                "sidebar-things-bridge",
+                "-w",
+                token,
+                "-U",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to store URL token: {exc.stderr.strip() or exc.stdout.strip()}",
+        ) from exc
+    return {"status": "ok"}
+
+
 @app.get("/projects/{project_id}/tasks")
 async def get_project_tasks(project_id: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
