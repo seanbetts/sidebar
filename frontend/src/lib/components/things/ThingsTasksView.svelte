@@ -74,6 +74,7 @@
   let moveListName = '';
   let showTrashDialog = false;
   let trashTask: ThingsTask | null = null;
+  let renameInput: HTMLInputElement | null = null;
   let newTaskDraft: ThingsNewTaskDraft | null = null;
   let activeDraft: ThingsNewTaskDraft | null = null;
   let draftTitle = '';
@@ -478,6 +479,11 @@
     cancelRename();
   }
 
+  $: if (editingTaskId && renameInput) {
+    renameInput.focus();
+    renameInput.select();
+  }
+
   function openNotesDialog(task: ThingsTask) {
     notesTask = task;
     notesValue = task.notes ?? '';
@@ -781,6 +787,7 @@
                           class="task-rename-input"
                           type="text"
                           bind:value={renameValue}
+                          bind:this={renameInput}
                           onkeydown={(event) => {
                             if (event.key === 'Enter') {
                               event.preventDefault();
