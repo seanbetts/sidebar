@@ -24,7 +24,7 @@
   let areaTitleById = new Map<string, string>();
   let selectionType: ThingsTaskViewType = 'today';
   let selection: ThingsSelection = { type: 'today' };
-  const completing = new Set<string>();
+  let completing = new Set<string>();
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project';
@@ -264,7 +264,13 @@
     if (!date) return null;
     const today = startOfDay(new Date());
     const dayDiff = Math.floor((startOfDay(date).getTime() - today.getTime()) / MS_PER_DAY);
-    if (dayDiff >= 0 && dayDiff <= 6) {
+    if (dayDiff === 0) {
+      return 'Today';
+    }
+    if (dayDiff === 1) {
+      return 'Tomorrow';
+    }
+    if (dayDiff > 1 && dayDiff <= 6) {
       return date.toLocaleDateString(undefined, { weekday: 'short' });
     }
     return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -272,12 +278,14 @@
 
   async function handleComplete(taskId: string) {
     if (completing.has(taskId)) return;
-    completing.add(taskId);
+    completing = new Set(completing).add(taskId);
     await new Promise((resolve) => setTimeout(resolve, 180));
     try {
       await thingsStore.completeTask(taskId);
     } finally {
-      completing.delete(taskId);
+      const next = new Set(completing);
+      next.delete(taskId);
+      completing = next;
     }
   }
 
