@@ -476,9 +476,8 @@
       cancelRename();
       return;
     }
-    await runTaskUpdate(task.id, () => thingsStore.renameTask(task.id, nextTitle));
     cancelRename();
-    renameInput?.blur();
+    await runTaskUpdate(task.id, () => thingsStore.renameTask(task.id, nextTitle));
   }
 
   $: if (editingTaskId && renameInput) {
