@@ -324,12 +324,14 @@ function createThingsStore() {
     }
     if (!force && cachedTasks) {
       const cachedCount = selectionCount(selection, cachedTasks, cachedMeta?.projects ?? []);
+      const showSearchLoading =
+        selection.type === 'search' && cachedTasks.length === 0 && !silent;
       if (!silent || isCurrent) {
         update((state) => ({
           ...state,
           selection,
           tasks: cachedTasks,
-          isLoading: false,
+          isLoading: showSearchLoading ? true : false,
           error: '',
           counts: {
             ...state.counts,
