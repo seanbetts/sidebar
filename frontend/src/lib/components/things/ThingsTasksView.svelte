@@ -446,7 +446,11 @@
 
   {#if isLoading}
     <div class="things-state">
-      <List size={28} class="things-loading-icon" />
+      {#if selectionType === 'search'}
+        <Search size={28} class="things-loading-icon" />
+      {:else}
+        <List size={28} class="things-loading-icon" />
+      {/if}
       {#if selectionType === 'search'}
         Loading search results…
       {:else}
