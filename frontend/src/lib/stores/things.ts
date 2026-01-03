@@ -737,17 +737,39 @@ function createThingsStore() {
         update((state) => ({ ...state, error: 'Title is required' }));
         return;
       }
-      await thingsAPI.apply({ op: 'rename', id: taskId, title: nextTitle });
-      update((state) => {
-        const nextTasks = state.tasks.map((task) =>
+      const state = get({ subscribe });
+      const originalTask = state.tasks.find((task) => task.id === taskId);
+      if (!originalTask) {
+        return;
+      }
+      update((current) => {
+        const nextTasks = current.tasks.map((task) =>
           task.id === taskId ? { ...task, title: nextTitle } : task
         );
-        setCachedData(tasksCacheKey(state.selection), nextTasks, {
+        setCachedData(tasksCacheKey(current.selection), nextTasks, {
           ttl: CACHE_TTL,
           version: CACHE_VERSION
         });
-        return { ...state, tasks: nextTasks };
+        return { ...current, tasks: nextTasks };
       });
+      try {
+        await thingsAPI.apply({ op: 'rename', id: taskId, title: nextTitle });
+      } catch (error) {
+        update((current) => {
+          const nextTasks = current.tasks.map((task) =>
+            task.id === taskId ? { ...task, title: originalTask.title } : task
+          );
+          setCachedData(tasksCacheKey(current.selection), nextTasks, {
+            ttl: CACHE_TTL,
+            version: CACHE_VERSION
+          });
+          return {
+            ...current,
+            tasks: nextTasks,
+            error: error instanceof Error ? error.message : 'Failed to rename task'
+          };
+        });
+      }
     },
     updateNotes: async (taskId: string, notes: string) => {
       await thingsAPI.apply({ op: 'notes', id: taskId, notes });
