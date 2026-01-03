@@ -1,23 +1,54 @@
 """Things integration router."""
+import asyncio
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
-from api.db.session import get_db, set_session_user_id
+from api.db.session import SessionLocal, get_db, set_session_user_id
 from api.models.things_bridge import ThingsBridge
 from api.services.things_bridge_service import ThingsBridgeService
 from api.services.things_bridge_client import ThingsBridgeClient
+from api.services.things_snapshot_service import ThingsSnapshotService
+from api.services.user_settings_service import UserSettingsService
 from api.services.things_bridge_install_service import ThingsBridgeInstallService
 from api.config import settings
 
 
 router = APIRouter(prefix="/things", tags=["things"])
+
+
+async def _update_snapshot_async(user_id: str, today_payload: dict) -> None:
+    with SessionLocal() as db:
+        set_session_user_id(db, user_id)
+        bridge = ThingsBridgeService.select_active_bridge(db, user_id)
+        if not bridge:
+            return
+        client = ThingsBridgeClient(bridge)
+        try:
+            upcoming = await client.get_list("upcoming")
+            tomorrow_tasks = ThingsSnapshotService.filter_tomorrow(upcoming.get("tasks", []))
+            completed_today_payload = await client.completed_today()
+            completed_today = completed_today_payload.get("tasks", [])
+            snapshot = ThingsSnapshotService.build_snapshot(
+                today_tasks=today_payload.get("tasks", []),
+                tomorrow_tasks=tomorrow_tasks,
+                completed_today=completed_today,
+                areas=upcoming.get("areas") or today_payload.get("areas", []),
+                projects=upcoming.get("projects") or today_payload.get("projects", []),
+            )
+            UserSettingsService.update_things_snapshot(db, user_id, snapshot)
+        except Exception:
+            return
+
+
+def _update_snapshot_background(user_id: str, today_payload: dict) -> None:
+    asyncio.run(_update_snapshot_async(user_id, today_payload))
 
 
 def _bridge_payload(bridge: ThingsBridge, include_token: bool = False) -> dict:
@@ -269,6 +300,7 @@ def _get_active_bridge_or_503(db: Session, user_id: str) -> ThingsBridge:
 @router.get("/lists/{scope}")
 async def get_things_list(
     scope: str,
+    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -277,7 +309,10 @@ async def get_things_list(
     set_session_user_id(db, user_id)
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
-    return await client.get_list(scope)
+    response = await client.get_list(scope)
+    if scope == "today":
+        background_tasks.add_task(_update_snapshot_background, user_id, response)
+    return response
 
 
 @router.post("/apply")

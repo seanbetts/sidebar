@@ -59,6 +59,7 @@ class UserSettingsService:
         profile_image_path: Any = UNSET,
         enabled_skills: Any = UNSET,
         shortcuts_pat: Any = UNSET,
+        things_ai_snapshot: Any = UNSET,
     ) -> UserSettings:
         """Create or update a user's settings.
 
@@ -114,6 +115,8 @@ class UserSettingsService:
                 settings.enabled_skills = enabled_skills
             if shortcuts_pat is not UserSettingsService.UNSET:
                 settings.shortcuts_pat = shortcuts_pat
+            if things_ai_snapshot is not UserSettingsService.UNSET:
+                settings.things_ai_snapshot = things_ai_snapshot
             settings.updated_at = now
         else:
             settings = UserSettings(
@@ -132,6 +135,7 @@ class UserSettingsService:
                 profile_image_path=None if profile_image_path is UserSettingsService.UNSET else profile_image_path,
                 enabled_skills=None if enabled_skills is UserSettingsService.UNSET else enabled_skills,
                 shortcuts_pat=None if shortcuts_pat is UserSettingsService.UNSET else shortcuts_pat,
+                things_ai_snapshot=None if things_ai_snapshot is UserSettingsService.UNSET else things_ai_snapshot,
                 created_at=now,
                 updated_at=now,
             )
@@ -140,3 +144,11 @@ class UserSettingsService:
         db.flush()
         db.commit()
         return settings
+
+    @staticmethod
+    def update_things_snapshot(db: Session, user_id: str, snapshot: str) -> None:
+        """Update the Things AI snapshot if it has changed."""
+        settings = UserSettingsService.get_settings(db, user_id)
+        if settings and settings.things_ai_snapshot == snapshot:
+            return
+        UserSettingsService.upsert_settings(db, user_id, things_ai_snapshot=snapshot)

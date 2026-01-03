@@ -35,6 +35,9 @@ class ThingsBridgeClient:
     async def diagnostics(self) -> dict[str, Any]:
         return await self._request("GET", "/diagnostics")
 
+    async def completed_today(self) -> dict[str, Any]:
+        return await self._request("GET", "/completed/today")
+
     async def set_url_token(self, token: str) -> dict[str, Any]:
         return await self._request("POST", "/url-token", json={"token": token})
 
