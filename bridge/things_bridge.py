@@ -119,6 +119,7 @@ def _read_task_metadata(task_ids: list[str]) -> dict[str, dict[str, Any]]:
         cursor = conn.execute(query, task_ids)
         for row in cursor.fetchall():
             task_id, start_date, deadline, recurrence_rule, next_instance, repeating_template = row
+            is_template = bool(recurrence_rule)
             is_repeating = bool(recurrence_rule or repeating_template)
             deadline_iso = _things_date_to_iso(deadline)
             next_instance_iso = _things_date_to_iso(next_instance) if is_repeating else None
@@ -133,6 +134,7 @@ def _read_task_metadata(task_ids: list[str]) -> dict[str, dict[str, Any]]:
                 deadline_iso = _things_date_to_iso(start_date)
             metadata[str(task_id)] = {
                 "repeating": is_repeating,
+                "repeat_template": is_template,
                 "deadline": deadline_iso,
                 "deadline_start": _things_date_to_iso(start_date),
             }
@@ -163,6 +165,8 @@ def _enrich_tasks_payload(payload: dict[str, Any]) -> dict[str, Any]:
             continue
         if info.get("repeating") is not None:
             task["repeating"] = info["repeating"]
+        if info.get("repeat_template") is not None:
+            task["repeatTemplate"] = info["repeat_template"]
         if not task.get("deadline") and info.get("deadline"):
             task["deadline"] = info["deadline"]
         if not task.get("deadlineStart") and info.get("deadline_start"):
