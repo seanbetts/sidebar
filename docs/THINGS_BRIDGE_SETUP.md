@@ -27,8 +27,10 @@ If Full Disk Access is not granted, the bridge still works, but repeating metada
 
 ## Optional: URL Scheme Token for Writes
 
-To use the Things URL scheme for writes (more reliable than AppleScript), add your Things URL auth token to the keychain:
+To use the Things URL scheme for writes (more reliable than AppleScript), add your Things URL auth token:
 
 1) In Things, copy your URL scheme auth token.
-2) Store it in the keychain:
-   `security add-generic-password -a "things-url-token" -s "sidebar-things-bridge" -w "YOUR_TOKEN" -U`
+2) In sideBar -> Settings -> Things, paste the token and click **Save Token**.
+
+CLI alternative:
+`security add-generic-password -a "things-url-token" -s "sidebar-things-bridge" -w "YOUR_TOKEN" -U`

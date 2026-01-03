@@ -460,6 +460,15 @@ class ThingsAPI {
     });
     if (!response.ok) throw new Error('Failed to apply Things operation');
   }
+
+  async setUrlToken(token: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/bridges/url-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    if (!response.ok) throw new Error('Failed to save Things URL token');
+  }
 }
 
 export const thingsAPI = new ThingsAPI();
