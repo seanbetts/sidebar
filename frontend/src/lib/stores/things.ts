@@ -135,7 +135,7 @@ function createThingsStore() {
   const preloadAllSelections = (current: ThingsSelection) => {
     if (hasPreloaded) return;
     hasPreloaded = true;
-    const baseSelections: ThingsSelection[] = [{ type: 'inbox' }, { type: 'today' }, { type: 'upcoming' }];
+    const baseSelections: ThingsSelection[] = [{ type: 'today' }, { type: 'upcoming' }];
     const areaSelections = lastMeta.areas.map((area) => ({ type: 'area', id: area.id }) as ThingsSelection);
     const projectSelections = lastMeta.projects.map(
       (project) => ({ type: 'project', id: project.id }) as ThingsSelection

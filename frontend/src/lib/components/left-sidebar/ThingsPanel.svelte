@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { thingsStore, type ThingsSelection } from '$lib/stores/things';
-  import { CalendarCheck, CalendarClock, Check, Inbox, Layers, List } from 'lucide-svelte';
+  import { CalendarCheck, CalendarClock, Check, Layers, List } from 'lucide-svelte';
 
   let selection: ThingsSelection = { type: 'today' };
   let tasksCount = 0;
@@ -31,23 +31,6 @@
 </script>
 
 <div class="things-sections">
-    <button
-      class="things-item"
-      class:active={selection.type === 'inbox'}
-      onclick={() => select({ type: 'inbox' })}
-    >
-      <span class="row-label">
-        <Inbox size={14} />
-        Inbox
-      </span>
-      <span class="meta">
-        {#if (counts['inbox'] ?? 0) === 0}
-          <Check size={12} />
-        {:else}
-          {counts['inbox'] ?? 0}
-        {/if}
-      </span>
-    </button>
     <button
       class="things-item"
       class:active={selection.type === 'today'}
