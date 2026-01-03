@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { thingsStore, type ThingsSelection } from '$lib/stores/things';
+  import { thingsStore, type ThingsNewTaskDraft, type ThingsSelection } from '$lib/stores/things';
   import type { ThingsArea, ThingsProject, ThingsTask } from '$lib/types/things';
   import {
     Check,
@@ -61,6 +61,15 @@
   let showDueDialog = false;
   let dueTask: ThingsTask | null = null;
   let dueDateValue = '';
+  let newTaskDraft: ThingsNewTaskDraft | null = null;
+  let activeDraft: ThingsNewTaskDraft | null = null;
+  let draftTitle = '';
+  let draftNotes = '';
+  let draftDueDate = '';
+  let draftSaving = false;
+  let draftError = '';
+  let draftTargetLabel = '';
+  let showDraft = false;
 
   type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
 
@@ -76,6 +85,9 @@
     searchPending = state.searchPending;
     error = state.error;
     selectionType = state.selection.type;
+    newTaskDraft = state.newTaskDraft;
+    draftSaving = state.newTaskSaving;
+    draftError = state.newTaskError;
     const projectIds = new Set(projects.map((project) => project.id));
     const filteredTasks = tasks.filter((task) => task.status !== 'project');
     const visibleTasks =
@@ -120,6 +132,40 @@
     }
     totalCount = sections.reduce((sum, section) => sum + section.tasks.length, 0);
     hasLoaded = !isLoading;
+    showDraft = Boolean(newTaskDraft && isSameSelection(selection, newTaskDraft.selection));
+  }
+
+  function isSameSelection(a: ThingsSelection, b: ThingsSelection) {
+    if (a.type !== b.type) return false;
+    if (a.type === 'area' || a.type === 'project') {
+      return a.id === (b as { id: string }).id;
+    }
+    if (a.type === 'search') {
+      return a.query === (b as { query: string }).query;
+    }
+    return true;
+  }
+
+  $: {
+    if (newTaskDraft && newTaskDraft !== activeDraft) {
+      activeDraft = newTaskDraft;
+      draftTitle = newTaskDraft.title;
+      draftNotes = newTaskDraft.notes;
+      draftDueDate = newTaskDraft.dueDate;
+      if (newTaskDraft.projectId) {
+        draftTargetLabel = projectTitleById.get(newTaskDraft.projectId) ?? 'Project';
+      } else if (newTaskDraft.areaId) {
+        draftTargetLabel = areaTitleById.get(newTaskDraft.areaId) ?? 'Area';
+      } else {
+        draftTargetLabel = '';
+      }
+    } else if (!newTaskDraft && activeDraft) {
+      activeDraft = null;
+      draftTitle = '';
+      draftNotes = '';
+      draftDueDate = '';
+      draftTargetLabel = '';
+    }
   }
 
   function startOfDay(date: Date) {
@@ -405,6 +451,18 @@
     await runTaskUpdate(taskId, () => thingsStore.completeTask(taskId));
   }
 
+  function handleCancelDraft() {
+    thingsStore.cancelNewTask();
+  }
+
+  async function handleCreateTask() {
+    await thingsStore.createTask({
+      title: draftTitle,
+      notes: draftNotes,
+      dueDate: draftDueDate
+    });
+  }
+
   const refreshTasks = () => {
     thingsStore.load(selection, { force: true, silent: true });
   };
@@ -475,6 +533,51 @@
     </div>
   {:else}
     <div class="things-content">
+      {#if newTaskDraft && showDraft}
+        <div class="new-task-card">
+          <div class="new-task-header">
+            <span>New task</span>
+            {#if draftTargetLabel}
+              <span class="new-task-target">{draftTargetLabel}</span>
+            {/if}
+          </div>
+          <input
+            class="new-task-input"
+            type="text"
+            placeholder="Task title"
+            bind:value={draftTitle}
+            disabled={draftSaving}
+          />
+          <div class="new-task-meta">
+            <label class="new-task-label">
+              <span>Due date</span>
+              <input class="new-task-date" type="date" bind:value={draftDueDate} disabled={draftSaving} />
+            </label>
+          </div>
+          <textarea
+            class="new-task-notes"
+            rows="3"
+            placeholder="Notes (optional)"
+            bind:value={draftNotes}
+            disabled={draftSaving}
+          ></textarea>
+          {#if draftError}
+            <div class="new-task-error">{draftError}</div>
+          {/if}
+          <div class="new-task-actions">
+            <button class="new-task-btn secondary" onclick={handleCancelDraft} disabled={draftSaving}>
+              Cancel
+            </button>
+            <button
+              class="new-task-btn primary"
+              onclick={handleCreateTask}
+              disabled={!draftTitle.trim() || draftSaving}
+            >
+              {draftSaving ? 'Adding…' : 'Add task'}
+            </button>
+          </div>
+        </div>
+      {/if}
       {#each sections as section}
         <div class="things-section">
           {#if section.title}
@@ -853,6 +956,102 @@
     background: transparent;
     padding: 0.5rem 0.75rem;
     color: var(--color-foreground);
+  }
+
+  .new-task-card {
+    border: 1px solid var(--color-border);
+    border-radius: 0.9rem;
+    background: var(--color-card);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .new-task-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .new-task-target {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    color: var(--color-muted-foreground);
+    background: var(--color-secondary);
+  }
+
+  .new-task-input,
+  .new-task-notes,
+  .new-task-date {
+    width: 100%;
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    padding: 0.6rem 0.75rem;
+    color: var(--color-foreground);
+  }
+
+  .new-task-notes {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .new-task-meta {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .new-task-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+    text-transform: uppercase;
+  }
+
+  .new-task-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .new-task-btn {
+    border-radius: 999px;
+    border: 1px solid transparent;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition:
+      background 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .new-task-btn.primary {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  .new-task-btn.secondary {
+    background: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+    border-color: var(--color-border);
+  }
+
+  .new-task-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .new-task-error {
+    font-size: 0.8rem;
+    color: var(--color-destructive);
   }
 
   .things-state {

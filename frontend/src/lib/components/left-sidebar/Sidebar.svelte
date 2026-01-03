@@ -582,7 +582,7 @@
               size="icon"
               variant="ghost"
               class="panel-action"
-              onclick={() => {}}
+              onclick={() => thingsStore.startNewTask()}
               aria-label="New task"
               title="New task"
             >

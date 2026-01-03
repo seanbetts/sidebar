@@ -18,6 +18,16 @@ export type ThingsSelection =
   | { type: 'project'; id: string }
   | { type: 'search'; query: string };
 
+export type ThingsNewTaskDraft = {
+  title: string;
+  notes: string;
+  dueDate: string;
+  selection: ThingsSelection;
+  listId?: string;
+  areaId?: string;
+  projectId?: string;
+};
+
 type ThingsState = {
   selection: ThingsSelection;
   tasks: ThingsTask[];
@@ -29,6 +39,9 @@ type ThingsState = {
   syncNotice: string;
   isLoading: boolean;
   searchPending: boolean;
+  newTaskDraft: ThingsNewTaskDraft | null;
+  newTaskSaving: boolean;
+  newTaskError: string;
   error: string;
 };
 
@@ -54,6 +67,9 @@ const defaultState: ThingsState = {
   syncNotice: '',
   isLoading: false,
   searchPending: false,
+  newTaskDraft: null,
+  newTaskSaving: false,
+  newTaskError: '',
   error: ''
 };
 
@@ -208,6 +224,7 @@ function createThingsStore() {
   const tasksCacheKey = (selection: ThingsSelection) => `things.tasks.${selectionKey(selection)}`;
 
   const normalizeDateKey = (value: string) => value.slice(0, 10);
+  const todayKey = () => normalizeDateKey(new Date().toISOString());
 
   const classifyDueBucket = (value: string): 'today' | 'upcoming' => {
     const date = new Date(`${normalizeDateKey(value)}T00:00:00`);
@@ -450,6 +467,67 @@ function createThingsStore() {
     reset: () => set(defaultState),
     load: (selection: ThingsSelection, options?: { force?: boolean; silent?: boolean; notify?: boolean }) =>
       loadSelection(selection, options),
+    startNewTask: () => {
+      const state = get({ subscribe });
+      const baseSelection = state.selection.type === 'search' ? lastNonSearchSelection : state.selection;
+      const listId =
+        baseSelection.type === 'area' || baseSelection.type === 'project' ? baseSelection.id : undefined;
+      const projectId = baseSelection.type === 'project' ? baseSelection.id : undefined;
+      const areaId =
+        baseSelection.type === 'area'
+          ? baseSelection.id
+          : projectId
+            ? state.projects.find((project) => project.id === projectId)?.areaId ?? null
+            : null;
+      const draft: ThingsNewTaskDraft = {
+        title: '',
+        notes: '',
+        dueDate: todayKey(),
+        selection: baseSelection,
+        listId,
+        areaId: areaId ?? undefined,
+        projectId
+      };
+      update((current) => ({ ...current, newTaskDraft: draft, newTaskError: '' }));
+    },
+    cancelNewTask: () => update((state) => ({ ...state, newTaskDraft: null, newTaskError: '' })),
+    createTask: async (payload: { title: string; notes?: string; dueDate?: string }) => {
+      const state = get({ subscribe });
+      const draft = state.newTaskDraft;
+      if (!draft) return;
+      const title = payload.title.trim();
+      if (!title) {
+        update((current) => ({ ...current, newTaskError: 'Title is required.' }));
+        return;
+      }
+      update((current) => ({ ...current, newTaskSaving: true, newTaskError: '' }));
+      try {
+        await thingsAPI.apply({
+          op: 'add',
+          title,
+          notes: payload.notes?.trim() ?? '',
+          due_date: payload.dueDate ?? draft.dueDate,
+          list_id: draft.listId
+        });
+        update((current) => ({ ...current, newTaskDraft: null, newTaskSaving: false }));
+        await loadSelection(draft.selection, { force: true });
+        void thingsAPI
+          .counts()
+          .then(applyCountsResponse)
+          .catch(() => {
+            update((current) => ({
+              ...current,
+              error: 'Failed to update Things counts'
+            }));
+          });
+      } catch (error) {
+        update((current) => ({
+          ...current,
+          newTaskSaving: false,
+          newTaskError: error instanceof Error ? error.message : 'Failed to add task'
+        }));
+      }
+    },
     loadCounts: async (force: boolean = false) => {
       const cached = getCachedData<ThingsCountsResponse | Record<string, number>>(COUNTS_CACHE_KEY, {
         ttl: CACHE_TTL,
