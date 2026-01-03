@@ -35,7 +35,7 @@ type ThingsMetaCache = {
   projects: ThingsProject[];
 };
 
-const CACHE_TTL = 2 * 60 * 1000;
+const CACHE_TTL = 5 * 60 * 1000;
 const DIAGNOSTICS_TTL = 60 * 1000;
 const CACHE_VERSION = '1.0';
 const META_CACHE_KEY = 'things.meta';
@@ -176,17 +176,11 @@ function createThingsStore() {
     if (hasPreloaded) return;
     hasPreloaded = true;
     const baseSelections: ThingsSelection[] = [{ type: 'today' }, { type: 'upcoming' }];
-    const areaSelections = lastMeta.areas.map((area) => ({ type: 'area', id: area.id }) as ThingsSelection);
-    const projectSelections = lastMeta.projects.map(
-      (project) => ({ type: 'project', id: project.id }) as ThingsSelection
-    );
-    const allSelections = [...baseSelections, ...areaSelections, ...projectSelections].filter(
-      (selection) => !isSameSelection(selection, current)
-    );
+    const allSelections = baseSelections.filter((selection) => !isSameSelection(selection, current));
     void (async () => {
       for (const selection of allSelections) {
         await loadSelection(selection, { silent: true, notify: false });
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     })();
   };

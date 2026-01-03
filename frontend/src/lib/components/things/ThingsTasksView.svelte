@@ -332,7 +332,10 @@
   </div>
 
   {#if isLoading}
-    <div class="things-state">Loading tasks…</div>
+    <div class="things-state">
+      <List size={28} class="things-loading-icon" />
+      Loading tasks…
+    </div>
   {:else if error}
     <div class="things-error">{error}</div>
   {:else if tasks.length === 0}
@@ -576,6 +579,11 @@
 
   :global(.dark) .things-empty-logo {
     filter: invert(1);
+  }
+
+  .things-loading-icon {
+    margin-bottom: 0.6rem;
+    opacity: 0.7;
   }
 
   .things-error {
