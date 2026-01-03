@@ -1,12 +1,18 @@
 export type ThemeMode = "light" | "dark";
+export type ThemeSource = "user" | "weather" | "ai" | "system" | "unknown";
 
 /**
  * Apply a theme mode and optionally persist to localStorage.
  *
  * @param theme - Theme mode to apply.
  * @param persist - Whether to store the choice in localStorage.
+ * @param source - Optional source label for debugging.
  */
-export function applyThemeMode(theme: ThemeMode, persist: boolean): void {
+export function applyThemeMode(
+  theme: ThemeMode,
+  persist: boolean,
+  source?: ThemeSource
+): void {
   if (typeof document === "undefined") {
     return;
   }
@@ -15,15 +21,19 @@ export function applyThemeMode(theme: ThemeMode, persist: boolean): void {
     root.classList.add("dark");
     if (persist) {
       localStorage.setItem("theme", "dark");
+      localStorage.setItem("themeSource", source ?? "unknown");
     }
   } else {
     root.classList.remove("dark");
     if (persist) {
       localStorage.setItem("theme", "light");
+      localStorage.setItem("themeSource", source ?? "unknown");
     }
   }
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("themechange", { detail: { theme } }));
+    window.dispatchEvent(
+      new CustomEvent("themechange", { detail: { theme, source } })
+    );
   }
 }
 
@@ -31,9 +41,10 @@ export function applyThemeMode(theme: ThemeMode, persist: boolean): void {
  * Set and persist a theme mode.
  *
  * @param theme - Theme mode to apply.
+ * @param source - Optional source label for debugging.
  */
-export function setThemeMode(theme: ThemeMode): void {
-  applyThemeMode(theme, true);
+export function setThemeMode(theme: ThemeMode, source?: ThemeSource): void {
+  applyThemeMode(theme, true, source);
 }
 
 /**

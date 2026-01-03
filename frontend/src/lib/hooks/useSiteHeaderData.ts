@@ -1,6 +1,6 @@
 import { onDestroy, onMount } from 'svelte';
 import { writable } from 'svelte/store';
-import { applyThemeMode } from '$lib/utils/theme';
+import { setThemeMode } from '$lib/utils/theme';
 import { getCachedData, isCacheStale, revalidateInBackground, setCachedData } from '$lib/utils/cache';
 
 const locationCacheKey = 'location.live';
@@ -239,7 +239,7 @@ export function useSiteHeaderData() {
     setState({ weatherCode, weatherIsDay });
 
     if (weatherIsDay !== null) {
-      applyThemeMode(weatherIsDay === 1 ? 'light' : 'dark', false);
+      setThemeMode(weatherIsDay === 1 ? 'light' : 'dark', 'weather');
     }
   }
 
