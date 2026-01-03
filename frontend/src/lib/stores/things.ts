@@ -521,7 +521,13 @@ function createThingsStore() {
       if (!draft) return;
       const title = payload.title.trim();
       const listId = payload.listId ?? draft.listId;
-      const listName = payload.listName ?? draft.listName;
+      const listName =
+        payload.listName ??
+        draft.listName ??
+        (listId
+          ? state.projects.find((project) => project.id === listId)?.title ??
+            state.areas.find((area) => area.id === listId)?.title
+          : undefined);
       if (!listId) {
         update((current) => ({ ...current, newTaskError: 'Select a project or area.' }));
         return;
