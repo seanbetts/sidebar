@@ -9,6 +9,7 @@ import subprocess
 import threading
 import time
 import sys
+from urllib.parse import urlencode, quote
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib import request as urlrequest
@@ -24,6 +25,7 @@ THINGS_APP_NAME = os.getenv("THINGS_APP_NAME", "Things3")
 BACKEND_URL = os.getenv("THINGS_BACKEND_URL", "http://localhost:8001")
 BRIDGE_ID = os.getenv("THINGS_BRIDGE_ID", "")
 HEARTBEAT_INTERVAL = int(os.getenv("THINGS_BRIDGE_HEARTBEAT_SECONDS", "60"))
+THINGS_URL_TOKEN = os.getenv("THINGS_URL_TOKEN", "")
 
 
 def require_token(x_things_token: Optional[str] = Header(default=None)) -> None:
@@ -546,6 +548,37 @@ def _read_keychain_value(account: str) -> str:
         return ""
 
 
+def _get_things_url_token() -> str:
+    return THINGS_URL_TOKEN or _read_keychain_value("things-url-token")
+
+
+def _apply_via_url(payload: dict[str, Any]) -> bool:
+    token = _get_things_url_token()
+    if not token:
+        return False
+    op = payload.get("op")
+    todo_id = payload.get("id")
+    if not op or not todo_id:
+        return False
+    if op == "complete":
+        params = {"auth-token": token, "id": todo_id, "completed": "true"}
+    elif op in {"set_due", "defer"}:
+        deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
+        if not deadline:
+            return False
+        deadline_value = str(deadline)[:10]
+        params = {"auth-token": token, "id": todo_id, "deadline": deadline_value}
+    else:
+        return False
+    query = urlencode(params, quote_via=quote)
+    url = f"things:///update?{query}"
+    try:
+        subprocess.run(["open", url], check=True)
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
 def _get_bridge_token() -> str:
     return BRIDGE_TOKEN or _read_keychain_value("bridge-token")
 
@@ -570,6 +603,8 @@ async def get_list(scope: str, x_things_token: Optional[str] = Header(default=No
 @app.post("/apply")
 async def apply_operation(request: dict, x_things_token: Optional[str] = Header(default=None)) -> dict:
     require_token(x_things_token)
+    if _apply_via_url(request):
+        return {"status": "ok", "via": "url"}
     script = _build_apply_script(request)
     return _run_jxa(script)
 
