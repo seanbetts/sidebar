@@ -711,7 +711,8 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
       }} else if (area && area.exists()) {{
         todo.area = area;
       }}
-    }} else if ({list_name_value} !== null) {{
+    }}
+    if (!todo.project() && !todo.area() && {list_name_value} !== null) {{
       const projectByName = app.projects.byName({list_name_value});
       const areaByName = app.areas.byName({list_name_value});
       if (projectByName && projectByName.exists()) {{
@@ -809,10 +810,10 @@ def _apply_via_url(payload: dict[str, Any]) -> bool:
             params["notes"] = notes
         if deadline:
             params["when"] = str(deadline)[:10]
-        if list_id:
-            params["list-id"] = str(list_id)
-        elif list_name:
+        if list_name:
             params["list"] = str(list_name)
+        elif list_id:
+            params["list-id"] = str(list_id)
     else:
         return False
     query = urlencode(params, quote_via=quote)
