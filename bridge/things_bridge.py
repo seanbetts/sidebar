@@ -608,13 +608,8 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
       case "complete":
         todo.status = "completed";
         break;
-      case "set_due":
-        if ({deadline_value} === null) {{
-          throw new Error("due_date required");
-        }}
-        todo.dueDate = new Date({deadline_value});
-        break;
       case "defer":
+      case "set_due":
         if ({deadline_value} === null) {{
           throw new Error("due_date required");
         }}
@@ -659,7 +654,7 @@ def _apply_via_url(payload: dict[str, Any]) -> bool:
         if not deadline:
             return False
         deadline_value = str(deadline)[:10]
-        params = {"auth-token": token, "id": todo_id, "deadline": deadline_value}
+        params = {"auth-token": token, "id": todo_id, "when": deadline_value}
     elif op == "defer":
         deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
         if not deadline:

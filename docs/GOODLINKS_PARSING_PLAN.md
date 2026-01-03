@@ -198,6 +198,174 @@ Most pages require no special handling. A small minority benefit enormously from
 
 ---
 
+## Key Architectural Alignments with GoodLinks
+
+This implementation plan closely mirrors GoodLinks' proven architecture in these critical ways:
+
+### 1. **Two-Phase Rule Application**
+
+**GoodLinks Behavior**: Rules run both before and after Readability extraction.
+
+**Our Implementation**:
+- **Phase: pre** - Runs on raw HTML before Readability
+  - Use case: Structural overrides (wrapper, article selectors)
+  - Use case: Remove elements that confuse Readability
+  - Use case: Force JS rendering for specific sites
+- **Phase: post** - Runs on Readability's extracted HTML
+  - Use case: Clean up leftover junk
+  - Use case: Transform elements (retag, wrap, unwrap)
+  - Use case: Extract metadata overrides
+
+### 2. **Complete Rule Primitive Support**
+
+**GoodLinks Fields** → **Our YAML Schema**:
+- `a` (article root) → `selector_overrides.article`
+- `we` (wrapper element) → `selector_overrides.wrapper`
+- `e` (remove) → `remove: [...]`
+- `i` (include) → `include: [...]`
+- `ac` (actions) → `actions: [{op: ..., selector: ..., ...}]`
+- `m` (metadata) → `metadata: {author: {...}, published: {...}}`
+- `ea` (entire article) → Phase context
+- `d` (discard) → `discard: bool`
+
+**Supported Actions** (matching GoodLinks capability):
+- `retag` - Change element tag names
+- `wrap` - Wrap elements in containers
+- `unwrap` - Remove wrapper, keep children
+- `move` - Move elements to different parents
+- `remove_attrs` - Strip attributes
+- `replace_with_text` - Replace with text template
+
+### 3. **Host Normalization & Matching**
+
+**GoodLinks Approach**: MD5 hashing of normalized hosts + flexible matching.
+
+**Our Implementation**:
+```python
+def normalize_host(url):
+    host_raw = netloc.lower()          # "www.example.com"
+    host_nw = netloc.lstrip("www.")    # "example.com"
+    return host_raw, host_nw
+```
+
+**Trigger Options**:
+- `host.equals` - Exact match (raw)
+- `host.equals_nw` - Match without www
+- `host.ends_with` - Domain family matching
+
+This allows a single rule for `theguardian.com` to match both `www.theguardian.com` and `theguardian.com`.
+
+### 4. **Pure DOM Signature Rules**
+
+**GoodLinks Finding**: Many rules trigger on DOM patterns alone, not URLs.
+
+**Our Implementation**: Platform rules use only `dom` triggers:
+```yaml
+- id: swiper-carousel
+  phase: post
+  trigger:
+    dom:
+      any: [".swiper-slide-duplicate"]  # No host constraint
+  remove: [".swiper-slide-duplicate"]
+```
+
+This allows rules to work across **any site** using Swiper, Squarespace, WordPress, etc.
+
+### 5. **Rule Matching on Correct DOM**
+
+**Critical Detail**: Pre-rules match against raw DOM, post-rules against Readability output.
+
+**Our Implementation**:
+```python
+# Pre-phase: match on raw HTML
+pre_rules, context = rule_engine.match_rules(url, raw_html, phase='pre')
+
+# Post-phase: match on Readability's clean HTML
+post_rules, _ = rule_engine.match_rules(url, readability_html, phase='post')
+```
+
+This prevents false matches and ensures selectors work reliably.
+
+### 6. **Rule Logging & Debugging**
+
+**Our Addition**: Track which rules fired for every save.
+
+**Stored in metadata_ JSONB**:
+```json
+{
+  "matched_rules": {
+    "pre": ["cookie-banners", "wsj-paywall"],
+    "post": ["theguardian"]
+  },
+  "host_context": {
+    "host_raw": "www.theguardian.com",
+    "host_nw": "theguardian.com"
+  }
+}
+```
+
+This enables:
+- Debugging which rules fired
+- A/B testing rule changes
+- Rule effectiveness analytics
+- Continuous improvement
+
+### 7. **Image Format & Caption Preservation**
+
+**Requirement**: `[![alt](url)](url)` format with preserved captions.
+
+**Our Implementation**:
+```python
+class CustomMarkdownConverter(MarkdownConverter):
+    def convert_img(self, el, text, convert_as_inline):
+        return f'[![{alt}]({src})]({src})'
+
+    def convert_figure(self, el, text, convert_as_inline):
+        content = text
+        if figcaption:
+            content += f'\n\n*{caption_text}*'
+        return content
+```
+
+**Output**:
+```markdown
+[![Image description](https://example.com/image.jpg)](https://example.com/image.jpg)
+
+*Original caption from article*
+```
+
+This gives Claude both the image reference and contextual caption text.
+
+### 8. **Metadata Extraction Priority**
+
+**GoodLinks Behavior**: Rule overrides win over generic extraction.
+
+**Our Implementation**:
+```python
+# 1. Extract generic metadata
+meta = metadata.extract_metadata(html, url)
+
+# 2. Apply rule overrides (highest priority)
+meta.update(rule_metadata_overrides)
+```
+
+**Priority Order**:
+1. Rule overrides (`metadata:` in rules)
+2. JSON-LD structured data
+3. OpenGraph / Twitter meta tags
+4. Generic meta tags
+5. Fallback heuristics
+
+### What We've Improved Beyond GoodLinks
+
+1. **Explicit YAML Schema**: More readable than GoodLinks' compact JSON
+2. **Phase Labels**: Clear `pre`/`post` vs. implicit behavior
+3. **Rendering Control**: Per-rule JS rendering flags
+4. **Rich Frontmatter**: YAML frontmatter optimized for AI consumption
+5. **Rule Analytics**: Matched rules stored for continuous improvement
+
+---
+
 ## Target Architecture for SideBar
 
 ### Overview
@@ -207,23 +375,37 @@ URL
  ↓
 [Fetch HTML (requests)]
  ↓
-[JS Rendering? (Playwright)] ← Optional, detect if needed
+[JS Rendering? (Playwright)] ← Optional, per-rule or heuristic
  ↓
-[Pre-Readability DOM pass] ← Optional, for specific sites
+[Host Normalization (raw + no-www)]
+ ↓
+[PHASE 1: PRE-READABILITY RULES]
+  ├─ Match rules (host + DOM signature on raw HTML)
+  ├─ Apply structural overrides (wrapper, article selectors)
+  ├─ Remove interfering elements
+  └─ Log matched pre-rules
  ↓
 [Readability extraction (readability-lxml)]
  ↓
-[Rule engine: Host + DOM signature matching]
- ↓
-[Apply declarative DOM mutations]
+[PHASE 2: POST-READABILITY RULES]
+  ├─ Match rules (host + DOM signature on clean HTML)
+  ├─ Remove leftover junk
+  ├─ Transform elements (retag, wrap, unwrap)
+  ├─ Extract metadata overrides
+  └─ Log matched post-rules
  ↓
 [Metadata extraction & enrichment]
+  ├─ Rule overrides (highest priority)
+  ├─ JSON-LD structured data
+  ├─ OpenGraph / Twitter meta
+  ├─ Generic meta tags
+  └─ Fallback heuristics
  ↓
-[Markdown conversion (markdownify)]
+[Markdown conversion with custom image handler]
  ↓
 [YAML frontmatter assembly]
  ↓
-[Generate final content with frontmatter]
+[Store matched rules in metadata_ JSONB]
  ↓
 [WebsitesService.upsert_website()]
  ↓
@@ -408,27 +590,74 @@ author: {author}
        }
    ```
 
-6. **Implement `markdown.py`**:
+6. **Implement `markdown.py`** (with custom image handler):
    ```python
-   from markdownify import markdownify as md
+   from markdownify import MarkdownConverter
+   from lxml import html as lxml_html
+
+   class CustomMarkdownConverter(MarkdownConverter):
+       """
+       Custom markdown converter with proper image and caption handling.
+       """
+       def convert_img(self, el, text, convert_as_inline):
+           """
+           Convert images to [![alt](url)](url) format.
+
+           This allows images to be both displayed and clickable to full size.
+           """
+           alt = el.get('alt', '') or ''
+           src = el.get('src', '') or ''
+           title = el.get('title', '') or ''
+
+           if not src:
+               return ''
+
+           # Format: [![alt](src)](src)
+           # This makes images clickable to view full size
+           if title:
+               return f'[![{alt}]({src} "{title}")]({src})'
+           else:
+               return f'[![{alt}]({src})]({src})'
+
+       def convert_figure(self, el, text, convert_as_inline):
+           """
+           Convert <figure> elements with captions.
+
+           Output format:
+           [![alt](url)](url)
+
+           *Caption text*
+           """
+           # Process the figure's content normally
+           content = text
+
+           # Look for figcaption
+           figcaption = el.find('.//figcaption')
+           if figcaption is not None:
+               caption_text = figcaption.text_content().strip()
+               if caption_text:
+                   content += f'\n\n*{caption_text}*'
+
+           return content + '\n\n'
 
    def html_to_markdown(html: str) -> str:
        """
-       Convert HTML to clean markdown.
+       Convert HTML to clean markdown with custom image handling.
 
-       Custom configuration:
-       - Strip attributes from tags
-       - Convert images to ![alt](url) format
-       - Preserve heading hierarchy
-       - Remove scripts, styles, ads
+       Features:
+       - Images as [![alt](url)](url) for click-to-view
+       - Preserved figcaptions as italic text
+       - Clean heading hierarchy
+       - Stripped scripts, styles, ads
        """
-       return md(
-           html,
+       converter = CustomMarkdownConverter(
            heading_style="ATX",
            bullets="-",
            code_language="",
-           strip=['script', 'style', 'meta', 'link']
+           strip=['script', 'style', 'meta', 'link', 'noscript']
        )
+
+       return converter.convert(html)
    ```
 
 7. **Implement `frontmatter.py`**:
@@ -634,34 +863,149 @@ author: {author}
 
 **Tasks**:
 
-1. **Design Rule Schema** (`parsers/rules_schema.yaml`):
+1. **Design Rule Schema** (Aligned with GoodLinks Architecture):
+
+   **Rule Schema Fields** (matching GoodLinks primitives):
+
    ```yaml
-   # Example: Remove duplicate Swiper carousel slides
+   - id: string              # Unique rule identifier
+     phase: pre|post         # When to apply (pre or post Readability)
+     priority: int           # Higher = runs first
+
+     # Triggering (host OR dom OR both)
+     trigger:
+       host:
+         equals: "domain.com"        # Exact match (after normalization)
+         equals_nw: "domain.com"     # Match without www
+         ends_with: "domain.com"     # Match domain family
+       dom:
+         any: [".selector"]          # Match if ANY selector exists
+         all: [".selector"]          # Match if ALL selectors exist
+
+     # Rendering control (optional)
+     rendering:
+       js_required: bool             # Force JS rendering
+       js_never: bool                # Never use JS rendering
+       wait_for: ".selector"         # Wait for selector before continuing
+       timeout: int                  # Override default timeout (ms)
+
+     # Selector overrides (pre-Readability only)
+     selector_overrides:
+       wrapper: ".main-container"    # Wrapper element (GoodLinks 'we')
+       article: "article"            # Article root (GoodLinks 'a')
+
+     # Simple removals (both phases)
+     remove: [".selector"]           # Elements to remove (GoodLinks 'e')
+
+     # Force inclusions (both phases)
+     include: [".selector"]          # Force include (GoodLinks 'i')
+
+     # Complex transformations (both phases)
+     actions:                        # Transform actions (GoodLinks 'ac')
+       - op: retag                   # Change tag name
+         selector: ".class"
+         tag: "figcaption"
+
+       - op: wrap                    # Wrap in container
+         selector: "img"
+         wrapper_tag: "figure"
+
+       - op: unwrap                  # Remove wrapper, keep children
+         selector: ".container"
+
+       - op: move                    # Move to different parent
+         selector: ".child"
+         target: ".new-parent"
+
+       - op: remove_attrs            # Strip attributes
+         selector: "div"
+         attrs: ["style", "class"]
+
+       - op: replace_with_text       # Replace with text template
+         selector: "iframe"
+         template: "[Embedded: {src}]"
+
+     # Metadata extraction overrides (both phases)
+     metadata:                       # Metadata overrides (GoodLinks 'm')
+       author:
+         selector: ".byline"
+         attr: null                  # Text content
+       published:
+         selector: "time"
+         attr: "datetime"            # Attribute value
+       title:
+         selector: "h1.title"
+
+     # Special flags
+     discard: bool                   # Discard extraction entirely (GoodLinks 'd')
+   ```
+
+   **Example: Platform Rule (DOM Signature, Post-Readability)**
+   ```yaml
    - id: swiper-carousel
+     phase: post
      priority: 100
      trigger:
        dom:
-         any:
-           - ".swiper-slide-duplicate"
-     actions:
-       remove:
-         - ".swiper-slide-duplicate"
+         any: [".swiper-slide-duplicate"]
+     remove: [".swiper-slide-duplicate"]
+   ```
 
-   # Example: Guardian custom handling
+   **Example: Host Rule with Full Features (Pre + Post)**
+   ```yaml
    - id: theguardian
+     phase: post
      priority: 90
      trigger:
        host:
-         equals: "www.theguardian.com"
+         equals_nw: "theguardian.com"  # Matches www.theguardian.com too
+     remove:
+       - "aside"
+       - ".submeta"
+       - "[data-component='nav3']"
      actions:
-       remove:
-         - ".related-links"
-         - "aside"
-       transform:
-         - selector: "figure img"
-           wrap: "figure"
-       metadata:
-         author_selector: ".dcr-byline a"
+       - op: retag
+         selector: ".dcr-immersive-article-header__headline"
+         tag: "h1"
+       - op: wrap
+         selector: "figure img"
+         wrapper_tag: "figure"
+     metadata:
+       author:
+         selector: "[rel='author']"
+       published:
+         selector: "time"
+         attr: "datetime"
+   ```
+
+   **Example: Pre-Readability Structural Rule**
+   ```yaml
+   - id: wsj-paywall
+     phase: pre
+     priority: 90
+     trigger:
+       host:
+         ends_with: "wsj.com"
+     selector_overrides:
+       wrapper: "#main-content"
+       article: "[itemprop='articleBody']"
+     remove:
+       - ".snippet"
+       - ".wsj-snippet-login"
+   ```
+
+   **Example: JS Rendering Rule**
+   ```yaml
+   - id: react-docs
+     phase: pre
+     priority: 85
+     trigger:
+       host:
+         equals: "react.dev"
+     rendering:
+       js_required: true
+       wait_for: ".main-content"
+       timeout: 45000
    ```
 
 2. **Create Rules Storage** (`parsers/rules/`):
@@ -676,91 +1020,296 @@ author: {author}
 
 3. **Implement Rule Engine** (`parsers/rule_engine.py`):
    ```python
-   from typing import List, Dict, Any
+   from typing import List, Dict, Any, Tuple, Optional
    from lxml import html as lxml_html
+   from lxml.etree import Element
+   from urllib.parse import urlparse
+   from pathlib import Path
    import yaml
 
    class RuleEngine:
        def __init__(self, rules_dir: Path):
            self.rules = self._load_rules(rules_dir)
+           self.pre_rules = [r for r in self.rules if r.get('phase') == 'pre']
+           self.post_rules = [r for r in self.rules if r.get('phase') == 'post']
 
        def _load_rules(self, rules_dir: Path) -> List[Dict]:
            """Load all YAML rule files."""
            rules = []
            for file in rules_dir.glob("*.yaml"):
                with open(file) as f:
-                   rules.extend(yaml.safe_load(f))
+                   loaded = yaml.safe_load(f) or []
+                   rules.extend(loaded)
+           # Sort by priority (higher first)
            return sorted(rules, key=lambda r: r.get('priority', 50), reverse=True)
 
-       def match_rules(self, url: str, html: str) -> List[Dict]:
-           """Find all matching rules for URL and HTML."""
+       def normalize_host(self, url: str) -> Tuple[str, str]:
+           """
+           Normalize host for matching.
+
+           Returns:
+               (host_raw, host_nw)  # raw and no-www versions
+           """
+           netloc = urlparse(url).netloc.lower()
+           host_raw = netloc
+           host_nw = netloc.lstrip("www.")
+           return host_raw, host_nw
+
+       def match_rules(
+           self,
+           url: str,
+           html: str,
+           phase: str
+       ) -> Tuple[List[Dict], Dict[str, str]]:
+           """
+           Find all matching rules for URL and HTML in specified phase.
+
+           Args:
+               url: The URL being parsed
+               html: The HTML content (raw for pre, Readability output for post)
+               phase: 'pre' or 'post'
+
+           Returns:
+               (matched_rules, context)
+               context = {host_raw, host_nw} for debugging
+           """
            tree = lxml_html.fromstring(html)
-           domain = urlparse(url).netloc
+           host_raw, host_nw = self.normalize_host(url)
+
+           context = {
+               "host_raw": host_raw,
+               "host_nw": host_nw
+           }
+
+           # Filter rules by phase
+           rules = self.pre_rules if phase == 'pre' else self.post_rules
 
            matched = []
-           for rule in self.rules:
-               if self._rule_matches(rule, domain, tree):
+           for rule in rules:
+               if self._rule_matches(rule, host_raw, host_nw, tree):
                    matched.append(rule)
 
-           return matched
+           return matched, context
 
-       def _rule_matches(self, rule: Dict, domain: str, tree) -> bool:
+       def _rule_matches(
+           self,
+           rule: Dict,
+           host_raw: str,
+           host_nw: str,
+           tree: Element
+       ) -> bool:
            """Check if rule triggers match."""
            trigger = rule.get('trigger', {})
 
+           # If no triggers specified, never match
+           if not trigger:
+               return False
+
+           host_match = False
+           dom_match = False
+
            # Host-based trigger
            if 'host' in trigger:
-               if trigger['host'].get('equals') == domain:
-                   return True
-               if domain.endswith(trigger['host'].get('ends_with', '')):
-                   return True
+               host_config = trigger['host']
+
+               # Exact match (raw)
+               if 'equals' in host_config:
+                   if host_config['equals'] == host_raw:
+                       host_match = True
+
+               # Exact match (no-www)
+               if 'equals_nw' in host_config:
+                   if host_config['equals_nw'] == host_nw:
+                       host_match = True
+
+               # Domain family
+               if 'ends_with' in host_config:
+                   if host_nw.endswith(host_config['ends_with']):
+                       host_match = True
 
            # DOM-based trigger
            if 'dom' in trigger:
-               if 'any' in trigger['dom']:
-                   for selector in trigger['dom']['any']:
-                       if tree.cssselect(selector):
-                           return True
-               if 'all' in trigger['dom']:
-                   if all(tree.cssselect(sel) for sel in trigger['dom']['all']):
-                       return True
+               dom_config = trigger['dom']
 
-           return False
+               # Match if ANY selector exists
+               if 'any' in dom_config:
+                   for selector in dom_config['any']:
+                       try:
+                           if tree.cssselect(selector):
+                               dom_match = True
+                               break
+                       except Exception:
+                           continue
 
-       def apply_rules(self, html: str, rules: List[Dict]) -> str:
-           """Apply matched rules to HTML."""
+               # Match if ALL selectors exist
+               if 'all' in dom_config:
+                   try:
+                       if all(tree.cssselect(sel) for sel in dom_config['all']):
+                           dom_match = True
+                   except Exception:
+                       pass
+
+           # Logic: If both host and dom triggers specified, both must match
+           # If only one specified, that one must match
+           has_host_trigger = 'host' in trigger
+           has_dom_trigger = 'dom' in trigger
+
+           if has_host_trigger and has_dom_trigger:
+               return host_match and dom_match
+           elif has_host_trigger:
+               return host_match
+           elif has_dom_trigger:
+               return dom_match
+           else:
+               return False
+
+       def apply_rules(
+           self,
+           html: str,
+           rules: List[Dict],
+           phase: str
+       ) -> Tuple[str, Dict[str, Any]]:
+           """
+           Apply matched rules to HTML.
+
+           Returns:
+               (modified_html, extracted_metadata)
+           """
            tree = lxml_html.fromstring(html)
+           metadata_overrides = {}
 
            for rule in rules:
-               actions = rule.get('actions', {})
+               # Check for discard flag
+               if rule.get('discard'):
+                   # Special handling: return empty content
+                   return "", {"discarded": True}
 
-               # Remove elements
-               if 'remove' in actions:
-                   for selector in actions['remove']:
-                       for elem in tree.cssselect(selector):
-                           elem.getparent().remove(elem)
+               # Selector overrides (pre-phase only)
+               if phase == 'pre' and 'selector_overrides' in rule:
+                   overrides = rule['selector_overrides']
+                   # Store for Readability configuration
+                   if 'wrapper' in overrides:
+                       metadata_overrides['wrapper_selector'] = overrides['wrapper']
+                   if 'article' in overrides:
+                       metadata_overrides['article_selector'] = overrides['article']
 
-               # Transform elements
-               if 'transform' in actions:
-                   for transform in actions['transform']:
-                       self._apply_transform(tree, transform)
+               # Simple removals
+               if 'remove' in rule:
+                   for selector in rule['remove']:
+                       try:
+                           for elem in tree.cssselect(selector):
+                               parent = elem.getparent()
+                               if parent is not None:
+                                   parent.remove(elem)
+                       except Exception:
+                           continue
 
-           return lxml_html.tostring(tree, encoding='unicode')
+               # Force inclusions
+               if 'include' in rule:
+                   for selector in rule['include']:
+                       try:
+                           for elem in tree.cssselect(selector):
+                               # Mark for Readability to preserve
+                               elem.set('data-include', 'true')
+                       except Exception:
+                           continue
 
-       def _apply_transform(self, tree, transform: Dict):
-           """Apply individual transform (wrap, unwrap, retag)."""
-           selector = transform.get('selector')
-           elements = tree.cssselect(selector)
+               # Complex actions
+               if 'actions' in rule:
+                   for action in rule['actions']:
+                       self._apply_action(tree, action)
 
-           if 'wrap' in transform:
-               # Wrap elements in new tag
-               tag = transform['wrap']
+               # Metadata extraction overrides
+               if 'metadata' in rule:
+                   for field, config in rule['metadata'].items():
+                       try:
+                           selector = config.get('selector')
+                           attr = config.get('attr')
+
+                           elem = tree.cssselect(selector)
+                           if elem:
+                               value = elem[0].get(attr) if attr else elem[0].text_content()
+                               metadata_overrides[field] = value.strip()
+                       except Exception:
+                           continue
+
+           return lxml_html.tostring(tree, encoding='unicode'), metadata_overrides
+
+       def _apply_action(self, tree: Element, action: Dict):
+           """Apply individual transform action."""
+           op = action.get('op')
+           selector = action.get('selector')
+
+           if not op or not selector:
+               return
+
+           try:
+               elements = tree.cssselect(selector)
+           except Exception:
+               return
+
+           if op == 'retag':
+               # Change tag name
+               new_tag = action.get('tag')
                for elem in elements:
-                   wrapper = lxml_html.Element(tag)
-                   elem.addprevious(wrapper)
-                   wrapper.append(elem)
+                   elem.tag = new_tag
 
-           # TODO: Add unwrap, retag, move, etc.
+           elif op == 'wrap':
+               # Wrap in container
+               wrapper_tag = action.get('wrapper_tag')
+               for elem in elements:
+                   wrapper = lxml_html.Element(wrapper_tag)
+                   parent = elem.getparent()
+                   if parent is not None:
+                       parent.insert(parent.index(elem), wrapper)
+                       parent.remove(elem)
+                       wrapper.append(elem)
+
+           elif op == 'unwrap':
+               # Remove wrapper, keep children
+               for elem in elements:
+                   parent = elem.getparent()
+                   if parent is not None:
+                       index = parent.index(elem)
+                       for child in elem:
+                           parent.insert(index, child)
+                           index += 1
+                       parent.remove(elem)
+
+           elif op == 'move':
+               # Move to different parent
+               target_selector = action.get('target')
+               target_elements = tree.cssselect(target_selector)
+               if target_elements:
+                   target = target_elements[0]
+                   for elem in elements:
+                       parent = elem.getparent()
+                       if parent is not None:
+                           parent.remove(elem)
+                           target.append(elem)
+
+           elif op == 'remove_attrs':
+               # Strip attributes
+               attrs = action.get('attrs', [])
+               for elem in elements:
+                   for attr in attrs:
+                       if attr in elem.attrib:
+                           del elem.attrib[attr]
+
+           elif op == 'replace_with_text':
+               # Replace with text template
+               template = action.get('template', '')
+               for elem in elements:
+                   # Extract attributes for template
+                   text = template
+                   for key, value in elem.attrib.items():
+                       text = text.replace(f'{{{key}}}', value)
+
+                   parent = elem.getparent()
+                   if parent is not None:
+                       text_elem = lxml_html.Element('p')
+                       text_elem.text = text
+                       parent.replace(elem, text_elem)
    ```
 
 4. **Integrate into Pipeline** (`save_url.py`):
@@ -771,76 +1320,251 @@ author: {author}
    rule_engine = RuleEngine(Path(__file__).parent / "parsers" / "rules")
 
    def save_url_local(url: str, user_id: str) -> Dict[str, Any]:
+       # 1. Fetch HTML
        html, final_url = fetcher.fetch_html(url)
 
-       # Apply rules BEFORE Readability
-       matched_rules = rule_engine.match_rules(final_url, html)
-       if matched_rules:
-           html = rule_engine.apply_rules(html, matched_rules)
+       # Track matched rules for debugging
+       matched_rule_ids = {"pre": [], "post": []}
+       all_metadata_overrides = {}
 
-       # Continue with Readability extraction
+       # 2. PHASE 1: PRE-READABILITY RULES
+       pre_rules, context = rule_engine.match_rules(final_url, html, phase='pre')
+       matched_rule_ids['pre'] = [r['id'] for r in pre_rules]
+
+       if pre_rules:
+           html, pre_metadata = rule_engine.apply_rules(html, pre_rules, phase='pre')
+           all_metadata_overrides.update(pre_metadata)
+
+       # 3. Readability extraction
        article = readability.extract_article(html, final_url)
-       # ...
+
+       # 4. PHASE 2: POST-READABILITY RULES
+       post_rules, _ = rule_engine.match_rules(
+           final_url,
+           article["content"],
+           phase='post'
+       )
+       matched_rule_ids['post'] = [r['id'] for r in post_rules]
+
+       if post_rules:
+           article["content"], post_metadata = rule_engine.apply_rules(
+               article["content"],
+               post_rules,
+               phase='post'
+           )
+           all_metadata_overrides.update(post_metadata)
+
+       # 5. Extract metadata (rule overrides take priority)
+       meta = metadata.extract_metadata(html, final_url)
+       meta.update(all_metadata_overrides)  # Rule overrides win
+
+       # 6. Convert to markdown
+       md_content = markdown.html_to_markdown(article["content"])
+
+       # 7. Calculate word count
+       word_count = len(md_content.split())
+
+       # 8. Generate frontmatter
+       fm_data = {
+           "source": final_url,
+           "title": article["title"] or meta.get("title"),
+           "author": meta.get("author"),
+           "published_date": meta.get("published_date"),
+           "domain": context["host_nw"],
+           "word_count": word_count,
+           "tags": [],  # TODO: Auto-tagging in Phase 4
+           "saved_at": datetime.now(timezone.utc).isoformat()
+       }
+       fm = frontmatter.generate_frontmatter(fm_data)
+
+       # 9. Combine frontmatter + content
+       full_content = fm + "\n" + md_content
+
+       # 10. Save to database
+       db = SessionLocal()
+       set_session_user_id(db, user_id)
+       try:
+           website = WebsitesService.upsert_website(
+               db,
+               user_id,
+               url=normalize_url(final_url),
+               url_full=final_url,
+               title=fm_data["title"],
+               content=full_content,  # Now includes frontmatter
+               source=final_url,
+               saved_at=datetime.now(timezone.utc),
+               published_at=parse_published_at(fm_data.get("published_date")),
+               pinned=False,
+               archived=False,
+           )
+
+           # Store matched rules in metadata for debugging/analysis
+           website.metadata_['matched_rules'] = matched_rule_ids
+           website.metadata_['host_context'] = context
+           db.commit()
+
+           return {
+               "id": str(website.id),
+               "title": website.title,
+               "url": website.url,
+               "domain": website.domain,
+               "word_count": word_count,
+               "matched_rules": matched_rule_ids  # Return for logging
+           }
+       finally:
+           db.close()
    ```
 
-5. **Populate Initial Rules**:
+5. **Populate Initial Rules** (Updated with phase and proper schema):
 
-   **`common.yaml`**:
+   **`common.yaml`** (Platform rules - DOM signatures only):
    ```yaml
+   # Post-Readability cleanup rules for common platforms
+
    - id: swiper-carousel
+     phase: post
      priority: 100
      trigger:
        dom:
          any: [".swiper-slide-duplicate"]
-     actions:
-       remove: [".swiper-slide-duplicate"]
+     remove: [".swiper-slide-duplicate"]
 
    - id: squarespace
+     phase: post
      priority: 95
      trigger:
        dom:
          any: [".sqs-block"]
-     actions:
-       remove: [".sqs-announcement-bar", ".sqs-cookie-banner"]
+     remove:
+       - ".sqs-announcement-bar"
+       - ".sqs-cookie-banner"
+       - "[data-test='sqs-blocks-newsletter-form']"
 
-   - id: medium
+   - id: cookie-banners
+     phase: pre
      priority: 95
      trigger:
        dom:
-         any: [".metabar", "article"]
-       host:
-         ends_with: "medium.com"
-     actions:
-       remove: [".metabar", "aside", ".pw-responses"]
+         any:
+           - "[class*='cookie-banner']"
+           - "#onetrust-consent-sdk"
+     remove:
+       - "[class*='cookie-banner']"
+       - "#onetrust-consent-sdk"
+       - "[id*='cookie-notice']"
+
+   - id: chat-widgets
+     phase: pre
+     priority: 90
+     trigger:
+       dom:
+         any:
+           - "#intercom-container"
+           - "[id*='drift-widget']"
+     remove:
+       - "#intercom-container"
+       - "[id*='drift-widget']"
+       - ".crisp-client"
    ```
 
-   **`news.yaml`**:
+   **`news.yaml`** (Host-specific rules):
    ```yaml
+   # News sites with specific handling
+
    - id: theguardian
+     phase: post
      priority: 90
      trigger:
        host:
-         equals: "www.theguardian.com"
+         equals_nw: "theguardian.com"
+     remove:
+       - "aside"
+       - ".submeta"
+       - "[data-component='nav3']"
      actions:
-       remove:
-         - "aside"
-         - ".submeta"
-         - "[data-component='nav3']"
-       metadata:
-         author_selector: "[rel='author']"
+       - op: retag
+         selector: ".dcr-immersive-article-header__headline"
+         tag: "h1"
+     metadata:
+       author:
+         selector: "[rel='author']"
+       published:
+         selector: "time"
+         attr: "datetime"
 
    - id: nytimes
+     phase: post
      priority: 90
      trigger:
        host:
          ends_with: "nytimes.com"
-     actions:
-       remove:
-         - ".ad"
-         - "#story-footer"
-         - ".supplemental"
-       metadata:
-         author_selector: "[itemprop='author']"
+     remove:
+       - ".ad"
+       - "#story-footer"
+       - ".supplemental"
+       - "[data-testid='photoviewer-wrapper']"
+     metadata:
+       author:
+         selector: "[itemprop='author']"
+       published:
+         selector: "time"
+         attr: "datetime"
+
+   - id: wsj
+     phase: pre
+     priority: 90
+     trigger:
+       host:
+         ends_with: "wsj.com"
+     selector_overrides:
+       wrapper: "#main-content"
+       article: "[itemprop='articleBody']"
+     remove:
+       - ".snippet"
+       - ".wsj-snippet-login"
+   ```
+
+   **`technical.yaml`** (Dev/docs sites):
+   ```yaml
+   # Technical and documentation sites
+
+   - id: medium
+     phase: post
+     priority: 95
+     trigger:
+       dom:
+         any: [".metabar", "[data-test='post-sidebar']"]
+     remove:
+       - ".metabar"
+       - "aside"
+       - ".pw-responses"
+       - "[data-test='post-sidebar']"
+     metadata:
+       author:
+         selector: "a[rel='author']"
+
+   - id: devto
+     phase: post
+     priority: 90
+     trigger:
+       host:
+         equals: "dev.to"
+     remove:
+       - ".crayons-article__aside"
+       - "#comments-container"
+     metadata:
+       author:
+         selector: ".crayons-article__header__meta a"
+
+   - id: react-docs-js-required
+     phase: pre
+     priority: 85
+     trigger:
+       host:
+         equals: "react.dev"
+     rendering:
+       js_required: true
+       wait_for: ".main-content"
    ```
 
 **Testing**:

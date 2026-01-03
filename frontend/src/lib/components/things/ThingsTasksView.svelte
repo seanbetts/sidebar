@@ -345,7 +345,7 @@
 
   async function handleSetDueToday(task: ThingsTask) {
     const dateValue = formatDateKey(new Date());
-    await runTaskUpdate(task.id, () => thingsStore.setDueDate(task.id, dateValue, 'set_due'));
+    await runTaskUpdate(task.id, () => thingsStore.setDueDate(task.id, dateValue, 'defer'));
   }
 
   async function runTaskUpdate(taskId: string, action: () => Promise<void>) {
