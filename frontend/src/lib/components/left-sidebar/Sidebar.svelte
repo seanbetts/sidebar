@@ -5,6 +5,7 @@
   import { chatStore } from '$lib/stores/chat';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
   import { treeStore } from '$lib/stores/tree';
+  import { thingsStore } from '$lib/stores/things';
   import { websitesStore } from '$lib/stores/websites';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { ingestionStore } from '$lib/stores/ingestion';
