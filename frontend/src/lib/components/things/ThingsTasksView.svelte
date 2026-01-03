@@ -46,6 +46,7 @@
   let areas: ThingsArea[] = [];
   let projects: ThingsProject[] = [];
   let isLoading = false;
+  let searchPending = false;
   let error = '';
   let sections: TaskSection[] = [];
   let totalCount = 0;
@@ -71,6 +72,7 @@
     projects = state.projects;
     selection = state.selection;
     isLoading = state.isLoading;
+    searchPending = state.searchPending;
     error = state.error;
     selectionType = state.selection.type;
     const projectIds = new Set(projects.map((project) => project.id));
@@ -444,7 +446,7 @@
     {/if}
   </div>
 
-  {#if isLoading}
+  {#if isLoading || (selectionType === 'search' && searchPending)}
     <div class="things-state">
       {#if selectionType === 'search'}
         <Search size={28} class="things-loading-icon" />
