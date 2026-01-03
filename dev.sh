@@ -171,13 +171,13 @@ start_ingestion_worker() {
 }
 
 start_things_bridge() {
+  ensure_port_available 8787 things_bridge
   if [[ -f "${THINGS_BRIDGE_PLIST}" ]]; then
     echo "Starting Things bridge via launchctl..."
     launchctl bootstrap "gui/$UID" "${THINGS_BRIDGE_PLIST}" >/dev/null 2>&1 || true
     launchctl kickstart -k "gui/$UID/${THINGS_BRIDGE_LABEL}" >/dev/null 2>&1 || true
     return
   fi
-  ensure_port_available 8787 things_bridge
   echo "Starting Things bridge..."
   (env THINGS_BACKEND_URL="${THINGS_BACKEND_URL:-http://localhost:8001}" python bridge/things_bridge.py) >"${THINGS_BRIDGE_LOG}" 2>&1 &
   echo $! >"${THINGS_BRIDGE_PID}"
@@ -221,6 +221,18 @@ stop_things_bridge() {
     launchctl bootout "gui/$UID/${THINGS_BRIDGE_LABEL}" >/dev/null 2>&1 || true
   fi
   stop_service "${THINGS_BRIDGE_PID}" "Things bridge"
+  if port_in_use 8787; then
+    local pid
+    local command
+    pid=$(port_pid 8787)
+    if [[ -n "${pid}" ]]; then
+      command=$(pid_command "${pid}")
+      if is_things_bridge_process "${command}"; then
+        echo "Cleaning up stale Things bridge process on port 8787 (PID ${pid})..."
+        stop_pid "${pid}"
+      fi
+    fi
+  fi
 }
 
 cleanup_services() {
