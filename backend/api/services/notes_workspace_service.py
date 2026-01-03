@@ -6,6 +6,7 @@ from pathlib import Path
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.note import Note
 from api.services.notes_service import NotesService, NoteNotFoundError
@@ -137,6 +138,7 @@ class NotesWorkspaceService:
             if folder == old_path or folder.startswith(f"{old_path}/"):
                 updated_folder = folder.replace(old_path, new_folder, 1)
                 note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
+                flag_modified(note, "metadata_")
                 note.updated_at = datetime.now(timezone.utc)
         db.commit()
         return {"success": True, "newPath": f"folder:{new_folder}"}
@@ -169,6 +171,7 @@ class NotesWorkspaceService:
             if folder == old_path or folder.startswith(f"{old_path}/"):
                 updated_folder = folder.replace(old_path, new_folder, 1)
                 note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
+                flag_modified(note, "metadata_")
                 note.updated_at = datetime.now(timezone.utc)
         db.commit()
         return {"success": True, "newPath": f"folder:{new_folder}"}
