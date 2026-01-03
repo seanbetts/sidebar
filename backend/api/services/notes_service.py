@@ -8,6 +8,7 @@ from typing import Iterable, Optional
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm.exc import ObjectDeletedError
 
@@ -272,6 +273,7 @@ class NotesService:
             raise NoteNotFoundError(f"Note not found: {note_id}")
 
         note.metadata_ = {**(note.metadata_ or {}), "folder": folder}
+        flag_modified(note, "metadata_")
         note.updated_at = datetime.now(timezone.utc)
         db.commit()
         return note
@@ -331,6 +333,7 @@ class NotesService:
         else:
             metadata.pop("pinned_order", None)
         note.metadata_ = metadata
+        flag_modified(note, "metadata_")
         note.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(note)
@@ -360,6 +363,7 @@ class NotesService:
             metadata["pinned"] = True
             metadata["pinned_order"] = order_map.get(note.id)
             note.metadata_ = metadata
+            flag_modified(note, "metadata_")
             note.updated_at = datetime.now(timezone.utc)
         db.commit()
 
