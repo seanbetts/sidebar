@@ -66,6 +66,8 @@ function createThingsStore() {
   let syncNoticeTimer: ReturnType<typeof setTimeout> | null = null;
   let diagnosticsLoadedAt = 0;
   let diagnosticsInFlight: Promise<void> | null = null;
+  let searchInFlight: Promise<void> | null = null;
+  let pendingSearchQuery: string | null = null;
   const selectionInFlight = new Map<string, Promise<void>>();
 
   const setSyncNotice = (message: string) => {
@@ -511,7 +513,20 @@ function createThingsStore() {
       if (!trimmed) {
         return loadSelection(lastNonSearchSelection);
       }
-      return loadSelection({ type: 'search', query: trimmed });
+      pendingSearchQuery = trimmed;
+      if (searchInFlight) {
+        return searchInFlight;
+      }
+      searchInFlight = (async () => {
+        while (pendingSearchQuery) {
+          const nextQuery = pendingSearchQuery;
+          pendingSearchQuery = null;
+          await loadSelection({ type: 'search', query: nextQuery }, { force: true });
+        }
+      })().finally(() => {
+        searchInFlight = null;
+      });
+      return searchInFlight;
     },
     clearSearch: () => loadSelection(lastNonSearchSelection),
     completeTask: async (taskId: string) => {
