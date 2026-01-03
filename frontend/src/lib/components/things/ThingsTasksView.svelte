@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { thingsStore } from '$lib/stores/things';
+  import { onDestroy, onMount } from 'svelte';
+  import { thingsStore, type ThingsSelection } from '$lib/stores/things';
   import type { ThingsArea, ThingsProject, ThingsTask } from '$lib/types/things';
   import { Check, CalendarCheck, CalendarClock, Inbox, Layers, List, Repeat } from 'lucide-svelte';
 
@@ -22,6 +23,9 @@
   let projectTitleById = new Map<string, string>();
   let areaTitleById = new Map<string, string>();
   let selectionType: ThingsTaskViewType = 'today';
+  let selection: ThingsSelection = { type: 'today' };
+  const completing = new Set<string>();
+  let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project';
 
@@ -32,6 +36,7 @@
     tasks = state.tasks;
     areas = state.areas;
     projects = state.projects;
+    selection = state.selection;
     isLoading = state.isLoading;
     error = state.error;
     selectionType = state.selection.type;
@@ -266,8 +271,39 @@
   }
 
   async function handleComplete(taskId: string) {
-    await thingsStore.completeTask(taskId);
+    if (completing.has(taskId)) return;
+    completing.add(taskId);
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    try {
+      await thingsStore.completeTask(taskId);
+    } finally {
+      completing.delete(taskId);
+    }
   }
+
+  const refreshTasks = () => {
+    thingsStore.load(selection, { force: true, silent: true });
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      refreshTasks();
+    }
+  };
+
+  onMount(() => {
+    refreshTimer = setInterval(refreshTasks, 60000);
+    window.addEventListener('focus', refreshTasks);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  });
+
+  onDestroy(() => {
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+    }
+    window.removeEventListener('focus', refreshTasks);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  });
 </script>
 
 <div class="things-view">
@@ -309,14 +345,20 @@
           {/if}
           <ul class="things-list">
             {#each section.tasks as task}
-              <li class="things-task">
+              <li class="things-task" class:completing={completing.has(task.id)}>
                 <div class="task-left">
                   {#if task.repeatTemplate}
                     <span class="repeat-badge" aria-label="Repeating task">
                       <Repeat size={14} />
                     </span>
                   {:else}
-                    <button class="check" onclick={() => handleComplete(task.id)} aria-label="Complete task">
+                    <button
+                      class="check"
+                      class:completing={completing.has(task.id)}
+                      onclick={() => handleComplete(task.id)}
+                      aria-label="Complete task"
+                      disabled={completing.has(task.id)}
+                    >
                       <Check size={14} />
                     </button>
                   {/if}
@@ -414,6 +456,14 @@
     border: 1px solid var(--color-border);
     border-radius: 0.75rem;
     background: var(--color-card);
+    transition:
+      opacity 160ms ease,
+      transform 160ms ease;
+  }
+
+  .things-task.completing {
+    opacity: 0.5;
+    transform: translateY(-2px) scale(0.995);
   }
 
   .task-left {
@@ -441,11 +491,21 @@
     background: transparent;
     color: var(--color-muted-foreground);
     cursor: pointer;
+    transition:
+      border-color 160ms ease,
+      color 160ms ease,
+      background 160ms ease;
   }
 
   .check:hover {
     color: var(--color-foreground);
     border-color: var(--color-foreground);
+  }
+
+  .check.completing {
+    background: var(--color-sidebar-accent);
+    border-color: transparent;
+    color: var(--color-foreground);
   }
 
   .repeat-badge {
