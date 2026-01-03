@@ -731,6 +731,78 @@ function createThingsStore() {
         };
       });
     },
+    renameTask: async (taskId: string, title: string) => {
+      const nextTitle = title.trim();
+      if (!nextTitle) {
+        update((state) => ({ ...state, error: 'Title is required' }));
+        return;
+      }
+      await thingsAPI.apply({ op: 'rename', id: taskId, title: nextTitle });
+      update((state) => {
+        const nextTasks = state.tasks.map((task) =>
+          task.id === taskId ? { ...task, title: nextTitle } : task
+        );
+        setCachedData(tasksCacheKey(state.selection), nextTasks, {
+          ttl: CACHE_TTL,
+          version: CACHE_VERSION
+        });
+        return { ...state, tasks: nextTasks };
+      });
+    },
+    updateNotes: async (taskId: string, notes: string) => {
+      await thingsAPI.apply({ op: 'notes', id: taskId, notes });
+      update((state) => {
+        const nextTasks = state.tasks.map((task) =>
+          task.id === taskId ? { ...task, notes } : task
+        );
+        setCachedData(tasksCacheKey(state.selection), nextTasks, {
+          ttl: CACHE_TTL,
+          version: CACHE_VERSION
+        });
+        return { ...state, tasks: nextTasks };
+      });
+    },
+    moveTask: async (taskId: string, listId: string, listName?: string) => {
+      await thingsAPI.apply({ op: 'move', id: taskId, list_id: listId, list_name: listName });
+      const state = get({ subscribe });
+      void loadSelection(state.selection, { force: true, silent: true, notify: false });
+      if (state.selection.type !== 'today') {
+        void loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
+      }
+      if (state.selection.type !== 'upcoming') {
+        void loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
+      }
+      void thingsAPI
+        .counts()
+        .then(applyCountsResponse)
+        .catch(() => {
+          update((current) => ({
+            ...current,
+            error: 'Failed to update Things counts'
+          }));
+        });
+    },
+    trashTask: async (taskId: string) => {
+      await thingsAPI.apply({ op: 'trash', id: taskId });
+      update((state) => {
+        const nextTasks = state.tasks.filter((task) => task.id !== taskId);
+        const key = selectionKey(state.selection);
+        setCachedData(tasksCacheKey(state.selection), nextTasks, {
+          ttl: CACHE_TTL,
+          version: CACHE_VERSION
+        });
+        const nextCounts = {
+          ...state.counts,
+          [key]: Math.max((state.counts[key] ?? nextTasks.length) - 1, 0)
+        };
+        return {
+          ...state,
+          tasks: nextTasks,
+          counts: nextCounts,
+          todayCount: state.selection.type === 'today' ? nextTasks.length : state.todayCount
+        };
+      });
+    },
     setDueDate: async (taskId: string, dueDate: string, op: 'set_due' | 'defer' = 'set_due') => {
       const nextOp = op === 'set_due' ? 'defer' : op;
       await thingsAPI.apply({ op: nextOp, id: taskId, due_date: dueDate });

@@ -734,6 +734,29 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
       case "complete":
         todo.status = "completed";
         break;
+      case "trash":
+        todo.status = "canceled";
+        break;
+      case "rename":
+        todo.name = {json.dumps(payload.get("title") or "")};
+        break;
+      case "notes":
+        todo.notes = {json.dumps(payload.get("notes") or "")};
+        break;
+      case "move": {{
+        const targetId = {json.dumps(payload.get("list_id") or payload.get("listId") or "")};
+        if (!targetId) {{
+          throw new Error("list_id required");
+        }}
+        const project = app.projects.byId(targetId);
+        const area = app.areas.byId(targetId);
+        if (project && project.exists()) {{
+          todo.project = project;
+        }} else if (area && area.exists()) {{
+          todo.area = area;
+        }}
+        break;
+      }}
       case "defer":
       case "set_due":
         if ({deadline_value} === null) {{
@@ -797,6 +820,33 @@ def _apply_via_url(payload: dict[str, Any]) -> bool:
             return False
         deadline_value = str(deadline)[:10]
         params = {"auth-token": token, "id": todo_id, "when": deadline_value}
+    elif op == "rename":
+        if not token or not todo_id:
+            return False
+        title = (payload.get("title") or "").strip()
+        if not title:
+            return False
+        params = {"auth-token": token, "id": todo_id, "title": title}
+    elif op == "notes":
+        if not token or not todo_id:
+            return False
+        notes = payload.get("notes") or ""
+        params = {"auth-token": token, "id": todo_id, "notes": notes}
+    elif op == "move":
+        if not token or not todo_id:
+            return False
+        list_id = payload.get("list_id") or payload.get("listId")
+        list_name = payload.get("list_name") or payload.get("listName")
+        if list_name:
+            params = {"auth-token": token, "id": todo_id, "list": str(list_name)}
+        elif list_id:
+            params = {"auth-token": token, "id": todo_id, "list-id": str(list_id)}
+        else:
+            return False
+    elif op == "trash":
+        if not token or not todo_id:
+            return False
+        params = {"auth-token": token, "id": todo_id, "canceled": "true"}
     elif op == "add":
         title = (payload.get("title") or "").strip()
         if not title:
