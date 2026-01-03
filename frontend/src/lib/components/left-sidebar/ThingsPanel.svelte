@@ -9,9 +9,10 @@
   let areas: Array<{ id: string; title: string }> = [];
   let projects: Array<{ id: string; title: string; areaId?: string | null }> = [];
   let diagnostics = null;
+  let syncNotice = '';
   let error = '';
 
-  $: ({ selection, areas, projects, error, counts, diagnostics } = $thingsStore);
+  $: ({ selection, areas, projects, error, counts, diagnostics, syncNotice } = $thingsStore);
   $: tasksCount = $thingsStore.todayCount;
   $: projectsByArea = areas.map((area) => ({
     area,
@@ -130,9 +131,16 @@
         </button>
       {/each}
     {/if}
-  {#if diagnostics && !diagnostics.dbAccess}
-    <div class="things-diagnostics">
-      Things bridge running without Things DB access. Repeating task metadata unavailable.
+  {#if (diagnostics && !diagnostics.dbAccess) || syncNotice}
+    <div class="things-footer">
+      {#if diagnostics && !diagnostics.dbAccess}
+        <div class="things-diagnostics">
+          Things bridge running without Things DB access. Repeating task metadata unavailable.
+        </div>
+      {/if}
+      {#if syncNotice}
+        <div class="things-sync-notice">{syncNotice}</div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -210,9 +218,21 @@
     color: var(--color-muted-foreground);
   }
 
-  .things-diagnostics {
+  .things-footer {
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .things-diagnostics {
     padding: 0.6rem 0.5rem 0.2rem;
+    font-size: 0.72rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .things-sync-notice {
+    padding: 0.4rem 0.5rem 0.2rem;
     font-size: 0.72rem;
     color: var(--color-muted-foreground);
   }
