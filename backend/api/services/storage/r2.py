@@ -1,6 +1,7 @@
 """Cloudflare R2 storage backend via S3-compatible API."""
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from typing import Iterable, Optional
 
@@ -30,6 +31,9 @@ class R2Storage(StorageBackend):
             secret_access_key: Secret access key.
         """
         self.bucket = bucket
+        verify_value = os.getenv("R2_SSL_VERIFY", "true").lower()
+        verify = not (verify_value in {"0", "false", "no", "off"})
+
         self.client = boto3.client(
             "s3",
             endpoint_url=endpoint,
@@ -37,6 +41,7 @@ class R2Storage(StorageBackend):
             aws_secret_access_key=secret_access_key,
             region_name="auto",
             config=Config(signature_version="s3v4"),
+            verify=verify,
         )
 
     @staticmethod

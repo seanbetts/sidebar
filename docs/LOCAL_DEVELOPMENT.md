@@ -95,6 +95,36 @@ tail -n 200 /tmp/sidebar-backend.log
 cd backend && uv sync
 ```
 
+### Managed Network / SSL Interception
+
+If your network intercepts TLS and you do not have the corporate root CA, installs can fail.
+
+```bash
+# Backend fallback (dev.sh handles this automatically when uv fails)
+./dev.sh start
+
+# Frontend installs
+cd frontend
+npm config set strict-ssl false
+npm install
+```
+
+If pip shows `--user` install errors inside a venv, clear the global setting:
+
+```bash
+pip config unset global.user
+```
+
+### Things Bridge (Multiple Devices)
+
+If you have more than one Things bridge registered (for example, multiple dev machines), the backend may switch between them based on the latest heartbeat. You can pin the active bridge for this machine by setting:
+
+```bash
+THINGS_BRIDGE_DEVICE_ID=your-device-id
+```
+
+The installer derives `deviceId` from your computer name (lowercase, non-alphanumerics replaced with `-`).
+
 ### Frontend Proxy Not Working
 
 ```bash
