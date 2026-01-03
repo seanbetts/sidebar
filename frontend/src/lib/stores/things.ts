@@ -475,16 +475,21 @@ function createThingsStore() {
     startNewTask: () => {
       const state = get({ subscribe });
       const baseSelection = state.selection.type === 'search' ? lastNonSearchSelection : state.selection;
-      const listId =
+      let listId =
         baseSelection.type === 'area' || baseSelection.type === 'project' ? baseSelection.id : undefined;
       const projectId = baseSelection.type === 'project' ? baseSelection.id : undefined;
-      const areaId =
+      let areaId =
         baseSelection.type === 'area'
           ? baseSelection.id
           : projectId
             ? state.projects.find((project) => project.id === projectId)?.areaId ?? null
             : null;
       const dueDate = baseSelection.type === 'upcoming' ? offsetDateKey(1) : todayKey();
+      if (!listId) {
+        const homeArea = state.areas.find((area) => area.title.toLowerCase() === 'home');
+        listId = homeArea?.id;
+        areaId = homeArea?.id ?? areaId;
+      }
       const draft: ThingsNewTaskDraft = {
         title: '',
         notes: '',

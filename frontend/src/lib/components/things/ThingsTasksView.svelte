@@ -611,19 +611,19 @@
                 onchange={(event) => handleDraftListChange((event.currentTarget as HTMLSelectElement).value)}
                 disabled={draftSaving}
               >
-                <option value="">Select project</option>
+                <option value="">Select area or project</option>
                 {#each areaOptions as area}
                   <optgroup label={area.title}>
-                    <option value={area.id}>Area: {area.title}</option>
+                    <option value={area.id}>{area.title}</option>
                     {#each projectsByArea.get(area.id) ?? [] as project}
-                      <option value={project.id}>Project: {project.title}</option>
+                      <option value={project.id}>- {project.title}</option>
                     {/each}
                   </optgroup>
                 {/each}
                 {#if orphanProjects.length}
                   <optgroup label="Other projects">
                     {#each orphanProjects as project}
-                      <option value={project.id}>Project: {project.title}</option>
+                      <option value={project.id}>- {project.title}</option>
                     {/each}
                   </optgroup>
                 {/if}
@@ -632,7 +632,7 @@
           </div>
           <textarea
             class="new-task-notes"
-            rows="3"
+            rows="1"
             placeholder="Notes (optional)"
             bind:value={draftNotes}
             disabled={draftSaving}
@@ -1075,7 +1075,7 @@
 
   .new-task-notes {
     resize: vertical;
-    min-height: 80px;
+    min-height: 44px;
   }
 
   .new-task-meta {
