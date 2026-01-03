@@ -497,6 +497,7 @@ function createThingsStore() {
       update((current) => ({ ...current, newTaskDraft: draft, newTaskError: '' }));
     },
     cancelNewTask: () => update((state) => ({ ...state, newTaskDraft: null, newTaskError: '' })),
+    clearNewTaskError: () => update((state) => ({ ...state, newTaskError: '' })),
     createTask: async (payload: {
       title: string;
       notes?: string;
@@ -507,13 +508,17 @@ function createThingsStore() {
       const draft = state.newTaskDraft;
       if (!draft) return;
       const title = payload.title.trim();
+      const listId = payload.listId ?? draft.listId;
+      if (!listId) {
+        update((current) => ({ ...current, newTaskError: 'Select a project or area.' }));
+        return;
+      }
       if (!title) {
         update((current) => ({ ...current, newTaskError: 'Title is required.' }));
         return;
       }
       update((current) => ({ ...current, newTaskSaving: true, newTaskError: '' }));
       try {
-        const listId = payload.listId ?? draft.listId;
         await thingsAPI.apply({
           op: 'add',
           title,

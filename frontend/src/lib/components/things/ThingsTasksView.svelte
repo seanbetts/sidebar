@@ -75,6 +75,8 @@
   let titleInput: HTMLInputElement | null = null;
   let areaOptions: ThingsArea[] = [];
   let projectOptions: ThingsProject[] = [];
+  let projectsByArea = new Map<string, ThingsProject[]>();
+  let orphanProjects: ThingsProject[] = [];
 
   type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
 
@@ -107,6 +109,17 @@
     areaTitleById = new Map(areas.map((area) => [area.id, area.title]));
     areaOptions = [...areas].sort((a, b) => a.title.localeCompare(b.title));
     projectOptions = [...projects].sort((a, b) => a.title.localeCompare(b.title));
+    projectsByArea = new Map();
+    orphanProjects = [];
+    projectOptions.forEach((project) => {
+      if (project.areaId) {
+        const bucket = projectsByArea.get(project.areaId) ?? [];
+        bucket.push(project);
+        projectsByArea.set(project.areaId, bucket);
+      } else {
+        orphanProjects.push(project);
+      }
+    });
     selectionQuery =
       selectionType === 'search' && 'query' in state.selection ? state.selection.query : '';
     if (selectionType === 'today') {
@@ -482,6 +495,7 @@
 
   function handleDraftListChange(value: string) {
     draftListId = value;
+    thingsStore.clearNewTaskError();
     if (!value) {
       draftTargetLabel = '';
       return;
@@ -582,6 +596,7 @@
                 handleCreateTask();
               }
             }}
+            oninput={() => thingsStore.clearNewTaskError()}
           />
           <div class="new-task-meta">
             <label class="new-task-label">
@@ -589,25 +604,26 @@
               <input class="new-task-date" type="date" bind:value={draftDueDate} disabled={draftSaving} />
             </label>
             <label class="new-task-label">
-              <span>List</span>
+              <span>Project</span>
               <select
                 class="new-task-select"
                 bind:value={draftListId}
                 onchange={(event) => handleDraftListChange((event.currentTarget as HTMLSelectElement).value)}
                 disabled={draftSaving}
               >
-                <option value="">No list</option>
-                {#if areaOptions.length}
-                  <optgroup label="Areas">
-                    {#each areaOptions as area}
-                      <option value={area.id}>{area.title}</option>
+                <option value="">Select project</option>
+                {#each areaOptions as area}
+                  <optgroup label={area.title}>
+                    <option value={area.id}>Area: {area.title}</option>
+                    {#each projectsByArea.get(area.id) ?? [] as project}
+                      <option value={project.id}>Project: {project.title}</option>
                     {/each}
                   </optgroup>
-                {/if}
-                {#if projectOptions.length}
-                  <optgroup label="Projects">
-                    {#each projectOptions as project}
-                      <option value={project.id}>{project.title}</option>
+                {/each}
+                {#if orphanProjects.length}
+                  <optgroup label="Other projects">
+                    {#each orphanProjects as project}
+                      <option value={project.id}>Project: {project.title}</option>
                     {/each}
                   </optgroup>
                 {/if}
@@ -631,7 +647,7 @@
             <button
               class="new-task-btn primary"
               onclick={handleCreateTask}
-              disabled={!draftTitle.trim() || draftSaving}
+              disabled={!draftTitle.trim() || !draftListId || draftSaving}
             >
               {draftSaving ? 'Adding…' : 'Add task'}
             </button>
