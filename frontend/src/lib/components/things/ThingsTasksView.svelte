@@ -11,6 +11,7 @@
     Inbox,
     Layers,
     List,
+    FileText,
     MoreHorizontal,
     Repeat,
     Search
@@ -501,6 +502,11 @@
                   <div class="content">
                     <div class="task-title">
                       <span>{task.title}</span>
+                      {#if task.notes}
+                        <span class="notes-icon" title={task.notes} aria-label="Task notes">
+                          <FileText size={14} />
+                        </span>
+                      {/if}
                       {#if task.repeating && !task.repeatTemplate}
                         <Repeat size={14} class="repeat-icon" />
                       {/if}
@@ -732,6 +738,13 @@
 
   .repeat-icon {
     color: var(--color-muted-foreground);
+  }
+
+  .notes-icon {
+    color: var(--color-muted-foreground);
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.75;
   }
 
   .task-title {
