@@ -72,6 +72,7 @@
   let showDraft = false;
   let draftFocused = false;
   let draftListId = '';
+  let draftListName = '';
   let titleInput: HTMLInputElement | null = null;
   let areaOptions: ThingsArea[] = [];
   let projectOptions: ThingsProject[] = [];
@@ -173,6 +174,7 @@
       draftNotes = newTaskDraft.notes;
       draftDueDate = newTaskDraft.dueDate;
       draftListId = newTaskDraft.listId ?? '';
+      draftListName = newTaskDraft.listName ?? '';
       if (newTaskDraft.projectId) {
         draftTargetLabel = projectTitleById.get(newTaskDraft.projectId) ?? 'Project';
       } else if (newTaskDraft.areaId) {
@@ -188,6 +190,7 @@
       draftDueDate = '';
       draftTargetLabel = '';
       draftListId = '';
+      draftListName = '';
       draftFocused = false;
     }
   }
@@ -489,7 +492,8 @@
       title: draftTitle,
       notes: draftNotes,
       dueDate: draftDueDate,
-      listId: draftListId || null
+      listId: draftListId || null,
+      listName: draftListName || null
     });
   }
 
@@ -498,11 +502,13 @@
     thingsStore.clearNewTaskError();
     if (!value) {
       draftTargetLabel = '';
+      draftListName = '';
       return;
     }
     const project = projectTitleById.get(value);
     const area = areaTitleById.get(value);
     draftTargetLabel = project ?? area ?? '';
+    draftListName = project ?? area ?? '';
   }
 
   const refreshTasks = () => {
@@ -613,19 +619,15 @@
               >
                 <option value="">Select area or project</option>
                 {#each areaOptions as area}
-                  <optgroup label={area.title}>
-                    <option value={area.id}>{area.title}</option>
-                    {#each projectsByArea.get(area.id) ?? [] as project}
-                      <option value={project.id}>- {project.title}</option>
-                    {/each}
-                  </optgroup>
+                  <option value={area.id}>{area.title}</option>
+                  {#each projectsByArea.get(area.id) ?? [] as project}
+                    <option value={project.id}>- {project.title}</option>
+                  {/each}
                 {/each}
                 {#if orphanProjects.length}
-                  <optgroup label="Other projects">
-                    {#each orphanProjects as project}
-                      <option value={project.id}>- {project.title}</option>
-                    {/each}
-                  </optgroup>
+                  {#each orphanProjects as project}
+                    <option value={project.id}>- {project.title}</option>
+                  {/each}
                 {/if}
               </select>
             </label>
@@ -1071,6 +1073,16 @@
     background: transparent;
     padding: 0.6rem 0.75rem;
     color: var(--color-foreground);
+  }
+
+  .new-task-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 0.9rem;
+    padding-right: 2.5rem;
   }
 
   .new-task-notes {

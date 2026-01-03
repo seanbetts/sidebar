@@ -685,11 +685,13 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
         title = (payload.get("title") or "").strip()
         notes = payload.get("notes") or ""
         list_id = payload.get("list_id") or payload.get("listId")
+        list_name = payload.get("list_name") or payload.get("listName")
         if not title:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="title is required")
         title_value = json.dumps(title)
         notes_value = json.dumps(notes)
         list_value = json.dumps(list_id)
+        list_name_value = json.dumps(list_name)
         return f"""
     const app = Application("{THINGS_APP_NAME}");
     app.includeStandardAdditions = true;
@@ -708,6 +710,14 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
         todo.project = project;
       }} else if (area && area.exists()) {{
         todo.area = area;
+      }}
+    }} else if ({list_name_value} !== null) {{
+      const projectByName = app.projects.byName({list_name_value});
+      const areaByName = app.areas.byName({list_name_value});
+      if (projectByName && projectByName.exists()) {{
+        todo.project = projectByName;
+      }} else if (areaByName && areaByName.exists()) {{
+        todo.area = areaByName;
       }}
     }}
     JSON.stringify({{"status":"ok","id":String(todo.id())}});
@@ -793,6 +803,7 @@ def _apply_via_url(payload: dict[str, Any]) -> bool:
         notes = payload.get("notes") or ""
         deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
         list_id = payload.get("list_id") or payload.get("listId")
+        list_name = payload.get("list_name") or payload.get("listName")
         params = {"title": title}
         if notes:
             params["notes"] = notes
@@ -800,6 +811,8 @@ def _apply_via_url(payload: dict[str, Any]) -> bool:
             params["when"] = str(deadline)[:10]
         if list_id:
             params["list-id"] = str(list_id)
+        elif list_name:
+            params["list"] = str(list_name)
     else:
         return False
     query = urlencode(params, quote_via=quote)

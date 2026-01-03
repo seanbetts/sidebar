@@ -24,6 +24,7 @@ export type ThingsNewTaskDraft = {
   dueDate: string;
   selection: ThingsSelection;
   listId?: string;
+  listName?: string;
   areaId?: string;
   projectId?: string;
 };
@@ -490,12 +491,17 @@ function createThingsStore() {
         listId = homeArea?.id;
         areaId = homeArea?.id ?? areaId;
       }
+      const listName = listId
+        ? state.projects.find((project) => project.id === listId)?.title ??
+          state.areas.find((area) => area.id === listId)?.title
+        : undefined;
       const draft: ThingsNewTaskDraft = {
         title: '',
         notes: '',
         dueDate,
         selection: baseSelection,
         listId,
+        listName,
         areaId: areaId ?? undefined,
         projectId
       };
@@ -508,12 +514,14 @@ function createThingsStore() {
       notes?: string;
       dueDate?: string;
       listId?: string | null;
+      listName?: string | null;
     }) => {
       const state = get({ subscribe });
       const draft = state.newTaskDraft;
       if (!draft) return;
       const title = payload.title.trim();
       const listId = payload.listId ?? draft.listId;
+      const listName = payload.listName ?? draft.listName;
       if (!listId) {
         update((current) => ({ ...current, newTaskError: 'Select a project or area.' }));
         return;
@@ -529,7 +537,8 @@ function createThingsStore() {
           title,
           notes: payload.notes?.trim() ?? '',
           due_date: payload.dueDate ?? draft.dueDate,
-          list_id: listId
+          list_id: listId,
+          list_name: listName
         });
         const stateAfter = get({ subscribe });
         const dueDate = payload.dueDate ?? draft.dueDate;
