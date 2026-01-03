@@ -70,6 +70,11 @@
   let draftError = '';
   let draftTargetLabel = '';
   let showDraft = false;
+  let draftFocused = false;
+  let draftListId = '';
+  let titleInput: HTMLInputElement | null = null;
+  let areaOptions: ThingsArea[] = [];
+  let projectOptions: ThingsProject[] = [];
 
   type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
 
@@ -100,6 +105,8 @@
         : visibleTasks;
     projectTitleById = new Map(projects.map((project) => [project.id, project.title]));
     areaTitleById = new Map(areas.map((area) => [area.id, area.title]));
+    areaOptions = [...areas].sort((a, b) => a.title.localeCompare(b.title));
+    projectOptions = [...projects].sort((a, b) => a.title.localeCompare(b.title));
     selectionQuery =
       selectionType === 'search' && 'query' in state.selection ? state.selection.query : '';
     if (selectionType === 'today') {
@@ -152,6 +159,7 @@
       draftTitle = newTaskDraft.title;
       draftNotes = newTaskDraft.notes;
       draftDueDate = newTaskDraft.dueDate;
+      draftListId = newTaskDraft.listId ?? '';
       if (newTaskDraft.projectId) {
         draftTargetLabel = projectTitleById.get(newTaskDraft.projectId) ?? 'Project';
       } else if (newTaskDraft.areaId) {
@@ -159,13 +167,21 @@
       } else {
         draftTargetLabel = '';
       }
+      draftFocused = false;
     } else if (!newTaskDraft && activeDraft) {
       activeDraft = null;
       draftTitle = '';
       draftNotes = '';
       draftDueDate = '';
       draftTargetLabel = '';
+      draftListId = '';
+      draftFocused = false;
     }
+  }
+
+  $: if (showDraft && titleInput && !draftFocused) {
+    titleInput.focus();
+    draftFocused = true;
   }
 
   function startOfDay(date: Date) {
@@ -459,8 +475,20 @@
     await thingsStore.createTask({
       title: draftTitle,
       notes: draftNotes,
-      dueDate: draftDueDate
+      dueDate: draftDueDate,
+      listId: draftListId || null
     });
+  }
+
+  function handleDraftListChange(value: string) {
+    draftListId = value;
+    if (!value) {
+      draftTargetLabel = '';
+      return;
+    }
+    const project = projectTitleById.get(value);
+    const area = areaTitleById.get(value);
+    draftTargetLabel = project ?? area ?? '';
   }
 
   const refreshTasks = () => {
@@ -547,11 +575,43 @@
             placeholder="Task title"
             bind:value={draftTitle}
             disabled={draftSaving}
+            bind:this={titleInput}
+            onkeydown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                handleCreateTask();
+              }
+            }}
           />
           <div class="new-task-meta">
             <label class="new-task-label">
               <span>Due date</span>
               <input class="new-task-date" type="date" bind:value={draftDueDate} disabled={draftSaving} />
+            </label>
+            <label class="new-task-label">
+              <span>List</span>
+              <select
+                class="new-task-select"
+                bind:value={draftListId}
+                on:change={(event) => handleDraftListChange((event.currentTarget as HTMLSelectElement).value)}
+                disabled={draftSaving}
+              >
+                <option value="">No list</option>
+                {#if areaOptions.length}
+                  <optgroup label="Areas">
+                    {#each areaOptions as area}
+                      <option value={area.id}>{area.title}</option>
+                    {/each}
+                  </optgroup>
+                {/if}
+                {#if projectOptions.length}
+                  <optgroup label="Projects">
+                    {#each projectOptions as project}
+                      <option value={project.id}>{project.title}</option>
+                    {/each}
+                  </optgroup>
+                {/if}
+              </select>
             </label>
           </div>
           <textarea
@@ -987,7 +1047,8 @@
 
   .new-task-input,
   .new-task-notes,
-  .new-task-date {
+  .new-task-date,
+  .new-task-select {
     width: 100%;
     border-radius: 0.6rem;
     border: 1px solid var(--color-border);
@@ -1002,7 +1063,8 @@
   }
 
   .new-task-meta {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
   }
 

@@ -225,6 +225,11 @@ function createThingsStore() {
 
   const normalizeDateKey = (value: string) => value.slice(0, 10);
   const todayKey = () => normalizeDateKey(new Date().toISOString());
+  const offsetDateKey = (days: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return normalizeDateKey(date.toISOString());
+  };
 
   const classifyDueBucket = (value: string): 'today' | 'upcoming' => {
     const date = new Date(`${normalizeDateKey(value)}T00:00:00`);
@@ -479,10 +484,11 @@ function createThingsStore() {
           : projectId
             ? state.projects.find((project) => project.id === projectId)?.areaId ?? null
             : null;
+      const dueDate = baseSelection.type === 'upcoming' ? offsetDateKey(1) : todayKey();
       const draft: ThingsNewTaskDraft = {
         title: '',
         notes: '',
-        dueDate: todayKey(),
+        dueDate,
         selection: baseSelection,
         listId,
         areaId: areaId ?? undefined,
@@ -491,7 +497,12 @@ function createThingsStore() {
       update((current) => ({ ...current, newTaskDraft: draft, newTaskError: '' }));
     },
     cancelNewTask: () => update((state) => ({ ...state, newTaskDraft: null, newTaskError: '' })),
-    createTask: async (payload: { title: string; notes?: string; dueDate?: string }) => {
+    createTask: async (payload: {
+      title: string;
+      notes?: string;
+      dueDate?: string;
+      listId?: string | null;
+    }) => {
       const state = get({ subscribe });
       const draft = state.newTaskDraft;
       if (!draft) return;
@@ -502,15 +513,57 @@ function createThingsStore() {
       }
       update((current) => ({ ...current, newTaskSaving: true, newTaskError: '' }));
       try {
+        const listId = payload.listId ?? draft.listId;
         await thingsAPI.apply({
           op: 'add',
           title,
           notes: payload.notes?.trim() ?? '',
           due_date: payload.dueDate ?? draft.dueDate,
-          list_id: draft.listId
+          list_id: listId
         });
-        update((current) => ({ ...current, newTaskDraft: null, newTaskSaving: false }));
-        await loadSelection(draft.selection, { force: true });
+        const stateAfter = get({ subscribe });
+        const dueDate = payload.dueDate ?? draft.dueDate;
+        const project = listId
+          ? stateAfter.projects.find((item) => item.id === listId)
+          : undefined;
+        const area =
+          listId && !project
+            ? stateAfter.areas.find((item) => item.id === listId)
+            : undefined;
+        const optimisticTask: ThingsTask = {
+          id: `temp-${Date.now()}`,
+          title,
+          status: 'open',
+          deadlineStart: dueDate,
+          notes: payload.notes?.trim() ?? '',
+          projectId: project?.id ?? null,
+          areaId: project?.areaId ?? area?.id ?? null
+        };
+        update((current) => {
+          const selectionKeyValue = selectionKey(draft.selection);
+          const nextTasks = isSameSelection(current.selection, draft.selection)
+            ? [optimisticTask, ...current.tasks]
+            : current.tasks;
+          setCachedData(tasksCacheKey(draft.selection), nextTasks, {
+            ttl: CACHE_TTL,
+            version: CACHE_VERSION
+          });
+          const nextCounts = {
+            ...current.counts,
+            [selectionKeyValue]: (current.counts[selectionKeyValue] ?? 0) + 1
+          };
+          return {
+            ...current,
+            tasks: nextTasks,
+            counts: nextCounts,
+            todayCount:
+              current.selection.type === 'today' ? nextTasks.length : current.todayCount,
+            newTaskDraft: null,
+            newTaskSaving: false,
+            newTaskError: ''
+          };
+        });
+        await loadSelection(draft.selection, { force: true, silent: true, notify: false });
         void thingsAPI
           .counts()
           .then(applyCountsResponse)
