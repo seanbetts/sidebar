@@ -265,24 +265,99 @@ This implementation plan closely mirrors GoodLinks' proven architecture in these
 - `remove_attrs` - Strip attributes
 - `replace_with_text` - Replace with text template
 
-### 3. **Host Normalization & Matching**
+### 3. **Host Normalization & Matching (Robust)**
 
 **GoodLinks Approach**: MD5 hashing of normalized hosts + flexible matching.
 
-**Our Implementation**:
+**Our Implementation** (supports www variants and eTLD+1 fallback):
+
 ```python
-def normalize_host(url):
-    host_raw = netloc.lower()          # "www.example.com"
-    host_nw = netloc.lstrip("www.")    # "example.com"
-    return host_raw, host_nw
+def normalize_host(url: str) -> Dict[str, str]:
+    """
+    Normalize host into multiple variants for matching.
+
+    Returns:
+        {
+            "host_raw": "www.example.com",
+            "host_nw": "example.com",       # Primary (no-www)
+            "host_with_www": "www.example.com",
+            "etld_plus_one": "example.com"  # For rules that opt in
+        }
+    """
+    from urllib.parse import urlparse
+
+    netloc = urlparse(url).netloc.lower()
+
+    # Strip port if present
+    if ':' in netloc:
+        netloc = netloc.split(':')[0]
+
+    host_raw = netloc
+    host_nw = netloc.lstrip("www.")
+    host_with_www = f"www.{host_nw}" if not netloc.startswith("www.") else netloc
+
+    # eTLD+1 extraction (optional, for domain family matching)
+    parts = host_nw.split('.')
+    if len(parts) >= 2:
+        etld_plus_one = '.'.join(parts[-2:])  # "example.com"
+    else:
+        etld_plus_one = host_nw
+
+    return {
+        "host_raw": host_raw,
+        "host_nw": host_nw,
+        "host_with_www": host_with_www,
+        "etld_plus_one": etld_plus_one
+    }
 ```
 
 **Trigger Options**:
-- `host.equals` - Exact match (raw)
-- `host.equals_nw` - Match without www
-- `host.ends_with` - Domain family matching
+- `host.equals` - Exact match against `host_nw` (primary)
+- `host.equals_www` - Exact match against `host_with_www`
+- `host.ends_with` - Domain family matching (tries `host_nw`, then `etld_plus_one`)
+- `host.etld_plus_one` - Match eTLD+1 only (e.g., `example.com` matches `blog.example.com`)
 
-This allows a single rule for `theguardian.com` to match both `www.theguardian.com` and `theguardian.com`.
+**Matching Logic**:
+```python
+def _rule_matches_host(self, rule: Dict, host_variants: Dict) -> bool:
+    """Match host triggers with robustness."""
+    host_config = rule.get('trigger', {}).get('host', {})
+
+    if not host_config:
+        return False
+
+    # Exact match (no-www primary)
+    if 'equals' in host_config:
+        if host_config['equals'] == host_variants["host_nw"]:
+            return True
+
+    # Exact match (with-www)
+    if 'equals_www' in host_config:
+        if host_config['equals_www'] == host_variants["host_with_www"]:
+            return True
+
+    # Ends-with (tries no-www first, then eTLD+1)
+    if 'ends_with' in host_config:
+        target = host_config['ends_with']
+        if host_variants["host_nw"].endswith(target):
+            return True
+        # Fallback to eTLD+1 for subdomain matching
+        if host_variants["etld_plus_one"].endswith(target):
+            return True
+
+    # eTLD+1 matching (opt-in only)
+    if 'etld_plus_one' in host_config:
+        if host_config['etld_plus_one'] == host_variants["etld_plus_one"]:
+            return True
+
+    return False
+```
+
+**Why This Matters**:
+- A single rule for `theguardian.com` matches `www.theguardian.com`, `theguardian.com`
+- Rules can explicitly target `www.` hosts when needed (e.g., `www.reddit.com` vs `old.reddit.com`)
+- Subdomain matching works: `example.com` rule can match `blog.example.com` via `etld_plus_one`
+- Robust against host normalization edge cases
 
 ### 4. **Pure DOM Signature Rules**
 
@@ -399,8 +474,9 @@ meta.update(rule_metadata_overrides)
 7. **Text Contains Triggers**: `dom.any_text_contains` for string-based matching
 8. **Structured Discard**: Discarded content returns Markdown with `discarded: true` in frontmatter
 9. **Hero Image Extraction**: Deterministic priority (in-article → og:image → twitter:image)
-10. **Include Reinsertion**: Complete v1 implementation with sanitization and anchored insertion
-11. **Text/Markdown Output**: Clean API contract (input: URL, output: Markdown)
+10. **Include Reinsertion**: Complete v1 with smart anchoring (text similarity → position → heading → append)
+11. **Robust Host Matching**: Handles www variants, eTLD+1, subdomain matching with explicit opt-in
+12. **Text/Markdown Output**: Clean API contract (input: URL, output: Markdown)
 
 ---
 
@@ -509,29 +585,142 @@ def apply_include_reinsertion(
                             parent.remove(elem)
 
                 # Find insertion point in extracted content
-                # Strategy: Insert after closest preceding heading
-                headings = extracted_tree.cssselect('h1, h2, h3, h4, h5, h6')
+                # Strategy (in priority order):
+                # 1. Match by text similarity to surrounding content
+                # 2. Match by original DOM position
+                # 3. Insert after nearest preceding heading
+                # 4. Append to body
 
-                if headings:
-                    # Insert after last heading (safest anchor)
-                    last_heading = headings[-1]
-                    parent = last_heading.getparent()
-                    if parent is not None:
-                        insert_index = parent.index(last_heading) + 1
-                        parent.insert(insert_index, cloned)
+                insertion_target = find_insertion_point(
+                    extracted_tree,
+                    cloned,
+                    original_dom,
+                    node
+                )
+
+                if insertion_target:
+                    parent, index = insertion_target
+                    parent.insert(index, cloned)
                 else:
-                    # No headings - append to body
+                    # Fallback: append to body
                     body = extracted_tree.find('.//body')
                     if body is not None:
                         body.append(cloned)
                     else:
-                        # No body tag, append to root
                         extracted_tree.append(cloned)
         except Exception:
             # Failed to reinsert - log but don't crash pipeline
             continue
 
     return lxml_html.tostring(extracted_tree, encoding='unicode')
+
+
+def find_insertion_point(
+    extracted_tree: Element,
+    cloned_node: Element,
+    original_dom: Element,
+    original_node: Element
+) -> Optional[Tuple[Element, int]]:
+    """
+    Find optimal insertion point for included element.
+
+    Strategy (in priority order):
+    1. Text similarity to surrounding content
+    2. Original DOM position matching
+    3. Nearest preceding heading
+    4. None (caller appends to body)
+
+    Returns:
+        (parent, index) or None
+    """
+    from difflib import SequenceMatcher
+
+    # Get text content of node to insert
+    node_text = cloned_node.text_content().strip()[:200]  # First 200 chars
+
+    if not node_text:
+        # No text content - fallback to position-based
+        return find_by_position(extracted_tree, original_dom, original_node)
+
+    # Strategy 1: Text similarity
+    # Find elements in extracted content with similar text
+    best_match = None
+    best_ratio = 0.3  # Minimum similarity threshold
+
+    for elem in extracted_tree.iter():
+        if elem.tag in ('script', 'style', 'meta', 'link'):
+            continue
+
+        elem_text = elem.text_content().strip()[:200]
+        if not elem_text:
+            continue
+
+        # Calculate similarity
+        ratio = SequenceMatcher(None, node_text, elem_text).ratio()
+
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_match = elem
+
+    if best_match is not None:
+        # Insert after best match
+        parent = best_match.getparent()
+        if parent is not None:
+            index = parent.index(best_match) + 1
+            return (parent, index)
+
+    # Strategy 2: Original DOM position
+    position_match = find_by_position(extracted_tree, original_dom, original_node)
+    if position_match:
+        return position_match
+
+    # Strategy 3: Nearest preceding heading
+    headings = extracted_tree.cssselect('h1, h2, h3, h4, h5, h6')
+    if headings:
+        last_heading = headings[-1]
+        parent = last_heading.getparent()
+        if parent is not None:
+            index = parent.index(last_heading) + 1
+            return (parent, index)
+
+    # Strategy 4: No good match, return None (caller appends)
+    return None
+
+
+def find_by_position(
+    extracted_tree: Element,
+    original_dom: Element,
+    original_node: Element
+) -> Optional[Tuple[Element, int]]:
+    """
+    Find insertion point by matching original DOM position.
+
+    Look for preceding sibling in original DOM,
+    find that sibling in extracted DOM,
+    insert after it.
+
+    Returns:
+        (parent, index) or None
+    """
+    # Find preceding sibling with meaningful text
+    preceding = original_node.getprevious()
+    while preceding is not None:
+        preceding_text = preceding.text_content().strip()[:100]
+        if preceding_text and len(preceding_text) > 20:
+            # Found meaningful preceding sibling
+            # Try to find it in extracted DOM
+            for elem in extracted_tree.iter():
+                elem_text = elem.text_content().strip()[:100]
+                if preceding_text in elem_text or elem_text in preceding_text:
+                    # Found match - insert after this element
+                    parent = elem.getparent()
+                    if parent is not None:
+                        index = parent.index(elem) + 1
+                        return (parent, index)
+            break  # Don't search further back
+        preceding = preceding.getprevious()
+
+    return None
 ```
 
 **Pipeline Integration**:
@@ -542,11 +731,47 @@ def apply_include_reinsertion(
 
 **Deterministic & Safe**:
 - Sanitization uses same removal rules as main pipeline
-- Insertion anchors to headings (predictable)
-- Fallback to append (never crashes)
+- **Smart insertion anchoring** (4-level strategy):
+  1. Text similarity matching (finds semantically related content)
+  2. Original DOM position matching (preserves relative placement)
+  3. Nearest preceding heading (structural anchor)
+  4. Append to body (safe fallback)
+- Never crashes (exceptions caught and logged)
 - No `data-include` tagging (Readability ignores it anyway)
 
-### 3. **Trigger Mode: any vs all**
+### 3. **Smart Include Insertion Anchoring**
+
+**Why This Matters**: Simply appending included elements to the end of extracted content can place them semantically far from where they belong (e.g., a pull quote that should be mid-article ends up at the bottom).
+
+**4-Level Anchoring Strategy** (in priority order):
+
+1. **Text Similarity Matching**:
+   - Compare first 200 chars of included element to all elements in extracted content
+   - Use `SequenceMatcher` to find best match (threshold: 0.3 similarity)
+   - Insert after best match
+   - **Best for**: Elements with unique text content
+
+2. **Original DOM Position Matching**:
+   - Find preceding sibling in original DOM with meaningful text (>20 chars)
+   - Search for that sibling in extracted content
+   - Insert after matching sibling
+   - **Best for**: Preserving relative placement when structure is maintained
+
+3. **Nearest Preceding Heading**:
+   - Find last heading (h1-h6) in extracted content
+   - Insert after it
+   - **Best for**: Structural anchoring when semantic matching fails
+
+4. **Append to Body**:
+   - Safe fallback that never crashes
+   - **Best for**: When all else fails
+
+**Benefits**:
+- Semantically correct placement in most cases
+- Preserves article flow and readability
+- Degrades gracefully (always succeeds)
+
+### 4. **Trigger Mode: any vs all**
 
 **Problem**: Original logic required BOTH host AND dom to match if both specified. This is too strict for platform rules that should fire on DOM signature alone (e.g., Swiper on any site).
 
@@ -1178,15 +1403,16 @@ author: {author}
 
      # Triggering (host OR dom OR both)
      trigger:
-       mode: all|any                 # all = both must match, any = either matches (default: all)
+       mode: all|any                     # all = both must match, any = either matches (default: all)
        host:
-         equals: "domain.com"        # Exact match (after normalization)
-         equals_nw: "domain.com"     # Match without www
-         ends_with: "domain.com"     # Match domain family
+         equals: "domain.com"            # Exact match against host_nw (primary, no-www)
+         equals_www: "www.domain.com"    # Exact match against host_with_www (explicit www)
+         ends_with: "domain.com"         # Suffix match (tries host_nw, then eTLD+1)
+         etld_plus_one: "domain.com"     # eTLD+1 only (opt-in for subdomain matching)
        dom:
-         any: [".selector"]          # Match if ANY selector exists
-         all: [".selector"]          # Match if ALL selectors exist
-         any_text_contains: ["token"]  # Match if text content contains any token
+         any: [".selector"]              # Match if ANY selector exists
+         all: [".selector"]              # Match if ALL selectors exist
+         any_text_contains: ["token"]    # Match if text content contains any token
 
      # Rendering control (optional)
      rendering:
@@ -1303,7 +1529,7 @@ author: {author}
      priority: 90
      trigger:
        host:
-         equals_nw: "theguardian.com"  # Matches www.theguardian.com too
+         equals: "theguardian.com"  # Matches both www.theguardian.com and theguardian.com
      remove:
        - "aside"
        - ".submeta"
@@ -1389,17 +1615,41 @@ author: {author}
            # Sort by priority (higher first)
            return sorted(rules, key=lambda r: r.get('priority', 50), reverse=True)
 
-       def normalize_host(self, url: str) -> Tuple[str, str]:
+       def normalize_host(self, url: str) -> Dict[str, str]:
            """
-           Normalize host for matching.
+           Normalize host into multiple variants for robust matching.
 
            Returns:
-               (host_raw, host_nw)  # raw and no-www versions
+               {
+                   "host_raw": "www.example.com",
+                   "host_nw": "example.com",
+                   "host_with_www": "www.example.com",
+                   "etld_plus_one": "example.com"
+               }
            """
            netloc = urlparse(url).netloc.lower()
+
+           # Strip port if present
+           if ':' in netloc:
+               netloc = netloc.split(':')[0]
+
            host_raw = netloc
            host_nw = netloc.lstrip("www.")
-           return host_raw, host_nw
+           host_with_www = f"www.{host_nw}" if not netloc.startswith("www.") else netloc
+
+           # eTLD+1 extraction
+           parts = host_nw.split('.')
+           if len(parts) >= 2:
+               etld_plus_one = '.'.join(parts[-2:])
+           else:
+               etld_plus_one = host_nw
+
+           return {
+               "host_raw": host_raw,
+               "host_nw": host_nw,
+               "host_with_www": host_with_www,
+               "etld_plus_one": etld_plus_one
+           }
 
        def match_rules(
            self,
@@ -1417,14 +1667,14 @@ author: {author}
 
            Returns:
                (matched_rules, context)
-               context = {host_raw, host_nw} for debugging
+               context = host variants for reference
            """
            tree = lxml_html.fromstring(html)
-           host_raw, host_nw = self.normalize_host(url)
+           host_variants = self.normalize_host(url)
 
            context = {
-               "host_raw": host_raw,
-               "host_nw": host_nw
+               "host_raw": host_variants["host_raw"],
+               "host_nw": host_variants["host_nw"]
            }
 
            # Filter rules by phase
@@ -1432,7 +1682,7 @@ author: {author}
 
            matched = []
            for rule in rules:
-               if self._rule_matches(rule, host_raw, host_nw, tree):
+               if self._rule_matches(rule, host_variants, tree):
                    matched.append(rule)
 
            return matched, context
@@ -1440,11 +1690,10 @@ author: {author}
        def _rule_matches(
            self,
            rule: Dict,
-           host_raw: str,
-           host_nw: str,
+           host_variants: Dict[str, str],
            tree: Element
        ) -> bool:
-           """Check if rule triggers match."""
+           """Check if rule triggers match with robust host matching."""
            trigger = rule.get('trigger', {})
 
            # If no triggers specified, never match
@@ -1454,23 +1703,32 @@ author: {author}
            host_match = False
            dom_match = False
 
-           # Host-based trigger
+           # Host-based trigger (robust matching)
            if 'host' in trigger:
                host_config = trigger['host']
 
-               # Exact match (raw)
+               # Exact match (no-www primary)
                if 'equals' in host_config:
-                   if host_config['equals'] == host_raw:
+                   if host_config['equals'] == host_variants["host_nw"]:
                        host_match = True
 
-               # Exact match (no-www)
-               if 'equals_nw' in host_config:
-                   if host_config['equals_nw'] == host_nw:
+               # Exact match (with-www)
+               if 'equals_www' in host_config:
+                   if host_config['equals_www'] == host_variants["host_with_www"]:
                        host_match = True
 
-               # Domain family
+               # Ends-with (tries no-www first, then eTLD+1)
                if 'ends_with' in host_config:
-                   if host_nw.endswith(host_config['ends_with']):
+                   target = host_config['ends_with']
+                   if host_variants["host_nw"].endswith(target):
+                       host_match = True
+                   # Fallback to eTLD+1 for subdomain matching
+                   elif host_variants["etld_plus_one"].endswith(target):
+                       host_match = True
+
+               # eTLD+1 matching (opt-in only)
+               if 'etld_plus_one' in host_config:
+                   if host_config['etld_plus_one'] == host_variants["etld_plus_one"]:
                        host_match = True
 
            # DOM-based trigger
@@ -2182,7 +2440,7 @@ author: {author}
      priority: 90
      trigger:
        host:
-         equals_nw: "theguardian.com"
+         equals: "theguardian.com"  # Matches www.theguardian.com too
      remove:
        - "aside"
        - ".submeta"
