@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { onDestroy, onMount } from 'svelte';
-	import { getStoredTheme, setThemeMode } from '$lib/utils/theme';
+	import { applyThemeMode, getStoredTheme, setThemeMode } from '$lib/utils/theme';
 
 	let isDark = $state(false);
 	let cleanupThemeListener: (() => void) | null = null;
@@ -15,10 +15,10 @@
 			stored === 'dark' ||
 			(!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-		setThemeMode(isDark ? 'dark' : 'light');
+		applyThemeMode(isDark ? 'dark' : 'light', false);
 
 		const handler = (event: Event) => {
-			const detail = (event as CustomEvent<{ theme?: string }>).detail;
+			const detail = (event as CustomEvent<{ theme?: string; source?: string }>).detail;
 			if (detail?.theme === 'dark') {
 				isDark = true;
 			} else if (detail?.theme === 'light') {
@@ -37,7 +37,7 @@
 
 	function toggleTheme() {
 		isDark = !isDark;
-		setThemeMode(isDark ? 'dark' : 'light');
+		setThemeMode(isDark ? 'dark' : 'light', 'user');
 	}
 </script>
 

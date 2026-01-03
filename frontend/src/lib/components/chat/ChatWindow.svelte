@@ -262,7 +262,7 @@
 
 					onThemeSet: (data) => {
 						const theme = data?.theme === 'dark' ? 'dark' : 'light';
-						setThemeMode(theme as ThemeMode);
+						setThemeMode(theme as ThemeMode, 'ai');
 					},
 
 					onScratchpadUpdated: () => {
