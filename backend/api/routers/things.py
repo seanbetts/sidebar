@@ -168,6 +168,13 @@ BACKEND_URL="{backend_url}"
 BRIDGE_DIR="$HOME/.sidebar/bridge"
 BRIDGE_PATH="$BRIDGE_DIR/things_bridge.py"
 VENV_PATH="$BRIDGE_DIR/venv"
+APP_NAME="sideBarThingsBridge"
+APP_DIR="/Applications/$APP_NAME.app"
+if [[ ! -w "/Applications" ]]; then
+  APP_DIR="$HOME/Applications/$APP_NAME.app"
+fi
+APP_EXEC="$APP_DIR/Contents/MacOS/$APP_NAME"
+APP_LOG_DIR="$HOME/Library/Logs"
 
 mkdir -p "$BRIDGE_DIR"
 
@@ -177,9 +184,44 @@ PY
 
 if [[ ! -d "$VENV_PATH" ]]; then
   /usr/bin/python3 -m venv "$VENV_PATH"
-  "$VENV_PATH/bin/pip" install --upgrade pip >/dev/null
-  "$VENV_PATH/bin/pip" install fastapi uvicorn >/dev/null
+  PIP_CONFIG_FILE=/dev/null PIP_USER=0 "$VENV_PATH/bin/pip" install --upgrade pip >/dev/null
+  PIP_CONFIG_FILE=/dev/null PIP_USER=0 "$VENV_PATH/bin/pip" install fastapi uvicorn >/dev/null
 fi
+
+mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.sidebar.things-bridge</string>
+  <key>CFBundleName</key>
+  <string>sideBar Things Bridge</string>
+  <key>CFBundleExecutable</key>
+  <string>sideBarThingsBridge</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+cat > "$APP_DIR/Contents/MacOS/sideBarThingsBridge" <<'SH'
+#!/bin/bash
+BRIDGE_DIR="$HOME/.sidebar/bridge"
+VENV_PATH="$BRIDGE_DIR/venv"
+BRIDGE_PATH="$BRIDGE_DIR/things_bridge.py"
+LOG_DIR="$HOME/Library/Logs"
+export THINGS_BRIDGE_PORT="8787"
+export THINGS_BACKEND_URL="{backend_url}"
+PYTHON="$VENV_PATH/bin/python"
+if [[ "$(/usr/sbin/sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" == "1" ]]; then
+  exec /usr/bin/arch -arm64 "$PYTHON" "$BRIDGE_PATH" >> "$LOG_DIR/sidebar-things-bridge.log" 2>> "$LOG_DIR/sidebar-things-bridge.err.log"
+fi
+exec "$PYTHON" "$BRIDGE_PATH" >> "$LOG_DIR/sidebar-things-bridge.log" 2>> "$LOG_DIR/sidebar-things-bridge.err.log"
+SH
+chmod +x "$APP_DIR/Contents/MacOS/sideBarThingsBridge"
 
 echo "Registering Things bridge for $DEVICE_NAME..."
 RESPONSE="$(curl -s -X POST "$BACKEND_URL/api/things/bridges/install" \\
@@ -187,8 +229,8 @@ RESPONSE="$(curl -s -X POST "$BACKEND_URL/api/things/bridges/install" \\
   -H "Content-Type: application/json" \\
   -d "{{\\"deviceId\\":\\"$DEVICE_ID\\",\\"deviceName\\":\\"$DEVICE_NAME\\",\\"baseUrl\\":\\"$BASE_URL\\",\\"capabilities\\":{{\\"read\\":true,\\"write\\":true}}}}")"
 
-BRIDGE_ID="$(echo "$RESPONSE" | python -c 'import json,sys; print(json.load(sys.stdin).get("bridgeId",""))')"
-BRIDGE_TOKEN="$(echo "$RESPONSE" | python -c 'import json,sys; print(json.load(sys.stdin).get("bridgeToken",""))')"
+BRIDGE_ID="$(echo "$RESPONSE" | /usr/bin/python3 -c 'import json,sys; print(json.load(sys.stdin).get("bridgeId",""))')"
+BRIDGE_TOKEN="$(echo "$RESPONSE" | /usr/bin/python3 -c 'import json,sys; print(json.load(sys.stdin).get("bridgeToken",""))')"
 
 if [[ -z "$BRIDGE_ID" || -z "$BRIDGE_TOKEN" ]]; then
   echo "Failed to register bridge. Response: $RESPONSE"
@@ -208,20 +250,15 @@ cat > "$PLIST_PATH" <<EOF
   <string>com.sidebar.things-bridge</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$VENV_PATH/bin/python</string>
-    <string>$BRIDGE_PATH</string>
+    <string>/usr/bin/open</string>
+    <string>-a</string>
+    <string>$APP_DIR</string>
+    <string>-W</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
   <true/>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>THINGS_BRIDGE_PORT</key>
-    <string>8787</string>
-    <key>THINGS_BACKEND_URL</key>
-    <string>{backend_url}</string>
-  </dict>
   <key>StandardOutPath</key>
   <string>$HOME/Library/Logs/sidebar-things-bridge.log</string>
   <key>StandardErrorPath</key>

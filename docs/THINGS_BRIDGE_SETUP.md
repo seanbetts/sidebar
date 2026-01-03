@@ -12,13 +12,18 @@ This guide covers installing the Things bridge on another Mac (for example, your
 
 To read the Things database (for repeating tasks + due dates), grant Full Disk Access to the bridge app:
 
-1) Ensure the app wrapper exists at `~/Applications/sideBarThingsBridge.app`.
+1) Ensure the app wrapper exists at `/Applications/sideBarThingsBridge.app` (or `~/Applications/sideBarThingsBridge.app` if `/Applications` is not writable).
 2) System Settings -> Privacy & Security -> Full Disk Access.
 3) Add `sideBarThingsBridge.app`.
 4) Restart the bridge:
    `launchctl kickstart -k gui/$(id -u)/com.sidebar.things-bridge`
 
 If Full Disk Access is not granted, the bridge still works, but repeating metadata is unavailable.
+
+Troubleshooting: Things DB not found
+
+- Re-run the installer to refresh the LaunchAgent. The bridge must be launched as the `sideBarThingsBridge.app` bundle for Full Disk Access to apply.
+- After reinstalling, run `launchctl kickstart -k gui/$(id -u)/com.sidebar.things-bridge` and re-check Tasks.
 
 ## Verify
 
