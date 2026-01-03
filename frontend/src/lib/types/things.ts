@@ -24,6 +24,7 @@ export type ThingsTask = {
   projectId?: string | null;
   areaId?: string | null;
   repeating?: boolean;
+  repeatTemplate?: boolean;
   tags?: string[];
   updatedAt?: string | null;
 };

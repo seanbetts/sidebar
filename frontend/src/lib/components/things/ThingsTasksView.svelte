@@ -311,7 +311,7 @@
             {#each section.tasks as task}
               <li class="things-task">
                 <div class="task-left">
-                  {#if task.repeating}
+                  {#if task.repeatTemplate}
                     <span class="repeat-badge" aria-label="Repeating task">
                       <Repeat size={14} />
                     </span>
@@ -323,6 +323,9 @@
                   <div class="content">
                     <div class="task-title">
                       <span>{task.title}</span>
+                      {#if task.repeating && !task.repeatTemplate}
+                        <Repeat size={14} class="repeat-icon" />
+                      {/if}
                     </div>
                     {#if taskSubtitle(task)}
                       <div class="meta">{taskSubtitle(task)}</div>
@@ -455,6 +458,10 @@
     border: 1px solid var(--color-border);
     color: var(--color-muted-foreground);
     background: var(--color-secondary);
+  }
+
+  .repeat-icon {
+    color: var(--color-muted-foreground);
   }
 
   .task-title {
