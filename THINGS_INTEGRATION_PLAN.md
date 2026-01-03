@@ -5,9 +5,10 @@
 Expose the user’s Things data in the web app with **read + write** support, while keeping Things as the system of record. Build the integration so it can later slot into a native macOS/iOS app without rework.
 
 Key direction changes:
-- Include **Projects** and **Areas** alongside Today/Inbox/Upcoming.
+- Include **Projects** and **Areas** alongside Today/Upcoming.
 - Focus on Things now; GoodLinks is deferred to a later phase.
 - Avoid user-editable markdown as the primary UI to prevent fragile edits. Use a **structured UI** and keep a markdown/structured snapshot for the AI assistant behind the scenes.
+- Inbox view removed from the UI (Today/Upcoming + Areas/Projects only).
 
 ---
 
@@ -138,6 +139,7 @@ Bridge runs on macOS and exposes HTTP to the FastAPI backend.
   - defer task (adjust deadline)
   - set deadline
 - Use Things URL scheme when possible, AppleScript otherwise
+- Expose diagnostics for DB access (repeating metadata availability).
 
 #### Explicit v1 Non-Goals
 - Creating recurring tasks or editing repeat rules
@@ -152,7 +154,7 @@ Apply mutations via:
 #### Bridge Endpoints
 ```
 GET /health
-GET /lists/{scope}           # today | inbox | upcoming | projects | areas
+GET /lists/{scope}           # today | upcoming | projects | areas
 POST /apply                  # apply operations
 ```
 
@@ -236,6 +238,7 @@ The bridge returns a **normalized payload** so the backend/UI stay stable even i
   "projectId": "things-project-id",
   "areaId": "things-area-id",
   "repeating": true,
+  "repeatTemplate": false,
   "tags": ["phone", "ops"],
   "updatedAt": "2026-01-10T10:00:00Z"
 }
@@ -275,10 +278,12 @@ The bridge returns a **normalized payload** so the backend/UI stay stable even i
 ```
 
 Scope values: `today | inbox | upcoming | projects | areas`
+Scope values (current UI): `today | upcoming | projects | areas`
 
 Notes:
 - `deadline` and `deadlineStart` are optional; use ISO date strings.
-- `repeating` is a boolean flag only (no rule parsing in v1).
+- `repeating` flags tasks that are part of a repeat pattern.
+- `repeatTemplate` distinguishes the underlying repeating template from daily instances.
 - `projectId`/`areaId` let the UI render context for Today tasks.
 
 ---
@@ -288,3 +293,22 @@ Notes:
 - Should Things task edits in the UI apply immediately or require a “Sync” button?
 - How should conflicts be surfaced (Things updated elsewhere)?
 - What is the minimal schema required for AI snapshots?
+
+---
+
+## Status (Current)
+
+Completed
+- Bridge registry + heartbeat + active bridge selection.
+- Bridge endpoints for lists/projects/areas + apply + counts.
+- Today-first UI with Areas/Projects and task completion.
+- Repeating metadata + due dates via local Things DB (with diagnostics).
+- Multi-bridge support (most-recent heartbeat).
+
+Partially complete
+- Defer/adjust deadline UI (backend supports `set_due`, UI not yet).
+- URL scheme usage (currently AppleScript only).
+
+Deferred
+- Sidebar DB mirror.
+- AI markdown snapshot.
