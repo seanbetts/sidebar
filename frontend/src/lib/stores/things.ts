@@ -274,19 +274,6 @@ function createThingsStore() {
     let usesToken = false;
     let token = loadToken;
     const key = tasksCacheKey(selection);
-    const inFlight = selectionInFlight.get(key);
-    if (inFlight && !force) {
-      if (!silent) {
-        update((state) => ({
-          ...state,
-          selection,
-          isLoading: state.isLoading || !isCurrent,
-          error: ''
-        }));
-      }
-      await inFlight;
-      return;
-    }
     const cachedTasks = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
     const cachedCounts = getCachedData<ThingsCountsResponse | Record<string, number>>(COUNTS_CACHE_KEY, {
       ttl: CACHE_TTL,
@@ -362,6 +349,11 @@ function createThingsStore() {
         }));
       }
     }
+    const inFlight = selectionInFlight.get(key);
+    if (inFlight && !force) {
+      await inFlight;
+      return;
+    }
     usesToken = !silentFetch || isCurrent;
     token = usesToken ? ++loadToken : loadToken;
     const request = (async () => {
@@ -383,7 +375,9 @@ function createThingsStore() {
           { ttl: CACHE_TTL, version: CACHE_VERSION }
         );
       }
-      if (!silentFetch || isCurrent) {
+      const latestSelection = get({ subscribe }).selection;
+      const stillCurrent = isSameSelection(selection, latestSelection);
+      if (!silentFetch || stillCurrent) {
         applyResponse(response, selection);
       } else {
         const cached = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
@@ -534,14 +528,14 @@ function createThingsStore() {
       });
     },
     setDueDate: async (taskId: string, dueDate: string, op: 'set_due' | 'defer' = 'set_due') => {
-      await thingsAPI.apply({ op, id: taskId, due_date: dueDate });
+      const nextOp = op === 'set_due' ? 'defer' : op;
+      await thingsAPI.apply({ op: nextOp, id: taskId, due_date: dueDate });
       const state = get({ subscribe });
       const currentTask = state.tasks.find((task) => task.id === taskId);
       if (currentTask) {
         const updatedTask: ThingsTask = {
           ...currentTask,
-          deadline: op === 'set_due' ? dueDate : currentTask.deadline,
-          deadlineStart: op === 'defer' ? dueDate : currentTask.deadlineStart
+          deadlineStart: dueDate
         };
         updateTaskCaches(taskId, updatedTask, dueDate);
       }
