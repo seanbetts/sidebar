@@ -38,9 +38,15 @@ detect_doppler() {
 port_in_use() {
   local port="$1"
   if command -v lsof >/dev/null 2>&1; then
-    lsof -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+    if lsof -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1; then
+      return 0
+    fi
+    return 1
   else
-    nc -z 127.0.0.1 "${port}" >/dev/null 2>&1
+    if nc -z 127.0.0.1 "${port}" >/dev/null 2>&1; then
+      return 0
+    fi
+    return 1
   fi
 }
 
@@ -69,7 +75,15 @@ port_pid() {
   if ! command -v lsof >/dev/null 2>&1; then
     return 1
   fi
-  lsof -t -iTCP:"${port}" -sTCP:LISTEN 2>/dev/null | head -n 1
+  lsof -t -iTCP:"${port}" -sTCP:LISTEN 2>/dev/null | head -n 1 || true
+}
+
+port_pid_any() {
+  local port="$1"
+  if ! command -v lsof >/dev/null 2>&1; then
+    return 1
+  fi
+  lsof -t -iTCP:"${port}" 2>/dev/null | head -n 1 || true
 }
 
 pid_command() {
@@ -114,6 +128,20 @@ ensure_port_available() {
   local command
 
   if ! port_in_use "${port}"; then
+    pid=$(port_pid_any "${port}")
+    if [[ -n "${pid}" ]]; then
+      command=$(pid_command "${pid}")
+      if [[ "${role}" == "backend" ]] && is_backend_process "${command}"; then
+        echo "Cleaning up stale backend process on port ${port} (PID ${pid})..."
+        stop_pid "${pid}"
+      elif [[ "${role}" == "frontend" ]] && is_frontend_process "${command}"; then
+        echo "Cleaning up stale frontend process on port ${port} (PID ${pid})..."
+        stop_pid "${pid}"
+      elif [[ "${role}" == "things_bridge" ]] && is_things_bridge_process "${command}"; then
+        echo "Cleaning up stale Things bridge process on port ${port} (PID ${pid})..."
+        stop_pid "${pid}"
+      fi
+    fi
     return
   fi
 
@@ -162,7 +190,7 @@ start_backend() {
   echo "Starting backend..."
   (cd backend && {
     if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run -- uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
+      doppler run --preserve-env="SUPABASE_URL" -- uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     else
       uv run uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     fi
@@ -170,7 +198,7 @@ start_backend() {
     echo "uv run failed; falling back to pip install with trusted hosts..."
     install_backend_deps_fallback
     if [[ ${use_doppler} -eq 1 ]]; then
-      doppler run -- "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
+      doppler run --preserve-env="SUPABASE_URL" -- "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     else
       "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     fi
@@ -182,7 +210,7 @@ start_frontend() {
   ensure_port_available 3000 frontend
   echo "Starting frontend..."
   if [[ ${use_doppler} -eq 1 ]]; then
-    (cd frontend && doppler run -- npm run dev) >"${FRONTEND_LOG}" 2>&1 &
+    (cd frontend && doppler run --preserve-env="SUPABASE_URL" -- npm run dev) >"${FRONTEND_LOG}" 2>&1 &
   else
     (cd frontend && npm run dev) >"${FRONTEND_LOG}" 2>&1 &
   fi
@@ -192,11 +220,21 @@ start_frontend() {
 start_ingestion_worker() {
   cleanup_ingestion_workers
   echo "Starting ingestion worker..."
-  if [[ ${use_doppler} -eq 1 ]]; then
-    (cd backend && doppler run -- env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
-  else
-    (cd backend && env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py) >"${INGESTION_LOG}" 2>&1 &
-  fi
+  (cd backend && {
+    if [[ ${use_doppler} -eq 1 ]]; then
+      doppler run --preserve-env="SUPABASE_URL" -- env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py
+    else
+      env PYTHONPATH=. PYTHONUNBUFFERED=1 uv run python workers/ingestion_worker.py
+    fi
+  } || {
+    echo "uv run failed; falling back to venv for ingestion worker..."
+    install_backend_deps_fallback
+    if [[ ${use_doppler} -eq 1 ]]; then
+      doppler run --preserve-env="SUPABASE_URL" -- env PYTHONPATH=. PYTHONUNBUFFERED=1 "${REPO_ROOT}/backend/.venv/bin/python" workers/ingestion_worker.py
+    else
+      env PYTHONPATH=. PYTHONUNBUFFERED=1 "${REPO_ROOT}/backend/.venv/bin/python" workers/ingestion_worker.py
+    fi
+  }) >"${INGESTION_LOG}" 2>&1 &
   echo $! >"${INGESTION_PID}"
 }
 
