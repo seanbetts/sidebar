@@ -1,0 +1,83 @@
+# sideBar Agent Instructions
+
+## Purpose
+
+Full-stack AI assistant platform (SvelteKit + FastAPI). Shared service layer between UI and AI agent operations.
+
+## Quick Start
+
+```bash
+docker compose up -d                 # dev
+pytest backend/tests/                # backend tests
+npm test                             # frontend tests (in frontend/)
+ruff check backend/ && npm run lint  # lint
+```
+
+## Constraints
+
+**Service layer owns business logic**
+- All database access through `backend/api/services/`
+- Endpoints and AI skills call services, never duplicate logic
+
+**Soft deletes only**
+- Set `deleted_at` timestamp, never hard delete user data
+
+**Real-time updates**
+- AI tool execution emits SSE events for UI reactivity
+- Pattern: `backend/api/services/claude_streaming.py`
+
+**File size limits** (pre-commit enforced)
+- Backend: 600 LOC (services), 500 LOC (routers)
+- Frontend: 600 LOC (components/stores)
+
+**JSONB updates**
+- Must call `flag_modified(model, "field")` or changes won't persist
+
+## Anti-Patterns
+
+- Business logic in API routes
+- Database access outside service layer
+- Duplicating logic between endpoints and skills
+- Hard deletes
+- Committing debugging artifacts (console.log, debugger, print)
+- Files exceeding size limits
+
+## Testing
+
+Write tests for new behavior. TDD preferred.
+
+**Tools:** pytest (backend), vitest (frontend)
+**Coverage targets:** 90% services, 70% components/stores
+**Details:** `tests/AGENTS.md`
+
+## Definition of Done
+
+- [ ] Tests pass (pytest, vitest)
+- [ ] Linting passes (ruff, eslint)
+- [ ] Type checking passes (mypy, tsc)
+- [ ] Docstrings present (Python 80%+, TypeScript 90%+)
+- [ ] File size within limits
+- [ ] No console.log, debugger, or print() statements
+- [ ] Plan file deleted from docs/plans/ (if created)
+
+## When to Ask
+
+**Stop and ask:**
+- Breaking API or database schema changes
+- Deleting unexpected files
+- Security configuration
+- Ambiguous requirements
+
+**Decide autonomously:**
+- Implementation details
+- Refactoring within limits
+- Tests and documentation
+
+## Gotchas
+
+- **Things.app**: Bearer token required, bridge API
+- **Supabase**: Must use connection pooler (see DATABASE_URL in .env.example)
+
+---
+
+Backend: `backend/AGENTS.md` | Frontend: `frontend/AGENTS.md` | Testing: `tests/AGENTS.md`
