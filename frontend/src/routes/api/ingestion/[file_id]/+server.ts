@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const DELETE: RequestHandler = async ({ locals, params, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/ingestion/${params.file_id}`, {
+    const response = await fetch(`${API_URL}/api/v1/ingestion/${params.file_id}`, {
       method: 'DELETE',
       headers: buildAuthHeaders(locals)
     });

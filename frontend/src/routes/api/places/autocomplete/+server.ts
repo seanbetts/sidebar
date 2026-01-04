@@ -14,7 +14,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			throw error(400, 'input is required');
 		}
 
-		const response = await fetch(`${API_URL}/api/places/autocomplete?input=${encodeURIComponent(input)}`, {
+		const response = await fetch(`${API_URL}/api/v1/places/autocomplete?input=${encodeURIComponent(input)}`, {
 			headers: buildAuthHeaders(locals)
 		});
 

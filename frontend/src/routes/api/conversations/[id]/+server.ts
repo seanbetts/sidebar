@@ -10,7 +10,7 @@ const API_URL = getApiUrl();
 // GET /api/conversations/[id] - Get conversation with messages
 export const GET: RequestHandler = async ({ locals, params }) => {
 	try {
-		const response = await fetch(`${API_URL}/api/conversations/${params.id}`, {
+		const response = await fetch(`${API_URL}/api/v1/conversations/${params.id}`, {
 			method: 'GET',
 			headers: buildAuthHeaders(locals)
 		});
@@ -37,7 +37,7 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 	try {
 		const body = await request.json();
 
-		const response = await fetch(`${API_URL}/api/conversations/${params.id}`, {
+		const response = await fetch(`${API_URL}/api/v1/conversations/${params.id}`, {
 			method: 'PUT',
 			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json'
@@ -65,7 +65,7 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 // DELETE /api/conversations/[id] - Archive conversation
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	try {
-		const response = await fetch(`${API_URL}/api/conversations/${params.id}`, {
+		const response = await fetch(`${API_URL}/api/v1/conversations/${params.id}`, {
 			method: 'DELETE',
 			headers: buildAuthHeaders(locals)
 		});

@@ -28,7 +28,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		}
 
 		// Forward request to backend
-		const response = await fetch(`${API_URL}/api/chat/stream`, {
+		const response = await fetch(`${API_URL}/api/v1/chat/stream`, {
 			method: 'POST',
 			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json',

@@ -7,7 +7,7 @@ const API_URL = getApiUrl();
 export const PATCH: RequestHandler = async ({ locals, request, fetch }) => {
   try {
     const body = await request.json();
-    const response = await fetch(`${API_URL}/api/notes/folders/rename`, {
+    const response = await fetch(`${API_URL}/api/v1/notes/folders/rename`, {
       method: 'PATCH',
       headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'

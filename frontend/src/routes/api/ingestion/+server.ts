@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/ingestion`, {
+    const response = await fetch(`${API_URL}/api/v1/ingestion`, {
       headers: buildAuthHeaders(locals)
     });
     if (!response.ok) {
@@ -23,7 +23,7 @@ export const GET: RequestHandler = async ({ locals, fetch }) => {
 export const POST: RequestHandler = async ({ locals, request, fetch }) => {
   try {
     const formData = await request.formData();
-    const response = await fetch(`${API_URL}/api/ingestion`, {
+    const response = await fetch(`${API_URL}/api/v1/ingestion`, {
       method: 'POST',
       headers: buildAuthHeaders(locals),
       body: formData

@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, fetch, params }) => {
   try {
-    const response = await fetch(`${API_URL}/api/notes/${params.id}`, {
+    const response = await fetch(`${API_URL}/api/v1/notes/${params.id}`, {
       headers: buildAuthHeaders(locals)
     });
 
@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ locals, fetch, params }) => {
 export const PATCH: RequestHandler = async ({ locals, request, fetch, params }) => {
   try {
     const body = await request.json();
-    const response = await fetch(`${API_URL}/api/notes/${params.id}`, {
+    const response = await fetch(`${API_URL}/api/v1/notes/${params.id}`, {
       method: 'PATCH',
       headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'
@@ -47,7 +47,7 @@ export const PATCH: RequestHandler = async ({ locals, request, fetch, params }) 
 
 export const DELETE: RequestHandler = async ({ locals, fetch, params }) => {
   try {
-    const response = await fetch(`${API_URL}/api/notes/${params.id}`, {
+    const response = await fetch(`${API_URL}/api/v1/notes/${params.id}`, {
       method: 'DELETE',
       headers: buildAuthHeaders(locals)
     });

@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ locals, fetch, url }) => {
 
   try {
     const response = await fetch(
-      `${API_URL}/api/websites/search?query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`,
+      `${API_URL}/api/v1/websites/search?query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`,
       {
         method: 'POST',
         headers: buildAuthHeaders(locals)

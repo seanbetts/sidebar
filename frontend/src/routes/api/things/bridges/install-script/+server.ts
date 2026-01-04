@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const POST: RequestHandler = async ({ locals, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/things/bridges/install-script`, {
+    const response = await fetch(`${API_URL}/api/v1/things/bridges/install-script`, {
       method: 'POST',
       headers: buildAuthHeaders(locals)
     });

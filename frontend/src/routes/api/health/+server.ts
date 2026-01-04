@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/health`);
+    const response = await fetch(`${API_URL}/api/v1/health`);
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {

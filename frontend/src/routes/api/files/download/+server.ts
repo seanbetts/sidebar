@@ -8,7 +8,7 @@ export const GET: RequestHandler = async ({ locals, fetch, url }) => {
   const path = url.searchParams.get('path') || '';
 
   const response = await fetch(
-    `${API_URL}/api/files/download?basePath=${encodeURIComponent(basePath)}&path=${encodeURIComponent(path)}`,
+    `${API_URL}/api/v1/files/download?basePath=${encodeURIComponent(basePath)}&path=${encodeURIComponent(path)}`,
     {
       headers: buildAuthHeaders(locals)
     }

@@ -12,7 +12,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	try {
 		const body = await request.json();
 
-		const response = await fetch(`${API_URL}/api/chat/generate-title`, {
+		const response = await fetch(`${API_URL}/api/v1/chat/generate-title`, {
 			method: 'POST',
 			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json'

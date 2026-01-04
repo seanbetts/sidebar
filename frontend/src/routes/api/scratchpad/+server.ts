@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/scratchpad`, {
+    const response = await fetch(`${API_URL}/api/v1/scratchpad`, {
       headers: buildAuthHeaders(locals)
     });
 
@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ locals, fetch }) => {
 export const POST: RequestHandler = async ({ locals, request, fetch }) => {
   try {
     const body = await request.json();
-    const response = await fetch(`${API_URL}/api/scratchpad`, {
+    const response = await fetch(`${API_URL}/api/v1/scratchpad`, {
       method: 'POST',
       headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'
@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
 
 export const DELETE: RequestHandler = async ({ locals, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/scratchpad`, {
+    const response = await fetch(`${API_URL}/api/v1/scratchpad`, {
       method: 'DELETE',
       headers: buildAuthHeaders(locals)
     });

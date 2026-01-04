@@ -7,7 +7,7 @@ const API_URL = getApiUrl();
 export const POST: RequestHandler = async ({ locals, fetch, request }) => {
   try {
     const body = await request.json();
-    const response = await fetch(`${API_URL}/api/things/bridges/url-token`, {
+    const response = await fetch(`${API_URL}/api/v1/things/bridges/url-token`, {
       method: 'POST',
       headers: {
         ...buildAuthHeaders(locals),

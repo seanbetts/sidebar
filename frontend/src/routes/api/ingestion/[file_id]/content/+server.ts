@@ -9,7 +9,7 @@ export const GET: RequestHandler = async ({ locals, params, url, fetch }) => {
     return new Response('kind is required', { status: 400 });
   }
   try {
-    const response = await fetch(`${API_URL}/api/ingestion/${params.file_id}/content?kind=${encodeURIComponent(kind)}`, {
+    const response = await fetch(`${API_URL}/api/v1/ingestion/${params.file_id}/content?kind=${encodeURIComponent(kind)}`, {
       headers: buildAuthHeaders(locals)
     });
     if (!response.ok) {

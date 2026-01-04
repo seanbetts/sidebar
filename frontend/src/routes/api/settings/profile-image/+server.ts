@@ -13,7 +13,7 @@ export const config = {
 
 export const GET: RequestHandler = async ({ locals, request, fetch }) => {
 	try {
-		const response = await fetch(`${API_URL}/api/settings/profile-image`, {
+		const response = await fetch(`${API_URL}/api/v1/settings/profile-image`, {
 			headers: buildAuthHeaders(locals)
 		});
 
@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
 		let response: Response;
 		if (contentType.startsWith('image/') || contentType === 'application/octet-stream') {
 			const buffer = await request.arrayBuffer();
-			response = await fetch(`${API_URL}/api/settings/profile-image`, {
+			response = await fetch(`${API_URL}/api/v1/settings/profile-image`, {
 				method: 'POST',
 				headers: buildAuthHeaders(locals, {
 					'Content-Type': contentType || 'application/octet-stream',
@@ -52,7 +52,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
 			});
 		} else {
 			const formData = await request.formData();
-			response = await fetch(`${API_URL}/api/settings/profile-image`, {
+			response = await fetch(`${API_URL}/api/v1/settings/profile-image`, {
 				method: 'POST',
 				headers: buildAuthHeaders(locals, {
 					'X-Filename': filename
@@ -80,7 +80,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
 
 export const DELETE: RequestHandler = async ({ locals, request, fetch }) => {
 	try {
-		const response = await fetch(`${API_URL}/api/settings/profile-image`, {
+		const response = await fetch(`${API_URL}/api/v1/settings/profile-image`, {
 			method: 'DELETE',
 			headers: buildAuthHeaders(locals)
 		});

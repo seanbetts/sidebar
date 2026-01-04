@@ -7,7 +7,7 @@ const API_URL = getApiUrl();
 export const POST: RequestHandler = async ({ locals, request, fetch }) => {
   try {
     const payload = await request.json();
-    const response = await fetch(`${API_URL}/api/ingestion/youtube`, {
+    const response = await fetch(`${API_URL}/api/v1/ingestion/youtube`, {
       method: 'POST',
       headers: buildAuthHeaders(locals, { 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload)

@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, params, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/ingestion/${params.file_id}/meta`, {
+    const response = await fetch(`${API_URL}/api/v1/ingestion/${params.file_id}/meta`, {
       headers: buildAuthHeaders(locals)
     });
     if (!response.ok) {

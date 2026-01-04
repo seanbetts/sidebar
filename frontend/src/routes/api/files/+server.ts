@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ locals, fetch, url }) => {
       return json({ error: 'Notes are served from /api/notes' }, { status: 400 });
     }
 
-    const response = await fetch(`${API_URL}/api/files/tree?basePath=${encodeURIComponent(basePath)}`, {
+    const response = await fetch(`${API_URL}/api/v1/files/tree?basePath=${encodeURIComponent(basePath)}`, {
       headers: buildAuthHeaders(locals)
     });
 

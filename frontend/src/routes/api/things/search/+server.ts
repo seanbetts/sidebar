@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ locals, url, fetch }) => {
   }
 
   try {
-    const response = await fetch(`${API_URL}/api/things/search?query=${encodeURIComponent(query)}`, {
+    const response = await fetch(`${API_URL}/api/v1/things/search?query=${encodeURIComponent(query)}`, {
       headers: buildAuthHeaders(locals)
     });
 

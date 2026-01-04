@@ -4,7 +4,7 @@ import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, fetch }) => {
-	const response = await fetch(`${API_URL}/api/skills`, {
+	const response = await fetch(`${API_URL}/api/v1/skills`, {
 		headers: buildAuthHeaders(locals)
 	});
 

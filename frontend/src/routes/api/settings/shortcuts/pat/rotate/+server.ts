@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const POST: RequestHandler = async ({ locals }) => {
   try {
-    const response = await fetch(`${API_URL}/api/settings/shortcuts/pat/rotate`, {
+    const response = await fetch(`${API_URL}/api/v1/settings/shortcuts/pat/rotate`, {
       method: 'POST',
       headers: buildAuthHeaders(locals)
     });
