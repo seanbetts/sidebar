@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 
 		const response = await fetch(
-			`${API_URL}/api/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`,
+			`${API_URL}/api/v1/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`,
 			{
 				headers: buildAuthHeaders(locals)
 			}

@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ locals, fetch, url }) => {
     }
 
     const response = await fetch(
-      `${API_URL}/api/files/content?basePath=${encodeURIComponent(basePath)}&path=${encodeURIComponent(path)}`,
+      `${API_URL}/api/v1/files/content?basePath=${encodeURIComponent(basePath)}&path=${encodeURIComponent(path)}`,
       {
         headers: buildAuthHeaders(locals)
       }
@@ -38,7 +38,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
       return json({ error: 'Notes are served from /api/notes' }, { status: 400 });
     }
 
-    const response = await fetch(`${API_URL}/api/files/content`, {
+    const response = await fetch(`${API_URL}/api/v1/files/content`, {
       method: 'POST',
       headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'

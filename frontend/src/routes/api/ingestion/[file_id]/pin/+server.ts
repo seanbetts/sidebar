@@ -7,7 +7,7 @@ const API_URL = getApiUrl();
 export const PATCH: RequestHandler = async ({ locals, params, request, fetch }) => {
   try {
     const body = await request.json();
-    const response = await fetch(`${API_URL}/api/ingestion/${params.file_id}/pin`, {
+    const response = await fetch(`${API_URL}/api/v1/ingestion/${params.file_id}/pin`, {
       method: 'PATCH',
       headers: {
         ...buildAuthHeaders(locals),

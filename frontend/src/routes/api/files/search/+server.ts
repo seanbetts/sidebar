@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ locals, fetch, url }) => {
     const limit = url.searchParams.get('limit') || '50';
 
     const response = await fetch(
-      `${API_URL}/api/files/search?basePath=${encodeURIComponent(basePath)}&query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`,
+      `${API_URL}/api/v1/files/search?basePath=${encodeURIComponent(basePath)}&query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`,
       {
         method: 'POST',
         headers: buildAuthHeaders(locals)

@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
       return json({ error: 'Notes are served from /api/notes' }, { status: 400 });
     }
 
-    const response = await fetch(`${API_URL}/api/files/folder`, {
+    const response = await fetch(`${API_URL}/api/v1/files/folder`, {
       method: 'POST',
       headers: buildAuthHeaders(locals, {
         'Content-Type': 'application/json'

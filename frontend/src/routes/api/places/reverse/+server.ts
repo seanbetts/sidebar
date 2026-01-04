@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 
 		const response = await fetch(
-			`${API_URL}/api/places/reverse?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`,
+			`${API_URL}/api/v1/places/reverse?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`,
 			{
 				headers: buildAuthHeaders(locals)
 			}

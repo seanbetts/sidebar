@@ -7,7 +7,7 @@ const API_URL = getApiUrl();
 export const POST: RequestHandler = async ({ locals, request, fetch }) => {
   try {
     const body = await request.json();
-    const response = await fetch(`${API_URL}/api/things/apply`, {
+    const response = await fetch(`${API_URL}/api/v1/things/apply`, {
       method: 'POST',
       headers: buildAuthHeaders(locals, { 'Content-Type': 'application/json' }),
       body: JSON.stringify(body)

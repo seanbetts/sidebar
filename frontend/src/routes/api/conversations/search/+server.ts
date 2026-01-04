@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ locals, url }) => {
 		const limit = url.searchParams.get('limit') || '10';
 
 		const response = await fetch(
-			`${API_URL}/api/conversations/search?query=${encodeURIComponent(query)}&limit=${limit}`,
+			`${API_URL}/api/v1/conversations/search?query=${encodeURIComponent(query)}&limit=${limit}`,
 			{
 				method: 'POST',
 				headers: buildAuthHeaders(locals)

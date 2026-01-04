@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/notes/tree`, {
+    const response = await fetch(`${API_URL}/api/v1/notes/tree`, {
       headers: buildAuthHeaders(locals)
     });
 

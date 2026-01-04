@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, params, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/things/projects/${params.id}/tasks`, {
+    const response = await fetch(`${API_URL}/api/v1/things/projects/${params.id}/tasks`, {
       headers: buildAuthHeaders(locals)
     });
 

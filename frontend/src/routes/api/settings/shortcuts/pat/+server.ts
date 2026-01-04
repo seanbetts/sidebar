@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals }) => {
   try {
-    const response = await fetch(`${API_URL}/api/settings/shortcuts/pat`, {
+    const response = await fetch(`${API_URL}/api/v1/settings/shortcuts/pat`, {
       headers: buildAuthHeaders(locals)
     });
 

@@ -9,7 +9,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals }) => {
 	try {
-		const response = await fetch(`${API_URL}/api/settings`, {
+		const response = await fetch(`${API_URL}/api/v1/settings`, {
 			headers: buildAuthHeaders(locals)
 		});
 
@@ -33,7 +33,7 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 	try {
 		const payload = await request.json();
 
-		const response = await fetch(`${API_URL}/api/settings`, {
+		const response = await fetch(`${API_URL}/api/v1/settings`, {
 			method: 'PATCH',
 			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json'

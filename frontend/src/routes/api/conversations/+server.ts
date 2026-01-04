@@ -10,7 +10,7 @@ const API_URL = getApiUrl();
 // GET /api/conversations - List conversations
 export const GET: RequestHandler = async ({ locals }) => {
 	try {
-		const response = await fetch(`${API_URL}/api/conversations/`, {
+		const response = await fetch(`${API_URL}/api/v1/conversations/`, {
 			method: 'GET',
 			headers: buildAuthHeaders(locals)
 		});
@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	try {
 		const body = await request.json();
 
-		const response = await fetch(`${API_URL}/api/conversations/`, {
+		const response = await fetch(`${API_URL}/api/v1/conversations/`, {
 			method: 'POST',
 			headers: buildAuthHeaders(locals, {
 				'Content-Type': 'application/json'

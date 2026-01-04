@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, fetch, params }) => {
   try {
-    const response = await fetch(`${API_URL}/api/websites/${params.id}`, {
+    const response = await fetch(`${API_URL}/api/v1/websites/${params.id}`, {
       headers: buildAuthHeaders(locals)
     });
 
@@ -24,7 +24,7 @@ export const GET: RequestHandler = async ({ locals, fetch, params }) => {
 
 export const DELETE: RequestHandler = async ({ locals, fetch, params }) => {
   try {
-    const response = await fetch(`${API_URL}/api/websites/${params.id}`, {
+    const response = await fetch(`${API_URL}/api/v1/websites/${params.id}`, {
       method: 'DELETE',
       headers: buildAuthHeaders(locals)
     });

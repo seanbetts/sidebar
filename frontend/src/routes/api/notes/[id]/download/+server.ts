@@ -4,7 +4,7 @@ import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
 const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ locals, fetch, params }) => {
-  const response = await fetch(`${API_URL}/api/notes/${params.id}/download`, {
+  const response = await fetch(`${API_URL}/api/v1/notes/${params.id}/download`, {
     headers: buildAuthHeaders(locals)
   });
 

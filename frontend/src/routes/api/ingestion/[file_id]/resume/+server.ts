@@ -6,7 +6,7 @@ const API_URL = getApiUrl();
 
 export const POST: RequestHandler = async ({ locals, params, fetch }) => {
   try {
-    const response = await fetch(`${API_URL}/api/ingestion/${params.file_id}/resume`, {
+    const response = await fetch(`${API_URL}/api/v1/ingestion/${params.file_id}/resume`, {
       method: 'POST',
       headers: buildAuthHeaders(locals)
     });
