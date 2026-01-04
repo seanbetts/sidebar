@@ -2,7 +2,8 @@ app = "sidebar-api"
 primary_region = "lhr"
 
 [build]
-  dockerfile = "docker/Dockerfile.skills-api"
+  dockerfile = "backend/docker/Dockerfile.skills-api"
+  context = ".."
 
 [env]
   PORT = "8001"
