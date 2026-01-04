@@ -17,7 +17,7 @@
   $: viewerKind = active?.recommended_viewer;
   $: viewerUrl =
     active && viewerKind && viewerKind !== 'viewer_video'
-      ? `/api/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
+      ? `/api/v1/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
       : null;
   $: isPdf = viewerKind === 'viewer_pdf';
   $: isAudio = viewerKind === 'audio_original';

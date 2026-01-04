@@ -327,7 +327,7 @@
 
     isSavingWebsite = true;
     try {
-      const response = await fetch('/api/websites/save', {
+      const response = await fetch('/api/v1/websites/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
@@ -370,7 +370,7 @@
 
     isCreatingNote = true;
     try {
-      const response = await fetch('/api/notes', {
+      const response = await fetch('/api/v1/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -412,7 +412,7 @@
 
     isCreatingFolder = true;
     try {
-      const response = await fetch('/api/notes/folders', {
+      const response = await fetch('/api/v1/notes/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: name })

@@ -68,7 +68,7 @@ import { SquarePen } from 'lucide-svelte';
 
 
 	async function ensureScratchpadExists() {
-		const response = await fetch('/api/scratchpad');
+		const response = await fetch('/api/v1/scratchpad');
 		if (!response.ok) throw new Error('Missing scratchpad');
 		const data = await response.json();
 		const content = typeof data.content === 'string' ? data.content : '';
@@ -117,7 +117,7 @@ import { SquarePen } from 'lucide-svelte';
 		isSaving = true;
 		saveError = null;
 		try {
-			const response = await fetch('/api/scratchpad', {
+			const response = await fetch('/api/v1/scratchpad', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({

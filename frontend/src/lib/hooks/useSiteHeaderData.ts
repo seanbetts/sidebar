@@ -155,7 +155,7 @@ export function useSiteHeaderData() {
   async function fetchLocationLabel(lat: number, lon: number) {
     try {
       const response = await fetch(
-        `/api/places/reverse?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lon)}`
+        `/api/v1/places/reverse?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lon)}`
       );
       if (!response.ok) return;
       const data = await response.json();
@@ -174,7 +174,7 @@ export function useSiteHeaderData() {
 
   async function fetchWeather(lat: number, lon: number): Promise<Record<string, unknown>> {
     const response = await fetch(
-      `/api/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`
+      `/api/v1/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`
     );
     if (!response.ok) {
       throw new Error('Weather request failed');

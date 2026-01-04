@@ -97,8 +97,8 @@ export function useFileActions(ctx: FileActionsContext) {
         const response = basePath === 'notes'
           ? await fetch(
               node.type === 'directory'
-                ? '/api/notes/folders/rename'
-                : `/api/notes/${node.path}/rename`,
+                ? '/api/v1/notes/folders/rename'
+                : `/api/v1/notes/${node.path}/rename`,
               {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -109,7 +109,7 @@ export function useFileActions(ctx: FileActionsContext) {
                 )
               }
             )
-          : await fetch(`/api/files/rename`, {
+          : await fetch(`/api/v1/files/rename`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -162,7 +162,7 @@ export function useFileActions(ctx: FileActionsContext) {
     if (node.type !== 'file') return;
     try {
       const pinned = !node.pinned;
-      const response = await fetch(`/api/notes/${node.path}/pin`, {
+      const response = await fetch(`/api/v1/notes/${node.path}/pin`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pinned })
@@ -179,7 +179,7 @@ export function useFileActions(ctx: FileActionsContext) {
     const node = ctx.getNode();
     if (node.type !== 'file') return;
     try {
-      const response = await fetch(`/api/notes/${node.path}/archive`, {
+      const response = await fetch(`/api/v1/notes/${node.path}/archive`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ archived: true })
@@ -196,7 +196,7 @@ export function useFileActions(ctx: FileActionsContext) {
     const node = ctx.getNode();
     if (node.type !== 'file') return;
     try {
-      const response = await fetch(`/api/notes/${node.path}/archive`, {
+      const response = await fetch(`/api/v1/notes/${node.path}/archive`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ archived: false })
@@ -214,12 +214,12 @@ export function useFileActions(ctx: FileActionsContext) {
     if (node.type !== 'file') return;
     try {
       const response = ctx.getBasePath() === 'notes'
-        ? await fetch(`/api/notes/${node.path}/move`, {
+        ? await fetch(`/api/v1/notes/${node.path}/move`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ folder })
           })
-        : await fetch(`/api/files/move`, {
+        : await fetch(`/api/v1/files/move`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -246,7 +246,7 @@ export function useFileActions(ctx: FileActionsContext) {
     if (node.type !== 'directory') return;
     try {
       const response = ctx.getBasePath() === 'notes'
-        ? await fetch('/api/notes/folders/move', {
+        ? await fetch('/api/v1/notes/folders/move', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -254,7 +254,7 @@ export function useFileActions(ctx: FileActionsContext) {
               newParent
             })
           })
-        : await fetch('/api/files/move', {
+        : await fetch('/api/v1/files/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -282,10 +282,10 @@ export function useFileActions(ctx: FileActionsContext) {
     try {
       const link = document.createElement('a');
       if (ctx.getBasePath() === 'notes') {
-        link.href = `/api/notes/${node.path}/download`;
+        link.href = `/api/v1/notes/${node.path}/download`;
         link.download = `${ctx.getDisplayName()}.md`;
       } else {
-        link.href = `/api/files/download?basePath=${encodeURIComponent(ctx.getBasePath())}&path=${encodeURIComponent(node.path)}`;
+        link.href = `/api/v1/files/download?basePath=${encodeURIComponent(ctx.getBasePath())}&path=${encodeURIComponent(node.path)}`;
         link.download = ctx.getDisplayName();
       }
       document.body.appendChild(link);
@@ -302,8 +302,8 @@ export function useFileActions(ctx: FileActionsContext) {
       const response = ctx.getBasePath() === 'notes'
         ? await fetch(
             node.type === 'directory'
-              ? '/api/notes/folders'
-              : `/api/notes/${node.path}`,
+              ? '/api/v1/notes/folders'
+              : `/api/v1/notes/${node.path}`,
             {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json' },
@@ -312,7 +312,7 @@ export function useFileActions(ctx: FileActionsContext) {
                 : undefined
             }
           )
-        : await fetch(`/api/files/delete`, {
+        : await fetch(`/api/v1/files/delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

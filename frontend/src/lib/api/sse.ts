@@ -62,7 +62,7 @@ export class SSEClient {
 		this.abortController = new AbortController();
 		try {
 			// Send message to backend via fetch POST to get SSE stream
-			const response = await fetch('/api/chat', {
+			const response = await fetch('/api/v1/chat', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'

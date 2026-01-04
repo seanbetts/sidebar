@@ -13,7 +13,7 @@ import type {
  */
 class ConversationsAPI {
   private get baseUrl(): string {
-    return '/api/conversations';
+    return '/api/v1/conversations';
   }
 
   /**
@@ -135,7 +135,7 @@ export const conversationsAPI = new ConversationsAPI();
  */
 class IngestionAPI {
   private get baseUrl(): string {
-    return '/api/ingestion';
+    return '/api/v1/ingestion';
   }
 
   /**
@@ -294,7 +294,7 @@ export const ingestionAPI = new IngestionAPI();
  */
 class NotesAPI {
   private get baseUrl(): string {
-    return '/api/notes';
+    return '/api/v1/notes';
   }
 
   /**
@@ -341,7 +341,7 @@ class NotesAPI {
  */
 class WebsitesAPI {
   private get baseUrl(): string {
-    return '/api/websites';
+    return '/api/v1/websites';
   }
 
   /**
@@ -403,7 +403,7 @@ export const websitesAPI = new WebsitesAPI();
  */
 class ThingsAPI {
   private get baseUrl(): string {
-    return '/api/things';
+    return '/api/v1/things';
   }
 
   async status(): Promise<ThingsBridgeStatus> {

@@ -5,7 +5,7 @@
  * @throws Error when the request fails.
  */
 export async function fetchSettings() {
-  const response = await fetch('/api/settings');
+  const response = await fetch('/api/v1/settings');
   if (!response.ok) {
     throw new Error('Failed to load settings');
   }
@@ -20,7 +20,7 @@ export async function fetchSettings() {
  * @throws Error when the request fails.
  */
 export async function saveSettings(payload: Record<string, unknown>) {
-  const response = await fetch('/api/settings', {
+  const response = await fetch('/api/v1/settings', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -40,7 +40,7 @@ export async function saveSettings(payload: Record<string, unknown>) {
  * @throws Error when the request fails.
  */
 export async function fetchSkills() {
-  const response = await fetch('/api/skills');
+  const response = await fetch('/api/v1/skills');
   if (!response.ok) {
     throw new Error('Failed to load skills');
   }
@@ -56,7 +56,7 @@ export async function fetchSkills() {
  * @throws Error when the request fails.
  */
 export async function fetchLocationSuggestions(query: string) {
-  const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(query)}`);
+  const response = await fetch(`/api/v1/places/autocomplete?input=${encodeURIComponent(query)}`);
   if (!response.ok) {
     throw new Error('Failed to load locations');
   }
@@ -72,7 +72,7 @@ export async function fetchLocationSuggestions(query: string) {
  * @throws Error when the request fails.
  */
 export async function uploadProfileImage(file: File) {
-  const response = await fetch('/api/settings/profile-image', {
+  const response = await fetch('/api/v1/settings/profile-image', {
     method: 'POST',
     headers: {
       'Content-Type': file.type || 'application/octet-stream',
@@ -92,7 +92,7 @@ export async function uploadProfileImage(file: File) {
  * @throws Error when the request fails.
  */
 export async function deleteProfileImage() {
-  const response = await fetch('/api/settings/profile-image', {
+  const response = await fetch('/api/v1/settings/profile-image', {
     method: 'DELETE'
   });
   if (!response.ok) {
@@ -104,7 +104,7 @@ export async function deleteProfileImage() {
  * Fetch the Shortcuts PAT token.
  */
 export async function fetchShortcutsPat() {
-  const response = await fetch('/api/settings/shortcuts/pat');
+  const response = await fetch('/api/v1/settings/shortcuts/pat');
   if (!response.ok) {
     throw new Error('Failed to load shortcuts token');
   }
@@ -116,7 +116,7 @@ export async function fetchShortcutsPat() {
  * Rotate the Shortcuts PAT token.
  */
 export async function rotateShortcutsPat() {
-  const response = await fetch('/api/settings/shortcuts/pat/rotate', {
+  const response = await fetch('/api/v1/settings/shortcuts/pat/rotate', {
     method: 'POST'
   });
   if (!response.ok) {

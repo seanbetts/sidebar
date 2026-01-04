@@ -20,7 +20,7 @@ export async function generateConversationTitle(conversationId: string): Promise
   conversationListStore.setGeneratingTitle(conversationId, true);
 
   try {
-    const response = await fetch('/api/chat/generate-title', {
+    const response = await fetch('/api/v1/chat/generate-title', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversation_id: conversationId })
