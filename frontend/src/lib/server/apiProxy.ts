@@ -4,11 +4,14 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
 
 /** Options for configuring a backend proxy handler. */
+export type ProxyResponseType = 'json' | 'text' | 'stream';
+
 export interface ProxyOptions {
   method?: string;
   pathBuilder: (params: Record<string, string>) => string;
   bodyFromRequest?: boolean;
   queryParamsFromUrl?: boolean;
+  responseType?: ProxyResponseType;
 }
 
 /**
@@ -19,7 +22,8 @@ export function createProxyHandler(options: ProxyOptions): RequestHandler {
     method = 'GET',
     pathBuilder,
     bodyFromRequest = false,
-    queryParamsFromUrl = false
+    queryParamsFromUrl = false,
+    responseType = 'json'
   } = options;
 
   return async ({ locals, fetch, params, request, url }) => {
@@ -48,6 +52,21 @@ export function createProxyHandler(options: ProxyOptions): RequestHandler {
 
       const response = await fetch(backendUrl, requestOptions);
 
+      if (responseType === 'stream') {
+        return new Response(response.body, {
+          status: response.status,
+          headers: response.headers
+        });
+      }
+
+      if (responseType === 'text') {
+        const text = await response.text();
+        return new Response(text, {
+          status: response.status,
+          headers: response.headers
+        });
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({
           error: response.statusText
@@ -65,6 +84,9 @@ export function createProxyHandler(options: ProxyOptions): RequestHandler {
       });
 
       const message = err instanceof Error ? err.message : 'Internal server error';
+      if (responseType !== 'json') {
+        return new Response(message, { status: 500 });
+      }
       return json({ error: message }, { status: 500 });
     }
   };
