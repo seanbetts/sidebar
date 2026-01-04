@@ -77,6 +77,8 @@ class Settings(BaseSettings):
 
     # Environment
     app_env: str = os.getenv("APP_ENV", "")
+    disable_ssl_verify: bool = False
+    custom_ca_bundle: str | None = None
 
     # Authentication
     bearer_token: str | None = None
@@ -148,6 +150,14 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"  # Ignore extra environment variables (like DOPPLER_TOKEN)
     )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.app_env in {"prod", "production"} and self.disable_ssl_verify:
+            raise ValueError(
+                "SSL verification cannot be disabled in production. "
+                "Set APP_ENV=local/dev or provide CUSTOM_CA_BUNDLE."
+            )
 
     @property
     def allow_auth_dev_mode(self) -> bool:
