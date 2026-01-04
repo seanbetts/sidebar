@@ -57,6 +57,7 @@ class ConversationWithMessages(ConversationResponse):
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
+@router.post("", response_model=ConversationResponse)
 @router.post("/", response_model=ConversationResponse)
 async def create_conversation(
     data: ConversationCreate,
@@ -83,6 +84,7 @@ async def create_conversation(
     )
 
 
+@router.get("", response_model=List[ConversationResponse])
 @router.get("/", response_model=List[ConversationResponse])
 async def list_conversations(
     user_id: str = Depends(get_current_user_id),
