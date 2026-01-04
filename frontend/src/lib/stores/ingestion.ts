@@ -1,6 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { ingestionAPI } from '$lib/services/api';
 import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
+import { logError } from '$lib/utils/errorHandling';
 import type { IngestionListItem } from '$lib/types/ingestion';
 
 interface IngestionState {
@@ -287,7 +288,7 @@ function createIngestionStore() {
           loaded: true
         });
       } catch (error) {
-        console.error('Failed to load ingestion status:', error);
+        logError('Failed to load ingestion status', error, { scope: 'ingestionStore.load' });
         update(state => ({ ...state, loading: false, error: 'Failed to load uploads.', loaded: false }));
       }
     },
@@ -303,7 +304,7 @@ function createIngestionStore() {
           loaded: true
         }));
       } catch (error) {
-        console.error('Failed to revalidate ingestion status:', error);
+        logError('Failed to revalidate ingestion status', error, { scope: 'ingestionStore.revalidateInBackground' });
       }
     },
     startPolling(intervalMs: number = 5000) {

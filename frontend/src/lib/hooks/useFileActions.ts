@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import type { FileNode } from '$lib/types/file';
 import type { Writable } from 'svelte/store';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+import { logError } from '$lib/utils/errorHandling';
 
 const NOTE_ARCHIVE_NAME = 'Archive';
 
@@ -141,7 +142,11 @@ export function useFileActions(ctx: FileActionsContext) {
           dispatchCacheEvent('file.renamed');
         }
       } catch (error) {
-        console.error('Failed to rename:', error);
+        logError('Failed to rename', error, {
+          scope: 'fileActions.rename',
+          basePath,
+          nodePath: node.path
+        });
         ctx.setEditedName(node.name);
       }
     }
@@ -171,7 +176,10 @@ export function useFileActions(ctx: FileActionsContext) {
       ctx.treeStore.setNotePinned?.(node.path, pinned);
       dispatchCacheEvent('note.pinned');
     } catch (error) {
-      console.error('Failed to pin note:', error);
+      logError('Failed to pin note', error, {
+        scope: 'fileActions.pin',
+        noteId: node.path
+      });
     }
   };
 
@@ -188,7 +196,10 @@ export function useFileActions(ctx: FileActionsContext) {
       ctx.treeStore.archiveNoteNode?.(node.path, true);
       dispatchCacheEvent('note.archived');
     } catch (error) {
-      console.error('Failed to archive note:', error);
+      logError('Failed to archive note', error, {
+        scope: 'fileActions.archive',
+        noteId: node.path
+      });
     }
   };
 
@@ -205,7 +216,10 @@ export function useFileActions(ctx: FileActionsContext) {
       ctx.treeStore.archiveNoteNode?.(node.path, false);
       dispatchCacheEvent('note.archived');
     } catch (error) {
-      console.error('Failed to unarchive note:', error);
+      logError('Failed to unarchive note', error, {
+        scope: 'fileActions.unarchive',
+        noteId: node.path
+      });
     }
   };
 
@@ -237,7 +251,12 @@ export function useFileActions(ctx: FileActionsContext) {
         dispatchCacheEvent('file.moved');
       }
     } catch (error) {
-      console.error('Failed to move file:', error);
+      logError('Failed to move file', error, {
+        scope: 'fileActions.move',
+        basePath: ctx.getBasePath(),
+        nodePath: node.path,
+        destination: folder
+      });
     }
   };
 
@@ -272,7 +291,12 @@ export function useFileActions(ctx: FileActionsContext) {
         dispatchCacheEvent('file.moved');
       }
     } catch (error) {
-      console.error('Failed to move folder:', error);
+      logError('Failed to move folder', error, {
+        scope: 'fileActions.moveFolder',
+        basePath: ctx.getBasePath(),
+        nodePath: node.path,
+        destination: newParent
+      });
     }
   };
 
@@ -292,7 +316,11 @@ export function useFileActions(ctx: FileActionsContext) {
       link.click();
       link.remove();
     } catch (error) {
-      console.error('Failed to download note:', error);
+      logError('Failed to download file', error, {
+        scope: 'fileActions.download',
+        basePath: ctx.getBasePath(),
+        nodePath: node.path
+      });
     }
   };
 
@@ -336,7 +364,11 @@ export function useFileActions(ctx: FileActionsContext) {
       }
       return true;
     } catch (error) {
-      console.error('Failed to delete:', error);
+      logError('Failed to delete', error, {
+        scope: 'fileActions.delete',
+        basePath: ctx.getBasePath(),
+        nodePath: node.path
+      });
       return false;
     }
   };

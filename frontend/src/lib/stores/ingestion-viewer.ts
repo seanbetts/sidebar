@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { ingestionAPI } from '$lib/services/api';
+import { logError } from '$lib/utils/errorHandling';
 import type { IngestionListItem, IngestionMetaResponse } from '$lib/types/ingestion';
 
 interface IngestionViewerState {
@@ -23,7 +24,7 @@ function createIngestionViewerStore() {
         const data = await ingestionAPI.get(fileId);
         update(state => ({ ...state, active: data, loading: false, error: null }));
       } catch (error) {
-        console.error('Failed to load ingested file:', error);
+        logError('Failed to load ingested file', error, { scope: 'ingestionViewerStore.open', fileId });
         update(state => ({
           ...state,
           loading: false,

@@ -11,6 +11,7 @@ import { createToolStateHandlers } from './chat/toolState';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { ingestionAPI } from '$lib/services/api';
 import { ingestionStore } from '$lib/stores/ingestion';
+import { logError } from '$lib/utils/errorHandling';
 
 const LAST_CONVERSATION_KEY = 'sideBar.lastConversation';
 
@@ -174,7 +175,10 @@ function createChatStore() {
 				try {
 					await conversationsAPI.addMessage(currentState.conversationId, userMessage);
 				} catch (error) {
-					console.error('Failed to persist user message:', error);
+					logError('Failed to persist user message', error, {
+						scope: 'chatStore.sendMessage',
+						conversationId: currentState.conversationId
+					});
 				}
 			}
 
@@ -278,7 +282,10 @@ function createChatStore() {
 						});
 					})
 					.catch((error) => {
-						console.error('Failed to fetch ingestion metadata:', error);
+						logError('Failed to fetch ingestion metadata', error, {
+							scope: 'chatStore.fetchIngestionMetadata',
+							fileId
+						});
 					});
 			}
 		},
@@ -322,7 +329,10 @@ function createChatStore() {
 
 						// Trigger title generation (generating state was set when conversation was created)
 						generateConversationTitle(state.conversationId).catch(err => {
-							console.error('Title generation failed:', err);
+							logError('Title generation failed', err, {
+								scope: 'chatStore.generateTitle',
+								conversationId: state.conversationId
+							});
 						});
 					} else {
 						// For subsequent messages, just update the metadata
@@ -332,7 +342,10 @@ function createChatStore() {
 						});
 					}
 				} catch (error) {
-					console.error('Failed to persist assistant message:', error);
+					logError('Failed to persist assistant message', error, {
+						scope: 'chatStore.persistAssistant',
+						conversationId: state.conversationId
+					});
 				}
 			}
 		},

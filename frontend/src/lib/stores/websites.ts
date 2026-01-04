@@ -1,6 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { websitesAPI } from '$lib/services/api';
 import { getCachedData, invalidateCache, isCacheStale, setCachedData } from '$lib/utils/cache';
+import { logError } from '$lib/utils/errorHandling';
 
 const CACHE_KEY = 'websites.list';
 const CACHE_TTL = 15 * 60 * 1000;
@@ -87,7 +88,7 @@ function createWebsitesStore() {
           loaded: true
         }));
       } catch (error) {
-        console.error('Failed to load websites:', error);
+        logError('Failed to load websites', error, { scope: 'websitesStore.load' });
         update(state => ({ ...state, loading: false, error: 'Failed to load websites', searchQuery: '', loaded: false }));
       }
     },
@@ -117,7 +118,7 @@ function createWebsitesStore() {
         }));
         this.upsertFromRealtime(summary);
       } catch (error) {
-        console.error('Failed to load website:', error);
+        logError('Failed to load website', error, { scope: 'websitesStore.loadById', websiteId: id });
         update(state => ({ ...state, loadingDetail: false, error: 'Failed to load website' }));
       }
     },
@@ -137,7 +138,7 @@ function createWebsitesStore() {
           loaded: true
         }));
       } catch (error) {
-        console.error('Failed to search websites:', error);
+        logError('Failed to search websites', error, { scope: 'websitesStore.search', query });
         update(state => ({ ...state, loading: false, error: 'Failed to search websites', searchQuery: query, loaded: false }));
       }
     },
@@ -152,7 +153,7 @@ function createWebsitesStore() {
         setCachedData(CACHE_KEY, data.items || [], { ttl: CACHE_TTL, version: CACHE_VERSION });
         update(state => ({ ...state, items: data.items || [] }));
       } catch (error) {
-        console.error('Background revalidation failed:', error);
+        logError('Background revalidation failed', error, { scope: 'websitesStore.revalidateInBackground' });
       }
     },
 

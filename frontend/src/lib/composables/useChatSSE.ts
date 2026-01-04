@@ -8,6 +8,7 @@ import { scratchpadStore } from '$lib/stores/scratchpad';
 import { memoriesStore } from '$lib/stores/memories';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
+import { logError } from '$lib/utils/errorHandling';
 import { get } from 'svelte/store';
 import { toast } from 'svelte-sonner';
 
@@ -199,7 +200,7 @@ export function useChatSSE() {
       onError: (error) => {
         const friendlyError = getUserFriendlyError(error);
         toast.error(friendlyError);
-        console.error('Chat error:', error);
+        logError('Chat error', error, { scope: 'chatSSE.onError', conversationId });
         chatStore.setError(assistantMessageId, 'Request failed');
       }
     });
