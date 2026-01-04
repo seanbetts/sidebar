@@ -71,6 +71,12 @@ To read the Things database (for repeating tasks + due dates), grant Full Disk A
 
 If Full Disk Access is not granted, the bridge still works, but repeating metadata is unavailable.
 
+## Automation Permission Prompt (Things control)
+
+When the bridge first talks to Things via Apple Events, macOS may prompt:
+“python3.x wants access to control Things”. This is expected because the bridge runs inside the
+app bundle using an embedded Python runtime. Click **Allow** once and macOS will remember it.
+
 Troubleshooting: Things DB not found
 
 - Re-run the installer to refresh the LaunchAgent. The bridge must be launched as the `sideBarThingsBridge.app` bundle for Full Disk Access to apply.

@@ -167,13 +167,13 @@ INSTALL_TOKEN="{token}"
 BACKEND_URL="{backend_url}"
 BRIDGE_DIR="$HOME/.sidebar/bridge"
 BRIDGE_PATH="$BRIDGE_DIR/things_bridge.py"
-VENV_PATH="$BRIDGE_DIR/venv"
 APP_NAME="sideBarThingsBridge"
 APP_DIR="/Applications/$APP_NAME.app"
 if [[ ! -w "/Applications" ]]; then
   APP_DIR="$HOME/Applications/$APP_NAME.app"
 fi
 APP_EXEC="$APP_DIR/Contents/MacOS/$APP_NAME"
+VENV_PATH="$APP_DIR/Contents/Resources/venv"
 APP_LOG_DIR="$HOME/Library/Logs"
 
 mkdir -p "$BRIDGE_DIR"
@@ -182,6 +182,7 @@ cat > "$BRIDGE_PATH" <<'PY'
 {bridge_source}
 PY
 
+mkdir -p "$APP_DIR/Contents/Resources"
 if [[ ! -d "$VENV_PATH" ]]; then
   /usr/bin/python3 -m venv "$VENV_PATH"
   PIP_CONFIG_FILE=/dev/null PIP_USER=0 "$VENV_PATH/bin/pip" install --upgrade pip >/dev/null
@@ -210,7 +211,7 @@ PLIST
 cat > "$APP_DIR/Contents/MacOS/sideBarThingsBridge" <<'SH'
 #!/bin/bash
 BRIDGE_DIR="$HOME/.sidebar/bridge"
-VENV_PATH="$BRIDGE_DIR/venv"
+VENV_PATH="$APP_DIR/Contents/Resources/venv"
 BRIDGE_PATH="$BRIDGE_DIR/things_bridge.py"
 LOG_DIR="$HOME/Library/Logs"
 export THINGS_BRIDGE_PORT="8787"
