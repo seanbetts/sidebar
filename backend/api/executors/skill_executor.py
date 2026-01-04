@@ -4,6 +4,7 @@ import json
 import os
 import asyncio
 import time
+import sys
 from pathlib import Path
 from typing import Dict, Any, List
 from api.config import settings
@@ -115,7 +116,7 @@ class SkillExecutor:
                 self._validate_workspace_paths(args)
 
                 # Build command (no shell=True to prevent injection)
-                cmd = ["python", str(script_path)] + args
+                cmd = [sys.executable, str(script_path)] + args
                 if expect_json and "--json" not in args:
                     cmd.append("--json")
 
