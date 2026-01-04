@@ -1,4 +1,5 @@
 import { writable, get } from 'svelte/store';
+import { handleFetchError, logError } from '$lib/utils/errorHandling';
 
 export interface EditorState {
   currentNoteId: string | null;
@@ -48,7 +49,9 @@ function createEditorStore() {
           ? await fetch(`/api/v1/notes/${path}`)
           : await fetch(`/api/v1/files/content?basePath=${basePath}&path=${encodeURIComponent(path)}`);
 
-        if (!response.ok) throw new Error('Failed to load note');
+        if (!response.ok) {
+          await handleFetchError(response);
+        }
 
         const data = await response.json();
 
@@ -65,7 +68,8 @@ function createEditorStore() {
           isReadOnly: false,
           lastUpdateSource: options?.source ?? null
         }));
-      } catch {
+      } catch (error) {
+        logError('Failed to load note', error, { basePath, path });
         update(state => ({
           ...state,
           isLoading: false,
@@ -120,7 +124,9 @@ function createEditorStore() {
               })
             });
 
-        if (!response.ok) throw new Error('Failed to save note');
+        if (!response.ok) {
+          await handleFetchError(response);
+        }
 
         update(s => ({
           ...s,
@@ -131,7 +137,11 @@ function createEditorStore() {
           saveError: null,
           lastUpdateSource: null
         }));
-      } catch {
+      } catch (error) {
+        logError('Failed to save note', error, {
+          basePath: state.basePath,
+          noteId: state.currentNoteId
+        });
         update(s => ({
           ...s,
           isSaving: false,

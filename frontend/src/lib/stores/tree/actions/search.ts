@@ -1,5 +1,6 @@
 import type { TreeStoreContext } from '$lib/stores/tree/types';
 import { notesAPI } from '$lib/services/api';
+import { handleFetchError, logError } from '$lib/utils/errorHandling';
 
 export function createSearchActions(context: TreeStoreContext) {
   const searchNotes = async (query: string) => {
@@ -31,7 +32,7 @@ export function createSearchActions(context: TreeStoreContext) {
         }
       }));
     } catch (error) {
-      console.error('Failed to search notes:', error);
+      logError('Failed to search notes', error, { query });
       context.update((state) => ({
         trees: {
           ...state.trees,
@@ -66,7 +67,7 @@ export function createSearchActions(context: TreeStoreContext) {
           )
         : await fetch(`/api/v1/files?basePath=${encodeURIComponent(basePath)}`);
       if (!response.ok) {
-        throw new Error('Failed to search files');
+        await handleFetchError(response);
       }
       const data = await response.json();
       const rawItems = data.items || data.children || [];
@@ -83,7 +84,7 @@ export function createSearchActions(context: TreeStoreContext) {
         }
       }));
     } catch (error) {
-      console.error('Failed to search files:', error);
+      logError('Failed to search files', error, { basePath, query });
       context.update((state) => ({
         trees: {
           ...state.trees,

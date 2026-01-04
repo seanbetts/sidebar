@@ -1,5 +1,6 @@
 import { get } from 'svelte/store';
 import { conversationListStore } from '$lib/stores/conversations';
+import { handleFetchError, logError } from '$lib/utils/errorHandling';
 
 const inFlight = new Set<string>();
 
@@ -27,13 +28,13 @@ export async function generateConversationTitle(conversationId: string): Promise
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to generate title: ${response.statusText}`);
+      await handleFetchError(response);
     }
 
     const data = await response.json();
     conversationListStore.updateConversationTitle(conversationId, data.title, !data.fallback);
   } catch (error) {
-    console.error('Title generation error:', error);
+    logError('Title generation error', error, { conversationId });
     conversationListStore.setGeneratingTitle(conversationId, false);
   } finally {
     inFlight.delete(conversationId);
