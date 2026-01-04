@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+import { logError } from '$lib/utils/errorHandling';
 
 type NoteNode = { pinned?: boolean; archived?: boolean } | null;
 
@@ -114,7 +115,11 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ newName: `${trimmed}.md` })
     });
     if (!response.ok) {
-      console.error('Failed to rename note');
+      logError('Failed to rename note', new Error('Request failed'), {
+        scope: 'editorActions.rename',
+        noteId: currentNoteId,
+        status: response.status
+      });
       return;
     }
     const nextName = `${trimmed}.md`;
@@ -133,7 +138,11 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ folder })
     });
     if (!response.ok) {
-      console.error('Failed to move note');
+      logError('Failed to move note', new Error('Request failed'), {
+        scope: 'editorActions.move',
+        noteId: currentNoteId,
+        status: response.status
+      });
       return;
     }
     ctx.treeStore.moveNoteNode?.(currentNoteId, folder);
@@ -149,7 +158,11 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ archived: true })
     });
     if (!response.ok) {
-      console.error('Failed to archive note');
+      logError('Failed to archive note', new Error('Request failed'), {
+        scope: 'editorActions.archive',
+        noteId: currentNoteId,
+        status: response.status
+      });
       return;
     }
     ctx.treeStore.archiveNoteNode?.(currentNoteId, true);
@@ -166,7 +179,11 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ archived: false })
     });
     if (!response.ok) {
-      console.error('Failed to unarchive note');
+      logError('Failed to unarchive note', new Error('Request failed'), {
+        scope: 'editorActions.unarchive',
+        noteId: currentNoteId,
+        status: response.status
+      });
       return;
     }
     ctx.treeStore.archiveNoteNode?.(currentNoteId, false);
@@ -184,7 +201,11 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ pinned })
     });
     if (!response.ok) {
-      console.error('Failed to update pin');
+      logError('Failed to update pin', new Error('Request failed'), {
+        scope: 'editorActions.pin',
+        noteId: currentNoteId,
+        status: response.status
+      });
       return;
     }
     ctx.treeStore.setNotePinned?.(currentNoteId, pinned);
@@ -218,7 +239,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
         }, 1500)
       );
     } catch (error) {
-      console.error('Failed to copy note content:', error);
+      logError('Failed to copy note content', error, { scope: 'editorActions.copy', noteId: currentNoteId });
     }
   };
 
@@ -229,7 +250,11 @@ export function useEditorActions(ctx: EditorActionsContext) {
       method: 'DELETE'
     });
     if (!response.ok) {
-      console.error('Failed to delete note');
+      logError('Failed to delete note', new Error('Request failed'), {
+        scope: 'editorActions.delete',
+        noteId: currentNoteId,
+        status: response.status
+      });
       return false;
     }
     ctx.treeStore.removeNode?.('notes', currentNoteId);

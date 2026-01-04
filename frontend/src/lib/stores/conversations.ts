@@ -6,6 +6,7 @@ import type { Conversation } from '$lib/types/history';
 import { conversationsAPI } from '$lib/services/api';
 import { getCachedData, invalidateCache, isCacheStale, setCachedData } from '$lib/utils/cache';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+import { logError } from '$lib/utils/errorHandling';
 
 const CACHE_KEY = 'conversations.list';
 const CACHE_TTL = 10 * 60 * 1000;
@@ -64,7 +65,7 @@ function createConversationListStore() {
         setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
         update(state => ({ ...state, conversations, loading: false, loaded: true }));
       } catch (error) {
-        console.error('Failed to load conversations:', error);
+        logError('Failed to load conversations', error, { scope: 'conversationsStore.load' });
         update(state => ({ ...state, loading: false, loaded: false }));
       }
     },
@@ -79,7 +80,7 @@ function createConversationListStore() {
         setCachedData(CACHE_KEY, conversations, { ttl: CACHE_TTL, version: CACHE_VERSION });
         update(state => ({ ...state, conversations }));
       } catch (error) {
-        console.error('Background revalidation failed:', error);
+        logError('Background revalidation failed', error, { scope: 'conversationsStore.revalidateInBackground' });
       }
     },
 
@@ -91,7 +92,7 @@ function createConversationListStore() {
           : await conversationsAPI.list();
         update(state => ({ ...state, conversations, loading: false, loaded: true }));
       } catch (error) {
-        console.error('Failed to search conversations:', error);
+        logError('Failed to search conversations', error, { scope: 'conversationsStore.search', query });
         update(state => ({ ...state, loading: false, loaded: false }));
       }
     },
@@ -106,7 +107,7 @@ function createConversationListStore() {
         invalidateCache(CACHE_KEY);
         dispatchCacheEvent('conversation.deleted');
       } catch (error) {
-        console.error('Failed to delete conversation:', error);
+        logError('Failed to delete conversation', error, { scope: 'conversationsStore.deleteConversation', conversationId: id });
       }
     },
 

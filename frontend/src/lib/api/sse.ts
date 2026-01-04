@@ -1,6 +1,7 @@
 /**
  * SSE (Server-Sent Events) client for streaming chat
  */
+import { logError } from '$lib/utils/errorHandling';
 
 export interface SSECallbacks {
 	onToken?: (content: string) => void;
@@ -127,17 +128,16 @@ export class SSEClient {
 						const data = JSON.parse(eventData);
 						this.handleEvent(eventType, data, callbacks);
 					} catch (e) {
-						console.error('Failed to parse SSE data:', eventData, e);
+						logError('Failed to parse SSE data', e, { scope: 'sse.parse', eventData });
 					}
 				}
 			}
 		} catch (error) {
 			// Don't report error if connection was intentionally aborted
 			if (error instanceof Error && error.name === 'AbortError') {
-				console.log('SSE connection aborted');
 				return;
 			}
-			console.error('SSE connection error:', error);
+			logError('SSE connection error', error, { scope: 'sse.connect' });
 			callbacks.onError?.(error instanceof Error ? error.message : String(error));
 		} finally {
 			// Clean up references

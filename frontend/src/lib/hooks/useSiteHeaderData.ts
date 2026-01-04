@@ -2,6 +2,7 @@ import { onDestroy, onMount } from 'svelte';
 import { writable } from 'svelte/store';
 import { setThemeMode } from '$lib/utils/theme';
 import { getCachedData, isCacheStale, revalidateInBackground, setCachedData } from '$lib/utils/cache';
+import { logError } from '$lib/utils/errorHandling';
 
 const locationCacheKey = 'location.live';
 const locationLevelsCacheKey = 'location.levels';
@@ -113,7 +114,7 @@ export function useSiteHeaderData() {
       const data = await fetchWeather(coords.lat, coords.lon);
       applyWeather(data);
     } catch (error) {
-      console.error('Failed to load weather:', error);
+      logError('Failed to load weather', error, { scope: 'siteHeader.loadWeather' });
     }
   }
 
@@ -168,7 +169,7 @@ export function useSiteHeaderData() {
         setCachedData(locationLevelsCacheKey, data.levels, { ttl: locationCacheTtlMs, version: '1.0' });
       }
     } catch (error) {
-      console.error('Failed to load live location:', error);
+      logError('Failed to load live location', error, { scope: 'siteHeader.loadLocation' });
     }
   }
 

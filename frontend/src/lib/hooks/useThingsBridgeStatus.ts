@@ -1,6 +1,7 @@
 import { onDestroy, onMount } from 'svelte';
 import { writable } from 'svelte/store';
 import { thingsAPI } from '$lib/services/api';
+import { logError } from '$lib/utils/errorHandling';
 
 type ThingsStatusState = {
   status: 'loading' | 'online' | 'offline';
@@ -36,7 +37,7 @@ export function useThingsBridgeStatus() {
         setState({ status: 'offline', deviceName: '', lastSeenAt: null });
       }
     } catch (error) {
-      console.error('Failed to load Things bridge status:', error);
+      logError('Failed to load Things bridge status', error, { scope: 'thingsBridgeStatus.load' });
       setState({ status: 'offline', deviceName: '', lastSeenAt: null });
     }
   };
