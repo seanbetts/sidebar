@@ -61,8 +61,7 @@ This codebase is **well-architected and production-ready**, but has accumulated 
 ### 🟢 LOW PRIORITY (Future Improvements)
 
 7. **Observability Enhancement**
-8. **Horizontal Scaling Support**
-9. **Complex File Refactoring**
+8. **Complex File Refactoring**
 
 ---
 
@@ -1779,9 +1778,9 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
 
 #### Acceptance Criteria
 
-- [ ] Generic `WorkspaceService` base class created
-- [ ] `NotesWorkspaceService` refactored to use base class
-- [ ] `FilesWorkspaceService` refactored to use base class
+- [x] Generic `WorkspaceService` base class created
+- [x] `NotesWorkspaceService` refactored to use base class
+- [x] `FilesWorkspaceService` refactored to use base class
 - [ ] Tests verify behavior maintained
 - [ ] Code duplication reduced by ~30%
 
@@ -2058,10 +2057,10 @@ async def get_note(note_id: str, db: Session = Depends(get_db)):
 
 #### Acceptance Criteria
 
-- [ ] Custom exception hierarchy created
-- [ ] Error handler middleware implemented
+- [x] Custom exception hierarchy created
+- [x] Error handler middleware implemented
 - [ ] All routers updated to use custom exceptions
-- [ ] Error responses have consistent format
+- [x] Error responses have consistent format
 - [ ] Error codes are documented
 
 ---
@@ -2070,8 +2069,8 @@ async def get_note(note_id: str, db: Session = Depends(get_db)):
 
 #### Current State
 
-- No API versioning: `/api/chat`, `/api/notes`
-- Breaking changes difficult to manage
+- API versioning now available under `/api/v1/*` with legacy routes still supported
+- Breaking changes manageable via deprecation headers
 
 #### Implementation Plan
 
@@ -2170,9 +2169,9 @@ export class ApiClient {
 
 #### Acceptance Criteria
 
-- [ ] V1 routes created with `/api/v1/` prefix
-- [ ] Legacy routes maintained with deprecation warnings
-- [ ] Deprecation middleware adds warning headers
+- [x] V1 routes created with `/api/v1/` prefix
+- [x] Legacy routes maintained with deprecation warnings
+- [x] Deprecation middleware adds warning headers
 - [ ] Frontend updated to use V1 routes
 - [ ] API documentation shows versions
 
@@ -2301,89 +2300,6 @@ if settings.sentry_dsn:
 ```
 
 ---
-
-### 8. Horizontal Scaling Support
-
-#### Implementation Plan
-
-**Add Redis for Distributed Caching**
-
-```python
-# backend/api/cache/redis_cache.py
-"""Redis-based cache implementation."""
-import json
-from typing import Optional, Any
-from redis import asyncio as aioredis
-from api.config import Settings
-
-
-class RedisCache:
-    """Redis cache client."""
-
-    def __init__(self, settings: Settings):
-        self.redis = aioredis.from_url(
-            settings.redis_url,
-            encoding="utf-8",
-            decode_responses=True
-        )
-
-    async def get(self, key: str) -> Optional[Any]:
-        """Get value from cache."""
-        value = await self.redis.get(key)
-        if value:
-            return json.loads(value)
-        return None
-
-    async def set(self, key: str, value: Any, ttl: int = 3600):
-        """Set value in cache with TTL."""
-        await self.redis.setex(
-            key,
-            ttl,
-            json.dumps(value)
-        )
-
-    async def delete(self, key: str):
-        """Delete key from cache."""
-        await self.redis.delete(key)
-
-    async def clear_pattern(self, pattern: str):
-        """Clear all keys matching pattern."""
-        keys = []
-        async for key in self.redis.scan_iter(match=pattern):
-            keys.append(key)
-
-        if keys:
-            await self.redis.delete(*keys)
-
-
-# backend/api/cache/title_cache.py
-"""Distributed title cache using Redis."""
-import hashlib
-from api.cache.redis_cache import RedisCache
-
-
-class TitleCache:
-    """Distributed cache for conversation titles."""
-
-    def __init__(self, redis_cache: RedisCache):
-        self.cache = redis_cache
-
-    def _build_key(self, user_msg: str, assistant_msg: str) -> str:
-        combined = f"{user_msg}\n{assistant_msg}"
-        hash_key = hashlib.sha256(combined.encode("utf-8")).hexdigest()
-        return f"title:{hash_key}"
-
-    async def get(self, user_msg: str, assistant_msg: str) -> Optional[str]:
-        """Get cached title."""
-        key = self._build_key(user_msg, assistant_msg)
-        cached = await self.cache.get(key)
-        return cached.get("title") if cached else None
-
-    async def set(self, user_msg: str, assistant_msg: str, title: str):
-        """Set cached title."""
-        key = self._build_key(user_msg, assistant_msg)
-        await self.cache.set(key, {"title": title}, ttl=3600)
-```
 
 ---
 
@@ -2523,7 +2439,7 @@ frontend/src/tests/
 ### Phase 1: Critical Fixes
 
 - [ ] Frontend test suite with 70%+ coverage
-- [ ] SSL verification properly configured
+- [x] SSL verification properly configured
 - [ ] ThingsTasksView refactored to < 300 LOC
 - [ ] UniversalViewer refactored to < 200 LOC
 - [ ] No functionality regressions
@@ -2531,18 +2447,16 @@ frontend/src/tests/
 
 ### Phase 2: Consolidation
 
-- [ ] WorkspaceService abstraction implemented
-- [ ] Custom exception hierarchy in use
-- [ ] API versioning implemented
-- [ ] Deprecation warnings working
+- [x] WorkspaceService abstraction implemented
+- [x] Custom exception hierarchy in use
+- [x] API versioning implemented
+- [x] Deprecation warnings working
 - [ ] Code duplication reduced by 30%
 
 ### Phase 3: Modernization
 
-- [ ] Prometheus metrics collecting data
-- [ ] Sentry error tracking active
-- [ ] Redis caching implemented
-- [ ] Horizontal scaling tested
+- [x] Prometheus metrics collecting data
+- [x] Sentry error tracking active
 - [ ] Performance maintained or improved
 
 ---
@@ -2552,9 +2466,9 @@ frontend/src/tests/
 ### Phase 1: Critical Fixes (2-3 weeks)
 
 **Week 1:**
-- [ ] Set up frontend testing infrastructure
-- [ ] Write tests for critical flows
-- [ ] Fix SSL verification issue
+- [x] Set up frontend testing infrastructure
+- [x] Write tests for critical flows
+- [x] Fix SSL verification issue
 
 **Week 2:**
 - [ ] Refactor ThingsTasksView component
@@ -2569,14 +2483,14 @@ frontend/src/tests/
 ### Phase 2: Consolidation (4-6 weeks)
 
 **Week 4-5:**
-- [ ] Create WorkspaceService abstraction
-- [ ] Refactor workspace services
-- [ ] Create custom exception hierarchy
+- [x] Create WorkspaceService abstraction
+- [x] Refactor workspace services
+- [x] Create custom exception hierarchy
 - [ ] Update all routers
 
 **Week 6-7:**
-- [ ] Implement API versioning
-- [ ] Add deprecation middleware
+- [x] Implement API versioning
+- [x] Add deprecation middleware
 - [ ] Update frontend API client
 - [ ] Document API versions
 
@@ -2588,14 +2502,9 @@ frontend/src/tests/
 ### Phase 3: Modernization (6-8 weeks)
 
 **Week 10-12:**
-- [ ] Add Prometheus metrics
-- [ ] Implement Sentry error tracking
+- [x] Add Prometheus metrics
+- [x] Implement Sentry error tracking
 - [ ] Create dashboards
-
-**Week 13-15:**
-- [ ] Implement Redis caching
-- [ ] Test horizontal scaling
-- [ ] Load testing
 
 **Week 16:**
 - [ ] Final testing
