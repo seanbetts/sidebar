@@ -4,6 +4,7 @@
   import { ingestionStore } from '$lib/stores/ingestion';
   import { buildIngestionStatusMessage } from '$lib/utils/ingestionStatus';
   import type { IngestionListItem } from '$lib/types/ingestion';
+  import { logError } from '$lib/utils/errorHandling';
 
   export let items: IngestionListItem[] = [];
 
@@ -30,7 +31,7 @@
         recommended_viewer: meta.recommended_viewer
       });
     } catch (error) {
-      console.error('Failed to pause ingestion:', error);
+      logError('Failed to pause ingestion', error, { scope: 'IngestionQueue', fileId });
     }
   }
 
@@ -44,7 +45,7 @@
         recommended_viewer: meta.recommended_viewer
       });
     } catch (error) {
-      console.error('Failed to resume ingestion:', error);
+      logError('Failed to resume ingestion', error, { scope: 'IngestionQueue', fileId });
     }
   }
 
@@ -58,7 +59,7 @@
         recommended_viewer: meta.recommended_viewer
       });
     } catch (error) {
-      console.error('Failed to cancel ingestion:', error);
+      logError('Failed to cancel ingestion', error, { scope: 'IngestionQueue', fileId });
     }
   }
 </script>

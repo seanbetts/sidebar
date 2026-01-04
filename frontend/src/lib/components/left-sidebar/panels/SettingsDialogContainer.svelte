@@ -14,6 +14,7 @@
     SETTINGS_SECTIONS
   } from '$lib/components/left-sidebar/panels/settingsConstants';
   import { groupSkills, normalizeSkillList } from '$lib/components/left-sidebar/panels/settingsUtils';
+  import { logError } from '$lib/utils/errorHandling';
 
   export let open = false;
   export let profileImageSrc = '';
@@ -200,7 +201,9 @@
       profileImageUrl = data?.profile_image_url ?? profileImageUrl;
       profileImageVersion = Date.now();
     } catch (error) {
-      console.error('Failed to upload profile image:', error);
+      logError('Failed to upload profile image', error, {
+        scope: 'SettingsDialogContainer'
+      });
       profileImageError =
         error instanceof Error && error.message
           ? error.message
@@ -220,7 +223,9 @@
       profileImageUrl = '';
       profileImageVersion = Date.now();
     } catch (error) {
-      console.error('Failed to delete profile image:', error);
+      logError('Failed to delete profile image', error, {
+        scope: 'SettingsDialogContainer'
+      });
       profileImageError =
         error instanceof Error && error.message
           ? error.message
@@ -278,7 +283,10 @@
       locationSuggestions = await fetchLocationSuggestions(query);
       activeLocationIndex = locationSuggestions.length ? 0 : -1;
     } catch (error) {
-      console.error('Failed to load locations:', error);
+      logError('Failed to load locations', error, {
+        scope: 'SettingsDialogContainer',
+        query
+      });
       locationLookupError = 'Unable to load locations.';
     } finally {
       isLoadingLocations = false;
@@ -350,7 +358,9 @@
       locationSuggestions = [];
       profileImageError = '';
     } catch (error) {
-      console.error('Failed to save settings on close:', error);
+      logError('Failed to save settings on close', error, {
+        scope: 'SettingsDialogContainer'
+      });
       throw error;
     }
   }
@@ -375,7 +385,9 @@
   $: {
     if (wasSettingsOpen && !open) {
       handleSettingsClose().catch((error) => {
-        console.error('Settings close failed, reopening:', error);
+        logError('Settings close failed, reopening', error, {
+          scope: 'SettingsDialogContainer'
+        });
         setTimeout(() => {
           open = true;
         }, 0);

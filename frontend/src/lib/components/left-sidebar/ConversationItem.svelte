@@ -6,6 +6,7 @@
   import { conversationListStore, currentConversationId } from '$lib/stores/conversations';
   import { conversationsAPI } from '$lib/services/api';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
+  import { logError } from '$lib/utils/errorHandling';
 
   export let conversation: Conversation;
 
@@ -39,7 +40,10 @@
         conversation.title = editedTitle.trim();
         conversationListStore.updateConversationTitle(conversation.id, conversation.title, false);
       } catch (error) {
-        console.error('Failed to rename conversation:', error);
+        logError('Failed to rename conversation', error, {
+          scope: 'ConversationItem',
+          conversationId: conversation.id
+        });
         editedTitle = conversation.title;
       }
     }
@@ -75,7 +79,10 @@
       }
       return true;
     } catch (error) {
-      console.error('Failed to delete conversation:', error);
+      logError('Failed to delete conversation', error, {
+        scope: 'ConversationItem',
+        conversationId: conversation.id
+      });
       return false;
     }
   }

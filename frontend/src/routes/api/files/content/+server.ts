@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 import { createProxyHandler } from '$lib/server/apiProxy';
+import { logError } from '$lib/utils/errorHandling';
 
 const proxyHandler = createProxyHandler({
   pathBuilder: () => '/api/v1/files/content',
@@ -28,7 +29,7 @@ export const POST: RequestHandler = async (event) => {
   try {
     payload = JSON.parse(await event.request.clone().text());
   } catch (error) {
-    console.error('Failed to save file:', error);
+    logError('Failed to save file', error, { scope: 'api.files.content' });
     return json({ error: 'Failed to save file' }, { status: 500 });
   }
 

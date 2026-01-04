@@ -1,5 +1,6 @@
 <script lang="ts">
   import NoteDeleteDialog from '$lib/components/files/NoteDeleteDialog.svelte';
+  import { logError } from '$lib/utils/errorHandling';
 
   export let itemType = 'item';
   export let onConfirm: (() => boolean | Promise<boolean> | void | Promise<void>) | undefined = undefined;
@@ -17,9 +18,9 @@
       const result = await onConfirm?.();
       if (result === false) return;
       open = false;
-    } catch (error) {
-      console.error('Delete failed:', error);
-    }
+  } catch (error) {
+      logError('Delete failed', error, { scope: 'DeleteDialogController', itemType });
+  }
   }
 </script>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { browser } from '$app/environment';
+  import { logError } from '$lib/utils/errorHandling';
 
   export let src: string | null = null;
   export let filename = 'sheet';
@@ -106,7 +107,7 @@
       sortDirection = 'asc';
       loadMorePages = 0;
     } catch (err) {
-      console.error('Failed to load spreadsheet data:', err);
+      logError('Failed to load spreadsheet data', err, { scope: 'SpreadsheetViewer', src: url });
       error = 'Failed to load spreadsheet data.';
     } finally {
       loading = false;
@@ -188,7 +189,7 @@
     try {
       await navigator.clipboard.writeText(csv);
     } catch (err) {
-      console.error('Failed to copy CSV:', err);
+      logError('Failed to copy CSV', err, { scope: 'SpreadsheetViewer', filename });
     }
   }
 

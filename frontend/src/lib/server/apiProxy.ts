@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 
 import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
+import { logError } from '$lib/utils/errorHandling';
 
 /** Options for configuring a backend proxy handler. */
 export type ProxyResponseType = 'json' | 'text' | 'stream';
@@ -77,10 +78,9 @@ export function createProxyHandler(options: ProxyOptions): RequestHandler {
       const data = await response.json();
       return json(data, { status: response.status });
     } catch (err) {
-      console.error('API proxy error:', {
+      logError('API proxy error', err, {
         path: pathBuilder(params),
-        method,
-        error: err
+        method
       });
 
       const message = err instanceof Error ? err.message : 'Internal server error';

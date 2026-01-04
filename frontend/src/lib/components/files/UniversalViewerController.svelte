@@ -10,6 +10,7 @@
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import UniversalViewerHeader from '$lib/components/files/UniversalViewerHeader.svelte';
   import UniversalViewerBody from '$lib/components/files/UniversalViewerBody.svelte';
+  import { logError } from '$lib/utils/errorHandling';
 
   $: active = $ingestionViewerStore.active;
   $: loading = $ingestionViewerStore.loading;
@@ -202,7 +203,10 @@
         isCopied = false;
       }, 1500);
     } catch (error) {
-      console.error('Failed to copy markdown:', error);
+      logError('Failed to copy markdown', error, {
+        scope: 'UniversalViewerController',
+        fileId: active?.file.id
+      });
     }
   }
 
@@ -240,7 +244,10 @@
       text = stripFrontmatter(text);
       markdownContent = text;
     } catch (error) {
-      console.error('Failed to load markdown:', error);
+      logError('Failed to load markdown', error, {
+        scope: 'UniversalViewerController',
+        fileId: active.file.id
+      });
       markdownError = 'Failed to load markdown.';
       markdownContent = '';
     } finally {
@@ -262,7 +269,10 @@
       ingestionViewerStore.clearActive();
       return true;
     } catch (error) {
-      console.error('Failed to delete file:', error);
+      logError('Failed to delete file', error, {
+        scope: 'UniversalViewerController',
+        fileId: active.file.id
+      });
       return false;
     }
   }
@@ -275,7 +285,10 @@
       ingestionViewerStore.updatePinned(active.file.id, nextPinned);
       ingestionStore.updatePinned(active.file.id, nextPinned);
     } catch (error) {
-      console.error('Failed to update pin:', error);
+      logError('Failed to update pin', error, {
+        scope: 'UniversalViewerController',
+        fileId: active.file.id
+      });
     }
   }
 
@@ -306,7 +319,10 @@
       ingestionStore.updateFilename(active.file.id, filename);
       isRenameOpen = false;
     } catch (error) {
-      console.error('Failed to rename file:', error);
+      logError('Failed to rename file', error, {
+        scope: 'UniversalViewerController',
+        fileId: active.file.id
+      });
     } finally {
       isRenaming = false;
     }
@@ -417,7 +433,10 @@
         textContent = text;
       })
       .catch((error) => {
-        console.error('Failed to load text content:', error);
+        logError('Failed to load text content', error, {
+          scope: 'UniversalViewerController',
+          fileId: active?.file.id
+        });
         textError = 'Failed to load text content.';
       })
       .finally(() => {

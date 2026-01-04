@@ -21,6 +21,7 @@
   import SidebarDialogs from '$lib/components/left-sidebar/SidebarDialogs.svelte';
   import { Button } from '$lib/components/ui/button';
   import { sidebarSectionStore } from '$lib/stores/sidebar-section';
+  import { logError } from '$lib/utils/errorHandling';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -257,7 +258,7 @@
       }
       isNewWebsiteDialogOpen = false;
     } catch (error) {
-      console.error('Failed to save website:', error);
+      logError('Failed to save website', error, { scope: 'Sidebar' });
       errorTitle = 'Unable to save website';
       errorMessage =
         error instanceof Error && error.message
@@ -303,7 +304,7 @@
       await editorStore.loadNote('notes', noteId, { source: 'user' });
       isNewNoteDialogOpen = false;
     } catch (error) {
-      console.error('Failed to create note:', error);
+      logError('Failed to create note', error, { scope: 'Sidebar', noteName: filename });
       errorTitle = 'Unable to create note';
       errorMessage = 'Failed to create note. Please try again.';
       isErrorDialogOpen = true;
@@ -329,7 +330,7 @@
       dispatchCacheEvent('note.created');
       isNewFolderDialogOpen = false;
     } catch (error) {
-      console.error('Failed to create folder:', error);
+      logError('Failed to create folder', error, { scope: 'Sidebar', folderName: name });
       errorTitle = 'Unable to create folder';
       errorMessage = 'Failed to create folder. Please try again.';
       isErrorDialogOpen = true;

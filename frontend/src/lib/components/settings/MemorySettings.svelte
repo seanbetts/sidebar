@@ -15,6 +15,7 @@
   import MemoryCreateDialog from '$lib/components/settings/memory/MemoryCreateDialog.svelte';
   import MemoryEditDialog from '$lib/components/settings/memory/MemoryEditDialog.svelte';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
+  import { logError } from '$lib/utils/errorHandling';
 
   let searchTerm = '';
   let showCreateDialog = false;
@@ -165,7 +166,7 @@
       pendingDelete = null;
       return true;
     } catch (error) {
-      console.error('Failed to delete memory:', error);
+      logError('Failed to delete memory', error, { scope: 'memorySettings.delete', memoryId: pendingDelete.id });
       return false;
     }
   }

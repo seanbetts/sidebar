@@ -12,6 +12,7 @@
 	import { clearCaches, clearInFlight, clearMemoryCache, listenForStorageEvents } from '$lib/utils/cache';
 	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
 	import { startRealtime, stopRealtime } from '$lib/realtime/realtime';
+	import { logError } from '$lib/utils/errorHandling';
 
 	let { data, children } = $props();
 	let healthChecked = false;
@@ -70,7 +71,7 @@
 				toast.error('Some services are unavailable. Restart the backend via Doppler and refresh.');
 			}
 		} catch (error) {
-			console.error('Health check failed:', error);
+			logError('Health check failed', error, { scope: 'layout.checkHealth' });
 			toast.error('Some services are unavailable. Restart the backend via Doppler and refresh.');
 		}
 	}
