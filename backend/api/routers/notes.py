@@ -404,7 +404,7 @@ async def update_pin(
     """
     pinned = bool(request.get("pinned", False))
     try:
-    note_uuid = parse_uuid(note_id, "note", "id")
+        note_uuid = parse_uuid(note_id, "note", "id")
         NotesService.update_pinned(db, user_id, note_uuid, pinned)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
@@ -473,7 +473,7 @@ async def update_folder(
     """
     folder = request.get("folder", "") or ""
     try:
-    note_uuid = parse_uuid(note_id, "note", "id")
+        note_uuid = parse_uuid(note_id, "note", "id")
         NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
@@ -507,7 +507,7 @@ async def update_archive(
     archived = bool(request.get("archived", False))
     folder = "Archive" if archived else ""
     try:
-    note_uuid = parse_uuid(note_id, "note", "id")
+        note_uuid = parse_uuid(note_id, "note", "id")
         NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
