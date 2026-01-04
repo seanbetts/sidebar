@@ -9,6 +9,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
+from api.config import settings
 from api.services.storage.base import StorageBackend, StorageObject
 
 
@@ -33,6 +34,8 @@ class R2Storage(StorageBackend):
         self.bucket = bucket
         verify_value = os.getenv("R2_SSL_VERIFY", "true").lower()
         verify = not (verify_value in {"0", "false", "no", "off"})
+        if not verify and settings.app_env in {"prod", "production"}:
+            raise ValueError("R2 SSL verification cannot be disabled in production.")
 
         self.client = boto3.client(
             "s3",
