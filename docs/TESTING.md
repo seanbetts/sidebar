@@ -88,6 +88,19 @@ Test full flows across layers:
 - Backend: API endpoint → service → database
 - Frontend: User action → store update → API call → UI update
 
+## API Smoke Tests (Local Only)
+
+We keep a lightweight API smoke suite to catch route regressions (e.g., `/api/v1` paths).
+It runs only when explicitly enabled, so it won't break CI.
+
+```bash
+# Run locally against a running app on http://localhost:3000
+RUN_API_SMOKE=1 npm test -- src/tests/flows/api-smoke.test.ts
+
+# Optional: include the YouTube ingestion endpoint (may return validation errors)
+RUN_API_SMOKE=1 RUN_API_SMOKE_YOUTUBE=1 npm test -- src/tests/flows/api-smoke.test.ts
+```
+
 ## Don't Over-Test
 
 **Skip tests for:**
