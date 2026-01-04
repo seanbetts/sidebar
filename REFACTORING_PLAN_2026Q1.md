@@ -545,8 +545,8 @@ export const DELETE = createProxyHandler({
 **Estimated Effort:** 2 days (1 day utility + tests, 1 day migration)
 **Status:** In Progress
 **Progress:** createProxyHandler supports json/text/stream response handling
-**Completed Domains:** notes, websites, ingestion, files (partial), things, conversations, memories, scratchpad, chat generate-title, settings, settings shortcuts (PAT/rotate), skills, places, weather
-**Remaining:** chat stream, profile-image, v1 passthrough, download/content routes, Things bridge install script
+**Completed Domains:** notes, websites, ingestion, files (partial), things, conversations, memories, scratchpad, chat generate-title, settings, settings shortcuts (PAT/rotate), skills, places, weather, Things bridge install script, notes/websites download
+**Remaining:** chat stream, profile-image, v1 passthrough, files download, ingestion content, files content
 **Risk:** Low - Centralized testing reduces risk, can migrate incrementally
 
 ---
