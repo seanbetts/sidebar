@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { get } from 'svelte/store';
 import { user } from '$lib/stores/auth';
+import { logError } from '$lib/utils/errorHandling';
 
 export interface CacheConfig {
   ttl?: number;
@@ -112,7 +113,7 @@ export function getCachedData<T>(key: string, config: CacheConfig = {}): T | nul
     remember(key, metadata.data);
     return metadata.data;
   } catch (error) {
-    console.error(`Cache read error for ${key}:`, error);
+    logError('Cache read error', error, { key });
     return null;
   }
 }
@@ -132,14 +133,14 @@ export function setCachedData<T>(key: string, data: T, config: CacheConfig = {})
     localStorage.setItem(buildKey(key), JSON.stringify(metadata));
     remember(key, data);
   } catch (error) {
-    console.error(`Cache write error for ${key}:`, error);
+    logError('Cache write error', error, { key });
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
       clearOldestCaches();
       try {
         localStorage.setItem(buildKey(key), JSON.stringify(metadata));
         remember(key, data);
       } catch (retryError) {
-        console.error(`Cache retry failed for ${key}:`, retryError);
+        logError('Cache retry failed', retryError, { key });
       }
     }
   }

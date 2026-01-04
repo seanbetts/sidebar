@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { fetchShortcutsPat, rotateShortcutsPat } from '$lib/components/left-sidebar/panels/settingsApi';
+  import { logError } from '$lib/utils/errorHandling';
 
   let token = '';
   let isLoading = false;
@@ -15,7 +16,9 @@
     try {
       token = await fetchShortcutsPat();
     } catch (err) {
-      console.error('Failed to load shortcuts token:', err);
+      logError('Failed to load shortcuts token', err, {
+        scope: 'SettingsShortcutsSection'
+      });
       error = 'Failed to load shortcuts token.';
     } finally {
       isLoading = false;
@@ -30,7 +33,9 @@
       token = await rotateShortcutsPat();
       success = 'Token regenerated.';
     } catch (err) {
-      console.error('Failed to rotate shortcuts token:', err);
+      logError('Failed to rotate shortcuts token', err, {
+        scope: 'SettingsShortcutsSection'
+      });
       error = 'Failed to rotate shortcuts token.';
     } finally {
       isRotating = false;
@@ -43,7 +48,9 @@
       await navigator.clipboard.writeText(token);
       success = 'Token copied to clipboard.';
     } catch (err) {
-      console.error('Failed to copy shortcuts token:', err);
+      logError('Failed to copy shortcuts token', err, {
+        scope: 'SettingsShortcutsSection'
+      });
       error = 'Failed to copy token.';
     }
   };

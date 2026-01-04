@@ -7,6 +7,7 @@ import { TableKit } from '@tiptap/extension-table';
 import { Markdown } from 'tiptap-markdown';
 import { tick } from 'svelte';
 import { TextSelection } from '@tiptap/pm/state';
+import { logError } from '$lib/utils/errorHandling';
 
 interface MarkdownEditorOptions {
   element: HTMLDivElement;
@@ -72,7 +73,7 @@ export function createMarkdownEditor({
         await tick();
         await new Promise((resolve) => requestAnimationFrame(resolve));
       } catch (error) {
-        console.error('Failed to clear editor content:', error);
+        logError('Failed to clear editor content', error, { scope: 'markdownEditor.clear' });
       } finally {
         isUpdatingContent = false;
       }
@@ -117,7 +118,7 @@ export function createMarkdownEditor({
         editorStore.clearUpdateSource();
       }
     } catch (error) {
-      console.error('Failed to update editor content:', error);
+      logError('Failed to update editor content', error, { scope: 'markdownEditor.sync' });
     } finally {
       isUpdatingContent = false;
     }

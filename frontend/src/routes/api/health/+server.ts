@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getApiUrl } from '$lib/server/api';
+import { logError } from '$lib/utils/errorHandling';
 
 const API_URL = getApiUrl();
 
@@ -15,7 +16,7 @@ export const GET: RequestHandler = async ({ fetch }) => {
 
     return json(data);
   } catch (error) {
-    console.error('Failed to check health:', error);
+    logError('Failed to check health', error, { scope: 'api.health' });
     return json({ status: 'unhealthy' }, { status: 503 });
   }
 };

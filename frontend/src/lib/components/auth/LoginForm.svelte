@@ -4,6 +4,7 @@
   import { getSupabaseClient } from '$lib/supabase';
   import { Button } from '$lib/components/ui/button';
   import { MessageSquare, FileText, Globe, Brain, FolderOpen, Cloud } from 'lucide-svelte';
+  import { logError } from '$lib/utils/errorHandling';
 
   let email = '';
   let password = '';
@@ -35,7 +36,7 @@
 
       await goto(redirectTo, { invalidateAll: true });
     } catch (err) {
-      console.error('Login failed:', err);
+      logError('Login failed', err, { scope: 'loginForm.submit' });
       error = 'Service unavailable. Please try again later.';
     } finally {
       loading = false;

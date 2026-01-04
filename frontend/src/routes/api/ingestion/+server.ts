@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 
 import { createProxyHandler } from '$lib/server/apiProxy';
 import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
+import { logError } from '$lib/utils/errorHandling';
 
 const API_URL = getApiUrl();
 
@@ -28,7 +29,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
     const data = await response.json();
     return json(data);
   } catch (error) {
-    console.error('Failed to upload ingestion file:', error);
+    logError('Failed to upload ingestion file', error, { scope: 'api.ingestion.upload' });
     return json({ error: 'Failed to upload file' }, { status: 500 });
   }
 };

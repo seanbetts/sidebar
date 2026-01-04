@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { AlertTriangle, Check, Copy, Wrench } from 'lucide-svelte';
 	import ChatMarkdown from './ChatMarkdown.svelte';
+	import { logError } from '$lib/utils/errorHandling';
 
 	export let message: Message;
 	export let activeTool: {
@@ -49,7 +50,7 @@
 				copyTimeout = null;
 			}, 1500);
 		} catch (error) {
-			console.error('Failed to copy message content:', error);
+			logError('Failed to copy message content', error, { scope: 'chatMessage.copy' });
 		}
 	}
 

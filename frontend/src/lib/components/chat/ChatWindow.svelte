@@ -17,6 +17,7 @@
 	import { getCachedData } from '$lib/utils/cache';
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 	import { getUserFriendlyError, useChatSSE } from '$lib/composables/useChatSSE';
+	import { logError } from '$lib/utils/errorHandling';
 
 	const chatSse = useChatSSE();
 	let attachments: Array<{
@@ -129,7 +130,7 @@
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 			const friendlyError = getUserFriendlyError(errorMessage);
 			toast.error(friendlyError);
-			console.error('Chat error:', error);
+			logError('Chat error', error, { scope: 'ChatWindow', conversationId });
 			chatStore.setError(assistantMessageId, 'Request failed');
 		}
 	}
@@ -181,7 +182,7 @@
 				);
 				startAttachmentPolling(id, data.file_id);
 			} catch (error) {
-				console.error('Attachment upload failed:', error);
+				logError('Attachment upload failed', error, { scope: 'ChatWindow', fileName: file.name });
 				attachments = attachments.map((item) =>
 					item.id === id ? { ...item, status: 'failed', stage: 'failed' } : item
 				);
@@ -208,7 +209,10 @@
 			);
 			startAttachmentPolling(attachmentId, data.file_id);
 		} catch (error) {
-			console.error('Attachment upload failed:', error);
+			logError('Attachment upload failed', error, {
+				scope: 'ChatWindow',
+				attachmentId
+			});
 			attachments = attachments.map((item) =>
 				item.id === attachmentId ? { ...item, status: 'failed', stage: 'failed' } : item
 			);
@@ -226,7 +230,11 @@
 			try {
 				await ingestionAPI.delete(attachment.fileId);
 			} catch (error) {
-				console.error('Failed to delete attachment:', error);
+				logError('Failed to delete attachment', error, {
+					scope: 'ChatWindow',
+					attachmentId,
+					fileId: attachment.fileId
+				});
 			}
 		}
 	}
@@ -262,7 +270,11 @@
 					return;
 				}
 			} catch (error) {
-				console.error('Attachment status failed:', error);
+				logError('Attachment status failed', error, {
+					scope: 'ChatWindow',
+					attachmentId: id,
+					fileId
+				});
 			}
 		};
 		const timeoutId = setTimeout(poll, 1500);

@@ -4,6 +4,7 @@ import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
  */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
+import { logError } from '$lib/utils/errorHandling';
 
 const API_URL = getApiUrl();
 
@@ -90,7 +91,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 						controller.close();
 					}
 				} catch (err) {
-					console.error('Stream error:', err);
+					logError('Stream error', err, { scope: 'api.chat.stream' });
 					if (controller.desiredSize !== null) {
 						controller.error(err);
 					}
@@ -106,7 +107,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			}
 		});
 	} catch (err) {
-		console.error('Chat route error:', err);
+		logError('Chat route error', err, { scope: 'api.chat' });
 		if (err instanceof Error && 'status' in err) {
 			throw err;
 		}

@@ -13,6 +13,7 @@
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+  import { logError } from '$lib/utils/errorHandling';
 
   const ARCHIVED_FLAG = 'archived';
 
@@ -140,7 +141,7 @@
     try {
       await websitesAPI.updatePinnedOrder(nextOrder);
     } catch (error) {
-      console.error('Failed to update pinned order:', error);
+      logError('Failed to update pinned order', error, { scope: 'websitesPanel.pinOrder' });
     }
   }
 
@@ -159,7 +160,7 @@
     try {
       await websitesAPI.updatePinnedOrder(nextOrder);
     } catch (error) {
-      console.error('Failed to update pinned order:', error);
+      logError('Failed to update pinned order', error, { scope: 'websitesPanel.pinOrder' });
     }
   }
 
@@ -181,7 +182,11 @@
       body: JSON.stringify({ title: trimmed })
     });
     if (!response.ok) {
-      console.error('Failed to rename website');
+      logError('Failed to rename website', new Error('Request failed'), {
+        scope: 'websitesPanel.rename',
+        websiteId: selectedSite.id,
+        status: response.status
+      });
       return;
     }
     websitesStore.renameLocal?.(selectedSite.id, trimmed);
@@ -196,7 +201,11 @@
       body: JSON.stringify({ pinned: !site.pinned })
     });
     if (!response.ok) {
-      console.error('Failed to update pin');
+      logError('Failed to update pin', new Error('Request failed'), {
+        scope: 'websitesPanel.pin',
+        websiteId: site.id,
+        status: response.status
+      });
       return;
     }
     websitesStore.setPinnedLocal?.(site.id, !site.pinned);
@@ -211,7 +220,11 @@
       body: JSON.stringify({ archived: !isArchived(site) })
     });
     if (!response.ok) {
-      console.error('Failed to archive website');
+      logError('Failed to archive website', new Error('Request failed'), {
+        scope: 'websitesPanel.archive',
+        websiteId: site.id,
+        status: response.status
+      });
       return;
     }
     websitesStore.setArchivedLocal?.(site.id, !isArchived(site));
@@ -241,7 +254,11 @@
       method: 'DELETE'
     });
     if (!response.ok) {
-      console.error('Failed to delete website');
+      logError('Failed to delete website', new Error('Request failed'), {
+        scope: 'websitesPanel.delete',
+        websiteId: selectedSite.id,
+        status: response.status
+      });
       return false;
     }
     websitesStore.removeLocal?.(selectedSite.id);

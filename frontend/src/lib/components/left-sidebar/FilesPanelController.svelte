@@ -22,6 +22,7 @@
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import type { IngestionListItem } from '$lib/types/ingestion';
+  import { logError } from '$lib/utils/errorHandling';
 
   const basePath = 'documents';
 
@@ -110,7 +111,10 @@
       ingestionStore.removeItem(fileId);
       return true;
     } catch (error) {
-      console.error('Failed to delete ingestion:', error);
+      logError('Failed to delete ingestion', error, {
+        scope: 'FilesPanelController',
+        fileId
+      });
       return false;
     } finally {
       deleteItem = null;
@@ -162,7 +166,11 @@
         ingestionViewerStore.updatePinned(item.file.id, nextPinned);
       }
     } catch (error) {
-      console.error('Failed to update pin:', error);
+      logError('Failed to update pin', error, {
+        scope: 'FilesPanelController',
+        fileId: item.file.id,
+        pinned: !item.file.pinned
+      });
     } finally {
       openMenuKey = null;
     }
@@ -198,7 +206,9 @@
     try {
       await ingestionAPI.updatePinnedOrder(nextOrder);
     } catch (error) {
-      console.error('Failed to update pinned order:', error);
+      logError('Failed to update pinned order', error, {
+        scope: 'FilesPanelController'
+      });
     }
   }
 
@@ -217,7 +227,9 @@
     try {
       await ingestionAPI.updatePinnedOrder(nextOrder);
     } catch (error) {
-      console.error('Failed to update pinned order:', error);
+      logError('Failed to update pinned order', error, {
+        scope: 'FilesPanelController'
+      });
     }
   }
 
@@ -238,7 +250,10 @@
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to download file:', error);
+      logError('Failed to download file', error, {
+        scope: 'FilesPanelController',
+        fileId: item.file.id
+      });
     } finally {
       openMenuKey = null;
     }
@@ -273,7 +288,10 @@
       isRenameOpen = false;
       renameItem = null;
     } catch (error) {
-      console.error('Failed to rename ingestion:', error);
+      logError('Failed to rename ingestion', error, {
+        scope: 'FilesPanelController',
+        fileId: renameItem.file.id
+      });
     } finally {
       isRenaming = false;
     }

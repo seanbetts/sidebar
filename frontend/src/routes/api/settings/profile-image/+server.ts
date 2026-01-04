@@ -4,6 +4,7 @@ import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
  */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
+import { logError } from '$lib/utils/errorHandling';
 
 const API_URL = getApiUrl();
 
@@ -26,7 +27,7 @@ export const GET: RequestHandler = async ({ locals, request, fetch }) => {
 			headers: response.headers
 		});
 	} catch (err) {
-		console.error('Profile image GET error:', err);
+		logError('Profile image GET error', err, { scope: 'api.settings.profileImage.get' });
 		if (err instanceof Error && 'status' in err) {
 			throw err;
 		}
@@ -70,7 +71,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
 			headers: { 'Content-Type': 'application/json' }
 		});
 	} catch (err) {
-		console.error('Profile image POST error:', err);
+		logError('Profile image POST error', err, { scope: 'api.settings.profileImage.post' });
 		if (err instanceof Error && 'status' in err) {
 			throw err;
 		}
@@ -94,7 +95,7 @@ export const DELETE: RequestHandler = async ({ locals, request, fetch }) => {
 			headers: { 'Content-Type': 'application/json' }
 		});
 	} catch (err) {
-		console.error('Profile image DELETE error:', err);
+		logError('Profile image DELETE error', err, { scope: 'api.settings.profileImage.delete' });
 		if (err instanceof Error && 'status' in err) {
 			throw err;
 		}

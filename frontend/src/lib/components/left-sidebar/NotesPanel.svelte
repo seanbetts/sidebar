@@ -7,6 +7,7 @@
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import type { FileNode } from '$lib/types/file';
+  import { logError } from '$lib/utils/errorHandling';
 
   export let basePath: string = 'notes';
   export let emptyMessage: string = 'No notes found';
@@ -128,7 +129,10 @@
     try {
       await notesAPI.updatePinnedOrder(nextOrder);
     } catch (error) {
-      console.error('Failed to update pinned order:', error);
+      logError('Failed to update pinned order', error, {
+        scope: 'NotesPanel',
+        basePath
+      });
     }
   }
 
@@ -147,7 +151,10 @@
     try {
       await notesAPI.updatePinnedOrder(nextOrder);
     } catch (error) {
-      console.error('Failed to update pinned order:', error);
+      logError('Failed to update pinned order', error, {
+        scope: 'NotesPanel',
+        basePath
+      });
     }
   }
 

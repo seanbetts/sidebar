@@ -11,6 +11,7 @@
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
   import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+  import { logError } from '$lib/utils/errorHandling';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
@@ -90,7 +91,11 @@
       body: JSON.stringify({ title: trimmed })
     });
     if (!response.ok) {
-      console.error('Failed to rename website');
+      logError('Failed to rename website', new Error('Request failed'), {
+        scope: 'websitesViewer.rename',
+        websiteId: active.id,
+        status: response.status
+      });
       return;
     }
     websitesStore.renameLocal?.(active.id, trimmed);
@@ -108,7 +113,11 @@
       body: JSON.stringify({ pinned: !active.pinned })
     });
     if (!response.ok) {
-      console.error('Failed to update pin');
+      logError('Failed to update pin', new Error('Request failed'), {
+        scope: 'websitesViewer.pin',
+        websiteId: active.id,
+        status: response.status
+      });
       return;
     }
     websitesStore.setPinnedLocal?.(active.id, !active.pinned);
@@ -125,7 +134,11 @@
       body: JSON.stringify({ archived: !active.archived })
     });
     if (!response.ok) {
-      console.error('Failed to archive website');
+      logError('Failed to archive website', new Error('Request failed'), {
+        scope: 'websitesViewer.archive',
+        websiteId: active.id,
+        status: response.status
+      });
       return;
     }
     const nextArchived = !active.archived;
@@ -161,7 +174,10 @@
         copyTimeout = null;
       }, 1500);
     } catch (error) {
-      console.error('Failed to copy website content:', error);
+      logError('Failed to copy website content', error, {
+        scope: 'websitesViewer.copy',
+        websiteId: active.id
+      });
     }
   }
 
@@ -172,7 +188,11 @@
       method: 'DELETE'
     });
     if (!response.ok) {
-      console.error('Failed to delete website');
+      logError('Failed to delete website', new Error('Request failed'), {
+        scope: 'websitesViewer.delete',
+        websiteId: active.id,
+        status: response.status
+      });
       return false;
     }
     websitesStore.removeLocal?.(active.id);

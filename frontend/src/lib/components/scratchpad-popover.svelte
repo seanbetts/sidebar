@@ -17,6 +17,7 @@ import { SquarePen } from 'lucide-svelte';
 		stripHeading,
 		withHeading
 	} from '$lib/utils/scratchpad';
+	import { logError } from '$lib/utils/errorHandling';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -60,7 +61,7 @@ import { SquarePen } from 'lucide-svelte';
 				})
 			);
 		} catch (error) {
-			console.error('Failed to update scratchpad content:', error);
+			logError('Failed to update scratchpad content', error, { scope: 'ScratchpadPopover' });
 		} finally {
 			isUpdatingContent = false;
 		}
