@@ -1,24 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+
+import { createProxyHandler } from '$lib/server/apiProxy';
 import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
 
 const API_URL = getApiUrl();
 
-export const GET: RequestHandler = async ({ locals, fetch }) => {
-  try {
-    const response = await fetch(`${API_URL}/api/v1/ingestion`, {
-      headers: buildAuthHeaders(locals)
-    });
-    if (!response.ok) {
-      throw new Error(`Backend API error: ${response.statusText}`);
-    }
-    const data = await response.json();
-    return json(data);
-  } catch (error) {
-    console.error('Failed to list ingestions:', error);
-    return json({ error: 'Failed to list ingestions' }, { status: 500 });
-  }
-};
+export const GET = createProxyHandler({
+  pathBuilder: () => '/api/v1/ingestion'
+});
 
 export const POST: RequestHandler = async ({ locals, request, fetch }) => {
   try {

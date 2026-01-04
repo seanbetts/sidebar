@@ -11,6 +11,7 @@ import {
   getTreeCacheKey
 } from '$lib/stores/tree/cache';
 import { applyExpandedPaths, hasFilePath } from '$lib/stores/tree/nodes';
+import { handleFetchError, logError } from '$lib/utils/errorHandling';
 
 export function createLoadActions(context: TreeStoreContext) {
   const revalidateInBackground = async (basePath: string, expandedPaths: Set<string>) => {
@@ -37,7 +38,7 @@ export function createLoadActions(context: TreeStoreContext) {
         }
       }));
     } catch (error) {
-      console.error(`Background revalidation failed for ${basePath}:`, error);
+      logError('Background revalidation failed', error, { basePath });
     }
   };
 
@@ -105,7 +106,9 @@ export function createLoadActions(context: TreeStoreContext) {
         ? '/api/v1/notes/tree'
         : `/api/v1/files/tree?basePath=${basePath}`;
       const response = await fetch(endpoint);
-      if (!response.ok) throw new Error('Failed to load files');
+      if (!response.ok) {
+        await handleFetchError(response);
+      }
 
       const data = await response.json();
       const children: FileNode[] = data.children || [];
@@ -132,7 +135,7 @@ export function createLoadActions(context: TreeStoreContext) {
         }
       }
     } catch (error) {
-      console.error(`Failed to load file tree for ${basePath}:`, error);
+      logError('Failed to load file tree', error, { basePath });
       context.update((state) => ({
         trees: {
           ...state.trees,

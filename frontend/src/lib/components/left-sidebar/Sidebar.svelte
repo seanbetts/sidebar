@@ -12,7 +12,7 @@
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
-  import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
+  import SidebarWebsitesSection from '$lib/components/left-sidebar/SidebarWebsitesSection.svelte';
   import ThingsPanel from '$lib/components/left-sidebar/ThingsPanel.svelte';
   import { useSidebarSectionLoader, type SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
   import { useIngestionUploads } from '$lib/hooks/useIngestionUploads';
@@ -216,8 +216,6 @@
     newFolderName = '';
     isNewFolderDialogOpen = true;
   }
-
-
   $: if (pendingUploadId) {
     handlePendingUpload(pendingUploadId, (value) => {
       pendingUploadId = value;
@@ -339,8 +337,6 @@
       isCreatingFolder = false;
     }
   }
-
-
 </script>
 
 <SidebarDialogs
@@ -421,31 +417,10 @@
         </div>
       </div>
 
-      <!-- Websites Section -->
-      <div class="panel-section" class:hidden={activeSection !== 'websites'}>
-        <SidebarSectionHeader
-          title="Websites"
-          searchPlaceholder="Search websites..."
-          onSearch={(query) => websitesStore.search(query)}
-          onClear={() => websitesStore.load(true)}
-        >
-          <svelte:fragment slot="actions">
-            <Button
-              size="icon"
-              variant="ghost"
-              class="panel-action"
-              onclick={handleNewWebsite}
-              aria-label="Save website"
-              title="Save website"
-            >
-              <Plus size={16} />
-            </Button>
-          </svelte:fragment>
-        </SidebarSectionHeader>
-        <div class="files-content">
-          <WebsitesPanel />
-        </div>
-      </div>
+      <SidebarWebsitesSection
+        active={activeSection === 'websites'}
+        onNewWebsite={handleNewWebsite}
+      />
 
       <!-- Things Section -->
       <div class="panel-section" class:hidden={activeSection !== 'things'}>
@@ -578,14 +553,14 @@
     overflow: hidden;
   }
 
-  .panel-section {
+  :global(.panel-section) {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
   }
 
-  .panel-section.hidden {
+  :global(.panel-section.hidden) {
     display: none;
   }
 
@@ -593,28 +568,28 @@
     display: none;
   }
 
-  .history-content {
+  :global(.history-content) {
     display: flex;
     flex-direction: column;
     flex: 1;
     overflow-y: auto;
   }
 
-  .notes-content {
+  :global(.notes-content) {
     display: flex;
     flex-direction: column;
     flex: 1;
     overflow-y: auto;
   }
 
-  .files-content {
+  :global(.files-content) {
     display: flex;
     flex-direction: column;
     flex: 1;
     overflow-y: auto;
   }
 
-  .things-content {
+  :global(.things-content) {
     display: flex;
     flex-direction: column;
     flex: 1;
