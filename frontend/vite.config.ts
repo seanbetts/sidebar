@@ -20,8 +20,15 @@ export default defineConfig({
 			}
 		},
 		coverage: {
+			include: ['src/lib/stores/*.ts', 'src/lib/stores/chat/**', 'src/lib/services/**'],
 			reporter: ['text', 'html'],
-			provider: 'v8'
+			provider: 'v8',
+			thresholds: {
+				lines: 70,
+				statements: 70,
+				branches: 60,
+				functions: 60
+			}
 		}
 	}
 });
