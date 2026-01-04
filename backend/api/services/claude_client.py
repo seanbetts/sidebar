@@ -19,24 +19,40 @@ class ClaudeClient:
         Args:
             settings: Application settings object.
         """
-        # Create custom httpx client that bypasses SSL verification
-        # TEMPORARY WORKAROUND for corporate SSL interception
-        # TODO: Replace with proper CA certificate installation
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-
-        http_client = httpx.AsyncClient(
-            verify=False,  # Disable SSL verification
-            timeout=httpx.Timeout(60.0, connect=10.0)
-        )
-
         self.client = AsyncAnthropic(
             api_key=settings.anthropic_api_key,
-            http_client=http_client
+            http_client=self._create_http_client(settings),
         )
         self.model = settings.model_name
         self.tool_mapper = ToolMapper()
+
+    def _create_http_client(self, settings: Settings) -> httpx.AsyncClient:
+        """Create HTTP client with SSL configuration.
+
+        Args:
+            settings: Application settings object.
+
+        Returns:
+            Configured HTTP client.
+        """
+        ssl_verify: bool | ssl.SSLContext = True
+        ssl_context: ssl.SSLContext | None = None
+
+        if settings.app_env in {"local", "development", "dev", "test"} and settings.disable_ssl_verify:
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+        elif settings.custom_ca_bundle:
+            ssl_context = ssl.create_default_context()
+            ssl_context.load_verify_locations(cafile=settings.custom_ca_bundle)
+
+        if ssl_context is not None:
+            ssl_verify = ssl_context
+
+        return httpx.AsyncClient(
+            verify=ssl_verify,
+            timeout=httpx.Timeout(60.0, connect=10.0),
+        )
 
     async def stream_with_tools(
         self,
