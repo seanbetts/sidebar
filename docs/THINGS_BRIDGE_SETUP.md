@@ -40,7 +40,7 @@ Update the bridge base URL (so Fly reaches the tunnel):
 DEVICE_NAME="$(scutil --get ComputerName || hostname)"
 DEVICE_ID="$(echo "$DEVICE_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-')"
 
-curl -s -X POST https://sidebar-api.fly.dev/api/things/bridges/register \
+curl -s -X POST https://sidebar-api.fly.dev/api/v1/things/bridges/register \
   -H "Authorization: Bearer <PAT>" \
   -H "Content-Type: application/json" \
   -d "{\"deviceId\":\"$DEVICE_ID\",\"deviceName\":\"$DEVICE_NAME\",\"baseUrl\":\"https://bridge.seanbetts.com\",\"capabilities\":{\"read\":true,\"write\":true}}"

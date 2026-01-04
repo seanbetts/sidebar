@@ -165,76 +165,7 @@ npm run dev
 
 ## API Reference
 
-### Authentication
-
-All endpoints (except `/api/health`) require Bearer token authentication:
-
-```bash
-Authorization: Bearer <your_bearer_token>
-```
-
-### Core Endpoints
-
-**Chat**
-- `POST /api/chat/stream` - Stream chat with SSE (Server-Sent Events)
-- `POST /api/chat/generate-title` - Generate conversation title with Gemini
-
-**Conversations**
-- `GET /api/conversations` - List all conversations
-- `GET /api/conversations/{id}` - Get conversation by ID
-- `POST /api/conversations` - Create new conversation
-- `PATCH /api/conversations/{id}` - Update conversation
-- `DELETE /api/conversations/{id}` - Delete conversation
-
-**Notes**
-- `GET /api/notes` - List all notes
-- `GET /api/notes/{id}` - Get note by ID
-- `POST /api/notes` - Create new note
-- `PATCH /api/notes/{id}` - Update note
-- `DELETE /api/notes/{id}` - Delete note
-
-**Websites**
-- `GET /api/websites` - List archived websites
-- `GET /api/websites/{id}` - Get website by ID
-- `POST /api/websites` - Save new website
-- `DELETE /api/websites/{id}` - Delete website
-
-**Ingestion**
-- `POST /api/ingestion` - Upload file (multipart form with `file`, optional `folder`)
-- `POST /api/ingestion/youtube` - Ingest YouTube URL
-- `GET /api/ingestion` - List ingestions
-- `GET /api/ingestion/{id}/meta` - Fetch ingestion metadata + job status
-- `GET /api/ingestion/{id}/content?kind=...` - Fetch derivative content
-- `POST /api/ingestion/{id}/pause` - Pause ingestion job
-- `POST /api/ingestion/{id}/resume` - Resume ingestion job
-- `POST /api/ingestion/{id}/cancel` - Cancel ingestion job
-- `PATCH /api/ingestion/{id}/pin` - Pin/unpin file
-- `PATCH /api/ingestion/{id}/rename` - Rename file
-- `DELETE /api/ingestion/{id}` - Delete file
-
-**Memories**
-- `GET /api/memories` - List stored memories
-- `POST /api/memories` - Create memory
-- `PATCH /api/memories/{id}` - Update memory
-- `DELETE /api/memories/{id}` - Delete memory
-
-**Settings**
-- `GET /api/settings` - Fetch current user settings
-- `PATCH /api/settings` - Update settings (profile fields, styles, enabled skills)
-- `POST /api/settings/profile-image` - Upload avatar (max 2MB)
-- `GET /api/settings/profile-image` - Fetch avatar
-- `DELETE /api/settings/profile-image` - Remove avatar
-
-**Skills**
-- `GET /api/skills` - List available skills (filtered to exposed tools)
-
-**Places & Weather**
-- `GET /api/places/autocomplete?query=...` - Location autocomplete
-- `GET /api/places/reverse-geocode?lat=...&lon=...` - Reverse geocoding
-- `GET /api/weather?lat=...&lon=...` - Current weather data
-
-**Health**
-- `GET /api/health` - Health check (no authentication required)
+All endpoints require Bearer token authentication (except `/api/health`). For complete API documentation including request/response schemas, see the interactive API docs at [http://localhost:8001/docs](http://localhost:8001/docs) when running locally.
 
 ## Creating Skills
 
@@ -302,50 +233,15 @@ Backend tests live in `backend/tests/`. Frontend tests live in `frontend/src/tes
 
 ```
 sideBar/
-├── backend/
-│   ├── api/                          # FastAPI application
-│   │   ├── main.py                   # Entry point, router mounting
-│   │   ├── config.py                 # Settings (Pydantic)
-│   │   ├── auth.py                   # Bearer token auth
-│   │   ├── prompts.py                # Prompt templates
-│   │   ├── routers/                  # API endpoints
-│   │   │   ├── chat.py              # Chat streaming (SSE)
-│   │   │   ├── conversations.py     # Conversation CRUD
-│   │   │   ├── notes.py             # Note management
-│   │   │   ├── websites.py          # Website archival
-│   │   │   ├── settings.py          # User settings
-│   │   │   ├── places.py            # Location services
-│   │   │   ├── weather.py           # Weather API
-│   │   │   └── skills.py            # Skill catalog
-│   │   ├── models/                   # SQLAlchemy ORM
-│   │   ├── services/                 # Business logic
-│   │   ├── executors/                # Skill execution
-│   │   ├── security/                 # Path validation, audit
-│   │   └── db/                       # Database session
-│   ├── docker/                       # Backend Docker configs
-│   │   └── Dockerfile.skills-api
-│   ├── skills/                       # Agent skills directory
-│   ├── tests/                        # Backend tests
-│   └── pyproject.toml                # Python dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── lib/
-│   │   │   ├── components/          # Svelte components
-│   │   │   ├── stores/              # State management
-│   │   │   ├── services/            # API clients
-│   │   │   ├── types/               # TypeScript types
-│   │   │   └── utils/               # Helper functions
-│   │   ├── routes/                  # SvelteKit routes
-│   │   └── static/                  # Static assets
-│   ├── Dockerfile                   # Frontend container
-│   ├── package.json                 # NPM dependencies
-│   └── svelte.config.js             # SvelteKit config
-├── docker-compose.yml               # Multi-service orchestration
-├── scripts/                         # Utility scripts
-├── .env.example                     # Environment template
-├── README.md                        # This file
-└── AGENTS.md                        # AI agent instructions
-
+├── backend/           # FastAPI application
+│   ├── api/          # Routers, services, models, executors
+│   ├── skills/       # Agent skills directory
+│   └── tests/        # Backend tests
+├── frontend/          # SvelteKit application
+│   └── src/          # Components, stores, routes
+├── docs/              # Documentation
+├── scripts/           # Utility scripts
+└── docker-compose.yml # Multi-service orchestration
 ```
 
 ## Security
@@ -361,73 +257,30 @@ sideBar implements multiple security layers:
 - **Bearer Token Auth** - API authentication for all endpoints
 - **RLS Policies** - Supabase row-level security for user-scoped tables
 
-## External Services & APIs
+## External Services
 
-### Configuration & Secrets
-
-- **[Doppler](https://doppler.com)** - Secrets management platform
-  - [Documentation](https://docs.doppler.com)
-  - [Getting Started](https://docs.doppler.com/docs/getting-started)
-
-### AI & LLM
-
-- **[Anthropic Claude API](https://anthropic.com)** - Main AI engine for chat and tool use
-  - [API Documentation](https://docs.anthropic.com)
-  - [Model Overview](https://docs.anthropic.com/en/docs/models-overview)
-  - [Tool Use Guide](https://docs.anthropic.com/en/docs/build-with-claude/tool-use)
-
-- **[Google Gemini API](https://ai.google.dev)** - Used for conversation title generation
-  - [API Documentation](https://ai.google.dev/docs)
-  - [Gemini Models](https://ai.google.dev/models/gemini)
-
-- **[OpenAI API](https://openai.com)** - Alternative AI models support
-  - [API Documentation](https://platform.openai.com/docs)
-  - [API Reference](https://platform.openai.com/docs/api-reference)
-
-### Location & Weather
-
-- **[Google Places API](https://developers.google.com/maps/documentation/places/web-service)** - Location autocomplete and geocoding
-  - [Place Autocomplete](https://developers.google.com/maps/documentation/places/web-service/autocomplete)
-  - [Geocoding API](https://developers.google.com/maps/documentation/geocoding)
-
-- **[Open-Meteo](https://open-meteo.com)** - Free weather forecast API
-  - [API Documentation](https://open-meteo.com/en/docs)
-  - [Weather API](https://open-meteo.com/en/docs/weather-api)
-
-### Content & Web
-
-- **[Jina AI](https://jina.ai)** - Web scraping and content extraction
-  - [Documentation](https://jina.ai/docs)
-  - [Reader API](https://jina.ai/reader)
+- **[Anthropic Claude](https://docs.anthropic.com)** - Main AI engine for chat and tool use
+- **[Supabase](https://supabase.com/docs)** - PostgreSQL database with RLS
+- **[Cloudflare R2](https://developers.cloudflare.com/r2)** - Object storage for workspace files
+- **[Doppler](https://docs.doppler.com)** - Secrets management
+- **[Google Gemini](https://ai.google.dev/docs)** - Conversation title generation
+- **[Jina AI](https://jina.ai/reader)** - Web scraping and content extraction
 
 ## Resources
 
-### Learning About Agent Skills
+**Documentation:**
+- [Architecture & Design Decisions](./docs/ARCHITECTURE.md)
+- [Local Development Guide](./docs/LOCAL_DEVELOPMENT.md)
+- [Testing Philosophy](./docs/TESTING.md)
+- [AI Agent Instructions](./AGENTS.md)
 
-- **[What are Skills?](https://agentskills.io/what-are-skills)** - Core concepts and how skills work
-- **[Specification](https://agentskills.io/specification)** - Complete format requirements for SKILL.md files
-- **[Integration Guide](https://agentskills.io/integrate-skills)** - How to incorporate skills into agents/tools
+**Frameworks:**
+- [FastAPI](https://fastapi.tiangolo.com) • [SvelteKit](https://kit.svelte.dev) • [SQLAlchemy](https://docs.sqlalchemy.org)
 
-### Framework Documentation
-
-- **[FastAPI](https://fastapi.tiangolo.com)** - Modern Python web framework
-- **[SvelteKit](https://kit.svelte.dev)** - Web application framework
-- **[SQLAlchemy](https://docs.sqlalchemy.org)** - Python SQL toolkit and ORM
-- **[Tailwind CSS](https://tailwindcss.com)** - Utility-first CSS framework
-- **[TipTap](https://tiptap.dev)** - Headless rich text editor
-
-### Tools & References
-
-- **[skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref)** - Reference library for validating skills
-- **[Skill Creator](./skills/skill-creator/SKILL.md)** - Included skill for creating new skills
-- **[Example Skills](https://github.com/anthropics/skills)** - Anthropic's official skills collection
-- **[AGENTS.md](https://agents.md)** - Standard format for AI agent development instructions (see our [AGENTS.md](./AGENTS.md))
-
-### Advanced
-
-- **[Skill Client Integration Spec](https://github.com/anthropics/skills/blob/main/spec/skill-client-integration.md)** - Implementing filesystem-based and tool-based skill clients
-- **[Agent Skills Repository](https://github.com/agentskills/agentskills)** - Main project repository
-- **[Model Context Protocol](https://modelcontextprotocol.io)** - MCP specification for semantic tool definitions
+**Agent Skills:**
+- [Agent Skills Specification](https://agentskills.io/specification)
+- [skills-ref Validator](https://github.com/agentskills/agentskills/tree/main/skills-ref)
+- [Example Skills](https://github.com/anthropics/skills)
 
 ## License
 

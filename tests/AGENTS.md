@@ -13,7 +13,7 @@ New behavior requires tests. TDD preferred but not enforced.
 
 **Frontend (vitest):**
 - Component user interactions (70%+ coverage target)
-- Store state updates
+- Store state updates (80%+ coverage target)
 - API call handling
 
 ## What to Skip
