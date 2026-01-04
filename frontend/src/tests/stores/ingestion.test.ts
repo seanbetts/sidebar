@@ -4,9 +4,11 @@ import { ingestionStore } from '$lib/stores/ingestion';
 
 const cacheState = new Map<string, unknown>();
 
-const ingestionAPI = {
-  list: vi.fn()
-};
+const { ingestionAPI } = vi.hoisted(() => ({
+  ingestionAPI: {
+    list: vi.fn()
+  }
+}));
 
 vi.mock('$lib/services/api', () => ({
   ingestionAPI
@@ -38,6 +40,8 @@ describe('ingestionStore', () => {
     expect(state.items).toHaveLength(1);
     expect(state.items[0].file.id).toBe('file-1');
     expect(upload.job.status).toBe('uploading');
+
+    ingestionStore.removeLocalUpload('file-1');
   });
 
   it('loads cached ingestion items when available', async () => {

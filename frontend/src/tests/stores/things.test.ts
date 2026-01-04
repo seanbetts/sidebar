@@ -4,15 +4,17 @@ import { thingsStore } from '$lib/stores/things';
 
 const cacheState = new Map<string, unknown>();
 
-const thingsAPI = {
-  list: vi.fn(),
-  counts: vi.fn(),
-  areaTasks: vi.fn(),
-  projectTasks: vi.fn(),
-  search: vi.fn(),
-  diagnostics: vi.fn(),
-  apply: vi.fn()
-};
+const { thingsAPI } = vi.hoisted(() => ({
+  thingsAPI: {
+    list: vi.fn(),
+    counts: vi.fn(),
+    areaTasks: vi.fn(),
+    projectTasks: vi.fn(),
+    search: vi.fn(),
+    diagnostics: vi.fn(),
+    apply: vi.fn()
+  }
+}));
 
 vi.mock('$lib/services/api', () => ({
   thingsAPI

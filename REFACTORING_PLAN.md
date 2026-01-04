@@ -1481,7 +1481,7 @@ export function selectNode(nodeId: string | null) {
 - [ ] FilesPanel.svelte reduced to < 400 LOC
 - [ ] All extracted components have unit tests
 - [ ] No functionality regression
-- [ ] Performance maintained or improved
+- [x] Performance maintained or improved
 
 ---
 
@@ -2457,7 +2457,7 @@ frontend/src/tests/
 
 - [x] Prometheus metrics collecting data
 - [x] Sentry error tracking active
-- [ ] Performance maintained or improved
+- [x] Performance maintained or improved
 
 ---
 

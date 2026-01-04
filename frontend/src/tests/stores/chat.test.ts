@@ -1,22 +1,43 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { get, writable } from 'svelte/store';
+import { get } from 'svelte/store';
 import { chatStore } from '$lib/stores/chat';
 
-const conversationsAPI = {
-  create: vi.fn(),
-  get: vi.fn(),
-  addMessage: vi.fn()
-};
-
-const conversationListStore = {
-  addConversation: vi.fn(),
-  deleteConversation: vi.fn(),
-  setGeneratingTitle: vi.fn(),
-  updateConversationMetadata: vi.fn(),
-  updateConversationTitle: vi.fn()
-};
-
-const currentConversationId = writable<string | null>(null);
+const { conversationsAPI, conversationListStore, currentConversationId } = vi.hoisted(() => {
+  const createStore = <T>(initial: T) => {
+    let value = initial;
+    const subscribers = new Set<(next: T) => void>();
+    return {
+      subscribe(run: (next: T) => void) {
+        run(value);
+        subscribers.add(run);
+        return () => subscribers.delete(run);
+      },
+      set(next: T) {
+        value = next;
+        subscribers.forEach((fn) => fn(value));
+      },
+      update(updater: (current: T) => T) {
+        value = updater(value);
+        subscribers.forEach((fn) => fn(value));
+      }
+    };
+  };
+  return {
+    conversationsAPI: {
+      create: vi.fn(),
+      get: vi.fn(),
+      addMessage: vi.fn()
+    },
+    conversationListStore: {
+      addConversation: vi.fn(),
+      deleteConversation: vi.fn(),
+      setGeneratingTitle: vi.fn(),
+      updateConversationMetadata: vi.fn(),
+      updateConversationTitle: vi.fn()
+    },
+    currentConversationId: createStore<string | null>(null)
+  };
+});
 
 vi.mock('$lib/services/api', () => ({
   conversationsAPI,
