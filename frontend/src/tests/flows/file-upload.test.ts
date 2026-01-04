@@ -1,86 +1,113 @@
 import { render, fireEvent } from '@testing-library/svelte';
-import { writable } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
 import Sidebar from '$lib/components/left-sidebar/Sidebar.svelte';
 
-const createStubComponent = (testId: string) =>
-  class {
-    $$prop_def: Record<string, unknown> = {};
-    constructor({ target }: { target: HTMLElement }) {
+const { createStubComponent } = vi.hoisted(() => ({
+  createStubComponent: (testId: string) => ({ target }: { target: HTMLElement }) => {
+    if (target) {
       const el = document.createElement('div');
       el.dataset.testid = testId;
       target.appendChild(el);
     }
-    $set() {}
-    $destroy() {}
+    return {
+      $set() {},
+      $destroy() {}
+    };
+  }
+}));
+
+const {
+  ingestionAPI,
+  ingestionStore,
+  ingestionViewerStore,
+  editorStore,
+  websitesStore,
+  treeStore,
+  thingsStore,
+  chatStore,
+  conversationListStore,
+  currentNoteId,
+  sidebarSectionStore
+} = vi.hoisted(() => {
+  const createStore = <T>(initial: T) => {
+    let value = initial;
+    const subscribers = new Set<(next: T) => void>();
+    return {
+      subscribe(run: (next: T) => void) {
+        run(value);
+        subscribers.add(run);
+        return () => subscribers.delete(run);
+      },
+      set(next: T) {
+        value = next;
+        subscribers.forEach((fn) => fn(value));
+      },
+      update(updater: (current: T) => T) {
+        value = updater(value);
+        subscribers.forEach((fn) => fn(value));
+      }
+    };
   };
-
-const ingestionAPI = {
-  upload: vi.fn(),
-  get: vi.fn(),
-  ingestYoutube: vi.fn()
-};
-
-const ingestionState = writable({ items: [] as Array<{ file: { id: string } }> });
-const ingestionStore = {
-  subscribe: ingestionState.subscribe,
-  addLocalUpload: vi.fn(() => ({ id: 'local', job: { status: 'uploading' }, file: { id: 'local' } })),
-  updateLocalUploadProgress: vi.fn(),
-  removeLocalUpload: vi.fn(),
-  upsertItem: vi.fn(),
-  addLocalSource: vi.fn()
-};
-
-const ingestionViewerStore = {
-  setLocalActive: vi.fn(),
-  updateActiveJob: vi.fn(),
-  clearActive: vi.fn(),
-  open: vi.fn()
-};
-
-const editorStore = {
-  subscribe: writable({ isDirty: false, currentNoteId: null }).subscribe,
-  reset: vi.fn(),
-  saveNote: vi.fn(),
-  loadNote: vi.fn()
-};
-
-const websitesStore = {
-  clearActive: vi.fn(),
-  loadById: vi.fn(),
-  search: vi.fn(),
-  load: vi.fn()
-};
-
-const treeStore = {
-  searchNotes: vi.fn(),
-  searchFiles: vi.fn(),
-  load: vi.fn(),
-  addNoteNode: vi.fn(),
-  addFolderNode: vi.fn()
-};
-
-const thingsStore = {
-  search: vi.fn(),
-  clearSearch: vi.fn(),
-  startNewTask: vi.fn()
-};
-
-const chatStore = {
-  subscribe: writable({ conversationId: null, messages: [] }).subscribe
-};
-
-const conversationListStore = {
-  subscribe: writable({ conversations: [] as Array<{ id: string; messageCount: number }> }).subscribe,
-  search: vi.fn(),
-  load: vi.fn()
-};
-
-const currentNoteId = writable<string | null>(null);
-
-const sidebarSectionStore = {
-  set: vi.fn()
-};
+  const ingestionState = createStore({ items: [] as Array<{ file: { id: string } }> });
+  return {
+    ingestionAPI: {
+      upload: vi.fn(),
+      get: vi.fn(),
+      ingestYoutube: vi.fn()
+    },
+    ingestionStore: {
+      subscribe: ingestionState.subscribe,
+      addLocalUpload: vi.fn(() => ({ id: 'local', job: { status: 'uploading' }, file: { id: 'local' } })),
+      updateLocalUploadProgress: vi.fn(),
+      removeLocalUpload: vi.fn(),
+      upsertItem: vi.fn(),
+      addLocalSource: vi.fn()
+    },
+    ingestionViewerStore: {
+      setLocalActive: vi.fn(),
+      updateActiveJob: vi.fn(),
+      clearActive: vi.fn(),
+      open: vi.fn()
+    },
+    editorStore: {
+      subscribe: createStore({ isDirty: false, currentNoteId: null }).subscribe,
+      reset: vi.fn(),
+      saveNote: vi.fn(),
+      loadNote: vi.fn()
+    },
+    websitesStore: {
+      clearActive: vi.fn(),
+      loadById: vi.fn(),
+      search: vi.fn(),
+      load: vi.fn()
+    },
+    treeStore: {
+      searchNotes: vi.fn(),
+      searchFiles: vi.fn(),
+      load: vi.fn(),
+      addNoteNode: vi.fn(),
+      addFolderNode: vi.fn()
+    },
+    thingsStore: {
+      search: vi.fn(),
+      clearSearch: vi.fn(),
+      startNewTask: vi.fn()
+    },
+    chatStore: {
+      subscribe: createStore({ conversationId: null, messages: [] }).subscribe
+    },
+    conversationListStore: {
+      subscribe: createStore({ conversations: [] as Array<{ id: string; messageCount: number }> })
+        .subscribe,
+      search: vi.fn(),
+      load: vi.fn()
+    },
+    currentNoteId: createStore<string | null>(null),
+    sidebarSectionStore: {
+      set: vi.fn()
+    }
+  };
+});
 
 vi.mock('$lib/services/api', () => ({
   ingestionAPI

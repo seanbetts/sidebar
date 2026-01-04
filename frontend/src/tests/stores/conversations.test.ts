@@ -4,11 +4,13 @@ import { conversationListStore } from '$lib/stores/conversations';
 
 const cacheState = new Map<string, unknown>();
 
-const conversationsAPI = {
-  list: vi.fn(),
-  search: vi.fn(),
-  delete: vi.fn()
-};
+const { conversationsAPI } = vi.hoisted(() => ({
+  conversationsAPI: {
+    list: vi.fn(),
+    search: vi.fn(),
+    delete: vi.fn()
+  }
+}));
 
 vi.mock('$lib/services/api', () => ({
   conversationsAPI

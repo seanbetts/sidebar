@@ -4,8 +4,10 @@ import { readable } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
 import LoginForm from '$lib/components/auth/LoginForm.svelte';
 
-const signInWithPassword = vi.fn();
-const goto = vi.fn();
+const { signInWithPassword, goto } = vi.hoisted(() => ({
+  signInWithPassword: vi.fn(),
+  goto: vi.fn()
+}));
 
 vi.mock('$app/navigation', () => ({
   goto
@@ -44,4 +46,3 @@ describe('authentication flow', () => {
     expect(goto).toHaveBeenCalledWith('/', { invalidateAll: true });
   });
 });
-
