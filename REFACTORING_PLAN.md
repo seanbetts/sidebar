@@ -27,6 +27,13 @@ This codebase is **well-architected and production-ready**, but has accumulated 
 - **Defer large UI refactors** (e.g. ThingsTasksView, FilesPanel) until test scaffolding is in place.
 - Refresh metrics (LOC/test counts) before kicking off implementation.
 
+**Verification Notes (2026-01-04)**:
+- Frontend client calls now use `/api/v1/*` via a SvelteKit `/api/v1/*` proxy route.
+- WorkspaceService refactor verified: notes/files routers now call workspace services; shared base removes duplicated logic.
+- Performance sanity checked: no additional background polling introduced; endpoints remain proxied without extra hops.
+- Duplication reduction verified: notes/files workspace operations now share a single service base; Things/UniversalViewer refactors remove repeated header/body logic.
+- Performance verification: `/api/v1` proxy streams responses through without buffering; no new timers or polling were added during the refactor.
+
 ---
 
 ## Table of Contents
