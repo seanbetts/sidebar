@@ -10,47 +10,43 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.note import Note
 from api.services.notes_service import NotesService, NoteNotFoundError
+from api.services.workspace_service import WorkspaceService
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 
-class NotesWorkspaceService:
+class NotesWorkspaceService(WorkspaceService[Note]):
     """Workspace-facing note operations for the API layer."""
 
-    @staticmethod
-    def list_tree(db: Session, user_id: str) -> dict:
-        """Return a notes tree for the UI.
+    @classmethod
+    def _query_items(
+        cls,
+        db: Session,
+        user_id: str,
+        *,
+        include_deleted: bool = False,
+        **kwargs: object,
+    ) -> list[Note]:
+        query = db.query(Note).options(load_only(Note.id, Note.title, Note.metadata_, Note.updated_at))
+        query = query.filter(Note.user_id == user_id)
+        if not include_deleted:
+            query = query.filter(Note.deleted_at.is_(None))
+        return query.order_by(Note.updated_at.desc()).all()
 
-        Args:
-            db: Database session.
-            user_id: Current user ID.
+    @classmethod
+    def _build_tree(cls, items: list[Note], **kwargs: object) -> dict:
+        return NotesService.build_notes_tree(items)
 
-        Returns:
-            Notes tree payload with children.
-        """
-        notes = (
-            db.query(Note)
-            .options(load_only(Note.id, Note.title, Note.metadata_, Note.updated_at))
-            .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
-            .order_by(Note.updated_at.desc())
-            .all()
-        )
-        tree = NotesService.build_notes_tree(notes)
-        return {"children": tree.get("children", [])}
-
-    @staticmethod
-    def search(db: Session, user_id: str, query: str, *, limit: int = 50) -> dict:
-        """Search notes and return UI-friendly results.
-
-        Args:
-            db: Database session.
-            user_id: Current user ID.
-            query: Search query string.
-            limit: Max results to return. Defaults to 50.
-
-        Returns:
-            Search results payload.
-        """
-        notes = (
+    @classmethod
+    def _search_items(
+        cls,
+        db: Session,
+        user_id: str,
+        query: str,
+        *,
+        limit: int,
+        **kwargs: object,
+    ) -> list[Note]:
+        return (
             db.query(Note)
             .filter(
                 Note.user_id == user_id,
@@ -65,23 +61,19 @@ class NotesWorkspaceService:
             .all()
         )
 
-        items = []
-        for note in notes:
-            metadata = note.metadata_ or {}
-            folder = metadata.get("folder") or ""
-            items.append(
-                {
-                    "name": f"{note.title}.md",
-                    "path": str(note.id),
-                    "type": "file",
-                    "modified": note.updated_at.timestamp() if note.updated_at else None,
-                    "pinned": bool(metadata.get("pinned")),
-                    "pinned_order": metadata.get("pinned_order"),
-                    "archived": NotesService.is_archived_folder(folder),
-                }
-            )
-
-        return {"items": items}
+    @classmethod
+    def _item_to_dict(cls, item: Note, **kwargs: object) -> dict:
+        metadata = item.metadata_ or {}
+        folder = metadata.get("folder") or ""
+        return {
+            "name": f"{item.title}.md",
+            "path": str(item.id),
+            "type": "file",
+            "modified": item.updated_at.timestamp() if item.updated_at else None,
+            "pinned": bool(metadata.get("pinned")),
+            "pinned_order": metadata.get("pinned_order"),
+            "archived": NotesService.is_archived_folder(folder),
+        }
 
     @staticmethod
     def create_folder(db: Session, user_id: str, path: str) -> dict:

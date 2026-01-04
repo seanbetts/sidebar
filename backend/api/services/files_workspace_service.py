@@ -13,6 +13,7 @@ from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessi
 from api.services.file_tree_service import FileTreeService
 from api.services.storage.service import get_storage_backend
 from api.services.skill_file_ops_ingestion import write_text as write_ingested_text
+from api.services.workspace_service import WorkspaceService
 
 storage_backend = get_storage_backend()
 
@@ -46,20 +47,20 @@ def _find_record(db: Session, user_id: str, path: str) -> IngestedFile | None:
     )
 
 
-def _list_prefix(db: Session, user_id: str, prefix: str) -> list[IngestedFile]:
+def _list_prefix(
+    db: Session,
+    user_id: str,
+    prefix: str,
+    *,
+    include_deleted: bool = False,
+) -> list[IngestedFile]:
     prefix_norm = prefix.strip("/")
+    query = db.query(IngestedFile).filter(IngestedFile.user_id == user_id)
+    if not include_deleted:
+        query = query.filter(IngestedFile.deleted_at.is_(None))
     if prefix_norm:
         match = f"{prefix_norm}/%"
-        query = db.query(IngestedFile).filter(
-            IngestedFile.user_id == user_id,
-            IngestedFile.deleted_at.is_(None),
-            IngestedFile.path.like(match),
-        )
-    else:
-        query = db.query(IngestedFile).filter(
-            IngestedFile.user_id == user_id,
-            IngestedFile.deleted_at.is_(None),
-        )
+        query = query.filter(IngestedFile.path.like(match))
     return query.order_by(IngestedFile.path.asc()).all()
 
 
@@ -94,23 +95,25 @@ def _strip_frontmatter(content: str) -> str:
     return content[idx + len(marker):]
 
 
-class FilesWorkspaceService:
+class FilesWorkspaceService(WorkspaceService[IngestedFile]):
     """Workspace-facing file operations backed by ingestion."""
 
-    @staticmethod
-    def get_tree(db: Session, user_id: str, base_path: str) -> dict:
-        """Return the file tree for a base path.
-
-        Args:
-            db: Database session.
-            user_id: Current user ID.
-            base_path: Base folder for the tree.
-
-        Returns:
-            Tree payload with children.
-        """
+    @classmethod
+    def _query_items(
+        cls,
+        db: Session,
+        user_id: str,
+        *,
+        include_deleted: bool = False,
+        base_path: str = "",
+        **kwargs: object,
+    ) -> list[IngestedFile]:
         base_path = FileTreeService.normalize_base_path(base_path)
-        records = _list_prefix(db, user_id, base_path)
+        return _list_prefix(db, user_id, base_path, include_deleted=include_deleted)
+
+    @classmethod
+    def _build_tree(cls, items: list[IngestedFile], *, base_path: str = "", **kwargs: object) -> dict:
+        base_path = FileTreeService.normalize_base_path(base_path)
         tree_records = [
             _TreeRecord(
                 path=record.path,
@@ -119,33 +122,23 @@ class FilesWorkspaceService:
                 size=record.size_bytes,
                 updated_at=record.created_at,
             )
-            for record in records
+            for record in items
             if record.path
         ]
         tree = FileTreeService.build_tree(tree_records, base_path)
-        return {"children": tree.get("children", [])}
+        return tree
 
-    @staticmethod
-    def search(
+    @classmethod
+    def _search_items(
+        cls,
         db: Session,
         user_id: str,
         query: str,
-        base_path: str,
         *,
-        limit: int = 50,
-    ) -> dict:
-        """Search files and format results for the UI.
-
-        Args:
-            db: Database session.
-            user_id: Current user ID.
-            query: Search query string.
-            base_path: Base folder to scope the search.
-            limit: Max results to return. Defaults to 50.
-
-        Returns:
-            Search results payload.
-        """
+        limit: int,
+        base_path: str = "",
+        **kwargs: object,
+    ) -> list[IngestedFile]:
         base_path = FileTreeService.normalize_base_path(base_path)
         like_pattern = f"%{query}%"
         filters = [
@@ -162,19 +155,37 @@ class FilesWorkspaceService:
             .limit(limit)
             .all()
         )
-        items = []
-        for record in records:
-            rel_path = _relative_path(base_path, record.path)
-            items.append(
-                {
-                    "name": Path(rel_path).name,
-                    "path": rel_path,
-                    "type": "file",
-                    "modified": record.created_at.timestamp() if record.created_at else None,
-                    "size": record.size_bytes,
-                }
-            )
-        return {"items": items}
+        return records
+
+    @classmethod
+    def _item_to_dict(cls, item: IngestedFile, *, base_path: str = "", **kwargs: object) -> dict:
+        base_path = FileTreeService.normalize_base_path(base_path)
+        rel_path = _relative_path(base_path, item.path)
+        return {
+            "name": Path(rel_path).name,
+            "path": rel_path,
+            "type": "file",
+            "modified": item.created_at.timestamp() if item.created_at else None,
+            "size": item.size_bytes,
+        }
+
+    @classmethod
+    def get_tree(cls, db: Session, user_id: str, base_path: str) -> dict:
+        """Return the file tree for a base path."""
+        return cls.list_tree(db, user_id, base_path=base_path)
+
+    @classmethod
+    def search(
+        cls,
+        db: Session,
+        user_id: str,
+        query: str,
+        base_path: str,
+        *,
+        limit: int = 50,
+    ) -> dict:
+        """Search files and format results for the UI."""
+        return super().search(db, user_id, query, limit=limit, base_path=base_path)
 
     @staticmethod
     def create_folder(db: Session, user_id: str, base_path: str, path: str) -> dict:
