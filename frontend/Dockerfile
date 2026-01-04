@@ -2,10 +2,7 @@ FROM node:20 AS builder
 
 WORKDIR /app
 
-# Disable SSL verification for corporate firewall
-# TEMPORARY WORKAROUND for corporate SSL interception
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-RUN npm config set strict-ssl false
+# Install all dependencies (including dev) for the build
 ENV NPM_CONFIG_PRODUCTION=false
 ENV NPM_CONFIG_OMIT=
 

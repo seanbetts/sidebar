@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from api.auth import verify_bearer_token
+from api.config import settings
 
 
 router = APIRouter(prefix="/weather", tags=["weather"])
@@ -56,9 +57,14 @@ def _fetch_weather(lat: float, lon: float) -> dict:
     )
     url = f"https://api.open-meteo.com/v1/forecast?{query}"
     request = Request(url, headers={"Accept": "application/json"})
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
+    if settings.disable_ssl_verify:
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+    elif settings.custom_ca_bundle:
+        ssl_context = ssl.create_default_context(cafile=settings.custom_ca_bundle)
+    else:
+        ssl_context = ssl.create_default_context()
     with urlopen(request, timeout=10, context=ssl_context) as response:
         data = response.read()
         return json.loads(data.decode("utf-8"))
