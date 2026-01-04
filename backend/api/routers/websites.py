@@ -1,7 +1,6 @@
 """Websites router for archived web content in Postgres."""
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import or_
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import Response, JSONResponse
 from sqlalchemy.orm import Session
@@ -13,6 +12,7 @@ from api.models.website import Website
 from api.services.jina_service import JinaService
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService, WebsiteNotFoundError
+from api.utils.validation import parse_uuid
 
 router = APIRouter(prefix="/websites", tags=["websites"])
 
@@ -60,24 +60,6 @@ def _run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None
                 status="failed",
                 error_message=str(exc),
             )
-
-
-def parse_website_id(value: str):
-    """Parse a website UUID from a string.
-
-    Args:
-        value: UUID string.
-
-    Returns:
-        Parsed UUID.
-
-    Raises:
-        BadRequestError: If the value is not a valid UUID.
-    """
-    try:
-        return uuid.UUID(value)
-    except (ValueError, TypeError):
-        raise BadRequestError("Invalid website id")
 
 
 def website_summary(website: Website) -> dict:
@@ -150,7 +132,7 @@ async def update_pinned_order(
         raise BadRequestError("order must be a list")
     website_ids: list[uuid.UUID] = []
     for item in order:
-        website_ids.append(parse_website_id(item))
+        website_ids.append(parse_uuid(item, "website", "id"))
 
     WebsitesService.update_pinned_order(db, user_id, website_ids)
     return {"success": True}
@@ -182,20 +164,7 @@ async def search_websites(
     if not query:
         raise BadRequestError("query required")
 
-    websites = (
-        db.query(Website)
-        .filter(
-            Website.user_id == user_id,
-            Website.deleted_at.is_(None),
-            or_(
-                Website.title.ilike(f"%{query}%"),
-                Website.content.ilike(f"%{query}%"),
-            ),
-        )
-        .order_by(Website.updated_at.desc())
-        .limit(limit)
-        .all()
-    )
+    websites = WebsitesService.search_websites(db, user_id, query, limit=limit)
     return {"items": [website_summary(site) for site in websites]}
 
 
@@ -227,10 +196,7 @@ async def get_quick_save_job(
     db: Session = Depends(get_db),
 ):
     """Return quick-save job status."""
-    try:
-        job_uuid = uuid.UUID(job_id)
-    except ValueError as exc:
-        raise BadRequestError("Invalid job_id") from exc
+    job_uuid = parse_uuid(job_id, "job", "id")
 
     job = WebsiteProcessingService.get_job(db, user_id, job_uuid)
     if not job:
@@ -339,7 +305,7 @@ async def update_pin(
     """
     pinned = bool(request.get("pinned", False))
     try:
-        website_uuid = parse_website_id(website_id)
+        website_uuid = parse_uuid(website_id, "website", "id")
         WebsitesService.update_pinned(db, user_id, website_uuid, pinned)
     except WebsiteNotFoundError:
         raise NotFoundError("Website", website_id)
@@ -377,7 +343,7 @@ async def update_title(
     if not title:
         raise BadRequestError("title required")
     try:
-        website_uuid = parse_website_id(website_id)
+        website_uuid = parse_uuid(website_id, "website", "id")
         WebsitesService.update_website(db, user_id, website_uuid, title=title)
     except WebsiteNotFoundError:
         raise NotFoundError("Website", website_id)
@@ -410,7 +376,7 @@ async def update_archive(
     """
     archived = bool(request.get("archived", False))
     try:
-        website_uuid = parse_website_id(website_id)
+        website_uuid = parse_uuid(website_id, "website", "id")
         WebsitesService.update_archived(db, user_id, website_uuid, archived)
     except WebsiteNotFoundError:
         raise NotFoundError("Website", website_id)
@@ -439,7 +405,7 @@ async def download_website(
     Raises:
         NotFoundError: If not found.
     """
-    website_uuid = parse_website_id(website_id)
+    website_uuid = parse_uuid(website_id, "website", "id")
     website = WebsitesService.get_website(db, user_id, website_uuid, mark_opened=False)
     if not website:
         raise NotFoundError("Website", website_id)

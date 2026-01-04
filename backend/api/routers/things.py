@@ -1,6 +1,5 @@
 """Things integration router."""
 import asyncio
-import uuid
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -25,6 +24,7 @@ from api.services.things_snapshot_service import ThingsSnapshotService
 from api.services.user_settings_service import UserSettingsService
 from api.services.things_bridge_install_service import ThingsBridgeInstallService
 from api.config import settings
+from api.utils.validation import parse_uuid
 
 
 router = APIRouter(prefix="/things", tags=["things"])
@@ -73,13 +73,6 @@ def _bridge_payload(bridge: ThingsBridge, include_token: bool = False) -> dict:
     return payload
 
 
-def _parse_bridge_id(value: str) -> uuid.UUID:
-    try:
-        return uuid.UUID(value)
-    except (TypeError, ValueError):
-        raise BadRequestError("Invalid bridgeId")
-
-
 @router.post("/bridges/register")
 async def register_bridge(
     request: dict,
@@ -118,7 +111,7 @@ async def heartbeat_bridge(
     bridge_id_value = request.get("bridgeId") or x_bridge_id
     if not bridge_id_value:
         raise BadRequestError("bridgeId required")
-    bridge_id = _parse_bridge_id(bridge_id_value)
+    bridge_id = parse_uuid(bridge_id_value, "bridge", "id")
 
     set_session_user_id(db, user_id)
     bridge = ThingsBridgeService.heartbeat(db, user_id, bridge_id)

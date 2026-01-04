@@ -83,6 +83,34 @@ class FileIngestionService:
         )
 
     @staticmethod
+    def list_ingestions(
+        db: Session,
+        user_id: str,
+        *,
+        limit: int = 50,
+    ) -> list[IngestedFile]:
+        """List ingested files for a user.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            limit: Max records to return.
+
+        Returns:
+            List of ingested file records.
+        """
+        return (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+            )
+            .order_by(IngestedFile.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
     def list_derivatives(db: Session, file_id: uuid.UUID) -> list[FileDerivative]:
         """List derivatives for a file."""
         return (

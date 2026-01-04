@@ -1,17 +1,14 @@
 """Conversations API router with JSONB message storage."""
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session, load_only
-from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy import or_, func, cast, String
 from typing import List
 from uuid import UUID
-from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
-from api.models.conversation import Conversation
-from api.exceptions import ConversationNotFoundError
-from pydantic import BaseModel
+from api.services.conversation_service import ConversationService
 
 
 # Pydantic models for request/response
@@ -65,13 +62,7 @@ async def create_conversation(
     db: Session = Depends(get_db)
 ):
     """Create a new conversation."""
-    conversation = Conversation(
-        user_id=user_id,
-        title=data.title,
-        messages=[]
-    )
-    db.add(conversation)
-    db.commit()
+    conversation = ConversationService.create_conversation(db, user_id, data.title)
 
     return ConversationResponse(
         id=str(conversation.id),
@@ -91,19 +82,7 @@ async def list_conversations(
     db: Session = Depends(get_db)
 ):
     """List all conversations for the current user."""
-    conversations = db.query(Conversation)\
-        .options(load_only(
-            Conversation.id,
-            Conversation.title,
-            Conversation.title_generated,
-            Conversation.created_at,
-            Conversation.updated_at,
-            Conversation.message_count,
-            Conversation.first_message,
-        ))\
-        .filter(Conversation.user_id == user_id, Conversation.is_archived == False)\
-        .order_by(Conversation.updated_at.desc())\
-        .all()
+    conversations = ConversationService.list_conversations(db, user_id)
 
     return [
         ConversationResponse(
@@ -126,13 +105,7 @@ async def get_conversation(
     db: Session = Depends(get_db)
 ):
     """Get a single conversation with all messages."""
-    conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id,
-        Conversation.user_id == user_id
-    ).first()
-
-    if not conversation:
-        raise ConversationNotFoundError(str(conversation_id))
+    conversation = ConversationService.get_conversation(db, user_id, conversation_id)
 
     return ConversationWithMessages(
         id=str(conversation.id),
@@ -154,32 +127,12 @@ async def add_message(
     db: Session = Depends(get_db)
 ):
     """Add a message to a conversation."""
-    conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id,
-        Conversation.user_id == user_id
-    ).first()
-
-    if not conversation:
-        raise ConversationNotFoundError(str(conversation_id))
-
-    # Convert message to dict
-    message_dict = message.model_dump()
-
-    # Append message to JSONB array
-    messages = conversation.messages or []
-    messages.append(message_dict)
-    conversation.messages = messages
-    flag_modified(conversation, 'messages')  # Mark JSONB field as modified
-
-    # Update conversation metadata
-    conversation.message_count = len(messages)
-    conversation.updated_at = datetime.now(timezone.utc)
-
-    # Update first_message if this is the first message
-    if conversation.message_count == 1:
-        conversation.first_message = message.content[:100]
-
-    db.commit()
+    conversation = ConversationService.add_message(
+        db,
+        user_id,
+        conversation_id,
+        message.model_dump(),
+    )
 
     return {"success": True, "messageCount": conversation.message_count}
 
@@ -192,24 +145,14 @@ async def update_conversation(
     db: Session = Depends(get_db)
 ):
     """Update conversation metadata."""
-    conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id,
-        Conversation.user_id == user_id
-    ).first()
-
-    if not conversation:
-        raise ConversationNotFoundError(str(conversation_id))
-
-    if updates.title is not None:
-        conversation.title = updates.title
-    if updates.titleGenerated is not None:
-        conversation.title_generated = updates.titleGenerated
-    if updates.isArchived is not None:
-        conversation.is_archived = updates.isArchived
-        # Only update timestamp when archiving (actual conversation state change)
-        conversation.updated_at = datetime.now(timezone.utc)
-
-    db.commit()
+    ConversationService.update_conversation(
+        db,
+        user_id,
+        conversation_id,
+        title=updates.title,
+        title_generated=updates.titleGenerated,
+        is_archived=updates.isArchived,
+    )
 
     return {"success": True}
 
@@ -221,17 +164,12 @@ async def delete_conversation(
     db: Session = Depends(get_db)
 ):
     """Archive (soft delete) a conversation."""
-    conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id,
-        Conversation.user_id == user_id
-    ).first()
-
-    if not conversation:
-        raise ConversationNotFoundError(str(conversation_id))
-
-    conversation.is_archived = True
-    conversation.updated_at = datetime.now(timezone.utc)
-    db.commit()
+    ConversationService.update_conversation(
+        db,
+        user_id,
+        conversation_id,
+        is_archived=True,
+    )
 
     return {"success": True}
 
@@ -244,27 +182,7 @@ async def search_conversations(
     db: Session = Depends(get_db)
 ):
     """Full-text search across conversations and messages."""
-    # Search in conversation titles and first messages using ILIKE
-    conversations = db.query(Conversation).filter(
-        Conversation.user_id == user_id,
-        Conversation.is_archived == False,
-        or_(
-            Conversation.title.ilike(f'%{query}%'),
-            Conversation.first_message.ilike(f'%{query}%')
-        )
-    ).order_by(Conversation.updated_at.desc()).limit(limit).all()
-
-    # Also search in message content within JSONB
-    # Use PostgreSQL JSONB operators to search within messages array
-    message_matches = db.query(Conversation).filter(
-        Conversation.user_id == user_id,
-        Conversation.is_archived == False,
-        cast(Conversation.messages, String).ilike(f'%{query}%')
-    ).order_by(Conversation.updated_at.desc()).limit(limit).all()
-
-    # Combine and deduplicate by ID
-    all_matches = {str(c.id): c for c in conversations + message_matches}
-    results = list(all_matches.values())[:limit]
+    results = ConversationService.search_conversations(db, user_id, query, limit=limit)
 
     return [
         ConversationResponse(

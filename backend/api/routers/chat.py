@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from google import genai
 from google.genai import types
-from api.config import Settings, settings
+from api.config import settings
 from api.services.claude_client import ClaudeClient
 from api.services.user_settings_service import UserSettingsService
 from api.services.skill_catalog_service import SkillCatalogService
@@ -19,8 +19,9 @@ from api.services.prompt_context_service import PromptContextService
 from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
-from api.models.conversation import Conversation
-from api.exceptions import BadRequestError, ConversationNotFoundError
+from api.services.conversation_service import ConversationService
+from api.exceptions import BadRequestError
+from api.utils.validation import parse_uuid
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -197,14 +198,8 @@ async def stream_chat(
         raise BadRequestError("Message required")
 
     if conversation_id:
-        conversation = db.query(Conversation).filter(
-            Conversation.id == conversation_id,
-            Conversation.user_id == user_id
-        ).first()
-
-        if not conversation:
-            raise ConversationNotFoundError(str(conversation_id))
-
+        conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
+        conversation = ConversationService.get_conversation(db, user_id, conversation_uuid)
         history = _build_history(conversation.messages, user_message_id, message)
 
     settings_record = UserSettingsService.get_settings(db, user_id)
@@ -328,13 +323,8 @@ async def generate_title(
         raise BadRequestError("conversation_id required")
 
     # Get conversation and verify ownership
-    conversation = db.query(Conversation).filter(
-        Conversation.id == conversation_id,
-        Conversation.user_id == user_id
-    ).first()
-
-    if not conversation:
-        raise ConversationNotFoundError(str(conversation_id))
+    conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
+    conversation = ConversationService.get_conversation(db, user_id, conversation_uuid)
 
     if conversation.title_generated and conversation.title:
         return {"title": conversation.title, "fallback": False}
@@ -351,9 +341,13 @@ async def generate_title(
     cached = _get_cached_title(cache_key)
     if cached:
         cached_title = cached["title"]
-        conversation.title = cached_title
-        conversation.title_generated = True
-        db.commit()
+        ConversationService.set_title(
+            db,
+            user_id,
+            conversation_uuid,
+            cached_title,
+            generated=True,
+        )
         return {"title": cached_title, "fallback": False}
 
     try:
@@ -408,9 +402,13 @@ async def generate_title(
         title = _sanitize_title(raw_title)
 
         # Update conversation title
-        conversation.title = title
-        conversation.title_generated = True
-        db.commit()
+        ConversationService.set_title(
+            db,
+            user_id,
+            conversation_uuid,
+            title,
+            generated=True,
+        )
         _set_cached_title(cache_key, title)
 
         return {"title": title, "fallback": False}
@@ -418,9 +416,13 @@ async def generate_title(
     except Exception as e:
         # Fallback to first message snippet
         fallback_title = user_msg[:50] + ("..." if len(user_msg) > 50 else "")
-        conversation.title = fallback_title
-        conversation.title_generated = False
-        db.commit()
+        ConversationService.set_title(
+            db,
+            user_id,
+            conversation_uuid,
+            fallback_title,
+            generated=False,
+        )
 
         # Log the error but don't fail the request
         return {"title": fallback_title, "fallback": True}

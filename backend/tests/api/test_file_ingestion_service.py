@@ -1,0 +1,52 @@
+import uuid
+
+import pytest
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
+
+from api.db.base import Base
+from api.services.file_ingestion_service import FileIngestionService
+
+
+@pytest.fixture
+def db_session(test_db_engine):
+    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    schema = f"test_{uuid.uuid4().hex}"
+
+    connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+    connection.execute(text(f'SET search_path TO "{schema}"'))
+    Base.metadata.create_all(bind=connection)
+
+    Session = sessionmaker(bind=connection)
+    session = Session()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+        connection.close()
+
+
+def test_list_ingestions_filters_by_user(db_session):
+    FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="a.txt",
+        path="a.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+    FileIngestionService.create_ingestion(
+        db_session,
+        "user-2",
+        filename_original="b.txt",
+        path="b.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+
+    records = FileIngestionService.list_ingestions(db_session, "user-1", limit=50)
+
+    assert len(records) == 1
+    assert records[0].user_id == "user-1"
