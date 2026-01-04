@@ -1,7 +1,6 @@
 """Memories API router."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -12,10 +11,7 @@ from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
-from api.exceptions import BadRequestError, ConflictError, NotFoundError
-from api.models.user_memory import UserMemory
-from api.services.memory_tools.path_utils import normalize_path
-from api.services.memory_tools.operations import validate_content
+from api.services.memory_service import MemoryService
 
 
 router = APIRouter(prefix="/memories", tags=["memories"])
@@ -61,12 +57,7 @@ async def list_memories(
     Returns:
         List of memory records for the user.
     """
-    memories = (
-        db.query(UserMemory)
-        .filter(UserMemory.user_id == user_id)
-        .order_by(UserMemory.path.asc())
-        .all()
-    )
+    memories = MemoryService.list_memories(db, user_id)
     return [
         MemoryResponse(
             id=str(memory.id),
@@ -100,13 +91,7 @@ async def get_memory(
     Raises:
         NotFoundError: If memory is not found.
     """
-    memory = (
-        db.query(UserMemory)
-        .filter(UserMemory.user_id == user_id, UserMemory.id == memory_id)
-        .first()
-    )
-    if not memory:
-        raise NotFoundError("Memory", str(memory_id))
+    memory = MemoryService.get_memory(db, user_id, memory_id)
     return MemoryResponse(
         id=str(memory.id),
         path=memory.path,
@@ -138,30 +123,7 @@ async def create_memory(
         BadRequestError: For invalid path/content.
         ConflictError: If duplicate exists.
     """
-    try:
-        normalized_path = normalize_path(payload.path)
-        validate_content(payload.content)
-    except ValueError as exc:
-        raise BadRequestError(str(exc)) from exc
-    existing = (
-        db.query(UserMemory)
-        .filter(UserMemory.user_id == user_id, UserMemory.path == normalized_path)
-        .first()
-    )
-    if existing:
-        raise ConflictError("Memory already exists")
-
-    now = datetime.now(timezone.utc)
-    memory = UserMemory(
-        user_id=user_id,
-        path=normalized_path,
-        content=payload.content,
-        created_at=now,
-        updated_at=now,
-    )
-    db.add(memory)
-    db.commit()
-    db.refresh(memory)
+    memory = MemoryService.create_memory(db, user_id, payload.path, payload.content)
     return MemoryResponse(
         id=str(memory.id),
         path=memory.path,
@@ -196,39 +158,13 @@ async def update_memory(
         NotFoundError: If memory is not found.
         ConflictError: If path conflicts.
     """
-    memory = (
-        db.query(UserMemory)
-        .filter(UserMemory.user_id == user_id, UserMemory.id == memory_id)
-        .first()
+    memory = MemoryService.update_memory(
+        db,
+        user_id,
+        memory_id,
+        path=payload.path,
+        content=payload.content,
     )
-    if not memory:
-        raise NotFoundError("Memory", str(memory_id))
-
-    if payload.path is not None:
-        try:
-            normalized_path = normalize_path(payload.path)
-        except ValueError as exc:
-            raise BadRequestError(str(exc)) from exc
-        if normalized_path != memory.path:
-            conflict = (
-                db.query(UserMemory)
-                .filter(UserMemory.user_id == user_id, UserMemory.path == normalized_path)
-                .first()
-            )
-            if conflict:
-                raise ConflictError("Memory already exists")
-            memory.path = normalized_path
-
-    if payload.content is not None:
-        try:
-            validate_content(payload.content)
-        except ValueError as exc:
-            raise BadRequestError(str(exc)) from exc
-        memory.content = payload.content
-
-    memory.updated_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(memory)
     return MemoryResponse(
         id=str(memory.id),
         path=memory.path,
@@ -259,13 +195,5 @@ async def delete_memory(
     Raises:
         NotFoundError: If memory is not found.
     """
-    memory = (
-        db.query(UserMemory)
-        .filter(UserMemory.user_id == user_id, UserMemory.id == memory_id)
-        .first()
-    )
-    if not memory:
-        raise NotFoundError("Memory", str(memory_id))
-    db.delete(memory)
-    db.commit()
+    MemoryService.delete_memory(db, user_id, memory_id)
     return {"success": True}

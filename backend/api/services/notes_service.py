@@ -13,6 +13,8 @@ from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.models.note import Note
+from api.utils.validation import parse_uuid
+from api.exceptions import BadRequestError
 
 
 class NoteNotFoundError(Exception):
@@ -66,8 +68,8 @@ class NotesService:
             Parsed UUID or None if invalid.
         """
         try:
-            return uuid.UUID(value)
-        except (ValueError, TypeError):
+            return parse_uuid(value, "note", "id")
+        except BadRequestError:
             return None
 
     @staticmethod

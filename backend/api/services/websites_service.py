@@ -7,6 +7,7 @@ from typing import Iterable, Optional
 from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session, load_only
+from sqlalchemy import or_
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.website import Website
@@ -551,5 +552,38 @@ class WebsitesService:
 
         return (
             query.order_by(Website.saved_at.desc().nullslast(), Website.created_at.desc())
+            .all()
+        )
+
+    @staticmethod
+    def search_websites(
+        db: Session,
+        user_id: str,
+        query: str,
+        limit: int = 50,
+    ) -> list[Website]:
+        """Search websites by title or content.
+
+        Args:
+            db: Database session.
+            user_id: Current user ID.
+            query: Search query string.
+            limit: Max number of results.
+
+        Returns:
+            List of matching websites.
+        """
+        return (
+            db.query(Website)
+            .filter(
+                Website.user_id == user_id,
+                Website.deleted_at.is_(None),
+                or_(
+                    Website.title.ilike(f"%{query}%"),
+                    Website.content.ilike(f"%{query}%"),
+                ),
+            )
+            .order_by(Website.updated_at.desc())
+            .limit(limit)
             .all()
         )

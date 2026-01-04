@@ -12,6 +12,7 @@ from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError
 from api.services.notes_service import NotesService, NoteNotFoundError
 from api.services.notes_workspace_service import NotesWorkspaceService
+from api.utils.validation import parse_uuid
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -87,10 +88,7 @@ async def update_pinned_order(
         raise BadRequestError("order must be a list")
     note_ids: list[uuid.UUID] = []
     for item in order:
-        note_uuid = NotesService.parse_note_id(item)
-        if not note_uuid:
-            raise BadRequestError("Invalid note id")
-        note_ids.append(note_uuid)
+        note_ids.append(parse_uuid(item, "note", "id"))
 
     NotesService.update_pinned_order(db, user_id, note_ids)
     return {"success": True}
@@ -340,9 +338,7 @@ async def delete_note(
         BadRequestError: For invalid ID.
         NotFoundError: If not found.
     """
-    note_uuid = NotesService.parse_note_id(note_id)
-    if not note_uuid:
-        raise BadRequestError("Invalid note id")
+    note_uuid = parse_uuid(note_id, "note", "id")
     deleted = NotesService.delete_note(db, user_id, note_uuid)
     if not deleted:
         raise NotFoundError("Note", note_id)
@@ -408,9 +404,7 @@ async def update_pin(
     """
     pinned = bool(request.get("pinned", False))
     try:
-        note_uuid = NotesService.parse_note_id(note_id)
-        if not note_uuid:
-            raise BadRequestError("Invalid note id")
+    note_uuid = parse_uuid(note_id, "note", "id")
         NotesService.update_pinned(db, user_id, note_uuid, pinned)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
@@ -479,9 +473,7 @@ async def update_folder(
     """
     folder = request.get("folder", "") or ""
     try:
-        note_uuid = NotesService.parse_note_id(note_id)
-        if not note_uuid:
-            raise BadRequestError("Invalid note id")
+    note_uuid = parse_uuid(note_id, "note", "id")
         NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
@@ -515,9 +507,7 @@ async def update_archive(
     archived = bool(request.get("archived", False))
     folder = "Archive" if archived else ""
     try:
-        note_uuid = NotesService.parse_note_id(note_id)
-        if not note_uuid:
-            raise BadRequestError("Invalid note id")
+    note_uuid = parse_uuid(note_id, "note", "id")
         NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
