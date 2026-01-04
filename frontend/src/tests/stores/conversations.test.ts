@@ -72,4 +72,111 @@ describe('conversationListStore', () => {
     expect(conversationsAPI.list).toHaveBeenCalled();
     expect(state.conversations).toEqual(remote);
   });
+
+  it('adds conversation locally', () => {
+    conversationListStore.addConversation({
+      id: '3',
+      title: 'New',
+      titleGenerated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messageCount: 0
+    });
+
+    expect(get(conversationListStore).conversations[0].id).toBe('3');
+  });
+
+  it('updates conversation title', () => {
+    conversationListStore.addConversation({
+      id: '4',
+      title: 'Old',
+      titleGenerated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messageCount: 0
+    });
+
+    conversationListStore.updateConversationTitle('4', 'New', true);
+
+    expect(get(conversationListStore).conversations[0].title).toBe('New');
+  });
+
+  it('searches conversations with API', async () => {
+    conversationsAPI.search.mockResolvedValue([
+      {
+        id: '5',
+        title: 'Found',
+        titleGenerated: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messageCount: 1
+      }
+    ]);
+
+    await conversationListStore.search('hello');
+
+    expect(conversationsAPI.search).toHaveBeenCalledWith('hello');
+    expect(get(conversationListStore).conversations).toHaveLength(1);
+  });
+
+  it('deletes conversations and updates list', async () => {
+    conversationsAPI.delete.mockResolvedValue(undefined);
+    conversationListStore.addConversation({
+      id: '6',
+      title: 'Delete me',
+      titleGenerated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messageCount: 0
+    });
+
+    await conversationListStore.deleteConversation('6');
+
+    expect(conversationsAPI.delete).toHaveBeenCalledWith('6');
+    expect(get(conversationListStore).conversations.some((conv) => conv.id === '6')).toBe(false);
+  });
+
+  it('updates conversation metadata locally', () => {
+    conversationListStore.addConversation({
+      id: '7',
+      title: 'Meta',
+      titleGenerated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messageCount: 1
+    });
+
+    conversationListStore.updateConversationMetadata('7', {
+      messageCount: 3,
+      firstMessage: 'Preview',
+      updatedAt: new Date().toISOString()
+    });
+
+    expect(get(conversationListStore).conversations[0].messageCount).toBe(3);
+  });
+
+  it('toggles generating title state', () => {
+    conversationListStore.setGeneratingTitle('8', true);
+    expect(get(conversationListStore).generatingTitleIds.has('8')).toBe(true);
+
+    conversationListStore.setGeneratingTitle('8', false);
+    expect(get(conversationListStore).generatingTitleIds.has('8')).toBe(false);
+  });
+
+  it('revalidates conversations in background', async () => {
+    conversationsAPI.list.mockResolvedValue([
+      {
+        id: '9',
+        title: 'BG',
+        titleGenerated: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messageCount: 1
+      }
+    ]);
+
+    await conversationListStore.revalidateInBackground();
+
+    expect(get(conversationListStore).conversations).toHaveLength(1);
+  });
 });
