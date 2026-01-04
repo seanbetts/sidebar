@@ -4,6 +4,7 @@ import uuid
 from api.config import settings
 from api.db.dependencies import DEFAULT_USER_ID
 from api.models.note import Note
+from tests.helpers import error_message
 
 
 def _auth_headers() -> dict[str, str]:
@@ -13,19 +14,19 @@ def _auth_headers() -> dict[str, str]:
 def test_notes_search_requires_query(test_client):
     response = test_client.post("/api/notes/search", params={"query": ""}, headers=_auth_headers())
     assert response.status_code == 400
-    assert response.json()["detail"] == "query required"
+    assert error_message(response) == "query required"
 
 
 def test_notes_create_folder_requires_path(test_client):
     response = test_client.post("/api/notes/folders", json={}, headers=_auth_headers())
     assert response.status_code == 400
-    assert response.json()["detail"] == "path required"
+    assert error_message(response) == "path required"
 
 
 def test_notes_get_invalid_id(test_client):
     response = test_client.get("/api/notes/not-a-uuid", headers=_auth_headers())
     assert response.status_code == 400
-    assert "Invalid note id" in response.json()["detail"]
+    assert "Invalid note id" in error_message(response)
 
 
 def test_notes_get_success(test_client, test_db):

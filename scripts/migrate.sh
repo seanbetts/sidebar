@@ -2,15 +2,30 @@
 set -euo pipefail
 
 load_env() {
+  local env_file=""
   if [[ -f ".env.local" ]]; then
-    set -a
-    source .env.local
-    set +a
+    env_file=".env.local"
   elif [[ -f ".env" ]]; then
-    set -a
-    source .env
-    set +a
+    env_file=".env"
   fi
+
+  if [[ -z "${env_file}" ]]; then
+    return
+  fi
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ -z "${line}" || "${line}" == \#* || "${line}" != *"="* ]]; then
+      continue
+    fi
+    key="${line%%=*}"
+    value="${line#*=}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    if [[ -z "${key}" || -n "${!key+x}" ]]; then
+      continue
+    fi
+    export "${key}=${value}"
+  done < "${env_file}"
 }
 
 use_doppler=0
