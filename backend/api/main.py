@@ -21,8 +21,15 @@ from api.middleware.metrics import MetricsMiddleware
 from api.exceptions import APIError
 import logging
 import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastAPIIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+try:
+    from sentry_sdk.integrations.fastapi import FastAPIIntegration as _FastAPIIntegration
+except ImportError:  # pragma: no cover - depends on sentry_sdk version
+    try:
+        from sentry_sdk.integrations.fastapi import FastApiIntegration as _FastAPIIntegration  # type: ignore
+    except ImportError:  # pragma: no cover - optional integration
+        _FastAPIIntegration = None
 
 # Configure audit logging
 logging.basicConfig(
@@ -32,9 +39,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 if settings.sentry_dsn:
+    integrations = [SqlalchemyIntegration()]
+    if _FastAPIIntegration:
+        integrations.append(_FastAPIIntegration())
     sentry_sdk.init(
         dsn=settings.sentry_dsn,
-        integrations=[FastAPIIntegration(), SqlalchemyIntegration()],
+        integrations=integrations,
         traces_sample_rate=settings.sentry_traces_sample_rate,
         profiles_sample_rate=settings.sentry_profiles_sample_rate,
         environment=settings.app_env or None,
