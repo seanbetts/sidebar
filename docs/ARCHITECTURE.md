@@ -484,7 +484,7 @@ Used Alembic from the start. Hand-crafted SQL migrations became painful.
 Added structured logging later. Would have helped debugging production issues.
 
 #### 4. API Versioning
-No versioning initially. Breaking changes harder to manage. Should have started with `/api/v1/`.
+No versioning initially. Breaking changes harder to manage. We later added `/api/v1/` paths with deprecation middleware for legacy `/api/*` routes (sunset: 2026-06-01).
 
 ### Interesting Challenges
 
@@ -554,7 +554,7 @@ Multiple users editing same note requires:
 
 ---
 
-**Last Updated:** 2025-12-25
+**Last Updated:** 2026-01-04
 
 **Document Owner:** Architecture Team
 
