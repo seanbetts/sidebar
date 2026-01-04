@@ -15,7 +15,7 @@
     errorMessage = '';
     successMessage = '';
     try {
-      const response = await fetch('/api/things/bridges/install-script', { method: 'POST' });
+      const response = await fetch('/api/v1/things/bridges/install-script', { method: 'POST' });
       if (!response.ok) {
         throw new Error('Failed to generate install script');
       }

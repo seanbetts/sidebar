@@ -4,7 +4,7 @@ import type { Memory, MemoryCreate, MemoryUpdate } from '$lib/types/memory';
  * API client for managing memory records.
  */
 export class MemoriesAPI {
-  private baseUrl = '/api/memories';
+  private baseUrl = '/api/v1/memories';
 
   /**
    * List all memories for the current user.

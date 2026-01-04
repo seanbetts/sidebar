@@ -61,10 +61,10 @@ export function createSearchActions(context: TreeStoreContext) {
     try {
       const response = query
         ? await fetch(
-            `/api/files/search?basePath=${encodeURIComponent(basePath)}&query=${encodeURIComponent(query)}&limit=50`,
+            `/api/v1/files/search?basePath=${encodeURIComponent(basePath)}&query=${encodeURIComponent(query)}&limit=50`,
             { method: 'POST' }
           )
-        : await fetch(`/api/files?basePath=${encodeURIComponent(basePath)}`);
+        : await fetch(`/api/v1/files?basePath=${encodeURIComponent(basePath)}`);
       if (!response.ok) {
         throw new Error('Failed to search files');
       }

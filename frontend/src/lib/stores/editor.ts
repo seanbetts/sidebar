@@ -45,8 +45,8 @@ function createEditorStore() {
 
       try {
         const response = basePath === 'notes'
-          ? await fetch(`/api/notes/${path}`)
-          : await fetch(`/api/files/content?basePath=${basePath}&path=${encodeURIComponent(path)}`);
+          ? await fetch(`/api/v1/notes/${path}`)
+          : await fetch(`/api/v1/files/content?basePath=${basePath}&path=${encodeURIComponent(path)}`);
 
         if (!response.ok) throw new Error('Failed to load note');
 
@@ -105,12 +105,12 @@ function createEditorStore() {
 
       try {
         const response = state.basePath === 'notes'
-          ? await fetch(`/api/notes/${state.currentNoteId}`, {
+          ? await fetch(`/api/v1/notes/${state.currentNoteId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ content: state.content })
             })
-          : await fetch('/api/files/content', {
+          : await fetch('/api/v1/files/content', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

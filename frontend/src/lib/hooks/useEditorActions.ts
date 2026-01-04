@@ -108,7 +108,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       ctx.setIsRenameDialogOpen(false);
       return;
     }
-    const response = await fetch(`/api/notes/${currentNoteId}/rename`, {
+    const response = await fetch(`/api/v1/notes/${currentNoteId}/rename`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ newName: `${trimmed}.md` })
@@ -127,7 +127,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
   const handleMove = async (folder: string) => {
     const currentNoteId = ctx.getCurrentNoteId();
     if (!currentNoteId) return;
-    const response = await fetch(`/api/notes/${currentNoteId}/move`, {
+    const response = await fetch(`/api/v1/notes/${currentNoteId}/move`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folder })
@@ -143,7 +143,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
   const handleArchive = async () => {
     const currentNoteId = ctx.getCurrentNoteId();
     if (!currentNoteId) return;
-    const response = await fetch(`/api/notes/${currentNoteId}/archive`, {
+    const response = await fetch(`/api/v1/notes/${currentNoteId}/archive`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ archived: true })
@@ -160,7 +160,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
   const handleUnarchive = async () => {
     const currentNoteId = ctx.getCurrentNoteId();
     if (!currentNoteId) return;
-    const response = await fetch(`/api/notes/${currentNoteId}/archive`, {
+    const response = await fetch(`/api/v1/notes/${currentNoteId}/archive`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ archived: false })
@@ -178,7 +178,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
     if (!currentNoteId) return;
     const node = ctx.getNoteNode();
     const pinned = !(node?.pinned);
-    const response = await fetch(`/api/notes/${currentNoteId}/pin`, {
+    const response = await fetch(`/api/v1/notes/${currentNoteId}/pin`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pinned })
@@ -195,7 +195,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
     const currentNoteId = ctx.getCurrentNoteId();
     if (!currentNoteId) return;
     const link = document.createElement('a');
-    link.href = `/api/notes/${currentNoteId}/download`;
+    link.href = `/api/v1/notes/${currentNoteId}/download`;
     link.download = `${ctx.getDisplayTitle() || 'note'}.md`;
     document.body.appendChild(link);
     link.click();
@@ -225,7 +225,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
   const handleDelete = async (): Promise<boolean> => {
     const currentNoteId = ctx.getCurrentNoteId();
     if (!currentNoteId) return false;
-    const response = await fetch(`/api/notes/${currentNoteId}`, {
+    const response = await fetch(`/api/v1/notes/${currentNoteId}`, {
       method: 'DELETE'
     });
     if (!response.ok) {

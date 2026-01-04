@@ -175,7 +175,7 @@
       isRenameDialogOpen = false;
       return;
     }
-    const response = await fetch(`/api/websites/${selectedSite.id}/rename`, {
+    const response = await fetch(`/api/v1/websites/${selectedSite.id}/rename`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: trimmed })
@@ -190,7 +190,7 @@
   }
 
   async function handlePin(site: WebsiteItem) {
-    const response = await fetch(`/api/websites/${site.id}/pin`, {
+    const response = await fetch(`/api/v1/websites/${site.id}/pin`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pinned: !site.pinned })
@@ -205,7 +205,7 @@
   }
 
   async function handleArchive(site: WebsiteItem) {
-    const response = await fetch(`/api/websites/${site.id}/archive`, {
+    const response = await fetch(`/api/v1/websites/${site.id}/archive`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ archived: !isArchived(site) })
@@ -221,7 +221,7 @@
 
   function handleDownload(site: WebsiteItem) {
     const link = document.createElement('a');
-    link.href = `/api/websites/${site.id}/download`;
+    link.href = `/api/v1/websites/${site.id}/download`;
     link.download = `${site.title || 'website'}.md`;
     document.body.appendChild(link);
     link.click();
@@ -237,7 +237,7 @@
 
   async function handleDelete(): Promise<boolean> {
     if (!selectedSite) return false;
-    const response = await fetch(`/api/websites/${selectedSite.id}`, {
+    const response = await fetch(`/api/v1/websites/${selectedSite.id}`, {
       method: 'DELETE'
     });
     if (!response.ok) {
