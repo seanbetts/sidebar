@@ -33,6 +33,7 @@ This codebase is **well-architected and production-ready**, but has accumulated 
 - Performance sanity checked: no additional background polling introduced; endpoints remain proxied without extra hops.
 - Duplication reduction verified: notes/files workspace operations now share a single service base; Things/UniversalViewer refactors remove repeated header/body logic.
 - Performance verification: `/api/v1` proxy streams responses through without buffering; no new timers or polling were added during the refactor.
+- Prompt templates and formatting helpers split into dedicated modules; skill-file ops helpers extracted from the ingestion service.
 
 ---
 

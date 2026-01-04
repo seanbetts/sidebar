@@ -2,54 +2,37 @@
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
-from pathlib import Path
+from datetime import datetime
 from typing import Any
 
-import yaml
-
-_PROMPT_CONFIG_PATH = Path(__file__).resolve().parent / "config" / "prompts.yaml"
-
-
-def _load_prompt_config() -> dict[str, Any]:
-    """Load prompt configuration from YAML.
-
-    Returns:
-        Parsed prompt config mapping.
-
-    Raises:
-        FileNotFoundError: If the config file is missing.
-        ValueError: If the config file is not a mapping.
-    """
-    if not _PROMPT_CONFIG_PATH.exists():
-        raise FileNotFoundError(f"Prompt config not found at {_PROMPT_CONFIG_PATH}")
-    data = yaml.safe_load(_PROMPT_CONFIG_PATH.read_text(encoding="utf-8")) or {}
-    if not isinstance(data, dict):
-        raise ValueError("Prompt config must be a mapping.")
-    return data
-
-
-_PROMPT_CONFIG = _load_prompt_config()
-
-DEFAULT_COMMUNICATION_STYLE = _PROMPT_CONFIG["default_communication_style"]
-DEFAULT_WORKING_RELATIONSHIP = _PROMPT_CONFIG["default_working_relationship"]
-SYSTEM_PROMPT_TEMPLATE = _PROMPT_CONFIG["system_prompt_template"]
-CONTEXT_GUIDANCE_TEMPLATE = _PROMPT_CONFIG["context_guidance_template"]
-FIRST_MESSAGE_TEMPLATE = _PROMPT_CONFIG["first_message_template"]
-RECENT_ACTIVITY_WRAPPER_TEMPLATE = _PROMPT_CONFIG["recent_activity_wrapper_template"]
-RECENT_ACTIVITY_EMPTY_TEXT = _PROMPT_CONFIG["recent_activity_empty_text"]
-RECENT_ACTIVITY_NOTES_HEADER = _PROMPT_CONFIG["recent_activity_notes_header"]
-RECENT_ACTIVITY_WEBSITES_HEADER = _PROMPT_CONFIG["recent_activity_websites_header"]
-RECENT_ACTIVITY_CHATS_HEADER = _PROMPT_CONFIG["recent_activity_chats_header"]
-RECENT_ACTIVITY_FILES_HEADER = _PROMPT_CONFIG["recent_activity_files_header"]
-CURRENT_OPEN_WRAPPER_TEMPLATE = _PROMPT_CONFIG["current_open_wrapper_template"]
-CURRENT_OPEN_EMPTY_TEXT = _PROMPT_CONFIG["current_open_empty_text"]
-CURRENT_OPEN_NOTE_HEADER = _PROMPT_CONFIG["current_open_note_header"]
-CURRENT_OPEN_WEBSITE_HEADER = _PROMPT_CONFIG["current_open_website_header"]
-CURRENT_OPEN_FILE_HEADER = _PROMPT_CONFIG["current_open_file_header"]
-CURRENT_OPEN_ATTACHMENTS_HEADER = _PROMPT_CONFIG["current_open_attachments_header"]
-CURRENT_OPEN_CONTENT_HEADER = _PROMPT_CONFIG["current_open_content_header"]
-SUPPORTED_VARIABLES = set(_PROMPT_CONFIG.get("supported_variables", []))
+from api.prompt_config import (
+    CONTEXT_GUIDANCE_TEMPLATE,
+    CURRENT_OPEN_ATTACHMENTS_HEADER,
+    CURRENT_OPEN_CONTENT_HEADER,
+    CURRENT_OPEN_EMPTY_TEXT,
+    CURRENT_OPEN_FILE_HEADER,
+    CURRENT_OPEN_NOTE_HEADER,
+    CURRENT_OPEN_WEBSITE_HEADER,
+    CURRENT_OPEN_WRAPPER_TEMPLATE,
+    DEFAULT_COMMUNICATION_STYLE,
+    DEFAULT_WORKING_RELATIONSHIP,
+    FIRST_MESSAGE_TEMPLATE,
+    RECENT_ACTIVITY_CHATS_HEADER,
+    RECENT_ACTIVITY_EMPTY_TEXT,
+    RECENT_ACTIVITY_FILES_HEADER,
+    RECENT_ACTIVITY_NOTES_HEADER,
+    RECENT_ACTIVITY_WEBSITES_HEADER,
+    RECENT_ACTIVITY_WRAPPER_TEMPLATE,
+    SUPPORTED_VARIABLES,
+    SYSTEM_PROMPT_TEMPLATE,
+)
+from api.prompt_formatters import (
+    calculate_age,
+    detect_operating_system,
+    format_location_levels,
+    format_weather,
+    truncate_content,
+)
 
 _TOKEN_PATTERN = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
@@ -81,191 +64,6 @@ def resolve_default(value: str | None, default: str) -> str:
         return default
     trimmed = value.strip()
     return trimmed if trimmed else default
-
-
-def detect_operating_system(user_agent: str | None) -> str | None:
-    """Infer operating system from a user agent string."""
-    if not user_agent:
-        return None
-    agent = user_agent.lower()
-    if "windows" in agent:
-        return "Windows"
-    if "mac os" in agent or "macos" in agent or "macintosh" in agent:
-        return "macOS"
-    if "android" in agent:
-        return "Android"
-    if "iphone" in agent or "ipad" in agent or "ios" in agent:
-        return "iOS"
-    if "linux" in agent:
-        return "Linux"
-    return None
-
-
-def calculate_age(date_of_birth: date | None, today: date) -> int | None:
-    """Calculate age from a date of birth."""
-    if not date_of_birth:
-        return None
-    years = today.year - date_of_birth.year
-    birthday_passed = (today.month, today.day) >= (date_of_birth.month, date_of_birth.day)
-    return years if birthday_passed else years - 1
-
-
-def _format_location_levels(levels: dict[str, Any] | str | None) -> str:
-    """Format location levels into a readable string."""
-    if not levels:
-        return "Unavailable"
-    if isinstance(levels, str):
-        return levels
-    order = [
-        "locality",
-        "postal_town",
-        "administrative_area_level_3",
-        "administrative_area_level_2",
-        "administrative_area_level_1",
-        "country",
-    ]
-    parts: list[str] = []
-    remaining = dict(levels)
-    for key in order:
-        if key in remaining:
-            parts.append(f"{key}: {remaining.pop(key)}")
-    for key in sorted(remaining):
-        parts.append(f"{key}: {remaining[key]}")
-    return " | ".join(parts) if parts else "Unavailable"
-
-
-def _weather_description(code: int) -> str:
-    """Map a weather code to a textual description."""
-    if code == 0:
-        return "clear sky"
-    if code == 1:
-        return "mainly clear"
-    if code == 2:
-        return "partly cloudy"
-    if code == 3:
-        return "overcast"
-    if code == 45:
-        return "fog"
-    if code == 48:
-        return "depositing rime fog"
-    if code == 51:
-        return "light drizzle"
-    if code == 53:
-        return "moderate drizzle"
-    if code == 55:
-        return "dense drizzle"
-    if code == 56:
-        return "light freezing drizzle"
-    if code == 57:
-        return "dense freezing drizzle"
-    if code == 61:
-        return "slight rain"
-    if code == 63:
-        return "moderate rain"
-    if code == 65:
-        return "heavy rain"
-    if code == 66:
-        return "light freezing rain"
-    if code == 67:
-        return "heavy freezing rain"
-    if code == 71:
-        return "slight snow fall"
-    if code == 73:
-        return "moderate snow fall"
-    if code == 75:
-        return "heavy snow fall"
-    if code == 77:
-        return "snow grains"
-    if code == 80:
-        return "slight rain showers"
-    if code == 81:
-        return "moderate rain showers"
-    if code == 82:
-        return "violent rain showers"
-    if code == 85:
-        return "slight snow showers"
-    if code == 86:
-        return "heavy snow showers"
-    if code == 95:
-        return "thunderstorm"
-    if code == 96:
-        return "thunderstorm with slight hail"
-    if code == 99:
-        return "thunderstorm with heavy hail"
-    return "unavailable"
-
-
-def _wind_direction_label(degrees: float) -> str:
-    """Return a compass direction label for a degree value."""
-    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-    index = int((degrees + 22.5) // 45) % 8
-    return directions[index]
-
-
-def _format_weather(weather: dict[str, Any] | str | None) -> str:
-    """Format weather payload into a readable sentence."""
-    if not weather:
-        return "Unavailable"
-    if isinstance(weather, str):
-        return weather
-
-    temperature = weather.get("temperature_c")
-    feels_like = weather.get("feels_like_c")
-    weather_code = weather.get("weather_code")
-    is_day = weather.get("is_day")
-    wind_speed = weather.get("wind_speed_kph")
-    wind_direction = weather.get("wind_direction_degrees")
-    precipitation = weather.get("precipitation_mm")
-    cloud_cover = weather.get("cloud_cover_percent")
-    daily = weather.get("daily") or []
-
-    if temperature is None or weather_code is None or is_day is None:
-        return "Unavailable"
-
-    description = _weather_description(weather_code)
-    day_label = "daytime" if is_day == 1 else "nighttime"
-    temp_text = f"{round(temperature)}°C"
-    feels_like_text = f"{round(feels_like)}°C" if feels_like is not None else None
-    wind_text = None
-    if wind_speed is not None:
-        wind_dir_label = _wind_direction_label(float(wind_direction)) if wind_direction is not None else None
-        wind_text = f"{round(wind_speed)} km/h" + (f" {wind_dir_label}" if wind_dir_label else "")
-    precip_text = f"{precipitation} mm" if precipitation is not None else None
-    cloud_text = f"{cloud_cover}%" if cloud_cover is not None else None
-
-    parts = [f"It is {day_label}, {description}, {temp_text}"]
-    if feels_like_text:
-        parts.append(f"feels like {feels_like_text}")
-    if wind_text:
-        parts.append(f"wind {wind_text}")
-    if precip_text:
-        parts.append(f"precipitation {precip_text}")
-    if cloud_text:
-        parts.append(f"cloud cover {cloud_text}")
-
-    sentence = ", ".join(parts) + "."
-
-    if daily:
-        forecast_parts = []
-        for index, entry in enumerate(daily[:3]):
-            max_c = entry.get("temperature_max_c")
-            min_c = entry.get("temperature_min_c")
-            code = entry.get("weather_code")
-            precip = entry.get("precipitation_probability_max")
-            if max_c is None or min_c is None or code is None:
-                continue
-            desc = _weather_description(code)
-            label = "Today" if index == 0 else "Tomorrow" if index == 1 else "Next day"
-            precip_text = f"{precip}% chance of precipitation" if precip is not None else None
-            forecast_bits = [f"{label}: {round(min_c)}–{round(max_c)}°C, {desc}"]
-            if precip_text:
-                forecast_bits.append(precip_text)
-            forecast_parts.append(", ".join(forecast_bits))
-
-        if forecast_parts:
-            sentence = sentence + " Forecast: " + ". ".join(forecast_parts) + "."
-
-    return sentence
 
 
 def build_prompt_variables(
@@ -301,8 +99,8 @@ def build_prompt_variables(
     timezone_label = now.tzname() or "UTC"
     current_date = now.strftime("%Y-%m-%d")
     current_time = f"{now.strftime('%H:%M')} {timezone_label}"
-    formatted_levels = _format_location_levels(current_location_levels)
-    formatted_weather = _format_weather(current_weather)
+    formatted_levels = format_location_levels(current_location_levels)
+    formatted_weather = format_weather(current_weather)
     things_snapshot = (
         settings_record.things_ai_snapshot.strip()
         if settings_record and settings_record.things_ai_snapshot
@@ -412,15 +210,6 @@ def build_recent_activity_block(
     )
 
 
-def _truncate_content(value: str | None, limit: int) -> str | None:
-    """Truncate content to a maximum character limit."""
-    if value is None:
-        return None
-    if len(value) <= limit:
-        return value
-    return value[:limit]
-
-
 def build_open_context_block(
     note: dict[str, Any] | None,
     website: dict[str, Any] | None,
@@ -447,7 +236,7 @@ def build_open_context_block(
         path = note.get("path") or note.get("folder")
         path_text = f", path: {path}" if path else ""
         lines.append(f"- {title} (id: {note_id}{path_text})")
-        content = _truncate_content(note.get("content"), max_chars)
+        content = truncate_content(note.get("content"), max_chars)
         if content:
             lines.append(CURRENT_OPEN_CONTENT_HEADER)
             lines.append(content)
@@ -463,7 +252,7 @@ def build_open_context_block(
         domain_text = f", domain: {domain}" if domain else ""
         url_text = f", url: {url}" if url else ""
         lines.append(f"- {title} (id: {website_id}{domain_text}{url_text})")
-        content = _truncate_content(website.get("content"), max_chars)
+        content = truncate_content(website.get("content"), max_chars)
         if content:
             lines.append(CURRENT_OPEN_CONTENT_HEADER)
             lines.append(content)
@@ -483,7 +272,7 @@ def build_open_context_block(
             meta_bits.append(f"category: {category}")
         meta_text = ", ".join(meta_bits)
         lines.append(f"- {filename} ({meta_text})")
-        content = _truncate_content(file_item.get("content"), max_chars)
+        content = truncate_content(file_item.get("content"), max_chars)
         if content:
             lines.append(CURRENT_OPEN_CONTENT_HEADER)
             lines.append(content)
@@ -504,7 +293,7 @@ def build_open_context_block(
                 meta_bits.append(f"category: {category}")
             meta_text = ", ".join(meta_bits)
             lines.append(f"- {filename} ({meta_text})")
-            content = _truncate_content(attachment.get("content"), max_chars)
+            content = truncate_content(attachment.get("content"), max_chars)
             if content:
                 lines.append(CURRENT_OPEN_CONTENT_HEADER)
                 lines.append(content)
