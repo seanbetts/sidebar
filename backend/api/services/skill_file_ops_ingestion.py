@@ -4,14 +4,23 @@ from __future__ import annotations
 import fnmatch
 import mimetypes
 import time
-from datetime import datetime, timezone
-from hashlib import sha256
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 from api.db.session import set_session_user_id
+from api.services.skill_file_ops_helpers import (
+    build_frontmatter,
+    find_record_by_path,
+    get_derivative,
+    get_job,
+    hash_bytes,
+    now_utc,
+    pick_derivative,
+    staging_path,
+    strip_frontmatter,
+)
 from api.services.skill_file_ops_paths import (
     ensure_allowed_path,
     is_profile_images_path,
@@ -20,94 +29,6 @@ from api.services.skill_file_ops_paths import (
     session_for_user,
 )
 from api.services.storage.service import get_storage_backend
-
-
-STAGING_ROOT = Path("/tmp/sidebar-ingestion")
-
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _staging_path(file_id: str) -> Path:
-    return STAGING_ROOT / file_id / "source"
-
-
-def _strip_frontmatter(content: str) -> str:
-    if not content.startswith("---\n"):
-        return content
-    marker = "\n---\n"
-    idx = content.find(marker)
-    if idx == -1:
-        return content
-    return content[idx + len(marker):]
-
-
-def _build_frontmatter(record: IngestedFile, derivative_kind: str) -> str:
-    return (
-        "---\n"
-        f"file_id: {record.id}\n"
-        f"source_filename: {record.filename_original}\n"
-        f"source_mime: {record.mime_original}\n"
-        f"created_at: {record.created_at.isoformat()}\n"
-        f"sha256: {record.sha256}\n"
-        "derivatives:\n"
-        f"  {derivative_kind}: true\n"
-        "---\n\n"
-    )
-
-
-def _find_record_by_path(db, user_id: str, path: str) -> Optional[IngestedFile]:
-    return (
-        db.query(IngestedFile)
-        .filter(
-            IngestedFile.user_id == user_id,
-            IngestedFile.path == path,
-            IngestedFile.deleted_at.is_(None),
-        )
-        .order_by(IngestedFile.created_at.desc())
-        .first()
-    )
-
-
-def _get_job(db, file_id) -> Optional[FileProcessingJob]:
-    return (
-        db.query(FileProcessingJob)
-        .filter(FileProcessingJob.file_id == file_id)
-        .first()
-    )
-
-
-def _get_derivative(db, file_id, kind: str) -> Optional[FileDerivative]:
-    return (
-        db.query(FileDerivative)
-        .filter(
-            FileDerivative.file_id == file_id,
-            FileDerivative.kind == kind,
-        )
-        .first()
-    )
-
-
-def _pick_derivative(db, file_id) -> Optional[FileDerivative]:
-    preferred = [
-        "viewer_pdf",
-        "image_original",
-        "audio_original",
-        "text_original",
-        "viewer_json",
-        "ai_md",
-    ]
-    derivatives = (
-        db.query(FileDerivative)
-        .filter(FileDerivative.file_id == file_id)
-        .all()
-    )
-    by_kind = {item.kind: item for item in derivatives}
-    for kind in preferred:
-        if kind in by_kind:
-            return by_kind[kind]
-    return derivatives[0] if derivatives else None
 
 
 def list_entries(
@@ -170,7 +91,7 @@ def list_entries(
         if updated_at and (existing is None or updated_at > existing):
             dir_meta[path] = updated_at
         elif existing is None:
-            dir_meta[path] = updated_at or _now()
+            dir_meta[path] = updated_at or now_utc()
 
     for record in latest_by_path.values():
         rel_path = relative_path(base_path, record.path)
@@ -227,7 +148,7 @@ def read_text(user_id: str, path: str) -> tuple[str, IngestedFile]:
     ensure_allowed_path(normalized)
 
     with session_for_user(user_id) as db:
-        record = _find_record_by_path(db, user_id, normalized)
+        record = find_record_by_path(db, user_id, normalized)
         if not record:
             prefix = f"{normalized}/"
             has_children = (
@@ -243,12 +164,12 @@ def read_text(user_id: str, path: str) -> tuple[str, IngestedFile]:
                 raise ValueError(f"Path is a directory: {path}")
             raise FileNotFoundError(f"File not found: {path}")
 
-        derivative = _get_derivative(db, record.id, "ai_md")
+        derivative = get_derivative(db, record.id, "ai_md")
         if not derivative:
-            job = _get_job(db, record.id)
+            job = get_job(db, record.id)
             if job and job.status != "ready":
                 raise ValueError(f"File not ready yet (status: {job.status})")
-            derivative = _get_derivative(db, record.id, "text_original")
+            derivative = get_derivative(db, record.id, "text_original")
         if not derivative:
             raise ValueError(f"No readable content for: {path}")
 
@@ -256,7 +177,7 @@ def read_text(user_id: str, path: str) -> tuple[str, IngestedFile]:
     raw = storage.get_object(derivative.storage_key)
     content = raw.decode("utf-8", errors="ignore")
     if derivative.kind != "ai_md":
-        content = f"{_build_frontmatter(record, derivative.kind)}{content}"
+        content = f"{build_frontmatter(record, derivative.kind)}{content}"
     return content, record
 
 
@@ -274,34 +195,34 @@ def write_text(
     ensure_allowed_path(normalized)
 
     with session_for_user(user_id) as db:
-        existing = _find_record_by_path(db, user_id, normalized)
+        existing = find_record_by_path(db, user_id, normalized)
 
         if mode == "create" and existing:
             raise FileExistsError(f"File already exists: {path}")
 
         if mode == "append" and existing:
-            derivative = _get_derivative(db, existing.id, "text_original")
+            derivative = get_derivative(db, existing.id, "text_original")
             if derivative is None:
-                derivative = _get_derivative(db, existing.id, "ai_md")
+                derivative = get_derivative(db, existing.id, "ai_md")
             if derivative is None:
                 raise ValueError(f"File not ready for append: {path}")
             storage = get_storage_backend()
             raw = storage.get_object(derivative.storage_key).decode("utf-8", errors="ignore")
-            base_content = _strip_frontmatter(raw)
+            base_content = strip_frontmatter(raw)
             content = base_content + content
 
         file_id = existing.id if existing else uuid4()
         content_bytes = content.encode("utf-8")
-        digest = sha256(content_bytes).hexdigest()
+        digest = hash_bytes(content_bytes)
         size = len(content_bytes)
         filename = Path(normalized).name or "untitled.txt"
         mime = mimetypes.guess_type(normalized)[0] or "text/plain"
 
-        staging_path = _staging_path(str(file_id))
-        staging_path.parent.mkdir(parents=True, exist_ok=True)
-        staging_path.write_bytes(content_bytes)
+        source_path = staging_path(str(file_id))
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        source_path.write_bytes(content_bytes)
 
-        now = _now()
+        now = now_utc()
         if existing:
             existing.filename_original = filename
             existing.path = normalized
@@ -327,7 +248,7 @@ def write_text(
         db.flush()
         set_session_user_id(db, user_id)
 
-        job = _get_job(db, record.id)
+        job = get_job(db, record.id)
         if job:
             job.status = "queued"
             job.stage = "queued"
@@ -356,7 +277,7 @@ def write_text(
         last_status = None
         while time.monotonic() < deadline:
             with session_for_user(user_id) as db:
-                job = _get_job(db, record.id)
+                job = get_job(db, record.id)
                 if not job:
                     raise ValueError(f"Processing job missing for: {path}")
                 last_status = job.status
@@ -392,17 +313,17 @@ def upload_file(
     ensure_allowed_path(normalized)
 
     content = local_path.read_bytes()
-    digest = sha256(content).hexdigest()
+    digest = hash_bytes(content)
     size = len(content)
     filename = Path(normalized).name or "upload"
     mime = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
     file_id = uuid4()
-    staging_path = _staging_path(str(file_id))
-    staging_path.parent.mkdir(parents=True, exist_ok=True)
-    staging_path.write_bytes(content)
+    source_path = staging_path(str(file_id))
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path.write_bytes(content)
 
-    now = _now()
+    now = now_utc()
     with session_for_user(user_id) as db:
         record = IngestedFile(
             id=file_id,
@@ -437,10 +358,10 @@ def download_file(user_id: str, path: str, local_path: Path) -> IngestedFile:
     ensure_allowed_path(normalized)
 
     with session_for_user(user_id) as db:
-        record = _find_record_by_path(db, user_id, normalized)
+        record = find_record_by_path(db, user_id, normalized)
         if not record:
             raise FileNotFoundError(f"File not found: {path}")
-        derivative = _pick_derivative(db, record.id)
+        derivative = pick_derivative(db, record.id)
         if not derivative:
             raise ValueError(f"No downloadable content for: {path}")
 
@@ -459,7 +380,7 @@ def delete_path(user_id: str, path: str) -> dict:
     deleted: list[str] = []
 
     with session_for_user(user_id) as db:
-        record = _find_record_by_path(db, user_id, normalized)
+        record = find_record_by_path(db, user_id, normalized)
         if record:
             derivatives = (
                 db.query(FileDerivative)
@@ -469,7 +390,7 @@ def delete_path(user_id: str, path: str) -> dict:
             for item in derivatives:
                 storage.delete_object(item.storage_key)
             db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
-            record.deleted_at = _now()
+            record.deleted_at = now_utc()
             db.commit()
             deleted.append(record.path)
             return {"deleted": deleted, "count": len(deleted)}
@@ -496,7 +417,7 @@ def delete_path(user_id: str, path: str) -> dict:
             for derivative in derivatives:
                 storage.delete_object(derivative.storage_key)
             db.query(FileDerivative).filter(FileDerivative.file_id == item.id).delete()
-            item.deleted_at = _now()
+            item.deleted_at = now_utc()
             deleted.append(item.path)
 
         db.commit()
@@ -512,11 +433,11 @@ def move_path(user_id: str, source: str, destination: str) -> dict:
     ensure_allowed_path(dest)
 
     with session_for_user(user_id) as db:
-        existing_dest = _find_record_by_path(db, user_id, dest)
+        existing_dest = find_record_by_path(db, user_id, dest)
         if existing_dest:
             raise FileExistsError(f"Destination already exists: {destination}")
 
-        record = _find_record_by_path(db, user_id, src)
+        record = find_record_by_path(db, user_id, src)
         if record:
             record.path = dest
             record.filename_original = Path(dest).name
@@ -565,9 +486,9 @@ def info(user_id: str, path: str) -> dict:
     ensure_allowed_path(normalized)
 
     with session_for_user(user_id) as db:
-        record = _find_record_by_path(db, user_id, normalized)
+        record = find_record_by_path(db, user_id, normalized)
         if record:
-            job = _get_job(db, record.id)
+            job = get_job(db, record.id)
             return {
                 "path": record.path,
                 "size": record.size_bytes,

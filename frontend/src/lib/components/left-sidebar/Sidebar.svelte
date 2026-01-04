@@ -15,16 +15,10 @@
   import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import ThingsPanel from '$lib/components/left-sidebar/ThingsPanel.svelte';
-  import SettingsDialogContainer from '$lib/components/left-sidebar/panels/SettingsDialogContainer.svelte';
   import { useSidebarSectionLoader, type SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
   import SidebarRail from '$lib/components/left-sidebar/SidebarRail.svelte';
   import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
-  import NewNoteDialog from '$lib/components/left-sidebar/dialogs/NewNoteDialog.svelte';
-  import NewFolderDialog from '$lib/components/left-sidebar/dialogs/NewFolderDialog.svelte';
-  import NewWebsiteDialog from '$lib/components/left-sidebar/dialogs/NewWebsiteDialog.svelte';
-  import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
-  import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
-  import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
+  import SidebarDialogs from '$lib/components/left-sidebar/SidebarDialogs.svelte';
   import { Button } from '$lib/components/ui/button';
   import { ingestionAPI } from '$lib/services/api';
   import { sidebarSectionStore } from '$lib/stores/sidebar-section';
@@ -435,62 +429,32 @@
 
 </script>
 
-<NewNoteDialog
-  bind:open={isNewNoteDialogOpen}
-  bind:value={newNoteName}
-  isBusy={isCreatingNote}
-  onConfirm={createNoteFromDialog}
-  onCancel={() => (isNewNoteDialogOpen = false)}
-/>
-
-<NewFolderDialog
-  bind:open={isNewFolderDialogOpen}
-  bind:value={newFolderName}
-  isBusy={isCreatingFolder}
-  onConfirm={createFolderFromDialog}
-  onCancel={() => (isNewFolderDialogOpen = false)}
-/>
-
-
-<NewWebsiteDialog
-  bind:open={isNewWebsiteDialogOpen}
-  bind:value={newWebsiteUrl}
-  isBusy={isSavingWebsite}
-  onConfirm={saveWebsiteFromDialog}
-  onCancel={() => (isNewWebsiteDialogOpen = false)}
-/>
-
-<SidebarErrorDialog
-  bind:open={isErrorDialogOpen}
-  title={errorTitle}
-  message={errorMessage}
-  onConfirm={() => (isErrorDialogOpen = false)}
-/>
-
-<TextInputDialog
-  bind:open={isYouTubeDialogOpen}
-  title="Add YouTube video"
-  description="Paste a YouTube URL to generate a transcript."
-  placeholder="https://www.youtube.com/watch?v=..."
-  bind:value={youtubeUrl}
-  confirmLabel="Add video"
-  cancelLabel="Cancel"
-  busyLabel="Adding..."
-  isBusy={isAddingYoutube}
-  onConfirm={confirmAddYouTube}
-  onCancel={() => (isYouTubeDialogOpen = false)}
-/>
-
-<SaveChangesDialog
-  bind:open={isSaveChangesDialogOpen}
-  onConfirm={confirmSaveAndSwitch}
-  onCancel={discardAndSwitch}
-/>
-
-<SettingsDialogContainer
-  bind:open={isSettingsOpen}
+<SidebarDialogs
+  bind:isNewNoteDialogOpen
+  bind:newNoteName
+  {isCreatingNote}
+  {createNoteFromDialog}
+  bind:isNewFolderDialogOpen
+  bind:newFolderName
+  {isCreatingFolder}
+  {createFolderFromDialog}
+  bind:isNewWebsiteDialogOpen
+  bind:newWebsiteUrl
+  {isSavingWebsite}
+  {saveWebsiteFromDialog}
+  bind:isErrorDialogOpen
+  {errorTitle}
+  {errorMessage}
+  bind:isYouTubeDialogOpen
+  bind:youtubeUrl
+  {isAddingYoutube}
+  {confirmAddYouTube}
+  bind:isSaveChangesDialogOpen
+  {confirmSaveAndSwitch}
+  {discardAndSwitch}
+  bind:isSettingsOpen
   bind:profileImageSrc
-  bind:this={settingsDialog}
+  bind:settingsDialog
 />
 
 <div class="sidebar-shell" class:collapsed={isCollapsed}>
