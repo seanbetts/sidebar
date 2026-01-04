@@ -1474,7 +1474,7 @@ export function selectNode(nodeId: string | null) {
 - [x] tree.ts store split into logical modules
 - [x] FilesPanel.svelte reduced to < 400 LOC
 - [x] All extracted components have unit tests
-- [ ] No functionality regression
+- [x] No functionality regression
 - [x] Performance maintained or improved
 
 ---
@@ -2501,7 +2501,7 @@ frontend/src/tests/
 - [x] Create dashboards
 
 **Week 16:**
-- [ ] Final testing
+- [x] Final testing
 - [x] Documentation updates
 - [ ] Deployment
 
