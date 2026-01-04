@@ -33,6 +33,10 @@ ruff check backend/ && npm run lint  # lint
 **JSONB updates**
 - Must call `flag_modified(model, "field")` or changes won't persist
 
+**Other constraints**
+- Fix root causes. Avoid band-aids that hide symptoms
+- Do not delete or rename unexpected files/behaviour. Stop and ask
+
 ## Anti-Patterns
 
 - Business logic in API routes
@@ -52,6 +56,8 @@ Write tests for new behavior. TDD preferred.
 
 ## Definition of Done
 
+- [ ] Run the relevant checks locally and fix failures: tests, lint, typecheck
+- [ ] Update or add tests for any behaviour change (prefer failing test first when practical)
 - [ ] Tests pass (pytest, vitest)
 - [ ] Linting passes (ruff, eslint)
 - [ ] Type checking passes (mypy, tsc)
@@ -76,8 +82,10 @@ Write tests for new behavior. TDD preferred.
   - missing secrets, credentials, or access
 - Otherwise, make reasonable assumptions, note them briefly in the final summary, and continue.
 - Prefer: plan -> implement -> run checks -> fix -> final summary.
+- Prefer evidence over assumptions: inspect logs, run curls, and write small one-off scripts to confirm hypotheses when debugging.
+- If unsure, read more code in the relevant module before asking. If still blocked, ask with 2–3 short options.
 - Do not pause to check in after intermediate steps or partial progress.
-- For larger tasks, keep a short running log in `docs/plans/PLANS.md` and continue until the plan is complete.
+- For larger tasks, write a plan to docs/plans/<yyyy-mm-dd>-<slug>.md, keep it short, and delete it when complete.
 
 **Decide autonomously:**
 - Implementation details
