@@ -8,7 +8,6 @@
   import { thingsStore } from '$lib/stores/things';
   import { websitesStore } from '$lib/stores/websites';
   import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
-  import { ingestionStore } from '$lib/stores/ingestion';
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import ConversationList from './ConversationList.svelte';
   import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
@@ -16,11 +15,11 @@
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import ThingsPanel from '$lib/components/left-sidebar/ThingsPanel.svelte';
   import { useSidebarSectionLoader, type SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
+  import { useIngestionUploads } from '$lib/hooks/useIngestionUploads';
   import SidebarRail from '$lib/components/left-sidebar/SidebarRail.svelte';
   import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
   import SidebarDialogs from '$lib/components/left-sidebar/SidebarDialogs.svelte';
   import { Button } from '$lib/components/ui/button';
-  import { ingestionAPI } from '$lib/services/api';
   import { sidebarSectionStore } from '$lib/stores/sidebar-section';
 
   let isCollapsed = false;
@@ -52,6 +51,37 @@
   let lastConversationId: string | null = null;
   let lastMessageCount = 0;
   const { loadSectionData } = useSidebarSectionLoader();
+  const {
+    handleUploadFileClick,
+    handleFileSelected,
+    handleAddYouTube,
+    confirmAddYouTube,
+    handlePendingUpload
+  } = useIngestionUploads({
+    getIsUploadingFile: () => isUploadingFile,
+    setIsUploadingFile: (value) => {
+      isUploadingFile = value;
+    },
+    getIsAddingYoutube: () => isAddingYoutube,
+    setIsAddingYoutube: (value) => {
+      isAddingYoutube = value;
+    },
+    getYouTubeUrl: () => youtubeUrl,
+    setYouTubeUrl: (value) => {
+      youtubeUrl = value;
+    },
+    setYouTubeDialogOpen: (value) => {
+      isYouTubeDialogOpen = value;
+    },
+    setPendingUploadId: (value) => {
+      pendingUploadId = value;
+    },
+    onError: (title, message) => {
+      errorTitle = title;
+      errorMessage = message;
+      isErrorDialogOpen = true;
+    }
+  });
   $: isBlankChat = (() => {
     const currentId = $chatStore.conversationId;
     if (!currentId) return true;
@@ -188,126 +218,10 @@
   }
 
 
-  function handleUploadFileClick() {
-    fileInput?.click();
-  }
-
-  function handleAddYouTube() {
-    youtubeUrl = '';
-    isYouTubeDialogOpen = true;
-  }
-
-  async function confirmAddYouTube() {
-    const url = youtubeUrl.trim();
-    if (!url || isAddingYoutube) return;
-
-    const tempId = `youtube-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
-    isAddingYoutube = true;
-    const localItem = ingestionStore.addLocalSource({
-      id: tempId,
-      name: 'YouTube video',
-      mime: 'video/youtube',
-      url
-    });
-    ingestionViewerStore.setLocalActive(localItem);
-    try {
-      const { file_id } = await ingestionAPI.ingestYoutube(url);
-      ingestionStore.removeLocalUpload(tempId);
-      const meta = await ingestionAPI.get(file_id);
-      ingestionStore.upsertItem({
-        file: meta.file,
-        job: meta.job,
-        recommended_viewer: meta.recommended_viewer
-      });
-      dispatchCacheEvent('file.uploaded');
-      websitesStore.clearActive();
-      editorStore.reset();
-      currentNoteId.set(null);
-      pendingUploadId = file_id;
-      ingestionViewerStore.open(file_id);
-      isYouTubeDialogOpen = false;
-    } catch (error) {
-      ingestionStore.removeLocalUpload(tempId);
-      ingestionViewerStore.updateActiveJob(tempId, {
-        status: 'failed',
-        stage: 'failed',
-        user_message: error instanceof Error ? error.message : 'Failed to add YouTube video.'
-      });
-      console.error('Failed to add YouTube video:', error);
-      errorTitle = 'Unable to add YouTube video';
-      errorMessage =
-        error instanceof Error ? error.message : 'Failed to add YouTube video. Please try again.';
-      isErrorDialogOpen = true;
-    } finally {
-      isAddingYoutube = false;
-    }
-  }
-
-  async function handleFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const selected = input.files?.[0];
-    if (!selected || isUploadingFile) return;
-
-    const tempId = `upload-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
-    isUploadingFile = true;
-    const localItem = ingestionStore.addLocalUpload({
-      id: tempId,
-      name: selected.name,
-      type: selected.type,
-      size: selected.size
-    });
-    ingestionViewerStore.setLocalActive(localItem);
-    try {
-      const { file_id } = await ingestionAPI.upload(selected, (progress) => {
-        ingestionStore.updateLocalUploadProgress(tempId, progress);
-        ingestionViewerStore.updateActiveJob(tempId, {
-          status: 'uploading',
-          stage: 'uploading',
-          progress,
-          user_message: `Uploading ${Math.round(progress)}%`
-        });
-      });
-      ingestionStore.removeLocalUpload(tempId);
-      const meta = await ingestionAPI.get(file_id);
-      ingestionStore.upsertItem({
-        file: meta.file,
-        job: meta.job,
-        recommended_viewer: meta.recommended_viewer
-      });
-      dispatchCacheEvent('file.uploaded');
-      websitesStore.clearActive();
-      editorStore.reset();
-      currentNoteId.set(null);
-      pendingUploadId = file_id;
-      ingestionViewerStore.open(file_id);
-    } catch (error) {
-      ingestionStore.removeLocalUpload(tempId);
-      ingestionViewerStore.updateActiveJob(tempId, {
-        status: 'failed',
-        stage: 'failed',
-        user_message: error instanceof Error ? error.message : 'Failed to upload file.'
-      });
-      console.error('Failed to upload file:', error);
-      errorTitle = 'Unable to upload file';
-      errorMessage =
-        error instanceof Error ? error.message : 'Failed to upload file. Please try again.';
-      isErrorDialogOpen = true;
-    } finally {
-      isUploadingFile = false;
-      if (input) {
-        input.value = '';
-      }
-    }
-  }
-
   $: if (pendingUploadId) {
-    const item = $ingestionStore.items.find(entry => entry.file.id === pendingUploadId);
-    if (item?.job.status === 'ready' && item.recommended_viewer) {
-      ingestionViewerStore.open(pendingUploadId);
-      pendingUploadId = null;
-    } else if (item?.job.status === 'failed') {
-      pendingUploadId = null;
-    }
+    handlePendingUpload(pendingUploadId, (value) => {
+      pendingUploadId = value;
+    });
   }
 
   function handleNewWebsite() {

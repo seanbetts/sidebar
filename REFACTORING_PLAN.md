@@ -736,12 +736,12 @@ def test_custom_ca_bundle_loaded():
 
 #### Acceptance Criteria
 
-- [ ] SSL verification enabled by default in production
-- [ ] Environment variable controls SSL bypass (dev only)
-- [ ] Custom CA bundle support for corporate environments
-- [ ] Error raised if SSL bypass attempted in production
-- [ ] Tests verify SSL configuration behavior
-- [ ] Documentation updated with SSL setup instructions
+- [x] SSL verification enabled by default in production
+- [x] Environment variable controls SSL bypass (dev only)
+- [x] Custom CA bundle support for corporate environments
+- [x] Error raised if SSL bypass attempted in production
+- [x] Tests verify SSL configuration behavior
+- [x] Documentation updated with SSL setup instructions
 
 ---
 
@@ -1471,7 +1471,7 @@ export function selectNode(nodeId: string | null) {
 
 - [x] ThingsTasksView.svelte reduced to < 300 LOC
 - [x] UniversalViewer.svelte reduced to < 200 LOC
-- [ ] tree.ts store split into logical modules
+- [x] tree.ts store split into logical modules
 - [x] FilesPanel.svelte reduced to < 400 LOC
 - [x] All extracted components have unit tests
 - [ ] No functionality regression
@@ -2466,12 +2466,12 @@ frontend/src/tests/
 
 **Week 2:**
 - [x] Refactor ThingsTasksView component
-- [ ] Extract custom hooks
+- [x] Extract custom hooks
 - [x] Extract dialog components
 
 **Week 3:**
 - [x] Refactor UniversalViewer component
-- [ ] Split into viewer components
+- [x] Split into viewer components
 - [x] Add component tests
 
 ### Phase 2: Consolidation (4-6 weeks)
@@ -2491,18 +2491,18 @@ frontend/src/tests/
 **Week 8-9:**
 - [x] Refactor large backend files
 - [x] Split prompts into templates
-- [ ] Add integration tests
+- [x] Add integration tests
 
 ### Phase 3: Modernization (6-8 weeks)
 
 **Week 10-12:**
 - [x] Add Prometheus metrics
 - [x] Implement Sentry error tracking
-- [ ] Create dashboards
+- [x] Create dashboards
 
 **Week 16:**
 - [ ] Final testing
-- [ ] Documentation updates
+- [x] Documentation updates
 - [ ] Deployment
 
 ---
@@ -2565,13 +2565,13 @@ pg_restore -d sidebar backups/sidebar_backup.dump
 
 ## Documentation Updates Required
 
-- [ ] Update README with new architecture
+- [x] Update README with new architecture
 - [x] Document API versioning strategy
-- [ ] Update deployment guide
-- [ ] Create migration guide for API consumers
+- [x] Update deployment guide
+- [x] Create migration guide for API consumers
 - [x] Document new error codes
-- [ ] Update contributing guide with new patterns
-- [ ] Create refactoring ADRs (Architecture Decision Records)
+- [x] Update contributing guide with new patterns
+- [x] Create refactoring ADRs (Architecture Decision Records)
 
 ---
 

@@ -15,6 +15,12 @@ Create a `.env` from `.env.example` and fill in:
 - R2 storage settings (`R2_*`)
 - API keys (Anthropic, Google, etc.)
 - `BEARER_TOKEN` for API auth
+- SSL settings (`DISABLE_SSL_VERIFY` for dev only, `CUSTOM_CA_BUNDLE` for production MITM)
+
+## API Versioning
+
+The backend exposes versioned routes under `/api/v1`. Legacy `/api` routes are still available
+for backwards compatibility during migration.
 
 ## Docker Compose (Recommended)
 
