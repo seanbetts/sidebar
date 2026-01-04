@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from api.routers import health, chat, conversations, files, ingestion, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories, things
+from api.routers import health, chat, conversations, files, ingestion, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories, things, metrics
 from api.mcp.tools import register_mcp_tools
 from api.config import settings
 from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
@@ -17,8 +17,12 @@ from api.middleware.error_handler import (
     unhandled_exception_handler,
 )
 from api.middleware.deprecation import DeprecationMiddleware
+from api.middleware.metrics import MetricsMiddleware
 from api.exceptions import APIError
 import logging
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastAPIIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 # Configure audit logging
 logging.basicConfig(
@@ -26,6 +30,15 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[FastAPIIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        profiles_sample_rate=settings.sentry_profiles_sample_rate,
+        environment=settings.app_env or None,
+    )
 
 
 def _auth_error(status_code: int, code: str, message: str, headers: dict | None = None) -> JSONResponse:
@@ -73,6 +86,7 @@ app.add_exception_handler(APIError, api_error_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 app.add_middleware(DeprecationMiddleware)
+app.add_middleware(MetricsMiddleware)
 
 
 # Unified authentication middleware
@@ -80,7 +94,7 @@ app.add_middleware(DeprecationMiddleware)
 async def auth_middleware(request: Request, call_next):
     """Apply JWT auth to all endpoints except /api/health."""
     # Skip auth for health check
-    if request.url.path == "/api/health":
+    if request.url.path in {"/api/health", "/metrics"}:
         response = await call_next(request)
         return response
 
@@ -168,6 +182,7 @@ async def auth_middleware(request: Request, call_next):
 
 # Add REST routers BEFORE mounting MCP (auth handled by middleware)
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(metrics.router)
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["conversations"])
 app.include_router(files.router, prefix="/api/v1", tags=["files"])

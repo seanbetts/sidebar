@@ -138,6 +138,11 @@ class Settings(BaseSettings):
     things_bridge_backend_url: str = os.getenv("THINGS_BRIDGE_BACKEND_URL", "http://localhost:8001")
     things_bridge_device_id: str | None = os.getenv("THINGS_BRIDGE_DEVICE_ID") or None
 
+    # Observability
+    sentry_dsn: str | None = os.getenv("SENTRY_DSN") or None
+    sentry_traces_sample_rate: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+    sentry_profiles_sample_rate: float = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1"))
+
     # Future JWT config (Phase 2)
     # jwt_secret: str = None
     # jwt_algorithm: str = "HS256"
