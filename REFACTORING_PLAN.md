@@ -20,6 +20,13 @@ This codebase is **well-architected and production-ready**, but has accumulated 
 
 **Technical Debt Score**: **6/10** (Moderate)
 
+**Execution Notes (Updated)**:
+- Prioritize **stores/services** testing first, then a small set of critical UI flows.
+- Accept **lower UI component coverage** if stores/services + 2–3 flows are covered.
+- **Hard‑fail in production** if SSL verification is disabled.
+- **Defer large UI refactors** (e.g. ThingsTasksView, FilesPanel) until test scaffolding is in place.
+- Refresh metrics (LOC/test counts) before kicking off implementation.
+
 ---
 
 ## Table of Contents
@@ -72,7 +79,7 @@ This codebase is **well-architected and production-ready**, but has accumulated 
 #### Risk Assessment
 - **Severity**: CRITICAL
 - **Impact**: High risk for regressions, difficult to refactor confidently
-- **Effort**: Medium-High (4-6 weeks)
+- **Effort**: Medium-High (4-8 weeks, depending on scope of UI coverage)
 
 #### Implementation Plan
 
@@ -124,7 +131,7 @@ export const mockFetch = (data: any, ok = true) => {
 
 Create tests in this order:
 
-1. **Critical User Flows** (Week 1-2)
+1. **Critical User Flows** (Week 3-4)
 
 ```typescript
 // frontend/src/tests/flows/chat-streaming.test.ts
@@ -203,7 +210,7 @@ describe('Authentication Flow', () => {
 });
 ```
 
-2. **Complex Components** (Week 2-3)
+2. **Complex Components** (Week 4-5, only if needed)
 
 ```typescript
 // frontend/src/tests/components/ThingsTasksView.test.ts
@@ -298,7 +305,7 @@ describe('UniversalViewer', () => {
 });
 ```
 
-3. **State Management** (Week 3-4)
+3. **State Management** (Week 1-2, highest priority)
 
 ```typescript
 // frontend/src/tests/stores/tree.test.ts
@@ -369,7 +376,7 @@ describe('Chat Store', () => {
 });
 ```
 
-4. **API Integration** (Week 4-5)
+4. **API Integration** (Week 2-3)
 
 ```typescript
 // frontend/src/tests/services/api-client.test.ts
@@ -460,8 +467,8 @@ export default defineConfig({
 
 #### Acceptance Criteria
 
-- [ ] At least 70% line coverage for components
-- [ ] At least 70% line coverage for stores
+- [ ] At least 70% line coverage for stores/services
+- [ ] UI component coverage is “targeted” (critical flows only)
 - [ ] All critical user flows have integration tests
 - [ ] CI/CD pipeline runs tests on every PR
 - [ ] Coverage reports generated and reviewed
@@ -762,6 +769,8 @@ Large files that need decomposition:
 - **Severity**: MEDIUM-HIGH
 - **Impact**: Hard to maintain, test, and extend
 - **Effort**: High (6-8 weeks)
+
+**Note**: Defer these refactors until test scaffolding is in place to avoid regressions.
 
 #### Implementation Plan
 
