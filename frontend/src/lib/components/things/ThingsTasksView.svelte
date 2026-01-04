@@ -808,7 +808,11 @@
                         aria-label="Complete task"
                         disabled={busyTasks.has(task.id)}
                       >
-                        <Circle size={14} />
+                        {#if busyTasks.has(task.id)}
+                          <Check size={14} />
+                        {:else}
+                          <Circle size={14} />
+                        {/if}
                       </button>
                     {/if}
                     <div class="content">
