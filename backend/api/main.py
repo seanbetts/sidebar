@@ -16,6 +16,7 @@ from api.middleware.error_handler import (
     http_exception_handler,
     unhandled_exception_handler,
 )
+from api.middleware.deprecation import DeprecationMiddleware
 from api.exceptions import APIError
 import logging
 
@@ -71,6 +72,7 @@ app = FastAPI(
 app.add_exception_handler(APIError, api_error_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
+app.add_middleware(DeprecationMiddleware)
 
 
 # Unified authentication middleware
@@ -165,20 +167,36 @@ async def auth_middleware(request: Request, call_next):
 
 
 # Add REST routers BEFORE mounting MCP (auth handled by middleware)
-app.include_router(health.router, prefix="/api", tags=["health"])
-app.include_router(chat.router, prefix="/api", tags=["chat"])
-app.include_router(conversations.router, prefix="/api", tags=["conversations"])
-app.include_router(files.router, prefix="/api", tags=["files"])
-app.include_router(ingestion.router, prefix="/api", tags=["ingestion"])
-app.include_router(notes.router, prefix="/api", tags=["notes"])
-app.include_router(websites.router, prefix="/api", tags=["websites"])
-app.include_router(scratchpad.router, prefix="/api", tags=["scratchpad"])
-app.include_router(user_settings.router, prefix="/api", tags=["settings"])
-app.include_router(memories.router, prefix="/api", tags=["memories"])
-app.include_router(places.router, prefix="/api", tags=["places"])
-app.include_router(skills.router, prefix="/api", tags=["skills"])
-app.include_router(weather.router, prefix="/api", tags=["weather"])
-app.include_router(things.router, prefix="/api", tags=["things"])
+app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
+app.include_router(conversations.router, prefix="/api/v1", tags=["conversations"])
+app.include_router(files.router, prefix="/api/v1", tags=["files"])
+app.include_router(ingestion.router, prefix="/api/v1", tags=["ingestion"])
+app.include_router(notes.router, prefix="/api/v1", tags=["notes"])
+app.include_router(websites.router, prefix="/api/v1", tags=["websites"])
+app.include_router(scratchpad.router, prefix="/api/v1", tags=["scratchpad"])
+app.include_router(user_settings.router, prefix="/api/v1", tags=["settings"])
+app.include_router(memories.router, prefix="/api/v1", tags=["memories"])
+app.include_router(places.router, prefix="/api/v1", tags=["places"])
+app.include_router(skills.router, prefix="/api/v1", tags=["skills"])
+app.include_router(weather.router, prefix="/api/v1", tags=["weather"])
+app.include_router(things.router, prefix="/api/v1", tags=["things"])
+
+# Legacy routes (deprecated)
+app.include_router(health.router, prefix="/api", tags=["health-legacy"], deprecated=True)
+app.include_router(chat.router, prefix="/api", tags=["chat-legacy"], deprecated=True)
+app.include_router(conversations.router, prefix="/api", tags=["conversations-legacy"], deprecated=True)
+app.include_router(files.router, prefix="/api", tags=["files-legacy"], deprecated=True)
+app.include_router(ingestion.router, prefix="/api", tags=["ingestion-legacy"], deprecated=True)
+app.include_router(notes.router, prefix="/api", tags=["notes-legacy"], deprecated=True)
+app.include_router(websites.router, prefix="/api", tags=["websites-legacy"], deprecated=True)
+app.include_router(scratchpad.router, prefix="/api", tags=["scratchpad-legacy"], deprecated=True)
+app.include_router(user_settings.router, prefix="/api", tags=["settings-legacy"], deprecated=True)
+app.include_router(memories.router, prefix="/api", tags=["memories-legacy"], deprecated=True)
+app.include_router(places.router, prefix="/api", tags=["places-legacy"], deprecated=True)
+app.include_router(skills.router, prefix="/api", tags=["skills-legacy"], deprecated=True)
+app.include_router(weather.router, prefix="/api", tags=["weather-legacy"], deprecated=True)
+app.include_router(things.router, prefix="/api", tags=["things-legacy"], deprecated=True)
 
 # Mount MCP endpoint (auth handled by middleware)
 # FastMCP creates its own /mcp route, so we mount at root
