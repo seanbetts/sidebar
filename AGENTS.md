@@ -48,7 +48,7 @@ ruff check backend/ && npm run lint  # lint
 
 ## Testing
 
-Write tests for new behavior. TDD preferred.
+Write tests for new behavior. Prefer a failing test first when practical.
 
 **Tools:** pytest (backend), vitest (frontend)
 **Coverage targets:** 90% services, 70% components/stores
@@ -56,7 +56,6 @@ Write tests for new behavior. TDD preferred.
 
 ## Definition of Done
 
-- [ ] Run the relevant checks locally and fix failures: tests, lint, typecheck
 - [ ] Update or add tests for any behaviour change (prefer failing test first when practical)
 - [ ] Tests pass (pytest, vitest)
 - [ ] Linting passes (ruff, eslint)
@@ -64,7 +63,6 @@ Write tests for new behavior. TDD preferred.
 - [ ] Docstrings present (Python 80%+, TypeScript 90%+)
 - [ ] File size within limits
 - [ ] No console.log, debugger, or print() statements
-- [ ] Plan file deleted from docs/plans/ (if created)
 
 ## When to Ask
 
