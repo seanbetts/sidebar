@@ -68,6 +68,17 @@ Write tests for new behavior. TDD preferred.
 - Security configuration
 - Ambiguous requirements
 
+## Autonomy and check-ins
+- Work in multi-step batches. Do not stop after each small change.
+- Only ask me a question when blocked by:
+  - a missing requirement that changes behaviour
+  - a risky choice with multiple reasonable options
+  - missing secrets, credentials, or access
+- Otherwise, make reasonable assumptions, note them briefly in the final summary, and continue.
+- Prefer: plan -> implement -> run checks -> fix -> final summary.
+- Do not pause to check in after intermediate steps or partial progress.
+- For larger tasks, keep a short running log in `docs/plans/PLANS.md` and continue until the plan is complete.
+
 **Decide autonomously:**
 - Implementation details
 - Refactoring within limits
