@@ -25,6 +25,7 @@ sideBar is built as a modern, containerized full-stack application:
 - **Database**: Supabase Postgres (SQLAlchemy ORM)
 - **Object Storage**: Cloudflare R2 for workspace files and assets
 - **Containerization**: Docker Compose orchestrating all services
+- **API Versioning**: `/api/v1` for stable client integrations (legacy `/api` remains during migration)
 
 > **Deep Dive:** See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for design decisions, patterns, and learnings from building sideBar.
 
@@ -85,6 +86,12 @@ R2_BUCKET=sidebar
 R2_ACCESS_KEY_ID=your_r2_access_key_id
 R2_ACCESS_KEY=your_r2_access_key_id
 R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+
+# SSL verification (dev only)
+# Disable verification only in local/dev if corporate SSL inspection blocks requests.
+DISABLE_SSL_VERIFY=false
+# Optional custom CA bundle for production environments with SSL interception.
+CUSTOM_CA_BUNDLE=/path/to/ca-bundle.pem
 ```
 
 ### 2. Start the Application
@@ -270,8 +277,10 @@ sideBar implements multiple security layers:
 
 **Documentation:**
 - [Architecture & Design Decisions](./docs/ARCHITECTURE.md)
+- [API Migration Guide](./docs/API_MIGRATION_GUIDE.md)
 - [Local Development Guide](./docs/LOCAL_DEVELOPMENT.md)
 - [Testing Philosophy](./docs/TESTING.md)
+- [Contributing Guide](./docs/CONTRIBUTING.md)
 - [AI Agent Instructions](./AGENTS.md)
 
 **Frameworks:**
