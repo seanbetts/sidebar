@@ -3,7 +3,6 @@ primary_region = "lhr"
 
 [build]
   dockerfile = "docker/Dockerfile.skills-api"
-  context = ".."
 
 [env]
   PORT = "8001"

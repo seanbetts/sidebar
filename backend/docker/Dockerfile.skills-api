@@ -14,9 +14,9 @@ RUN useradd -m -u 1000 -s /bin/bash appuser && \
     chown -R appuser:appuser /app
 
 # Copy dependency files
-COPY backend/pyproject.toml ./
-COPY backend/api/requirements.txt ./requirements.txt
-COPY backend/api/constraints.txt ./constraints.txt
+COPY pyproject.toml ./
+COPY api/requirements.txt ./requirements.txt
+COPY api/constraints.txt ./constraints.txt
 
 # Install Python dependencies
 # Note: Using pip instead of uv because uv lacks --trusted-host equivalent for
@@ -35,10 +35,9 @@ RUN pip install --no-cache-dir \
     -r requirements.txt
 
 # Copy API code
-COPY --chown=appuser:appuser backend/api/ ./api/
-COPY --chown=appuser:appuser backend/skills/ ./skills/
-COPY --chown=appuser:appuser backend/scripts/ ./scripts/
-COPY --chown=appuser:appuser bridge/ ./bridge/
+COPY --chown=appuser:appuser api/ ./api/
+COPY --chown=appuser:appuser skills/ ./skills/
+COPY --chown=appuser:appuser scripts/ ./scripts/
 
 # Create writable directories for non-root user
 RUN mkdir -p /workspace /tmp && \
