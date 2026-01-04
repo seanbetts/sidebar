@@ -2,12 +2,13 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import or_
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import Response, JSONResponse
 from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db, SessionLocal, set_session_user_id
+from api.exceptions import BadRequestError, NotFoundError
 from api.models.website import Website
 from api.services.jina_service import JinaService
 from api.services.website_processing_service import WebsiteProcessingService
@@ -71,12 +72,12 @@ def parse_website_id(value: str):
         Parsed UUID.
 
     Raises:
-        HTTPException: 400 if the value is not a valid UUID.
+        BadRequestError: If the value is not a valid UUID.
     """
     try:
         return uuid.UUID(value)
     except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid website id")
+        raise BadRequestError("Invalid website id")
 
 
 def website_summary(website: Website) -> dict:
@@ -146,7 +147,7 @@ async def update_pinned_order(
     """
     order = request.get("order", [])
     if not isinstance(order, list):
-        raise HTTPException(status_code=400, detail="order must be a list")
+        raise BadRequestError("order must be a list")
     website_ids: list[uuid.UUID] = []
     for item in order:
         website_ids.append(parse_website_id(item))
@@ -176,10 +177,10 @@ async def search_websites(
         List of matching website summaries.
 
     Raises:
-        HTTPException: 400 if query is missing.
+        BadRequestError: If query is missing.
     """
     if not query:
-        raise HTTPException(status_code=400, detail="query required")
+        raise BadRequestError("query required")
 
     websites = (
         db.query(Website)
@@ -209,7 +210,7 @@ async def quick_save_website(
     """Save a website with lightweight Jina fetch in the background."""
     url = str(request.get("url", "")).strip()
     if not url:
-        raise HTTPException(status_code=400, detail="url required")
+        raise BadRequestError("url required")
     title = request.get("title")
     normalized_url = _normalize_url(url)
 
@@ -229,11 +230,11 @@ async def get_quick_save_job(
     try:
         job_uuid = uuid.UUID(job_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid job_id") from exc
+        raise BadRequestError("Invalid job_id") from exc
 
     job = WebsiteProcessingService.get_job(db, user_id, job_uuid)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise NotFoundError("Website job", job_id)
 
     return {
         "id": str(job.id),
@@ -266,16 +267,16 @@ async def save_website(
         Skill execution result payload.
 
     Raises:
-        HTTPException: 400 for missing url or skill errors.
+        BadRequestError: For missing url or skill errors.
     """
     url = payload.get("url", "")
     if not url:
-        raise HTTPException(status_code=400, detail="url required")
+        raise BadRequestError("url required")
 
     executor = request.app.state.executor
     result = await executor.execute("web-save", "save_url.py", [url, "--database", "--user-id", user_id])
     if not result.get("success"):
-        raise HTTPException(status_code=400, detail=result.get("error", "Failed to save website"))
+        raise BadRequestError(result.get("error", "Failed to save website"))
 
     return result
 
@@ -299,11 +300,11 @@ async def get_website(
         Website detail payload with content.
 
     Raises:
-        HTTPException: 404 if not found.
+        NotFoundError: If not found.
     """
     website = WebsitesService.get_website(db, user_id, website_id, mark_opened=True)
     if not website:
-        raise HTTPException(status_code=404, detail="Website not found")
+        raise NotFoundError("Website", website_id)
 
     return {
         **website_summary(website),
@@ -334,14 +335,14 @@ async def update_pin(
         Success flag.
 
     Raises:
-        HTTPException: 404 if not found.
+        NotFoundError: If not found.
     """
     pinned = bool(request.get("pinned", False))
     try:
         website_uuid = parse_website_id(website_id)
         WebsitesService.update_pinned(db, user_id, website_uuid, pinned)
     except WebsiteNotFoundError:
-        raise HTTPException(status_code=404, detail="Website not found")
+        raise NotFoundError("Website", website_id)
 
     return {"success": True}
 
@@ -369,16 +370,17 @@ async def update_title(
         Success flag.
 
     Raises:
-        HTTPException: 400 if title is missing, 404 if not found.
+        BadRequestError: If title is missing.
+        NotFoundError: If not found.
     """
     title = request.get("title", "")
     if not title:
-        raise HTTPException(status_code=400, detail="title required")
+        raise BadRequestError("title required")
     try:
         website_uuid = parse_website_id(website_id)
         WebsitesService.update_website(db, user_id, website_uuid, title=title)
     except WebsiteNotFoundError:
-        raise HTTPException(status_code=404, detail="Website not found")
+        raise NotFoundError("Website", website_id)
 
     return {"success": True}
 
@@ -404,14 +406,14 @@ async def update_archive(
         Success flag.
 
     Raises:
-        HTTPException: 404 if not found.
+        NotFoundError: If not found.
     """
     archived = bool(request.get("archived", False))
     try:
         website_uuid = parse_website_id(website_id)
         WebsitesService.update_archived(db, user_id, website_uuid, archived)
     except WebsiteNotFoundError:
-        raise HTTPException(status_code=404, detail="Website not found")
+        raise NotFoundError("Website", website_id)
 
     return {"success": True}
 
@@ -435,12 +437,12 @@ async def download_website(
         Markdown response with attachment headers.
 
     Raises:
-        HTTPException: 404 if not found.
+        NotFoundError: If not found.
     """
     website_uuid = parse_website_id(website_id)
     website = WebsitesService.get_website(db, user_id, website_uuid, mark_opened=False)
     if not website:
-        raise HTTPException(status_code=404, detail="Website not found")
+        raise NotFoundError("Website", website_id)
 
     filename = f"{website.title}.md"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
@@ -466,10 +468,10 @@ async def delete_website(
         Success flag.
 
     Raises:
-        HTTPException: 404 if not found.
+        NotFoundError: If not found.
     """
     deleted = WebsitesService.delete_website(db, user_id, website_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Website not found")
+        raise NotFoundError("Website", website_id)
 
     return {"success": True}

@@ -6,7 +6,7 @@ import logging
 import os
 import time
 from datetime import datetime, timezone
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from google import genai
@@ -20,6 +20,7 @@ from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
 from api.models.conversation import Conversation
+from api.exceptions import BadRequestError, ConversationNotFoundError
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -177,7 +178,8 @@ async def stream_chat(
         StreamingResponse emitting SSE events.
 
     Raises:
-        HTTPException: 400 for missing message, 404 for invalid conversation ID.
+        BadRequestError: For missing message.
+        ConversationNotFoundError: If conversation is invalid.
     """
     data = await request.json()
     message = data.get("message")
@@ -192,7 +194,7 @@ async def stream_chat(
     current_timezone = data.get("current_timezone")
 
     if not message:
-        raise HTTPException(status_code=400, detail="Message required")
+        raise BadRequestError("Message required")
 
     if conversation_id:
         conversation = db.query(Conversation).filter(
@@ -201,7 +203,7 @@ async def stream_chat(
         ).first()
 
         if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+            raise ConversationNotFoundError(str(conversation_id))
 
         history = _build_history(conversation.messages, user_message_id, message)
 
@@ -316,13 +318,14 @@ async def generate_title(
         Title payload with fallback flag.
 
     Raises:
-        HTTPException: 400 for missing conversation_id, 404 if not found.
+        BadRequestError: For missing conversation_id or insufficient messages.
+        ConversationNotFoundError: If not found.
     """
     data = await request.json()
     conversation_id = data.get("conversation_id")
 
     if not conversation_id:
-        raise HTTPException(status_code=400, detail="conversation_id required")
+        raise BadRequestError("conversation_id required")
 
     # Get conversation and verify ownership
     conversation = db.query(Conversation).filter(
@@ -331,7 +334,7 @@ async def generate_title(
     ).first()
 
     if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise ConversationNotFoundError(str(conversation_id))
 
     if conversation.title_generated and conversation.title:
         return {"title": conversation.title, "fallback": False}
@@ -340,7 +343,7 @@ async def generate_title(
     messages = conversation.messages
 
     if not messages or len(messages) < 2:
-        raise HTTPException(status_code=400, detail="Need at least 2 messages to generate title")
+        raise BadRequestError("Need at least 2 messages to generate title")
 
     user_msg = messages[0].get('content', '')
     assistant_msg = messages[1].get('content', '')

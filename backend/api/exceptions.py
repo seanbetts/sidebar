@@ -106,6 +106,27 @@ class ConflictError(APIError):
         super().__init__(409, "CONFLICT", message, details)
 
 
+class PayloadTooLargeError(APIError):
+    """Payload too large."""
+
+    def __init__(self, message: str = "Payload too large") -> None:
+        super().__init__(413, "PAYLOAD_TOO_LARGE", message)
+
+
+class RangeNotSatisfiableError(APIError):
+    """Requested range is not satisfiable."""
+
+    def __init__(self, message: str = "Invalid range") -> None:
+        super().__init__(416, "RANGE_NOT_SATISFIABLE", message)
+
+
+class ServiceUnavailableError(APIError):
+    """Service temporarily unavailable."""
+
+    def __init__(self, message: str = "Service unavailable") -> None:
+        super().__init__(503, "SERVICE_UNAVAILABLE", message)
+
+
 class InternalServerError(APIError):
     """Internal server error."""
 
@@ -123,4 +144,3 @@ class ExternalServiceError(APIError):
             f"Error from {service}: {message}",
             {"service": service},
         )
-

@@ -9,7 +9,7 @@ import shutil
 import urllib.parse
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import Response, JSONResponse
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,15 @@ from api.auth import verify_bearer_token
 from api.config import settings
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.exceptions import (
+    APIError,
+    BadRequestError,
+    ConflictError,
+    InternalServerError,
+    NotFoundError,
+    PayloadTooLargeError,
+    RangeNotSatisfiableError,
+)
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.storage.service import get_storage_backend
 from api.models.file_ingestion import IngestedFile
@@ -83,7 +92,7 @@ async def _handle_upload(
                     break
                 size += len(chunk)
                 if size > MAX_FILE_BYTES:
-                    raise HTTPException(status_code=413, detail="File too large")
+                    raise PayloadTooLargeError("File too large")
                 digest.update(chunk)
                 target.write(chunk)
 
@@ -107,7 +116,7 @@ async def _handle_upload(
             storage = get_storage_backend()
             staged_key = _staging_storage_key(user_id, file_id)
             storage.put_object(staged_key, staging_path.read_bytes(), content_type=mime_original)
-    except HTTPException:
+    except APIError:
         _safe_cleanup(staging_path)
         if staged_key and storage:
             storage.delete_object(staged_key)
@@ -117,7 +126,7 @@ async def _handle_upload(
         _safe_cleanup(staging_path)
         if staged_key and storage:
             storage.delete_object(staged_key)
-        raise HTTPException(status_code=500, detail="Upload failed") from exc
+        raise InternalServerError("Upload failed") from exc
 
     return file_id, job.id
 
@@ -154,13 +163,13 @@ def _recommended_viewer(derivatives: list[dict], record: IngestedFile | None = N
 def _normalize_youtube_url(url: str) -> str:
     parsed = urllib.parse.urlparse(url if url.startswith(("http://", "https://")) else f"https://{url}")
     if not parsed.netloc:
-        raise HTTPException(status_code=400, detail="Invalid URL")
+        raise BadRequestError("Invalid URL")
     if not any(domain in parsed.netloc for domain in ("youtube.com", "youtu.be")):
-        raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+        raise BadRequestError("Invalid YouTube URL")
     if "youtu.be" in parsed.netloc:
         video_id = parsed.path.strip("/")
         if not video_id:
-            raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+            raise BadRequestError("Invalid YouTube URL")
         return f"https://www.youtube.com/watch?v={video_id}"
     if parsed.path.startswith("/shorts/"):
         parts = [part for part in parsed.path.split("/") if part]
@@ -267,7 +276,7 @@ async def ingest_youtube(
     """Create an ingestion job for a YouTube video URL."""
     url = str(request.get("url", "")).strip()
     if not url:
-        raise HTTPException(status_code=400, detail="YouTube URL is required")
+        raise BadRequestError("YouTube URL is required")
     normalized_url = _normalize_youtube_url(url)
     video_id = _extract_youtube_id(normalized_url)
     metadata = {
@@ -366,11 +375,11 @@ async def get_file_meta(
     try:
         file_uuid = uuid.UUID(file_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+        raise BadRequestError("Invalid file_id") from exc
 
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File", file_id)
 
     record.last_opened_at = datetime.now(timezone.utc)
     db.commit()
@@ -433,15 +442,15 @@ async def get_derivative_content(
     try:
         file_uuid = uuid.UUID(file_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+        raise BadRequestError("Invalid file_id") from exc
 
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File", file_id)
 
     derivative = FileIngestionService.get_derivative(db, file_uuid, kind)
     if not derivative:
-        raise HTTPException(status_code=404, detail="Derivative not found")
+        raise NotFoundError("Derivative", kind)
 
     # Release DB connection before fetching from storage.
     db.close()
@@ -459,7 +468,7 @@ async def get_derivative_content(
                 start = int(start_str)
                 end = int(end_str) if end_str.isdigit() else max(total - 1, start)
                 if total <= 0 or start > end or end >= total:
-                    raise HTTPException(status_code=416, detail="Invalid range")
+                    raise RangeNotSatisfiableError("Invalid range")
                 content = storage.get_object_range(derivative.storage_key, start, end)
                 headers["Content-Range"] = f"bytes {start}-{end}/{total}"
                 headers["Content-Length"] = str(end - start + 1)
@@ -485,10 +494,10 @@ async def pause_processing(
     try:
         file_uuid = uuid.UUID(file_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+        raise BadRequestError("Invalid file_id") from exc
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File", file_id)
     job = FileIngestionService.update_job_status(db, file_uuid, status="paused")
     return {"status": job.status if job else "paused"}
 
@@ -504,10 +513,10 @@ async def resume_processing(
     try:
         file_uuid = uuid.UUID(file_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+        raise BadRequestError("Invalid file_id") from exc
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File", file_id)
     job = FileIngestionService.update_job_status(db, file_uuid, status="queued")
     return {"status": job.status if job else "queued"}
 
@@ -523,10 +532,10 @@ async def cancel_processing(
     try:
         file_uuid = uuid.UUID(file_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+        raise BadRequestError("Invalid file_id") from exc
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File", file_id)
 
     job = FileIngestionService.update_job_status(db, file_uuid, status="canceled", stage="canceled")
     _safe_cleanup(_staging_path(file_uuid))
@@ -545,10 +554,10 @@ async def update_pin(
     try:
         file_uuid = uuid.UUID(file_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+        raise BadRequestError("Invalid file_id") from exc
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File", file_id)
 
     pinned = bool(request.get("pinned", False))
     FileIngestionService.update_pinned(db, user_id, file_uuid, pinned)
@@ -565,13 +574,13 @@ async def update_pinned_order(
     """Update pinned order for files."""
     order = request.get("order", [])
     if not isinstance(order, list):
-        raise HTTPException(status_code=400, detail="order must be a list")
+        raise BadRequestError("order must be a list")
     file_ids: list[uuid.UUID] = []
     for item in order:
         try:
             file_ids.append(uuid.UUID(item))
         except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="Invalid file id")
+            raise BadRequestError("Invalid file id")
 
     FileIngestionService.update_pinned_order(db, user_id, file_ids)
     return {"success": True}
@@ -589,14 +598,14 @@ async def rename_file(
     try:
         file_uuid = uuid.UUID(file_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+        raise BadRequestError("Invalid file_id") from exc
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File", file_id)
 
     new_name = str(request.get("filename", "")).strip()
     if not new_name:
-        raise HTTPException(status_code=400, detail="filename is required")
+        raise BadRequestError("filename is required")
 
     FileIngestionService.update_filename(db, user_id, file_uuid, new_name)
     return {"success": True, "filename": new_name}
@@ -613,14 +622,14 @@ async def delete_file(
     try:
         file_uuid = uuid.UUID(file_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid file_id") from exc
+        raise BadRequestError("Invalid file_id") from exc
     record = FileIngestionService.get_file(db, user_id, file_uuid)
     if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File", file_id)
 
     job = FileIngestionService.get_job(db, file_uuid)
     if job and job.status not in {"ready", "failed", "canceled"}:
-        raise HTTPException(status_code=409, detail="File is still processing")
+        raise ConflictError("File is still processing")
 
     derivatives = FileIngestionService.list_derivatives(db, file_uuid)
     storage = get_storage_backend()
@@ -628,7 +637,7 @@ async def delete_file(
         try:
             storage.delete_object(derivative.storage_key)
         except Exception as exc:
-            raise HTTPException(status_code=500, detail="Failed to delete file data") from exc
+            raise InternalServerError("Failed to delete file data") from exc
     FileIngestionService.delete_derivatives(db, file_uuid)
     FileIngestionService.soft_delete_file(db, file_uuid)
     _safe_cleanup(_staging_path(file_uuid))

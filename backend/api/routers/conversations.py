@@ -1,5 +1,5 @@
 """Conversations API router with JSONB message storage."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import or_, func, cast, String
@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
 from api.models.conversation import Conversation
+from api.exceptions import ConversationNotFoundError
 from pydantic import BaseModel
 
 
@@ -129,7 +130,7 @@ async def get_conversation(
     ).first()
 
     if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise ConversationNotFoundError(str(conversation_id))
 
     return ConversationWithMessages(
         id=str(conversation.id),
@@ -157,7 +158,7 @@ async def add_message(
     ).first()
 
     if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise ConversationNotFoundError(str(conversation_id))
 
     # Convert message to dict
     message_dict = message.model_dump()
@@ -195,7 +196,7 @@ async def update_conversation(
     ).first()
 
     if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise ConversationNotFoundError(str(conversation_id))
 
     if updates.title is not None:
         conversation.title = updates.title
@@ -224,7 +225,7 @@ async def delete_conversation(
     ).first()
 
     if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise ConversationNotFoundError(str(conversation_id))
 
     conversation.is_archived = True
     conversation.updated_at = datetime.now(timezone.utc)

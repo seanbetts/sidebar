@@ -4,13 +4,20 @@ import uuid
 from pathlib import Path
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import SessionLocal, get_db, set_session_user_id
+from api.exceptions import (
+    BadRequestError,
+    InternalServerError,
+    InvalidTokenError,
+    NotFoundError,
+    ServiceUnavailableError,
+)
 from api.models.things_bridge import ThingsBridge
 from api.services.things_bridge_service import ThingsBridgeService
 from api.services.things_bridge_client import ThingsBridgeClient
@@ -70,7 +77,7 @@ def _parse_bridge_id(value: str) -> uuid.UUID:
     try:
         return uuid.UUID(value)
     except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="Invalid bridgeId")
+        raise BadRequestError("Invalid bridgeId")
 
 
 @router.post("/bridges/register")
@@ -85,7 +92,7 @@ async def register_bridge(
     device_name = (request.get("deviceName") or "").strip()
     base_url = (request.get("baseUrl") or "").strip()
     if not device_id or not device_name or not base_url:
-        raise HTTPException(status_code=400, detail="deviceId, deviceName, and baseUrl are required")
+        raise BadRequestError("deviceId, deviceName, and baseUrl are required")
 
     set_session_user_id(db, user_id)
     bridge = ThingsBridgeService.register_bridge(
@@ -110,13 +117,13 @@ async def heartbeat_bridge(
     """Update bridge last_seen_at timestamp."""
     bridge_id_value = request.get("bridgeId") or x_bridge_id
     if not bridge_id_value:
-        raise HTTPException(status_code=400, detail="bridgeId required")
+        raise BadRequestError("bridgeId required")
     bridge_id = _parse_bridge_id(bridge_id_value)
 
     set_session_user_id(db, user_id)
     bridge = ThingsBridgeService.heartbeat(db, user_id, bridge_id)
     if not bridge:
-        raise HTTPException(status_code=404, detail="Bridge not found")
+        raise NotFoundError("Bridge", str(bridge_id))
     return {
         "bridgeId": str(bridge.id),
         "lastSeenAt": bridge.last_seen_at.isoformat(),
@@ -155,7 +162,7 @@ async def install_script(
     backend_url = settings.things_bridge_backend_url.rstrip("/")
     bridge_path = Path(__file__).resolve().parents[3] / "bridge" / "things_bridge.py"
     if not bridge_path.exists():
-        raise HTTPException(status_code=500, detail="Bridge script not found")
+        raise InternalServerError("Bridge script not found")
     bridge_source = bridge_path.read_text(encoding="utf-8")
     script = f"""#!/bin/bash
 set -euo pipefail
@@ -285,16 +292,16 @@ async def install_bridge(request: dict, x_install_token: str | None = Header(def
     """Install a Things bridge using a one-time token."""
     token = x_install_token or request.get("installToken")
     if not token:
-        raise HTTPException(status_code=400, detail="install token required")
+        raise BadRequestError("install token required")
     record = ThingsBridgeInstallService.consume_token(db, token)
     if not record:
-        raise HTTPException(status_code=401, detail="Invalid or expired install token")
+        raise InvalidTokenError("Invalid or expired install token")
 
     device_id = (request.get("deviceId") or "").strip()
     device_name = (request.get("deviceName") or "").strip()
     base_url = (request.get("baseUrl") or "").strip()
     if not device_id or not device_name or not base_url:
-        raise HTTPException(status_code=400, detail="deviceId, deviceName, and baseUrl are required")
+        raise BadRequestError("deviceId, deviceName, and baseUrl are required")
 
     set_session_user_id(db, record.user_id)
     bridge = ThingsBridgeService.register_bridge(
@@ -331,7 +338,7 @@ async def bridge_status(
 def _get_active_bridge_or_503(db: Session, user_id: str) -> ThingsBridge:
     bridge = ThingsBridgeService.select_active_bridge(db, user_id)
     if not bridge:
-        raise HTTPException(status_code=503, detail="No active Things bridge available")
+        raise ServiceUnavailableError("No active Things bridge available")
     return bridge
 
 
@@ -363,7 +370,7 @@ async def search_things_tasks(
     """Search Things tasks via the active bridge."""
     query = query.strip()
     if not query:
-        raise HTTPException(status_code=400, detail="query required")
+        raise BadRequestError("query required")
     set_session_user_id(db, user_id)
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
@@ -394,7 +401,7 @@ async def set_url_token(
     """Store the Things URL auth token on the active bridge."""
     token = (request.get("token") or "").strip()
     if not token:
-        raise HTTPException(status_code=400, detail="token required")
+        raise BadRequestError("token required")
     set_session_user_id(db, user_id)
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)

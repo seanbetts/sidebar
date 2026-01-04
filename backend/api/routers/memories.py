@@ -5,13 +5,14 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.exceptions import BadRequestError, ConflictError, NotFoundError
 from api.models.user_memory import UserMemory
 from api.services.memory_tools.path_utils import normalize_path
 from api.services.memory_tools.operations import validate_content
@@ -97,7 +98,7 @@ async def get_memory(
         Memory record if found.
 
     Raises:
-        HTTPException: 404 if memory is not found.
+        NotFoundError: If memory is not found.
     """
     memory = (
         db.query(UserMemory)
@@ -105,7 +106,7 @@ async def get_memory(
         .first()
     )
     if not memory:
-        raise HTTPException(status_code=404, detail="Memory not found")
+        raise NotFoundError("Memory", str(memory_id))
     return MemoryResponse(
         id=str(memory.id),
         path=memory.path,
@@ -134,20 +135,21 @@ async def create_memory(
         Created memory record.
 
     Raises:
-        HTTPException: 400 for invalid path/content, 409 if duplicate exists.
+        BadRequestError: For invalid path/content.
+        ConflictError: If duplicate exists.
     """
     try:
         normalized_path = normalize_path(payload.path)
         validate_content(payload.content)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise BadRequestError(str(exc)) from exc
     existing = (
         db.query(UserMemory)
         .filter(UserMemory.user_id == user_id, UserMemory.path == normalized_path)
         .first()
     )
     if existing:
-        raise HTTPException(status_code=409, detail="Memory already exists")
+        raise ConflictError("Memory already exists")
 
     now = datetime.now(timezone.utc)
     memory = UserMemory(
@@ -190,8 +192,9 @@ async def update_memory(
         Updated memory record.
 
     Raises:
-        HTTPException: 400 for invalid path/content, 404 if not found,
-            409 if path conflicts.
+        BadRequestError: For invalid path/content.
+        NotFoundError: If memory is not found.
+        ConflictError: If path conflicts.
     """
     memory = (
         db.query(UserMemory)
@@ -199,13 +202,13 @@ async def update_memory(
         .first()
     )
     if not memory:
-        raise HTTPException(status_code=404, detail="Memory not found")
+        raise NotFoundError("Memory", str(memory_id))
 
     if payload.path is not None:
         try:
             normalized_path = normalize_path(payload.path)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise BadRequestError(str(exc)) from exc
         if normalized_path != memory.path:
             conflict = (
                 db.query(UserMemory)
@@ -213,14 +216,14 @@ async def update_memory(
                 .first()
             )
             if conflict:
-                raise HTTPException(status_code=409, detail="Memory already exists")
+                raise ConflictError("Memory already exists")
             memory.path = normalized_path
 
     if payload.content is not None:
         try:
             validate_content(payload.content)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise BadRequestError(str(exc)) from exc
         memory.content = payload.content
 
     memory.updated_at = datetime.now(timezone.utc)
@@ -254,7 +257,7 @@ async def delete_memory(
         Success flag.
 
     Raises:
-        HTTPException: 404 if memory is not found.
+        NotFoundError: If memory is not found.
     """
     memory = (
         db.query(UserMemory)
@@ -262,7 +265,7 @@ async def delete_memory(
         .first()
     )
     if not memory:
-        raise HTTPException(status_code=404, detail="Memory not found")
+        raise NotFoundError("Memory", str(memory_id))
     db.delete(memory)
     db.commit()
     return {"success": True}

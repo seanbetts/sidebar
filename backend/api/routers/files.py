@@ -1,13 +1,14 @@
 """Files router for browsing workspace files."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.exceptions import BadRequestError
 from api.services.files_workspace_service import FilesWorkspaceService
 
 router = APIRouter(prefix="/files", tags=["files"])
@@ -56,10 +57,10 @@ async def search_files(
         Search results payload.
 
     Raises:
-        HTTPException: 400 if query is missing.
+        BadRequestError: If query is missing.
     """
     if not query:
-        raise HTTPException(status_code=400, detail="query required")
+        raise BadRequestError("query required")
     return FilesWorkspaceService.search(db, user_id, query, basePath, limit=limit)
 
 
@@ -82,13 +83,13 @@ async def create_folder(
         Folder creation result.
 
     Raises:
-        HTTPException: 400 if path is missing.
+        BadRequestError: If path is missing.
     """
     base_path = request.get("basePath", "documents")
     path = (request.get("path") or "").strip("/")
 
     if not path:
-        raise HTTPException(status_code=400, detail="path required")
+        raise BadRequestError("path required")
 
     return FilesWorkspaceService.create_folder(db, user_id, base_path, path)
 
@@ -112,14 +113,14 @@ async def rename_file_or_folder(
         Rename result.
 
     Raises:
-        HTTPException: 400 if required fields are missing.
+        BadRequestError: If required fields are missing.
     """
     base_path = request.get("basePath", "documents")
     old_path = request.get("oldPath", "")
     new_name = request.get("newName", "")
 
     if not old_path or not new_name:
-        raise HTTPException(status_code=400, detail="oldPath and newName required")
+        raise BadRequestError("oldPath and newName required")
 
     return FilesWorkspaceService.rename(db, user_id, base_path, old_path, new_name)
 
@@ -143,14 +144,14 @@ async def move_file_or_folder(
         Move result.
 
     Raises:
-        HTTPException: 400 if path is missing.
+        BadRequestError: If path is missing.
     """
     base_path = request.get("basePath", "documents")
     path = request.get("path", "")
     destination = request.get("destination", "")
 
     if not path:
-        raise HTTPException(status_code=400, detail="path required")
+        raise BadRequestError("path required")
 
     return FilesWorkspaceService.move(db, user_id, base_path, path, destination)
 
@@ -174,13 +175,13 @@ async def delete_file_or_folder(
         Delete result.
 
     Raises:
-        HTTPException: 400 if path is missing or points to root.
+        BadRequestError: If path is missing or points to root.
     """
     base_path = request.get("basePath", "documents")
     path = request.get("path", "")
 
     if not path or path == "/":
-        raise HTTPException(status_code=400, detail="Cannot delete root directory")
+        raise BadRequestError("Cannot delete root directory")
 
     return FilesWorkspaceService.delete(db, user_id, base_path, path)
 
@@ -206,10 +207,10 @@ async def download_file(
         File content response with attachment headers.
 
     Raises:
-        HTTPException: 400 if path is missing.
+        BadRequestError: If path is missing.
     """
     if not path:
-        raise HTTPException(status_code=400, detail="path parameter required")
+        raise BadRequestError("path parameter required")
     result = FilesWorkspaceService.download(db, user_id, basePath, path)
     return Response(
         result["content"],
@@ -239,10 +240,10 @@ async def get_file_content(
         File content payload with metadata.
 
     Raises:
-        HTTPException: 400 if path is missing.
+        BadRequestError: If path is missing.
     """
     if not path:
-        raise HTTPException(status_code=400, detail="path parameter required")
+        raise BadRequestError("path parameter required")
 
     return FilesWorkspaceService.get_content(db, user_id, basePath, path)
 
@@ -266,13 +267,13 @@ async def update_file_content(
         Update result payload with modified time.
 
     Raises:
-        HTTPException: 400 if path is missing.
+        BadRequestError: If path is missing.
     """
     base_path = request.get("basePath", "documents")
     path = request.get("path", "")
     content = request.get("content", "")
 
     if not path:
-        raise HTTPException(status_code=400, detail="path required")
+        raise BadRequestError("path required")
 
     return FilesWorkspaceService.update_content(db, user_id, base_path, path, content)
