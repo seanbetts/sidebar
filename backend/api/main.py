@@ -1,6 +1,6 @@
 """sideBar Skills API - FastAPI + MCP integration."""
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
 from api.routers import health, chat, conversations, files, ingestion, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories, things
@@ -11,6 +11,12 @@ from api.models.user_settings import UserSettings
 from sqlalchemy import text
 from api.executors.skill_executor import SkillExecutor
 from api.security.path_validator import PathValidator
+from api.middleware.error_handler import (
+    api_error_handler,
+    http_exception_handler,
+    unhandled_exception_handler,
+)
+from api.exceptions import APIError
 import logging
 
 # Configure audit logging
@@ -19,6 +25,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def _auth_error(status_code: int, code: str, message: str, headers: dict | None = None) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={"error": {"code": code, "message": message, "details": {}}},
+        headers=headers,
+    )
 
 # Create FastMCP server and get its HTTP app
 mcp = FastMCP("sidebar-skills")
@@ -53,6 +67,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Register error handlers
+app.add_exception_handler(APIError, api_error_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
+
 
 # Unified authentication middleware
 @app.middleware("http")
@@ -66,10 +85,7 @@ async def auth_middleware(request: Request, call_next):
     if settings.auth_dev_mode:
         if not settings.allow_auth_dev_mode:
             logger.warning("AUTH_DEV_MODE is enabled outside local/test environment.")
-            return JSONResponse(
-                status_code=403,
-                content={"error": "AUTH_DEV_MODE requires APP_ENV=local"},
-            )
+            return _auth_error(403, "AUTH_DEV_MODE_FORBIDDEN", "AUTH_DEV_MODE requires APP_ENV=local")
         response = await call_next(request)
         return response
 
@@ -93,10 +109,7 @@ async def auth_middleware(request: Request, call_next):
                 request.state.user_id = record.user_id
                 response = await call_next(request)
                 return response
-            return JSONResponse(
-                status_code=401,
-                content={"error": "Invalid bridge token"},
-            )
+            return _auth_error(401, "INVALID_BRIDGE_TOKEN", "Invalid bridge token")
         if request.url.path == "/api/things/bridges/install" and request.headers.get("X-Install-Token"):
             response = await call_next(request)
             return response
@@ -104,9 +117,10 @@ async def auth_middleware(request: Request, call_next):
     # Check for Authorization header
     auth_header = request.headers.get("Authorization")
     if not auth_header:
-        return JSONResponse(
-            status_code=401,
-            content={"error": "Missing Authorization header"},
+        return _auth_error(
+            401,
+            "MISSING_AUTHORIZATION",
+            "Missing Authorization header",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -125,9 +139,10 @@ async def auth_middleware(request: Request, call_next):
                     .first()
                 )
             if not record:
-                return JSONResponse(
-                    status_code=401,
-                    content={"error": "Invalid API token"},
+                return _auth_error(
+                    401,
+                    "INVALID_API_TOKEN",
+                    "Invalid API token",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
             request.state.user_id = record.user_id
@@ -138,10 +153,11 @@ async def auth_middleware(request: Request, call_next):
             if not request.state.user_id:
                 raise JWTValidationError("Missing user ID")
     except (ValueError, AttributeError, JWTValidationError):
-        return JSONResponse(
-            status_code=401,
-            content={"error": "Invalid Authorization header"},
-            headers={"WWW-Authenticate": "Bearer"}
+        return _auth_error(
+            401,
+            "INVALID_AUTHORIZATION",
+            "Invalid Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     response = await call_next(request)
