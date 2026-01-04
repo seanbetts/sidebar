@@ -37,7 +37,7 @@ This plan addresses critical technical debt, architecture violations, and code q
 ### High Priority (P0) - Start Immediately
 1. **Architecture Violations** - DB queries in routers (5 files) ✅
 2. **LOC Limit Violations** - 6 files exceed AGENTS.md limits ✅
-3. **Frontend API Duplication** - 70 identical proxy files 🔄 (in progress)
+3. **Frontend API Duplication** - 70 identical proxy files ✅
 
 ### Medium Priority (P1) - After P0 Complete
 4. **Parameter Builder Refactor** - 692-line file into classes
@@ -402,7 +402,7 @@ Sidebar.svelte (layout orchestrator, ~250 lines)
 
 ---
 
-### P0-3: Frontend API Proxy Duplication 🔄
+### P0-3: Frontend API Proxy Duplication ✅
 
 **Problem:** 70 nearly identical API proxy files with duplicated error handling.
 
@@ -543,10 +543,10 @@ export const DELETE = createProxyHandler({
 - Integration tests for critical API routes after migration
 
 **Estimated Effort:** 2 days (1 day utility + tests, 1 day migration)
-**Status:** In Progress
+**Status:** Completed (custom stream/pass-through routes retained)
 **Progress:** createProxyHandler supports json/text/stream response handling
-**Completed Domains:** notes, websites, ingestion, files (partial), things, conversations, memories, scratchpad, chat generate-title, settings, settings shortcuts (PAT/rotate), skills, places, weather, Things bridge install script, notes/websites download
-**Remaining:** chat stream, profile-image, v1 passthrough, files download, ingestion content, files content
+**Completed Domains:** notes, websites, ingestion, files (partial), things, conversations, memories, scratchpad, chat generate-title, settings, settings shortcuts (PAT/rotate), skills, places, weather, Things bridge install script, notes/websites download, files download, ingestion content, files content
+**Custom Exceptions:** chat stream, profile-image, v1 passthrough
 **Risk:** Low - Centralized testing reduces risk, can migrate incrementally
 
 ---
@@ -1236,7 +1236,7 @@ async function handleRename(item) {
    - Refactor Sidebar.svelte (0.5 days)
 
 **Deliverables:**
-- 70 API proxy files replaced with utility 🔄 (in progress)
+- 70 API proxy files replaced with utility ✅ (custom exceptions retained)
 - All frontend components under 600 LOC limit ✅
 - Improved testability 🔄
 

@@ -143,6 +143,28 @@ describe('createProxyHandler', () => {
     await expect(response.text()).resolves.toBe('ok-text');
   });
 
+  it('streams responses when configured', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('streamed', { status: 200, headers: { 'Content-Type': 'text/plain' } })
+    );
+
+    const handler = createProxyHandler({
+      pathBuilder: () => '/api/v1/files/download',
+      responseType: 'stream'
+    });
+
+    const response = await handler({
+      locals: {},
+      fetch: fetchMock,
+      params: {},
+      request: new Request('http://localhost'),
+      url: new URL('http://localhost')
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toBe('streamed');
+  });
+
   it('returns 500 on unexpected errors', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('Boom'));
 
