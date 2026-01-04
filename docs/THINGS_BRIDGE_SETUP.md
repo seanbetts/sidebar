@@ -8,6 +8,57 @@ This guide covers installing the Things bridge on another Mac (for example, your
 2) Run the script. It registers the bridge and starts it as a LaunchAgent.
 3) Open Things at least once so it has created its local database.
 
+## Cloudflare Tunnel (bridge.seanbetts.com)
+
+Use a Cloudflare Tunnel to expose the local bridge to the Fly backend.
+
+1) Install and login:
+   `brew install cloudflared`
+   `cloudflared tunnel login`
+2) Create the tunnel:
+   `cloudflared tunnel create sidebar-bridge`
+3) Route DNS:
+   `cloudflared tunnel route dns sidebar-bridge bridge.seanbetts.com`
+4) Create `~/.cloudflared/config.yml`:
+   ```
+   tunnel: <TUNNEL_ID>
+   credentials-file: /Users/<you>/.cloudflared/<TUNNEL_ID>.json
+
+   ingress:
+     - hostname: bridge.seanbetts.com
+       service: http://127.0.0.1:8787
+     - service: http_status:404
+   ```
+5) Run the tunnel:
+   `cloudflared tunnel run sidebar-bridge`
+
+Verify:
+`curl -s https://bridge.seanbetts.com/health`
+
+Update the bridge base URL (so Fly reaches the tunnel):
+```
+DEVICE_NAME="$(scutil --get ComputerName || hostname)"
+DEVICE_ID="$(echo "$DEVICE_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-')"
+
+curl -s -X POST https://sidebar-api.fly.dev/api/things/bridges/register \
+  -H "Authorization: Bearer <PAT>" \
+  -H "Content-Type: application/json" \
+  -d "{\"deviceId\":\"$DEVICE_ID\",\"deviceName\":\"$DEVICE_NAME\",\"baseUrl\":\"https://bridge.seanbetts.com\",\"capabilities\":{\"read\":true,\"write\":true}}"
+```
+
+## Auto-start
+
+Bridge auto-start is handled by a LaunchAgent created during install.
+
+To confirm it is running:
+`launchctl print gui/$(id -u)/com.sidebar.things-bridge`
+
+Cloudflared auto-start:
+`cloudflared service install`
+
+If you want the tunnel to start at boot (before login), install with sudo:
+`sudo cloudflared service install`
+
 ## Enable Full Disk Access (for repeating metadata)
 
 To read the Things database (for repeating tasks + due dates), grant Full Disk Access to the bridge app:
