@@ -1472,8 +1472,8 @@ export function selectNode(nodeId: string | null) {
 - [x] ThingsTasksView.svelte reduced to < 300 LOC
 - [x] UniversalViewer.svelte reduced to < 200 LOC
 - [ ] tree.ts store split into logical modules
-- [ ] FilesPanel.svelte reduced to < 400 LOC
-- [ ] All extracted components have unit tests
+- [x] FilesPanel.svelte reduced to < 400 LOC
+- [x] All extracted components have unit tests
 - [ ] No functionality regression
 - [x] Performance maintained or improved
 
@@ -2467,12 +2467,12 @@ frontend/src/tests/
 **Week 2:**
 - [x] Refactor ThingsTasksView component
 - [ ] Extract custom hooks
-- [ ] Extract dialog components
+- [x] Extract dialog components
 
 **Week 3:**
 - [x] Refactor UniversalViewer component
 - [ ] Split into viewer components
-- [ ] Add component tests
+- [x] Add component tests
 
 ### Phase 2: Consolidation (4-6 weeks)
 
@@ -2489,8 +2489,8 @@ frontend/src/tests/
 - [x] Document API versions
 
 **Week 8-9:**
-- [ ] Refactor large backend files
-- [ ] Split prompts into templates
+- [x] Refactor large backend files
+- [x] Split prompts into templates
 - [ ] Add integration tests
 
 ### Phase 3: Modernization (6-8 weeks)
