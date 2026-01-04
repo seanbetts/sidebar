@@ -29,7 +29,7 @@ export type ThingsNewTaskDraft = {
   projectId?: string;
 };
 
-type ThingsState = {
+export type ThingsState = {
   selection: ThingsSelection;
   tasks: ThingsTask[];
   areas: ThingsArea[];

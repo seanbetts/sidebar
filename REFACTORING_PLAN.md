@@ -1475,8 +1475,8 @@ export function selectNode(nodeId: string | null) {
 
 #### Acceptance Criteria
 
-- [ ] ThingsTasksView.svelte reduced to < 300 LOC
-- [ ] UniversalViewer.svelte reduced to < 200 LOC
+- [x] ThingsTasksView.svelte reduced to < 300 LOC
+- [x] UniversalViewer.svelte reduced to < 200 LOC
 - [ ] tree.ts store split into logical modules
 - [ ] FilesPanel.svelte reduced to < 400 LOC
 - [ ] All extracted components have unit tests
@@ -1782,7 +1782,7 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
 - [x] `NotesWorkspaceService` refactored to use base class
 - [x] `FilesWorkspaceService` refactored to use base class
 - [ ] Tests verify behavior maintained
-- [ ] Code duplication reduced by ~30%
+- [x] Code duplication reduced by ~30%
 
 ---
 
@@ -2059,9 +2059,9 @@ async def get_note(note_id: str, db: Session = Depends(get_db)):
 
 - [x] Custom exception hierarchy created
 - [x] Error handler middleware implemented
-- [ ] All routers updated to use custom exceptions
+- [x] All routers updated to use custom exceptions
 - [x] Error responses have consistent format
-- [ ] Error codes are documented
+- [x] Error codes are documented
 
 ---
 
@@ -2172,8 +2172,8 @@ export class ApiClient {
 - [x] V1 routes created with `/api/v1/` prefix
 - [x] Legacy routes maintained with deprecation warnings
 - [x] Deprecation middleware adds warning headers
-- [ ] Frontend updated to use V1 routes
-- [ ] API documentation shows versions
+- [x] Frontend updated to use V1 routes
+- [x] API documentation shows versions
 
 ---
 
@@ -2440,8 +2440,8 @@ frontend/src/tests/
 
 - [ ] Frontend test suite with 70%+ coverage
 - [x] SSL verification properly configured
-- [ ] ThingsTasksView refactored to < 300 LOC
-- [ ] UniversalViewer refactored to < 200 LOC
+- [x] ThingsTasksView refactored to < 300 LOC
+- [x] UniversalViewer refactored to < 200 LOC
 - [ ] No functionality regressions
 - [ ] All tests passing
 
@@ -2451,7 +2451,7 @@ frontend/src/tests/
 - [x] Custom exception hierarchy in use
 - [x] API versioning implemented
 - [x] Deprecation warnings working
-- [ ] Code duplication reduced by 30%
+- [x] Code duplication reduced by 30%
 
 ### Phase 3: Modernization
 
@@ -2471,12 +2471,12 @@ frontend/src/tests/
 - [x] Fix SSL verification issue
 
 **Week 2:**
-- [ ] Refactor ThingsTasksView component
+- [x] Refactor ThingsTasksView component
 - [ ] Extract custom hooks
 - [ ] Extract dialog components
 
 **Week 3:**
-- [ ] Refactor UniversalViewer component
+- [x] Refactor UniversalViewer component
 - [ ] Split into viewer components
 - [ ] Add component tests
 
@@ -2486,13 +2486,13 @@ frontend/src/tests/
 - [x] Create WorkspaceService abstraction
 - [x] Refactor workspace services
 - [x] Create custom exception hierarchy
-- [ ] Update all routers
+- [x] Update all routers
 
 **Week 6-7:**
 - [x] Implement API versioning
 - [x] Add deprecation middleware
-- [ ] Update frontend API client
-- [ ] Document API versions
+- [x] Update frontend API client
+- [x] Document API versions
 
 **Week 8-9:**
 - [ ] Refactor large backend files
@@ -2572,10 +2572,10 @@ pg_restore -d sidebar backups/sidebar_backup.dump
 ## Documentation Updates Required
 
 - [ ] Update README with new architecture
-- [ ] Document API versioning strategy
+- [x] Document API versioning strategy
 - [ ] Update deployment guide
 - [ ] Create migration guide for API consumers
-- [ ] Document new error codes
+- [x] Document new error codes
 - [ ] Update contributing guide with new patterns
 - [ ] Create refactoring ADRs (Architecture Decision Records)
 
