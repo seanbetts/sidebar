@@ -1,42 +1,28 @@
-import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
-/**
- * SvelteKit server route for proxying weather requests to backend
- */
 import type { RequestHandler } from './$types';
 import { error } from '@sveltejs/kit';
 
-const API_URL = getApiUrl();
+import { createProxyHandler } from '$lib/server/apiProxy';
 
-export const GET: RequestHandler = async ({ locals, url }) => {
-	try {
-		const lat = url.searchParams.get('lat');
-		const lon = url.searchParams.get('lon');
-		if (!lat || !lon) {
-			throw error(400, 'lat and lon are required');
-		}
+const proxyHandler = createProxyHandler({
+  pathBuilder: () => '/api/v1/weather',
+  queryParamsFromUrl: true,
+  responseType: 'text'
+});
 
-		const response = await fetch(
-			`${API_URL}/api/v1/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`,
-			{
-				headers: buildAuthHeaders(locals)
-			}
-		);
+export const GET: RequestHandler = async (event) => {
+  const lat = event.url.searchParams.get('lat');
+  const lon = event.url.searchParams.get('lon');
+  if (!lat || !lon) {
+    throw error(400, 'lat and lon are required');
+  }
 
-		if (!response.ok) {
-			throw error(response.status, `Backend error: ${response.statusText}`);
-		}
+  const response = await proxyHandler(event);
+  const text = await response.text();
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', 'max-age=1800');
 
-		return new Response(await response.text(), {
-			headers: {
-				'Content-Type': 'application/json',
-				'Cache-Control': 'max-age=1800'
-			}
-		});
-	} catch (err) {
-		console.error('Weather proxy error:', err);
-		if (typeof err === 'object' && err && 'status' in err) {
-			throw err;
-		}
-		throw error(500, 'Internal server error');
-	}
+  return new Response(text, {
+    status: response.status,
+    headers
+  });
 };

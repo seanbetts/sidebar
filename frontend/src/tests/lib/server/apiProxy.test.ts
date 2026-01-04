@@ -121,6 +121,28 @@ describe('createProxyHandler', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Not found' });
   });
 
+  it('returns text responses when configured', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('ok-text', { status: 202, headers: { 'Content-Type': 'text/plain' } })
+    );
+
+    const handler = createProxyHandler({
+      pathBuilder: () => '/api/v1/settings',
+      responseType: 'text'
+    });
+
+    const response = await handler({
+      locals: {},
+      fetch: fetchMock,
+      params: {},
+      request: new Request('http://localhost'),
+      url: new URL('http://localhost')
+    });
+
+    expect(response.status).toBe(202);
+    await expect(response.text()).resolves.toBe('ok-text');
+  });
+
   it('returns 500 on unexpected errors', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('Boom'));
 
