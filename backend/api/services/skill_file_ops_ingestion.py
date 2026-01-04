@@ -480,6 +480,128 @@ def move_path(user_id: str, source: str, destination: str) -> dict:
     return {"source": src, "destination": dest, "type": "directory"}
 
 
+def _copy_storage_key(user_id: str, source_id: str, target_id: str, storage_key: str) -> str:
+    """Build a new storage key for a copied derivative."""
+    prefix = f"{user_id}/files/{source_id}/"
+    if storage_key.startswith(prefix):
+        return f"{user_id}/files/{target_id}/{storage_key[len(prefix):]}"
+    return f"{user_id}/files/{target_id}/derivatives/{Path(storage_key).name}"
+
+
+def _copy_record(
+    db,
+    storage,
+    record: IngestedFile,
+    destination: str,
+) -> None:
+    """Copy a single record and its derivatives to a new destination."""
+    now = now_utc()
+    new_id = uuid4()
+    new_path = destination
+    new_filename = Path(new_path).name or record.filename_original
+
+    new_record = IngestedFile(
+        id=new_id,
+        user_id=record.user_id,
+        filename_original=new_filename,
+        path=new_path,
+        mime_original=record.mime_original,
+        size_bytes=record.size_bytes,
+        sha256=record.sha256,
+        source_url=record.source_url,
+        source_metadata=record.source_metadata,
+        pinned=record.pinned,
+        pinned_order=record.pinned_order,
+        created_at=now,
+        last_opened_at=None,
+        deleted_at=None,
+    )
+    db.add(new_record)
+    db.flush()
+
+    derivatives = (
+        db.query(FileDerivative)
+        .filter(FileDerivative.file_id == record.id)
+        .all()
+    )
+    if not derivatives:
+        job = get_job(db, record.id)
+        if job and job.status != "ready":
+            raise ValueError(f"File not ready yet (status: {job.status})")
+        raise ValueError(f"No copyable content for: {record.path}")
+
+    for item in derivatives:
+        new_key = _copy_storage_key(record.user_id, str(record.id), str(new_id), item.storage_key)
+        storage.copy_object(item.storage_key, new_key)
+        db.add(
+            FileDerivative(
+                file_id=new_id,
+                kind=item.kind,
+                storage_key=new_key,
+                mime=item.mime,
+                size_bytes=item.size_bytes,
+                sha256=item.sha256,
+                created_at=now,
+            )
+        )
+
+
+def copy_path(user_id: str, source: str, destination: str) -> dict:
+    """Copy a file or directory to a new path."""
+    src = normalize_path(source, allow_root=False)
+    dest = normalize_path(destination, allow_root=False)
+    ensure_allowed_path(src)
+    ensure_allowed_path(dest)
+
+    storage = get_storage_backend()
+
+    with session_for_user(user_id) as db:
+        existing_dest = find_record_by_path(db, user_id, dest)
+        if existing_dest:
+            raise FileExistsError(f"Destination already exists: {destination}")
+
+        record = find_record_by_path(db, user_id, src)
+        if record:
+            _copy_record(db, storage, record, dest)
+            db.commit()
+            return {"source": src, "destination": dest, "type": "file"}
+
+        prefix = f"{src}/"
+        records = (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+                IngestedFile.path.like(f"{prefix}%"),
+            )
+            .all()
+        )
+        if not records:
+            raise FileNotFoundError(f"Source not found: {source}")
+
+        dest_prefix = f"{dest}/"
+        dest_conflict = (
+            db.query(IngestedFile)
+            .filter(
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+                IngestedFile.path.like(f"{dest_prefix}%"),
+            )
+            .first()
+        )
+        if dest_conflict:
+            raise FileExistsError(f"Destination already exists: {destination}")
+
+        for item in records:
+            suffix = item.path[len(prefix):]
+            target_path = f"{dest}/{suffix}" if suffix else dest
+            _copy_record(db, storage, item, target_path)
+
+        db.commit()
+
+    return {"source": src, "destination": dest, "type": "directory"}
+
+
 def info(user_id: str, path: str) -> dict:
     """Return metadata for a file or directory."""
     normalized = normalize_path(path, allow_root=False)
@@ -525,4 +647,3 @@ def info(user_id: str, path: str) -> dict:
         "is_file": False,
         "is_directory": True,
     }
-

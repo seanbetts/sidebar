@@ -87,25 +87,34 @@ def build_prompt_variables(
     Returns:
         Variables mapping for prompt templates.
     """
-    name = settings_record.name.strip() if settings_record and settings_record.name else None
+    name = (
+        getattr(settings_record, "name", "") or ""
+    ).strip() if settings_record else None
     owner = name or "the user"
-    gender = settings_record.gender.strip() if settings_record and settings_record.gender else None
-    pronouns = settings_record.pronouns.strip() if settings_record and settings_record.pronouns else None
-    job_title = settings_record.job_title.strip() if settings_record and settings_record.job_title else None
-    employer = settings_record.employer.strip() if settings_record and settings_record.employer else None
-    home_location = settings_record.location.strip() if settings_record and settings_record.location else None
-    date_of_birth = settings_record.date_of_birth if settings_record else None
+    gender = (
+        getattr(settings_record, "gender", "") or ""
+    ).strip() if settings_record else None
+    pronouns = (
+        getattr(settings_record, "pronouns", "") or ""
+    ).strip() if settings_record else None
+    job_title = (
+        getattr(settings_record, "job_title", "") or ""
+    ).strip() if settings_record else None
+    employer = (
+        getattr(settings_record, "employer", "") or ""
+    ).strip() if settings_record else None
+    home_location = (
+        getattr(settings_record, "location", "") or ""
+    ).strip() if settings_record else None
+    date_of_birth = getattr(settings_record, "date_of_birth", None) if settings_record else None
     age = calculate_age(date_of_birth, now.date())
     timezone_label = now.tzname() or "UTC"
     current_date = now.strftime("%Y-%m-%d")
     current_time = f"{now.strftime('%H:%M')} {timezone_label}"
     formatted_levels = format_location_levels(current_location_levels)
     formatted_weather = format_weather(current_weather)
-    things_snapshot = (
-        settings_record.things_ai_snapshot.strip()
-        if settings_record and settings_record.things_ai_snapshot
-        else ""
-    )
+    things_snapshot_raw = getattr(settings_record, "things_ai_snapshot", "") if settings_record else ""
+    things_snapshot = things_snapshot_raw.strip() if isinstance(things_snapshot_raw, str) else ""
     things_snapshot_block = f"<tasks>\n{things_snapshot}\n</tasks>" if things_snapshot else ""
 
     return {

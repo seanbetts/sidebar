@@ -130,7 +130,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             if folder == old_path or folder.startswith(f"{old_path}/"):
                 updated_folder = folder.replace(old_path, new_folder, 1)
                 note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
-                flag_modified(note, "metadata_")
+                if hasattr(note, "_sa_instance_state"):
+                    flag_modified(note, "metadata_")
                 note.updated_at = datetime.now(timezone.utc)
         db.commit()
         return {"success": True, "newPath": f"folder:{new_folder}"}
@@ -163,7 +164,8 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             if folder == old_path or folder.startswith(f"{old_path}/"):
                 updated_folder = folder.replace(old_path, new_folder, 1)
                 note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
-                flag_modified(note, "metadata_")
+                if hasattr(note, "_sa_instance_state"):
+                    flag_modified(note, "metadata_")
                 note.updated_at = datetime.now(timezone.utc)
         db.commit()
         return {"success": True, "newPath": f"folder:{new_folder}"}
