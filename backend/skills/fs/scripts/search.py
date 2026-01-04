@@ -14,7 +14,7 @@ from typing import Dict, Any, List
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_ops_ingestion import search_entries
+from api.services.skill_file_ops import search_entries
 
 
 def search_files(

@@ -121,7 +121,6 @@ def test_build_youtube_transcribe_args_optional_fields():
     assert args == [
         "https://youtube.com/watch?v=123",
         "--json",
-        "--database",
         "--user-id",
         "user-1",
         "--language",
@@ -130,6 +129,8 @@ def test_build_youtube_transcribe_args_optional_fields():
         "tiny",
         "--output-dir",
         "/tmp/out",
+        "--output-name",
+        "ai.md",
         "--audio-dir",
         "/tmp/audio",
         "--keep-audio",
