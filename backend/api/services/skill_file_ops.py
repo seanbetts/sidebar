@@ -10,6 +10,7 @@ from api.services.skill_file_ops_paths import (
     relative_path,
     session_for_user,
 )
+from api.services.file_search_service import FileSearchService
 from api.services.skill_file_ops_ingestion import (
     delete_path,
     download_file,
@@ -17,7 +18,6 @@ from api.services.skill_file_ops_ingestion import (
     list_entries,
     move_path,
     read_text,
-    search_entries,
     upload_file,
     write_text,
 )
@@ -40,3 +40,5 @@ __all__ = [
     "upload_file",
     "write_text",
 ]
+
+search_entries = FileSearchService.search_entries
