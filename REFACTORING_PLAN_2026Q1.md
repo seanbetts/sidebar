@@ -1,7 +1,7 @@
 # Refactoring Plan - 2026 Q1
 
 **Date:** 2026-01-04
-**Status:** Draft
+**Status:** In Progress
 **Priority:** High - Multiple AGENTS.md constraint violations identified
 
 ## Executive Summary
@@ -35,9 +35,9 @@ This plan addresses critical technical debt, architecture violations, and code q
 ## Priority Matrix
 
 ### High Priority (P0) - Start Immediately
-1. **Architecture Violations** - DB queries in routers (5 files)
-2. **LOC Limit Violations** - 6 files exceed AGENTS.md limits
-3. **Frontend API Duplication** - 70 identical proxy files
+1. **Architecture Violations** - DB queries in routers (5 files) ✅
+2. **LOC Limit Violations** - 6 files exceed AGENTS.md limits ✅
+3. **Frontend API Duplication** - 70 identical proxy files 🔄 (in progress)
 
 ### Medium Priority (P1) - After P0 Complete
 4. **Parameter Builder Refactor** - 692-line file into classes
@@ -54,7 +54,7 @@ This plan addresses critical technical debt, architecture violations, and code q
 
 ## High Priority Items
 
-### P0-1: Architecture Violation - DB Queries in Routers
+### P0-1: Architecture Violation - DB Queries in Routers ✅
 
 **Problem:** Multiple routers contain direct database queries instead of using the service layer, violating core constraint: "All database access through backend/api/services/"
 
@@ -125,6 +125,7 @@ async def list_ingestions(
 - Integration tests for affected routes
 
 **Estimated Effort:** 3 days
+**Status:** Completed
 **Risk:** Medium - Could break existing functionality if not tested thoroughly
 
 ---
@@ -135,7 +136,7 @@ async def list_ingestions(
 
 #### Backend Files
 
-##### 2a. `backend/api/routers/ingestion.py` (644 lines, limit: 500)
+##### 2a. `backend/api/routers/ingestion.py` (644 lines, limit: 500) ✅
 
 **Issue:** Helper functions and business logic mixed with route definitions.
 
@@ -166,10 +167,11 @@ async def list_ingestions(
 - Verify existing ingestion route tests still pass
 
 **Estimated Effort:** 1 day
+**Status:** Completed
 
 ---
 
-##### 2b. `backend/api/services/tools/parameter_mapper.py` (692 lines, limit: 600)
+##### 2b. `backend/api/services/tools/parameter_mapper.py` (692 lines, limit: 600) ✅
 
 **Issue:** 40+ individual parameter builder functions with no logical grouping.
 
@@ -276,10 +278,11 @@ class WebsiteParameterBuilder(BaseParameterBuilder):
 - Verify existing parameter mapper tests still pass
 
 **Estimated Effort:** 2 days
+**Status:** Completed
 
 ---
 
-##### 2c. `backend/api/services/skill_file_ops_ingestion.py` (638 lines, limit: 600)
+##### 2c. `backend/api/services/skill_file_ops_ingestion.py` (638 lines, limit: 600) ✅
 
 **Issue:** Mixed concerns - file operations and search functionality.
 
@@ -304,12 +307,13 @@ class WebsiteParameterBuilder(BaseParameterBuilder):
 - Verify existing file ops tests still pass
 
 **Estimated Effort:** 1 day
+**Status:** Completed
 
 ---
 
 #### Frontend Files
 
-##### 2d. `frontend/src/lib/components/things/ThingsTasksContent.svelte` (689 lines, limit: 600)
+##### 2d. `frontend/src/lib/components/things/ThingsTasksContent.svelte` (689 lines, limit: 600) ✅
 
 **Issue:** Presentational component mixing UI and business logic.
 
@@ -338,10 +342,11 @@ ThingsTasksContent.svelte (main orchestrator, ~200 lines)
 - Integration test for ThingsTasksContent
 
 **Estimated Effort:** 1.5 days
+**Status:** Completed
 
 ---
 
-##### 2e. `frontend/src/lib/components/chat/ChatWindow.svelte` (633 lines, limit: 600)
+##### 2e. `frontend/src/lib/components/chat/ChatWindow.svelte` (633 lines, limit: 600) ✅
 
 **Issue:** SSE callback logic embedded in component.
 
@@ -364,10 +369,11 @@ ChatWindow.svelte (component logic, ~350 lines)
 - Component tests for ChatWindow
 
 **Estimated Effort:** 1 day
+**Status:** Completed
 
 ---
 
-##### 2f. `frontend/src/lib/components/left-sidebar/Sidebar.svelte` (624 lines, limit: 600)
+##### 2f. `frontend/src/lib/components/left-sidebar/Sidebar.svelte` (624 lines, limit: 600) ✅
 
 **Issue:** Multiple panel-specific logic in single component.
 
@@ -392,10 +398,11 @@ Sidebar.svelte (layout orchestrator, ~250 lines)
 - Component tests for Sidebar after extraction
 
 **Estimated Effort:** 1 day
+**Status:** Completed (LOC under limit)
 
 ---
 
-### P0-3: Frontend API Proxy Duplication
+### P0-3: Frontend API Proxy Duplication 🔄
 
 **Problem:** 70 nearly identical API proxy files with duplicated error handling.
 
@@ -536,11 +543,14 @@ export const DELETE = createProxyHandler({
 - Integration tests for critical API routes after migration
 
 **Estimated Effort:** 2 days (1 day utility + tests, 1 day migration)
+**Status:** In Progress
+**Completed Domains:** notes, websites, ingestion, files (partial), things, conversations, memories, scratchpad, chat generate-title
+**Remaining:** settings, places, weather, chat stream, skills, profile-image, PAT shortcuts, v1 passthrough, download/content routes
 **Risk:** Low - Centralized testing reduces risk, can migrate incrementally
 
 ---
 
-### P0-4: UUID Validation Duplication
+### P0-4: UUID Validation Duplication ✅
 
 **Problem:** UUID parsing repeated 20+ times across routers with inconsistent error messages.
 
@@ -664,6 +674,7 @@ async def get_note(
 - Verify existing router tests still pass
 
 **Estimated Effort:** 0.5 days
+**Status:** Completed
 **Risk:** Low - Simple utility, well-tested
 
 ---
@@ -1163,9 +1174,9 @@ async function handleRename(item) {
    - Update routers incrementally
 
 **Deliverables:**
-- All routers use service layer for DB access
-- ingestion.py under 500 LOC limit
-- Consistent UUID validation across backend
+- All routers use service layer for DB access ✅
+- ingestion.py under 500 LOC limit ✅
+- Consistent UUID validation across backend ✅
 
 **Success Criteria:**
 - All tests pass
@@ -1196,9 +1207,9 @@ async function handleRename(item) {
    - Write regression tests
 
 **Deliverables:**
-- parameter_mapper.py split into cohesive builder classes
-- skill_file_ops_ingestion.py under 600 LOC limit
-- All JSONB updates use flag_modified()
+- parameter_mapper.py split into cohesive builder classes ✅
+- skill_file_ops_ingestion.py under 600 LOC limit ✅
+- All JSONB updates use flag_modified() 🔄 (audit pending)
 
 **Success Criteria:**
 - All backend files meet LOC limits
@@ -1224,9 +1235,9 @@ async function handleRename(item) {
    - Refactor Sidebar.svelte (0.5 days)
 
 **Deliverables:**
-- 70 API proxy files replaced with utility
-- All frontend components under 600 LOC limit
-- Improved testability
+- 70 API proxy files replaced with utility 🔄 (in progress)
+- All frontend components under 600 LOC limit ✅
+- Improved testability 🔄
 
 **Success Criteria:**
 - API proxy handles all HTTP methods and status codes
