@@ -1,15 +1,6 @@
-import type { RequestHandler } from './$types';
-import { getApiUrl, buildAuthHeaders } from '$lib/server/api';
+import { createProxyHandler } from '$lib/server/apiProxy';
 
-const API_URL = getApiUrl();
-
-export const GET: RequestHandler = async ({ locals, fetch, params }) => {
-  const response = await fetch(`${API_URL}/api/v1/notes/${params.id}/download`, {
-    headers: buildAuthHeaders(locals)
-  });
-
-  return new Response(response.body, {
-    status: response.status,
-    headers: response.headers
-  });
-};
+export const GET = createProxyHandler({
+  pathBuilder: (params) => `/api/v1/notes/${params.id}/download`,
+  responseType: 'stream'
+});
