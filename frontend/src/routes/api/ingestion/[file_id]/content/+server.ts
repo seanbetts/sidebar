@@ -1,29 +1,18 @@
 import type { RequestHandler } from './$types';
-import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
 
-const API_URL = getApiUrl();
+import { createProxyHandler } from '$lib/server/apiProxy';
 
-export const GET: RequestHandler = async ({ locals, params, url, fetch }) => {
-  const kind = url.searchParams.get('kind');
+const proxyHandler = createProxyHandler({
+  pathBuilder: (params) => `/api/v1/ingestion/${params.file_id}/content`,
+  queryParamsFromUrl: true,
+  responseType: 'stream'
+});
+
+export const GET: RequestHandler = async (event) => {
+  const kind = event.url.searchParams.get('kind');
   if (!kind) {
     return new Response('kind is required', { status: 400 });
   }
-  try {
-    const response = await fetch(`${API_URL}/api/v1/ingestion/${params.file_id}/content?kind=${encodeURIComponent(kind)}`, {
-      headers: buildAuthHeaders(locals)
-    });
-    if (!response.ok) {
-      return new Response('Failed to fetch content', { status: response.status });
-    }
-    const body = await response.arrayBuffer();
-    return new Response(body, {
-      headers: {
-        'Content-Type': response.headers.get('Content-Type') || 'application/octet-stream',
-        'Content-Disposition': response.headers.get('Content-Disposition') || 'inline'
-      }
-    });
-  } catch (error) {
-    console.error('Failed to stream ingestion content:', error);
-    return new Response('Failed to fetch content', { status: 500 });
-  }
+
+  return proxyHandler(event);
 };
