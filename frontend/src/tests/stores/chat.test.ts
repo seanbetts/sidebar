@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { chatStore } from '$lib/stores/chat';
 
-const { conversationsAPI, conversationListStore, currentConversationId } = vi.hoisted(() => {
+const { conversationsAPI, conversationListStore, currentConversationId, ingestionAPI, ingestionStore } = vi.hoisted(() => {
   const createStore = <T>(initial: T) => {
     let value = initial;
     const subscribers = new Set<(next: T) => void>();
@@ -28,6 +28,9 @@ const { conversationsAPI, conversationListStore, currentConversationId } = vi.ho
       get: vi.fn(),
       addMessage: vi.fn()
     },
+    ingestionAPI: {
+      get: vi.fn()
+    },
     conversationListStore: {
       addConversation: vi.fn(),
       deleteConversation: vi.fn(),
@@ -35,15 +38,16 @@ const { conversationsAPI, conversationListStore, currentConversationId } = vi.ho
       updateConversationMetadata: vi.fn(),
       updateConversationTitle: vi.fn()
     },
-    currentConversationId: createStore<string | null>(null)
+    currentConversationId: createStore<string | null>(null),
+    ingestionStore: {
+      upsertItem: vi.fn()
+    }
   };
 });
 
 vi.mock('$lib/services/api', () => ({
   conversationsAPI,
-  ingestionAPI: {
-    get: vi.fn()
-  }
+  ingestionAPI
 }));
 
 vi.mock('$lib/stores/conversations', () => ({
@@ -62,13 +66,11 @@ vi.mock('$lib/stores/chat/toolState', () => ({
 }));
 
 vi.mock('$lib/stores/chat/generateTitle', () => ({
-  generateConversationTitle: vi.fn()
+  generateConversationTitle: vi.fn(() => Promise.resolve())
 }));
 
 vi.mock('$lib/stores/ingestion', () => ({
-  ingestionStore: {
-    upsertItem: vi.fn()
-  }
+  ingestionStore
 }));
 
 describe('chatStore', () => {
@@ -114,5 +116,71 @@ describe('chatStore', () => {
     expect(state.currentMessageId).toBe(assistantMessageId);
     expect(state.messages[0].id).toBe(userMessageId);
     expect(conversationsAPI.addMessage).toHaveBeenCalled();
+  });
+
+  it('appends tokens to a streaming message', async () => {
+    conversationsAPI.create.mockResolvedValue({
+      id: 'conv-3',
+      title: 'New',
+      titleGenerated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messageCount: 0
+    });
+    conversationsAPI.addMessage.mockResolvedValue({});
+
+    const { assistantMessageId } = await chatStore.sendMessage('Hello');
+
+    chatStore.appendToken(assistantMessageId, 'World');
+
+    const state = get(chatStore);
+    const assistant = state.messages.find((msg) => msg.id === assistantMessageId);
+    expect(assistant?.content).toBe('World');
+  });
+
+  it('updates tool calls and fetches ingestion metadata on fs.write', async () => {
+    const { assistantMessageId } = await chatStore.sendMessage('Hello');
+
+    chatStore.addToolCall(assistantMessageId, {
+      id: 'tool-1',
+      name: 'fs.write',
+      arguments: '{}'
+    });
+
+    ingestionAPI.get.mockResolvedValue({
+      file: { id: 'file-123' },
+      job: { status: 'ready' },
+      recommended_viewer: null
+    });
+
+    await chatStore.updateToolResult(
+      assistantMessageId,
+      'tool-1',
+      { data: { file_id: 'file-123' } },
+      'success'
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(ingestionAPI.get).toHaveBeenCalledWith('file-123');
+    expect(ingestionStore.upsertItem).toHaveBeenCalled();
+  });
+
+  it('finalizes streaming and updates conversation metadata', async () => {
+    conversationsAPI.create.mockResolvedValue({
+      id: 'conv-4',
+      title: 'New',
+      titleGenerated: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messageCount: 0
+    });
+    conversationsAPI.addMessage.mockResolvedValue({});
+
+    const { assistantMessageId } = await chatStore.sendMessage('Hello');
+
+    await chatStore.finishStreaming(assistantMessageId);
+
+    expect(conversationListStore.updateConversationMetadata).toHaveBeenCalled();
+    expect(conversationListStore.setGeneratingTitle).toHaveBeenCalledWith('conv-4', true);
   });
 });
