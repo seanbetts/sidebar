@@ -1,10 +1,11 @@
 """Scratchpad router for the fixed scratchpad note."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from api.auth import bearer_scheme, verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.exceptions import BadRequestError
 from api.services.notes_service import NotesService
 
 router = APIRouter(prefix="/scratchpad", tags=["scratchpad"])
@@ -121,7 +122,7 @@ async def update_scratchpad(
     mode_raw = request.get("mode")
     mode = (mode_raw or "").strip().lower()
     if mode and mode not in {"append", "prepend", "replace"}:
-        raise HTTPException(status_code=400, detail="mode must be append, prepend, or replace")
+        raise BadRequestError("mode must be append, prepend, or replace")
 
     token = credentials.credentials if credentials else ""
     is_pat = token.startswith("sb_pat_")

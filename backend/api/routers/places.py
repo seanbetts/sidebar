@@ -3,11 +3,12 @@ import json
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.concurrency import run_in_threadpool
 
 from api.config import settings
 from api.auth import verify_bearer_token
+from api.exceptions import ExternalServiceError, ServiceUnavailableError
 
 
 router = APIRouter(prefix="/places", tags=["places"])
@@ -140,10 +141,11 @@ async def autocomplete_places(
         Predictions list payload.
 
     Raises:
-        HTTPException: 503 if API key missing, 502 on upstream failure.
+        ServiceUnavailableError: If API key missing.
+        ExternalServiceError: On upstream failure.
     """
     if not settings.google_places_api_key:
-        raise HTTPException(status_code=503, detail="Google Places API key not configured")
+        raise ServiceUnavailableError("Google Places API key not configured")
     trimmed = input.strip()
     if len(trimmed) < 2:
         return {"predictions": []}
@@ -151,10 +153,13 @@ async def autocomplete_places(
     try:
         data = await run_in_threadpool(_fetch_autocomplete, trimmed)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Places lookup failed") from exc
+        raise ExternalServiceError("Google Places", "Places lookup failed") from exc
     status = data.get("status")
     if status not in {"OK", "ZERO_RESULTS"}:
-        raise HTTPException(status_code=502, detail=data.get("error_message", "Places lookup failed"))
+        raise ExternalServiceError(
+            "Google Places",
+            data.get("error_message", "Places lookup failed"),
+        )
 
     predictions = [
         {
@@ -183,18 +188,22 @@ async def reverse_geocode(
         Label and administrative levels payload.
 
     Raises:
-        HTTPException: 503 if API key missing, 502 on upstream failure.
+        ServiceUnavailableError: If API key missing.
+        ExternalServiceError: On upstream failure.
     """
     if not settings.google_places_api_key:
-        raise HTTPException(status_code=503, detail="Google Places API key not configured")
+        raise ServiceUnavailableError("Google Places API key not configured")
 
     try:
         data = await run_in_threadpool(_fetch_nearby_place, lat, lng)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Places lookup failed") from exc
+        raise ExternalServiceError("Google Places", "Places lookup failed") from exc
     status = data.get("status")
     if status not in {"OK", "ZERO_RESULTS"}:
-        raise HTTPException(status_code=502, detail=data.get("error_message", "Places lookup failed"))
+        raise ExternalServiceError(
+            "Google Places",
+            data.get("error_message", "Places lookup failed"),
+        )
 
     results = data.get("results") or []
     if not results:
@@ -207,13 +216,13 @@ async def reverse_geocode(
     try:
         details = await run_in_threadpool(_fetch_place_details, place_id)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Places lookup failed") from exc
+        raise ExternalServiceError("Google Places", "Places lookup failed") from exc
 
     detail_status = details.get("status")
     if detail_status not in {"OK", "ZERO_RESULTS"}:
-        raise HTTPException(
-            status_code=502,
-            detail=details.get("error_message", "Places lookup failed"),
+        raise ExternalServiceError(
+            "Google Places",
+            details.get("error_message", "Places lookup failed"),
         )
 
     components = (details.get("result") or {}).get("address_components") or []

@@ -8,10 +8,11 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.concurrency import run_in_threadpool
 
 from api.auth import verify_bearer_token
+from api.exceptions import ExternalServiceError
 from api.config import settings
 
 
@@ -100,7 +101,7 @@ async def get_weather(
         Weather payload with current and daily summary.
 
     Raises:
-        HTTPException: 502 if the upstream lookup fails.
+        ExternalServiceError: If upstream lookup fails.
     """
     cache_key = _cache_key(lat, lon)
     now = time.time()
@@ -111,7 +112,7 @@ async def get_weather(
     try:
         data = await run_in_threadpool(_fetch_weather, lat, lon)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Weather lookup failed") from exc
+        raise ExternalServiceError("Open-Meteo", "Weather lookup failed") from exc
 
     current = data.get("current") or {}
     temperature_c = current.get("temperature_2m")
@@ -124,7 +125,7 @@ async def get_weather(
     cloud_cover = current.get("cloud_cover")
 
     if temperature_c is None or weather_code is None or is_day is None:
-        raise HTTPException(status_code=502, detail="Weather lookup failed")
+        raise ExternalServiceError("Open-Meteo", "Weather lookup failed")
 
     daily = data.get("daily") or {}
     daily_codes = _as_list(daily.get("weather_code"))

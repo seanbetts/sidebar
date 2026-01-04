@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.exceptions import BadRequestError, NotFoundError
 from api.services.notes_service import NotesService, NoteNotFoundError
 from api.services.notes_workspace_service import NotesWorkspaceService
 
@@ -55,10 +56,10 @@ async def search_notes(
         List of matching notes.
 
     Raises:
-        HTTPException: 400 if query is missing.
+        BadRequestError: If query is missing.
     """
     if not query:
-        raise HTTPException(status_code=400, detail="query required")
+        raise BadRequestError("query required")
 
     return NotesWorkspaceService.search(db, user_id, query, limit=limit)
 
@@ -83,12 +84,12 @@ async def update_pinned_order(
     """
     order = request.get("order", [])
     if not isinstance(order, list):
-        raise HTTPException(status_code=400, detail="order must be a list")
+        raise BadRequestError("order must be a list")
     note_ids: list[uuid.UUID] = []
     for item in order:
         note_uuid = NotesService.parse_note_id(item)
         if not note_uuid:
-            raise HTTPException(status_code=400, detail="Invalid note id")
+            raise BadRequestError("Invalid note id")
         note_ids.append(note_uuid)
 
     NotesService.update_pinned_order(db, user_id, note_ids)
@@ -114,11 +115,11 @@ async def create_folder(
         Folder creation result.
 
     Raises:
-        HTTPException: 400 if path is missing.
+        BadRequestError: If path is missing.
     """
     path = (request.get("path") or "").strip("/")
     if not path:
-        raise HTTPException(status_code=400, detail="path required")
+        raise BadRequestError("path required")
 
     return NotesWorkspaceService.create_folder(db, user_id, path)
 
@@ -142,12 +143,12 @@ async def rename_folder(
         Folder rename result.
 
     Raises:
-        HTTPException: 400 if required fields are missing.
+        BadRequestError: If required fields are missing.
     """
     old_path = (request.get("oldPath") or "").strip("/")
     new_name = (request.get("newName") or "").strip("/")
     if not old_path or not new_name:
-        raise HTTPException(status_code=400, detail="oldPath and newName required")
+        raise BadRequestError("oldPath and newName required")
 
     return NotesWorkspaceService.rename_folder(db, user_id, old_path, new_name)
 
@@ -171,17 +172,17 @@ async def move_folder(
         Folder move result.
 
     Raises:
-        HTTPException: 400 for missing or invalid paths.
+        BadRequestError: For missing or invalid paths.
     """
     old_path = (request.get("oldPath") or "").strip("/")
     new_parent = (request.get("newParent") or "").strip("/")
     if not old_path:
-        raise HTTPException(status_code=400, detail="oldPath required")
+        raise BadRequestError("oldPath required")
 
     try:
         return NotesWorkspaceService.move_folder(db, user_id, old_path, new_parent)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise BadRequestError(str(exc)) from exc
 
 
 @router.delete("/folders")
@@ -203,11 +204,11 @@ async def delete_folder(
         Folder deletion result.
 
     Raises:
-        HTTPException: 400 if path is missing.
+        BadRequestError: If path is missing.
     """
     path = (request.get("path") or "").strip("/")
     if not path:
-        raise HTTPException(status_code=400, detail="path required")
+        raise BadRequestError("path required")
 
     return NotesWorkspaceService.delete_folder(db, user_id, path)
 
@@ -231,14 +232,15 @@ async def get_note(
         Note record and content.
 
     Raises:
-        HTTPException: 400 for invalid ID, 404 if not found.
+        BadRequestError: For invalid ID.
+        NotFoundError: If not found.
     """
     try:
         return NotesWorkspaceService.get_note(db, user_id, note_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise NotFoundError("Note", note_id)
 
 
 @router.post("")
@@ -260,7 +262,7 @@ async def create_note(
         Created note record.
 
     Raises:
-        HTTPException: 400 if content is missing.
+        BadRequestError: If content is missing.
     """
     content = request.get("content")
     title = request.get("title") or None
@@ -268,7 +270,7 @@ async def create_note(
     folder = (request.get("folder") or "").strip("/")
 
     if content is None:
-        raise HTTPException(status_code=400, detail="content required")
+        raise BadRequestError("content required")
 
     return NotesWorkspaceService.create_note(
         db,
@@ -301,18 +303,19 @@ async def rename_note(
         Rename result.
 
     Raises:
-        HTTPException: 400 for invalid request, 404 if not found.
+        BadRequestError: For invalid request.
+        NotFoundError: If not found.
     """
     new_name = request.get("newName", "")
     if not new_name:
-        raise HTTPException(status_code=400, detail="newName required")
+        raise BadRequestError("newName required")
 
     try:
         return NotesWorkspaceService.rename_note(db, user_id, note_id, new_name)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise NotFoundError("Note", note_id)
 
 
 @router.delete("/{note_id}")
@@ -334,14 +337,15 @@ async def delete_note(
         Success flag.
 
     Raises:
-        HTTPException: 400 for invalid ID, 404 if not found.
+        BadRequestError: For invalid ID.
+        NotFoundError: If not found.
     """
     note_uuid = NotesService.parse_note_id(note_id)
     if not note_uuid:
-        raise HTTPException(status_code=400, detail="Invalid note id")
+        raise BadRequestError("Invalid note id")
     deleted = NotesService.delete_note(db, user_id, note_uuid)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise NotFoundError("Note", note_id)
     return {"success": True}
 
 
@@ -364,14 +368,15 @@ async def download_note(
         Markdown response with attachment headers.
 
     Raises:
-        HTTPException: 400 for invalid ID, 404 if not found.
+        BadRequestError: For invalid ID.
+        NotFoundError: If not found.
     """
     try:
         result = NotesWorkspaceService.download_note(db, user_id, note_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise NotFoundError("Note", note_id)
 
     headers = {"Content-Disposition": f'attachment; filename="{result["filename"]}"'}
     return Response(result["content"], media_type="text/markdown", headers=headers)
@@ -398,16 +403,17 @@ async def update_pin(
         Success flag.
 
     Raises:
-        HTTPException: 400 for invalid ID, 404 if not found.
+        BadRequestError: For invalid ID.
+        NotFoundError: If not found.
     """
     pinned = bool(request.get("pinned", False))
     try:
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
-            raise HTTPException(status_code=400, detail="Invalid note id")
+            raise BadRequestError("Invalid note id")
         NotesService.update_pinned(db, user_id, note_uuid, pinned)
     except NoteNotFoundError:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise NotFoundError("Note", note_id)
     return {"success": True}
 
 
@@ -432,18 +438,19 @@ async def update_note(
         Updated note record.
 
     Raises:
-        HTTPException: 400 for invalid request, 404 if not found.
+        BadRequestError: For invalid request.
+        NotFoundError: If not found.
     """
     content = request.get("content")
     if content is None:
-        raise HTTPException(status_code=400, detail="content required")
+        raise BadRequestError("content required")
 
     try:
         return NotesWorkspaceService.update_note(db, user_id, note_id, content)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise NotFoundError("Note", note_id)
 
 
 @router.patch("/{note_id}/move")
@@ -467,16 +474,17 @@ async def update_folder(
         Success flag.
 
     Raises:
-        HTTPException: 400 for invalid ID, 404 if not found.
+        BadRequestError: For invalid ID.
+        NotFoundError: If not found.
     """
     folder = request.get("folder", "") or ""
     try:
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
-            raise HTTPException(status_code=400, detail="Invalid note id")
+            raise BadRequestError("Invalid note id")
         NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise NotFoundError("Note", note_id)
     return {"success": True}
 
 
@@ -501,15 +509,16 @@ async def update_archive(
         Success flag.
 
     Raises:
-        HTTPException: 400 for invalid ID, 404 if not found.
+        BadRequestError: For invalid ID.
+        NotFoundError: If not found.
     """
     archived = bool(request.get("archived", False))
     folder = "Archive" if archived else ""
     try:
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
-            raise HTTPException(status_code=400, detail="Invalid note id")
+            raise BadRequestError("Invalid note id")
         NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise NotFoundError("Note", note_id)
     return {"success": True}

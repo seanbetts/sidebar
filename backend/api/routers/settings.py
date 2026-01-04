@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
+from api.exceptions import BadRequestError
 from api.services.settings_service import SettingsService
 
 
@@ -116,7 +117,7 @@ async def upload_profile_image(
         Upload result payload.
 
     Raises:
-        HTTPException: 400 if content type is not an image.
+        BadRequestError: If content type is not an image.
     """
     contents: bytes
     content_type = ""
@@ -129,7 +130,7 @@ async def upload_profile_image(
     else:
         content_type = request.headers.get("content-type") or ""
         if not content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail="Invalid image type")
+            raise BadRequestError("Invalid image type")
         contents = await request.body()
 
     return SettingsService.upload_profile_image(
