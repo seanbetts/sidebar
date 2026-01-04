@@ -17,7 +17,7 @@ export function createLoadActions(context: TreeStoreContext) {
     try {
       const endpoint = basePath === 'notes'
         ? '/api/v1/notes/tree'
-        : `/api/v1/files?basePath=${basePath}`;
+        : `/api/v1/files/tree?basePath=${basePath}`;
       const response = await fetch(endpoint);
       if (!response.ok) return;
       const data = await response.json();
@@ -103,7 +103,7 @@ export function createLoadActions(context: TreeStoreContext) {
     try {
       const endpoint = basePath === 'notes'
         ? '/api/v1/notes/tree'
-        : `/api/v1/files?basePath=${basePath}`;
+        : `/api/v1/files/tree?basePath=${basePath}`;
       const response = await fetch(endpoint);
       if (!response.ok) throw new Error('Failed to load files');
 
