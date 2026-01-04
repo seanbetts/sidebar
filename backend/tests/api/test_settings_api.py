@@ -1,5 +1,6 @@
 from api.config import settings
 from api.services import settings_service
+from tests.helpers import error_message
 
 
 def _auth_headers() -> dict[str, str]:
@@ -25,7 +26,7 @@ def test_update_settings_rejects_long_style(test_client):
         json={"communication_style": long_value},
     )
     assert response.status_code == 400
-    assert "communication_style exceeds" in response.json()["detail"]
+    assert "communication_style exceeds" in error_message(response)
 
 
 def test_update_settings_rejects_invalid_skills(test_client):
@@ -35,4 +36,4 @@ def test_update_settings_rejects_invalid_skills(test_client):
         json={"enabled_skills": ["fs", "not-a-skill"]},
     )
     assert response.status_code == 400
-    assert "Invalid skills" in response.json()["detail"]
+    assert "Invalid skills" in error_message(response)

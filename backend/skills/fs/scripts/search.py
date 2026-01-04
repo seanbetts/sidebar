@@ -9,6 +9,7 @@ import sys
 import json
 import argparse
 import re
+from pathlib import Path
 from typing import Dict, Any, List
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]

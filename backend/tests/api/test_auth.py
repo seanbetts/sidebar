@@ -4,6 +4,14 @@ import pytest
 from api.config import settings
 
 
+def _error_message(response) -> str:
+    """Normalize error payload to a message string."""
+    payload = response.json().get("error")
+    if isinstance(payload, dict):
+        return payload.get("message", "")
+    return payload or ""
+
+
 @pytest.fixture
 def valid_token():
     """Get the valid bearer token."""
@@ -23,7 +31,7 @@ class TestAuthenticationMiddleware:
         """Protected endpoints should require authentication."""
         response = test_client.get("/docs")
         assert response.status_code == 401
-        assert "Authorization" in response.json()["error"]
+        assert "Authorization" in _error_message(response)
 
     def test_valid_bearer_token_grants_access(self, test_client, valid_token):
         """Valid bearer token should grant access."""
@@ -40,13 +48,13 @@ class TestAuthenticationMiddleware:
             headers={"Authorization": "Bearer invalid-token"}
         )
         assert response.status_code == 401
-        assert "Invalid" in response.json()["error"]
+        assert "Invalid" in _error_message(response)
 
     def test_missing_authorization_header_denied(self, test_client):
         """Missing authorization header should be denied."""
         response = test_client.get("/docs")
         assert response.status_code == 401
-        assert "Missing" in response.json()["error"]
+        assert "Missing" in _error_message(response)
 
     def test_malformed_authorization_header_denied(self, test_client):
         """Malformed authorization header should be denied."""

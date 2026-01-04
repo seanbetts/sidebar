@@ -1,4 +1,5 @@
 from api.config import settings
+from tests.helpers import error_message
 
 
 def _auth_headers() -> dict[str, str]:
@@ -12,7 +13,7 @@ def test_memories_create_rejects_invalid_path(test_client):
         headers=_auth_headers(),
     )
     assert response.status_code == 400
-    assert "Invalid path" in response.json()["detail"]
+    assert "Invalid path" in error_message(response)
 
 
 def test_memories_create_and_list(test_client):

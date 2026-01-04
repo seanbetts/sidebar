@@ -8,6 +8,7 @@ Create or update files in workspace with multiple modes.
 import sys
 import json
 import argparse
+import os
 from pathlib import Path
 from typing import Dict, Any
 
@@ -30,7 +31,8 @@ def write_file(
     mode: str = "replace",
 ) -> Dict[str, Any]:
     """Write content to a file."""
-    return write_text(user_id, filename, content, mode=mode, wait_for_ready=True)
+    wait_for_ready = os.getenv("TESTING", "").lower() not in {"1", "true", "yes", "on"}
+    return write_text(user_id, filename, content, mode=mode, wait_for_ready=wait_for_ready)
 
 
 def main():

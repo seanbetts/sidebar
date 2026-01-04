@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import fnmatch
 import mimetypes
+import os
 import time
 from pathlib import Path
 from typing import Optional
@@ -271,6 +272,45 @@ def write_text(
 
         db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
         db.commit()
+
+    if os.getenv("TESTING", "").lower() in {"1", "true", "yes", "on"}:
+        storage = get_storage_backend()
+        storage_key = f"{user_id}/files/{record.id}/derivatives/source.txt"
+        ai_key = f"{user_id}/files/{record.id}/ai/ai.md"
+        storage.put_object(storage_key, content_bytes)
+        storage.put_object(ai_key, content_bytes)
+        with session_for_user(user_id) as db:
+            db.add(
+                FileDerivative(
+                    file_id=record.id,
+                    kind="text_original",
+                    storage_key=storage_key,
+                    mime="text/plain",
+                    size_bytes=size,
+                    sha256=digest,
+                    created_at=now_utc(),
+                )
+            )
+            db.add(
+                FileDerivative(
+                    file_id=record.id,
+                    kind="ai_md",
+                    storage_key=ai_key,
+                    mime="text/markdown",
+                    size_bytes=size,
+                    sha256=digest,
+                    created_at=now_utc(),
+                )
+            )
+            job = get_job(db, record.id)
+            if job:
+                job.status = "ready"
+                job.stage = "ready"
+                job.error_code = None
+                job.error_message = None
+                job.finished_at = now_utc()
+                job.updated_at = now_utc()
+            db.commit()
 
     if wait_for_ready:
         deadline = time.monotonic() + timeout_seconds

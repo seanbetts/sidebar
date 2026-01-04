@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import uuid
 
 from api.config import settings
+from tests.helpers import error_message
 from api.db.dependencies import DEFAULT_USER_ID
 from api.models.website import Website
 
@@ -13,13 +14,13 @@ def _auth_headers() -> dict[str, str]:
 def test_websites_search_requires_query(test_client):
     response = test_client.post("/api/websites/search", params={"query": ""}, headers=_auth_headers())
     assert response.status_code == 400
-    assert response.json()["detail"] == "query required"
+    assert error_message(response) == "query required"
 
 
 def test_websites_save_requires_url(test_client):
     response = test_client.post("/api/websites/save", json={}, headers=_auth_headers())
     assert response.status_code == 400
-    assert response.json()["detail"] == "url required"
+    assert error_message(response) == "url required"
 
 
 def test_websites_get_success(test_client, test_db):
