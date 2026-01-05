@@ -303,19 +303,20 @@
 
   .notes-tooltip {
     position: absolute;
-    bottom: 140%;
+    top: 140%;
     left: 50%;
     transform: translateX(-50%);
     background: var(--color-popover);
     color: var(--color-popover-foreground);
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    padding: 0.5rem 0.65rem;
-    font-size: 0.75rem;
-    line-height: 1.2;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
     width: max-content;
-    max-width: 260px;
+    max-width: 360px;
     white-space: pre-wrap;
+    word-break: break-word;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
     opacity: 0;
     pointer-events: none;
