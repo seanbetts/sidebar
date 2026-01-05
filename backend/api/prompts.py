@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from api.prompt_config import (
+    CONTEXT_GUIDANCE_TEMPLATE,
     CURRENT_OPEN_ATTACHMENTS_HEADER,
     CURRENT_OPEN_CONTENT_HEADER,
     CURRENT_OPEN_EMPTY_TEXT,
@@ -22,14 +23,30 @@ from api.prompt_config import (
     RECENT_ACTIVITY_NOTES_HEADER,
     RECENT_ACTIVITY_WEBSITES_HEADER,
     RECENT_ACTIVITY_WRAPPER_TEMPLATE,
+    SUPPORTED_VARIABLES,
     SYSTEM_PROMPT_TEMPLATE,
 )
 from api.prompt_formatters import (
     calculate_age,
+    detect_operating_system,
     format_location_levels,
     format_weather,
     truncate_content,
 )
+
+# Re-export shared prompt helpers/constants for callers/tests.
+__all__ = [
+    "CONTEXT_GUIDANCE_TEMPLATE",
+    "SUPPORTED_VARIABLES",
+    "detect_operating_system",
+    "resolve_template",
+    "resolve_default",
+    "build_prompt_variables",
+    "build_recent_activity_block",
+    "build_open_context_block",
+    "build_system_prompt",
+    "build_first_message_prompt",
+]
 
 _TOKEN_PATTERN = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
