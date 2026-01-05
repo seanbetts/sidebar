@@ -85,6 +85,13 @@ class NoteNotFoundError(NotFoundError):
         super().__init__("Note", note_id)
 
 
+class WebsiteNotFoundError(NotFoundError):
+    """Website not found."""
+
+    def __init__(self, website_id: str) -> None:
+        super().__init__("Website", website_id)
+
+
 class ConversationNotFoundError(NotFoundError):
     """Conversation not found."""
 

@@ -11,10 +11,8 @@ from sqlalchemy import or_
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.website import Website
-
-
-class WebsiteNotFoundError(Exception):
-    """Raised when a website is not found."""
+from api.exceptions import WebsiteNotFoundError
+from api.utils.metadata_helpers import get_max_pinned_order
 
 
 class WebsitesService:
@@ -309,21 +307,7 @@ class WebsitesService:
         metadata["pinned"] = pinned
         if pinned:
             if metadata.get("pinned_order") is None:
-                max_order = -1
-                for existing in (
-                    db.query(Website)
-                    .filter(Website.user_id == user_id, Website.deleted_at.is_(None))
-                    .all()
-                ):
-                    existing_meta = existing.metadata_ or {}
-                    if not existing_meta.get("pinned"):
-                        continue
-                    try:
-                        order_value = int(existing_meta.get("pinned_order"))
-                    except (TypeError, ValueError):
-                        order_value = -1
-                    max_order = max(max_order, order_value)
-                metadata["pinned_order"] = max_order + 1
+                metadata["pinned_order"] = get_max_pinned_order(db, Website, user_id) + 1
         else:
             metadata.pop("pinned_order", None)
         website.metadata_ = metadata

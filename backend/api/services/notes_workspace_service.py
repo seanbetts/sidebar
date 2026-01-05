@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.note import Note
-from api.services.notes_service import NotesService, NoteNotFoundError
+from api.exceptions import NoteNotFoundError
+from api.services.notes_service import NotesService
 from api.services.workspace_service import WorkspaceService
 from sqlalchemy.orm.exc import ObjectDeletedError
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from api.db.base import Base
 from api.models.conversation import Conversation
@@ -76,3 +76,71 @@ def test_prompt_context_service_order_and_truncation(test_db):
 
     assert len(system_prompt) <= PromptContextService.MAX_SYSTEM_PROMPT_CHARS
     assert "I use macOS." in first_message
+
+
+def test_recent_activity_cache_hit(test_db):
+    PromptContextService._recent_activity_cache.clear()
+    Base.metadata.create_all(bind=test_db.connection())
+    now = datetime(2025, 2, 1, 9, 0, tzinfo=timezone.utc)
+    user_id = "user-1"
+
+    note = Note(
+        user_id=user_id,
+        title="Morning Notes",
+        content="Note body",
+        metadata_={"folder": "work"},
+        last_opened_at=now,
+    )
+    test_db.add(note)
+    test_db.commit()
+
+    first_notes, _, _, _ = PromptContextService._get_recent_activity(test_db, user_id, now)
+
+    new_note = Note(
+        user_id=user_id,
+        title="Late Add",
+        content="Extra",
+        metadata_={"folder": "work"},
+        last_opened_at=now + timedelta(minutes=1),
+    )
+    test_db.add(new_note)
+    test_db.commit()
+
+    cached_notes, _, _, _ = PromptContextService._get_recent_activity(test_db, user_id, now + timedelta(minutes=1))
+
+    assert len(first_notes) == len(cached_notes)
+    assert {item["title"] for item in cached_notes} == {"Morning Notes"}
+
+
+def test_recent_activity_cache_expiry(test_db):
+    PromptContextService._recent_activity_cache.clear()
+    Base.metadata.create_all(bind=test_db.connection())
+    now = datetime(2025, 2, 1, 9, 0, tzinfo=timezone.utc)
+    user_id = "user-1"
+
+    note = Note(
+        user_id=user_id,
+        title="Morning Notes",
+        content="Note body",
+        metadata_={"folder": "work"},
+        last_opened_at=now,
+    )
+    test_db.add(note)
+    test_db.commit()
+
+    PromptContextService._get_recent_activity(test_db, user_id, now)
+
+    new_note = Note(
+        user_id=user_id,
+        title="Afternoon Notes",
+        content="Extra",
+        metadata_={"folder": "work"},
+        last_opened_at=now + timedelta(minutes=10),
+    )
+    test_db.add(new_note)
+    test_db.commit()
+
+    later = now + PromptContextService.RECENT_ACTIVITY_CACHE_TTL + timedelta(seconds=1)
+    refreshed_notes, _, _, _ = PromptContextService._get_recent_activity(test_db, user_id, later)
+
+    assert {item["title"] for item in refreshed_notes} == {"Morning Notes", "Afternoon Notes"}

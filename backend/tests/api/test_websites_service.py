@@ -65,6 +65,31 @@ def test_update_pinned_and_archived(db_session):
     assert (archived.metadata_ or {}).get("archived") is True
 
 
+def test_update_pinned_assigns_next_order(db_session):
+    site_a = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/a",
+        title="Alpha",
+        content="Content",
+        source="https://example.com/a",
+    )
+    site_b = WebsitesService.save_website(
+        db_session,
+        "test_user",
+        url="https://example.com/b",
+        title="Beta",
+        content="Content",
+        source="https://example.com/b",
+    )
+
+    pinned_a = WebsitesService.update_pinned(db_session, "test_user", site_a.id, True)
+    pinned_b = WebsitesService.update_pinned(db_session, "test_user", site_b.id, True)
+
+    assert (pinned_a.metadata_ or {}).get("pinned_order") == 0
+    assert (pinned_b.metadata_ or {}).get("pinned_order") == 1
+
+
 def test_list_websites_filters(db_session):
     now = datetime.now(timezone.utc)
     earlier = now - timedelta(days=3)

@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
-from api.exceptions import BadRequestError, NotFoundError
-from api.services.notes_service import NotesService, NoteNotFoundError
+from api.exceptions import BadRequestError, NotFoundError, NoteNotFoundError
+from api.services.notes_service import NotesService
 from api.services.notes_workspace_service import NotesWorkspaceService
 from api.utils.validation import parse_uuid
 

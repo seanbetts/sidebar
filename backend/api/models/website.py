@@ -13,6 +13,8 @@ class Website(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "url", name="uq_websites_user_id_url"),
         Index("idx_websites_user_id", "user_id"),
+        Index("idx_websites_user_last_opened", "user_id", "last_opened_at"),
+        Index("idx_websites_user_deleted_opened", "user_id", "deleted_at", "last_opened_at"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

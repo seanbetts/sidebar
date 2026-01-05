@@ -14,11 +14,8 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.models.note import Note
 from api.utils.validation import parse_uuid
-from api.exceptions import BadRequestError
-
-
-class NoteNotFoundError(Exception):
-    """Raised when a note is not found."""
+from api.utils.metadata_helpers import get_max_pinned_order
+from api.exceptions import BadRequestError, NoteNotFoundError
 
 
 class NotesService:
@@ -317,21 +314,7 @@ class NotesService:
         metadata["pinned"] = pinned
         if pinned:
             if metadata.get("pinned_order") is None:
-                max_order = -1
-                for existing in (
-                    db.query(Note)
-                    .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
-                    .all()
-                ):
-                    existing_meta = existing.metadata_ or {}
-                    if not existing_meta.get("pinned"):
-                        continue
-                    try:
-                        order_value = int(existing_meta.get("pinned_order"))
-                    except (TypeError, ValueError):
-                        order_value = -1
-                    max_order = max(max_order, order_value)
-                metadata["pinned_order"] = max_order + 1
+                metadata["pinned_order"] = get_max_pinned_order(db, Note, user_id) + 1
         else:
             metadata.pop("pinned_order", None)
         note.metadata_ = metadata

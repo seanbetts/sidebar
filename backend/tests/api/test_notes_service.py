@@ -58,6 +58,17 @@ def test_update_folder_and_pinned(db_session):
     assert (pinned.metadata_ or {}).get("pinned") is True
 
 
+def test_update_pinned_assigns_next_order(db_session):
+    note_a = NotesService.create_note(db_session, "test_user", "# Alpha\n\nBody")
+    note_b = NotesService.create_note(db_session, "test_user", "# Beta\n\nBody")
+
+    pinned_a = NotesService.update_pinned(db_session, "test_user", note_a.id, True)
+    pinned_b = NotesService.update_pinned(db_session, "test_user", note_b.id, True)
+
+    assert (pinned_a.metadata_ or {}).get("pinned_order") == 0
+    assert (pinned_b.metadata_ or {}).get("pinned_order") == 1
+
+
 def test_list_notes_filters(db_session):
     now = datetime.now(timezone.utc)
     earlier = now - timedelta(days=2)
