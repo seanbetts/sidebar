@@ -1,0 +1,77 @@
+---
+Title: OpenAI Forecasts Revenue Topping $125 Billion in 2029 as Agents, New …
+URL: https://archive.is/Veic3
+Tags: ai
+---
+
+For two years, ChatGPT has been OpenAI’s cash cow. But by the end of the decade, the company has told some potential and current investors it expects combined sales from agents and other new products to exceed its popular chatbot, lifting total sales to $125 billion in 2029 and $174 billion the next year, according to documents seen by The Information.
+
+The projections, which would propel the 10-year-old startup’s sales toward the level of Nvidia or Meta Platforms today, reflect rapid revenue gains from agents, or AI software that can take actions on behalf of customers, as well as other new products. These include those tied to “free user monetization,” likely meaning money made from OpenAI’s nonpaying users.
+
+OpenAI ended last year at $3.7 billion in revenue, nearly quadrupling sales the year prior. The San Francisco startup has been serving more than 500 million active users per week, up from 300 million in December.
+
+What the new products are is unclear. CEO Sam Altman, in an interview with Stratechery newsletter writer Ben Thompson, recently discussed the possibility of charging affiliate fees—or a cut of a sale initiated from a user’s search through OpenAI software such as ChatGPT or its agents—though he said he is reluctant to sell traditional ads on the chatbot. OpenAI Chief Financial Officer Sarah Friar, meanwhile, has discussed the possibility of selling ads but told the Financial Times the company has “no active plans” to pursue advertising.
+
+The forecasts provide insight into why investors, in a deal led by SoftBank, agreed to invest $40 billion in new capital at a $260 billion valuation, 73% higher than its valuation last fall. Spokespeople for SoftBank and OpenAI declined to comment.
+
+The projections indicate executives expect the new sources of revenue could help offset rising costs. The company, which estimates it will burn $46 billion in cash over the next four years, thanks to the costs of training and running its models and other expenses such as salaries**,** expects to turn cash flow positive in 2029, generating close to $12 billion in cash that year.
+
+![](https://d57bfzl40h8yf7.archive.is/Veic3/7ad70153e670874614f71f1ed1285e6837a7bfa0.png)
+
+The company also expects growth in inference costs—the costs of running AI products such as ChatGPT and underlying models—to moderate over the next half-decade. Those costs will triple this year, to about $6 billion and rise to nearly $47 billion in 2030. Still, the annual growth rate will fall to about 30% then.
+
+Costs for app developers using OpenAI models have been declining as models have become more efficient, as well as thanks to new techniques like prompt caching, which reuses parts of prior prompts to answer questions.
+
+This slower growth in inference costs, combined with soaring revenue, is a boon to OpenAI’s margins. OpenAI anticipates gross profit as a percentage of revenue rising to nearly 70% in 2029, from 40% last year, which was far lower than the average gross margin of 74% for cloud software stocks tracked by Meritech Capital.
+
+**Beyond Chatbots**
+
+OpenAI has been releasing a slew of new products and model updates such as its computer-using Operator agent, reasoning models, and image-, audio- and video-focused AI. At the same time, OpenAI executives have discussed expanding into new types of products like [humanoid robots](https://archive.is/o/Veic3/https://www.theinformation.com/articles/openai-has-discussed-making-a-humanoid-robot) and [AI chips](https://archive.is/o/Veic3/https://www.theinformation.com/articles/openai-has-talked-to-broadcom-about-developing-new-ai-chip).
+
+That said, OpenAI expects ChatGPT and API, its core products, to continue to comprise the bulk of its revenue. The company expects sales from ChatGPT subscriptions—the cost of which can range from $20 to $200 per month—to rise to $50 billion in 2029 from about $8 billion this year.
+
+Revenue from selling access to its application programming interface, which gives businesses such as Salesforce and T-Mobile access to its models, will hit $22 billion in 2029, up from about $2 billion this year.
+
+In 2029, the company has projected, it will generate $29 billion in revenue from agents, up from $3 billion this year. These agents could range from “high-income knowledge worker” agents that cost $2,000 a month to [$20,000 per month for doctorate-level research agents](https://archive.is/o/Veic3/https://www.theinformation.com/articles/openai-plots-charging-20-000-a-month-for-phd-level-agents).
+
+It also has lined up some deep-pocketed customers. In February, SoftBank said it would [spend $3 billion](https://archive.is/o/Veic3/https://www.theinformation.com/briefings/softbank-pledges-to-spend-3-billion-annually-on-openai) annually on OpenAI products, including AI agents, and also develop a joint venture to market OpenAI’s products, branded as Cristal Intelligence, to companies in Japan. Altogether, OpenAI forecasts agents will make up nearly a quarter of its revenue within the next five years.
+
+OpenAI won’t start generating much revenue from free users and other products until next year. In 2029, however, it projects revenue from free users and other products will reach $25 billion, or one-fifth of all revenue.
+
+40%
+
+48%
+
+56%
+
+64%
+
+67%
+
+69%
+
+2024
+
+2025*
+
+2026*
+
+2027*
+
+2028*
+
+2029*
+
+* Projection 
+
+The company is forecasting a sharp growth in users, telling investors it expects to hit 3 billion monthly active users, 2 billion weekly active users and 900 million daily active users by 2030. Fewer than 5% of ChatGPT’s weekly active users [were paying subscribers](https://archive.is/o/Veic3/https://www.theinformation.com/articles/chatgpt-subscribers-nearly-tripled-to-15-5-million-in-2024) at year-end.
+
+“Advertisers have always followed eyeballs,” said Rich Greenfield, a co-founder and analyst at research firm LightShed Partners. “If there is a considerable time spent on OpenAI, advertisers will beg to be there.”
+
+Other AI startups have started to test making money beyond subscriptions. Perplexity, a startup that sells access to an AI-powered search engine, in November said it was experimenting with selling ads on some queries, such as one sponsored by Indeed that asks, “How can I use Indeed to enhance my job search?” Perplexity has said its initial brand partners include Whole Foods Market and media agency Universal McCann.
+
+Shopping is another potential avenue for OpenAI to make money off its hundreds of millions of users. Rival Google, for instance, has begun monetizing its AI Overview feature. It has been selling advertisers placement near the AI-based summaries shown to U.S. users on mobile devices.
+
+OpenAI has already begun experimenting with launching software features for shopping. Starting in January, some users can access web-browsing agent Operator as part of their pro ChatGPT subscription tier to order groceries from Instacart and make restaurant reservations on OpenTable.
+
+[Launch partners](https://archive.is/o/Veic3/https://www.theinformation.com/articles/openais-agents-pose-risks-doordash-consumer-apps) such as Uber receive aggregated data on the most common uses of Operator and the traffic it is driving to their site. OpenAI said it would expand Operator to other users and even integrate these capabilities into ChatGPT.

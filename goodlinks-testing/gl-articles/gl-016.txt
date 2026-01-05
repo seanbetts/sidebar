@@ -1,0 +1,52 @@
+---
+Title: Apple Music is coming to ChatGPT, OpenAI announces
+URL: https://9to5mac.com/2025/12/16/apple-music-is-coming-to-chatgpt-openai-announces/
+Author: Marcus Mendes
+Tags: ai, apple, music
+---
+
+![](https://i0.wp.com/9to5mac.com/wp-content/uploads/sites/6/2025/09/apple-music-app-icon-ios-26.jpg?w=1024&quality=82&strip=all&ssl=1)
+
+Soon, you’ll be able to ask ChatGPT to quickly create [Apple Music](https://apple.co/45qdAoX) playlists, among other things. Here’s why.
+
+## If Spotify’s ChatGPT app is anything to go by, this is great news for Apple Music subscribers
+
+In a [Substack post](https://fidjisimo.substack.com/p/more-dynamic-ai-experiences) published earlier today, Fidji Simo, OpenAI’s CEO of applications, said that [Apple Music ](https://apple.co/45qdAoX)is among the upcoming partners that will integrate with ChatGPT.
+
+Last October, OpenAI [introduced](https://9to5mac.com/2025/10/06/chatgpt-can-now-interact-with-multiple-apps-including-spotify-canva-and-figma/) apps in ChatGPT, with the first round of partnerships and integrations including Spotify, Booking.com, Canva, Coursera, Figma, Expedia, and Zillow. Back then, OpenAI also released a preview of the Apps SDK, which would soon let developers integrate their own apps into ChatGPT.
+
+Soon, according to Simo, “even more apps will be available in a new directory, including Adobe, Airtable, [Apple Music](https://apple.co/45qdAoX), Clay, Lovable, OpenTable, Replit, and Salesforce, and other developers will be able to submit their apps for review.”
+
+This likely means that the Apps SDK is about to exit preview, and that OpenAI has been pursuing new high-profile integrations.
+
+Interestingly, Simo mentions Adobe, which [just released](https://9to5mac.com/2025/12/10/adobe-photoshop-express-and-acrobat-now-available-for-free-on-chatgpt/) Photoshop, Express, and Acrobat apps in ChatGPT. At the time, the company claimed that new capabilities would be introduced in the coming weeks.
+
+Back to [Apple Music](https://apple.co/45qdAoX) and ChatGPT, the app will most likely work similarly to how Spotify works within ChatGPT:
+
+> When you start a message to ChatGPT with the name of an available app, like “Spotify, make a playlist for my party this Friday,” ChatGPT can automatically surface the app in your chat and use relevant context to help.
+> 
+> 
+
+This means that users will likely be able to send natural language prompts to ChatGPT, allowing it to create instantly playable playlists based on those requests.
+
+![](https://9to5mac.com/wp-content/uploads/sites/6/2025/12/spotify-chatgpt.jpg?resize=1112,1000)
+
+In addition to that, one great use case for natural language search is letting the LLM handle the heavy lifting to find things you can’t fully recall. For example, you’ll likely be able to ask ChatGPT to play the soundtrack from that movie where the guy from[Uncut Gems](https://apple.co/48YpVke)plays a musician who dates the actress from[E.T.](https://apple.co/4s0xdwv)as a kid, and you’ll be listening to the soundtrack of[The Wedding Singer](https://apple.co/4j3BATq) in no time.
+
+We’ll likely find out more about [Apple Music](https://apple.co/45qdAoX) on ChatGPT in the coming days. But based on how the Spotify app works on ChatGPT, this will surely be a useful feature for ChatGPT-friendly users to rely on.
+
+Apple Music requires an active subscription. You can[sign up](https://apple.co/45qdAoX)for $10.99 per month, with 1 month free.
+
+#### Accessory deals on Amazon
+
+ * **[AirPods Pro 3](https://www.amazon.com/Apple-Cancellation-Translation-Headphones-High-Fidelity/dp/B0FQFB8FMG?tag=marcmendes-20)**
+ * [Beats USB-C to USB-C Woven Short Cable](https://www.amazon.com/Beats-Charging-Durable-Tangle-Free-Compatible/dp/B0F1W7B5R1?tag=marcmendes-20)
+ * [Wireless CarPlay adapter](https://www.amazon.com/gp/product/B0F6T6N2B1?tag=marcmendes-20)
+ * [Logitech MX Master 4](https://amzn.to/3KmIQN7)
+ * [Apple AirTag 4 Pack](https://www.amazon.com/Apple-MX542LL-A-AirTag-Pack/dp/B0D54JZTHY/?tag=marcmendes-20)
+
+[_Add 9to5Mac to your Google News feed._](https://news.google.com/publications/CAAqBggKMLOFATDAGg?hl=en-US&gl=US&ceid=US:en)
+
+_FTC: We use income earning auto affiliate links._ [More.](https://9to5mac.com/about/#affiliate)
+
+[![](https://9to5mac.com/wp-content/uploads/sites/6/2025/11/nomad-banner2.jpg)](https://bit.ly/4qP0DNG)

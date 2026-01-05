@@ -1,0 +1,50 @@
+---
+Title: A-levels and GCSEs need overhaul to keep pace with generative AI, experts say
+URL: https://www.theguardian.com/education/2025/aug/22/a-levels-and-gcses-need-overhaul-to-keep-pace-with-generative-ai-experts-say
+Author: Sally Weale
+Tags: ai
+---
+
+Oral assessments, tightened security and faster marking could result as use of AI itself becomes core digital skill
+
+![AI has already revolutionised exam preparation, with students able to in effect make use of a 24-hour personal tutor to generate learning materials.](https://i.guim.co.uk/img/media/80aa731171588cb53cb050cd857e99c87155ce1b/452_0_5840_4672/master/5840.jpg?width=465&dpr=1&s=none&crop=none)
+
+AI has already revolutionised exam preparation, with students able to in effect make use of a 24-hour personal tutor to generate learning materials. Photograph: whitebalance.space/Getty Images
+
+Oral assessments, more security checks and speedier marking are all on the cards as generative artificial intelligence (AI) could transform exams for the next generation of students.
+
+As the 2025 exam season draws to a close with [GCSE students picking up their results](https://www.theguardian.com/education/2025/aug/21/pupils-england-top-grades-gcse-results-rises) on Thursday, after mostly sitting traditional pen and paper exams, AI is already changing the landscape.
+
+Exam preparation is undergoing a revolution, with students increasingly creating personal AI tutors, available around the clock to generate learning materials to suit individual needs that potentially lead to better results.
+
+“Using AI can give a student a much better understanding of a subject because they can ask those questions they wouldn’t ask in class, or at odd hours, without being judged,” said Dr Andrew Rogoyski of the Surrey Institute for People-Centred AI.
+
+“It really took off this summer,” said Sandra Leaton Gray, a professor of education futures at University College London’s Institute of Education. “So they’re able to talk to it about the marking frameworks that are in use and upload those, and then they’re able to do sample answers on their own. And then they’re able to say to the AI: ‘How would you improve the answer?’ It’s like having a tireless tutor.”
+
+Others suggest AI is developing so rapidly a totally new exam will be needed to test how effectively students are using it. Dr Thomas Lancaster, a computer scientist at Imperial College London specialising in the educational use of generative AI, academic integrity and student cheating, said: “This is becoming such a core digital skill now. I think an exam of this type is inevitable.”
+
+Lancaster warned AI would lead to new ways of cheating. “I do think we’ll need to see increased security checks for exams and more training for invigilators to help them to spot disallowed devices,” he said.
+
+“Communication devices now can be as small as concealed earpieces, and there are more dangers with AI enabled smart glasses.”
+
+Sir Ian Bauckham, the chief regulator of England’s qualifications watchdog, Ofqual, warned of the risks AI posed to the use of extended writing coursework to assess a student’s knowledge.
+
+In an interview with the Guardian, he [raised concerns about the extended project qualification](https://www.theguardian.com/education/2025/aug/02/ofqual-boss-defends-data-exam-extra-time-a-levels-gcses), an independent research project students can undertake alongside their A-levels that is the equivalent of half an A-level.
+
+“I think it’s got a really important place that is valued and universities sometimes tell us that they value it too,” he said. “So I wouldn’t want to take precipitous action on it, but I am worried about the extent to which AI may be being used to support students in that qualification.
+
+“I think anybody that wants to say we should move the exam system wholesale away from exams, where you can control the use of AI, to a space where it’s much harder to do that, which is extended writing coursework, should probably do a reality check.”
+
+Rogoyski echoed his concerns. He said: “Our assumption that you can tell a student’s mastery of a subject by asking them to write an essay is being fundamentally challenged, especially if they’re doing that work unsupervised.
+
+“We are likely to have to change exams to focus on testing their understanding of what has been written, whether by AI or human. This means vivas, or discussions, about examined topics.”
+
+He also warned there are early signs of AI-dependency emerging as students start to use the technology routinely: “The risk is that they become dependent on the AI and lose their own abilities to analyse, write, and critique subjects,” he said.
+
+On the possible benefits of AI to the exam system, Jill Duffy, the chair of the Joint Council for Qualifications board of directors and the chief executive of the OCR awards body, said exam boards were looking at how AI could speed up and improve the quality of marking.
+
+One theory is GCSE and A-level results could be delivered within a month instead of two, thanks to AI speeding up marking. OCR is using AI in trials to turn handwritten answers into digital text to cut delays caused by poor handwriting. If successful, it could mean students are offered university places based on their qualifications rather than predicted grades.
+
+Duffy agreed more vivas and other forms of oral assessment were already being used in higher education. “If we’re seeing it there, is that going to start to cross over into schools? We could see something like that,” she said.
+
+Lancaster added: “Overall, exams are here to stay in some form, but that exam form may be rather different to what it looks like now.”

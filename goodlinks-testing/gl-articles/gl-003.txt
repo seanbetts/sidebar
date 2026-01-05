@@ -1,0 +1,23 @@
+---
+Title: Major publishers call on the US government to ‘Stop AI Theft’
+URL: https://www.theverge.com/news/644612/major-publishers-stop-ai-theft-ad-campaign
+Author: Emma Roth
+Tags: ai
+---
+
+Publishers across the US are participating in an ad campaign asking to ‘make Big Tech pay for the content it takes.’
+
+![](https://platform.theverge.com/wp-content/uploads/sites/2/2025/04/STK414_STK480_AI_DIS_MISINFO_CVIRGINIA_D.jpg?quality=90&strip=all&crop=0%2C0%2C100%2C100&w=800)
+
+Hundreds of publishers, including _The New York Times_, _The Washington Post_, _The Guardian_, and _The Verge_ parent company Vox Media, are [running an ad campaign this week](https://www.newsmediaalliance.org/support-responsible-ai-campaign/) urging the government to protect content from AI. The campaign, [called Support Responsible AI](https://supportresponsibleai.org/), is run by the News/Media Alliance trade association and consists of several ads that will appear in print and online.
+
+[Each ad has phrase](https://www.newsmediaalliance.org/ads-support-responsible-ai/)s like, “Keep Watch On AI,” “Stop AI Theft,” and “AI Steals From You Too,” while the text on the bottom reads: “Stealing is un-American. Tell Washington to make Big Tech pay for the content it takes.” The campaign comes just weeks after OpenAI and Google wrote letters to the government, [urging it to allow their AI models](https://www.theverge.com/news/630079/openai-google-copyright-fair-use-exception) to train on copyrighted content.
+
+![](https://platform.theverge.com/wp-content/uploads/sites/2/2025/04/ai-ad-campaign.png?quality=90&strip=all&crop=0%2C0%2C100%2C100&w=800)Some of the ads included in the Support Responsible AI campaign.
+_Image: News/Media Alliance_
+
+The ad also contains a link and a QR code that leads to the Support Responsible AI page, where it prompts users to contact their local representatives about requiring Big Tech companies to fairly compensate writers, artists, and journalists for their work. It calls for the government to mandate attribution in AI-generated content as well.
+
+“Right now, Big Tech and AI companies are using publishers’ own content against them, taking it without authorization or compensation to power AI products that pull advertising and subscription revenue away from the original creators of that content,” Danielle Coffey, President and CEO of the News/Media Alliance, said in the press release. “The news media industry is not anti-AI – many companies and creators use AI tools in their work. Rather, we seek a balanced ecosystem where AI is built responsibly.”
+
+In February, [major UK newspapers ran a similar campaign](https://www.theverge.com/news/619063/uk-newspapers-covers-protest-government-ai-rights-proposal). Many plastered their covers with the phrase “MAKE IT FAIR” as part of an initiative that asked readers to help protect AI from training on copyrighted content. Some other publishers participating in the Support Responsible AI campaign include _The Atlantic_, _Seattle Times_, _Tampa Bay Times_, _Wired_ publisher Condé Nast, and _Politico_ owner Axel Springer.

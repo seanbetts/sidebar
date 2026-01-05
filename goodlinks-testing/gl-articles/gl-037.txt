@@ -1,0 +1,147 @@
+---
+Title: OpenAI unveils a new ChatGPT agent for ‘deep research’
+URL: https://www.superpowerdaily.com/p/openai-unveils-a-new-chatgpt-agent-for-deep-research
+Tags: ai
+---
+
+### **In today’s email:**
+
+*  🔫 **Google erases promise not to use AI technology for weapons or surveillance**
+
+*  🧐 **OpenAI used this subreddit to test AI persuasion**
+
+*  🤑 **Sam Altman’s Answer to DeepSeek Is Giving Away OpenAI’s Tech**
+
+*  🧰 **11 new AI-powered tools and resources. Make sure to check the online version for the full list of tools.**
+
+[![](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/6f00c0b2-93df-43c9-af52-6d6590d4e1a0/Screenshot_2024-04-17_at_11.24.22_AM-removebg-preview.png?t=1713378277)](https://offers.hubspot.com/make-money-with-ai?utm_medium=email-media-newsletter&utm_source=superpower-daily&utm_campaign=creator&utm_content=paid&utm_term=2-5-2025)
+
+![](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/0bd15892-19c0-4833-ad47-2f78974b185a/divider.png)
+
+![Top News](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/5af58b69-a03a-412f-b5cd-1b16c85b4158/ezgif.com-gif-maker__5_.gif)
+
+![](https://ph-files.imgix.net/9d535605-c043-481d-a8d8-8b7428152b55.jpeg?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=619&fit=max&frame=1)
+
+ OpenAI has introduced **ChatGPT deep research**, a new AI agent designed to assist users in conducting complex and thorough research. Aimed at professionals in fields like finance, science, policy, and engineering, this tool goes beyond simple summaries, pulling data from multiple sources to provide well-documented insights. OpenAI is initially rolling it out to ChatGPT Pro users with a limit of 100 queries per month, followed by Plus, Team, and Enterprise users. Currently, deep research is web-only, with mobile and desktop support expected later. The tool takes between five to 30 minutes to generate responses, which include clear citations and reasoning summaries to improve accuracy and transparency. 
+
+ Deep research is powered by a specialized version of OpenAI’s **o3 model**, optimized for web browsing and data analysis. This model was trained through reinforcement learning, allowing it to refine its search, interpretation, and analytical abilities over time. It can analyze massive amounts of text, images, and PDFs from the internet while also working with user-uploaded files. The model demonstrated an accuracy rate of **26.6%** on the **Humanity’s Last Exam** benchmark, outperforming competitors like Gemini Thinking and Grok-2. However, OpenAI acknowledges that the system still has limitations, including occasional errors, difficulty distinguishing authoritative sources from rumors, and formatting issues in reports and citations. 
+
+ While OpenAI's deep research aims to provide more reliable AI-generated analysis, concerns remain about AI’s tendency to hallucinate and produce misleading information. OpenAI has implemented transparency measures, but users are encouraged to verify sources rather than blindly trust the output. The effectiveness of deep research will ultimately depend on how critically users engage with its results. Interestingly, Google announced a similar AI-powered deep research feature just two months earlier, highlighting the competitive race to develop more advanced AI research tools. 
+
+## 🤖[ Turn AI into Your Income Engine! ](https://offers.hubspot.com/make-money-with-ai?utm_medium=email-media-newsletter&utm_source=superpower-daily&utm_campaign=creator&utm_content=paid&utm_term=2-5-2025)🚀
+
+[![](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/9e00d7c8-20d7-45ae-926e-16b56abd4a95/Copy_of_Heading__15_.png?t=1738013424)](https://offers.hubspot.com/make-money-with-ai?utm_medium=email-media-newsletter&utm_source=superpower-daily&utm_campaign=creator&utm_content=paid&utm_term=2-5-2025)
+
+ Ready to transform artificial intelligence from a buzzword into your personal revenue generator? Our groundbreaking guide "[200+ AI-Powered Income Ideas](https://offers.hubspot.com/make-money-with-ai?utm_medium=email-media-newsletter&utm_source=superpower-daily&utm_campaign=creator&utm_content=paid&utm_term=2-5-2025)" is your gateway to financial innovation in the digital age. 
+
+ Inside you'll discover: 
+
+ *  A curated collection of 200+ profitable opportunities spanning content creation, e-commerce, gaming, and emerging digital markets—each vetted for real-world potential 
+
+*  Step-by-step implementation guides designed for beginners, making AI accessible regardless of your technical background 
+
+*  Cutting-edge strategies aligned with current market trends, ensuring your ventures stay ahead of the curve 
+
+Access your guide now and join thousands of forward-thinkers already capitalizing on AI's potential. 
+
+## [Elon Musk Ally Tells Staff ‘AI-First’ Is the Future of Key Government Agency](https://www.404media.co/things-are-going-to-get-intense-how-a-musk-ally-plans-to-push-ai-on-the-government/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research)
+
+![](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/5b17bd0a-bbe0-4b28-bd96-310a94b58c54/3a00db3eb27b3a33a1dc33648617de9a551f8f18.jpg?t=1738739124)
+
+ Thomas Shedd, the newly appointed director of Technology Transformation Services (TTS) and a former Tesla engineer, told General Services Administration (GSA) employees on Monday that the agency is adopting an “AI-first strategy.” In a meeting held both in person and on Google Meet, Shedd outlined his vision of running TTS like a “startup software company,” with a strong emphasis on automation and centralized data across federal agencies. This shift follows a wave of Musk-associated hires in key government tech roles, causing confusion among GSA staff, who have been unexpectedly asked to present their work to young, unidentified engineers. 
+
+ Shedd elaborated on several projects in the works, including the development of AI coding agents for government-wide use and increased automation in finance-related tasks. However, some experts voiced concerns about the complexities of automating government operations, warning that such projects are more difficult than they might appear. Shedd also expressed the need for a centralized federal data repository but downplayed privacy concerns, calling them "roadblocks" rather than deal-breakers. Additionally, he highlighted closer collaboration between TTS and the United States Digital Service, which had been rebranded as the "United States DOGE Service" under the Trump administration. 
+
+ During the meeting, employees pressed Shedd for clarity on workplace changes, including potential layoffs and a return-to-office mandate, but received few concrete answers. He hinted at possible workforce reductions at TTS but avoided specifics. Concerns were also raised about the young engineers attending meetings without introductions, though one reportedly revealed his identity on Monday. When asked if employees would be expected to work longer hours due to potential layoffs and increased workloads, Shedd responded that the situation remained "unclear." 
+
+## [Google erases promise not to use AI technology for weapons or surveillance](https://www.washingtonpost.com/technology/2025/02/04/google-ai-policies-weapons-harm/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research)
+
+![](https://media.cnn.com/api/v1/images/stellar/prod/gettyimages-2180164057-restricted.jpg?c=16x9&q=h_833,w_1480,c_fill)
+
+ Google has updated its AI principles, removing prior commitments not to develop artificial intelligence for weapons or surveillance. Previously, the company pledged not to pursue AI applications that could cause harm or violate human rights, but those specific prohibitions have now been dropped. In a blog post, Google executives Demis Hassabis and James Manyika justified the change by emphasizing the need for democratic nations to lead in AI development, particularly for national security purposes. This shift aligns Google with other major AI companies, such as OpenAI and Anthropic, which have already established partnerships with defense contractors. 
+
+ The decision marks a significant departure from Google's 2018 stance, which emerged after employee protests against a Pentagon contract known as Project Maven. That backlash led Google to introduce AI principles that explicitly rejected military applications. However, the increasing demand for AI in defense and security has led major tech firms, including Microsoft and Amazon, to deepen their ties with the U.S. government. Experts argue that Google’s policy update reflects this evolving landscape, with AI playing an ever-greater role in military and intelligence operations. 
+
+ Critics view this change as a contradiction of Google's past commitments and an indication of the growing influence of national security concerns on Silicon Valley. Some former employees and academics argue that Google’s previous commitments to ethical AI were largely symbolic and have now been abandoned in favor of geopolitical and economic interests. Google has also faced scrutiny over its cloud computing contracts with the Israeli government, particularly in light of its expanded AI support following recent conflicts. As AI technology advances, Google’s shift in policy signals a broader trend within the tech industry toward closer collaboration with military and government agencies. 
+
+### Other stuff
+
+* [OpenAI has undergone its first-ever rebrand](https://www.wallpaper.com/tech/openai-has-undergone-its-first-ever-rebrand-giving-fresh-life-to-chatgpt-interactions?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research), giving fresh life to ChatGPT interactions 
+
+* [Microsoft poaches DeepMind staff](https://www.ft.com/content/51bb0496-59ab-4a75-a410-14c097104594?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) behind AI podcasting feature 
+
+* [OpenAI’s Sora Filmmaking Tool](https://archive.is/Lv6tY?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) Meets Resistance in Hollywood 
+
+* [Sam Altman’s Answer to DeepSeek](https://techcrunch.com/2025/01/31/sam-altman-believes-openai-has-been-on-the-wrong-side-of-history-concerning-open-source/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) Is Giving Away OpenAI’s Tech 
+
+* [Ex-Google Engineer Charged With Espionage](https://archive.is/8K2fJ?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) to Boost AI in China 
+
+* [A man stalked a professor for six years](https://www.theguardian.com/technology/2025/feb/01/stalking-ai-chatbot-impersonator?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research). Then he used AI chatbots to lure strangers to her home 
+
+* [OpenAI used this subreddit](https://techcrunch.com/2025/01/31/openai-used-this-subreddit-to-test-ai-persuasion/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) to test AI persuasion 
+
+* [Add F*cking to Your Google Searches](https://gizmodo.com/add-fcking-to-your-google-searches-to-neutralize-ai-summaries-2000557710?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) to Neutralize AI Summaries 
+
+### All your ChatGPT images in one place 🎉
+
+**You can now search for images, see their prompts, and download all images in one place.**
+
+![](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/0bd15892-19c0-4833-ad47-2f78974b185a/divider.png)
+
+![Tools & LinkS](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/7b8cd414-f6ee-4d9b-9aba-acaf6e06ee96/ezgif.com-gif-maker__7_.gif)
+
+Editor's Pick ✨
+
+[Tana](https://tana.inc/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) - Put your notes to work with voice and AI
+
+![](https://ph-files.imgix.net/afc62af7-e842-4855-b617-6b0175dd0b0e.png?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=658&fit=max&frame=1)
+
+[Chatbase](https://www.chatbase.co/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) - AI Agents for magical customer experiences
+
+![](https://ph-files.imgix.net/24344efc-a265-4566-8cf8-c701b123f855.png?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=658&fit=max&frame=1)
+
+[Riffusion](https://www.riffusion.com/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) - Your new instrument, create the music you imagine
+
+![](https://ph-files.imgix.net/c1c8019d-4ab7-4fa5-908a-0f8f6845bd7d.png?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1013&h=720&fit=max&frame=1)
+
+[ZylerAI](https://www.zyler.ai/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) - Your AI agent for Google Analytics
+
+![](https://ph-files.imgix.net/d96baf95-b80e-48ec-9eb8-ae2b2e079005.jpeg?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=561&fit=max&frame=1)
+
+![](https://ph-files.imgix.net/16e89339-0210-44a5-9e2b-18c4fc0e0100.png?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=477&fit=max&frame=1)
+
+![](https://ph-files.imgix.net/09842313-99d8-4b30-bc14-7f582abefeaa.jpeg?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1013&h=720&fit=max&frame=1)
+
+[Zinc](https://zinc.com/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) - A simple API to help your AI agent search and order online
+
+![](https://ph-files.imgix.net/56d0f153-6369-4a60-8223-4e296bf2ca36.jpeg?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=658&fit=max&frame=1)
+
+![](https://ph-files.imgix.net/2624afe9-5add-4003-b395-84e0622d85cc.png?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=619&fit=max&frame=1)
+
+[Teamsaver.ai](https://teamsaver.ai/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) - AI agent to collect daily team updates via email
+
+![](https://ph-files.imgix.net/fefba869-0eea-4167-882b-f2cd72ad79b0.png?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=619&fit=max&frame=1)
+
+[Spika.ai](https://spika.ai/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) - Your voice, your ideas, your podcast—just a prompt away
+
+![](https://ph-files.imgix.net/86898f69-63fc-4d0a-bab9-bde926abee9f.png?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=619&fit=max&frame=1)
+
+[Orate](https://www.orate.dev/?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research) - The AI toolkit for speech
+
+![](https://ph-files.imgix.net/65cbcded-a2cd-4045-9692-325dee363c50.png?auto=compress&codec=mozjpeg&cs=strip&auto=format&fm=pjpg&w=1100&h=578&fit=max&frame=1)
+
+![](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/1eaf32c4-1400-40e3-b86d-9dca4b351a09/divider.png)
+
+![](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/1eaf32c4-1400-40e3-b86d-9dca4b351a09/divider.png)
+
+## Help share Superpower
+
+**⚡️ Be the Highlight of Someone's Day -** Think a friend would enjoy this? Go ahead and forward it. They'll thank you for it!
+
+ Hope you enjoyed today's newsletter 
+
+ ⚡️ Join over 200,000 people using the **Superpower ChatGPT** extension on **Chrome** and **Firefox**. 
+
+ OR 
+
+[![](https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/73ebcf4e-42c5-49b7-8847-2ea177cde8d5/giphy.gif)](https://www.buymeacoffee.com/ezii?utm_source=www.superpowerdaily.com&utm_medium=referral&utm_campaign=openai-unveils-a-new-chatgpt-agent-for-deep-research)
