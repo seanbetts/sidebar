@@ -120,12 +120,6 @@ class ToolMapper:
         if "--user-id" not in args:
             args.extend(["--user-id", user_id])
 
-        return {
-            "success": True,
-            "data": result,
-            "error": None
-        }
-
     def get_claude_tools(self, allowed_skills: List[str] | None = None) -> List[Dict[str, Any]]:
         """Convert tool configs to Claude tool schema."""
         return [
