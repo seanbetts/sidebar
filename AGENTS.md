@@ -33,6 +33,11 @@ ruff check backend/ && npm run lint  # lint
 **JSONB updates**
 - Must call `flag_modified(model, "field")` or changes won't persist
 
+**Naming conventions**
+- Error messages: "Invalid {resource} ID" (capitalized ID, no underscores)
+- Python identifiers: snake_case for variables/functions, PascalCase for classes
+- TypeScript identifiers: camelCase for variables/functions, PascalCase for components/types
+
 **Other constraints**
 - Fix root causes. Avoid band-aids that hide symptoms
 - Do not delete or rename unexpected files/behaviour. Stop and ask
