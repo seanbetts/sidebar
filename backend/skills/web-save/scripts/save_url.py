@@ -23,6 +23,13 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.websites_service import WebsitesService
+    from api.services.web_save_parser import (
+        ParsedPage,
+        parse_url_local,
+        build_frontmatter,
+        compute_word_count,
+        reading_time_minutes,
+    )
 except Exception:
     SessionLocal = None
     WebsitesService = None
@@ -154,12 +161,43 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
 
-    api_key = os.environ.get('JINA_API_KEY', '')
-    content = get_markdown_content(url, api_key)
-    parsed_metadata, cleaned_content = parse_jina_metadata(content)
-    title = parsed_metadata.get("title") or extract_title(cleaned_content) or urlparse(url).netloc
-    source = parsed_metadata.get("url_source") or url
-    published_at = parse_published_at(parsed_metadata.get("published_time"))
+    parsed = None
+    parse_error = None
+    try:
+        parsed = parse_url_local(url)
+    except Exception as exc:
+        parse_error = exc
+
+    if parsed is None:
+        api_key = os.environ.get('JINA_API_KEY', '')
+        content = get_markdown_content(url, api_key)
+        parsed_metadata, cleaned_content = parse_jina_metadata(content)
+        title = parsed_metadata.get("title") or extract_title(cleaned_content) or urlparse(url).netloc
+        source = parsed_metadata.get("url_source") or url
+        published_at = parse_published_at(parsed_metadata.get("published_time"))
+        word_count = compute_word_count(cleaned_content)
+        frontmatter = build_frontmatter(
+            cleaned_content,
+            meta={
+                "source": source,
+                "title": title,
+                "published_date": published_at.isoformat() if published_at else None,
+                "domain": urlparse(source).netloc,
+                "word_count": word_count,
+                "reading_time": f"{reading_time_minutes(word_count)} min",
+                "saved_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        parsed = ParsedPage(
+            title=title, content=frontmatter, source=source, published_at=published_at
+        )
+    else:
+        title = parsed.title
+        source = parsed.source
+        published_at = parsed.published_at
+
+    if parsed is None:
+        raise RuntimeError(f"Failed to parse URL: {parse_error}")
 
     db = SessionLocal()
 
@@ -170,7 +208,7 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
             user_id,
             url=url,
             title=title,
-            content=cleaned_content,
+            content=parsed.content,
             source=source,
             url_full=url,
             saved_at=datetime.now(timezone.utc),

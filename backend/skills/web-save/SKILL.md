@@ -1,15 +1,15 @@
 ---
 name: web-save
-description: Save web pages as clean markdown files using Jina.ai Reader API. Use when you need to archive articles, blog posts, documentation, or any web content for later reading or building a local knowledge base.
+description: Save web pages as clean markdown files using a local parser with optional Jina.ai fallback. Use when you need to archive articles, blog posts, documentation, or any web content for later reading or building a local knowledge base.
 ---
 
 # web-save
 
-Save web pages as markdown files using Jina.ai Reader API.
+Save web pages as markdown files using a local parser with optional Jina.ai fallback.
 
 ## Description
 
-Fetches web page content, converts it to markdown using Jina.ai's Reader API, and saves it to the database with metadata (source URL and date). Automatically extracts and uses the page title as the filename.
+Fetches web page content, converts it to markdown using a local parser, and saves it to the database with metadata. Falls back to Jina.ai when configured.
 
 ## When to Use
 
@@ -20,13 +20,13 @@ Fetches web page content, converts it to markdown using Jina.ai's Reader API, an
 
 ## Requirements
 
-- **JINA_API_KEY** environment variable must be set (stored in Doppler secrets)
 - Internet connection to fetch web content
+- **JINA_API_KEY** (optional) environment variable for fallback (stored in Doppler secrets)
 
 ## Scripts
 
 ### save_url.py
-Fetches a URL and saves it as a markdown entry in the database.
+Fetches a URL and saves it as a markdown entry in the database using the local parser (with Jina.ai fallback when configured).
 
 ```bash
 python save_url.py URL [--folder FOLDER] [--filename FILENAME] [--json]
@@ -77,8 +77,8 @@ date: 2025-12-20
 
 The skill uses:
 - **Storage**: Database (websites table)
-- **API**: Jina.ai Reader API (https://r.jina.ai/)
-- **API Key**: From `JINA_API_KEY` environment variable
+- **API**: Local parsing pipeline
+- **Fallback API**: Jina.ai Reader API (https://r.jina.ai/) when `JINA_API_KEY` is set
 
 ## Future Enhancements
 
