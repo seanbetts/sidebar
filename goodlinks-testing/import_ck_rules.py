@@ -47,6 +47,11 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         choices=["auto", "md5_host", "md5_www", "md5_etld1", "md5_https", "md5_http"],
         help="Force host mapping method.",
     )
+    parser.add_argument(
+        "--enable-etld1",
+        action="store_true",
+        help="Enable naive eTLD+1 matching (use with caution).",
+    )
     return parser.parse_args(argv)
 
 
@@ -91,15 +96,20 @@ def md5(value: str) -> str:
 
 
 def resolve_mapping(
-    hosts: list[str], rule_keys: set[str], mapping: str
+    hosts: list[str],
+    rule_keys: set[str],
+    mapping: str,
+    *,
+    enable_etld1: bool,
 ) -> tuple[str, dict[str, str], dict[str, int]]:
     methods = {
         "md5_host": lambda h: md5(h),
         "md5_www": lambda h: md5(f"www.{h}"),
-        "md5_etld1": lambda h: md5(etld1_naive(h)),
         "md5_https": lambda h: md5(f"https://{h}"),
         "md5_http": lambda h: md5(f"http://{h}"),
     }
+    if enable_etld1:
+        methods["md5_etld1"] = lambda h: md5(etld1_naive(h))
     def variants(host: str) -> list[str]:
         base = host
         with_www = f"www.{host}"
@@ -114,7 +124,7 @@ def resolve_mapping(
                 if key in rule_keys:
                     hits[host] = key
                     break
-        counts = {mapping: len(hits)}
+        counts = {mapping: len(set(hits.values()))}
         return mapping, hits, counts
 
     best_name = "md5_host"
@@ -128,7 +138,7 @@ def resolve_mapping(
                 if key in rule_keys:
                     hits[host] = key
                     break
-        counts[name] = len(hits)
+        counts[name] = len(set(hits.values()))
         if len(hits) > len(best_hits):
             best_name = name
             best_hits = hits
@@ -275,6 +285,34 @@ def collect_signature_selectors(payload: dict) -> list[str]:
     return [selector for selector in selectors if selector]
 
 
+def is_strong_selector(selector: str) -> bool:
+    strong_tokens = (
+        "data-testid",
+        "DraftEditor",
+        "public-DraftEditor",
+        "intercom-interblocks",
+        "swiper-",
+        "devsite-",
+        "sqs-",
+        "post-paywall",
+        "data-gu-name",
+    )
+    if any(token in selector for token in strong_tokens):
+        return True
+    return any(token in selector for token in (".", "#", "[")) and len(selector) > 6
+
+
+def split_selector_strength(selectors: list[str]) -> tuple[list[str], list[str]]:
+    strong: list[str] = []
+    weak: list[str] = []
+    for selector in selectors:
+        if is_strong_selector(selector):
+            strong.append(selector)
+        else:
+            weak.append(selector)
+    return strong, weak
+
+
 def main(argv: Optional[Iterable[str]] = None) -> int:
     args = parse_args(argv)
     rules_path = Path(args.rules_path)
@@ -291,7 +329,10 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     unique_hosts = sorted(set(hosts))
 
     mapping_method, host_map, mapping_counts = resolve_mapping(
-        unique_hosts, set(ck_rules.keys()), args.mapping
+        unique_hosts,
+        set(ck_rules.keys()),
+        args.mapping,
+        enable_etld1=args.enable_etld1,
     )
     reverse_map = {value: key for key, value in host_map.items()}
     overrides: dict[str, list[str]] = {}
@@ -304,14 +345,15 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                 overrides[key] = [value]
 
     rules: list[dict] = []
-    unmapped_keys: list[str] = []
+    dropped_rule_keys: list[str] = []
     inferred_hosts: dict[str, str] = {}
     unsupported_actions: list[dict] = []
     rules_with_d = []
     rules_with_ea = []
     unmapped_rules: list[dict] = []
     signature_rules = 0
-    skipped_rules = 0
+    dropped_rules = 0
+    host_rule_keys: set[str] = set()
     shape_counts: dict[str, int] = {}
 
     for key, payload in ck_rules.items():
@@ -344,18 +386,38 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                     hosts = [inferred]
         if not hosts:
             selectors = collect_signature_selectors(payload)
-            specific_selectors = [
-                selector for selector in selectors if is_specific_selector(selector)
-            ]
-            if specific_selectors:
+            specific_selectors = [selector for selector in selectors if is_specific_selector(selector)]
+            strong, weak = split_selector_strength(specific_selectors)
+            selector_overrides: dict[str, str] = {}
+            if payload.get("a"):
+                selector_overrides["article"] = payload["a"]
+            if payload.get("we"):
+                selector_overrides["wrapper"] = payload["we"]
+            phase = "pre" if selector_overrides else "post"
+            if strong:
                 signature_rules += 1
                 rules.append(
                     {
                         "id": f"goodlinks-signature-{key[:8]}",
-                        "phase": "post",
+                        "phase": phase,
                         "priority": 60,
-                        "trigger": {"dom": {"any": specific_selectors}},
-                        "selector_overrides": {},
+                        "trigger": {"dom": {"any": strong}},
+                        "selector_overrides": selector_overrides,
+                        "remove": split_selectors(payload.get("e")),
+                        "include": split_selectors(payload.get("i")),
+                        "actions": map_actions(payload.get("ac") or [])[0],
+                        "metadata": build_metadata(payload.get("m") or {}),
+                    }
+                )
+            elif len(weak) >= 2:
+                signature_rules += 1
+                rules.append(
+                    {
+                        "id": f"goodlinks-signature-{key[:8]}",
+                        "phase": phase,
+                        "priority": 60,
+                        "trigger": {"dom": {"all": weak[:2]}},
+                        "selector_overrides": selector_overrides,
                         "remove": split_selectors(payload.get("e")),
                         "include": split_selectors(payload.get("i")),
                         "actions": map_actions(payload.get("ac") or [])[0],
@@ -363,8 +425,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                     }
                 )
             else:
-                skipped_rules += 1
-                unmapped_keys.append(key)
+                dropped_rules += 1
+                dropped_rule_keys.append(key)
                 selector_summary = {
                     "a": payload.get("a"),
                     "we": payload.get("we"),
@@ -400,6 +462,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                 continue
             host_id = host.replace(".", "-")
             rule_id = f"goodlinks-{host_id}"
+            host_rule_keys.add(key)
             rules.append(
                 {
                     "id": f"{rule_id}-{key[:4]}" if len(hosts) > 1 else rule_id,
@@ -420,13 +483,13 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     report = {
         "rules_count": len(ck_rules),
         "mapped_rules": len(rules),
-        "host_rules_mapped": len([rule for rule in rules if "host" in (rule.get("trigger") or {})]),
+        "host_rules_mapped": len(host_rule_keys),
         "signature_rules_loaded": signature_rules,
-        "skipped_rules": skipped_rules,
+        "dropped_rules": dropped_rules,
         "mapping_method": mapping_method,
         "mapping_counts": mapping_counts,
         "inferred_hosts": inferred_hosts,
-        "unmapped_keys": unmapped_keys,
+        "dropped_rule_keys": dropped_rule_keys,
         "unmapped_rules": unmapped_rules,
         "unsupported_actions": unsupported_actions,
         "rules_with_ea": rules_with_ea,

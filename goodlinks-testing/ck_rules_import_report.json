@@ -1,11 +1,15 @@
 {
+  "dropped_rule_keys": [
+    "7ea1b7fb1b8e0cf07622b62d0a03f2e0",
+    "f02d01e552a6b996e04ab43ac77cc759"
+  ],
+  "dropped_rules": 2,
   "host_rules_mapped": 17,
   "inferred_hosts": {
     "c8bc0eab3517b3aa10f4efec786e42b6": "thedriftmag.com"
   },
-  "mapped_rules": 56,
+  "mapped_rules": 55,
   "mapping_counts": {
-    "md5_etld1": 5,
     "md5_host": 11,
     "md5_http": 0,
     "md5_https": 0,
@@ -35,11 +39,7 @@
     "we": 2,
     "we+e+ac": 1
   },
-  "signature_rules_loaded": 39,
-  "skipped_rules": 1,
-  "unmapped_keys": [
-    "7ea1b7fb1b8e0cf07622b62d0a03f2e0"
-  ],
+  "signature_rules_loaded": 38,
   "unmapped_rules": [
     {
       "key": "7ea1b7fb1b8e0cf07622b62d0a03f2e0",
@@ -47,6 +47,17 @@
         "a": null,
         "ac": null,
         "e": "mark",
+        "i": null,
+        "m": null,
+        "we": null
+      }
+    },
+    {
+      "key": "f02d01e552a6b996e04ab43ac77cc759",
+      "selectors": {
+        "a": null,
+        "ac": null,
+        "e": "a > svg",
         "i": null,
         "m": null,
         "we": null
