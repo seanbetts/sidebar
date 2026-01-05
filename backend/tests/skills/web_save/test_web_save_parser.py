@@ -8,7 +8,7 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
     html = """
     <html>
       <head>
-        <title>Example Article</title>
+        <title>Svelte Example Article</title>
         <meta name="author" content="Jane Doe"/>
         <meta property="article:published_time" content="2025-01-01T12:00:00Z"/>
         <link rel="canonical" href="https://example.com/article"/>
@@ -30,18 +30,19 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
 
     parsed = web_save_parser.parse_url_local("example.com/article")
 
-    assert parsed.title == "Example Article"
+    assert parsed.title == "Svelte Example Article"
     assert parsed.source == "https://example.com/article"
     assert parsed.published_at == datetime(2025, 1, 1, 12, 0, tzinfo=timezone.utc)
     assert parsed.content.startswith("---\n")
     frontmatter = parsed.content.split("---\n", 2)[1]
     data = web_save_parser.yaml.safe_load(frontmatter)
 
-    assert data["title"] == "Example Article"
+    assert data["title"] == "Svelte Example Article"
     assert data["author"] == "Jane Doe"
     assert data["published_date"] == "2025-01-01T12:00:00+00:00"
     assert data["domain"] == "example.com"
     assert data["reading_time"]
+    assert "svelte" in data["tags"]
 
 
 def test_rule_engine_removes_elements():
