@@ -331,6 +331,59 @@ def filter_non_content_images(html: str, *, domain: Optional[str] = None) -> str
     return str(soup)
 
 
+def _median(values: list[int]) -> float:
+    if not values:
+        return 0.0
+    values = sorted(values)
+    mid = len(values) // 2
+    if len(values) % 2 == 1:
+        return float(values[mid])
+    return (values[mid - 1] + values[mid]) / 2.0
+
+
+def polish_article_html(html: str) -> str:
+    """Apply safe post-extraction cleanups to article HTML."""
+    soup = BeautifulSoup(html, "html.parser")
+
+    marks = soup.find_all("mark")
+    if marks:
+        lengths = [len(mark.get_text(strip=True)) for mark in marks]
+        if len(marks) >= 5 and _median(lengths) <= 30:
+            for mark in marks:
+                mark.unwrap()
+
+    for link in soup.find_all("a"):
+        text = link.get_text(strip=True)
+        if text:
+            continue
+        children = list(link.children)
+        if not children:
+            continue
+        has_only_svg = True
+        for child in children:
+            if getattr(child, "name", None) == "svg":
+                continue
+            if getattr(child, "strip", None) is not None and not child.strip():
+                continue
+            has_only_svg = False
+            break
+        if not has_only_svg:
+            continue
+        for ancestor in link.parents:
+            tag = getattr(ancestor, "name", None)
+            if tag in {"nav", "header", "footer", "aside"}:
+                link.decompose()
+                break
+            classes = " ".join(ancestor.get("class", [])) if getattr(ancestor, "get", None) else ""
+            ident = ancestor.get("id", "") if getattr(ancestor, "get", None) else ""
+            marker = f"{classes} {ident}".lower()
+            if any(token in marker for token in ("nav", "header", "footer", "aside", "menu", "social")):
+                link.decompose()
+                break
+
+    return str(soup)
+
+
 def extract_youtube_embeds(html: str, base_url: str) -> list[str]:
     """Extract YouTube embed URLs from HTML."""
     soup = BeautifulSoup(html, "html.parser")
@@ -457,6 +510,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         metadata.update(overrides)
     domain = urlparse(final_url).netloc
     article_html = filter_non_content_images(article_html, domain=domain)
+    article_html = polish_article_html(article_html)
     article_html = normalize_image_sources(
         article_html, metadata.get("canonical") or final_url
     )

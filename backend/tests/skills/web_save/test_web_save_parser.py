@@ -433,6 +433,93 @@ def test_parse_url_local_dedupes_images(monkeypatch):
     assert parsed.content.count("images/dup.jpg") == 1
 
 
+def test_parse_url_local_removes_short_mark_highlights(monkeypatch):
+    html = """
+    <html>
+      <head><title>Marks</title></head>
+      <body>
+        <article>
+          <p><mark>One</mark> <mark>Two</mark> <mark>Three</mark></p>
+          <p><mark>Four</mark> <mark>Five</mark> <mark>Six</mark></p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "<mark>" not in parsed.content
+
+
+def test_parse_url_local_keeps_meaningful_marks(monkeypatch):
+    html = """
+    <html>
+      <head><title>Marks</title></head>
+      <body>
+        <article>
+          <p><mark>This is a long highlighted phrase that should stay.</mark></p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "<mark>" in parsed.content
+
+
+def test_parse_url_local_removes_icon_links_in_nav(monkeypatch):
+    html = """
+    <html>
+      <head><title>Icons</title></head>
+      <body>
+        <article>
+          <nav><a href="#"><svg></svg></a></nav>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "<nav>" in parsed.content
+    assert "<svg" not in parsed.content
+
+
+def test_parse_url_local_keeps_inline_icon_links(monkeypatch):
+    html = """
+    <html>
+      <head><title>Icons</title></head>
+      <body>
+        <article>
+          <p><a href="#"><svg></svg>Details</a></p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "<svg" in parsed.content
+
+
 def test_fetch_html_falls_back_to_playwright_on_forbidden(monkeypatch):
     class FakeResponse:
         def __init__(self):
