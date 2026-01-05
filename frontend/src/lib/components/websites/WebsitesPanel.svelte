@@ -5,15 +5,11 @@
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import { websitesStore } from '$lib/stores/websites';
-  import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
-  import { editorStore, currentNoteId } from '$lib/stores/editor';
   import type { WebsiteItem } from '$lib/stores/websites';
-  import { websitesAPI } from '$lib/services/api';
   import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteRow from '$lib/components/websites/WebsiteRow.svelte';
-  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
-  import { logError } from '$lib/utils/errorHandling';
+  import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
 
   const ARCHIVED_FLAG = 'archived';
 
@@ -51,6 +47,14 @@
   const PINNED_DROP_END = '__end__';
   let draggingPinnedId: string | null = null;
   let dragOverPinnedId: string | null = null;
+  const {
+    openWebsite: openWebsiteById,
+    renameWebsite,
+    pinWebsite,
+    archiveWebsite,
+    deleteWebsite,
+    updatePinnedOrder
+  } = useWebsiteActions();
 
   function closeMenu() {
     activeMenuId = null;
@@ -105,10 +109,7 @@
   }
 
   async function openWebsite(site: WebsiteItem) {
-    ingestionViewerStore.clearActive();
-    editorStore.reset();
-    currentNoteId.set(null);
-    await websitesStore.loadById(site.id);
+    await openWebsiteById(site.id);
   }
 
   function handlePinnedDragStart(event: DragEvent, siteId: string) {
@@ -137,12 +138,7 @@
     if (fromIndex === -1 || toIndex === -1) return;
     const nextOrder = [...order];
     nextOrder.splice(toIndex, 0, nextOrder.splice(fromIndex, 1)[0]);
-    websitesStore.setPinnedOrderLocal?.(nextOrder);
-    try {
-      await websitesAPI.updatePinnedOrder(nextOrder);
-    } catch (error) {
-      logError('Failed to update pinned order', error, { scope: 'websitesPanel.pinOrder' });
-    }
+    await updatePinnedOrder(nextOrder, { scope: 'websitesPanel.pinOrder' });
   }
 
   async function handlePinnedDropEnd(event: DragEvent) {
@@ -156,12 +152,7 @@
     if (fromIndex === -1) return;
     const nextOrder = [...order];
     nextOrder.push(nextOrder.splice(fromIndex, 1)[0]);
-    websitesStore.setPinnedOrderLocal?.(nextOrder);
-    try {
-      await websitesAPI.updatePinnedOrder(nextOrder);
-    } catch (error) {
-      logError('Failed to update pinned order', error, { scope: 'websitesPanel.pinOrder' });
-    }
+    await updatePinnedOrder(nextOrder, { scope: 'websitesPanel.pinOrder' });
   }
 
   function handlePinnedDragEnd() {
@@ -176,60 +167,30 @@
       isRenameDialogOpen = false;
       return;
     }
-    const response = await fetch(`/api/v1/websites/${selectedSite.id}/rename`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: trimmed })
+    const renamed = await renameWebsite(selectedSite.id, trimmed, {
+      scope: 'websitesPanel.rename'
     });
-    if (!response.ok) {
-      logError('Failed to rename website', new Error('Request failed'), {
-        scope: 'websitesPanel.rename',
-        websiteId: selectedSite.id,
-        status: response.status
-      });
-      return;
+    if (renamed) {
+      isRenameDialogOpen = false;
     }
-    websitesStore.renameLocal?.(selectedSite.id, trimmed);
-    dispatchCacheEvent('website.renamed');
-    isRenameDialogOpen = false;
   }
 
   async function handlePin(site: WebsiteItem) {
-    const response = await fetch(`/api/v1/websites/${site.id}/pin`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pinned: !site.pinned })
+    const pinned = await pinWebsite(site.id, !site.pinned, {
+      scope: 'websitesPanel.pin'
     });
-    if (!response.ok) {
-      logError('Failed to update pin', new Error('Request failed'), {
-        scope: 'websitesPanel.pin',
-        websiteId: site.id,
-        status: response.status
-      });
-      return;
+    if (pinned) {
+      closeMenu();
     }
-    websitesStore.setPinnedLocal?.(site.id, !site.pinned);
-    dispatchCacheEvent('website.pinned');
-    closeMenu();
   }
 
   async function handleArchive(site: WebsiteItem) {
-    const response = await fetch(`/api/v1/websites/${site.id}/archive`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ archived: !isArchived(site) })
+    const archived = await archiveWebsite(site.id, !isArchived(site), {
+      scope: 'websitesPanel.archive'
     });
-    if (!response.ok) {
-      logError('Failed to archive website', new Error('Request failed'), {
-        scope: 'websitesPanel.archive',
-        websiteId: site.id,
-        status: response.status
-      });
-      return;
+    if (archived) {
+      closeMenu();
     }
-    websitesStore.setArchivedLocal?.(site.id, !isArchived(site));
-    dispatchCacheEvent('website.archived');
-    closeMenu();
   }
 
   function handleDownload(site: WebsiteItem) {
@@ -250,21 +211,13 @@
 
   async function handleDelete(): Promise<boolean> {
     if (!selectedSite) return false;
-    const response = await fetch(`/api/v1/websites/${selectedSite.id}`, {
-      method: 'DELETE'
+    const deleted = await deleteWebsite(selectedSite.id, {
+      scope: 'websitesPanel.delete'
     });
-    if (!response.ok) {
-      logError('Failed to delete website', new Error('Request failed'), {
-        scope: 'websitesPanel.delete',
-        websiteId: selectedSite.id,
-        status: response.status
-      });
-      return false;
+    if (deleted) {
+      selectedSite = null;
     }
-    websitesStore.removeLocal?.(selectedSite.id);
-    dispatchCacheEvent('website.deleted');
-    selectedSite = null;
-    return true;
+    return deleted;
   }
 
   $: if (isRenameDialogOpen) {

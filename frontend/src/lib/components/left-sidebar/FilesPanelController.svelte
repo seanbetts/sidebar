@@ -3,11 +3,10 @@
   import { onDestroy, onMount } from 'svelte';
   import { treeStore } from '$lib/stores/tree';
   import { ingestionStore } from '$lib/stores/ingestion';
-  import { ingestionAPI } from '$lib/services/api';
   import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
   import { websitesStore } from '$lib/stores/websites';
   import { editorStore, currentNoteId } from '$lib/stores/editor';
-  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
+  import { useIngestionActions } from '$lib/hooks/useIngestionActions';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FilesPinnedSection from '$lib/components/left-sidebar/files/FilesPinnedSection.svelte';
@@ -22,7 +21,13 @@
   import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import type { IngestionListItem } from '$lib/types/ingestion';
-  import { logError } from '$lib/utils/errorHandling';
+  const {
+    deleteIngestion,
+    updatePinned,
+    updatePinnedOrder,
+    downloadFile,
+    renameFile
+  } = useIngestionActions();
 
   const basePath = 'documents';
 
@@ -103,19 +108,7 @@
     if (!deleteItem) return false;
     const fileId = deleteItem.file.id;
     try {
-      await ingestionAPI.delete(fileId);
-      if (ingestionViewerStore && $ingestionViewerStore?.active?.file.id === fileId) {
-        ingestionViewerStore.clearActive();
-      }
-      dispatchCacheEvent('file.deleted');
-      ingestionStore.removeItem(fileId);
-      return true;
-    } catch (error) {
-      logError('Failed to delete ingestion', error, {
-        scope: 'FilesPanelController',
-        fileId
-      });
-      return false;
+      return await deleteIngestion(fileId, { scope: 'FilesPanelController.delete' });
     } finally {
       deleteItem = null;
     }
@@ -158,22 +151,9 @@
   }
 
   async function handlePinToggle(item: IngestionListItem) {
-    try {
-      const nextPinned = !item.file.pinned;
-      await ingestionAPI.setPinned(item.file.id, nextPinned);
-      ingestionStore.updatePinned(item.file.id, nextPinned);
-      if (ingestionViewerStore) {
-        ingestionViewerStore.updatePinned(item.file.id, nextPinned);
-      }
-    } catch (error) {
-      logError('Failed to update pin', error, {
-        scope: 'FilesPanelController',
-        fileId: item.file.id,
-        pinned: !item.file.pinned
-      });
-    } finally {
-      openMenuKey = null;
-    }
+    const nextPinned = !item.file.pinned;
+    await updatePinned(item.file.id, nextPinned, { scope: 'FilesPanelController.pin' });
+    openMenuKey = null;
   }
 
   function handlePinnedDragStart(event: DragEvent, fileId: string) {
@@ -202,14 +182,7 @@
     if (fromIndex === -1 || toIndex === -1) return;
     const nextOrder = [...order];
     nextOrder.splice(toIndex, 0, nextOrder.splice(fromIndex, 1)[0]);
-    ingestionStore.setPinnedOrder(nextOrder);
-    try {
-      await ingestionAPI.updatePinnedOrder(nextOrder);
-    } catch (error) {
-      logError('Failed to update pinned order', error, {
-        scope: 'FilesPanelController'
-      });
-    }
+    await updatePinnedOrder(nextOrder, { scope: 'FilesPanelController.pinOrder' });
   }
 
   async function handlePinnedDropEnd(event: DragEvent) {
@@ -223,14 +196,7 @@
     if (fromIndex === -1) return;
     const nextOrder = [...order];
     nextOrder.push(nextOrder.splice(fromIndex, 1)[0]);
-    ingestionStore.setPinnedOrder(nextOrder);
-    try {
-      await ingestionAPI.updatePinnedOrder(nextOrder);
-    } catch (error) {
-      logError('Failed to update pinned order', error, {
-        scope: 'FilesPanelController'
-      });
-    }
+    await updatePinnedOrder(nextOrder, { scope: 'FilesPanelController.pinOrder' });
   }
 
   function handlePinnedDragEnd() {
@@ -240,23 +206,8 @@
 
   async function handleDownload(item: IngestionListItem) {
     if (!item.recommended_viewer) return;
-    try {
-      const response = await ingestionAPI.getContent(item.file.id, item.recommended_viewer);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = item.file.filename_original;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      logError('Failed to download file', error, {
-        scope: 'FilesPanelController',
-        fileId: item.file.id
-      });
-    } finally {
-      openMenuKey = null;
-    }
+    await downloadFile(item, { scope: 'FilesPanelController.download' });
+    openMenuKey = null;
   }
 
   function handleDelete(item: IngestionListItem, event?: MouseEvent) {
@@ -282,16 +233,13 @@
       : trimmed;
     isRenaming = true;
     try {
-      await ingestionAPI.rename(renameItem.file.id, filename);
-      ingestionStore.updateFilename(renameItem.file.id, filename);
-      ingestionViewerStore.updateFilename(renameItem.file.id, filename);
-      isRenameOpen = false;
-      renameItem = null;
-    } catch (error) {
-      logError('Failed to rename ingestion', error, {
-        scope: 'FilesPanelController',
-        fileId: renameItem.file.id
+      const renamed = await renameFile(renameItem.file.id, filename, {
+        scope: 'FilesPanelController.rename'
       });
+      if (renamed) {
+        isRenameOpen = false;
+        renameItem = null;
+      }
     } finally {
       isRenaming = false;
     }

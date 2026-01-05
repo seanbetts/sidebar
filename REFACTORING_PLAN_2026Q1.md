@@ -973,7 +973,8 @@ async function handleDelete(item) { /* similar */ }
 **Expand to:**
 - `frontend/src/lib/hooks/useWebsiteActions.ts`
 - `frontend/src/lib/hooks/useNoteActions.ts`
-- `frontend/src/lib/hooks/useThingsActions.ts`
+- `frontend/src/lib/hooks/useIngestionActions.ts`
+- Things task flows already use store actions; no new hook required
 
 **Example Hook:**
 ```typescript
@@ -1063,7 +1064,7 @@ async function handleRename(item) {
 - Reusable across components
 
 **Migration Strategy:**
-1. Create hooks for each domain (websites, notes, things, files)
+1. Create hooks for each domain (websites, notes, files)
 2. Write comprehensive tests for hooks
 3. Update components to use hooks
 4. Remove inline event handlers
@@ -1071,12 +1072,13 @@ async function handleRename(item) {
 **Files to Create:**
 - `frontend/src/lib/hooks/useWebsiteActions.ts`
 - `frontend/src/lib/hooks/useNoteActions.ts`
-- `frontend/src/lib/hooks/useThingsActions.ts`
+- `frontend/src/lib/hooks/useIngestionActions.ts`
 
 **Files to Modify:**
-- `frontend/src/lib/components/panels/WebsitesPanel.svelte`
-- `frontend/src/lib/components/panels/NotesPanel.svelte`
-- `frontend/src/lib/components/things/ThingsTasksContent.svelte`
+- `frontend/src/lib/components/websites/WebsitesPanel.svelte`
+- `frontend/src/lib/components/websites/WebsitesViewer.svelte`
+- `frontend/src/lib/components/left-sidebar/NotesPanel.svelte`
+- `frontend/src/lib/components/left-sidebar/FilesPanelController.svelte`
 - Other components with event handlers
 
 **Tests Required:**
@@ -1085,6 +1087,7 @@ async function handleRename(item) {
 
 **Estimated Effort:** 2 days
 **Risk:** Low - Improves testability, incremental rollout
+**Status:** Completed
 
 ---
 
@@ -1407,7 +1410,7 @@ async function handleRename(item) {
 - `frontend/src/lib/utils/errorHandling.ts` (P1-1)
 - `frontend/src/lib/hooks/useWebsiteActions.ts` (P2-1)
 - `frontend/src/lib/hooks/useNoteActions.ts` (P2-1)
-- `frontend/src/lib/hooks/useThingsActions.ts` (P2-1)
+- `frontend/src/lib/hooks/useIngestionActions.ts` (P2-1)
 
 ### Test Files (New/Modified)
 - `backend/tests/test_validation.py` (P0-4)
