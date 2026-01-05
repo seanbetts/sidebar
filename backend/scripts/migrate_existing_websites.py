@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -55,6 +56,7 @@ def migrate_websites(
     logger.info("Found %s website(s) to migrate.", total)
     migrated = 0
     failed = 0
+    error_types: Counter[str] = Counter()
 
     try:
         for website in websites:
@@ -76,15 +78,24 @@ def migrate_websites(
                     )
                     logger.info("Migrated %s (%s)", website.id, url)
                 migrated += 1
-            except Exception:
+            except Exception as exc:
                 failed += 1
-                logger.exception("Failed to migrate %s (%s)", website.id, url)
+                error_types[type(exc).__name__] += 1
+                logger.warning(
+                    "Failed to migrate %s (%s): %s",
+                    website.id,
+                    url,
+                    str(exc),
+                )
                 if stop_on_error:
                     break
     finally:
         db.close()
 
     logger.info("Migration complete. Migrated=%s Failed=%s Total=%s", migrated, failed, total)
+    if error_types:
+        summary = ", ".join(f"{name}={count}" for name, count in error_types.most_common(5))
+        logger.info("Top error types: %s", summary)
 
 
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
