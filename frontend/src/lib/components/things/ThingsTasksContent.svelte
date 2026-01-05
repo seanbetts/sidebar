@@ -160,7 +160,7 @@
     filter: invert(1);
   }
 
-  .things-loading-icon {
+  :global(.things-loading-icon) {
     margin-bottom: 0.6rem;
     opacity: 0.7;
   }

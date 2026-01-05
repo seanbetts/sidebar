@@ -225,7 +225,7 @@ SH
 chmod +x "$APP_DIR/Contents/MacOS/sideBarThingsBridge"
 
 echo "Registering Things bridge for $DEVICE_NAME..."
-RESPONSE="$(curl -s -X POST "$BACKEND_URL/api/things/bridges/install" \\
+RESPONSE="$(curl -s -X POST "$BACKEND_URL/api/v1/things/bridges/install" \\
   -H "X-Install-Token: $INSTALL_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d "{{\\"deviceId\\":\\"$DEVICE_ID\\",\\"deviceName\\":\\"$DEVICE_NAME\\",\\"baseUrl\\":\\"$BASE_URL\\",\\"capabilities\\":{{\\"read\\":true,\\"write\\":true}}}}")"

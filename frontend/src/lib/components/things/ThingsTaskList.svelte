@@ -287,7 +287,7 @@
     background: var(--color-secondary);
   }
 
-  .repeat-icon {
+  :global(.repeat-icon) {
     color: var(--color-muted-foreground);
   }
 
@@ -350,7 +350,7 @@
     background: var(--color-secondary);
   }
 
-  .task-menu-btn {
+  :global(.task-menu-btn) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -369,13 +369,13 @@
       background 160ms ease;
   }
 
-  .things-task:hover .task-menu-btn,
-  .task-menu-btn:focus-visible {
+  :global(.things-task:hover .task-menu-btn),
+  :global(.task-menu-btn:focus-visible) {
     opacity: 1;
     pointer-events: auto;
   }
 
-  .task-menu-btn:hover {
+  :global(.task-menu-btn:hover) {
     color: var(--color-foreground);
     border-color: var(--color-border);
     background: var(--color-secondary);
