@@ -1,7 +1,7 @@
 # Refactoring Backlog
 
 **Date Created:** 2026-01-05
-**Last Updated:** 2026-01-05 (Completed MED-3)
+**Last Updated:** 2026-01-05 (Completed MED-3 and MED-4)
 **Status:** Active
 
 This document tracks refactoring opportunities identified during code reviews. Items are prioritized and tracked to completion.
@@ -47,95 +47,6 @@ Issues that cause bugs, performance problems, or significant maintainability con
 ## Medium Priority
 
 Issues that impact code quality, consistency, or maintainability but don't cause immediate problems.
-
-### 🔴 MED-4: Magic Numbers Without Documentation
-**Status:** 🔴 Not Started
-**Effort:** S (1 day)
-**Impact:** Hard to understand why limits were chosen, difficult to tune
-
-**Location:**
-- `backend/api/routers/chat.py:30-31,129`
-- `backend/api/services/claude_streaming.py:55`
-- `backend/api/services/prompt_context_service.py:31-34`
-
-**Description:**
-Magic numbers scattered throughout code:
-
-```python
-# Why these specific values?
-TITLE_CACHE_TTL_SECONDS = 60 * 60  # 1 hour
-TITLE_CACHE_MAX_ENTRIES = 512      # 512 entries
-if len(words) > 5:                 # 5 words
-max_rounds = 5                     # 5 rounds
-```
-
-**Issues:**
-- No explanation for chosen values
-- Hard to tune without understanding constraints
-- Cannot easily share limits across modules
-- Future maintainers won't know reasoning
-
-**Recommended Solution:**
-
-```python
-# backend/api/config.py (or new constants.py)
-
-class ChatConstants:
-    """Chat-related configuration constants."""
-
-    # Title generation
-    TITLE_CACHE_TTL_SECONDS = 3600  # 1 hour
-    """
-    Cache title generation results for 1 hour.
-    Rationale: Titles rarely need regeneration, and caching reduces
-    API calls to Gemini. 1 hour balances freshness vs API cost.
-    """
-
-    TITLE_CACHE_MAX_ENTRIES = 512
-    """
-    LRU cache size for title generation.
-    Rationale: Based on memory constraints (512 * ~100 bytes = ~50KB).
-    Covers typical user's recent conversations without excessive memory.
-    """
-
-    TITLE_MAX_WORDS = 5
-    """
-    Maximum words in generated title.
-    Rationale: UI design shows max 50 characters. Average word length
-    ~5 chars, so 5 words ≈ 25-30 chars with spaces. Keeps titles concise.
-    """
-
-    MAX_TOOL_ROUNDS = 5
-    """
-    Maximum tool use iterations per message.
-    Rationale: Prevents infinite loops while allowing complex multi-step
-    operations. Based on testing, 95% of valid tool use completes within
-    3 rounds. 5 provides safety margin.
-    """
-
-# Usage:
-from api.config import ChatConstants
-
-if len(words) > ChatConstants.TITLE_MAX_WORDS:
-    title = " ".join(words[:ChatConstants.TITLE_MAX_WORDS])
-```
-
-**Files to Modify:**
-- `backend/api/config.py` or create `backend/api/constants.py`
-- `backend/api/routers/chat.py`
-- `backend/api/services/claude_streaming.py`
-- `backend/api/services/prompt_context_service.py`
-
-**Benefits:**
-- Centralized configuration
-- Documented reasoning
-- Easier to tune via environment variables
-- Better code readability
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
 
 ### 🔴 MED-6: Inconsistent User ID Injection Logic
 **Status:** 🔴 Not Started

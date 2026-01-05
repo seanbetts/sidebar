@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from google import genai
 from google.genai import types
 from api.config import settings
+from api.constants import ChatConstants
 from api.services.claude_client import ClaudeClient
 from api.services.user_settings_service import UserSettingsService
 from api.services.skill_catalog_service import SkillCatalogService
@@ -27,8 +28,8 @@ from api.utils.validation import parse_uuid
 router = APIRouter(prefix="/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
 
-TITLE_CACHE_TTL_SECONDS = 60 * 60
-TITLE_CACHE_MAX_ENTRIES = 512
+TITLE_CACHE_TTL_SECONDS = ChatConstants.TITLE_CACHE_TTL_SECONDS
+TITLE_CACHE_MAX_ENTRIES = ChatConstants.TITLE_CACHE_MAX_ENTRIES
 TITLE_CACHE: dict[str, dict[str, object]] = {}
 
 
@@ -126,8 +127,8 @@ def _sanitize_title(raw_title: str) -> str:
     title = " ".join(title.split())
 
     words = title.split()
-    if len(words) > 5:
-        title = " ".join(words[:5])
+    if len(words) > ChatConstants.TITLE_MAX_WORDS:
+        title = " ".join(words[:ChatConstants.TITLE_MAX_WORDS])
 
     if not title:
         raise ValueError("Invalid title after sanitization")
