@@ -16,7 +16,7 @@ def test_parse_uuid_failure():
     with pytest.raises(BadRequestError) as exc:
         parse_uuid("not-a-uuid", "note", "id")
 
-    assert "Invalid note id" in str(exc.value)
+    assert "Invalid note ID" in str(exc.value)
 
 
 def test_parse_optional_uuid_none():

@@ -26,7 +26,7 @@ def test_notes_create_folder_requires_path(test_client):
 def test_notes_get_invalid_id(test_client):
     response = test_client.get("/api/notes/not-a-uuid", headers=_auth_headers())
     assert response.status_code == 400
-    assert "Invalid note id" in error_message(response)
+    assert "Invalid note ID" in error_message(response)
 
 
 def test_notes_get_success(test_client, test_db):

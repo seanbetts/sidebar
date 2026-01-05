@@ -1128,6 +1128,7 @@ async function handleRename(item) {
 
 **Estimated Effort:** 0.5 days (documentation + high-priority fixes)
 **Risk:** Very Low - Cosmetic changes, no logic impact
+**Status:** In Progress (standardized invalid ID error messages)
 
 ---
 
@@ -1154,6 +1155,7 @@ async function handleRename(item) {
 
 **Estimated Effort:** 1 day (part of P0-2a work)
 **Risk:** Low - Internal refactoring
+**Status:** Completed
 
 ---
 
@@ -1388,6 +1390,7 @@ async function handleRename(item) {
 
 ### Backend Files (New)
 - `backend/api/routers/ingestion_helpers.py` (P0-2a)
+- `backend/api/routers/websites_helpers.py` (P2-3)
 - `backend/api/utils/validation.py` (P0-4)
 - `backend/api/services/file_search_service.py` (P0-2c)
 - `backend/api/services/tools/parameter_builders/` (directory, P0-2b)

@@ -1,91 +1,17 @@
 """Websites router for archived web content in Postgres."""
 import uuid
-from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import Response, JSONResponse
 from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
-from api.db.session import get_db, SessionLocal, set_session_user_id
+from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError
-from api.models.website import Website
-from api.services.jina_service import JinaService
-from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService, WebsiteNotFoundError
+from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
 from api.utils.validation import parse_uuid
 
 router = APIRouter(prefix="/websites", tags=["websites"])
-
-
-def _normalize_url(value: str) -> str:
-    if value.startswith(("http://", "https://")):
-        return value
-    return f"https://{value}"
-
-
-def _run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None) -> None:
-    with SessionLocal() as db:
-        set_session_user_id(db, user_id)
-        WebsiteProcessingService.update_job(db, job_id, status="running")
-        try:
-            markdown = JinaService.fetch_markdown(url)
-            metadata, cleaned = JinaService.parse_metadata(markdown)
-            resolved_title = title or metadata.get("title") or JinaService.extract_title(cleaned, url)
-            source = metadata.get("url_source") or url
-            published_at = JinaService.parse_published_at(metadata.get("published_time"))
-
-            website = WebsitesService.upsert_website(
-                db,
-                user_id,
-                url=url,
-                title=resolved_title,
-                content=cleaned,
-                source=source,
-                url_full=url,
-                saved_at=datetime.now(timezone.utc),
-                published_at=published_at,
-                pinned=False,
-                archived=False,
-            )
-            WebsiteProcessingService.update_job(
-                db,
-                job_id,
-                status="completed",
-                website_id=website.id,
-            )
-        except Exception as exc:
-            WebsiteProcessingService.update_job(
-                db,
-                job_id,
-                status="failed",
-                error_message=str(exc),
-            )
-
-
-def website_summary(website: Website) -> dict:
-    """Build a summary payload for a website record.
-
-    Args:
-        website: Website ORM object.
-
-    Returns:
-        Summary dict for list/detail responses.
-    """
-    metadata = website.metadata_ or {}
-    return {
-        "id": str(website.id),
-        "title": website.title,
-        "url": website.url,
-        "domain": website.domain,
-        "saved_at": website.saved_at.isoformat() if website.saved_at else None,
-        "published_at": website.published_at.isoformat() if website.published_at else None,
-        "pinned": metadata.get("pinned", False),
-        "pinned_order": metadata.get("pinned_order"),
-        "archived": metadata.get("archived", False),
-        "updated_at": website.updated_at.isoformat() if website.updated_at else None,
-        "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None
-    }
-
 
 @router.get("")
 async def list_websites(
@@ -181,10 +107,10 @@ async def quick_save_website(
     if not url:
         raise BadRequestError("url required")
     title = request.get("title")
-    normalized_url = _normalize_url(url)
+    normalized_url = normalize_url(url)
 
     job = WebsiteProcessingService.create_job(db, user_id, normalized_url)
-    background_tasks.add_task(_run_quick_save, job.id, user_id, normalized_url, title)
+    background_tasks.add_task(run_quick_save, job.id, user_id, normalized_url, title)
     return JSONResponse(status_code=202, content={"success": True, "data": {"job_id": str(job.id)}})
 
 
