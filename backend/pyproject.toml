@@ -92,6 +92,7 @@ python_functions = ["test_*"]
 env = [
     "TESTING=1",  # Enable test mode for Settings
 ]
+asyncio_default_fixture_loop_scope = "function"
 addopts = [
     "-v",                    # Verbose output
     "--strict-markers",      # Raise error on unknown markers
