@@ -56,10 +56,15 @@ export function createProxyHandler(options: ProxyOptions): RequestHandler {
 
       const response = await fetch(backendUrl, requestOptions);
 
+      const responseHeaders = new Headers(response.headers);
+      responseHeaders.delete('content-encoding');
+      responseHeaders.delete('content-length');
+      responseHeaders.delete('transfer-encoding');
+
       if (responseType === 'stream') {
         return new Response(response.body, {
           status: response.status,
-          headers: response.headers
+          headers: responseHeaders
         });
       }
 
@@ -67,7 +72,7 @@ export function createProxyHandler(options: ProxyOptions): RequestHandler {
         const text = await response.text();
         return new Response(text, {
           status: response.status,
-          headers: response.headers
+          headers: responseHeaders
         });
       }
 
