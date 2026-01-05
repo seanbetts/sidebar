@@ -91,7 +91,12 @@ class RuleEngine:
 
     def apply_rules(self, html: str, rules: list[Rule]) -> str:
         tree = lxml_html.fromstring(html)
+        tree = self.apply_rules_tree(tree, rules)
+        return lxml_html.tostring(tree, encoding="unicode")
 
+    def apply_rules_tree(
+        self, tree: lxml_html.HtmlElement, rules: list[Rule]
+    ) -> lxml_html.HtmlElement:
         for rule in rules:
             overrides = rule.selector_overrides or {}
             selector = overrides.get("article") or overrides.get("wrapper")
@@ -114,7 +119,7 @@ class RuleEngine:
             for action in rule.actions or []:
                 self._apply_action(tree, action)
 
-        return lxml_html.tostring(tree, encoding="unicode")
+        return tree
 
     def _matches_trigger(
         self, trigger: dict, host_info: dict, tree: lxml_html.HtmlElement

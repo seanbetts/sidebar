@@ -608,7 +608,7 @@ def test_parse_url_local_uses_substack_api(monkeypatch):
     assert "Full body" in parsed.content
 
 
-def test_parse_url_local_uses_raw_html_for_selector_override(monkeypatch):
+def test_parse_url_local_scopes_readability_with_selector_override(monkeypatch):
     html = """
     <html>
       <head><title>Raw</title></head>
@@ -621,12 +621,15 @@ def test_parse_url_local_uses_raw_html_for_selector_override(monkeypatch):
     def fake_fetch(url: str, *, timeout: int = 30):
         return html, "https://example.com/raw", False
 
+    calls = {"summary": False, "html": None}
+
     class FakeDocument:
         def __init__(self, _html: str):
-            pass
+            calls["html"] = _html
 
         def summary(self, html_partial: bool = True):
-            return "<p>Summary Content</p>"
+            calls["summary"] = True
+            return calls["html"]
 
         def short_title(self):
             return "Raw"
@@ -647,5 +650,5 @@ def test_parse_url_local_uses_raw_html_for_selector_override(monkeypatch):
     monkeypatch.setattr(web_save_parser, "Document", FakeDocument)
 
     parsed = web_save_parser.parse_url_local("example.com/raw")
+    assert calls["summary"] is True
     assert "Raw Content" in parsed.content
-    assert "Summary Content" not in parsed.content
