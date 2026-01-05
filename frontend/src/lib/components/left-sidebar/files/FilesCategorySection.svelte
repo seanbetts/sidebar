@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-svelte';
+  import type { ComponentType } from 'svelte';
   import type { IngestionListItem } from '$lib/types/ingestion';
   import FilesListItem from '$lib/components/left-sidebar/files/FilesListItem.svelte';
 
@@ -11,7 +12,7 @@
   export let hasSearchResults = false;
   export let expandedCategories: Set<string>;
   export let stripExtension: (name: string) => string;
-  export let iconForCategory: (category: string | null | undefined) => typeof import('lucide-svelte').SvelteComponent;
+  export let iconForCategory: (category: string | null | undefined) => ComponentType;
 
   export let onToggleCategory: (category: string) => void;
   export let onOpen: (item: IngestionListItem) => void;

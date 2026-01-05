@@ -161,7 +161,10 @@ def handle_insert(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
     insert_text = payload.get("insert_text")
     if insert_text is None:
         insert_text = payload.get("content")
+    if insert_text is None:
+        return error("Error: Missing insert_text parameter.")
     validate_content(insert_text)
+    assert isinstance(insert_text, str)
 
     memory = get_memory(db, user_id, path)
     if not memory:

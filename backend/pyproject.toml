@@ -83,6 +83,9 @@ dev = [
     "pydocstyle>=6.3.0", # Docstring style checking (Google style)
     "darglint>=1.8.1", # Docstring/signature validation
     "mypy>=1.19.1",
+    "alembic>=1.17.2",
+    "types-pyyaml>=6.0.12.20250915",
+    "types-tabulate>=0.9.0.20241207",
 ]
 
 [tool.pytest.ini_options]
@@ -131,3 +134,11 @@ badge-format = "svg"
 # Pydocstyle configuration (also reads from .pydocstyle file)
 convention = "google"             # Use Google-style docstrings
 add_ignore = ["D104"]             # Ignore: Missing docstring in public package
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+exclude = "api/alembic/versions"

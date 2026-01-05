@@ -12,14 +12,19 @@
   import UniversalViewerBody from '$lib/components/files/UniversalViewerBody.svelte';
   import { logError } from '$lib/utils/errorHandling';
 
+  let viewerUrlValue: string | undefined;
+
   $: active = $ingestionViewerStore.active;
   $: loading = $ingestionViewerStore.loading;
   $: error = $ingestionViewerStore.error;
   $: viewerKind = active?.recommended_viewer;
-  $: viewerUrl =
-    active && viewerKind && viewerKind !== 'viewer_video'
-      ? `/api/v1/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
-      : null;
+  $: {
+    const nextViewerUrl: string | undefined =
+      active && viewerKind && viewerKind !== 'viewer_video'
+        ? `/api/v1/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
+        : undefined;
+    viewerUrlValue = nextViewerUrl;
+  }
   $: isPdf = viewerKind === 'viewer_pdf';
   $: isAudio = viewerKind === 'audio_original';
   $: isText = viewerKind === 'text_original';
@@ -162,8 +167,8 @@
       spreadsheetActions.download();
       return;
     }
-    if (!viewerUrl || !browser) return;
-    const response = await fetch(viewerUrl, { credentials: 'include' });
+    if (!viewerUrlValue || !browser) return;
+    const response = await fetch(viewerUrlValue, { credentials: 'include' });
     if (!response.ok) return;
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
@@ -417,12 +422,12 @@
     spreadsheetActions = null;
   }
 
-  $: if (isMounted && browser && isText && viewerUrl && viewerUrl !== lastTextUrl) {
-    lastTextUrl = viewerUrl;
+  $: if (isMounted && browser && isText && viewerUrlValue && viewerUrlValue !== lastTextUrl) {
+    lastTextUrl = viewerUrlValue;
     textContent = '';
     textError = '';
     isTextLoading = true;
-    fetch(viewerUrl, { credentials: 'include' })
+    fetch(viewerUrlValue, { credentials: 'include' })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error('Failed to load text');
@@ -458,7 +463,7 @@
     isPinned={Boolean(active?.file.pinned)}
     {showMarkdownToggle}
     bind:viewMode
-    {viewerUrl}
+    viewerUrl={viewerUrlValue ?? ''}
     {hasMarkdown}
     {isCopied}
     {currentPage}
@@ -484,7 +489,7 @@
   <UniversalViewerBody
     {loading}
     {error}
-    {viewerUrl}
+    viewerUrl={viewerUrlValue ?? ''}
     viewMode={viewMode}
     {isPdf}
     {isSpreadsheet}

@@ -78,6 +78,8 @@ def upload_output_path(user_id: str, r2_path: str, local_path: Path) -> str:
     """Upload a local file to R2 and return its stored path."""
     content_type = mimetypes.guess_type(local_path.name)[0] or "application/octet-stream"
     record = upload_file(user_id, r2_path, local_path, content_type=content_type)
+    if record.path is None:
+        raise ValueError("Uploaded file missing path")
     return record.path
 
 

@@ -19,8 +19,8 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
     async def notes_create(
         title: str,
         content: str,
-        folder: str = None,
-        tags: list[str] = None,
+        folder: str | None = None,
+        tags: list[str] | None = None,
     ) -> str:
         """Create a new markdown note with metadata."""
         start_time = time.time()
@@ -46,8 +46,8 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
     async def notes_update(
         title: str,
         content: str,
-        folder: str = None,
-        note_id: str = None,
+        folder: str | None = None,
+        note_id: str | None = None,
     ) -> str:
         """Update existing note (replace content)."""
         start_time = time.time()
@@ -73,8 +73,8 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
     async def notes_append(
         title: str,
         content: str,
-        folder: str = None,
-        note_id: str = None,
+        folder: str | None = None,
+        note_id: str | None = None,
     ) -> str:
         """Append content to existing note."""
         start_time = time.time()

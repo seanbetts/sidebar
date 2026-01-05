@@ -377,7 +377,7 @@
     </div>
 
     <div class="websites-block websites-archive">
-      <Collapsible.Root defaultOpen={false} class="group/collapsible" data-collapsible-root>
+      <Collapsible.Root class="group/collapsible" data-collapsible-root>
         <div data-slot="sidebar-group" data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
           <Collapsible.Trigger
             data-slot="sidebar-group-label"

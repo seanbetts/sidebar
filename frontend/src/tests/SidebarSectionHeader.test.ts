@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/svelte';
-import { test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import SidebarSectionHeaderFixture from './SidebarSectionHeaderFixture.svelte';
 

@@ -1,10 +1,12 @@
+<script context="module" lang="ts">
+  export type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
+</script>
+
 <script lang="ts">
   import type { ThingsArea, ThingsProject, ThingsTask } from '$lib/types/things';
   import { List, Search } from 'lucide-svelte';
   import ThingsDraftForm from './ThingsDraftForm.svelte';
   import ThingsTaskList from './ThingsTaskList.svelte';
-
-  export type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
 
   export let tasks: ThingsTask[] = [];
   export let sections: { id: string; title: string; tasks: ThingsTask[] }[] = [];

@@ -41,3 +41,4 @@ export function createTreeStore() {
 }
 
 export const treeStore = createTreeStore();
+export type TreeStore = ReturnType<typeof createTreeStore>;

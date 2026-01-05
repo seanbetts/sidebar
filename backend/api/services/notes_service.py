@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -77,7 +77,7 @@ class NotesService:
         return folder == "Archive" or folder.startswith("Archive/")
 
     @staticmethod
-    def build_notes_tree(notes: Iterable[Note]) -> dict:
+    def build_notes_tree(notes: Iterable[Note]) -> dict[str, Any]:
         """Build a hierarchical notes tree for UI display.
 
         Args:
@@ -86,8 +86,14 @@ class NotesService:
         Returns:
             Tree dict with folders and note files.
         """
-        root = {"name": "notes", "path": "/", "type": "directory", "children": [], "expanded": False}
-        index: dict[str, dict] = {"": root}
+        root: dict[str, Any] = {
+            "name": "notes",
+            "path": "/",
+            "type": "directory",
+            "children": [],
+            "expanded": False
+        }
+        index: dict[str, dict[str, Any]] = {"": root}
 
         for note in notes:
             if note.title == "✏️ Scratchpad":
@@ -97,12 +103,12 @@ class NotesService:
             is_folder_marker = bool(metadata.get("folder_marker"))
             folder_parts = [part for part in folder.split("/") if part]
             current_path = ""
-            current_node = root
+            current_node: dict[str, Any] = root
 
             for part in folder_parts:
                 current_path = f"{current_path}/{part}" if current_path else part
                 if current_path not in index:
-                    node = {
+                    node: dict[str, Any] = {
                         "name": part,
                         "path": f"folder:{current_path}",
                         "type": "directory",
@@ -181,10 +187,8 @@ class NotesService:
         )
         db.add(note)
         db.flush()
-        note._snapshot_id = note.id
-        note._snapshot_updated_at = note.updated_at
+        snapshot_id = note.id
         db.commit()
-        note_id = note._snapshot_id
         try:
             db.refresh(note)
             return note
@@ -192,7 +196,7 @@ class NotesService:
             # Fall back to a fresh query if refresh is blocked by RLS visibility.
             refreshed = (
                 db.query(Note)
-                .filter(Note.user_id == user_id, Note.id == note_id, Note.deleted_at.is_(None))
+                .filter(Note.user_id == user_id, Note.id == snapshot_id, Note.deleted_at.is_(None))
                 .first()
             )
             return refreshed or note

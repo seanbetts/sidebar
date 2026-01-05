@@ -93,11 +93,11 @@ export const computeTasksViewState = (state: ThingsState): ThingsTasksViewState 
     selectionLabel = 'Inbox';
     titleIcon = Inbox;
     sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
-  } else if (selectionType === 'area') {
+  } else if (selectionType === 'area' && selection.type === 'area') {
     selectionLabel = areas.find((area) => area.id === selection.id)?.title || 'Area';
     titleIcon = Layers;
     sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
-  } else if (selectionType === 'project') {
+  } else if (selectionType === 'project' && selection.type === 'project') {
     selectionLabel = projects.find((project) => project.id === selection.id)?.title || 'Project';
     titleIcon = List;
     sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];

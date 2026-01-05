@@ -1,9 +1,10 @@
 <script lang="ts">
   import { MoreHorizontal, Pencil, Pin, PinOff, Download, Trash2 } from 'lucide-svelte';
+  import type { ComponentType } from 'svelte';
   import type { IngestionListItem } from '$lib/types/ingestion';
 
   export let item: IngestionListItem;
-  export let icon: typeof import('lucide-svelte').SvelteComponent;
+  export let icon: ComponentType;
   export let menuKey = '';
   export let openMenuKey: string | null = null;
   export let displayName = '';

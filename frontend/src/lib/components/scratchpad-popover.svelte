@@ -8,7 +8,7 @@
 	import { TableKit } from '@tiptap/extension-table';
 	import { Markdown } from 'tiptap-markdown';
 	import { TextSelection } from '@tiptap/pm/state';
-import { SquarePen } from 'lucide-svelte';
+	import { SquarePen } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import ScratchpadHeader from '$lib/components/scratchpad/ScratchpadHeader.svelte';
@@ -34,12 +34,17 @@ import { SquarePen } from 'lucide-svelte';
 	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	let isClosing = false;
 	let hasUserEdits = false;
+	type MarkdownStorage = {
+		markdown: { getMarkdown: () => string };
+	};
+	const getMarkdown = (editor: Editor) =>
+		(editor as Editor & { storage: MarkdownStorage }).storage.markdown.getMarkdown();
 
 	function applyScratchpadContent(content: string) {
 		lastSavedContent = content;
 		if (!editor) return;
 		const newContent = stripHeading(content) || '';
-		const currentEditorContent = editor.storage.markdown.getMarkdown();
+		const currentEditorContent = getMarkdown(editor);
 
 		if (currentEditorContent === newContent) {
 			return;
@@ -105,7 +110,7 @@ import { SquarePen } from 'lucide-svelte';
 
 	async function saveScratchpad() {
 		if (!editor || isUpdatingContent) return;
-		const markdown = editor.storage.markdown.getMarkdown();
+		const markdown = getMarkdown(editor);
 		await saveScratchpadContent(markdown);
 	}
 
@@ -187,7 +192,7 @@ import { SquarePen } from 'lucide-svelte';
 		isClosing = false;
 	} else if (!isOpen && editor && !isClosing) {
 		const currentEditor = editor;
-		const markdown = currentEditor.storage.markdown.getMarkdown();
+		const markdown = getMarkdown(currentEditor);
 		if (saveTimeout) clearTimeout(saveTimeout);
 		isClosing = true;
 		(async () => {

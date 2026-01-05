@@ -4,9 +4,9 @@ from __future__ import annotations
 import os
 from typing import Iterable, Optional
 
-import boto3
-from botocore.config import Config
-from botocore.exceptions import ClientError
+import boto3  # type: ignore[import-untyped]
+from botocore.config import Config  # type: ignore[import-untyped]
+from botocore.exceptions import ClientError  # type: ignore[import-untyped]
 
 from api.config import settings
 from api.services.storage.base import StorageBackend, StorageObject

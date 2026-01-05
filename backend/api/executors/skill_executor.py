@@ -100,7 +100,7 @@ class SkillExecutor:
         skill_name: str,
         script_name: str,
         args: List[str],
-        user_id: str = None,
+        user_id: str | None = None,
         expect_json: bool = True,
     ) -> Dict[str, Any]:
         """Execute skill script with resource limits and audit logging."""

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import logging
-from typing import Optional
+from typing import Pattern
 
 from api.models.file_ingestion import IngestedFile, FileDerivative
 from api.services.skill_file_ops_paths import (
@@ -25,8 +25,8 @@ class FileSearchService:
         user_id: str,
         directory: str,
         *,
-        name_pattern: Optional[object],
-        content_pattern: Optional[object],
+        name_pattern: Pattern[str] | None,
+        content_pattern: Pattern[str] | None,
         max_results: int,
     ) -> list[dict]:
         """Search ingested files by name and/or content.
@@ -105,6 +105,7 @@ class FileSearchService:
             if not derivative:
                 continue
             try:
+                assert storage is not None
                 content = storage.get_object(derivative.storage_key).decode("utf-8", errors="ignore")
             except Exception as exc:
                 logger.warning(

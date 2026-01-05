@@ -58,7 +58,7 @@ class ClaudeClient:
     async def stream_with_tools(
         self,
         message: str,
-        conversation_history: List[Dict[str, Any]] = None,
+        conversation_history: List[Dict[str, Any]] | None = None,
         system_prompt: str | None = None,
         allowed_skills: List[str] | None = None,
         tool_context: ToolExecutionContext | Dict[str, Any] | None = None,

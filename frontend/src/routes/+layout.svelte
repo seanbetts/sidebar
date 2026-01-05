@@ -27,11 +27,19 @@
 		const initialTheme = storedTheme ?? (prefersDark ? 'dark' : 'light');
 		applyThemeMode(initialTheme, false);
 
+		const supabaseUrl = data.supabaseUrl;
+		const supabaseAnonKey = data.supabaseAnonKey;
+		if (!supabaseUrl || !supabaseAnonKey) {
+			logError('Missing Supabase config', new Error('SUPABASE_URL or SUPABASE_ANON_KEY is missing'), {
+				scope: 'layout.initAuth'
+			});
+			return;
+		}
 		initAuth(
 			null,
 			data.user,
-			data.supabaseUrl,
-			data.supabaseAnonKey
+			supabaseUrl,
+			supabaseAnonKey
 		);
 		stopRealtimeListener = user.subscribe((currentUser) => {
 			if (currentUser?.id) {

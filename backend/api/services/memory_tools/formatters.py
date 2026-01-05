@@ -84,7 +84,7 @@ def format_directory_listing(path: str, memories: list[UserMemory]) -> str:
             dir_path = f"{path}/{'/'.join(parts[:depth])}"
             entries.append((dir_path, directory_size(dir_path, visible_memories)))
 
-    unique_entries = {}
+    unique_entries: dict[str, int] = {}
     for entry_path, size in entries:
         unique_entries[entry_path] = max(unique_entries.get(entry_path, 0), size)
 

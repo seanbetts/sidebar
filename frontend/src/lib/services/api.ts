@@ -1,4 +1,5 @@
 import type { Message } from '$lib/types/chat';
+import type { FileNode } from '$lib/types/file';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
 import type {
@@ -319,10 +320,13 @@ class NotesAPI {
    * @returns Tree payload with children nodes.
    * @throws Error when the request fails.
    */
-  async listTree(): Promise<{ children: unknown[] }> {
+  async listTree(): Promise<{ children: FileNode[] }> {
     const response = await fetch(`${this.baseUrl}/tree`);
     if (!response.ok) throw new Error('Failed to list notes tree');
-    return response.json();
+    const data = await response.json();
+    return {
+      children: Array.isArray(data?.children) ? (data.children as FileNode[]) : []
+    };
   }
 
   /**
@@ -333,13 +337,13 @@ class NotesAPI {
    * @returns Array of matching note items.
    * @throws Error when the request fails.
    */
-  async search(query: string, limit: number = 50): Promise<unknown[]> {
+  async search(query: string, limit: number = 50): Promise<FileNode[]> {
     const response = await fetch(`${this.baseUrl}/search?query=${encodeURIComponent(query)}&limit=${limit}`, {
       method: 'POST'
     });
     if (!response.ok) throw new Error('Failed to search notes');
     const data = await response.json();
-    return data.items || [];
+    return Array.isArray(data?.items) ? (data.items as FileNode[]) : [];
   }
 
   async updatePinnedOrder(order: string[]): Promise<void> {

@@ -197,4 +197,5 @@ function createEditorStore() {
 }
 
 export const editorStore = createEditorStore();
+export type EditorStore = ReturnType<typeof createEditorStore>;
 export const currentNoteId = writable<string | null>(null);

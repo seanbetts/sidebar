@@ -1,6 +1,11 @@
 """Centralized path validation and jailing."""
 from pathlib import Path
+from typing import TYPE_CHECKING
 from fastapi import HTTPException, status
+
+
+if TYPE_CHECKING:
+    from api.config import Settings
 
 
 class PathValidator:
@@ -34,12 +39,13 @@ class PathValidator:
     def _validate_path(self, path: str, check_writable: bool) -> Path:
         """Core path validation logic."""
         # In R2 mode, enforce string-level path rules only.
+        app_settings: "Settings | None"
         try:
-            from api.config import settings
+            from api.config import settings as app_settings
         except Exception:
-            settings = None
+            app_settings = None
 
-        if settings and settings.storage_backend.lower() == "r2":
+        if app_settings and app_settings.storage_backend.lower() == "r2":
             if ".." in path:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,

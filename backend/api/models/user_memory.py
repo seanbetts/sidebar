@@ -2,8 +2,9 @@
 from datetime import datetime, timezone
 import uuid
 
-from sqlalchemy import Column, DateTime, Text, UniqueConstraint, Index
+from sqlalchemy import DateTime, Text, UniqueConstraint, Index
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from api.db.base import Base
 
@@ -13,16 +14,16 @@ class UserMemory(Base):
 
     __tablename__ = "user_memories"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(Text, nullable=False, index=True)
-    path = Column(Text, nullable=False)
-    content = Column(Text, nullable=False)
-    created_at = Column(
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    path: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    updated_at = Column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,

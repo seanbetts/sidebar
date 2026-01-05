@@ -1,9 +1,11 @@
 """Models for file ingestion pipeline metadata."""
 from datetime import datetime, timezone
+from typing import Any
 import uuid
 
-from sqlalchemy import Column, DateTime, Text, BigInteger, ForeignKey, Index, Boolean, Integer
+from sqlalchemy import DateTime, Text, BigInteger, ForeignKey, Index, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import Mapped, mapped_column
 
 from api.db.base import Base
 
@@ -21,20 +23,28 @@ class IngestedFile(Base):
         Index("idx_ingested_files_path", "path"),
     )
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(Text, nullable=False)
-    filename_original = Column(Text, nullable=False)
-    path = Column(Text, nullable=True)
-    mime_original = Column(Text, nullable=False)
-    size_bytes = Column(BigInteger, nullable=False, default=0)
-    sha256 = Column(Text, nullable=True)
-    source_url = Column(Text, nullable=True)
-    source_metadata = Column(JSONB, nullable=True)
-    pinned = Column(Boolean, nullable=False, default=False)
-    pinned_order = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
-    last_opened_at = Column(DateTime(timezone=True), nullable=True, index=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False)
+    filename_original: Mapped[str] = mapped_column(Text, nullable=False)
+    path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mime_original: Mapped[str] = mapped_column(Text, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    sha256: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pinned_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True
+    )
+    last_opened_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
 
 class FileDerivative(Base):
@@ -46,14 +56,22 @@ class FileDerivative(Base):
         Index("idx_file_derivatives_kind", "kind"),
     )
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    file_id = Column(UUID(as_uuid=True), ForeignKey("ingested_files.id"), nullable=False)
-    kind = Column(Text, nullable=False)
-    storage_key = Column(Text, nullable=False)
-    mime = Column(Text, nullable=False)
-    size_bytes = Column(BigInteger, nullable=False, default=0)
-    sha256 = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    file_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingested_files.id"),
+        nullable=False
+    )
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    storage_key: Mapped[str] = mapped_column(Text, nullable=False)
+    mime: Mapped[str] = mapped_column(Text, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    sha256: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True
+    )
 
 
 class FileProcessingJob(Base):
@@ -66,15 +84,23 @@ class FileProcessingJob(Base):
         Index("idx_file_processing_jobs_lease_expires_at", "lease_expires_at"),
     )
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    file_id = Column(UUID(as_uuid=True), ForeignKey("ingested_files.id"), nullable=False)
-    status = Column(Text, nullable=False, default="queued")
-    stage = Column(Text, nullable=True)
-    error_code = Column(Text, nullable=True)
-    error_message = Column(Text, nullable=True)
-    attempts = Column(BigInteger, nullable=False, default=0)
-    started_at = Column(DateTime(timezone=True), nullable=True)
-    finished_at = Column(DateTime(timezone=True), nullable=True)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
-    worker_id = Column(Text, nullable=True)
-    lease_expires_at = Column(DateTime(timezone=True), nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    file_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingested_files.id"),
+        nullable=False
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="queued")
+    stage: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attempts: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True
+    )
+    worker_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

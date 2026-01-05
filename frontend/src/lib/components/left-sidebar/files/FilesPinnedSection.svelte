@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { ComponentType } from 'svelte';
   import type { IngestionListItem } from '$lib/types/ingestion';
   import FilesPinnedItem from '$lib/components/left-sidebar/files/FilesPinnedItem.svelte';
 
@@ -6,7 +7,7 @@
   export let dragOverPinnedId: string | null = null;
   export let openMenuKey: string | null = null;
   export let pinnedDropEndId = '';
-  export let iconForCategory: (category: string | null | undefined) => typeof import('lucide-svelte').SvelteComponent;
+  export let iconForCategory: (category: string | null | undefined) => ComponentType;
   export let stripExtension: (name: string) => string;
 
   export let onOpen: (item: IngestionListItem) => void;

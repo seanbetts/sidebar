@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { SvelteComponent } from 'svelte';
+  import type { ComponentType } from 'svelte';
 
-  export let icon: typeof SvelteComponent | null = null;
+  export let icon: ComponentType | null = null;
   export let title: string = 'Nothing here yet';
   export let subtitle: string | null = null;
 </script>

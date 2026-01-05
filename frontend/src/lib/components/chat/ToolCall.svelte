@@ -4,6 +4,8 @@
 
 	export let toolCall: ToolCall;
 
+	let statusVariant: 'default' | 'destructive' | 'secondary' = 'secondary';
+
 	$: statusVariant =
 		toolCall.status === 'success'
 			? 'default'

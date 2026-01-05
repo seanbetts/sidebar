@@ -52,8 +52,8 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
     @mcp.tool()
     async def fs_read(
         path: str,
-        start_line: int = None,
-        end_line: int = None,
+        start_line: int | None = None,
+        end_line: int | None = None,
     ) -> str:
         """Read file content from storage.
 
@@ -290,8 +290,8 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
     @mcp.tool()
     async def fs_search(
         directory: str = ".",
-        name_pattern: str = None,
-        content_pattern: str = None,
+        name_pattern: str | None = None,
+        content_pattern: str | None = None,
         case_sensitive: bool = False,
         max_results: int = 100,
     ) -> str:

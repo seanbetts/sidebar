@@ -61,7 +61,7 @@ async def search_files(
     """
     if not query:
         raise BadRequestError("query required")
-    return FilesWorkspaceService.search(db, user_id, query, basePath, limit=limit)
+    return FilesWorkspaceService.search(db, user_id, query, base_path=basePath, limit=limit)
 
 
 @router.post("/folder")

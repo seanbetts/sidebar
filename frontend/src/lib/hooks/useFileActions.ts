@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import type { FileNode } from '$lib/types/file';
-import type { Writable } from 'svelte/store';
+import type { EditorStore } from '$lib/stores/editor';
+import type { TreeStore } from '$lib/stores/tree/store';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { logError } from '$lib/utils/errorHandling';
 
@@ -16,19 +17,8 @@ type FileActionsContext = {
   requestDelete: () => void;
   setFolderOptions: (value: { label: string; value: string; depth: number }[]) => void;
   getDisplayName: () => string;
-  editorStore: Writable<any>;
-  treeStore: Writable<any> & {
-    load: (tree: string, force?: boolean) => Promise<void>;
-    removeNode: (tree: string, path: string) => void;
-    renameNoteNode?: (noteId: string, newName: string) => void;
-    setNotePinned?: (noteId: string, pinned: boolean) => void;
-    moveNoteNode?: (noteId: string, folder: string, options?: { archived?: boolean }) => void;
-    archiveNoteNode?: (noteId: string, archived: boolean) => void;
-    renameFolderNode?: (oldPath: string, newName: string) => void;
-    moveFolderNode?: (oldPath: string, newParent: string) => void;
-    renameWorkspaceNode?: (basePath: string, path: string, newName: string) => void;
-    moveWorkspaceNode?: (basePath: string, path: string, destination: string) => void;
-  };
+  editorStore: EditorStore;
+  treeStore: TreeStore;
 };
 
 const toFolderPath = (path: string) => path.replace(/^folder:/, '');

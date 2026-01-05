@@ -74,7 +74,7 @@ class FileTreeService:
         Returns:
             Tree dict suitable for UI rendering.
         """
-        root = {
+        root: Dict[str, Any] = {
             "name": base_path or "files",
             "path": "/",
             "type": "directory",
@@ -99,7 +99,7 @@ class FileTreeService:
             for part in parts[:-1]:
                 current = f"{current}/{part}" if current else part
                 if current not in index:
-                    node = {
+                    node: Dict[str, Any] = {
                         "name": part,
                         "path": current,
                         "type": "directory",
@@ -113,15 +113,15 @@ class FileTreeService:
             if record.category == "folder":
                 folder_path = "/".join(parts)
                 if folder_path and folder_path not in index:
-                    node = {
+                    folder_node: Dict[str, Any] = {
                         "name": parts[-1],
                         "path": folder_path,
                         "type": "directory",
                         "children": [],
                         "expanded": False,
                     }
-                    index[folder_path] = node
-                    parent_node["children"].append(node)
+                    index[folder_path] = folder_node
+                    parent_node["children"].append(folder_node)
                 continue
 
             if not parts:

@@ -52,7 +52,10 @@
 		const { assistantMessageId, userMessageId } = await chatStore.sendMessage(message);
 		const { conversationId } = get(chatStore);
 		const attachmentsForMessage = attachments
-			.filter((item) => item.status === 'ready' && item.fileId)
+			.filter(
+				(item): item is (typeof item & { fileId: string }) =>
+					item.status === 'ready' && Boolean(item.fileId)
+			)
 			.map((item) => ({
 				file_id: item.fileId,
 				filename: item.name
@@ -105,11 +108,11 @@
 			const currentLocationLevels = getCachedData<Record<string, string>>('location.levels', {
 				ttl: 30 * 60 * 1000,
 				version: '1.0'
-			});
+			}) ?? undefined;
 			const currentWeather = getCachedData<Record<string, unknown>>('weather.snapshot', {
 				ttl: 30 * 60 * 1000,
 				version: '1.0'
-			});
+			}) ?? undefined;
 			const currentTimezone =
 				typeof window !== 'undefined'
 					? Intl.DateTimeFormat().resolvedOptions().timeZone
