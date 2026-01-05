@@ -1,7 +1,7 @@
 # Refactoring Backlog
 
 **Date Created:** 2026-01-05
-**Last Updated:** 2026-01-05 (Completed MED-1 and MED-2)
+**Last Updated:** 2026-01-05 (Completed MED-3)
 **Status:** Active
 
 This document tracks refactoring opportunities identified during code reviews. Items are prioritized and tracked to completion.
@@ -47,95 +47,6 @@ Issues that cause bugs, performance problems, or significant maintainability con
 ## Medium Priority
 
 Issues that impact code quality, consistency, or maintainability but don't cause immediate problems.
-
-### 🔴 MED-3: Inconsistent API Response Formats
-**Status:** 🔴 Not Started
-**Effort:** M (2 days)
-**Impact:** Frontend needs to handle multiple response formats, harder to maintain
-
-**Location:**
-- `backend/api/routers/conversations.py:137`
-- `backend/api/routers/notes.py:345`
-- `backend/api/routers/websites.py:239`
-
-**Description:**
-Update/action endpoints return inconsistent response structures:
-
-```python
-# Pattern 1: Simple success
-return {"success": True}
-
-# Pattern 2: Success with data
-return {"success": True, "messageCount": conversation.message_count}
-
-# Pattern 3: Return updated resource
-return updated_note
-
-# Pattern 4: HTTP 204 No Content
-return Response(status_code=204)
-```
-
-**Issues:**
-- Frontend must handle 4+ response patterns
-- Harder to create generic API utilities
-- Inconsistent error handling
-- Testing complexity
-
-**Recommended Solution:**
-
-**Option 1: Always return updated resource**
-```python
-# Most RESTful approach
-@router.patch("/{note_id}")
-async def update_note(...) -> NoteResponse:
-    note = NotesService.update_note(...)
-    return NoteResponse.from_orm(note)
-```
-
-**Option 2: Standardize success responses**
-```python
-# backend/api/schemas/common.py
-class ActionResponse(BaseModel):
-    """Standard response for update/delete actions."""
-    success: bool = True
-    message: Optional[str] = None
-    data: Optional[dict] = None
-
-@router.patch("/{note_id}")
-async def update_note(...) -> ActionResponse:
-    note = NotesService.update_note(...)
-    return ActionResponse(
-        success=True,
-        message="Note updated",
-        data={"id": str(note.id), "updated_at": note.updated_at}
-    )
-```
-
-**Option 3: Use HTTP 204 for updates**
-```python
-# Cleanest for updates without response data
-@router.patch("/{note_id}", status_code=204)
-async def update_note(...) -> None:
-    NotesService.update_note(...)
-    return Response(status_code=204)
-```
-
-**Recommendation:** Choose **Option 1** (return updated resource) for consistency with REST principles and ease of use.
-
-**Files to Review:**
-- All routers in `backend/api/routers/`
-- Document decision in API.md
-
-**Tests to Update:**
-- Frontend API tests
-- Integration tests for all endpoints
-
-**Breaking Change:** Yes - requires frontend updates
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
 
 ### 🔴 MED-4: Magic Numbers Without Documentation
 **Status:** 🔴 Not Started

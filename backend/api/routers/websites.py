@@ -233,11 +233,11 @@ async def update_pin(
     pinned = bool(request.get("pinned", False))
     try:
         website_uuid = parse_uuid(website_id, "website", "id")
-        WebsitesService.update_pinned(db, user_id, website_uuid, pinned)
+        website = WebsitesService.update_pinned(db, user_id, website_uuid, pinned)
     except WebsiteNotFoundError:
         raise NotFoundError("Website", website_id)
 
-    return {"success": True}
+    return website_summary(website)
 
 
 
@@ -271,11 +271,11 @@ async def update_title(
         raise BadRequestError("title required")
     try:
         website_uuid = parse_uuid(website_id, "website", "id")
-        WebsitesService.update_website(db, user_id, website_uuid, title=title)
+        website = WebsitesService.update_website(db, user_id, website_uuid, title=title)
     except WebsiteNotFoundError:
         raise NotFoundError("Website", website_id)
 
-    return {"success": True}
+    return website_summary(website)
 
 
 @router.patch("/{website_id}/archive")
@@ -304,11 +304,11 @@ async def update_archive(
     archived = bool(request.get("archived", False))
     try:
         website_uuid = parse_uuid(website_id, "website", "id")
-        WebsitesService.update_archived(db, user_id, website_uuid, archived)
+        website = WebsitesService.update_archived(db, user_id, website_uuid, archived)
     except WebsiteNotFoundError:
         raise NotFoundError("Website", website_id)
 
-    return {"success": True}
+    return website_summary(website)
 
 
 @router.get("/{website_id}/download")
@@ -363,8 +363,12 @@ async def delete_website(
     Raises:
         NotFoundError: If not found.
     """
-    deleted = WebsitesService.delete_website(db, user_id, website_id)
+    website_uuid = parse_uuid(website_id, "website", "id")
+    website = WebsitesService.get_website(db, user_id, website_uuid, mark_opened=False)
+    if not website:
+        raise NotFoundError("Website", website_id)
+    deleted = WebsitesService.delete_website(db, user_id, website_uuid)
     if not deleted:
         raise NotFoundError("Website", website_id)
 
-    return {"success": True}
+    return website_summary(website)

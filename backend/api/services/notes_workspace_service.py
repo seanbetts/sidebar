@@ -18,6 +18,19 @@ from api.utils.search import build_text_search_filter
 class NotesWorkspaceService(WorkspaceService[Note]):
     """Workspace-facing note operations for the API layer."""
 
+    @staticmethod
+    def build_note_payload(note: Note, *, include_content: bool = True) -> dict:
+        """Build a note payload for API responses."""
+        payload = {
+            "id": str(note.id),
+            "name": f"{note.title}.md",
+            "path": str(note.id),
+            "modified": note.updated_at.timestamp() if note.updated_at else None,
+        }
+        if include_content:
+            payload["content"] = note.content
+        return payload
+
     @classmethod
     def _query_items(
         cls,
@@ -217,12 +230,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         if not note:
             raise NoteNotFoundError("Note not found")
 
-        return {
-            "content": note.content,
-            "name": f"{note.title}.md",
-            "path": str(note.id),
-            "modified": note.updated_at.timestamp() if note.updated_at else None,
-        }
+        return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
     @staticmethod
     def create_note(
@@ -259,14 +267,18 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             folder=resolved_folder
         )
         try:
-            note_id = getattr(created, "_snapshot_id", created.id)
-            updated_at = getattr(created, "_snapshot_updated_at", created.updated_at)
-            modified = updated_at.timestamp() if updated_at else None
+            return NotesWorkspaceService.build_note_payload(created, include_content=True)
         except ObjectDeletedError:
             note_id = getattr(created, "_snapshot_id", None)
             updated_at = getattr(created, "_snapshot_updated_at", None)
-            modified = updated_at.timestamp() if updated_at else None
-        return {"success": True, "modified": modified, "id": str(note_id)}
+            fallback_title = title or NotesService.extract_title(content, "Untitled Note")
+            return {
+                "id": str(note_id),
+                "name": f"{fallback_title}.md",
+                "path": str(note_id),
+                "modified": updated_at.timestamp() if updated_at else None,
+                "content": content,
+            }
 
     @staticmethod
     def update_note(db: Session, user_id: str, note_id: str, content: str) -> dict:
@@ -286,7 +298,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             raise ValueError("Invalid note ID")
 
         updated = NotesService.update_note(db, user_id, note_uuid, content)
-        return {"success": True, "modified": updated.updated_at.timestamp(), "id": str(updated.id)}
+        return NotesWorkspaceService.build_note_payload(updated, include_content=True)
 
     @staticmethod
     def rename_note(db: Session, user_id: str, note_id: str, new_name: str) -> dict:
@@ -322,7 +334,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         note.content = NotesService.update_content_title(note.content, title)
         note.updated_at = datetime.now(timezone.utc)
         db.commit()
-        return {"success": True, "newPath": str(note.id)}
+        return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
     @staticmethod
     def download_note(db: Session, user_id: str, note_id: str) -> dict:

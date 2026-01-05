@@ -339,10 +339,13 @@ async def delete_note(
         NotFoundError: If not found.
     """
     note_uuid = parse_uuid(note_id, "note", "id")
+    note = NotesService.get_note(db, user_id, note_uuid, mark_opened=False)
+    if not note:
+        raise NotFoundError("Note", note_id)
     deleted = NotesService.delete_note(db, user_id, note_uuid)
     if not deleted:
         raise NotFoundError("Note", note_id)
-    return {"success": True}
+    return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
 @router.get("/{note_id}/download")
@@ -405,10 +408,10 @@ async def update_pin(
     pinned = bool(request.get("pinned", False))
     try:
         note_uuid = parse_uuid(note_id, "note", "id")
-        NotesService.update_pinned(db, user_id, note_uuid, pinned)
+        note = NotesService.update_pinned(db, user_id, note_uuid, pinned)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
-    return {"success": True}
+    return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
 @router.patch("/{note_id}")
@@ -474,10 +477,10 @@ async def update_folder(
     folder = request.get("folder", "") or ""
     try:
         note_uuid = parse_uuid(note_id, "note", "id")
-        NotesService.update_folder(db, user_id, note_uuid, folder)
+        note = NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
-    return {"success": True}
+    return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
 @router.patch("/{note_id}/archive")
@@ -508,7 +511,7 @@ async def update_archive(
     folder = "Archive" if archived else ""
     try:
         note_uuid = parse_uuid(note_id, "note", "id")
-        NotesService.update_folder(db, user_id, note_uuid, folder)
+        note = NotesService.update_folder(db, user_id, note_uuid, folder)
     except NoteNotFoundError:
         raise NotFoundError("Note", note_id)
-    return {"success": True}
+    return NotesWorkspaceService.build_note_payload(note, include_content=True)
