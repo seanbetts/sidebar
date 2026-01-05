@@ -92,7 +92,7 @@ async def update_settings(
     Returns:
         Updated settings payload.
     """
-    updates = payload.dict(exclude_unset=True)
+    updates = payload.model_dump(exclude_unset=True)
     return SettingsResponse(**SettingsService.update_settings(db, user_id, updates))
 
 
