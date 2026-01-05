@@ -153,6 +153,31 @@ def normalize_image_sources(html: str, base_url: str) -> str:
     return str(soup)
 
 
+def extract_youtube_embeds(html: str, base_url: str) -> list[str]:
+    """Extract YouTube embed URLs from HTML."""
+    soup = BeautifulSoup(html, "html.parser")
+    embeds: list[str] = []
+    for iframe in soup.find_all("iframe"):
+        src = iframe.get("src")
+        if not src:
+            continue
+        normalized = urljoin(base_url, src)
+        if "youtube.com" in normalized or "youtu.be" in normalized:
+            if "youtube.com/embed/" in normalized:
+                video_id = normalized.split("youtube.com/embed/")[-1].split("?")[0]
+                normalized = f"https://www.youtube.com/watch?v={video_id}"
+            embeds.append(normalized)
+    # De-duplicate while preserving order
+    seen = set()
+    ordered: list[str] = []
+    for url in embeds:
+        if url in seen:
+            continue
+        seen.add(url)
+        ordered.append(url)
+    return ordered
+
+
 def build_frontmatter(markdown_text: str, *, meta: dict) -> str:
     """Build YAML frontmatter + markdown output."""
     payload = {key: value for key, value in meta.items() if value is not None}
@@ -239,6 +264,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     article_html = normalize_image_sources(
         article_html, metadata.get("canonical") or final_url
     )
+    embeds = extract_youtube_embeds(article_html, metadata.get("canonical") or final_url)
     markdown = html_to_markdown(article_html)
     if not markdown:
         raise ValueError("No readable content extracted")
@@ -255,9 +281,20 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     tags = extract_tags(markdown, domain, title)
     source_url = metadata.get("canonical") or final_url
     image_url = metadata.get("image")
-    if image_url and "![" not in markdown:
+    if image_url:
         resolved_image = urljoin(source_url, image_url)
-        markdown = f"![{title}]({resolved_image})\n\n{markdown}"
+        if resolved_image not in markdown:
+            markdown = f"![{title}]({resolved_image})\n\n{markdown}"
+
+    if embeds:
+        existing = markdown
+        lines = []
+        for embed_url in embeds:
+            if embed_url in existing:
+                continue
+            lines.append(f"[YouTube]({embed_url})")
+        if lines:
+            markdown = f"{markdown}\n\n" + "\n".join(lines)
 
     frontmatter_meta = {
         "source": metadata.get("canonical") or final_url,
