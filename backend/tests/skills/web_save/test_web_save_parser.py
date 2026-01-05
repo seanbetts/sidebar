@@ -42,3 +42,24 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
     assert data["published_date"] == "2025-01-01T12:00:00+00:00"
     assert data["domain"] == "example.com"
     assert data["reading_time"]
+
+
+def test_rule_engine_removes_elements():
+    html = "<html><body><div class='ad'>Ad</div><article><p>Keep</p></article></body></html>"
+    engine = web_save_parser.RuleEngine(
+        rules=[
+            web_save_parser.Rule(
+                id="remove-ad",
+                phase="post",
+                trigger={"dom": {"any": [".ad"]}},
+                remove=[".ad"],
+                selector_overrides={},
+            )
+        ]
+    )
+
+    matched = engine.match_rules("https://example.com", html, phase="post")
+    assert len(matched) == 1
+    cleaned = engine.apply_rules(html, matched)
+    assert "Ad" not in cleaned
+    assert "Keep" in cleaned
