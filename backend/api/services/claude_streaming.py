@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, AsyncIterator, Dict, List
 
 from api.services.web_search_builder import (
@@ -9,6 +10,8 @@ from api.services.web_search_builder import (
     serialize_web_search_result,
     web_search_status,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def stream_with_tools(
@@ -353,11 +356,22 @@ async def stream_with_tools(
                         break
 
         if current_round >= max_rounds:
-            print(f"Warning: Hit max tool rounds ({max_rounds})", flush=True)
+            logger.warning(
+                "Hit max tool rounds limit",
+                extra={
+                    "max_rounds": max_rounds,
+                    "current_round": current_round,
+                    "messages_count": len(messages),
+                },
+            )
 
     except Exception as e:
         import traceback
 
         error_details = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
-        print(f"Chat streaming error: {error_details}", flush=True)
+        logger.error(
+            "Chat streaming error",
+            exc_info=e,
+            extra={"error_details": error_details},
+        )
         yield {"type": "error", "error": str(e)}

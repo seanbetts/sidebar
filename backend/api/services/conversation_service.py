@@ -5,12 +5,13 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import cast, or_, String
+from sqlalchemy import cast, String
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.exceptions import ConversationNotFoundError
 from api.models.conversation import Conversation
+from api.utils.search import build_text_search_filter
 
 
 class ConversationService:
@@ -217,9 +218,9 @@ class ConversationService:
             .filter(
                 Conversation.user_id == user_id,
                 Conversation.is_archived.is_(False),
-                or_(
-                    Conversation.title.ilike(f"%{query}%"),
-                    Conversation.first_message.ilike(f"%{query}%"),
+                build_text_search_filter(
+                    [Conversation.title, Conversation.first_message],
+                    query,
                 ),
             )
             .order_by(Conversation.updated_at.desc())
@@ -232,7 +233,10 @@ class ConversationService:
             .filter(
                 Conversation.user_id == user_id,
                 Conversation.is_archived.is_(False),
-                cast(Conversation.messages, String).ilike(f"%{query}%"),
+                build_text_search_filter(
+                    [cast(Conversation.messages, String)],
+                    query,
+                ),
             )
             .order_by(Conversation.updated_at.desc())
             .limit(limit)
