@@ -338,3 +338,25 @@ def test_parse_url_local_normalizes_lazy_images(monkeypatch):
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert "![Lazy](https://example.com/images/lazy.jpg)" in parsed.content
+
+
+def test_parse_url_local_tracks_youtube_embed(monkeypatch):
+    html = """
+    <html>
+      <head><title>Video</title></head>
+      <body>
+        <article>
+          <iframe src="https://www.youtube.com/embed/abc123"></iframe>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article"
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "[YouTube](https://www.youtube.com/watch?v=abc123)" in parsed.content

@@ -97,6 +97,14 @@
     - ".rendered-post img"
     - ".rendered-post figure img"
 
+- id: elementor-include-images
+  phase: pre
+  trigger:
+    dom:
+      any: [".elementor-widget-container"]
+  include:
+    - ".elementor-widget-container img"
+
 - id: stackoverflow-cleanup
   phase: post
   trigger:
