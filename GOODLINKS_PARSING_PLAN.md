@@ -3001,6 +3001,10 @@ Test with diverse URLs:
 - Compare outputs side-by-side
 - Validate quality improvements
 
+**Status (2026-01-05)**:
+- ✅ Added `WEB_SAVE_MODE` with `jina|local|compare`.
+- ✅ Quick-save + skill save support compare logging for side-by-side output.
+
 ### Phase 2: Gradual Rollout (Week 3-4)
 
 - Default to local parsing for new saves

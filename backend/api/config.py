@@ -111,6 +111,7 @@ class Settings(BaseSettings):
 
     # Jina reader API
     jina_api_key: str = ""
+    web_save_mode: str = os.getenv("WEB_SAVE_MODE", "jina")
 
     # Google Places API
     google_places_api_key: str | None = None
