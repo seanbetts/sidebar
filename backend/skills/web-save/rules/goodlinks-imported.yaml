@@ -65,25 +65,27 @@
   actions: []
   metadata: {}
 - id: goodlinks-signature-f8eeeeb2
-  phase: post
+  phase: pre
   priority: 60
   trigger:
     dom:
       any:
       - .slotArticle
-  selector_overrides: {}
+  selector_overrides:
+    wrapper: .slotArticle
   remove: []
   include: []
   actions: []
   metadata: {}
 - id: goodlinks-signature-e59ca058
-  phase: post
+  phase: pre
   priority: 60
   trigger:
     dom:
       any:
       - .slotArticle
-  selector_overrides: {}
+  selector_overrides:
+    wrapper: .slotArticle
   remove: []
   include: []
   actions: []
@@ -307,7 +309,7 @@
     selector: '[class^="Subheader"]'
   metadata: {}
 - id: goodlinks-signature-4ee05d56
-  phase: post
+  phase: pre
   priority: 60
   trigger:
     dom:
@@ -316,7 +318,8 @@
       - .aside-section-container
       - .base-main-feed-card__entity-lockup
       - .whitespace-pre-wrap
-  selector_overrides: {}
+  selector_overrides:
+    wrapper: main
   remove:
   - aside
   - .update-v2-social-activity
@@ -423,14 +426,15 @@
   actions: []
   metadata: {}
 - id: goodlinks-signature-1381c2a2
-  phase: post
+  phase: pre
   priority: 60
   trigger:
     dom:
       any:
       - '#article-content'
       - '#pubinfo'
-  selector_overrides: {}
+  selector_overrides:
+    article: '#article-content'
   remove:
   - h1
   - '#pubinfo'
@@ -654,7 +658,6 @@
     dom:
       any:
       - .networkContent
-      - .tags
       - .published
       - .breadcrumb
       - .featuredBlock h1
@@ -686,7 +689,7 @@
     author:
       selector: .author > a:first-child
 - id: goodlinks-signature-d8f05be6
-  phase: post
+  phase: pre
   priority: 60
   trigger:
     dom:
@@ -694,7 +697,8 @@
       - .entry-content
       - '#jp-post-flair'
       - .author-name
-  selector_overrides: {}
+  selector_overrides:
+    article: .entry-content
   remove:
   - '#jp-post-flair'
   include: []
@@ -876,19 +880,6 @@
   - op: remove_children
     selector: .media-image-header
   metadata: {}
-- id: goodlinks-signature-f02d01e5
-  phase: post
-  priority: 60
-  trigger:
-    dom:
-      any:
-      - a > svg
-  selector_overrides: {}
-  remove:
-  - a > svg
-  include: []
-  actions: []
-  metadata: {}
 - id: goodlinks-signature-4b18e60d
   phase: post
   priority: 60
@@ -919,12 +910,9 @@
   trigger:
     dom:
       any:
-      - .ad
       - '[data-component="RecommendationBox"]'
       - .article-image
       - .article-content
-      - a > img
-      - a-lightbox > figure
   selector_overrides: {}
   remove:
   - a-img img
@@ -965,7 +953,7 @@
     position: append
   metadata: {}
 - id: goodlinks-signature-5ca20108
-  phase: post
+  phase: pre
   priority: 60
   trigger:
     dom:
@@ -978,7 +966,8 @@
       - .editorial__comments
       - .pk-footnote__container
       - .pk-c-featured-article__header-text
-  selector_overrides: {}
+  selector_overrides:
+    article: article
   remove:
   - .pk-o-share
   - .pk-c-related-channel-collection
@@ -1062,16 +1051,16 @@
   actions: []
   metadata: {}
 - id: goodlinks-signature-3a884706
-  phase: post
+  phase: pre
   priority: 60
   trigger:
     dom:
       any:
       - .article-box
       - .imagecaption
-      - '> figure'
       - .sym-rtf.w-richtext
-  selector_overrides: {}
+  selector_overrides:
+    article: .article-box
   remove: []
   include: []
   actions:
