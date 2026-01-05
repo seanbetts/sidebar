@@ -237,6 +237,23 @@ def normalize_image_sources(html: str, base_url: str) -> str:
     return str(soup)
 
 
+def prepend_hero_image(html: str, image_url: str, title: str) -> str:
+    """Ensure hero image is present near the top of the extracted HTML."""
+    if not image_url:
+        return html
+    soup = BeautifulSoup(html, "html.parser")
+    for img in soup.find_all("img"):
+        if img.get("src") == image_url:
+            return html
+    hero = soup.new_tag("img", src=image_url, alt=title or "Hero image")
+    target = soup.body or soup
+    if target.contents:
+        target.insert(0, hero)
+    else:
+        target.append(hero)
+    return str(soup)
+
+
 def is_paywalled(html: str, domain: Optional[str] = None) -> bool:
     """Detect likely paywall markers in HTML."""
     tokens = (
@@ -422,6 +439,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     """Parse a URL locally into Markdown with frontmatter."""
     normalized = ensure_url(url)
     html, final_url, used_js_rendering = fetch_html(normalized, timeout=timeout)
+    initial_html = html
+    initial_url = final_url
     engine = get_rule_engine()
     pre_rules = engine.match_rules(final_url, html, phase="pre")
     render_mode, wait_for, render_timeout = resolve_rendering_settings(pre_rules)
@@ -441,8 +460,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         except RuntimeError:
             pass
 
+    if html != initial_html or final_url != initial_url:
+        pre_rules = engine.match_rules(final_url, html, phase="pre")
+
+    raw_html = html
     metadata = extract_metadata(html, final_url)
-    pre_rules = engine.match_rules(final_url, html, phase="pre")
     if pre_rules:
         html = engine.apply_rules(html, pre_rules)
     discard_rule = next((rule for rule in pre_rules if rule.discard), None)
@@ -460,15 +482,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             published_at=None,
         )
 
-    original_dom = lxml_html.fromstring(html)
-    include_selectors = [selector for rule in pre_rules for selector in rule.include]
-    removal_selectors = [selector for rule in pre_rules for selector in rule.remove]
+    raw_dom = lxml_html.fromstring(raw_html)
+    pre_dom = lxml_html.fromstring(html)
 
     document = Document(html)
-    use_raw_html = any(
-        rule.selector_overrides.get("article") or rule.selector_overrides.get("wrapper")
-        for rule in pre_rules
-    )
     substack_payload = None
     try:
         substack_payload = fetch_substack_body_html(final_url, html, timeout=timeout)
@@ -477,20 +494,13 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if substack_payload:
         article_html, substack_meta = substack_payload
         metadata.update({key: value for key, value in substack_meta.items() if value})
-    elif use_raw_html:
-        article_html = extract_body_html(html)
     else:
         article_html = document.summary(html_partial=True)
-    if include_selectors:
-        article_html = apply_include_reinsertion(
-            article_html,
-            original_dom,
-            include_selectors,
-            removal_selectors,
-        )
     post_rules = engine.match_rules(final_url, article_html, phase="post")
     if post_rules:
-        article_html = engine.apply_rules(article_html, post_rules)
+        post_tree = lxml_html.fromstring(article_html)
+        post_tree = engine.apply_rules_tree(post_tree, post_rules)
+        article_html = lxml_html.tostring(post_tree, encoding="unicode")
     discard_rule = next((rule for rule in post_rules if rule.discard), None)
     if discard_rule:
         content = _discard_frontmatter(
@@ -508,12 +518,40 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     overrides = extract_metadata_overrides(article_html, post_rules)
     if overrides:
         metadata.update(overrides)
+    include_selectors = [
+        selector for rule in pre_rules + post_rules for selector in rule.include
+    ]
+    removal_selectors = [selector for rule in post_rules for selector in rule.remove]
+    reinsert_dom = raw_dom
+    if any(rule.selector_overrides for rule in pre_rules):
+        reinsert_dom = pre_dom
+        removal_selectors = [
+            selector for rule in pre_rules + post_rules for selector in rule.remove
+        ]
+    if include_selectors:
+        article_html = apply_include_reinsertion(
+            article_html,
+            reinsert_dom,
+            include_selectors,
+            removal_selectors,
+        )
     domain = urlparse(final_url).netloc
     article_html = filter_non_content_images(article_html, domain=domain)
     article_html = polish_article_html(article_html)
     article_html = normalize_image_sources(
         article_html, metadata.get("canonical") or final_url
     )
+    title = (
+        metadata.get("title")
+        or document.short_title()
+        or document.title()
+        or urlparse(final_url).netloc
+    )
+    source_url = metadata.get("canonical") or final_url
+    image_url = metadata.get("image")
+    if image_url:
+        resolved_image = urljoin(source_url, image_url)
+        article_html = prepend_hero_image(article_html, resolved_image, title)
     embeds = extract_youtube_embeds(article_html, metadata.get("canonical") or final_url)
     markdown = html_to_markdown(article_html)
     if not markdown:
@@ -538,22 +576,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             )
         raise ValueError("No readable content extracted")
 
-    title = (
-        metadata.get("title")
-        or document.short_title()
-        or document.title()
-        or urlparse(final_url).netloc
-    )
     published_at = parse_datetime(metadata.get("published"))
     word_count = compute_word_count(markdown)
     domain = urlparse(final_url).netloc
     tags = extract_tags(markdown, domain, title)
     source_url = metadata.get("canonical") or final_url
-    image_url = metadata.get("image")
-    if image_url:
-        resolved_image = urljoin(source_url, image_url)
-        if resolved_image not in markdown:
-            markdown = f"![{title}]({resolved_image})\n\n{markdown}"
 
     if embeds:
         existing = markdown
