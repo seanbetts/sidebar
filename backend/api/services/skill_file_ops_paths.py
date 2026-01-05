@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import os
 from pathlib import Path
 
 from api.db.session import SessionLocal, set_session_user_id
@@ -100,6 +101,8 @@ def relative_path(base_path: str, full_path: str) -> str:
 def session_for_user(user_id: str):
     """Provide a DB session scoped to a user ID."""
     db = SessionLocal()
+    if os.getenv("TESTING"):
+        db.info["force_public_search_path"] = True
     set_session_user_id(db, user_id)
     try:
         yield db

@@ -3,13 +3,15 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from api.auth import bearer_scheme
+import os
 from api.config import settings
 from sqlalchemy import text
 from api.models.user_settings import UserSettings
 from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
 
 
-DEFAULT_USER_ID = settings.default_user_id
+_test_user_id = os.getenv("TEST_USER_ID") if os.getenv("TESTING") else None
+DEFAULT_USER_ID = _test_user_id or settings.default_user_id
 
 
 async def get_current_user_id(
