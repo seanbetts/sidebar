@@ -316,3 +316,25 @@ def test_parse_url_local_includes_hero_image(monkeypatch):
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert "![Image Test](https://images.example.com/hero.jpg)" in parsed.content
+
+
+def test_parse_url_local_normalizes_lazy_images(monkeypatch):
+    html = """
+    <html>
+      <head><title>Lazy</title></head>
+      <body>
+        <article>
+          <img data-src="/images/lazy.jpg" alt="Lazy"/>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article"
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "![Lazy](https://example.com/images/lazy.jpg)" in parsed.content

@@ -100,6 +100,23 @@
     - ".article-share"
     - "#promotional"
 
+- id: arstechnica-include-images
+  phase: pre
+  trigger:
+    host:
+      ends_with: "arstechnica.com"
+  include:
+    - "article img"
+    - ".article-content img"
+
+- id: stratechery-include-images
+  phase: pre
+  trigger:
+    host:
+      ends_with: "stratechery.com"
+  include:
+    - ".entry-content img"
+
 - id: hackernews-cleanup
   phase: post
   trigger:
