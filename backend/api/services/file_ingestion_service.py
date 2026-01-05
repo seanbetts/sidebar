@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
+from api.utils.pinned_order import lock_pinned_order
 
 
 class FileIngestionService:
@@ -192,6 +193,7 @@ class FileIngestionService:
         record.pinned = pinned
         if pinned:
             if record.pinned_order is None:
+                lock_pinned_order(db, user_id, "ingested_files")
                 max_order = (
                     db.query(func.max(IngestedFile.pinned_order))
                     .filter(

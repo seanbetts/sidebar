@@ -50,3 +50,31 @@ def test_list_ingestions_filters_by_user(db_session):
 
     assert len(records) == 1
     assert records[0].user_id == "user-1"
+
+
+def test_update_pinned_assigns_next_order(db_session):
+    file_a = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="a.txt",
+        path="a.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )[0]
+    file_b = FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="b.txt",
+        path="b.txt",
+        mime_original="text/plain",
+        size_bytes=10,
+    )[0]
+
+    FileIngestionService.update_pinned(db_session, "user-1", file_a.id, True)
+    FileIngestionService.update_pinned(db_session, "user-1", file_b.id, True)
+
+    refreshed_a = FileIngestionService.get_file(db_session, "user-1", file_a.id)
+    refreshed_b = FileIngestionService.get_file(db_session, "user-1", file_b.id)
+
+    assert refreshed_a.pinned_order == 0
+    assert refreshed_b.pinned_order == 1

@@ -194,6 +194,14 @@ async def test_stream_with_tools_emits_error_on_exception():
         async def execute_tool(self, name, input, allowed_skills=None, context=None):
             raise RuntimeError("boom")
 
+    class DummyDB:
+        def __init__(self):
+            self.rolled_back = False
+
+        def rollback(self):
+            self.rolled_back = True
+
+    dummy_db = DummyDB()
     output = []
     async for event in stream_with_tools(
         client=FakeClient(events),
@@ -202,8 +210,10 @@ async def test_stream_with_tools_emits_error_on_exception():
         message="Hi",
         conversation_history=[],
         allowed_skills=[],
+        tool_context={"db": dummy_db},
     ):
         output.append(event)
 
     assert output[-1]["type"] == "error"
     assert output[-1]["error"] == "boom"
+    assert dummy_db.rolled_back is True

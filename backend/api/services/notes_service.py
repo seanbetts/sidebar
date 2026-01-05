@@ -14,6 +14,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 
 from api.models.note import Note
 from api.schemas.filters import NoteFilters
+from api.utils.pinned_order import lock_pinned_order
 from api.utils.validation import parse_uuid
 from api.utils.metadata_helpers import get_max_pinned_order
 from api.exceptions import BadRequestError, NoteNotFoundError
@@ -315,6 +316,7 @@ class NotesService:
         metadata["pinned"] = pinned
         if pinned:
             if metadata.get("pinned_order") is None:
+                lock_pinned_order(db, user_id, "notes")
                 metadata["pinned_order"] = get_max_pinned_order(db, Note, user_id) + 1
         else:
             metadata.pop("pinned_order", None)

@@ -400,6 +400,9 @@ function createChatStore() {
 		},
 
 		clearLastConversation,
+		cleanup() {
+			toolState.cleanup?.();
+		},
 
 		setActiveTool: toolState.setActiveTool,
 		finalizeActiveTool: toolState.finalizeActiveTool,

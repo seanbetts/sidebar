@@ -11,6 +11,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
+from api.utils.pinned_order import lock_pinned_order
 from api.exceptions import WebsiteNotFoundError
 from api.utils.metadata_helpers import get_max_pinned_order
 from api.utils.search import build_text_search_filter
@@ -308,6 +309,7 @@ class WebsitesService:
         metadata["pinned"] = pinned
         if pinned:
             if metadata.get("pinned_order") is None:
+                lock_pinned_order(db, user_id, "websites")
                 metadata["pinned_order"] = get_max_pinned_order(db, Website, user_id) + 1
         else:
             metadata.pop("pinned_order", None)

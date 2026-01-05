@@ -1,7 +1,9 @@
 """Workspace file operations backed by ingestion."""
 from __future__ import annotations
 
+import logging
 import mimetypes
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +18,7 @@ from api.services.skill_file_ops_ingestion import write_text as write_ingested_t
 from api.services.workspace_service import WorkspaceService
 
 storage_backend = get_storage_backend()
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -83,6 +86,38 @@ def _pick_download_derivative(db: Session, file_id) -> FileDerivative | None:
         if kind in by_kind:
             return by_kind[kind]
     return derivatives[0] if derivatives else None
+
+
+def _cleanup_file_derivatives(
+    db: Session,
+    file_id: uuid.UUID,
+    derivatives: list[FileDerivative],
+    *,
+    user_id: str,
+    path: str,
+) -> bool:
+    failed_keys: list[str] = []
+    for derivative in derivatives:
+        try:
+            storage_backend.delete_object(derivative.storage_key)
+        except Exception as exc:
+            failed_keys.append(derivative.storage_key)
+            logger.warning(
+                "Failed to delete derivative storage object",
+                exc_info=exc,
+                extra={
+                    "user_id": user_id,
+                    "file_id": str(file_id),
+                    "path": path,
+                    "storage_key": derivative.storage_key,
+                },
+            )
+    if failed_keys:
+        return False
+    if derivatives:
+        db.query(FileDerivative).filter(FileDerivative.file_id == file_id).delete()
+        db.commit()
+    return True
 
 
 def _strip_frontmatter(content: str) -> str:
@@ -320,33 +355,66 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
             job = db.query(FileProcessingJob).filter(FileProcessingJob.file_id == record.id).first()
             if job and job.status not in {"ready", "failed", "canceled"}:
                 raise HTTPException(status_code=409, detail="File is still processing")
-            derivatives = (
-                db.query(FileDerivative)
-                .filter(FileDerivative.file_id == record.id)
-                .all()
-            )
-            for item in derivatives:
-                storage_backend.delete_object(item.storage_key)
-            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
             record.deleted_at = datetime.now(timezone.utc)
             db.commit()
+            try:
+                derivatives = (
+                    db.query(FileDerivative)
+                    .filter(FileDerivative.file_id == record.id)
+                    .all()
+                )
+                _cleanup_file_derivatives(
+                    db,
+                    record.id,
+                    derivatives,
+                    user_id=user_id,
+                    path=full_path,
+                )
+            except Exception as exc:
+                logger.error(
+                    "Failed to cleanup file derivatives after deletion",
+                    exc_info=exc,
+                    extra={
+                        "user_id": user_id,
+                        "file_id": str(record.id),
+                        "path": full_path,
+                    },
+                )
             return {"success": True}
 
         records = _list_prefix(db, user_id, full_path)
         if not records:
             raise HTTPException(status_code=404, detail="Item not found")
 
+        now = datetime.now(timezone.utc)
         for item in records:
-            derivatives = (
-                db.query(FileDerivative)
-                .filter(FileDerivative.file_id == item.id)
-                .all()
-            )
-            for derivative in derivatives:
-                storage_backend.delete_object(derivative.storage_key)
-            db.query(FileDerivative).filter(FileDerivative.file_id == item.id).delete()
-            item.deleted_at = datetime.now(timezone.utc)
+            item.deleted_at = now
         db.commit()
+
+        for item in records:
+            try:
+                derivatives = (
+                    db.query(FileDerivative)
+                    .filter(FileDerivative.file_id == item.id)
+                    .all()
+                )
+                _cleanup_file_derivatives(
+                    db,
+                    item.id,
+                    derivatives,
+                    user_id=user_id,
+                    path=item.path or full_path,
+                )
+            except Exception as exc:
+                logger.error(
+                    "Failed to cleanup file derivatives after folder deletion",
+                    exc_info=exc,
+                    extra={
+                        "user_id": user_id,
+                        "file_id": str(item.id),
+                        "path": item.path,
+                    },
+                )
         return {"success": True}
 
     @staticmethod

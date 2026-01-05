@@ -383,4 +383,14 @@ async def stream_with_tools(
             exc_info=e,
             extra={"error_details": error_details},
         )
+        if context_dict:
+            db = context_dict.get("db")
+            if db:
+                try:
+                    db.rollback()
+                except Exception as rollback_error:
+                    logger.error(
+                        "Failed to rollback streaming session",
+                        exc_info=rollback_error,
+                    )
         yield {"type": "error", "error": str(e)}
