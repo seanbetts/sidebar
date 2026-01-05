@@ -28,7 +28,8 @@ try:
         parse_url_local,
         build_frontmatter,
         compute_word_count,
-        reading_time_minutes,
+        calculate_reading_time,
+        extract_tags,
     )
 except Exception:
     SessionLocal = None
@@ -176,15 +177,18 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
         source = parsed_metadata.get("url_source") or url
         published_at = parse_published_at(parsed_metadata.get("published_time"))
         word_count = compute_word_count(cleaned_content)
+        domain = urlparse(source).netloc
+        tags = extract_tags(cleaned_content, domain, title)
         frontmatter = build_frontmatter(
             cleaned_content,
             meta={
                 "source": source,
                 "title": title,
                 "published_date": published_at.isoformat() if published_at else None,
-                "domain": urlparse(source).netloc,
+                "domain": domain,
                 "word_count": word_count,
-                "reading_time": f"{reading_time_minutes(word_count)} min",
+                "reading_time": calculate_reading_time(word_count),
+                "tags": tags,
                 "saved_at": datetime.now(timezone.utc).isoformat(),
             },
         )

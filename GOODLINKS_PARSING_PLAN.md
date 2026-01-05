@@ -2555,6 +2555,11 @@ author: {author}
 
 **Tasks**:
 
+**Status (2026-01-05)**:
+- ✅ Keyword-based tagging implemented.
+- ✅ Reading time calculation implemented.
+- ✅ Frontmatter updated with `tags`.
+
 1. **Simple Keyword-Based Tagging** (`parsers/tagger.py`):
    ```python
    import re
