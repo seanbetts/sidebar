@@ -6,7 +6,7 @@ from pypdf import PdfReader
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_transfer import prepare_input_path, storage_is_r2, temp_root
+from api.services.skill_file_transfer import prepare_input_path, storage_is_r2, temp_root  # noqa: E402
 
 
 # Script for Claude to run to determine whether a PDF has fillable form fields. See forms.md.

@@ -10,12 +10,12 @@ import json
 import argparse
 import re
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_ops import search_entries
+from api.services.skill_file_ops import search_entries  # noqa: E402
 
 
 def search_files(

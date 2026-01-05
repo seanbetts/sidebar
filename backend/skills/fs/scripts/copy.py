@@ -20,7 +20,7 @@ elif str(SCRIPT_DIR) in sys.path:
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_ops_ingestion import copy_path
+from api.services.skill_file_ops_ingestion import copy_path  # noqa: E402
 
 
 def copy_entry(

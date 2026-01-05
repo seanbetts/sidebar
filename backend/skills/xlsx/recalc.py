@@ -15,7 +15,7 @@ from openpyxl import load_workbook
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_transfer import (
+from api.services.skill_file_transfer import (  # noqa: E402
     prepare_input_path,
     upload_output_path,
     storage_is_r2,

@@ -137,12 +137,12 @@ if not os.getenv("SUPABASE_PROJECT_ID"):
     )
 
 # Ensure all SQLAlchemy models are registered before metadata operations.
-from api.models.conversation import Conversation  # noqa: F401
-from api.models.note import Note  # noqa: F401
-from api.models.website import Website  # noqa: F401
-from api.models.user_settings import UserSettings  # noqa: F401
-from api.models.user_memory import UserMemory  # noqa: F401
-from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob  # noqa: F401
+from api.models.conversation import Conversation  # noqa: F401, E402
+from api.models.note import Note  # noqa: F401, E402
+from api.models.website import Website  # noqa: F401, E402
+from api.models.user_settings import UserSettings  # noqa: F401, E402
+from api.models.user_memory import UserMemory  # noqa: F401, E402
+from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob  # noqa: F401, E402
 
 
 @pytest.fixture
@@ -273,7 +273,7 @@ def mock_drive_service():
 
     Returns a MagicMock that simulates the Google Drive API client with common operations.
     """
-    from unittest.mock import MagicMock, Mock
+    from unittest.mock import MagicMock
 
     service = MagicMock()
 
@@ -361,14 +361,6 @@ def test_db_engine():
     """
     from sqlalchemy import create_engine, text
     from api.db.base import Base
-    from api.models import (
-        conversation,
-        note,
-        website,
-        user_settings,
-        user_memory,
-        file_ingestion,
-    )
 
     # Use the test database URL
     test_db_url = os.getenv("DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test")

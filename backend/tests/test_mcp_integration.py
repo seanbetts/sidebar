@@ -6,7 +6,6 @@ Tests end-to-end workflows through the actual MCP API.
 """
 import json
 import os
-from pathlib import Path
 
 import pytest
 from fastapi import FastAPI, Request
@@ -146,7 +145,7 @@ class TestFilesystemOperations:
         # Cleanup any existing test files
         try:
             mcp_client.call_tool("fs_delete", {"path": "documents/copy.txt"})
-        except:
+        except Exception:
             pass
 
         # Create source file
@@ -184,11 +183,11 @@ class TestFilesystemOperations:
         # Cleanup any existing test files
         try:
             mcp_client.call_tool("fs_delete", {"path": "documents/old-name.txt"})
-        except:
+        except Exception:
             pass
         try:
             mcp_client.call_tool("fs_delete", {"path": "documents/new-name.txt"})
-        except:
+        except Exception:
             pass
 
         # Create a file to rename
@@ -231,11 +230,11 @@ class TestFilesystemOperations:
         # Cleanup any existing test files
         try:
             mcp_client.call_tool("fs_delete", {"path": "documents/to-move.txt"})
-        except:
+        except Exception:
             pass
         try:
             mcp_client.call_tool("fs_delete", {"path": "notes/moved-file.txt"})
-        except:
+        except Exception:
             pass
 
         # Create source file

@@ -417,8 +417,6 @@ def transcribe_audio(
 
     path = Path(file_path)
     temp_root = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="audio-input-"))
-    cleanup_temp = temp_dir is None
-
     if not path.exists() or not path.is_file():
         if not user_id or download_file is None:
             raise FileNotFoundError(f"Audio file not found: {file_path}")
@@ -509,7 +507,7 @@ def transcribe_audio(
             transcript = response.get('text', '')
             usage_info = response.get('usage')
 
-        print(f"✅ Transcription complete!")
+        print("✅ Transcription complete!")
         print(f"📊 Total words: {len(transcript.split())}")
 
         output_path = save_transcript(

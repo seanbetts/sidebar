@@ -7,6 +7,7 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError
+from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService, WebsiteNotFoundError
 from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
 from api.utils.validation import parse_uuid

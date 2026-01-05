@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Any
 
 from api.prompt_config import (
-    CONTEXT_GUIDANCE_TEMPLATE,
     CURRENT_OPEN_ATTACHMENTS_HEADER,
     CURRENT_OPEN_CONTENT_HEADER,
     CURRENT_OPEN_EMPTY_TEXT,
@@ -23,12 +22,10 @@ from api.prompt_config import (
     RECENT_ACTIVITY_NOTES_HEADER,
     RECENT_ACTIVITY_WEBSITES_HEADER,
     RECENT_ACTIVITY_WRAPPER_TEMPLATE,
-    SUPPORTED_VARIABLES,
     SYSTEM_PROMPT_TEMPLATE,
 )
 from api.prompt_formatters import (
     calculate_age,
-    detect_operating_system,
     format_location_levels,
     format_weather,
     truncate_content,

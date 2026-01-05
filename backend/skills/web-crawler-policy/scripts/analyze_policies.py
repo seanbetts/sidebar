@@ -14,7 +14,6 @@ import argparse
 import asyncio
 import csv
 import os
-import time
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
@@ -783,7 +782,7 @@ def create_output_table(permission_data: Dict, domains: Set[str], main_domain: s
                     all_directives.update(domain_data.get('rules', {}).keys())
 
             if all_directives:
-                output_parts.append(f"\nLLMs.txt Directives Found:")
+                output_parts.append("\nLLMs.txt Directives Found:")
                 output_parts.append("-" * 30)
                 headers = ['Directive'] + ordered_domains
                 rows = []

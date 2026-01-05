@@ -3,7 +3,7 @@
 import yaml
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 
 SKILLS_DIR = Path(__file__).parent.parent / "skills"

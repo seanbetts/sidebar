@@ -8,7 +8,6 @@ Download YouTube videos or audio using yt-dlp with automatic format conversion.
 import sys
 import json
 import argparse
-import os
 import subprocess
 import time
 import urllib.parse
@@ -277,7 +276,7 @@ def download_youtube(
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Extract info without downloading
             if not quiet:
-                print(f"Fetching video information...")
+                print("Fetching video information...")
             info = ydl.extract_info(processed_url, download=False)
 
             if not info:
@@ -292,7 +291,7 @@ def download_youtube(
 
             # Download
             if not quiet:
-                print(f"Starting download...")
+                print("Starting download...")
             ydl.download([processed_url])
 
             # Verify output (video only)

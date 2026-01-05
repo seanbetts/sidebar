@@ -7,7 +7,7 @@ from pypdf import PdfReader
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_transfer import (
+from api.services.skill_file_transfer import (  # noqa: E402
     prepare_input_path,
     prepare_output_path,
     upload_output_path,

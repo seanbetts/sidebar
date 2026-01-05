@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
 from typing import Iterable, Optional
 
 import boto3
@@ -33,7 +32,7 @@ class R2Storage(StorageBackend):
         """
         self.bucket = bucket
         verify_value = os.getenv("R2_SSL_VERIFY", "true").lower()
-        verify = not (verify_value in {"0", "false", "no", "off"})
+        verify = verify_value not in {"0", "false", "no", "off"}
         if not verify and settings.app_env in {"prod", "production"}:
             raise ValueError("R2 SSL verification cannot be disabled in production.")
 

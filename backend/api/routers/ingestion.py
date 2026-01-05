@@ -14,6 +14,7 @@ from api.db.session import get_db
 from api.exceptions import (
     BadRequestError,
     ConflictError,
+    InternalServerError,
     NotFoundError,
     RangeNotSatisfiableError,
 )
