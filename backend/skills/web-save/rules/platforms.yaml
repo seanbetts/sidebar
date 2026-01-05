@@ -1,0 +1,97 @@
+- id: wordpress-cleanup
+  phase: post
+  trigger:
+    dom:
+      any: [".wp-block-post-content", ".wp-block-group"]
+  remove:
+    - ".sharedaddy"
+    - ".jp-relatedposts"
+    - "#comments"
+    - ".comment-respond"
+
+- id: ghost-cleanup
+  phase: post
+  trigger:
+    dom:
+      any: [".gh-content"]
+  remove:
+    - ".gh-post-upgrade-cta"
+    - ".gh-post-subscribe-cta"
+    - ".gh-post-tags"
+
+- id: squarespace-cleanup
+  phase: post
+  trigger:
+    dom:
+      any: [".sqs-block", ".sqs-block-content"]
+  remove:
+    - ".sqs-announcement-bar"
+    - ".sqs-cookie-banner"
+    - ".sqs-block-newsletter"
+
+- id: substack-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "substack.com"
+  remove:
+    - ".post-footer"
+    - ".subscription-widget-wrap"
+    - ".comments"
+
+- id: github-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "github.com"
+  remove:
+    - ".js-header-wrapper"
+    - ".file-header"
+    - ".js-footer"
+
+- id: stackoverflow-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "stackoverflow.com"
+  remove:
+    - "#sidebar"
+    - ".s-topbar"
+    - "#hot-network-questions"
+
+- id: notion-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "notion.site"
+  remove:
+    - ".notion-topbar"
+    - ".notion-collection-view-select"
+    - ".notion-navbar"
+
+- id: intercom-cleanup
+  phase: post
+  trigger:
+    dom:
+      any: [".intercom-interblocks"]
+  remove:
+    - ".intercom-article-footer"
+    - ".intercom-interblocks-share"
+    - ".intercom-reaction"
+
+- id: medium-draftjs-cleanup
+  phase: post
+  trigger:
+    dom:
+      any: [".public-DraftEditor-content"]
+  remove:
+    - ".metabar"
+    - ".pw-responses"
+
+- id: swiper-cleanup
+  phase: post
+  trigger:
+    dom:
+      any: [".swiper-slide-duplicate"]
+  remove:
+    - ".swiper-slide-duplicate"

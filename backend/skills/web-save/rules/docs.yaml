@@ -1,0 +1,89 @@
+- id: mdn-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "developer.mozilla.org"
+  remove:
+    - "aside"
+    - "#sidebar-quicklinks"
+    - ".sticky-header-container"
+
+- id: react-docs-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "react.dev"
+  remove:
+    - "nav"
+    - ".toc"
+    - ".codeblock-header"
+
+- id: vue-docs-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "vuejs.org"
+  remove:
+    - "aside"
+    - ".sidebar"
+    - ".page-actions"
+
+- id: svelte-docs-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "svelte.dev"
+  remove:
+    - ".sidebar"
+    - ".page-nav"
+    - ".breadcrumbs"
+
+- id: python-docs-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "docs.python.org"
+  remove:
+    - ".related"
+    - "#sidebar"
+    - ".mobile-nav"
+
+- id: django-docs-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "docs.djangoproject.com"
+  remove:
+    - "#toc"
+    - ".related"
+    - ".sphinxsidebar"
+
+- id: tailwind-docs-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "tailwindcss.com"
+  remove:
+    - "nav"
+    - ".table-of-contents"
+    - ".docs-prev-next"
+
+- id: nextjs-docs-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "nextjs.org"
+  remove:
+    - "nav"
+    - ".table-of-contents"
+    - ".feedback"
+
+- id: webflow-university-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "university.webflow.com"
+  remove:
+    - "nav"
+    - ".toc"
+    - ".hub-sidebar"
