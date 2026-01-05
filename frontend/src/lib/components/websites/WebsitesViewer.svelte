@@ -69,7 +69,18 @@
   });
 
   $: if (editor && $websitesStore.active) {
-    editor.commands.setContent($websitesStore.active.content || '');
+    editor.commands.setContent(stripFrontmatter($websitesStore.active.content || ''));
+  }
+
+  function stripFrontmatter(text: string): string {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith('---')) return text;
+    const match = trimmed.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+    if (match) return trimmed.slice(match[0].length);
+    const lines = trimmed.split('\n');
+    const separatorIndex = lines.findIndex((line) => line.trim() === '---');
+    if (separatorIndex >= 0) return lines.slice(separatorIndex + 1).join('\n');
+    return text;
   }
 
   function openRenameDialog() {
@@ -129,7 +140,7 @@
     const active = $websitesStore.active;
     if (!active) return;
     try {
-      await navigator.clipboard.writeText(active.content || '');
+      await navigator.clipboard.writeText(stripFrontmatter(active.content || ''));
       isCopied = true;
       if (copyTimeout) clearTimeout(copyTimeout);
       copyTimeout = setTimeout(() => {
