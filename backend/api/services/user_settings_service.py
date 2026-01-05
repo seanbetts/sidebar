@@ -6,6 +6,7 @@ import secrets
 from typing import Optional, Any
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.user_settings import UserSettings
 
@@ -113,6 +114,7 @@ class UserSettingsService:
                 settings.profile_image_path = profile_image_path
             if enabled_skills is not UserSettingsService.UNSET:
                 settings.enabled_skills = enabled_skills
+                flag_modified(settings, "enabled_skills")
             if shortcuts_pat is not UserSettingsService.UNSET:
                 settings.shortcuts_pat = shortcuts_pat
             if things_ai_snapshot is not UserSettingsService.UNSET:

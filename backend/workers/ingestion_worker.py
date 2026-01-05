@@ -21,6 +21,7 @@ from typing import Callable
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, text
+from sqlalchemy.orm.attributes import flag_modified
 
 from PIL import Image
 import pdfplumber
@@ -1606,6 +1607,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
             if title:
                 record.filename_original = title
             record.source_metadata = metadata
+            flag_modified(record, "source_metadata")
             db.commit()
 
             storage = get_storage_backend()
