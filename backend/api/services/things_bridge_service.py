@@ -7,6 +7,7 @@ from typing import Optional
 import uuid
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from api.config import settings
 from api.models.things_bridge import ThingsBridge
@@ -38,7 +39,9 @@ class ThingsBridgeService:
         if bridge:
             bridge.device_name = device_name
             bridge.base_url = base_url
-            bridge.capabilities = capabilities or bridge.capabilities
+            if capabilities is not None:
+                bridge.capabilities = capabilities
+                flag_modified(bridge, "capabilities")
             bridge.last_seen_at = now
             bridge.updated_at = now
         else:
