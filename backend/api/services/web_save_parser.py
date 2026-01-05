@@ -34,8 +34,10 @@ class Rule:
     priority: int
     trigger: dict
     remove: list[str]
+    include: list[str]
     selector_overrides: dict
     metadata: dict
+    actions: list[dict]
 
 
 @dataclass(frozen=True)
@@ -222,8 +224,10 @@ class RuleEngine:
                         priority=item.get("priority", 0),
                         trigger=item.get("trigger", {}),
                         remove=item.get("remove", []) or [],
+                        include=item.get("include", []) or [],
                         selector_overrides=item.get("selector_overrides", {}) or {},
                         metadata=item.get("metadata", {}) or {},
+                        actions=item.get("actions", []) or [],
                     )
                 )
         rules.sort(key=lambda rule: rule.priority, reverse=True)
@@ -261,6 +265,9 @@ class RuleEngine:
                     parent = node.getparent()
                     if parent is not None:
                         parent.remove(node)
+
+            for action in rule.actions or []:
+                self._apply_action(tree, action)
 
         return lxml_html.tostring(tree, encoding="unicode")
 
@@ -303,6 +310,72 @@ class RuleEngine:
         if host_rule and dom_rule:
             return host_match and dom_match
         return host_match or dom_match
+
+    def _apply_action(self, tree: lxml_html.HtmlElement, action: dict) -> None:
+        op = action.get("op")
+        selector = action.get("selector")
+        if not op or not selector:
+            return
+
+        nodes = tree.cssselect(selector)
+        if not nodes:
+            return
+
+        if op == "retag":
+            tag = action.get("tag")
+            if not tag:
+                return
+            for node in nodes:
+                node.tag = tag
+            return
+
+        if op == "unwrap":
+            for node in nodes:
+                parent = node.getparent()
+                if parent is None:
+                    continue
+                index = parent.index(node)
+                for child in list(node):
+                    node.remove(child)
+                    parent.insert(index, child)
+                    index += 1
+                parent.remove(node)
+            return
+
+        if op == "wrap":
+            wrapper_tag = action.get("wrapper_tag")
+            if not wrapper_tag:
+                return
+            for node in nodes:
+                parent = node.getparent()
+                if parent is None:
+                    continue
+                wrapper = lxml_html.Element(wrapper_tag)
+                parent.replace(node, wrapper)
+                wrapper.append(node)
+            return
+
+        if op == "remove_attrs":
+            attrs = action.get("attrs") or []
+            for node in nodes:
+                for attr in attrs:
+                    if attr in node.attrib:
+                        del node.attrib[attr]
+            return
+
+        if op == "replace_with_text":
+            template = action.get("template")
+            if not template:
+                return
+            for node in nodes:
+                parent = node.getparent()
+                text = template.format(**node.attrib)
+                if parent is None:
+                    continue
+                tail = node.tail or ""
+                parent.text = (parent.text or "") + text + tail
+                parent.remove(node)
+            return
 
 
 def extract_metadata_overrides(html: str, rules: list[Rule]) -> dict:

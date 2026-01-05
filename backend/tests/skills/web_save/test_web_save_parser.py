@@ -54,8 +54,10 @@ def test_rule_engine_removes_elements():
                 priority=0,
                 trigger={"dom": {"any": [".ad"]}},
                 remove=[".ad"],
+                include=[],
                 selector_overrides={},
                 metadata={},
+                actions=[],
             )
         ]
     )
@@ -77,8 +79,10 @@ def test_rule_engine_trigger_mode_any_text_contains():
                 priority=0,
                 trigger={"mode": "any", "dom": {"any_text_contains": ["world"]}},
                 remove=[".never"],
+                include=[],
                 selector_overrides={},
                 metadata={},
+                actions=[],
             )
         ]
     )
@@ -112,11 +116,13 @@ def test_metadata_overrides_apply(monkeypatch):
         priority=0,
         trigger={"dom": {"any": ["h1"]}},
         remove=[],
+        include=[],
         selector_overrides={},
         metadata={
             "title": {"selector": "h1"},
             "published": {"selector": "time", "attr": "datetime"},
         },
+        actions=[],
     )
 
     engine = web_save_parser.RuleEngine([rule])
@@ -126,3 +132,30 @@ def test_metadata_overrides_apply(monkeypatch):
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert parsed.title == "Override Title"
     assert parsed.published_at == datetime(2024, 12, 31, 10, 0, tzinfo=timezone.utc)
+
+
+def test_rule_engine_actions_retag_and_unwrap():
+    html = "<html><body><div class='wrap'><span class='title'>Hello</span></div></body></html>"
+    engine = web_save_parser.RuleEngine(
+        rules=[
+            web_save_parser.Rule(
+                id="actions",
+                phase="post",
+                priority=0,
+                trigger={"dom": {"any": [".title"]}},
+                remove=[],
+                include=[],
+                selector_overrides={},
+                metadata={},
+                actions=[
+                    {"op": "retag", "selector": ".title", "tag": "h1"},
+                    {"op": "unwrap", "selector": ".wrap"},
+                ],
+            )
+        ]
+    )
+
+    matched = engine.match_rules("https://example.com", html, phase="post")
+    cleaned = engine.apply_rules(html, matched)
+    assert "<h1" in cleaned
+    assert "wrap" not in cleaned
