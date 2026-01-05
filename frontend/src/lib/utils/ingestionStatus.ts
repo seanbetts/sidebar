@@ -9,6 +9,12 @@ function formatStage(value: string): string {
   return value.replace(/_/g, ' ');
 }
 
+/**
+ * Build a user-facing ingestion status message.
+ *
+ * @param job Ingestion job state.
+ * @returns Status message for UI.
+ */
 export function buildIngestionStatusMessage(job?: IngestionJobLike): string {
   if (!job) return 'Preparing file…';
   if (job.status === 'failed') {

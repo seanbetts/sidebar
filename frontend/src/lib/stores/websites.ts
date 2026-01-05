@@ -1,6 +1,6 @@
 import { get, writable } from 'svelte/store';
 import { websitesAPI } from '$lib/services/api';
-import { getCachedData, invalidateCache, isCacheStale, setCachedData } from '$lib/utils/cache';
+import { getCachedData, invalidateCache, setCachedData } from '$lib/utils/cache';
 import { logError } from '$lib/utils/errorHandling';
 
 const CACHE_KEY = 'websites.list';

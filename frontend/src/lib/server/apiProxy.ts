@@ -17,6 +17,9 @@ export interface ProxyOptions {
 
 /**
  * Create a SvelteKit request handler that proxies requests to the backend API.
+ *
+ * @param options Proxy configuration options.
+ * @returns SvelteKit request handler.
  */
 export function createProxyHandler(options: ProxyOptions): RequestHandler {
   const {

@@ -308,7 +308,6 @@ function createThingsStore() {
     const isCurrent = isSameSelection(selection, currentState.selection);
     let silentFetch = silent;
     let notifyFetch = notify;
-    let revalidateOnly = false;
     let usesToken = false;
     let token = loadToken;
     const key = tasksCacheKey(selection);
@@ -376,7 +375,6 @@ function createThingsStore() {
         }));
       }
       if (!isCacheStale(key, CACHE_TTL)) {
-        revalidateOnly = true;
         silentFetch = true;
         notifyFetch = false;
       }
@@ -402,59 +400,59 @@ function createThingsStore() {
     token = usesToken ? ++loadToken : loadToken;
     const request = (async () => {
       try {
-      let response: ThingsListResponse;
-      if (selection.type === 'today' || selection.type === 'upcoming' || selection.type === 'inbox') {
-        response = await thingsAPI.list(selection.type);
-      } else if (selection.type === 'area') {
-        response = await thingsAPI.areaTasks(selection.id);
-      } else if (selection.type === 'project') {
-        response = await thingsAPI.projectTasks(selection.id);
-      } else {
-        response = await thingsAPI.search(selection.query);
-      }
-      if (usesToken && token !== loadToken) return;
-      setCachedData(key, response.tasks ?? [], { ttl: CACHE_TTL, version: CACHE_VERSION });
-      if (response.areas && response.projects) {
-        setCachedData(
-          META_CACHE_KEY,
-          { areas: response.areas ?? [], projects: response.projects ?? [] },
-          { ttl: CACHE_TTL, version: CACHE_VERSION }
-        );
-      }
-      const latestSelection = get({ subscribe }).selection;
-      const stillCurrent = isSameSelection(selection, latestSelection);
-      if (!silentFetch || stillCurrent) {
-        applyResponse(response, selection);
-      } else {
-        const cached = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
-        const changed = !cached || JSON.stringify(cached) !== JSON.stringify(response.tasks ?? []);
-        if (changed) {
-          applyMetaCountsOnly(response, selection);
-          if (notifyFetch) {
-            setSyncNotice('Tasks updated in Things');
+        let response: ThingsListResponse;
+        if (selection.type === 'today' || selection.type === 'upcoming' || selection.type === 'inbox') {
+          response = await thingsAPI.list(selection.type);
+        } else if (selection.type === 'area') {
+          response = await thingsAPI.areaTasks(selection.id);
+        } else if (selection.type === 'project') {
+          response = await thingsAPI.projectTasks(selection.id);
+        } else {
+          response = await thingsAPI.search(selection.query);
+        }
+        if (usesToken && token !== loadToken) return;
+        setCachedData(key, response.tasks ?? [], { ttl: CACHE_TTL, version: CACHE_VERSION });
+        if (response.areas && response.projects) {
+          setCachedData(
+            META_CACHE_KEY,
+            { areas: response.areas ?? [], projects: response.projects ?? [] },
+            { ttl: CACHE_TTL, version: CACHE_VERSION }
+          );
+        }
+        const latestSelection = get({ subscribe }).selection;
+        const stillCurrent = isSameSelection(selection, latestSelection);
+        if (!silentFetch || stillCurrent) {
+          applyResponse(response, selection);
+        } else {
+          const cached = getCachedData<ThingsTask[]>(key, { ttl: CACHE_TTL, version: CACHE_VERSION });
+          const changed = !cached || JSON.stringify(cached) !== JSON.stringify(response.tasks ?? []);
+          if (changed) {
+            applyMetaCountsOnly(response, selection);
+            if (notifyFetch) {
+              setSyncNotice('Tasks updated in Things');
+            }
           }
         }
-      }
-      if (!silentFetch) {
-        preloadAllSelections(selection);
-      }
+        if (!silentFetch) {
+          preloadAllSelections(selection);
+        }
       } catch (error) {
-      if (usesToken && token !== loadToken) return;
-      if (!silent) {
-        update((state) => ({
-          ...state,
-          error: error instanceof Error ? error.message : 'Failed to load Things data'
-        }));
-      }
+        if (usesToken && token !== loadToken) return;
+        if (!silent) {
+          update((state) => ({
+            ...state,
+            error: error instanceof Error ? error.message : 'Failed to load Things data'
+          }));
+        }
       } finally {
-      if (usesToken && token !== loadToken) return;
-      if (!silent) {
-        update((state) => ({
-          ...state,
-          isLoading: false,
-          searchPending: selection.type === 'search' ? false : state.searchPending
-        }));
-      }
+        const isStale = usesToken && token !== loadToken;
+        if (!isStale && !silent) {
+          update((state) => ({
+            ...state,
+            isLoading: false,
+            searchPending: selection.type === 'search' ? false : state.searchPending
+          }));
+        }
       }
     })();
 

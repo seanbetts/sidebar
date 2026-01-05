@@ -58,6 +58,11 @@ const INVALIDATION_MAP: Record<CacheEventType, string[]> = {
   'user.logout': ['*']
 };
 
+/**
+ * Dispatch a cache invalidation event.
+ *
+ * @param eventType Cache event type.
+ */
 export function dispatchCacheEvent(eventType: CacheEventType): void {
   const cacheKeys = INVALIDATION_MAP[eventType] || [];
 
@@ -79,6 +84,12 @@ export function dispatchCacheEvent(eventType: CacheEventType): void {
   }
 }
 
+/**
+ * Subscribe to cache invalidation events.
+ *
+ * @param callback Event handler callback.
+ * @returns Unsubscribe handler.
+ */
 export function onCacheInvalidate(
   callback: (detail: { eventType: CacheEventType; cacheKeys: string[] }) => void
 ): () => void {
