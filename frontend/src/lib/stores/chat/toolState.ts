@@ -99,6 +99,9 @@ export function createToolStateHandlers(update: UpdateFn, getState: GetStateFn) 
 		setActiveTool,
 		finalizeActiveTool,
 		markNeedsNewline,
-		getActiveToolStartTime
+		getActiveToolStartTime,
+		cleanup: () => {
+			clearToolTimers();
+		}
 	};
 }

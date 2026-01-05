@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import ssl
 from typing import Any
@@ -17,6 +18,7 @@ from api.config import settings
 
 
 router = APIRouter(prefix="/weather", tags=["weather"])
+logger = logging.getLogger(__name__)
 
 _CACHE_TTL_SECONDS = 1800
 _weather_cache: dict[str, dict[str, Any]] = {}
@@ -68,7 +70,20 @@ def _fetch_weather(lat: float, lon: float) -> dict:
         ssl_context = ssl.create_default_context()
     with urlopen(request, timeout=10, context=ssl_context) as response:
         data = response.read()
-        return json.loads(data.decode("utf-8"))
+        try:
+            return json.loads(data.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            preview = data[:500].decode("utf-8", errors="ignore")
+            logger.error(
+                "Failed to parse weather API response",
+                exc_info=exc,
+                extra={
+                    "response_preview": preview,
+                    "lat": lat,
+                    "lon": lon,
+                },
+            )
+            raise ExternalServiceError("Open-Meteo", "Weather service returned invalid data") from exc
 
 
 def _cache_key(lat: float, lon: float) -> str:
@@ -111,6 +126,8 @@ async def get_weather(
 
     try:
         data = await run_in_threadpool(_fetch_weather, lat, lon)
+    except ExternalServiceError:
+        raise
     except Exception as exc:
         raise ExternalServiceError("Open-Meteo", "Weather lookup failed") from exc
 

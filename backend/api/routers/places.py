@@ -1,5 +1,6 @@
 """Places API proxy endpoints."""
 import json
+import logging
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -12,6 +13,7 @@ from api.exceptions import ExternalServiceError, ServiceUnavailableError
 
 
 router = APIRouter(prefix="/places", tags=["places"])
+logger = logging.getLogger(__name__)
 
 
 def _fetch_autocomplete(input_text: str) -> dict:
@@ -34,7 +36,16 @@ def _fetch_autocomplete(input_text: str) -> dict:
     request = Request(url, headers={"Accept": "application/json"})
     with urlopen(request, timeout=10) as response:
         data = response.read()
-        return json.loads(data.decode("utf-8"))
+        try:
+            return json.loads(data.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            preview = data[:500].decode("utf-8", errors="ignore")
+            logger.error(
+                "Failed to parse places autocomplete response",
+                exc_info=exc,
+                extra={"response_preview": preview, "query": input_text},
+            )
+            raise ExternalServiceError("Google Places", "Places returned invalid data") from exc
 
 
 def _fetch_nearby_place(lat: float, lng: float) -> dict:
@@ -59,7 +70,16 @@ def _fetch_nearby_place(lat: float, lng: float) -> dict:
     request = Request(url, headers={"Accept": "application/json"})
     with urlopen(request, timeout=10) as response:
         data = response.read()
-        return json.loads(data.decode("utf-8"))
+        try:
+            return json.loads(data.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            preview = data[:500].decode("utf-8", errors="ignore")
+            logger.error(
+                "Failed to parse nearby places response",
+                exc_info=exc,
+                extra={"response_preview": preview, "lat": lat, "lng": lng},
+            )
+            raise ExternalServiceError("Google Places", "Places returned invalid data") from exc
 
 
 def _fetch_place_details(place_id: str) -> dict:
@@ -82,7 +102,16 @@ def _fetch_place_details(place_id: str) -> dict:
     request = Request(url, headers={"Accept": "application/json"})
     with urlopen(request, timeout=10) as response:
         data = response.read()
-        return json.loads(data.decode("utf-8"))
+        try:
+            return json.loads(data.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            preview = data[:500].decode("utf-8", errors="ignore")
+            logger.error(
+                "Failed to parse place details response",
+                exc_info=exc,
+                extra={"response_preview": preview, "place_id": place_id},
+            )
+            raise ExternalServiceError("Google Places", "Places returned invalid data") from exc
 
 
 def _extract_component(components: list[dict], component_type: str) -> str | None:
@@ -152,6 +181,8 @@ async def autocomplete_places(
 
     try:
         data = await run_in_threadpool(_fetch_autocomplete, trimmed)
+    except ExternalServiceError:
+        raise
     except Exception as exc:
         raise ExternalServiceError("Google Places", "Places lookup failed") from exc
     status = data.get("status")
@@ -196,6 +227,8 @@ async def reverse_geocode(
 
     try:
         data = await run_in_threadpool(_fetch_nearby_place, lat, lng)
+    except ExternalServiceError:
+        raise
     except Exception as exc:
         raise ExternalServiceError("Google Places", "Places lookup failed") from exc
     status = data.get("status")
@@ -215,6 +248,8 @@ async def reverse_geocode(
 
     try:
         details = await run_in_threadpool(_fetch_place_details, place_id)
+    except ExternalServiceError:
+        raise
     except Exception as exc:
         raise ExternalServiceError("Google Places", "Places lookup failed") from exc
 

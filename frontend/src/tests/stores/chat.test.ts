@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { chatStore } from '$lib/stores/chat';
 
-const { conversationsAPI, conversationListStore, currentConversationId, ingestionAPI, ingestionStore } = vi.hoisted(() => {
+const {
+  conversationsAPI,
+  conversationListStore,
+  currentConversationId,
+  ingestionAPI,
+  ingestionStore,
+  toolStateCleanup
+} = vi.hoisted(() => {
   const createStore = <T>(initial: T) => {
     let value = initial;
     const subscribers = new Set<(next: T) => void>();
@@ -41,7 +48,8 @@ const { conversationsAPI, conversationListStore, currentConversationId, ingestio
     currentConversationId: createStore<string | null>(null),
     ingestionStore: {
       upsertItem: vi.fn()
-    }
+    },
+    toolStateCleanup: vi.fn()
   };
 });
 
@@ -61,7 +69,8 @@ vi.mock('$lib/stores/chat/toolState', () => ({
     setActiveTool: vi.fn(),
     finalizeActiveTool: vi.fn(),
     markNeedsNewline: vi.fn(),
-    getActiveToolStartTime: vi.fn(() => null)
+    getActiveToolStartTime: vi.fn(() => null),
+    cleanup: toolStateCleanup
   })
 }));
 
@@ -182,5 +191,10 @@ describe('chatStore', () => {
 
     expect(conversationListStore.updateConversationMetadata).toHaveBeenCalled();
     expect(conversationListStore.setGeneratingTitle).toHaveBeenCalledWith('conv-4', true);
+  });
+
+  it('cleans up tool timers on cleanup', () => {
+    chatStore.cleanup();
+    expect(toolStateCleanup).toHaveBeenCalled();
   });
 });

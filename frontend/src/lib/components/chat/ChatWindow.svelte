@@ -38,6 +38,7 @@
 		attachmentPolls.clear();
 		// Clean up SSE connection when component unmounts
 		chatSse.disconnect();
+		chatStore.cleanup?.();
 	});
 
 	async function handleSend(message: string) {
