@@ -10,8 +10,8 @@
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
   import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
-  import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
   import { logError } from '$lib/utils/errorHandling';
+  import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
@@ -20,6 +20,7 @@
   let deleteDialog: { openDialog: (name: string) => void } | null = null;
   let copyTimeout: ReturnType<typeof setTimeout> | null = null;
   let isCopied = false;
+  const { renameWebsite, pinWebsite, archiveWebsite, deleteWebsite } = useWebsiteActions();
 
   function formatDateWithOrdinal(date: Date) {
     const day = date.getDate();
@@ -85,70 +86,32 @@
       isRenameDialogOpen = false;
       return;
     }
-    const response = await fetch(`/api/v1/websites/${active.id}/rename`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: trimmed })
+    const renamed = await renameWebsite(active.id, trimmed, {
+      scope: 'websitesViewer.rename',
+      updateActive: true
     });
-    if (!response.ok) {
-      logError('Failed to rename website', new Error('Request failed'), {
-        scope: 'websitesViewer.rename',
-        websiteId: active.id,
-        status: response.status
-      });
-      return;
+    if (renamed) {
+      isRenameDialogOpen = false;
     }
-    websitesStore.renameLocal?.(active.id, trimmed);
-    websitesStore.updateActiveLocal?.({ title: trimmed });
-    dispatchCacheEvent('website.renamed');
-    isRenameDialogOpen = false;
   }
 
   async function handlePinToggle() {
     const active = $websitesStore.active;
     if (!active) return;
-    const response = await fetch(`/api/v1/websites/${active.id}/pin`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pinned: !active.pinned })
+    await pinWebsite(active.id, !active.pinned, {
+      scope: 'websitesViewer.pin',
+      updateActive: true
     });
-    if (!response.ok) {
-      logError('Failed to update pin', new Error('Request failed'), {
-        scope: 'websitesViewer.pin',
-        websiteId: active.id,
-        status: response.status
-      });
-      return;
-    }
-    websitesStore.setPinnedLocal?.(active.id, !active.pinned);
-    websitesStore.updateActiveLocal?.({ pinned: !active.pinned });
-    dispatchCacheEvent('website.pinned');
   }
 
   async function handleArchive() {
     const active = $websitesStore.active;
     if (!active) return;
-    const response = await fetch(`/api/v1/websites/${active.id}/archive`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ archived: !active.archived })
+    await archiveWebsite(active.id, !active.archived, {
+      scope: 'websitesViewer.archive',
+      updateActive: true,
+      clearActiveOnArchive: true
     });
-    if (!response.ok) {
-      logError('Failed to archive website', new Error('Request failed'), {
-        scope: 'websitesViewer.archive',
-        websiteId: active.id,
-        status: response.status
-      });
-      return;
-    }
-    const nextArchived = !active.archived;
-    websitesStore.setArchivedLocal?.(active.id, nextArchived);
-    dispatchCacheEvent('website.archived');
-    if (nextArchived) {
-      websitesStore.clearActive();
-    } else {
-      websitesStore.updateActiveLocal?.({ archived: nextArchived });
-    }
   }
 
   async function handleDownload() {
@@ -184,22 +147,10 @@
   async function handleDelete(): Promise<boolean> {
     const active = $websitesStore.active;
     if (!active) return false;
-    const response = await fetch(`/api/v1/websites/${active.id}`, {
-      method: 'DELETE'
+    return deleteWebsite(active.id, {
+      scope: 'websitesViewer.delete',
+      clearActiveOnDelete: true
     });
-    if (!response.ok) {
-      logError('Failed to delete website', new Error('Request failed'), {
-        scope: 'websitesViewer.delete',
-        websiteId: active.id,
-        status: response.status
-      });
-      return false;
-    }
-    websitesStore.removeLocal?.(active.id);
-    websitesStore.clearActive();
-    dispatchCacheEvent('website.deleted');
-    // dialog closes via controller
-    return true;
   }
 
   function requestDelete() {

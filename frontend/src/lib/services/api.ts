@@ -385,6 +385,67 @@ class WebsitesAPI {
     return response.json();
   }
 
+  /**
+   * Rename a website title by ID.
+   *
+   * @param id - Website ID.
+   * @param title - New website title.
+   * @throws Error when the request fails.
+   */
+  async rename(id: string, title: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${id}/rename`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
+    if (!response.ok) throw new Error('Failed to rename website');
+  }
+
+  /**
+   * Update pinned state for a website.
+   *
+   * @param id - Website ID.
+   * @param pinned - New pinned state.
+   * @throws Error when the request fails.
+   */
+  async setPinned(id: string, pinned: boolean): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${id}/pin`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned })
+    });
+    if (!response.ok) throw new Error('Failed to update website pin');
+  }
+
+  /**
+   * Update archived state for a website.
+   *
+   * @param id - Website ID.
+   * @param archived - New archived state.
+   * @throws Error when the request fails.
+   */
+  async setArchived(id: string, archived: boolean): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${id}/archive`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived })
+    });
+    if (!response.ok) throw new Error('Failed to update website archive status');
+  }
+
+  /**
+   * Delete a website by ID.
+   *
+   * @param id - Website ID.
+   * @throws Error when the request fails.
+   */
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete website');
+  }
+
   async updatePinnedOrder(order: string[]): Promise<void> {
     const response = await fetch(`${this.baseUrl}/pinned-order`, {
       method: 'PATCH',

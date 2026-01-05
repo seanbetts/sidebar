@@ -1,13 +1,12 @@
 <script lang="ts">
   import { ChevronRight, FileText, Search } from 'lucide-svelte';
   import { treeStore } from '$lib/stores/tree';
-  import { notesAPI } from '$lib/services/api';
   import SidebarLoading from '$lib/components/left-sidebar/SidebarLoading.svelte';
   import SidebarEmptyState from '$lib/components/left-sidebar/SidebarEmptyState.svelte';
   import FileTreeNode from '$lib/components/files/FileTreeNode.svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import type { FileNode } from '$lib/types/file';
-  import { logError } from '$lib/utils/errorHandling';
+  import { useNoteActions } from '$lib/hooks/useNoteActions';
 
   export let basePath: string = 'notes';
   export let emptyMessage: string = 'No notes found';
@@ -98,6 +97,7 @@
   const PINNED_DROP_END = '__end__';
   let draggingPinnedId: string | null = null;
   let dragOverPinnedId: string | null = null;
+  const { updatePinnedOrder } = useNoteActions();
 
   function handlePinnedDragStart(event: DragEvent, nodeId: string) {
     draggingPinnedId = nodeId;
@@ -125,15 +125,7 @@
     if (fromIndex === -1 || toIndex === -1) return;
     const nextOrder = [...order];
     nextOrder.splice(toIndex, 0, nextOrder.splice(fromIndex, 1)[0]);
-    treeStore.setNotePinnedOrder(nextOrder);
-    try {
-      await notesAPI.updatePinnedOrder(nextOrder);
-    } catch (error) {
-      logError('Failed to update pinned order', error, {
-        scope: 'NotesPanel',
-        basePath
-      });
-    }
+    await updatePinnedOrder(nextOrder, { scope: 'NotesPanel.pinOrder' });
   }
 
   async function handlePinnedDropEnd(event: DragEvent) {
@@ -147,15 +139,7 @@
     if (fromIndex === -1) return;
     const nextOrder = [...order];
     nextOrder.push(nextOrder.splice(fromIndex, 1)[0]);
-    treeStore.setNotePinnedOrder(nextOrder);
-    try {
-      await notesAPI.updatePinnedOrder(nextOrder);
-    } catch (error) {
-      logError('Failed to update pinned order', error, {
-        scope: 'NotesPanel',
-        basePath
-      });
-    }
+    await updatePinnedOrder(nextOrder, { scope: 'NotesPanel.pinOrder' });
   }
 
   function handlePinnedDragEnd() {
