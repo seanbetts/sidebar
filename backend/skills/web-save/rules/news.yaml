@@ -8,6 +8,16 @@
     - ".bbc-1y2w8xa"
     - ".ssrcss-1mnjx30-BulletedListContainer"
 
+- id: bbc-com-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "bbc.com"
+  remove:
+    - "aside"
+    - ".bbc-1y2w8xa"
+    - ".ssrcss-1mnjx30-BulletedListContainer"
+
 - id: cnn-cleanup
   phase: post
   trigger:
@@ -98,3 +108,194 @@
   remove:
     - "form"
     - "center"
+
+- id: techcrunch-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "techcrunch.com"
+  remove:
+    - ".article__featured"
+    - ".article__share"
+    - ".article__byline"
+    - ".article__related"
+    - ".article__footer"
+
+- id: appleinsider-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "appleinsider.com"
+  remove:
+    - ".float-right"
+    - ".social"
+    - ".related"
+    - ".article-footer"
+
+- id: cultofmac-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "cultofmac.com"
+  remove:
+    - ".post-sharing"
+    - ".yarpp-related"
+    - ".jp-relatedposts"
+
+- id: macworld-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "macworld.com"
+  remove:
+    - ".article-meta"
+    - ".article-share"
+    - ".article-tags"
+    - ".inline-ad"
+
+- id: wired-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "wired.com"
+  remove:
+    - ".related-content"
+    - ".paywall"
+    - ".newsletter"
+
+- id: engadget-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "engadget.com"
+  remove:
+    - ".share-buttons"
+    - ".aside"
+    - ".o-article-sidebar"
+
+- id: eurogamer-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "eurogamer.net"
+  remove:
+    - ".article-hero"
+    - ".article-share"
+    - ".related-content"
+
+- id: dezeen-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "dezeen.com"
+  remove:
+    - ".share"
+    - ".related"
+    - ".newsletter-signup"
+
+- id: mondaynote-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "mondaynote.com"
+  remove:
+    - ".post-footer"
+    - ".subscribe"
+    - ".footer"
+
+- id: stratechery-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "stratechery.com"
+  remove:
+    - ".article-footer"
+    - ".subscribe"
+    - ".post-footer"
+
+- id: campaignlive-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "campaignlive.co.uk"
+  remove:
+    - ".article__related"
+    - ".article__footer"
+    - ".article__share"
+
+- id: lifehacker-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "lifehacker.com"
+  remove:
+    - "aside"
+    - ".js_related_posts"
+    - ".inline-ad"
+
+- id: gizmodo-au-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "gizmodo.com.au"
+  remove:
+    - "aside"
+    - ".js_related_posts"
+    - ".inline-ad"
+
+- id: gizmodo-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "gizmodo.com"
+  remove:
+    - "aside"
+    - ".js_related_posts"
+    - ".inline-ad"
+
+- id: 9to5mac-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "9to5mac.com"
+  remove:
+    - ".sharedaddy"
+    - ".jp-relatedposts"
+    - "#comments"
+
+- id: electrek-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "electrek.co"
+  remove:
+    - ".sharedaddy"
+    - ".jp-relatedposts"
+    - "#comments"
+
+- id: daringfireball-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "daringfireball.net"
+  remove:
+    - ".footnote"
+
+- id: quora-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "quora.com"
+  remove:
+    - ".q-box"
+    - ".q-text"
+
+- id: youtube-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "youtube.com"
+  remove:
+    - "#related"
+    - "#comments"
+    - "#secondary"
