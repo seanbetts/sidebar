@@ -5,10 +5,10 @@ import {
   PUBLIC_WEB_VITALS_SAMPLE_RATE
 } from '$env/static/public';
 import type { Metric } from 'web-vitals';
-import { onCLS, onFCP, onFID, onLCP, onTTFB } from 'web-vitals';
+import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals';
 
 export interface PerformanceMetric {
-  name: 'CLS' | 'FCP' | 'FID' | 'LCP' | 'TTFB';
+  name: 'CLS' | 'FCP' | 'INP' | 'LCP' | 'TTFB';
   value: number;
   rating: 'good' | 'needs-improvement' | 'poor';
   route: string;
@@ -86,7 +86,7 @@ export function initWebVitals(getRoute?: RouteGetter): void {
 
   onCLS(handler);
   onFCP(handler);
-  onFID(handler);
+  onINP(handler);
   onLCP(handler);
   onTTFB(handler);
 }

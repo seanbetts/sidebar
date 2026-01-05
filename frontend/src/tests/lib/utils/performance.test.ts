@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const onCLS = vi.fn();
 const onFCP = vi.fn();
-const onFID = vi.fn();
+const onINP = vi.fn();
 const onLCP = vi.fn();
 const onTTFB = vi.fn();
 
 vi.mock('web-vitals', () => ({
   onCLS,
   onFCP,
-  onFID,
+  onINP,
   onLCP,
   onTTFB
 }));
@@ -23,7 +23,7 @@ describe('initWebVitals', () => {
     vi.resetModules();
     onCLS.mockClear();
     onFCP.mockClear();
-    onFID.mockClear();
+    onINP.mockClear();
     onLCP.mockClear();
     onTTFB.mockClear();
   });
@@ -40,7 +40,7 @@ describe('initWebVitals', () => {
 
     expect(onCLS).not.toHaveBeenCalled();
     expect(onFCP).not.toHaveBeenCalled();
-    expect(onFID).not.toHaveBeenCalled();
+    expect(onINP).not.toHaveBeenCalled();
     expect(onLCP).not.toHaveBeenCalled();
     expect(onTTFB).not.toHaveBeenCalled();
   });
@@ -57,7 +57,7 @@ describe('initWebVitals', () => {
 
     expect(onCLS).toHaveBeenCalledTimes(1);
     expect(onFCP).toHaveBeenCalledTimes(1);
-    expect(onFID).toHaveBeenCalledTimes(1);
+    expect(onINP).toHaveBeenCalledTimes(1);
     expect(onLCP).toHaveBeenCalledTimes(1);
     expect(onTTFB).toHaveBeenCalledTimes(1);
   });
