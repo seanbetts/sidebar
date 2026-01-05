@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from api.db.base import Base
 from api.services.websites_service import WebsitesService
+from api.schemas.filters import WebsiteFilters
 
 
 @pytest.fixture
@@ -116,23 +117,31 @@ def test_list_websites_filters(db_session):
     WebsitesService.update_pinned(db_session, "test_user", site_a.id, True)
     WebsitesService.update_archived(db_session, "test_user", site_b.id, True)
 
-    pinned = WebsitesService.list_websites(db_session, "test_user", pinned=True)
+    pinned = WebsitesService.list_websites(db_session, "test_user", WebsiteFilters(pinned=True))
     assert any(site.id == site_a.id for site in pinned)
 
-    archived = WebsitesService.list_websites(db_session, "test_user", archived=True)
+    archived = WebsitesService.list_websites(
+        db_session, "test_user", WebsiteFilters(archived=True)
+    )
     assert any(site.id == site_b.id for site in archived)
 
-    domain_filtered = WebsitesService.list_websites(db_session, "test_user", domain="example.com")
+    domain_filtered = WebsitesService.list_websites(
+        db_session, "test_user", WebsiteFilters(domain="example.com")
+    )
     assert all(site.domain == "example.com" for site in domain_filtered)
 
     published_filtered = WebsitesService.list_websites(
         db_session,
         "test_user",
-        published_after=earlier + timedelta(hours=1),
-        published_before=now + timedelta(hours=1),
+        WebsiteFilters(
+            published_after=earlier + timedelta(hours=1),
+            published_before=now + timedelta(hours=1),
+        ),
     )
     assert any(site.id == site_b.id for site in published_filtered)
 
-    title_filtered = WebsitesService.list_websites(db_session, "test_user", title_search="Alpha")
+    title_filtered = WebsitesService.list_websites(
+        db_session, "test_user", WebsiteFilters(title_search="Alpha")
+    )
     assert len(title_filtered) == 1
     assert title_filtered[0].id == site_a.id

@@ -10,6 +10,7 @@ from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService
 from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
+from api.schemas.filters import WebsiteFilters
 from api.utils.validation import parse_uuid
 
 router = APIRouter(prefix="/websites", tags=["websites"])
@@ -30,9 +31,7 @@ async def list_websites(
     Returns:
         List of website summaries.
     """
-    websites = (
-        WebsitesService.list_websites(db, user_id)
-    )
+    websites = WebsitesService.list_websites(db, user_id, WebsiteFilters())
     return {"items": [website_summary(site) for site in websites]}
 
 

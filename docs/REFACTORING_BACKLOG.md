@@ -1,7 +1,7 @@
 # Refactoring Backlog
 
 **Date Created:** 2026-01-05
-**Last Updated:** 2026-01-05 (MED-7 completed)
+**Last Updated:** 2026-01-05 (LOW-1 completed)
 **Status:** Active
 
 This document tracks refactoring opportunities identified during code reviews. Items are prioritized and tracked to completion.
@@ -51,93 +51,6 @@ Issues that impact code quality, consistency, or maintainability but don't cause
 ## Low Priority
 
 Nice-to-have improvements that don't significantly impact functionality.
-
-### 🔴 LOW-1: Long Parameter Lists in Filter Methods
-**Status:** 🔴 Not Started
-**Effort:** M (2 days)
-**Impact:** Hard to remember parameter order, cluttered signatures
-
-**Location:**
-- `backend/api/services/notes_service.py` `list_notes()` (9 optional params)
-- `backend/api/services/websites_service.py` `list_websites()` (11 optional params)
-
-**Description:**
-Filter methods have very long parameter lists:
-
-```python
-def list_notes(
-    db: Session,
-    user_id: str,
-    *,
-    folder: Optional[str] = None,
-    pinned: Optional[bool] = None,
-    archived: Optional[bool] = None,
-    created_after: Optional[datetime] = None,
-    created_before: Optional[datetime] = None,
-    updated_after: Optional[datetime] = None,
-    updated_before: Optional[datetime] = None,
-    opened_after: Optional[datetime] = None,
-    opened_before: Optional[datetime] = None,
-    title_search: Optional[str] = None,
-) -> Iterable[Note]:
-```
-
-**Recommended Solution:**
-
-```python
-# backend/api/schemas/filters.py
-from dataclasses import dataclass
-from typing import Optional
-from datetime import datetime
-
-@dataclass
-class NoteFilters:
-    """Filters for listing notes."""
-    folder: Optional[str] = None
-    pinned: Optional[bool] = None
-    archived: Optional[bool] = None
-    created_after: Optional[datetime] = None
-    created_before: Optional[datetime] = None
-    updated_after: Optional[datetime] = None
-    updated_before: Optional[datetime] = None
-    opened_after: Optional[datetime] = None
-    opened_before: Optional[datetime] = None
-    title_search: Optional[str] = None
-
-# Then:
-def list_notes(
-    db: Session,
-    user_id: str,
-    filters: NoteFilters
-) -> Iterable[Note]:
-    """List notes with optional filters."""
-    query = db.query(Note).filter(Note.user_id == user_id)
-
-    if filters.folder:
-        query = query.filter(Note.folder == filters.folder)
-    if filters.pinned is not None:
-        # ...
-```
-
-**Benefits:**
-- Cleaner method signatures
-- Easy to add new filters
-- Can validate filters in dataclass
-- Better for API endpoints (can use Pydantic)
-
-**Files to Create:**
-- `backend/api/schemas/filters.py`
-
-**Files to Modify:**
-- `backend/api/services/notes_service.py`
-- `backend/api/services/websites_service.py`
-- `backend/api/routers/notes.py`
-- `backend/api/routers/websites.py`
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
 
 ### 🔴 LOW-2: UUID Type Inconsistency in Routers
 **Status:** 🔴 Not Started
@@ -279,17 +192,15 @@ Items that have been reviewed and intentionally deferred.
 
 ## Metrics
 
-**Total Active Items:** 22
+**Total Active Items:** 4
 - **Critical:** 0
-- **High:** 4
-- **Medium:** 7
-- **Low:** 5
+- **High:** 0
+- **Medium:** 0
+- **Low:** 4
 - **Deferred:** 1
 
-**Total Estimated Effort:** ~15-20 days
-- High: 6-8 days
-- Medium: 9-12 days
-- Low: 4-5 days
+**Total Estimated Effort:** ~2-4 days
+- Low: 2-4 days
 
 ---
 

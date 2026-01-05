@@ -17,9 +17,11 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.websites_service import WebsitesService
+    from api.schemas.filters import WebsiteFilters
 except Exception:
     SessionLocal = None
     WebsitesService = None
+    WebsiteFilters = None
 
 
 def parse_bool(value: str | None) -> bool | None:
@@ -38,16 +40,14 @@ def parse_datetime(value: str | None) -> datetime | None:
 
 
 def list_websites_database(args: argparse.Namespace) -> dict:
-    if SessionLocal is None or WebsitesService is None:
+    if SessionLocal is None or WebsitesService is None or WebsiteFilters is None:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
 
     set_session_user_id(db, args.user_id)
     try:
-        websites = WebsitesService.list_websites(
-            db,
-            args.user_id,
+        filters = WebsiteFilters(
             domain=args.domain,
             pinned=parse_bool(args.pinned),
             archived=parse_bool(args.archived),
@@ -61,6 +61,7 @@ def list_websites_database(args: argparse.Namespace) -> dict:
             published_before=parse_datetime(args.published_before),
             title_search=args.title,
         )
+        websites = WebsitesService.list_websites(db, args.user_id, filters)
         items = []
         for site in websites:
             metadata = site.metadata_ or {}

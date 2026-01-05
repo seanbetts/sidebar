@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from api.db.base import Base
 from api.services.notes_service import NotesService
+from api.schemas.filters import NoteFilters
 
 
 @pytest.fixture
@@ -83,15 +84,21 @@ def test_list_notes_filters(db_session):
     note_b.updated_at = now
     db_session.commit()
 
-    pinned_notes = NotesService.list_notes(db_session, "test_user", pinned=True)
+    pinned_notes = NotesService.list_notes(db_session, "test_user", NoteFilters(pinned=True))
     assert any(n.id == note_a.id for n in pinned_notes)
 
-    archived_notes = NotesService.list_notes(db_session, "test_user", archived=True)
+    archived_notes = NotesService.list_notes(
+        db_session, "test_user", NoteFilters(archived=True)
+    )
     assert any(n.id == note_b.id for n in archived_notes)
 
-    active_notes = NotesService.list_notes(db_session, "test_user", archived=False)
+    active_notes = NotesService.list_notes(
+        db_session, "test_user", NoteFilters(archived=False)
+    )
     assert all(n.id != note_b.id for n in active_notes)
 
-    filtered = NotesService.list_notes(db_session, "test_user", folder="Work", title_search="Alpha")
+    filtered = NotesService.list_notes(
+        db_session, "test_user", NoteFilters(folder="Work", title_search="Alpha")
+    )
     assert len(filtered) == 1
     assert filtered[0].id == note_a.id
