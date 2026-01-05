@@ -39,6 +39,20 @@ A high-fidelity web content parser that:
 | Metadata Fields | 3 (title, source, date) | 7+ (author, tags, word count, etc.) |
 | Output Format | Plain markdown | Markdown + YAML frontmatter |
 
+### Implementation Status (2026-01-05)
+
+- ✅ Phase 1 (Core Local Parsing) implemented: local fetch + Readability + Markdown + frontmatter, image normalization, YouTube embed tracking.
+- ✅ Phase 2 (JavaScript Rendering) implemented: Playwright rendering with auto/force/never controls and per-rule wait/timeout.
+- ✅ Phase 3 (Rule Engine) implemented: schema, actions, include reinsertion, discard handling, rendering controls.
+- ✅ Phase 4 (Auto-Tagging & Enrichment) implemented: tags + reading time in frontmatter.
+- ✅ Phase 5 (Migration Script) implemented and run: 144 migrated / 46 failed (left unchanged).
+- ✅ Parallel running (`WEB_SAVE_MODE=compare`) implemented for side-by-side logging.
+- ✅ GoodLinks test corpus + comparison harness added for regression tracking.
+- ⏳ Gradual rollout not started: local default + Jina fallback still pending.
+- ⏳ Full migration to local-only (remove Jina dependencies) pending.
+- ⏳ Manual testing checklist pending (paywalled, JS-heavy, long-form, media-heavy).
+- ⏳ Image/link parity tuning still in progress (extra images/links vs. GoodLinks).
+
 ---
 
 ## Current State: Web-Save Skill Analysis
@@ -953,6 +967,12 @@ author: {author}
 
 **Tasks**:
 
+**Status (2026-01-05)**:
+- ✅ Local parsing pipeline implemented (fetch → Readability → Markdown → frontmatter).
+- ✅ Metadata extraction (title/author/published/canonical/image).
+- ✅ Image normalization and hero image inclusion.
+- ✅ YouTube embed tracking in markdown output.
+
 1. **Add Dependencies** (`pyproject.toml`):
    ```toml
    readability-lxml = "^0.8.1"
@@ -1293,6 +1313,10 @@ author: {author}
 **Goal**: Handle JS-heavy sites (SPAs, React apps) with Playwright.
 
 **Tasks**:
+
+**Status (2026-01-05)**:
+- ✅ Playwright rendering support with auto/force/never modes.
+- ✅ JS rendering heuristics + per-rule wait/timeout settings.
 
 1. **Add Dependency**:
    ```toml
@@ -2989,6 +3013,24 @@ Test with diverse URLs:
 - [ ] Very long article (>10k words)
 - [ ] Article with many images
 - [ ] Page with video embeds
+
+### Regression Tracking (GoodLinks Corpus)
+
+**Goal**: Track quality over time and spot regressions.
+
+**Approach**:
+- Use the GoodLinks corpus and `compare_goodlinks.py` output (`goodlinks-testing/comparison/summary.csv`).
+- Append per-run metrics to `goodlinks-testing/comparison/history.csv` for trend tracking.
+- Capture: timestamp, git commit, ok/failed counts, avg similarity, coverage ratios (cap at 1.0), and missing/extra counts (words/links/images/videos).
+
+**Suggested Columns**:
+```
+run_at,git_sha,ok_count,error_count,avg_similarity,std_similarity,coverage_words,coverage_links,coverage_images,coverage_videos,missing_words,extra_words,missing_links,extra_links,missing_images,extra_images,missing_videos,extra_videos
+```
+
+**Usage**:
+- Run comparison, then append summary row for that run.
+- Use the history CSV to plot trends and detect regressions.
 
 ---
 

@@ -11,7 +11,10 @@ import argparse
 import csv
 import difflib
 import re
+import statistics
+import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -38,7 +41,10 @@ def strip_frontmatter(text: str) -> str:
 
 
 def word_count(text: str) -> int:
-    return len(re.findall(r"\b\w+\b", text))
+    scrubbed = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
+    scrubbed = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", scrubbed)
+    scrubbed = re.sub(r"https?://\S+", "", scrubbed)
+    return len(re.findall(r"\b\w+\b", scrubbed))
 
 
 def heading_count(text: str) -> int:
@@ -51,6 +57,12 @@ def image_count(text: str) -> int:
 
 def link_count(text: str) -> int:
     return len(re.findall(r"\[[^\]]+\]\([^)]+\)", text))
+
+
+def video_count(text: str) -> int:
+    video_hosts = ("youtube.com", "youtu.be", "vimeo.com", "player.vimeo.com")
+    matches = re.findall(r"\[[^\]]+\]\(([^)]+)\)", text)
+    return sum(1 for url in matches if any(host in url for host in video_hosts))
 
 
 def similarity(a: str, b: str) -> float:
@@ -117,6 +129,9 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         rows = rows[: args.limit]
 
     summary_path = output_dir / "summary.csv"
+    history_path = output_dir / "history.csv"
+    ok_rows = []
+    error_count = 0
     with summary_path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
@@ -135,6 +150,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                 "local_images",
                 "goodlinks_links",
                 "local_links",
+                "goodlinks_videos",
+                "local_videos",
                 "similarity",
                 "diff_path",
             ]
@@ -153,7 +170,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             except Exception as exc:
                 status = "error"
                 error = f"read_error: {exc}"
-                writer.writerow([entry_id, url, status, error] + [""] * 12)
+                writer.writerow([entry_id, url, status, error] + [""] * 14)
+                error_count += 1
                 continue
 
             try:
@@ -162,7 +180,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             except Exception as exc:
                 status = "error"
                 error = f"parse_error: {exc}"
-                writer.writerow([entry_id, url, status, error] + [""] * 12)
+                writer.writerow([entry_id, url, status, error] + [""] * 14)
+                error_count += 1
                 continue
 
             goodlinks_body = goodlinks_md.strip()
@@ -189,8 +208,131 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                     image_count(local_body),
                     link_count(goodlinks_body),
                     link_count(local_body),
+                    video_count(goodlinks_body),
+                    video_count(local_body),
                     f"{similarity(goodlinks_body, local_body):.3f}",
                     diff_path,
+                ]
+            )
+            ok_rows.append(
+                {
+                    "goodlinks_words": word_count(goodlinks_body),
+                    "local_words": word_count(local_body),
+                    "goodlinks_links": link_count(goodlinks_body),
+                    "local_links": link_count(local_body),
+                    "goodlinks_images": image_count(goodlinks_body),
+                    "local_images": image_count(local_body),
+                    "goodlinks_videos": video_count(goodlinks_body),
+                    "local_videos": video_count(local_body),
+                    "similarity": similarity(goodlinks_body, local_body),
+                }
+            )
+
+    if ok_rows:
+        def compute_diff(rows: list[dict], key: str) -> tuple[int, int]:
+            missing = 0
+            extra = 0
+            for item in rows:
+                gl = int(item[f"goodlinks_{key}"])
+                local = int(item[f"local_{key}"])
+                if local < gl:
+                    missing += gl - local
+                elif local > gl:
+                    extra += local - gl
+            return missing, extra
+
+        similarities = [item["similarity"] for item in ok_rows]
+        avg_similarity = sum(similarities) / len(similarities)
+        std_similarity = (
+            statistics.pstdev(similarities) if len(similarities) > 1 else 0.0
+        )
+        missing_words, extra_words = compute_diff(ok_rows, "words")
+        missing_links, extra_links = compute_diff(ok_rows, "links")
+        missing_images, extra_images = compute_diff(ok_rows, "images")
+        missing_videos, extra_videos = compute_diff(ok_rows, "videos")
+        def coverage_ratio(rows: list[dict], key: str) -> float:
+            total_goodlinks = sum(int(item[f"goodlinks_{key}"]) for item in rows)
+            total_covered = sum(
+                min(int(item[f"goodlinks_{key}"]), int(item[f"local_{key}"])) for item in rows
+            )
+            if total_goodlinks == 0:
+                return 1.0
+            return total_covered / total_goodlinks
+
+        coverage_words = coverage_ratio(ok_rows, "words")
+        coverage_links = coverage_ratio(ok_rows, "links")
+        coverage_images = coverage_ratio(ok_rows, "images")
+        coverage_videos = coverage_ratio(ok_rows, "videos")
+
+        try:
+            git_sha = (
+                subprocess.check_output(
+                    ["git", "rev-parse", "--short", "HEAD"],
+                    cwd=REPO_ROOT,
+                    text=True,
+                )
+                .strip()
+            )
+        except Exception:
+            git_sha = "unknown"
+
+        run_at = datetime.now(timezone.utc).isoformat()
+        history_fields = [
+            "run_at",
+            "git_sha",
+            "ok_count",
+            "error_count",
+            "avg_similarity",
+            "std_similarity",
+            "coverage_words",
+            "coverage_links",
+            "coverage_images",
+            "coverage_videos",
+            "missing_words",
+            "extra_words",
+            "missing_links",
+            "extra_links",
+            "missing_images",
+            "extra_images",
+            "missing_videos",
+            "extra_videos",
+        ]
+        existing_rows: list[dict[str, str]] = []
+        rewrite_history = False
+        if history_path.exists():
+            with history_path.open() as f:
+                reader = csv.DictReader(f)
+                existing_fields = reader.fieldnames or []
+                if existing_fields != history_fields:
+                    rewrite_history = True
+                    existing_rows = list(reader)
+        mode = "w" if rewrite_history or not history_path.exists() else "a"
+        with history_path.open(mode, newline="") as f:
+            writer = csv.writer(f)
+            if mode == "w":
+                writer.writerow(history_fields)
+                for row in existing_rows:
+                    writer.writerow([row.get(field, "") for field in history_fields])
+            writer.writerow(
+                [
+                    run_at,
+                    git_sha,
+                    len(ok_rows),
+                    error_count,
+                    f"{avg_similarity:.4f}",
+                    f"{std_similarity:.4f}",
+                    f"{coverage_words:.4f}",
+                    f"{coverage_links:.4f}",
+                    f"{coverage_images:.4f}",
+                    f"{coverage_videos:.4f}",
+                    missing_words,
+                    extra_words,
+                    missing_links,
+                    extra_links,
+                    missing_images,
+                    extra_images,
+                    missing_videos,
+                    extra_videos,
                 ]
             )
 

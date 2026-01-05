@@ -1,6 +1,7 @@
 """Local parsing utilities for the web-save skill."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -49,12 +50,25 @@ def ensure_url(value: str) -> str:
     return f"https://{value}"
 
 
-def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str]:
-    """Fetch raw HTML and return (html, final_url)."""
+def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str, bool]:
+    """Fetch raw HTML and return (html, final_url, used_js_rendering)."""
     headers = {"User-Agent": USER_AGENT}
-    response = requests.get(url, headers=headers, timeout=timeout)
-    response.raise_for_status()
-    return response.text, str(response.url)
+    try:
+        response = requests.get(url, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        return response.text, str(response.url), False
+    except requests.HTTPError as exc:
+        status_code = None
+        if exc.response is not None:
+            status_code = exc.response.status_code
+        if status_code in {401, 403, 429}:
+            html, final_url = render_html_with_playwright(
+                url,
+                timeout=timeout * 1000,
+                wait_until="domcontentloaded",
+            )
+            return html, final_url, True
+        raise
 
 
 def _discard_frontmatter(
@@ -77,6 +91,27 @@ def _discard_frontmatter(
         "saved_at": datetime.now(timezone.utc).isoformat(),
     }
     return build_frontmatter("[Content discarded by parsing rule]", meta=frontmatter_meta)
+
+
+def _paywall_frontmatter(
+    *,
+    source: str,
+    domain: str,
+    used_js_rendering: bool,
+) -> str:
+    frontmatter_meta = {
+        "source": source,
+        "domain": domain,
+        "discarded": True,
+        "paywalled": True,
+        "discard_reason": "Paywall detected",
+        "used_js_rendering": used_js_rendering,
+        "saved_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return build_frontmatter(
+        "Unable to save content. This site appears to be behind a paywall.",
+        meta=frontmatter_meta,
+    )
 
 
 def extract_metadata(html: str, url: str) -> dict:
@@ -118,6 +153,32 @@ def extract_metadata(html: str, url: str) -> dict:
     }
 
 
+def fetch_substack_body_html(url: str, html: str, *, timeout: int = 30) -> Optional[tuple[str, dict]]:
+    """Fetch Substack post HTML from the public API when available."""
+    if "substack" not in html.lower():
+        return None
+    parsed = urlparse(url)
+    if "/p/" not in parsed.path:
+        return None
+    slug = parsed.path.split("/p/")[-1].strip("/")
+    if not slug:
+        return None
+    api_url = f"{parsed.scheme}://{parsed.netloc}/api/v1/posts/{slug}"
+    response = requests.get(api_url, headers={"User-Agent": USER_AGENT}, timeout=timeout)
+    response.raise_for_status()
+    data = response.json()
+    body_html = data.get("body_html")
+    if not body_html:
+        return None
+    meta = {
+        "title": data.get("title"),
+        "author": data.get("author") or data.get("author_name"),
+        "published": data.get("post_date") or data.get("published_at"),
+        "canonical": data.get("canonical_url"),
+    }
+    return body_html, meta
+
+
 def parse_datetime(value: Optional[str]) -> Optional[datetime]:
     """Parse ISO-like datetime strings."""
     if not value:
@@ -132,6 +193,29 @@ def parse_datetime(value: Optional[str]) -> Optional[datetime]:
 def html_to_markdown(html: str) -> str:
     """Convert HTML to Markdown."""
     return markdownify(html, heading_style="ATX").strip()
+
+
+def dedupe_markdown_images(markdown: str) -> str:
+    """Remove duplicate image references while preserving order."""
+    seen = set()
+
+    def replace(match: re.Match[str]) -> str:
+        url = match.group(1)
+        if url in seen:
+            return ""
+        seen.add(url)
+        return match.group(0)
+
+    deduped = re.sub(r"!\[[^\]]*]\(([^)]+)\)", replace, markdown)
+    return deduped.strip()
+
+
+def extract_body_html(html: str) -> str:
+    """Extract inner body HTML from a full document."""
+    soup = BeautifulSoup(html, "html.parser")
+    if soup.body:
+        return "".join(str(child) for child in soup.body.contents)
+    return html
 
 
 def normalize_image_sources(html: str, base_url: str) -> str:
@@ -150,6 +234,100 @@ def normalize_image_sources(html: str, base_url: str) -> str:
                 break
         if src:
             img["src"] = urljoin(base_url, src)
+    return str(soup)
+
+
+def is_paywalled(html: str, domain: Optional[str] = None) -> bool:
+    """Detect likely paywall markers in HTML."""
+    tokens = (
+        "paywall",
+        "meteredcontent",
+        "gateway-content",
+        "subscribe to read",
+        "subscription required",
+        "subscriber-only",
+        "sign in to continue",
+        "account required",
+        "piano",
+        "tinypass",
+        "paywall-wrapper",
+    )
+    paywalled_domains = (
+        "nytimes.com",
+        "wsj.com",
+        "ft.com",
+        "economist.com",
+        "bloomberg.com",
+    )
+    if domain and domain.endswith(paywalled_domains):
+        return True
+    lowered = html.lower()
+    return any(token in lowered for token in tokens)
+
+
+def filter_non_content_images(html: str, *, domain: Optional[str] = None) -> str:
+    """Remove likely decorative images from article content."""
+    soup = BeautifulSoup(html, "html.parser")
+    decorative_tokens = [
+        "logo",
+        "avatar",
+        "icon",
+        "shield",
+        "sprite",
+        "badge",
+        "gravatar",
+        "emoji",
+        "favicon",
+        "profile",
+        "author",
+        "social",
+        "share",
+        "shields.io",
+        "private-user-images.githubusercontent.com",
+    ]
+    if domain and domain.endswith("github.com"):
+        decorative_tokens = [
+            token for token in decorative_tokens if token != "private-user-images.githubusercontent.com"
+        ]
+
+    def parse_dimension(value: Optional[str]) -> Optional[int]:
+        if not value:
+            return None
+        digits = re.sub(r"\D", "", value)
+        return int(digits) if digits.isdigit() else None
+
+    for img in soup.find_all("img"):
+        if img.find_parent("figure"):
+            continue
+        if img.get("role") == "presentation" or img.get("aria-hidden") == "true":
+            img.decompose()
+            continue
+        if any(
+            parent.name in {"nav", "header", "footer", "aside"}
+            for parent in img.parents
+            if getattr(parent, "name", None)
+        ):
+            img.decompose()
+            continue
+        attr_text = " ".join(
+            value
+            for value in (
+                " ".join(img.get("class", [])),
+                img.get("id", ""),
+                img.get("alt", ""),
+                img.get("src", ""),
+            )
+            if value
+        ).lower()
+        if any(token in attr_text for token in decorative_tokens):
+            img.decompose()
+            continue
+        width = parse_dimension(img.get("width"))
+        height = parse_dimension(img.get("height"))
+        if width is not None and height is not None and width <= 48 and height <= 48:
+            img.decompose()
+            continue
+
     return str(soup)
 
 
@@ -190,12 +368,13 @@ def build_frontmatter(markdown_text: str, *, meta: dict) -> str:
 def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     """Parse a URL locally into Markdown with frontmatter."""
     normalized = ensure_url(url)
-    html, final_url = fetch_html(normalized, timeout=timeout)
+    html, final_url, used_js_rendering = fetch_html(normalized, timeout=timeout)
     engine = get_rule_engine()
     pre_rules = engine.match_rules(final_url, html, phase="pre")
     render_mode, wait_for, render_timeout = resolve_rendering_settings(pre_rules)
-    used_js_rendering = False
-    if render_mode == "force":
+    if used_js_rendering:
+        pass
+    elif render_mode == "force":
         html, final_url = render_html_with_playwright(
             final_url, timeout=render_timeout, wait_for=wait_for
         )
@@ -233,7 +412,22 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     removal_selectors = [selector for rule in pre_rules for selector in rule.remove]
 
     document = Document(html)
-    article_html = document.summary(html_partial=True)
+    use_raw_html = any(
+        rule.selector_overrides.get("article") or rule.selector_overrides.get("wrapper")
+        for rule in pre_rules
+    )
+    substack_payload = None
+    try:
+        substack_payload = fetch_substack_body_html(final_url, html, timeout=timeout)
+    except requests.RequestException:
+        substack_payload = None
+    if substack_payload:
+        article_html, substack_meta = substack_payload
+        metadata.update({key: value for key, value in substack_meta.items() if value})
+    elif use_raw_html:
+        article_html = extract_body_html(html)
+    else:
+        article_html = document.summary(html_partial=True)
     if include_selectors:
         article_html = apply_include_reinsertion(
             article_html,
@@ -261,12 +455,33 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     overrides = extract_metadata_overrides(article_html, post_rules)
     if overrides:
         metadata.update(overrides)
+    domain = urlparse(final_url).netloc
+    article_html = filter_non_content_images(article_html, domain=domain)
     article_html = normalize_image_sources(
         article_html, metadata.get("canonical") or final_url
     )
     embeds = extract_youtube_embeds(article_html, metadata.get("canonical") or final_url)
     markdown = html_to_markdown(article_html)
     if not markdown:
+        domain = urlparse(final_url).netloc
+        if is_paywalled(html, domain) or is_paywalled(article_html, domain):
+            content = _paywall_frontmatter(
+                source=metadata.get("canonical") or final_url,
+                domain=domain,
+                used_js_rendering=used_js_rendering,
+            )
+            title = (
+                metadata.get("title")
+                or document.short_title()
+                or document.title()
+                or urlparse(final_url).netloc
+            )
+            return ParsedPage(
+                title=title,
+                content=content,
+                source=metadata.get("canonical") or final_url,
+                published_at=None,
+            )
         raise ValueError("No readable content extracted")
 
     title = (
@@ -295,6 +510,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             lines.append(f"[YouTube]({embed_url})")
         if lines:
             markdown = f"{markdown}\n\n" + "\n".join(lines)
+
+    markdown = dedupe_markdown_images(markdown)
 
     frontmatter_meta = {
         "source": metadata.get("canonical") or final_url,

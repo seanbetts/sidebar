@@ -100,7 +100,8 @@ class RuleEngine:
                 if scoped:
                     scoped_root = scoped[0]
                     new_doc = lxml_html.Element("html")
-                    body = lxml_html.SubElement(new_doc, "body")
+                    body = lxml_html.Element("body")
+                    new_doc.append(body)
                     body.append(scoped_root)
                     tree = new_doc
 

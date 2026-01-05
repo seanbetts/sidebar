@@ -70,6 +70,15 @@
     - ".inline-newsletter"
     - ".paywall"
 
+- id: openai-article-override
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: "openai.com"
+  selector_overrides:
+    article: "article"
+
 - id: washingtonpost-cleanup
   phase: post
   trigger:
@@ -99,6 +108,15 @@
     - ".duet--article--image-gallery-image img"
     - ".duet--article--image img"
 
+- id: nine-to-five-mac-article-override
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: "9to5mac.com"
+  selector_overrides:
+    article: ".post-content"
+
 - id: arstechnica-cleanup
   phase: post
   trigger:
@@ -108,6 +126,15 @@
     - ".article-info"
     - ".article-share"
     - "#promotional"
+
+- id: arstechnica-article-override
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: "arstechnica.com"
+  selector_overrides:
+    article: ".post"
 
 - id: arstechnica-include-images
   phase: pre

@@ -69,6 +69,24 @@
     - ".available-content img"
     - "figure img"
 
+- id: substack-article-override
+  phase: pre
+  priority: 80
+  trigger:
+    dom:
+      any: [".available-content", ".post-content"]
+  selector_overrides:
+    article: ".available-content"
+
+- id: darioamodei-article-override
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: "darioamodei.com"
+  selector_overrides:
+    article: "article"
+
 - id: github-cleanup
   phase: post
   trigger:
@@ -78,6 +96,15 @@
     - ".js-header-wrapper"
     - ".file-header"
     - ".js-footer"
+
+- id: github-article-override
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: "github.com"
+  selector_overrides:
+    article: ".markdown-body"
 
 - id: github-include-images
   phase: pre
