@@ -9,6 +9,16 @@
     - "#comments"
     - ".comment-respond"
 
+- id: wordpress-jetpack-cleanup
+  phase: post
+  trigger:
+    dom:
+      any: [".jp-relatedposts", ".sharedaddy"]
+  remove:
+    - ".jp-relatedposts"
+    - ".sharedaddy"
+    - ".jetpack-related-posts"
+
 - id: ghost-cleanup
   phase: post
   trigger:
