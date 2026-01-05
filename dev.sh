@@ -283,10 +283,34 @@ stop_service() {
   fi
 }
 
+stop_service_quiet() {
+  local pid_file="$1"
+  local name="$2"
+  if [[ -f "${pid_file}" ]]; then
+    local pid
+    pid=$(cat "${pid_file}")
+    if kill -0 "${pid}" >/dev/null 2>&1; then
+      echo "Stopping ${name} (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+    rm -f "${pid_file}"
+  fi
+}
+
+things_bridge_launchctl_running() {
+  if [[ -f "${THINGS_BRIDGE_PLIST}" ]]; then
+    launchctl print "gui/$UID/${THINGS_BRIDGE_LABEL}" >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
 stop_things_bridge() {
   if [[ -f "${THINGS_BRIDGE_PLIST}" ]]; then
     echo "Stopping Things bridge (launchctl)..."
     launchctl bootout "gui/$UID/${THINGS_BRIDGE_LABEL}" >/dev/null 2>&1 || true
+    stop_service_quiet "${THINGS_BRIDGE_PID}" "Things bridge"
+    return
   fi
   stop_service "${THINGS_BRIDGE_PID}" "Things bridge"
   if port_in_use 8787; then
@@ -365,6 +389,16 @@ status_service() {
   echo "✗ ${name} not running"
 }
 
+status_things_bridge() {
+  if things_bridge_launchctl_running; then
+    echo "✓ Things bridge running (launchctl)"
+    echo "  URL: http://localhost:8787"
+    echo "  Logs: ${THINGS_BRIDGE_LOG}"
+    return
+  fi
+  status_service "${THINGS_BRIDGE_PID}" "Things bridge" "http://localhost:8787" "${THINGS_BRIDGE_LOG}"
+}
+
 show_logs() {
   local target="$1"
   case "${target}" in
@@ -428,7 +462,7 @@ case "${command}" in
     status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}"
     status_service "${FRONTEND_PID}" "Frontend" "http://localhost:3000" "${FRONTEND_LOG}"
     status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}"
-    status_service "${THINGS_BRIDGE_PID}" "Things bridge" "http://localhost:8787" "${THINGS_BRIDGE_LOG}"
+    status_things_bridge
     ;;
   logs)
     show_logs "${2:-}"
