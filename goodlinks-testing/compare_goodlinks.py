@@ -250,19 +250,37 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         missing_links, extra_links = compute_diff(ok_rows, "links")
         missing_images, extra_images = compute_diff(ok_rows, "images")
         missing_videos, extra_videos = compute_diff(ok_rows, "videos")
-        def coverage_ratio(rows: list[dict], key: str) -> float:
-            total_goodlinks = sum(int(item[f"goodlinks_{key}"]) for item in rows)
-            total_covered = sum(
-                min(int(item[f"goodlinks_{key}"]), int(item[f"local_{key}"])) for item in rows
-            )
-            if total_goodlinks == 0:
-                return 1.0
-            return total_covered / total_goodlinks
+        def coverage_ratios(rows: list[dict], key: str) -> list[float]:
+            ratios: list[float] = []
+            for item in rows:
+                goodlinks_value = int(item[f"goodlinks_{key}"])
+                local_value = int(item[f"local_{key}"])
+                if goodlinks_value == 0:
+                    ratios.append(1.0)
+                else:
+                    ratios.append(min(goodlinks_value, local_value) / goodlinks_value)
+            return ratios
 
-        coverage_words = coverage_ratio(ok_rows, "words")
-        coverage_links = coverage_ratio(ok_rows, "links")
-        coverage_images = coverage_ratio(ok_rows, "images")
-        coverage_videos = coverage_ratio(ok_rows, "videos")
+        def aggregate_coverage(ratios: list[float]) -> float:
+            if not ratios:
+                return 1.0
+            return sum(ratios) / len(ratios)
+
+        def coverage_std(ratios: list[float]) -> float:
+            return statistics.pstdev(ratios) if len(ratios) > 1 else 0.0
+
+        ratios_words = coverage_ratios(ok_rows, "words")
+        ratios_links = coverage_ratios(ok_rows, "links")
+        ratios_images = coverage_ratios(ok_rows, "images")
+        ratios_videos = coverage_ratios(ok_rows, "videos")
+        coverage_words = aggregate_coverage(ratios_words)
+        coverage_links = aggregate_coverage(ratios_links)
+        coverage_images = aggregate_coverage(ratios_images)
+        coverage_videos = aggregate_coverage(ratios_videos)
+        std_coverage_words = coverage_std(ratios_words)
+        std_coverage_links = coverage_std(ratios_links)
+        std_coverage_images = coverage_std(ratios_images)
+        std_coverage_videos = coverage_std(ratios_videos)
 
         try:
             git_sha = (
@@ -285,9 +303,13 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             "avg_similarity",
             "std_similarity",
             "coverage_words",
+            "std_coverage_words",
             "coverage_links",
+            "std_coverage_links",
             "coverage_images",
+            "std_coverage_images",
             "coverage_videos",
+            "std_coverage_videos",
             "missing_words",
             "extra_words",
             "missing_links",
@@ -322,9 +344,13 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                     f"{avg_similarity:.4f}",
                     f"{std_similarity:.4f}",
                     f"{coverage_words:.4f}",
+                    f"{std_coverage_words:.4f}",
                     f"{coverage_links:.4f}",
+                    f"{std_coverage_links:.4f}",
                     f"{coverage_images:.4f}",
+                    f"{std_coverage_images:.4f}",
                     f"{coverage_videos:.4f}",
+                    f"{std_coverage_videos:.4f}",
                     missing_words,
                     extra_words,
                     missing_links,

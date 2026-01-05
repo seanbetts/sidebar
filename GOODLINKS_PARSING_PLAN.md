@@ -3025,7 +3025,7 @@ Test with diverse URLs:
 
 **Suggested Columns**:
 ```
-run_at,git_sha,ok_count,error_count,avg_similarity,std_similarity,coverage_words,coverage_links,coverage_images,coverage_videos,missing_words,extra_words,missing_links,extra_links,missing_images,extra_images,missing_videos,extra_videos
+run_at,git_sha,ok_count,error_count,avg_similarity,std_similarity,coverage_words,std_coverage_words,coverage_links,std_coverage_links,coverage_images,std_coverage_images,coverage_videos,std_coverage_videos,missing_words,extra_words,missing_links,extra_links,missing_images,extra_images,missing_videos,extra_videos
 ```
 
 **Usage**:
