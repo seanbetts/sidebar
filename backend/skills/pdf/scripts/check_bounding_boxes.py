@@ -6,7 +6,7 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_transfer import prepare_input_path, storage_is_r2, temp_root
+from api.services.skill_file_transfer import prepare_input_path, storage_is_r2, temp_root  # noqa: E402
 
 
 # Script to check that the `fields.json` file that Claude creates when analyzing PDFs

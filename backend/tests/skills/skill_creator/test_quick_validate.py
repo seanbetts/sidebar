@@ -5,7 +5,6 @@ Tests YAML frontmatter validation, name/description rules,
 and error message generation.
 """
 
-import pytest
 from pathlib import Path
 import sys
 
@@ -15,7 +14,7 @@ skill_script_path = project_root / "skills" / "skill-creator" / "scripts"
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(skill_script_path))
 
-from quick_validate import validate_skill
+from quick_validate import validate_skill  # noqa: E402
 
 
 class TestValidSkills:

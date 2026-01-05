@@ -313,7 +313,7 @@ def transcribe_youtube(
             result['note'] = note_data
         return result
 
-    except Exception as e:
+    except Exception:
         # On transcription error, try to cleanup audio file
         if not keep_audio and audio_file_path.exists():
             try:

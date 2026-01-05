@@ -1,5 +1,4 @@
 """Maps MCP tools to Claude tool definitions and handles execution."""
-import json
 import time
 import re
 from typing import Dict, Any, List

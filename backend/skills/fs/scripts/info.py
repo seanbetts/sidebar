@@ -14,7 +14,7 @@ from typing import Dict, Any
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_ops_ingestion import info as fetch_info
+from api.services.skill_file_ops_ingestion import info as fetch_info  # noqa: E402
 
 
 def get_info(user_id: str, path: str) -> Dict[str, Any]:

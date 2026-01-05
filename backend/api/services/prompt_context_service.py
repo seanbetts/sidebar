@@ -63,9 +63,6 @@ class PromptContextService:
         """
         timestamp = now or datetime.now(timezone.utc)
         settings_record = UserSettingsService.get_settings(db, user_id)
-        location_fallback = (
-            settings_record.location if settings_record and settings_record.location else "Unknown"
-        )
         resolved_location = current_location or "Current location not available"
         operating_system = detect_operating_system(user_agent)
 
@@ -258,7 +255,7 @@ class PromptContextService:
             db.query(Conversation)
             .filter(
                 Conversation.user_id == user_id,
-                Conversation.is_archived == False,
+                Conversation.is_archived.is_(False),
                 Conversation.updated_at >= start_of_day,
             )
             .order_by(Conversation.updated_at.desc())

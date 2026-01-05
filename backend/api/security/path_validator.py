@@ -1,6 +1,5 @@
 """Centralized path validation and jailing."""
 from pathlib import Path
-from typing import Tuple
 from fastapi import HTTPException, status
 
 

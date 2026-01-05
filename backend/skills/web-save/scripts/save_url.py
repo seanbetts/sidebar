@@ -123,7 +123,7 @@ def get_markdown_content(url: str, api_key: str) -> str:
     }
 
     ssl_verify = os.environ.get("JINA_SSL_VERIFY", "true").lower()
-    verify_setting: Any = not (ssl_verify in {"0", "false", "no", "off"})
+    verify_setting: Any = ssl_verify not in {"0", "false", "no", "off"}
     ca_bundle = os.environ.get("JINA_CA_BUNDLE")
     if ca_bundle:
         verify_setting = ca_bundle
@@ -193,7 +193,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Save web page as markdown using Jina.ai Reader API',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"""
+        epilog="""
 Examples:
   # Save article
   %(prog)s "https://example.com/article"
@@ -291,7 +291,7 @@ Environment Variables:
                 'type': 'FileError',
                 'message': str(e),
                 'suggestions': [
-                    f'Check that {WEBSITES_BASE} exists and is writable',
+                    'Check that the websites storage path exists and is writable',
                     'Verify disk space is available',
                     'Check file permissions'
                 ]

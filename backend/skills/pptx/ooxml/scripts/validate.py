@@ -15,7 +15,7 @@ from validation import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValida
 BACKEND_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_transfer import (
+from api.services.skill_file_transfer import (  # noqa: E402
     prepare_input_path,
     download_input_dir,
     storage_is_r2,

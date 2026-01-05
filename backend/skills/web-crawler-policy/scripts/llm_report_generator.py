@@ -11,7 +11,6 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
-from pathlib import Path
 import os
 import openai
 from openai import OpenAI
@@ -194,7 +193,7 @@ class OpenAIReportGenerator(LLMReportGenerator):
                 
                 result = json.loads(response.choices[0].message.content)
                 
-                print(f"✅ Structured Outputs validation successful - received all required fields")
+                print("✅ Structured Outputs validation successful - received all required fields")
                 return result
                 
             except (openai.APITimeoutError, openai.RateLimitError) as e:
@@ -255,7 +254,7 @@ def generate_markdown_report(analysis: Dict[str, Any], scan_data: Dict[str, Any]
     
     # Header
     md.append(f"# Brand AI Representation Analysis: {domain}")
-    md.append(f"**Comprehensive Marketing Intelligence Report**")
+    md.append("**Comprehensive Marketing Intelligence Report**")
     md.append(f"*Generated: {timestamp}*")
     md.append("")
     

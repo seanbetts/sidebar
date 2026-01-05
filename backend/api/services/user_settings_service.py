@@ -1,7 +1,7 @@
 """Service layer for user settings."""
 from __future__ import annotations
 
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 import secrets
 from typing import Optional, Any
 

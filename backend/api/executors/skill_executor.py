@@ -217,7 +217,7 @@ class SkillExecutor:
                 else:
                     try:
                         error = json.loads(result.stderr)
-                    except:
+                    except Exception:
                         error = {"error": result.stderr}
 
                     # Audit log failure

@@ -21,7 +21,7 @@ elif str(SCRIPT_DIR) in sys.path:
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from api.services.skill_file_ops_ingestion import write_text
+from api.services.skill_file_ops_ingestion import write_text  # noqa: E402
 
 
 def write_file(

@@ -60,7 +60,7 @@ class ConversationService:
                 Conversation.message_count,
                 Conversation.first_message,
             ))
-            .filter(Conversation.user_id == user_id, Conversation.is_archived == False)
+            .filter(Conversation.user_id == user_id, Conversation.is_archived.is_(False))
             .order_by(Conversation.updated_at.desc())
             .all()
         )
@@ -216,7 +216,7 @@ class ConversationService:
             db.query(Conversation)
             .filter(
                 Conversation.user_id == user_id,
-                Conversation.is_archived == False,
+                Conversation.is_archived.is_(False),
                 or_(
                     Conversation.title.ilike(f"%{query}%"),
                     Conversation.first_message.ilike(f"%{query}%"),
@@ -231,7 +231,7 @@ class ConversationService:
             db.query(Conversation)
             .filter(
                 Conversation.user_id == user_id,
-                Conversation.is_archived == False,
+                Conversation.is_archived.is_(False),
                 cast(Conversation.messages, String).ilike(f"%{query}%"),
             )
             .order_by(Conversation.updated_at.desc())

@@ -1,7 +1,6 @@
 """Tests for SkillExecutor security and functionality."""
 import pytest
 import asyncio
-from pathlib import Path
 from api.executors.skill_executor import SkillExecutor
 from api.config import settings
 

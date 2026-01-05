@@ -279,7 +279,7 @@ async def stream_chat(
                     return
 
             # Stream complete
-            yield f"event: complete\ndata: {{}}\n\n"
+            yield "event: complete\ndata: {}\n\n"
 
         except Exception as e:
             error_event = {"type": "error", "error": str(e)}
@@ -413,7 +413,7 @@ async def generate_title(
 
         return {"title": title, "fallback": False}
 
-    except Exception as e:
+    except Exception:
         # Fallback to first message snippet
         fallback_title = user_msg[:50] + ("..." if len(user_msg) > 50 else "")
         ConversationService.set_title(

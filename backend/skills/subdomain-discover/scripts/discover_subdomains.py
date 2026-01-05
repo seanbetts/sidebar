@@ -15,8 +15,7 @@ import json
 import argparse
 import asyncio
 import time
-from pathlib import Path
-from typing import Set, List, Optional, Dict, Any, Tuple
+from typing import Set, List, Optional, Dict, Tuple
 from urllib.parse import urlparse
 import re
 

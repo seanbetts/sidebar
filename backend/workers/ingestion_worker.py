@@ -20,7 +20,7 @@ from threading import Event, Thread
 from typing import Callable
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, text
+from sqlalchemy import and_, or_
 from sqlalchemy.orm.attributes import flag_modified
 
 from PIL import Image

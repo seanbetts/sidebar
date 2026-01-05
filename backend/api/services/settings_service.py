@@ -1,7 +1,6 @@
 """Settings orchestration for profile and preference management."""
 from __future__ import annotations
 
-from datetime import date
 import secrets
 from typing import Optional
 
