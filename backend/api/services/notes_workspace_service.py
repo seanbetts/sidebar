@@ -210,7 +210,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         """
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
-            raise ValueError("Invalid note id")
+            raise ValueError("Invalid note ID")
 
         note = NotesService.get_note(db, user_id, note_uuid, mark_opened=True)
         if not note:
@@ -282,7 +282,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         """
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
-            raise ValueError("Invalid note id")
+            raise ValueError("Invalid note ID")
 
         updated = NotesService.update_note(db, user_id, note_uuid, content)
         return {"success": True, "modified": updated.updated_at.timestamp(), "id": str(updated.id)}
@@ -306,7 +306,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         """
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
-            raise ValueError("Invalid note id")
+            raise ValueError("Invalid note ID")
 
         note = (
             db.query(Note)
@@ -341,7 +341,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         """
         note_uuid = NotesService.parse_note_id(note_id)
         if not note_uuid:
-            raise ValueError("Invalid note id")
+            raise ValueError("Invalid note ID")
 
         note = (
             db.query(Note)

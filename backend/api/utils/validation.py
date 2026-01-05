@@ -28,8 +28,9 @@ def parse_uuid(
     try:
         return uuid.UUID(value)
     except (ValueError, TypeError, AttributeError) as exc:
+        field_label = "ID" if field_name.lower() == "id" else field_name
         raise BadRequestError(
-            f"Invalid {resource_name} {field_name}: must be a valid UUID"
+            f"Invalid {resource_name} {field_label}: must be a valid UUID"
         ) from exc
 
 
