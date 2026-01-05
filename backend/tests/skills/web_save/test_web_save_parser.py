@@ -159,3 +159,55 @@ def test_rule_engine_actions_retag_and_unwrap():
     cleaned = engine.apply_rules(html, matched)
     assert "<h1" in cleaned
     assert "wrap" not in cleaned
+
+
+def test_rule_engine_actions_move_and_set_attr():
+    html = "<html><body><div class='target'></div><p class='move'>Move</p></body></html>"
+    engine = web_save_parser.RuleEngine(
+        rules=[
+            web_save_parser.Rule(
+                id="move",
+                phase="post",
+                priority=0,
+                trigger={"dom": {"any": [".move"]}},
+                remove=[],
+                include=[],
+                selector_overrides={},
+                metadata={},
+                actions=[
+                    {"op": "move", "selector": ".move", "target": ".target"},
+                    {"op": "set_attr", "selector": ".target", "attr": "data-test", "value": "ok"},
+                ],
+            )
+        ]
+    )
+
+    matched = engine.match_rules("https://example.com", html, phase="post")
+    cleaned = engine.apply_rules(html, matched)
+    assert "data-test=\"ok\"" in cleaned
+    assert cleaned.find("Move") < cleaned.find("</div>")
+
+
+def test_rule_engine_actions_group_siblings():
+    html = "<html><body><p class='cap'>A</p><p class='cap'>B</p><p>C</p></body></html>"
+    engine = web_save_parser.RuleEngine(
+        rules=[
+            web_save_parser.Rule(
+                id="group",
+                phase="post",
+                priority=0,
+                trigger={"dom": {"any": [".cap"]}},
+                remove=[],
+                include=[],
+                selector_overrides={},
+                metadata={},
+                actions=[
+                    {"op": "group_siblings", "selector": ".cap", "wrapper_tag": "div", "class": "caps"},
+                ],
+            )
+        ]
+    )
+
+    matched = engine.match_rules("https://example.com", html, phase="post")
+    cleaned = engine.apply_rules(html, matched)
+    assert "class=\"caps\"" in cleaned
