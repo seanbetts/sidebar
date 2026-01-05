@@ -342,6 +342,11 @@ class RuleEngine:
                 parent.remove(node)
             return
 
+        if op == "remove_container":
+            action["op"] = "unwrap"
+            self._apply_action(tree, action)
+            return
+
         if op == "wrap":
             wrapper_tag = action.get("wrapper_tag")
             if not wrapper_tag:
@@ -355,12 +360,74 @@ class RuleEngine:
                 wrapper.append(node)
             return
 
+        if op == "remove_parent":
+            for node in nodes:
+                parent = node.getparent()
+                if parent is None:
+                    continue
+                grandparent = parent.getparent()
+                if grandparent is None:
+                    continue
+                index = grandparent.index(parent)
+                parent.remove(node)
+                grandparent.insert(index + 1, node)
+                if len(parent) == 0:
+                    grandparent.remove(parent)
+            return
+
+        if op == "remove_outer_parent":
+            for node in nodes:
+                parent = node.getparent()
+                if parent is None:
+                    continue
+                grandparent = parent.getparent()
+                if grandparent is None:
+                    continue
+                great = grandparent.getparent()
+                if great is None:
+                    continue
+                index = great.index(grandparent)
+                grandparent.remove(node)
+                great.insert(index + 1, node)
+                if len(grandparent) == 0:
+                    great.remove(grandparent)
+            return
+
+        if op == "remove_to_parent":
+            parent_selector = action.get("parent")
+            if not parent_selector:
+                return
+            for node in nodes:
+                current = node.getparent()
+                while current is not None:
+                    if current.cssselect(parent_selector):
+                        break
+                    parent = current.getparent()
+                    if parent is None:
+                        break
+                    index = parent.index(current)
+                    current.remove(node)
+                    parent.insert(index + 1, node)
+                    if len(current) == 0:
+                        parent.remove(current)
+                    current = parent
+            return
+
         if op == "remove_attrs":
             attrs = action.get("attrs") or []
             for node in nodes:
                 for attr in attrs:
                     if attr in node.attrib:
                         del node.attrib[attr]
+            return
+
+        if op == "set_attr":
+            attr = action.get("attr")
+            value = action.get("value")
+            if not attr or value is None:
+                return
+            for node in nodes:
+                node.set(attr, value)
             return
 
         if op == "replace_with_text":
@@ -375,6 +442,67 @@ class RuleEngine:
                 tail = node.tail or ""
                 parent.text = (parent.text or "") + text + tail
                 parent.remove(node)
+            return
+
+        if op == "move":
+            target_selector = action.get("target")
+            if not target_selector:
+                return
+            position = action.get("position", "append")
+            target_nodes = tree.cssselect(target_selector)
+            if not target_nodes:
+                return
+            target = target_nodes[0]
+            for node in nodes:
+                parent = node.getparent()
+                if parent is None:
+                    continue
+                parent.remove(node)
+                if position == "prepend":
+                    target.insert(0, node)
+                elif position == "before":
+                    target.addprevious(node)
+                elif position == "after":
+                    target.addnext(node)
+                else:
+                    target.append(node)
+            return
+
+        if op == "group_siblings":
+            wrapper_tag = action.get("wrapper_tag")
+            if not wrapper_tag:
+                return
+            wrapper_class = action.get("class")
+            for parent in {node.getparent() for node in nodes if node.getparent() is not None}:
+                children = list(parent)
+                index = 0
+                while index < len(children):
+                    child = children[index]
+                    if child in nodes:
+                        wrapper = lxml_html.Element(wrapper_tag)
+                        if wrapper_class:
+                            wrapper.set("class", wrapper_class)
+                        parent.insert(index, wrapper)
+                        while index < len(children) and children[index] in nodes:
+                            wrapper.append(children[index])
+                            index += 1
+                        children = list(parent)
+                    else:
+                        index += 1
+            return
+
+        if op == "reorder":
+            method = action.get("method")
+            for node in nodes:
+                parent = node.getparent()
+                if parent is None:
+                    continue
+                if method == "move_to_top":
+                    parent.remove(node)
+                    parent.insert(0, node)
+                elif method == "move_to_bottom":
+                    parent.remove(node)
+                    parent.append(node)
             return
 
 
