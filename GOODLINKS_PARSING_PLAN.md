@@ -2662,7 +2662,10 @@ author: {author}
 
 **Goal**: Re-parse all existing saved websites with new system.
 
-**Create `scripts/migrate_existing_websites.py`**:
+**Status (2026-01-05)**:
+- ✅ Migration script implemented.
+
+**Create `backend/scripts/migrate_existing_websites.py`**:
 
 ```python
 #!/usr/bin/env python3
