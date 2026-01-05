@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { MoreHorizontal, Trash2, Pencil } from 'lucide-svelte';
   import type { Conversation } from '$lib/types/history';
   import { chatStore } from '$lib/stores/chat';
@@ -100,6 +100,10 @@
       editInput?.select();
     });
   }
+
+  onDestroy(() => {
+    chatStore.cleanup?.();
+  });
 
   function formatDate(dateString: string): string {
     const date = new Date(dateString);

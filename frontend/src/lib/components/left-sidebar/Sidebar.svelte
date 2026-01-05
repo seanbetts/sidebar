@@ -117,6 +117,7 @@
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', handleSectionShortcut);
     }
+    chatStore.cleanup?.();
   });
 
   function handleSectionShortcut(event: KeyboardEvent) {

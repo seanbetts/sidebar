@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Paperclip, Send } from 'lucide-svelte';
 	import { chatStore } from '$lib/stores/chat';
@@ -28,6 +28,10 @@
 		// Auto-focus the input when component mounts
 		textarea?.focus();
 		resizeTextarea();
+	});
+
+	onDestroy(() => {
+		chatStore.cleanup?.();
 	});
 
 	// Auto-focus when conversation changes (new chat)

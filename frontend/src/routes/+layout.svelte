@@ -55,6 +55,7 @@
 		stopStorageListener?.();
 		stopRealtimeListener?.();
 		stopRealtime();
+		chatStore.cleanup?.();
 	});
 
 	async function checkHealth() {
