@@ -294,3 +294,25 @@ def test_parse_url_local_force_rendering(monkeypatch):
     data = web_save_parser.yaml.safe_load(frontmatter)
     assert data["used_js_rendering"] is True
     assert parsed.title == "Rendered"
+
+
+def test_parse_url_local_includes_hero_image(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Image Test</title>
+        <meta property="og:image" content="https://images.example.com/hero.jpg"/>
+      </head>
+      <body>
+        <article><p>Content body</p></article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article"
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "![Image Test](https://images.example.com/hero.jpg)" in parsed.content
