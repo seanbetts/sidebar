@@ -1395,9 +1395,9 @@ author: {author}
 - ✅ Action support implemented: retag, wrap/unwrap/remove_container, remove_parent/remove_outer_parent/remove_to_parent, move (append/prepend/before/after), remove_attrs, set_attr, replace_with_text, group_siblings, reorder.
 - ✅ Metadata overrides applied post-extraction (title/author/published).
 - ✅ Starter rulesets added and expanded (common/news/platforms/docs/social + top GoodLinks domains).
-- ⏳ Rendering controls (`rendering` block) not implemented yet.
-- ⏳ Include reinsertion logic not implemented yet.
-- ⏳ Discard flag handling not implemented yet.
+- ✅ Rendering controls (`rendering` block) implemented.
+- ✅ Include reinsertion logic implemented.
+- ✅ Discard flag handling implemented.
 
 1. **Design Rule Schema** (Aligned with GoodLinks Architecture):
 
