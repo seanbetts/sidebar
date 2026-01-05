@@ -1,0 +1,76 @@
+- id: goodlinks-sixcolors-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: sixcolors.com
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions: []
+  metadata:
+    author:
+      selector: .article .column1 h3
+- id: goodlinks-hbr-org
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: hbr.org
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: remove_children
+    selector: '[class^="Subheader"]'
+  metadata: {}
+- id: goodlinks-finance-yahoo-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: finance.yahoo.com
+  selector_overrides: {}
+  remove:
+  - '#ybar'
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-lifehacker-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: lifehacker.com
+  selector_overrides: {}
+  remove:
+  - '[class^="zmgad-"]'
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-edition-cnn-com
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: edition.cnn.com
+  selector_overrides:
+    article: .article__main
+  remove:
+  - '[data-ad-type]'
+  - '[data-has-video-player="true"]'
+  - cite
+  include:
+  - '[data-component-name=image]'
+  - .image__metadata
+  - h2
+  - h3
+  - h4
+  - h5
+  - h6
+  actions:
+  - op: move
+    selector: .image__caption
+    target: figcaption
+    position: prepend
+  metadata: {}

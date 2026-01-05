@@ -214,6 +214,30 @@ def test_rule_engine_actions_group_siblings():
     assert "class=\"caps\"" in cleaned
 
 
+def test_rule_engine_actions_remove_children():
+    html = "<html><body><div class='box'><p>Remove me</p></div><p>Keep</p></body></html>"
+    engine = web_save_parser.RuleEngine(
+        rules=[
+            web_save_parser.Rule(
+                id="remove-children",
+                phase="post",
+                priority=0,
+                trigger={"dom": {"any": [".box"]}},
+                remove=[],
+                include=[],
+                selector_overrides={},
+                metadata={},
+                actions=[{"op": "remove_children", "selector": ".box"}],
+            )
+        ]
+    )
+
+    matched = engine.match_rules("https://example.com", html, phase="post")
+    cleaned = engine.apply_rules(html, matched)
+    assert "Remove me" not in cleaned
+    assert "Keep" in cleaned
+
+
 def test_parse_url_local_discard_rule(monkeypatch):
     html = "<html><head><title>Discard Me</title></head><body><article>Skip</article></body></html>"
 
