@@ -211,3 +211,85 @@ def test_rule_engine_actions_group_siblings():
     matched = engine.match_rules("https://example.com", html, phase="post")
     cleaned = engine.apply_rules(html, matched)
     assert "class=\"caps\"" in cleaned
+
+
+def test_parse_url_local_discard_rule(monkeypatch):
+    html = "<html><head><title>Discard Me</title></head><body><article>Skip</article></body></html>"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/discard"
+
+    rule = web_save_parser.Rule(
+        id="discard-it",
+        phase="pre",
+        priority=0,
+        trigger={"dom": {"any": ["article"]}},
+        discard=True,
+    )
+    engine = web_save_parser.RuleEngine([rule])
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+
+    parsed = web_save_parser.parse_url_local("example.com/discard")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["discarded"] is True
+    assert data["rule_id"] == "discard-it"
+
+
+def test_parse_url_local_includes_reinserted_nodes(monkeypatch):
+    html = """
+    <html>
+      <head><title>Include Me</title></head>
+      <body>
+        <div class="include-me"><p>Special include</p></div>
+        <article><p>Primary content</p></article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/include"
+
+    rule = web_save_parser.Rule(
+        id="include-rule",
+        phase="pre",
+        priority=0,
+        trigger={"dom": {"any": [".include-me"]}},
+        include=[".include-me"],
+    )
+    engine = web_save_parser.RuleEngine([rule])
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+
+    parsed = web_save_parser.parse_url_local("example.com/include")
+    assert "Special include" in parsed.content
+
+
+def test_parse_url_local_force_rendering(monkeypatch):
+    html = "<html><body><div class='force'>Placeholder</div></body></html>"
+    rendered = "<html><head><title>Rendered</title></head><body><article>Rendered body</article></body></html>"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/render"
+
+    def fake_render(url: str, *, timeout: int = 30000, wait_for=None):
+        return rendered, "https://example.com/rendered"
+
+    rule = web_save_parser.Rule(
+        id="force-render",
+        phase="pre",
+        priority=0,
+        trigger={"dom": {"any": [".force"]}},
+        rendering={"mode": "force"},
+    )
+    engine = web_save_parser.RuleEngine([rule])
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "render_html_with_playwright", fake_render)
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+
+    parsed = web_save_parser.parse_url_local("example.com/render")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+    assert data["used_js_rendering"] is True
+    assert parsed.title == "Rendered"

@@ -1,12 +1,14 @@
 """Local parsing utilities for the web-save skill."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
+from copy import deepcopy
+from difflib import SequenceMatcher
 
 import re
 import requests
@@ -33,11 +35,13 @@ class Rule:
     phase: str
     priority: int
     trigger: dict
-    remove: list[str]
-    include: list[str]
-    selector_overrides: dict
-    metadata: dict
-    actions: list[dict]
+    remove: list[str] = field(default_factory=list)
+    include: list[str] = field(default_factory=list)
+    selector_overrides: dict = field(default_factory=dict)
+    metadata: dict = field(default_factory=dict)
+    actions: list[dict] = field(default_factory=list)
+    rendering: dict = field(default_factory=dict)
+    discard: bool = False
 
 
 @dataclass(frozen=True)
@@ -63,6 +67,176 @@ def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str]:
     response = requests.get(url, headers=headers, timeout=timeout)
     response.raise_for_status()
     return response.text, str(response.url)
+
+
+def requires_js_rendering(html: str) -> bool:
+    """Detect if the page likely requires JS rendering."""
+    if len(html) < 500:
+        return True
+
+    markers = ("react-root", "ng-app", "__NEXT_DATA__", "nuxt", "__gatsby")
+    return any(marker in html for marker in markers)
+
+
+def render_html_with_playwright(
+    url: str,
+    *,
+    timeout: int = 30000,
+    wait_for: Optional[str] = None,
+) -> tuple[str, str]:
+    """Render HTML using Playwright for JS-heavy pages."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:  # pragma: no cover - depends on optional dependency
+        raise RuntimeError("Playwright is not installed") from exc
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context(user_agent=USER_AGENT)
+        page = context.new_page()
+        page.goto(url, wait_until="networkidle", timeout=timeout)
+        if wait_for:
+            page.wait_for_selector(wait_for, timeout=timeout)
+        html = page.content()
+        final_url = page.url
+        browser.close()
+    return html, final_url
+
+
+def _resolve_rendering_settings(rules: list[Rule]) -> tuple[str, Optional[str], int]:
+    mode = "auto"
+    wait_for = None
+    timeout = 30000
+    for rule in rules:
+        rendering = rule.rendering or {}
+        rule_mode = rendering.get("mode", "auto")
+        if rule_mode == "force":
+            mode = "force"
+            wait_for = rendering.get("wait_for", wait_for)
+            timeout = rendering.get("timeout", timeout)
+        elif rule_mode == "never" and mode != "force":
+            mode = "never"
+        elif rule_mode == "auto" and mode not in {"force", "never"}:
+            mode = "auto"
+        if mode != "force":
+            wait_for = rendering.get("wait_for", wait_for)
+            timeout = rendering.get("timeout", timeout)
+    return mode, wait_for, timeout
+
+
+def _discard_frontmatter(
+    *,
+    source: str,
+    domain: str,
+    rule: Optional[Rule],
+    used_js_rendering: bool,
+) -> str:
+    reason = "Content discarded by rule"
+    if rule:
+        reason = f"{reason}: {rule.id}"
+    frontmatter_meta = {
+        "source": source,
+        "domain": domain,
+        "discarded": True,
+        "discard_reason": reason,
+        "rule_id": rule.id if rule else None,
+        "used_js_rendering": used_js_rendering,
+        "saved_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return build_frontmatter("[Content discarded by parsing rule]", meta=frontmatter_meta)
+
+
+def apply_include_reinsertion(
+    extracted_html: str,
+    original_dom: lxml_html.HtmlElement,
+    include_selectors: list[str],
+    removal_rules: list[str],
+) -> str:
+    """Reinsert forcibly included elements after Readability extraction."""
+    extracted_tree = lxml_html.fromstring(extracted_html)
+    body = extracted_tree.find(".//body") or extracted_tree
+
+    for selector in include_selectors:
+        try:
+            for node in original_dom.cssselect(selector):
+                cloned = deepcopy(node)
+                for removal_selector in removal_rules:
+                    for elem in cloned.cssselect(removal_selector):
+                        parent = elem.getparent()
+                        if parent is not None:
+                            parent.remove(elem)
+                insertion = find_insertion_point(extracted_tree, cloned, original_dom, node)
+                if insertion:
+                    parent, index = insertion
+                    parent.insert(index, cloned)
+                else:
+                    body.append(cloned)
+        except Exception:
+            continue
+
+    return lxml_html.tostring(extracted_tree, encoding="unicode")
+
+
+def find_insertion_point(
+    extracted_tree: lxml_html.HtmlElement,
+    cloned_node: lxml_html.HtmlElement,
+    original_dom: lxml_html.HtmlElement,
+    original_node: lxml_html.HtmlElement,
+) -> Optional[tuple[lxml_html.HtmlElement, int]]:
+    """Find an insertion point for included elements."""
+    node_text = cloned_node.text_content().strip()[:200]
+    if node_text:
+        best_match = None
+        best_ratio = 0.3
+        for elem in extracted_tree.iter():
+            if elem.tag in {"script", "style", "meta", "link"}:
+                continue
+            elem_text = elem.text_content().strip()[:200]
+            if not elem_text:
+                continue
+            ratio = SequenceMatcher(None, node_text, elem_text).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_match = elem
+        if best_match is not None:
+            parent = best_match.getparent()
+            if parent is not None:
+                return parent, parent.index(best_match) + 1
+
+    position_match = _find_by_position(extracted_tree, original_dom, original_node)
+    if position_match:
+        return position_match
+
+    headings = extracted_tree.cssselect("h1, h2, h3, h4, h5, h6")
+    if headings:
+        last_heading = headings[-1]
+        parent = last_heading.getparent()
+        if parent is not None:
+            return parent, parent.index(last_heading) + 1
+
+    return None
+
+
+def _find_by_position(
+    extracted_tree: lxml_html.HtmlElement,
+    original_dom: lxml_html.HtmlElement,
+    original_node: lxml_html.HtmlElement,
+) -> Optional[tuple[lxml_html.HtmlElement, int]]:
+    """Match insertion point using original DOM ordering."""
+    _ = original_dom
+    preceding = original_node.getprevious()
+    while preceding is not None:
+        preceding_text = preceding.text_content().strip()[:100]
+        if preceding_text and len(preceding_text) > 20:
+            for elem in extracted_tree.iter():
+                elem_text = elem.text_content().strip()[:100]
+                if preceding_text in elem_text or elem_text in preceding_text:
+                    parent = elem.getparent()
+                    if parent is not None:
+                        return parent, parent.index(elem) + 1
+            break
+        preceding = preceding.getprevious()
+    return None
 
 
 def extract_metadata(html: str, url: str) -> dict:
@@ -144,18 +318,73 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     """Parse a URL locally into Markdown with frontmatter."""
     normalized = ensure_url(url)
     html, final_url = fetch_html(normalized, timeout=timeout)
-    metadata = extract_metadata(html, final_url)
-
     engine = get_rule_engine()
+    pre_rules = engine.match_rules(final_url, html, phase="pre")
+    render_mode, wait_for, render_timeout = _resolve_rendering_settings(pre_rules)
+    used_js_rendering = False
+    if render_mode == "force":
+        html, final_url = render_html_with_playwright(
+            final_url, timeout=render_timeout, wait_for=wait_for
+        )
+        used_js_rendering = True
+    elif render_mode == "auto" and requires_js_rendering(html):
+        try:
+            html, final_url = render_html_with_playwright(
+                final_url, timeout=render_timeout, wait_for=wait_for
+            )
+            used_js_rendering = True
+        except RuntimeError:
+            pass
+
+    metadata = extract_metadata(html, final_url)
     pre_rules = engine.match_rules(final_url, html, phase="pre")
     if pre_rules:
         html = engine.apply_rules(html, pre_rules)
+    discard_rule = next((rule for rule in pre_rules if rule.discard), None)
+    if discard_rule:
+        content = _discard_frontmatter(
+            source=metadata.get("canonical") or final_url,
+            domain=urlparse(final_url).netloc,
+            rule=discard_rule,
+            used_js_rendering=used_js_rendering,
+        )
+        return ParsedPage(
+            title=metadata.get("title") or urlparse(final_url).netloc,
+            content=content,
+            source=metadata.get("canonical") or final_url,
+            published_at=None,
+        )
+
+    original_dom = lxml_html.fromstring(html)
+    include_selectors = [selector for rule in pre_rules for selector in rule.include]
+    removal_selectors = [selector for rule in pre_rules for selector in rule.remove]
 
     document = Document(html)
     article_html = document.summary(html_partial=True)
+    if include_selectors:
+        article_html = apply_include_reinsertion(
+            article_html,
+            original_dom,
+            include_selectors,
+            removal_selectors,
+        )
     post_rules = engine.match_rules(final_url, article_html, phase="post")
     if post_rules:
         article_html = engine.apply_rules(article_html, post_rules)
+    discard_rule = next((rule for rule in post_rules if rule.discard), None)
+    if discard_rule:
+        content = _discard_frontmatter(
+            source=metadata.get("canonical") or final_url,
+            domain=urlparse(final_url).netloc,
+            rule=discard_rule,
+            used_js_rendering=used_js_rendering,
+        )
+        return ParsedPage(
+            title=metadata.get("title") or urlparse(final_url).netloc,
+            content=content,
+            source=metadata.get("canonical") or final_url,
+            published_at=None,
+        )
     overrides = extract_metadata_overrides(article_html, post_rules)
     if overrides:
         metadata.update(overrides)
@@ -163,7 +392,12 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if not markdown:
         raise ValueError("No readable content extracted")
 
-    title = metadata.get("title") or document.short_title() or document.title() or urlparse(final_url).netloc
+    title = (
+        metadata.get("title")
+        or document.short_title()
+        or document.title()
+        or urlparse(final_url).netloc
+    )
     published_at = parse_datetime(metadata.get("published"))
     word_count = compute_word_count(markdown)
     frontmatter_meta = {
@@ -174,6 +408,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         "domain": urlparse(final_url).netloc,
         "word_count": word_count,
         "reading_time": f"{reading_time_minutes(word_count)} min",
+        "used_js_rendering": used_js_rendering,
         "saved_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -185,6 +420,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         source=metadata.get("canonical") or final_url,
         published_at=published_at,
     )
+
+
 def _normalize_host(value: str) -> str:
     return value.lower().strip(".")
 
@@ -228,6 +465,8 @@ class RuleEngine:
                         selector_overrides=item.get("selector_overrides", {}) or {},
                         metadata=item.get("metadata", {}) or {},
                         actions=item.get("actions", []) or [],
+                        rendering=item.get("rendering", {}) or {},
+                        discard=bool(item.get("discard", False)),
                     )
                 )
         rules.sort(key=lambda rule: rule.priority, reverse=True)
