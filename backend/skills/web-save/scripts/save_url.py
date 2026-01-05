@@ -27,6 +27,8 @@ try:
         ParsedPage,
         parse_url_local,
         build_frontmatter,
+    )
+    from api.services.web_save_tagger import (
         compute_word_count,
         calculate_reading_time,
         extract_tags,
