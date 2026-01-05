@@ -7,12 +7,12 @@ from typing import Iterable, Optional
 from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session, load_only
-from sqlalchemy import or_
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.website import Website
 from api.exceptions import WebsiteNotFoundError
 from api.utils.metadata_helpers import get_max_pinned_order
+from api.utils.search import build_text_search_filter
 
 
 class WebsitesService:
@@ -562,9 +562,9 @@ class WebsitesService:
             .filter(
                 Website.user_id == user_id,
                 Website.deleted_at.is_(None),
-                or_(
-                    Website.title.ilike(f"%{query}%"),
-                    Website.content.ilike(f"%{query}%"),
+                build_text_search_filter(
+                    [Website.title, Website.content],
+                    query,
                 ),
             )
             .order_by(Website.updated_at.desc())

@@ -4,7 +4,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import or_
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -13,6 +12,7 @@ from api.exceptions import NoteNotFoundError
 from api.services.notes_service import NotesService
 from api.services.workspace_service import WorkspaceService
 from sqlalchemy.orm.exc import ObjectDeletedError
+from api.utils.search import build_text_search_filter
 
 
 class NotesWorkspaceService(WorkspaceService[Note]):
@@ -52,9 +52,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             .filter(
                 Note.user_id == user_id,
                 Note.deleted_at.is_(None),
-                or_(
-                    Note.title.ilike(f"%{query}%"),
-                    Note.content.ilike(f"%{query}%"),
+                build_text_search_filter(
+                    [Note.title, Note.content],
+                    query,
                 ),
             )
             .order_by(Note.updated_at.desc())
