@@ -20,6 +20,7 @@ from api.prompts import (
     CONTEXT_GUIDANCE_TEMPLATE,
 )
 from api.services.file_ingestion_service import FileIngestionService
+from api.constants import PromptContextLimits
 from api.services.storage.service import get_storage_backend
 import uuid
 from api.services.user_settings_service import UserSettingsService
@@ -28,10 +29,10 @@ from api.services.user_settings_service import UserSettingsService
 class PromptContextService:
     """Build prompt context blocks from DB and open UI state."""
 
-    MAX_SYSTEM_PROMPT_CHARS = 40000
-    MAX_FIRST_MESSAGE_CHARS = 8000
-    MAX_OPEN_FILE_CHARS = 12000
-    MAX_ATTACHMENT_CHARS = 8000
+    MAX_SYSTEM_PROMPT_CHARS = PromptContextLimits.MAX_SYSTEM_PROMPT_CHARS
+    MAX_FIRST_MESSAGE_CHARS = PromptContextLimits.MAX_FIRST_MESSAGE_CHARS
+    MAX_OPEN_FILE_CHARS = PromptContextLimits.MAX_OPEN_FILE_CHARS
+    MAX_ATTACHMENT_CHARS = PromptContextLimits.MAX_ATTACHMENT_CHARS
     RECENT_ACTIVITY_CACHE_TTL = timedelta(minutes=5)
     _recent_activity_cache: dict[
         str,

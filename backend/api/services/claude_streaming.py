@@ -5,6 +5,7 @@ import json
 import logging
 from typing import Any, AsyncIterator, Dict, List
 
+from api.constants import ChatConstants
 from api.services.web_search_builder import (
     build_web_search_location,
     serialize_web_search_result,
@@ -55,7 +56,7 @@ async def stream_with_tools(
             web_search_tool["user_location"] = user_location
         tools.append(web_search_tool)
 
-    max_rounds = 5
+    max_rounds = ChatConstants.MAX_TOOL_ROUNDS
     current_round = 0
 
     try:
