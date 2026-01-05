@@ -1389,6 +1389,16 @@ author: {author}
 
 **Tasks**:
 
+**Status (2026-01-05)**:
+- ✅ Rule schema implemented: `phase`, `priority`, `trigger` (host/dom, any/all, text contains), `selector_overrides`, `remove`, `include`, `actions`, `metadata`.
+- ✅ Rule engine supports host variants (no-www, www, eTLD+1) and trigger `mode: any`.
+- ✅ Action support implemented: retag, wrap/unwrap/remove_container, remove_parent/remove_outer_parent/remove_to_parent, move (append/prepend/before/after), remove_attrs, set_attr, replace_with_text, group_siblings, reorder.
+- ✅ Metadata overrides applied post-extraction (title/author/published).
+- ✅ Starter rulesets added and expanded (common/news/platforms/docs/social + top GoodLinks domains).
+- ⏳ Rendering controls (`rendering` block) not implemented yet.
+- ⏳ Include reinsertion logic not implemented yet.
+- ⏳ Discard flag handling not implemented yet.
+
 1. **Design Rule Schema** (Aligned with GoodLinks Architecture):
 
    **Rule Schema Fields** (matching GoodLinks primitives):
