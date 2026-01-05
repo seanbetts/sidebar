@@ -5,6 +5,8 @@ BACKEND_LOG="/tmp/sidebar-backend.log"
 FRONTEND_LOG="/tmp/sidebar-frontend.log"
 INGESTION_LOG="/tmp/sidebar-ingestion-worker.log"
 THINGS_BRIDGE_LOG="/tmp/sidebar-things-bridge.log"
+THINGS_BRIDGE_LAUNCHCTL_LOG="$HOME/Library/Logs/sidebar-things-bridge.log"
+THINGS_BRIDGE_LAUNCHCTL_ERR_LOG="$HOME/Library/Logs/sidebar-things-bridge.err.log"
 BACKEND_PID="/tmp/sidebar-backend.pid"
 FRONTEND_PID="/tmp/sidebar-frontend.pid"
 INGESTION_PID="/tmp/sidebar-ingestion-worker.pid"
@@ -393,7 +395,8 @@ status_things_bridge() {
   if things_bridge_launchctl_running; then
     echo "✓ Things bridge running (launchctl)"
     echo "  URL: http://localhost:8787"
-    echo "  Logs: ${THINGS_BRIDGE_LOG}"
+    echo "  Logs: ${THINGS_BRIDGE_LAUNCHCTL_LOG}"
+    echo "  Err Logs: ${THINGS_BRIDGE_LAUNCHCTL_ERR_LOG}"
     return
   fi
   status_service "${THINGS_BRIDGE_PID}" "Things bridge" "http://localhost:8787" "${THINGS_BRIDGE_LOG}"
@@ -412,7 +415,12 @@ show_logs() {
       tail -n 200 "${INGESTION_LOG}" || true
       ;;
     bridge)
-      tail -n 200 "${THINGS_BRIDGE_LOG}" || true
+      if things_bridge_launchctl_running; then
+        tail -n 200 "${THINGS_BRIDGE_LAUNCHCTL_LOG}" || true
+        tail -n 200 "${THINGS_BRIDGE_LAUNCHCTL_ERR_LOG}" || true
+      else
+        tail -n 200 "${THINGS_BRIDGE_LOG}" || true
+      fi
       ;;
     *)
       echo "--- Backend logs (${BACKEND_LOG}) ---"
@@ -421,8 +429,15 @@ show_logs() {
       tail -n 200 "${FRONTEND_LOG}" || true
       echo "--- Ingestion worker logs (${INGESTION_LOG}) ---"
       tail -n 200 "${INGESTION_LOG}" || true
-      echo "--- Things bridge logs (${THINGS_BRIDGE_LOG}) ---"
-      tail -n 200 "${THINGS_BRIDGE_LOG}" || true
+      if things_bridge_launchctl_running; then
+        echo "--- Things bridge logs (${THINGS_BRIDGE_LAUNCHCTL_LOG}) ---"
+        tail -n 200 "${THINGS_BRIDGE_LAUNCHCTL_LOG}" || true
+        echo "--- Things bridge error logs (${THINGS_BRIDGE_LAUNCHCTL_ERR_LOG}) ---"
+        tail -n 200 "${THINGS_BRIDGE_LAUNCHCTL_ERR_LOG}" || true
+      else
+        echo "--- Things bridge logs (${THINGS_BRIDGE_LOG}) ---"
+        tail -n 200 "${THINGS_BRIDGE_LOG}" || true
+      fi
       ;;
   esac
 }
