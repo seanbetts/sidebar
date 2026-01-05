@@ -55,7 +55,7 @@ describe('api services', () => {
       id: 'm1',
       role: 'user',
       content: 'Hi',
-      status: 'sent',
+      status: 'complete',
       timestamp
     });
 
@@ -186,11 +186,13 @@ describe('api services', () => {
   });
 
   it('thingsAPI.status returns status payload', async () => {
-    vi.spyOn(global, 'fetch').mockReturnValue(okJson({ online: true }));
+    vi.spyOn(global, 'fetch').mockReturnValue(
+      okJson({ activeBridgeId: 'bridge-1', activeBridge: null, bridges: [] })
+    );
 
     const data = await thingsAPI.status();
 
-    expect(data.online).toBe(true);
+    expect(data.activeBridgeId).toBe('bridge-1');
   });
 
   it('thingsAPI.search returns list data', async () => {

@@ -11,7 +11,9 @@
     lastWeek: 'Last 7 days',
     lastMonth: 'Last 30 days',
     older: 'Older'
-  };
+  } as const;
+
+  type GroupKey = keyof typeof groupLabels;
 </script>
 
 <div class="conversation-list">
@@ -35,7 +37,7 @@
     {#each Object.entries($groupedConversations) as [groupKey, conversations]}
       {#if conversations.length > 0}
         <div class="group">
-          <div class="group-label">{groupLabels[groupKey]}</div>
+          <div class="group-label">{groupLabels[groupKey as GroupKey]}</div>
           {#each conversations as conversation (conversation.id)}
             <ConversationItem {conversation} />
           {/each}

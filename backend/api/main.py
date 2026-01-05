@@ -1,5 +1,7 @@
 """sideBar Skills API - FastAPI + MCP integration."""
 from contextlib import asynccontextmanager
+from types import ModuleType
+from typing import Awaitable, Callable, cast
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
@@ -23,13 +25,19 @@ import logging
 import sentry_sdk
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-try:
-    from sentry_sdk.integrations.fastapi import FastAPIIntegration as _FastAPIIntegration
-except ImportError:  # pragma: no cover - depends on sentry_sdk version
-    try:
-        from sentry_sdk.integrations.fastapi import FastApiIntegration as _FastAPIIntegration  # type: ignore
-    except ImportError:  # pragma: no cover - optional integration
-        _FastAPIIntegration = None
+sentry_fastapi: ModuleType | None
+try:  # pragma: no cover - depends on sentry_sdk version
+    from sentry_sdk.integrations import fastapi as sentry_fastapi
+except Exception:  # pragma: no cover - optional integration
+    sentry_fastapi = None
+
+if sentry_fastapi is not None:
+    _FastAPIIntegration = (
+        getattr(sentry_fastapi, "FastAPIIntegration", None)
+        or getattr(sentry_fastapi, "FastApiIntegration", None)
+    )
+else:
+    _FastAPIIntegration = None
 
 # Configure audit logging
 logging.basicConfig(
@@ -92,9 +100,18 @@ app = FastAPI(
 )
 
 # Register error handlers
-app.add_exception_handler(APIError, api_error_handler)
-app.add_exception_handler(HTTPException, http_exception_handler)
-app.add_exception_handler(Exception, unhandled_exception_handler)
+app.add_exception_handler(
+    APIError,
+    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], api_error_handler)
+)
+app.add_exception_handler(
+    HTTPException,
+    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], http_exception_handler)
+)
+app.add_exception_handler(
+    Exception,
+    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], unhandled_exception_handler)
+)
 app.add_middleware(DeprecationMiddleware)
 app.add_middleware(MetricsMiddleware)
 
@@ -159,19 +176,19 @@ async def auth_middleware(request: Request, call_next):
             from api.db.session import SessionLocal
             with SessionLocal() as db:
                 db.execute(text("SET app.pat_token = :token"), {"token": token})
-                record = (
+                settings_record = (
                     db.query(UserSettings)
                     .filter(UserSettings.shortcuts_pat == token)
                     .first()
                 )
-            if not record:
+            if not settings_record:
                 return _auth_error(
                     401,
                     "INVALID_API_TOKEN",
                     "Invalid API token",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            request.state.user_id = record.user_id
+            request.state.user_id = settings_record.user_id
         else:
             validator = SupabaseJWTValidator()
             payload = await validator.validate_token(token)

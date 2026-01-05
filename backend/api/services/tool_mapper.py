@@ -44,8 +44,8 @@ class ToolMapper:
 
     def _build_tool_name_maps(self) -> None:
         """Build mappings between safe tool names and display names."""
-        self.tool_name_map = {}
-        self.tool_name_reverse = {}
+        self.tool_name_map: dict[str, str] = {}
+        self.tool_name_reverse: dict[str, str] = {}
         for display_name in self.tools.keys():
             safe_name = self._normalize_tool_name(display_name)
             base = safe_name
@@ -93,6 +93,11 @@ class ToolMapper:
                 "data": data,
                 "error": error
             }
+        return {
+            "success": False,
+            "data": None,
+            "error": "Invalid result payload"
+        }
 
     @staticmethod
     def _inject_user_id(

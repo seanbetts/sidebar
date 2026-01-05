@@ -37,7 +37,7 @@ class UserSettingsService:
             .filter(UserSettings.shortcuts_pat == token)
             .first()
         )
-        if record and secrets.compare_digest(record.shortcuts_pat, token):
+        if record and record.shortcuts_pat and secrets.compare_digest(record.shortcuts_pat, token):
             return record.user_id
         return None
 

@@ -238,7 +238,7 @@ async def get_note(
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
-        raise NotFoundError("Note", note_id)
+        raise NotFoundError("Note", str(note_id))
 
 
 @router.post("")
@@ -313,7 +313,7 @@ async def rename_note(
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
-        raise NotFoundError("Note", note_id)
+        raise NotFoundError("Note", str(note_id))
 
 
 @router.delete("/{note_id}")
@@ -374,7 +374,7 @@ async def download_note(
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
-        raise NotFoundError("Note", note_id)
+        raise NotFoundError("Note", str(note_id))
 
     headers = {"Content-Disposition": f'attachment; filename="{result["filename"]}"'}
     return Response(result["content"], media_type="text/markdown", headers=headers)
@@ -445,7 +445,7 @@ async def update_note(
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
-        raise NotFoundError("Note", note_id)
+        raise NotFoundError("Note", str(note_id))
 
 
 @router.patch("/{note_id}/move")

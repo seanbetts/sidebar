@@ -42,11 +42,11 @@ async def upload_file(
     file: UploadFile = File(...),
     folder: str = Form(default=""),
     user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
+    token: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Upload a file and enqueue ingestion."""
-    file_id, _ = await _handle_upload(file, folder, user_id, db)
+    file_id, _job = await _handle_upload(file, folder, user_id, db)
     return {"file_id": str(file_id)}
 
 
@@ -55,7 +55,7 @@ async def quick_upload_file(
     file: UploadFile = File(...),
     folder: str = Form(default=""),
     user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
+    token: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Upload a file and enqueue ingestion (async)."""
@@ -70,7 +70,7 @@ async def quick_upload_file(
 async def ingest_youtube(
     request: dict,
     user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
+    token: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Create an ingestion job for a YouTube video URL."""
@@ -83,7 +83,7 @@ async def ingest_youtube(
         "provider": "youtube",
         "video_id": video_id,
     }
-    record, _ = FileIngestionService.create_ingestion(
+    record, _job = FileIngestionService.create_ingestion(
         db,
         user_id,
         filename_original="YouTube video",
@@ -99,7 +99,7 @@ async def ingest_youtube(
 @router.get("")
 async def list_ingestions(
     user_id: str = Depends(get_current_user_id),
-    _: str = Depends(verify_bearer_token),
+    token: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """List ingestion records for the current user."""

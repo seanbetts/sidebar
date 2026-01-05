@@ -179,6 +179,7 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         filters = [
             IngestedFile.user_id == user_id,
             IngestedFile.deleted_at.is_(None),
+            IngestedFile.path.is_not(None),
             IngestedFile.path.ilike(like_pattern),
         ]
         if base_path:
@@ -195,6 +196,7 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
     @classmethod
     def _item_to_dict(cls, item: IngestedFile, *, base_path: str = "", **kwargs: object) -> dict:
         base_path = FileTreeService.normalize_base_path(base_path)
+        assert item.path is not None
         rel_path = _relative_path(base_path, item.path)
         return {
             "name": Path(rel_path).name,
@@ -215,9 +217,10 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         db: Session,
         user_id: str,
         query: str,
-        base_path: str,
         *,
+        base_path: str = "",
         limit: int = 50,
+        **kwargs: object,
     ) -> dict:
         """Search files and format results for the UI."""
         return super().search(db, user_id, query, limit=limit, base_path=base_path)
@@ -281,6 +284,8 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
             raise HTTPException(status_code=404, detail="Item not found")
 
         for item in prefix_records:
+            if item.path is None:
+                continue
             item.path = item.path.replace(old_full_path, new_full_path, 1)
             item.filename_original = Path(item.path).name
         db.commit()
@@ -328,6 +333,8 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
             raise HTTPException(status_code=404, detail="Item not found")
 
         for item in prefix_records:
+            if item.path is None:
+                continue
             item.path = item.path.replace(full_path, new_full_path, 1)
             item.filename_original = Path(item.path).name
         db.commit()

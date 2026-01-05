@@ -9,7 +9,12 @@ import type { Cookies } from '@sveltejs/kit';
  * @returns Supabase server client.
  */
 export function createSupabaseServerClient(cookies: Cookies) {
-  return createServerClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  const supabaseUrl = env.SUPABASE_URL;
+  const supabaseAnonKey = env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('SUPABASE_URL or SUPABASE_ANON_KEY is not configured');
+  }
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get: (key: string) => cookies.get(key),
       set: (key: string, value: string, options: CookieOptions) => {

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
+import type { ComponentType } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import FilesUploadsSection from '$lib/components/left-sidebar/files/FilesUploadsSection.svelte';
 import type { IngestionListItem } from '$lib/types/ingestion';
@@ -8,6 +9,8 @@ const baseItem: IngestionListItem = {
   file: {
     id: 'file-1',
     filename_original: 'failed.txt',
+    mime_original: 'text/plain',
+    size_bytes: 12,
     created_at: new Date().toISOString()
   },
   job: {
@@ -18,6 +21,8 @@ const baseItem: IngestionListItem = {
   },
   recommended_viewer: null
 };
+
+const DummyIcon = (() => null) as unknown as ComponentType;
 
 describe('FilesUploadsSection', () => {
   it('renders failed uploads and triggers delete', async () => {
@@ -30,7 +35,7 @@ describe('FilesUploadsSection', () => {
         failedItems: [baseItem],
         readyItems: [],
         openMenuKey: null,
-        iconForCategory: () => null,
+        iconForCategory: () => DummyIcon,
         stripExtension: (name: string) => name,
         onOpen: vi.fn(),
         onToggleMenu: vi.fn(),

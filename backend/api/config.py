@@ -18,16 +18,16 @@ def _build_database_url() -> str:
         if app_env not in {"prod", "production"}:
             parsed = urlparse(explicit_url)
             if parsed.hostname and "pooler.supabase.com" in parsed.hostname:
-                port = parsed.port or 5432
-                if port == 5432:
+                parsed_port = str(parsed.port or 5432)
+                if parsed_port == "5432":
                     netloc = parsed.netloc
                     if "@" in netloc:
                         auth, hostport = netloc.split("@", 1)
-                        host = hostport.split(":")[0]
-                        netloc = f"{auth}@{host}:6543"
+                        parsed_host = hostport.split(":")[0]
+                        netloc = f"{auth}@{parsed_host}:6543"
                     else:
-                        host = netloc.split(":")[0]
-                        netloc = f"{host}:6543"
+                        parsed_host = netloc.split(":")[0]
+                        netloc = f"{parsed_host}:6543"
                     return urlunparse(parsed._replace(netloc=netloc))
         return explicit_url
 
@@ -37,15 +37,15 @@ def _build_database_url() -> str:
         return "postgresql://sidebar:sidebar_dev@postgres:5432/sidebar"
 
     db_name = os.getenv("SUPABASE_DB_NAME", "postgres")
-    port = os.getenv("SUPABASE_DB_PORT", "5432")
+    port: str = os.getenv("SUPABASE_DB_PORT", "5432")
     sslmode = os.getenv("SUPABASE_SSLMODE", "require")
     use_pooler = os.getenv("SUPABASE_USE_POOLER", "true").lower() in {"1", "true", "yes", "on"}
     pooler_mode = os.getenv("SUPABASE_POOLER_MODE", "transaction").lower()
     if use_pooler and app_env not in {"prod", "production"}:
         pooler_mode = "transaction"
 
-    host = None
-    user = None
+    host: str | None = None
+    user: str | None = None
     if use_pooler:
         host = os.getenv("SUPABASE_POOLER_HOST")
         if host:
@@ -64,6 +64,8 @@ def _build_database_url() -> str:
         host = f"db.{project_id}.supabase.co"
         user = os.getenv("SUPABASE_DB_USER", "postgres")
 
+    if host is None or user is None:
+        return "postgresql://sidebar:sidebar_dev@postgres:5432/sidebar"
     password = quote_plus(supabase_password)
     return f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode={sslmode}"
 

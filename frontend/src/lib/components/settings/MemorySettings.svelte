@@ -17,6 +17,10 @@
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import { logError } from '$lib/utils/errorHandling';
 
+  type MarkdownStorage = {
+    markdown: { getMarkdown: () => string };
+  };
+
   let searchTerm = '';
   let showCreateDialog = false;
   let showEditDialog = false;
@@ -157,16 +161,17 @@
   }
 
   async function confirmDelete(): Promise<boolean> {
-    if (!pendingDelete) return false;
+    const deleting = pendingDelete;
+    if (!deleting) return false;
     try {
-      await memoriesStore.delete(pendingDelete.id);
-      if (pendingDelete.id === activeMemoryId) {
+      await memoriesStore.delete(deleting.id);
+      if (deleting.id === activeMemoryId) {
         closeEditor();
       }
       pendingDelete = null;
       return true;
     } catch (error) {
-      logError('Failed to delete memory', error, { scope: 'memorySettings.delete', memoryId: pendingDelete.id });
+      logError('Failed to delete memory', error, { scope: 'memorySettings.delete', memoryId: deleting.id });
       return false;
     }
   }
@@ -207,7 +212,7 @@
       },
       onUpdate: ({ editor }) => {
         if (!activeMemoryId || isSyncingEditor) return;
-        const markdown = editor.storage.markdown.getMarkdown();
+        const markdown = (editor as Editor & { storage: MarkdownStorage }).storage.markdown.getMarkdown();
         const draft = draftById[activeMemoryId];
         if (!draft || draft.content === markdown) return;
         draftById = {
@@ -226,7 +231,7 @@
     if (!editor || !activeMemoryId) return;
     const draft = draftById[activeMemoryId];
     if (!draft) return;
-    const current = editor.storage.markdown.getMarkdown();
+    const current = (editor as Editor & { storage: MarkdownStorage }).storage.markdown.getMarkdown();
     if (current === draft.content) return;
     isSyncingEditor = true;
     editor.commands.setContent(draft.content || '');

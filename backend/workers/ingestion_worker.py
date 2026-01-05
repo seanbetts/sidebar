@@ -17,7 +17,7 @@ from hashlib import sha256
 from pathlib import Path
 import shutil
 from threading import Event, Thread
-from typing import Callable
+from typing import Callable, Sequence
 from uuid import uuid4
 
 from sqlalchemy import and_, or_
@@ -907,7 +907,7 @@ def _clean_extracted_text(text: str) -> str:
     return text.strip()
 
 
-def _normalize_table_rows(rows: list[list[object | None]]) -> list[list[str]]:
+def _normalize_table_rows(rows: Sequence[Sequence[object | None]]) -> list[list[str]]:
     if not rows:
         return []
     max_cols = max(len(row) for row in rows)
@@ -926,7 +926,7 @@ def _normalize_table_rows(rows: list[list[object | None]]) -> list[list[str]]:
     return [row for row in trimmed if any(cell.strip() for cell in row)]
 
 
-def _table_to_markdown(rows: list[list[object | None]]) -> str | None:
+def _table_to_markdown(rows: Sequence[Sequence[object | None]]) -> str | None:
     normalized = _normalize_table_rows(rows)
     if len(normalized) < 2 or len(normalized[0]) < 2:
         return None
@@ -1205,7 +1205,7 @@ def _parse_range(
     return 0, 0, 0, 0
 
 
-def _normalize_grid(rows: list[list[object]]) -> list[list[object]]:
+def _normalize_grid(rows: Sequence[Sequence[object]]) -> list[list[object]]:
     if not rows:
         return []
     max_columns = max(len(row) for row in rows)

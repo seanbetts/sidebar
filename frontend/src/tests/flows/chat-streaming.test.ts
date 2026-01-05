@@ -28,7 +28,7 @@ describe('chat streaming flow', () => {
       status: 200,
       statusText: 'OK',
       body: stream
-    })) as typeof fetch;
+    })) as unknown as typeof fetch;
 
     await client.connect({ message: 'Hi' }, { onToken, onComplete, onError });
 
@@ -37,4 +37,3 @@ describe('chat streaming flow', () => {
     expect(onError).not.toHaveBeenCalled();
   });
 });
-

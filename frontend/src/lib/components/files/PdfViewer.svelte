@@ -35,6 +35,8 @@
   export let effectiveScale = 1;
   export let normalizedScale = 1;
   const multiPageBreakpoint = 720;
+  const isTaskCancelled = (task: import('pdfjs-dist').RenderTask | null) =>
+    Boolean((task as { cancelled?: boolean } | null)?.cancelled);
 
   onMount(async () => {
     if (!browser) return;
@@ -44,7 +46,8 @@
     ]);
     pdfjsLib = pdfjs;
     pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default;
-    pdfjsLib.setVerbosityLevel?.(pdfjsLib.VerbosityLevel.ERRORS);
+    const pdfjsTyped = pdfjsLib as typeof pdfjsLib & { setVerbosityLevel?: (level: number) => void };
+    pdfjsTyped.setVerbosityLevel?.(pdfjsLib.VerbosityLevel.ERRORS);
     if (root || container) {
       resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -63,7 +66,7 @@
         }
       });
       if (root) resizeObserver.observe(root);
-      resizeObserver.observe(container);
+      if (container) resizeObserver.observe(container);
     }
     if (src) {
       loadDocument();
@@ -116,12 +119,12 @@
       if (!context) continue;
       thumbCanvas.width = Math.floor(viewport.width);
       thumbCanvas.height = Math.floor(viewport.height);
-      const task = page.render({ canvasContext: context, viewport });
+      const task = page.render({ canvasContext: context, viewport, canvas: thumbCanvas });
       thumbRenderTasks.set(pageIndex, task);
       try {
         await task.promise;
       } catch (error) {
-        if (task.cancelled || disposed) continue;
+        if (isTaskCancelled(task) || disposed) continue;
         continue;
       }
       nextThumbs.push({ page: pageIndex, url: thumbCanvas.toDataURL('image/png') });
@@ -208,11 +211,11 @@
     canvas.style.width = `${Math.floor(viewport.width)}px`;
     canvas.style.height = `${Math.floor(viewport.height)}px`;
     context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
-    renderTask = page.render({ canvasContext: context, viewport });
+    renderTask = page.render({ canvasContext: context, viewport, canvas });
     try {
       await renderTask.promise;
     } catch (error) {
-      if (renderTask?.cancelled || disposed) return;
+      if (isTaskCancelled(renderTask) || disposed) return;
       // Ignore render cancellations.
     }
   }
@@ -245,12 +248,12 @@
       pageCanvas.style.width = `${Math.floor(viewport.width)}px`;
       pageCanvas.style.height = `${Math.floor(viewport.height)}px`;
       context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
-      const task = page.render({ canvasContext: context, viewport });
+      const task = page.render({ canvasContext: context, viewport, canvas: pageCanvas });
       pageRenderTasks.set(pageIndex, task);
       try {
         await task.promise;
       } catch (error) {
-        if (task.cancelled || disposed) continue;
+        if (isTaskCancelled(task) || disposed) continue;
         // Ignore render cancellations.
       }
     }

@@ -1,3 +1,4 @@
+import type { RequestEvent } from '@sveltejs/kit';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createProxyHandler } from '$lib/server/apiProxy';
@@ -8,6 +9,42 @@ vi.mock('$lib/server/api', () => ({
 }));
 
 describe('createProxyHandler', () => {
+  type Span = {};
+  const locals = { supabase: {} as App.Locals['supabase'], session: null, user: null };
+  const baseEvent: RequestEvent = {
+    cookies: {
+      get: vi.fn(),
+      getAll: vi.fn(),
+      set: vi.fn(),
+      delete: vi.fn(),
+      serialize: vi.fn()
+    },
+    fetch: vi.fn(),
+    getClientAddress: () => '127.0.0.1',
+    locals,
+    params: {},
+    platform: undefined,
+    request: new Request('http://localhost'),
+    route: { id: null },
+    setHeaders: vi.fn(),
+    url: new URL('http://localhost'),
+    isDataRequest: false,
+    isSubRequest: false,
+    isRemoteRequest: false,
+    tracing: {
+      enabled: false,
+      root: {} as Span,
+      current: {} as Span
+    }
+  };
+
+  const createEvent = (overrides: Partial<RequestEvent>) =>
+    ({
+      ...baseEvent,
+      ...overrides,
+      locals: overrides.locals ? { ...locals, ...overrides.locals } : locals
+    }) as RequestEvent;
+
   it('proxies GET requests and returns JSON', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), { status: 200 })
@@ -17,13 +54,15 @@ describe('createProxyHandler', () => {
       pathBuilder: (params) => `/api/v1/notes/${params.id}`
     });
 
-    const response = await handler({
-      locals: {},
-      fetch: fetchMock,
-      params: { id: '123' },
-      request: new Request('http://localhost'),
-      url: new URL('http://localhost')
-    });
+    const response = await handler(
+      createEvent({
+        locals,
+        fetch: fetchMock,
+        params: { id: '123' },
+        request: new Request('http://localhost'),
+        url: new URL('http://localhost')
+      })
+    );
 
     expect(fetchMock).toHaveBeenCalledWith('http://example.test/api/v1/notes/123', {
       method: 'GET',
@@ -50,13 +89,15 @@ describe('createProxyHandler', () => {
       body: JSON.stringify({ title: 'Note' })
     });
 
-    const response = await handler({
-      locals: {},
-      fetch: fetchMock,
-      params: {},
-      request,
-      url: new URL('http://localhost')
-    });
+    const response = await handler(
+      createEvent({
+        locals,
+        fetch: fetchMock,
+        params: {},
+        request,
+        url: new URL('http://localhost')
+      })
+    );
 
     const fetchArgs = fetchMock.mock.calls[0];
     expect(fetchArgs[0]).toBe('http://example.test/api/v1/notes');
@@ -82,13 +123,15 @@ describe('createProxyHandler', () => {
       queryParamsFromUrl: true
     });
 
-    const response = await handler({
-      locals: {},
-      fetch: fetchMock,
-      params: {},
-      request: new Request('http://localhost'),
-      url: new URL('http://localhost?query=test&limit=10')
-    });
+    const response = await handler(
+      createEvent({
+        locals,
+        fetch: fetchMock,
+        params: {},
+        request: new Request('http://localhost'),
+        url: new URL('http://localhost?query=test&limit=10')
+      })
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://example.test/api/v1/notes/search?query=test&limit=10',
@@ -109,13 +152,15 @@ describe('createProxyHandler', () => {
       pathBuilder: () => '/api/v1/notes/missing'
     });
 
-    const response = await handler({
-      locals: {},
-      fetch: fetchMock,
-      params: {},
-      request: new Request('http://localhost'),
-      url: new URL('http://localhost')
-    });
+    const response = await handler(
+      createEvent({
+        locals,
+        fetch: fetchMock,
+        params: {},
+        request: new Request('http://localhost'),
+        url: new URL('http://localhost')
+      })
+    );
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: 'Not found' });
@@ -131,13 +176,15 @@ describe('createProxyHandler', () => {
       responseType: 'text'
     });
 
-    const response = await handler({
-      locals: {},
-      fetch: fetchMock,
-      params: {},
-      request: new Request('http://localhost'),
-      url: new URL('http://localhost')
-    });
+    const response = await handler(
+      createEvent({
+        locals,
+        fetch: fetchMock,
+        params: {},
+        request: new Request('http://localhost'),
+        url: new URL('http://localhost')
+      })
+    );
 
     expect(response.status).toBe(202);
     await expect(response.text()).resolves.toBe('ok-text');
@@ -153,13 +200,15 @@ describe('createProxyHandler', () => {
       responseType: 'stream'
     });
 
-    const response = await handler({
-      locals: {},
-      fetch: fetchMock,
-      params: {},
-      request: new Request('http://localhost'),
-      url: new URL('http://localhost')
-    });
+    const response = await handler(
+      createEvent({
+        locals,
+        fetch: fetchMock,
+        params: {},
+        request: new Request('http://localhost'),
+        url: new URL('http://localhost')
+      })
+    );
 
     expect(response.status).toBe(200);
     await expect(response.text()).resolves.toBe('streamed');
@@ -172,13 +221,15 @@ describe('createProxyHandler', () => {
       pathBuilder: () => '/api/v1/notes'
     });
 
-    const response = await handler({
-      locals: {},
-      fetch: fetchMock,
-      params: {},
-      request: new Request('http://localhost'),
-      url: new URL('http://localhost')
-    });
+    const response = await handler(
+      createEvent({
+        locals,
+        fetch: fetchMock,
+        params: {},
+        request: new Request('http://localhost'),
+        url: new URL('http://localhost')
+      })
+    );
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({ error: 'Boom' });

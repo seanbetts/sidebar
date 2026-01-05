@@ -152,8 +152,9 @@
   }
 
   async function saveNotes() {
-    if (!notesTask) return;
-    await runTaskUpdate(notesTask.id, () => thingsStore.updateNotes(notesTask.id, notesValue));
+    const task = notesTask;
+    if (!task) return;
+    await runTaskUpdate(task.id, () => thingsStore.updateNotes(task.id, notesValue));
     closeNotesDialog();
   }
 
@@ -179,8 +180,9 @@
   }
 
   async function commitMove() {
-    if (!moveTask || !moveListId) return;
-    await runTaskUpdate(moveTask.id, () => thingsStore.moveTask(moveTask.id, moveListId, moveListName));
+    const task = moveTask;
+    if (!task || !moveListId) return;
+    await runTaskUpdate(task.id, () => thingsStore.moveTask(task.id, moveListId, moveListName));
     closeMoveDialog();
   }
 
@@ -195,14 +197,16 @@
   }
 
   async function confirmTrash() {
-    if (!trashTask) return;
-    await runTaskUpdate(trashTask.id, () => thingsStore.trashTask(trashTask.id));
+    const task = trashTask;
+    if (!task) return;
+    await runTaskUpdate(task.id, () => thingsStore.trashTask(task.id));
     closeTrashDialog();
   }
 
   async function handleSetDueDate() {
-    if (!dueTask || !dueDateValue) return;
-    await runTaskUpdate(dueTask.id, () => thingsStore.setDueDate(dueTask.id, dueDateValue, 'set_due'));
+    const task = dueTask;
+    if (!task || !dueDateValue) return;
+    await runTaskUpdate(task.id, () => thingsStore.setDueDate(task.id, dueDateValue, 'set_due'));
     closeDueDialog();
   }
 

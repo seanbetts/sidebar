@@ -20,8 +20,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 
 function getAccessTokenFromCookies(event: Parameters<Handle>[0]['event']): string | null {
-  const storageKey = event.locals.supabase.auth.storageKey;
-  const cookieName = storageKey ?? findSupabaseCookie(event);
+  const cookieName = findSupabaseCookie(event);
   if (!cookieName) {
     return null;
   }

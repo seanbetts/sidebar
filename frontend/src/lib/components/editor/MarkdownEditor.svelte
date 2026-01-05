@@ -274,7 +274,7 @@
       isReadOnly={isReadOnly}
       isDirty={isDirty}
       isSaving={isSaving}
-      saveError={saveError}
+      saveError={saveError ?? ''}
       noteNode={noteNode}
       folderOptions={folderOptions}
       isCopied={isCopied}

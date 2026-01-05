@@ -1,22 +1,14 @@
 import { get } from 'svelte/store';
-import type { Writable } from 'svelte/store';
+import type { EditorStore } from '$lib/stores/editor';
+import type { TreeStore } from '$lib/stores/tree/store';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { logError } from '$lib/utils/errorHandling';
 
 type NoteNode = { pinned?: boolean; archived?: boolean } | null;
 
 type EditorActionsContext = {
-  editorStore: Writable<any>;
-  treeStore: {
-    load: (tree: string, force?: boolean) => Promise<void>;
-    trees: Record<string, any>;
-    removeNode?: (basePath: string, path: string) => void;
-    addNoteNode?: (payload: { id: string; name: string; folder?: string; modified?: number }) => void;
-    renameNoteNode?: (noteId: string, newName: string) => void;
-    setNotePinned?: (noteId: string, pinned: boolean) => void;
-    moveNoteNode?: (noteId: string, folder: string, options?: { archived?: boolean }) => void;
-    archiveNoteNode?: (noteId: string, archived: boolean) => void;
-  };
+  editorStore: EditorStore;
+  treeStore: TreeStore;
   getCurrentNoteId: () => string | null;
   getDisplayTitle: () => string;
   getNoteNode: () => NoteNode;

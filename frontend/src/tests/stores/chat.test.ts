@@ -153,7 +153,8 @@ describe('chatStore', () => {
     chatStore.addToolCall(assistantMessageId, {
       id: 'tool-1',
       name: 'fs.write',
-      arguments: '{}'
+      parameters: {},
+      status: 'pending'
     });
 
     ingestionAPI.get.mockResolvedValue({

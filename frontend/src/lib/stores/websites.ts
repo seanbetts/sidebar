@@ -27,6 +27,31 @@ export interface WebsiteDetail extends WebsiteItem {
   url_full: string | null;
 }
 
+const isWebsiteItem = (value: unknown): value is WebsiteItem => {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === 'string' &&
+    typeof item.title === 'string' &&
+    typeof item.url === 'string' &&
+    typeof item.domain === 'string'
+  );
+};
+
+const isWebsiteDetail = (value: unknown): value is WebsiteDetail => {
+  if (!isWebsiteItem(value)) return false;
+  const item = value as unknown as Record<string, unknown>;
+  return typeof item.content === 'string';
+};
+
+const extractWebsiteItems = (value: unknown): WebsiteItem[] => {
+  const data = value as { items?: unknown[] };
+  if (Array.isArray(data?.items)) {
+    return data.items.filter(isWebsiteItem);
+  }
+  return [];
+};
+
 function createWebsitesStore() {
   const { subscribe, set, update } = writable<{
     items: WebsiteItem[];
@@ -78,10 +103,11 @@ function createWebsitesStore() {
       update(state => ({ ...state, loading: true, error: null, searchQuery: '' }));
       try {
         const data = await websitesAPI.list();
-        setCachedData(CACHE_KEY, data.items || [], { ttl: CACHE_TTL, version: CACHE_VERSION });
+        const items = extractWebsiteItems(data);
+        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
         update(state => ({
           ...state,
-          items: data.items || [],
+          items,
           loading: false,
           error: null,
           searchQuery: '',
@@ -97,6 +123,9 @@ function createWebsitesStore() {
       update(state => ({ ...state, loadingDetail: true, error: null }));
       try {
         const data = await websitesAPI.get(id);
+        if (!isWebsiteDetail(data)) {
+          throw new Error('Invalid website response');
+        }
         const summary: WebsiteItem = {
           id: data.id,
           title: data.title,
@@ -129,9 +158,10 @@ function createWebsitesStore() {
         const data = query
           ? await websitesAPI.search(query)
           : await websitesAPI.list();
+        const items = extractWebsiteItems(data);
         update(state => ({
           ...state,
-          items: data.items || [],
+          items,
           loading: false,
           error: null,
           searchQuery: query,
@@ -150,8 +180,9 @@ function createWebsitesStore() {
     async revalidateInBackground() {
       try {
         const data = await websitesAPI.list();
-        setCachedData(CACHE_KEY, data.items || [], { ttl: CACHE_TTL, version: CACHE_VERSION });
-        update(state => ({ ...state, items: data.items || [] }));
+        const items = extractWebsiteItems(data);
+        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+        update(state => ({ ...state, items }));
       } catch (error) {
         logError('Background revalidation failed', error, { scope: 'websitesStore.revalidateInBackground' });
       }

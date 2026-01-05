@@ -65,12 +65,15 @@
   $: sortedRows =
     sortColumn === null
       ? filteredRows
-      : [...filteredRows].sort((a, b) => {
-          const left = (a[sortColumn] ?? '').toString();
-          const right = (b[sortColumn] ?? '').toString();
-          const comparison = left.localeCompare(right, undefined, { numeric: true });
-          return sortDirection === 'asc' ? comparison : -comparison;
-        });
+      : (() => {
+          const column = sortColumn;
+          return [...filteredRows].sort((a, b) => {
+            const left = (a[column] ?? '').toString();
+            const right = (b[column] ?? '').toString();
+            const comparison = left.localeCompare(right, undefined, { numeric: true });
+            return sortDirection === 'asc' ? comparison : -comparison;
+          });
+        })();
 
   $: if (browser && src && src !== lastSrc) {
     lastSrc = src;

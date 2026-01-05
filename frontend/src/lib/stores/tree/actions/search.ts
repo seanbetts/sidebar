@@ -1,8 +1,15 @@
+import type { FileNode } from '$lib/types/file';
 import type { TreeStoreContext } from '$lib/stores/tree/types';
 import { notesAPI } from '$lib/services/api';
 import { handleFetchError, logError } from '$lib/utils/errorHandling';
 
 export function createSearchActions(context: TreeStoreContext) {
+  const isFileNode = (value: unknown): value is FileNode => {
+    if (!value || typeof value !== 'object') return false;
+    const node = value as Record<string, unknown>;
+    return typeof node.name === 'string' && typeof node.path === 'string' && typeof node.type === 'string';
+  };
+
   const searchNotes = async (query: string) => {
     context.update((state) => ({
       trees: {
@@ -71,12 +78,13 @@ export function createSearchActions(context: TreeStoreContext) {
       }
       const data = await response.json();
       const rawItems = data.items || data.children || [];
+      const children = Array.isArray(rawItems) ? rawItems.filter(isFileNode) : [];
       context.update((state) => ({
         trees: {
           ...state.trees,
           [basePath]: {
             ...(state.trees[basePath] || { children: [], expandedPaths: new Set() }),
-            children: rawItems,
+            children,
             loading: false,
             searchQuery: query,
             loaded: true

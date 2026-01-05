@@ -29,9 +29,9 @@ class JinaService:
             return response.text
 
     @staticmethod
-    def parse_metadata(markdown: str) -> Tuple[dict, str]:
+    def parse_metadata(markdown: str) -> Tuple[dict[str, str | None], str]:
         """Extract Jina metadata and return cleaned markdown."""
-        metadata = {
+        metadata: dict[str, str | None] = {
             "title": None,
             "url_source": None,
             "published_time": None,

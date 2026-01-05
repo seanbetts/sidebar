@@ -122,10 +122,17 @@ function createThingsStore() {
     return map;
   };
 
+  const isCountsResponse = (
+    cached: ThingsCountsResponse | Record<string, number>
+  ): cached is ThingsCountsResponse =>
+    typeof (cached as ThingsCountsResponse).counts === 'object' &&
+    Array.isArray((cached as ThingsCountsResponse).areas) &&
+    Array.isArray((cached as ThingsCountsResponse).projects);
+
   const normalizeCountsCache = (
     cached: ThingsCountsResponse | Record<string, number>
   ): { map: Record<string, number>; todayCount: number } => {
-    if ('counts' in cached) {
+    if (isCountsResponse(cached)) {
       const map = toCountsMap(cached);
       return { map, todayCount: cached.counts.today ?? 0 };
     }

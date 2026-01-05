@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import time
+from typing import TypedDict
 from datetime import datetime, timezone
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
@@ -31,7 +32,12 @@ logger = logging.getLogger(__name__)
 
 TITLE_CACHE_TTL_SECONDS = ChatConstants.TITLE_CACHE_TTL_SECONDS
 TITLE_CACHE_MAX_ENTRIES = ChatConstants.TITLE_CACHE_MAX_ENTRIES
-TITLE_CACHE: dict[str, dict[str, object]] = {}
+class _TitleCacheEntry(TypedDict):
+    title: str
+    timestamp: float
+
+
+TITLE_CACHE: dict[str, _TitleCacheEntry] = {}
 
 
 def _build_history(messages, user_message_id, latest_message):
@@ -92,7 +98,7 @@ def _build_title_cache_key(user_msg: str, assistant_msg: str) -> str:
     return hashlib.sha256(combined.encode("utf-8")).hexdigest()
 
 
-def _get_cached_title(cache_key: str) -> dict[str, object] | None:
+def _get_cached_title(cache_key: str) -> _TitleCacheEntry | None:
     now = time.time()
     entry = TITLE_CACHE.get(cache_key)
     if not entry:

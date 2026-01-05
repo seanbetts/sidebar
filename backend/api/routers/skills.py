@@ -36,4 +36,5 @@ async def list_skills(_: str = Depends(verify_bearer_token)):
         Skills list payload.
     """
     skills = SkillCatalogService.list_skills(settings.skills_dir)
-    return SkillsResponse(skills=skills)
+    skill_items = [SkillItem(**skill) for skill in skills]
+    return SkillsResponse(skills=skill_items)

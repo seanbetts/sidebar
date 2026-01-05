@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ChevronRight, Trash2 } from 'lucide-svelte';
+  import type { ComponentType } from 'svelte';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import IngestionQueue from '$lib/components/files/IngestionQueue.svelte';
   import type { IngestionListItem } from '$lib/types/ingestion';
@@ -9,7 +10,7 @@
   export let failedItems: IngestionListItem[] = [];
   export let readyItems: IngestionListItem[] = [];
   export let openMenuKey: string | null = null;
-  export let iconForCategory: (category: string | null | undefined) => typeof import('lucide-svelte').SvelteComponent;
+  export let iconForCategory: (category: string | null | undefined) => ComponentType;
   export let stripExtension: (name: string) => string;
 
   export let onOpen: (item: IngestionListItem) => void;
@@ -55,7 +56,7 @@
 
 {#if readyItems.length > 0}
   <div class="workspace-uploads uploads-block">
-    <Collapsible.Root defaultOpen={false} class="group/collapsible" data-collapsible-root>
+    <Collapsible.Root class="group/collapsible" data-collapsible-root>
       <div data-slot="sidebar-group" data-sidebar="group" class="relative flex w-full min-w-0 flex-col p-2">
         <Collapsible.Trigger
           data-slot="sidebar-group-label"

@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/svelte';
+import { writable } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
 import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
 
 vi.mock('$lib/stores/tree', () => ({
   treeStore: (() => {
-    const { writable } = require('svelte/store');
     const treeState = writable({
       trees: {
         documents: {
@@ -20,7 +20,6 @@ vi.mock('$lib/stores/tree', () => ({
 
 vi.mock('$lib/stores/ingestion', () => ({
   ingestionStore: (() => {
-    const { writable } = require('svelte/store');
     const ingestionState = writable({
       items: [],
       localUploads: [],
@@ -36,7 +35,6 @@ vi.mock('$lib/stores/ingestion', () => ({
 
 vi.mock('$lib/stores/ingestion-viewer', () => ({
   ingestionViewerStore: (() => {
-    const { writable } = require('svelte/store');
     const ingestionViewerState = writable({ active: null });
     return {
       subscribe: ingestionViewerState.subscribe,
@@ -61,7 +59,6 @@ vi.mock('$lib/stores/editor', () => ({
     reset: vi.fn()
   },
   currentNoteId: (() => {
-    const { writable } = require('svelte/store');
     return writable<string | null>(null);
   })()
 }));

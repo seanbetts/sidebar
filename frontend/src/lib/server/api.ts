@@ -1,6 +1,5 @@
 import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
-import type { App } from '@sveltejs/kit';
 
 /**
  * Resolve backend API base URL for server requests.

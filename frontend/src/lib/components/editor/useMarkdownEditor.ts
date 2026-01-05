@@ -9,6 +9,10 @@ import { tick } from 'svelte';
 import { TextSelection } from '@tiptap/pm/state';
 import { logError } from '$lib/utils/errorHandling';
 
+type MarkdownStorage = {
+  markdown: { getMarkdown: () => string };
+};
+
 interface MarkdownEditorOptions {
   element: HTMLDivElement;
   editorStore: {
@@ -35,6 +39,8 @@ export function createMarkdownEditor({
   let isUpdatingContent = false;
   let lastNoteId = '';
   let lastContent = '';
+  const getMarkdown = (editor: Editor) =>
+    (editor as Editor & { storage: MarkdownStorage }).storage.markdown.getMarkdown();
 
   const editor = new TiptapEditor({
     element,
@@ -55,7 +61,7 @@ export function createMarkdownEditor({
     },
     onUpdate: ({ editor }) => {
       if (isUpdatingContent) return;
-      const markdown = editor.storage.markdown.getMarkdown();
+      const markdown = getMarkdown(editor);
       editorStore.updateContent(markdown);
       onAutosave();
     }
@@ -89,7 +95,7 @@ export function createMarkdownEditor({
     if (!shouldSync) return;
 
     try {
-      const currentEditorContent = editor.storage.markdown.getMarkdown();
+      const currentEditorContent = getMarkdown(editor);
       const contentActuallyChanged = currentEditorContent !== nextContent;
 
       isUpdatingContent = true;

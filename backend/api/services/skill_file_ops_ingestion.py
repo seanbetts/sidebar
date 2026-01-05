@@ -96,6 +96,8 @@ def list_entries(
             dir_meta[path] = updated_at or now_utc()
 
     for record in latest_by_path.values():
+        if record.path is None:
+            continue
         rel_path = relative_path(base_path, record.path)
         if rel_path == "":
             continue
@@ -433,6 +435,8 @@ def delete_path(user_id: str, path: str) -> dict:
             db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
             record.deleted_at = now_utc()
             db.commit()
+            if record.path is None:
+                raise ValueError(f"Missing path for record {record.id}")
             deleted.append(record.path)
             return {"deleted": deleted, "count": len(deleted)}
 
@@ -450,6 +454,8 @@ def delete_path(user_id: str, path: str) -> dict:
             raise FileNotFoundError(f"Path not found: {path}")
 
         for item in records:
+            if item.path is None:
+                continue
             derivatives = (
                 db.query(FileDerivative)
                 .filter(FileDerivative.file_id == item.id)

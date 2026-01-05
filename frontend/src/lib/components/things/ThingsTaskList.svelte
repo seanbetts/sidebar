@@ -1,3 +1,7 @@
+<script context="module" lang="ts">
+  export type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
+</script>
+
 <script lang="ts">
   import type { ThingsTask } from '$lib/types/things';
   import {
@@ -20,8 +24,6 @@
     DropdownMenuSeparator,
     DropdownMenuTrigger
   } from '$lib/components/ui/dropdown-menu';
-
-  export type ThingsTaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
 
   export let sections: { id: string; title: string; tasks: ThingsTask[] }[] = [];
   export let selectionType: ThingsTaskViewType = 'today';
