@@ -10,6 +10,7 @@ import json
 import argparse
 import os
 import re
+import logging
 import requests
 import urllib3
 from pathlib import Path
@@ -36,6 +37,9 @@ try:
 except Exception:
     SessionLocal = None
     WebsitesService = None
+
+
+logger = logging.getLogger(__name__)
 
 
 def extract_title(content: str) -> str:
@@ -164,14 +168,18 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
 
+    web_save_mode = os.getenv("WEB_SAVE_MODE", "jina").lower().strip()
     parsed = None
     parse_error = None
-    try:
-        parsed = parse_url_local(url)
-    except Exception as exc:
-        parse_error = exc
+    if web_save_mode in {"local", "compare"}:
+        try:
+            parsed = parse_url_local(url)
+        except Exception as exc:
+            parse_error = exc
+            logger.info("Local parse failed for %s: %s", url, str(exc))
 
-    if parsed is None:
+    local_parsed = parsed
+    if parsed is None or web_save_mode in {"jina", "compare"}:
         api_key = os.environ.get('JINA_API_KEY', '')
         content = get_markdown_content(url, api_key)
         parsed_metadata, cleaned_content = parse_jina_metadata(content)
@@ -197,6 +205,15 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
         parsed = ParsedPage(
             title=title, content=frontmatter, source=source, published_at=published_at
         )
+        if web_save_mode == "compare" and local_parsed is not None:
+            logger.info(
+                "Compare parse for %s: jina_len=%s local_len=%s jina_title=%s local_title=%s",
+                url,
+                len(cleaned_content),
+                len(local_parsed.content),
+                title,
+                local_parsed.title,
+            )
     else:
         title = parsed.title
         source = parsed.source
@@ -234,6 +251,7 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
 
 def main():
     """Main entry point for save_url script."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser(
         description='Save web page as markdown using Jina.ai Reader API',
         formatter_class=argparse.RawDescriptionHelpFormatter,

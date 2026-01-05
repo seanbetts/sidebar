@@ -1,15 +1,19 @@
 """Helper utilities for website router flows."""
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 
+from api.config import settings
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
 from api.services.jina_service import JinaService
+from api.services.web_save_parser import parse_url_local
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.websites_service import WebsitesService
 
+logger = logging.getLogger(__name__)
 
 def normalize_url(value: str) -> str:
     """Ensure the URL has a scheme."""
@@ -23,26 +27,59 @@ def run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None)
     with SessionLocal() as db:
         set_session_user_id(db, user_id)
         WebsiteProcessingService.update_job(db, job_id, status="running")
+        web_save_mode = settings.web_save_mode.lower().strip()
         try:
-            markdown = JinaService.fetch_markdown(url)
-            metadata, cleaned = JinaService.parse_metadata(markdown)
-            resolved_title = title or metadata.get("title") or JinaService.extract_title(cleaned, url)
-            source = metadata.get("url_source") or url
-            published_at = JinaService.parse_published_at(metadata.get("published_time"))
+            local_parsed = None
+            if web_save_mode in {"local", "compare"}:
+                try:
+                    local_parsed = parse_url_local(url)
+                except Exception as exc:
+                    logger.info("Local parse failed for %s: %s", url, str(exc))
+                    if web_save_mode == "local":
+                        local_parsed = None
 
-            website = WebsitesService.upsert_website(
-                db,
-                user_id,
-                url=url,
-                title=resolved_title,
-                content=cleaned,
-                source=source,
-                url_full=url,
-                saved_at=datetime.now(timezone.utc),
-                published_at=published_at,
-                pinned=False,
-                archived=False,
-            )
+            if web_save_mode == "local" and local_parsed:
+                website = WebsitesService.upsert_website(
+                    db,
+                    user_id,
+                    url=url,
+                    title=local_parsed.title,
+                    content=local_parsed.content,
+                    source=local_parsed.source,
+                    url_full=url,
+                    saved_at=datetime.now(timezone.utc),
+                    published_at=local_parsed.published_at,
+                    pinned=False,
+                    archived=False,
+                )
+            else:
+                markdown = JinaService.fetch_markdown(url)
+                metadata, cleaned = JinaService.parse_metadata(markdown)
+                resolved_title = title or metadata.get("title") or JinaService.extract_title(cleaned, url)
+                source = metadata.get("url_source") or url
+                published_at = JinaService.parse_published_at(metadata.get("published_time"))
+                website = WebsitesService.upsert_website(
+                    db,
+                    user_id,
+                    url=url,
+                    title=resolved_title,
+                    content=cleaned,
+                    source=source,
+                    url_full=url,
+                    saved_at=datetime.now(timezone.utc),
+                    published_at=published_at,
+                    pinned=False,
+                    archived=False,
+                )
+                if web_save_mode == "compare" and local_parsed:
+                    logger.info(
+                        "Compare parse for %s: jina_len=%s local_len=%s jina_title=%s local_title=%s",
+                        url,
+                        len(cleaned),
+                        len(local_parsed.content),
+                        resolved_title,
+                        local_parsed.title,
+                    )
             WebsiteProcessingService.update_job(
                 db,
                 job_id,
