@@ -140,6 +140,7 @@ if not os.getenv("SUPABASE_PROJECT_ID"):
 from api.models.conversation import Conversation  # noqa: F401, E402
 from api.models.note import Note  # noqa: F401, E402
 from api.models.website import Website  # noqa: F401, E402
+from api.models.website_processing_job import WebsiteProcessingJob  # noqa: F401, E402
 from api.models.user_settings import UserSettings  # noqa: F401, E402
 from api.models.user_memory import UserMemory  # noqa: F401, E402
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob  # noqa: F401, E402

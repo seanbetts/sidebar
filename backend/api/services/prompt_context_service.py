@@ -1,10 +1,10 @@
 """Prompt context assembly for chat and tools."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from api.models.conversation import Conversation
 from api.models.note import Note
@@ -32,6 +32,11 @@ class PromptContextService:
     MAX_FIRST_MESSAGE_CHARS = 8000
     MAX_OPEN_FILE_CHARS = 12000
     MAX_ATTACHMENT_CHARS = 8000
+    RECENT_ACTIVITY_CACHE_TTL = timedelta(minutes=5)
+    _recent_activity_cache: dict[
+        str,
+        tuple[datetime, tuple[list[dict], list[dict], list[dict], list[dict]]]
+    ] = {}
 
     @staticmethod
     def build_prompts(
@@ -219,8 +224,9 @@ class PromptContextService:
             return value
         return value[:max_chars]
 
-    @staticmethod
+    @classmethod
     def _get_recent_activity(
+        cls,
         db: Session,
         user_id: str,
         now: datetime,
@@ -235,10 +241,18 @@ class PromptContextService:
         Returns:
             Tuple of (note_items, website_items, conversation_items, file_items).
         """
+        cached = cls._recent_activity_cache.get(user_id)
+        if cached:
+            cached_at, cached_items = cached
+            if now - cached_at <= cls.RECENT_ACTIVITY_CACHE_TTL:
+                return cached_items
+            cls._recent_activity_cache.pop(user_id, None)
+
         start_of_day = PromptContextService._start_of_today(now)
 
         notes = (
             db.query(Note)
+            .options(load_only(Note.id, Note.title, Note.last_opened_at, Note.metadata_))
             .filter(Note.last_opened_at >= start_of_day)
             .filter(Note.user_id == user_id)
             .order_by(Note.last_opened_at.desc())
@@ -246,6 +260,16 @@ class PromptContextService:
         )
         websites = (
             db.query(Website)
+            .options(
+                load_only(
+                    Website.id,
+                    Website.title,
+                    Website.last_opened_at,
+                    Website.domain,
+                    Website.url_full,
+                    Website.url,
+                )
+            )
             .filter(Website.last_opened_at >= start_of_day)
             .filter(Website.user_id == user_id)
             .order_by(Website.last_opened_at.desc())
@@ -253,6 +277,7 @@ class PromptContextService:
         )
         conversations = (
             db.query(Conversation)
+            .options(load_only(Conversation.id, Conversation.title, Conversation.updated_at, Conversation.message_count))
             .filter(
                 Conversation.user_id == user_id,
                 Conversation.is_archived.is_(False),
@@ -263,6 +288,14 @@ class PromptContextService:
         )
         files = (
             db.query(IngestedFile)
+            .options(
+                load_only(
+                    IngestedFile.id,
+                    IngestedFile.filename_original,
+                    IngestedFile.last_opened_at,
+                    IngestedFile.mime_original,
+                )
+            )
             .filter(
                 IngestedFile.last_opened_at >= start_of_day,
                 IngestedFile.user_id == user_id,
@@ -310,4 +343,6 @@ class PromptContextService:
             for file in files
         ]
 
-        return note_items, website_items, conversation_items, file_items
+        items = (note_items, website_items, conversation_items, file_items)
+        cls._recent_activity_cache[user_id] = (now, items)
+        return items

@@ -17,6 +17,7 @@ class IngestedFile(Base):
         Index("idx_ingested_files_created_at", "created_at"),
         Index("idx_ingested_files_deleted_at", "deleted_at"),
         Index("idx_ingested_files_last_opened_at", "last_opened_at"),
+        Index("idx_ingested_files_user_last_opened", "user_id", "last_opened_at"),
         Index("idx_ingested_files_path", "path"),
     )
 

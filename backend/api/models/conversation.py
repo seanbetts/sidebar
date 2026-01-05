@@ -29,7 +29,8 @@ class Conversation(Base):
     # Note: GIN index on JSONB allows fast searching within messages
     # For title search, we'll use ILIKE in queries (simple and effective)
     __table_args__ = (
-        Index('idx_conversations_messages_gin', 'messages', postgresql_using='gin'),
+        Index("idx_conversations_messages_gin", "messages", postgresql_using="gin"),
+        Index("idx_conversations_user_updated_at", "user_id", "updated_at"),
     )
 
     def __repr__(self):

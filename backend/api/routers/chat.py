@@ -413,7 +413,17 @@ async def generate_title(
 
         return {"title": title, "fallback": False}
 
-    except Exception:
+    except Exception as error:
+        logger.warning(
+            "Title generation failed, using fallback",
+            exc_info=error,
+            extra={
+                "conversation_id": str(conversation_uuid),
+                "user_id": user_id,
+                "message_length": len(user_msg),
+                "error_type": type(error).__name__,
+            },
+        )
         # Fallback to first message snippet
         fallback_title = user_msg[:50] + ("..." if len(user_msg) > 50 else "")
         ConversationService.set_title(
@@ -424,5 +434,4 @@ async def generate_title(
             generated=False,
         )
 
-        # Log the error but don't fail the request
         return {"title": fallback_title, "fallback": True}
