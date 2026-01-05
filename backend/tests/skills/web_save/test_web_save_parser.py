@@ -24,7 +24,7 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
     """
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://example.com/article?utm=ignored"
+        return html, "https://example.com/article?utm=ignored", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
 
@@ -109,7 +109,7 @@ def test_metadata_overrides_apply(monkeypatch):
     """
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://example.com/article"
+        return html, "https://example.com/article", False
 
     rule = web_save_parser.Rule(
         id="meta-override",
@@ -218,7 +218,7 @@ def test_parse_url_local_discard_rule(monkeypatch):
     html = "<html><head><title>Discard Me</title></head><body><article>Skip</article></body></html>"
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://example.com/discard"
+        return html, "https://example.com/discard", False
 
     rule = web_save_parser.Rule(
         id="discard-it",
@@ -250,7 +250,7 @@ def test_parse_url_local_includes_reinserted_nodes(monkeypatch):
     """
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://example.com/include"
+        return html, "https://example.com/include", False
 
     rule = web_save_parser.Rule(
         id="include-rule",
@@ -272,9 +272,9 @@ def test_parse_url_local_force_rendering(monkeypatch):
     rendered = "<html><head><title>Rendered</title></head><body><article>Rendered body</article></body></html>"
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://example.com/render"
+        return html, "https://example.com/render", False
 
-    def fake_render(url: str, *, timeout: int = 30000, wait_for=None):
+    def fake_render(url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"):
         return rendered, "https://example.com/rendered"
 
     rule = web_save_parser.Rule(
@@ -310,7 +310,7 @@ def test_parse_url_local_includes_hero_image(monkeypatch):
     """
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://example.com/article"
+        return html, "https://example.com/article", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
 
@@ -332,7 +332,7 @@ def test_parse_url_local_normalizes_lazy_images(monkeypatch):
     """
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://example.com/article"
+        return html, "https://example.com/article", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
 
@@ -354,9 +354,187 @@ def test_parse_url_local_tracks_youtube_embed(monkeypatch):
     """
 
     def fake_fetch(url: str, *, timeout: int = 30):
-        return html, "https://example.com/article"
+        return html, "https://example.com/article", False
 
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert "[YouTube](https://www.youtube.com/watch?v=abc123)" in parsed.content
+
+
+def test_parse_url_local_filters_decorative_images(monkeypatch):
+    html = """
+    <html>
+      <head><title>Decorative</title></head>
+      <body>
+        <article>
+          <img src="/logo.png" class="site-logo" width="32" height="32" alt="Logo"/>
+          <img src="/images/story.jpg" alt="Story"/>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "logo.png" not in parsed.content
+    assert "![Story](https://example.com/images/story.jpg)" in parsed.content
+
+
+def test_parse_url_local_dedupes_images(monkeypatch):
+    html = """
+    <html>
+      <head><title>Dupes</title></head>
+      <body>
+        <article>
+          <img src="/images/dup.jpg" alt="Dup"/>
+          <img src="/images/dup.jpg" alt="Dup Again"/>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert parsed.content.count("images/dup.jpg") == 1
+
+
+def test_fetch_html_falls_back_to_playwright_on_forbidden(monkeypatch):
+    class FakeResponse:
+        def __init__(self):
+            self.status_code = 403
+            self.url = "https://example.com/blocked"
+
+        def raise_for_status(self):
+            raise web_save_parser.requests.HTTPError(response=self)
+
+    def fake_get(url: str, headers=None, timeout: int = 30):
+        return FakeResponse()
+
+    def fake_render(url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"):
+        return "<html><body>Rendered</body></html>", "https://example.com/allowed"
+
+    monkeypatch.setattr(web_save_parser.requests, "get", fake_get)
+    monkeypatch.setattr(web_save_parser, "render_html_with_playwright", fake_render)
+
+    html, final_url, used_js_rendering = web_save_parser.fetch_html(
+        "https://example.com/blocked"
+    )
+    assert "Rendered" in html
+    assert final_url == "https://example.com/allowed"
+    assert used_js_rendering is True
+
+
+def test_parse_url_local_returns_paywall_message(monkeypatch):
+    html = """
+    <html>
+      <head><title>Paywalled</title></head>
+      <body>
+        <div class="paywall">Subscribe to read</div>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://nytimes.com/paywall", False
+
+    def fake_markdown(_html: str) -> str:
+        return ""
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "html_to_markdown", fake_markdown)
+
+    parsed = web_save_parser.parse_url_local("nytimes.com/paywall")
+    frontmatter = parsed.content.split("---\n", 2)[1]
+    data = web_save_parser.yaml.safe_load(frontmatter)
+
+    assert data["paywalled"] is True
+    assert "Unable to save content" in parsed.content
+
+
+def test_parse_url_local_uses_substack_api(monkeypatch):
+    html = """
+    <html>
+      <head><title>Substack</title></head>
+      <body>
+        <div>substack</div>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/p/substack-post", False
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "title": "Substack Title",
+                "post_date": "2025-01-02T12:00:00Z",
+                "canonical_url": "https://example.com/p/substack-post",
+                "body_html": "<p>Full body</p>",
+            }
+
+    def fake_get(url: str, headers=None, timeout: int = 30):
+        return FakeResponse()
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser.requests, "get", fake_get)
+
+    parsed = web_save_parser.parse_url_local("example.com/p/substack-post")
+    assert "Full body" in parsed.content
+
+
+def test_parse_url_local_uses_raw_html_for_selector_override(monkeypatch):
+    html = """
+    <html>
+      <head><title>Raw</title></head>
+      <body>
+        <div class="target"><p>Raw Content</p></div>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/raw", False
+
+    class FakeDocument:
+        def __init__(self, _html: str):
+            pass
+
+        def summary(self, html_partial: bool = True):
+            return "<p>Summary Content</p>"
+
+        def short_title(self):
+            return "Raw"
+
+        def title(self):
+            return "Raw"
+
+    rule = web_save_parser.Rule(
+        id="raw-override",
+        phase="pre",
+        priority=0,
+        trigger={"dom": {"any": [".target"]}},
+        selector_overrides={"article": ".target"},
+    )
+    engine = web_save_parser.RuleEngine([rule])
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "get_rule_engine", lambda: engine)
+    monkeypatch.setattr(web_save_parser, "Document", FakeDocument)
+
+    parsed = web_save_parser.parse_url_local("example.com/raw")
+    assert "Raw Content" in parsed.content
+    assert "Summary Content" not in parsed.content

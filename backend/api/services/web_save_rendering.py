@@ -21,18 +21,28 @@ def render_html_with_playwright(
     *,
     timeout: int = 30000,
     wait_for: Optional[str] = None,
+    wait_until: str = "networkidle",
 ) -> tuple[str, str]:
     """Render HTML using Playwright for JS-heavy pages."""
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
     except ImportError as exc:  # pragma: no cover - depends on optional dependency
         raise RuntimeError("Playwright is not installed") from exc
 
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
+        try:
+            browser = playwright.chromium.launch(headless=True, channel="chrome")
+        except Exception:
+            browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(user_agent=USER_AGENT)
         page = context.new_page()
-        page.goto(url, wait_until="networkidle", timeout=timeout)
+        try:
+            page.goto(url, wait_until=wait_until, timeout=timeout)
+        except PlaywrightTimeoutError:
+            if wait_until != "domcontentloaded":
+                page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+            else:
+                raise
         if wait_for:
             page.wait_for_selector(wait_for, timeout=timeout)
         html = page.content()
