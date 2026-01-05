@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 import yaml
@@ -102,6 +102,7 @@ def extract_metadata(html: str, url: str) -> dict:
         ["article:published_time", "og:pubdate", "pubdate", "date", "parsely-pub-date"],
         ("property", "name"),
     )
+    image = find_meta(["og:image", "twitter:image"], ("property", "name"))
 
     canonical = None
     canonical_tag = soup.find("link", rel="canonical")
@@ -113,6 +114,7 @@ def extract_metadata(html: str, url: str) -> dict:
         "author": author,
         "published": published,
         "canonical": canonical or url,
+        "image": image,
     }
 
 
@@ -229,6 +231,12 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     word_count = compute_word_count(markdown)
     domain = urlparse(final_url).netloc
     tags = extract_tags(markdown, domain, title)
+    source_url = metadata.get("canonical") or final_url
+    image_url = metadata.get("image")
+    if image_url and "![" not in markdown:
+        resolved_image = urljoin(source_url, image_url)
+        markdown = f"![{title}]({resolved_image})\n\n{markdown}"
+
     frontmatter_meta = {
         "source": metadata.get("canonical") or final_url,
         "title": title,
