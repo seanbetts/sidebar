@@ -212,11 +212,6 @@
     padding-left: 0.5rem;
   }
 
-  .things-meta {
-    font-size: 0.8rem;
-    color: var(--color-muted-foreground);
-  }
-
   .things-footer {
     margin-top: auto;
     display: flex;

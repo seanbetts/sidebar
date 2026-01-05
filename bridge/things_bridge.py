@@ -222,7 +222,7 @@ def _heartbeat_loop() -> None:
         bridge_token = bridge_token or _read_keychain_value("bridge-token")
     if not BACKEND_URL or not bridge_id or not bridge_token:
         return
-    url = f"{BACKEND_URL.rstrip('/')}/api/things/bridges/heartbeat"
+    url = f"{BACKEND_URL.rstrip('/')}/api/v1/things/bridges/heartbeat"
     headers = {
         "X-Bridge-Id": bridge_id,
         "X-Bridge-Token": bridge_token,

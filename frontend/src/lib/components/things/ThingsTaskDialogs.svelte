@@ -124,7 +124,7 @@
 </AlertDialog>
 
 <style>
-  .task-due-dialog {
+  :global(.task-due-dialog) {
     max-width: 420px;
   }
 
@@ -138,9 +138,9 @@
     color: var(--color-foreground);
   }
 
-  .task-notes-dialog,
-  .task-move-dialog,
-  .task-trash-dialog {
+  :global(.task-notes-dialog),
+  :global(.task-move-dialog),
+  :global(.task-trash-dialog) {
     max-width: 460px;
   }
 
