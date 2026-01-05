@@ -479,7 +479,7 @@
               size="icon"
               variant="ghost"
               class="panel-action"
-              onclick={handleUploadFileClick}
+              onclick={() => handleUploadFileClick(fileInput)}
               aria-label="Upload file"
               title="Upload file"
               disabled={isUploadingFile}
