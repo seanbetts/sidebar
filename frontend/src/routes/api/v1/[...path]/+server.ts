@@ -4,7 +4,7 @@ import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
 const API_URL = getApiUrl();
 const FORWARD_HEADERS = ['accept', 'content-type', 'if-modified-since', 'if-none-match', 'range'];
 
-const handler: RequestHandler = async ({ request, params, url, locals, fetch }) => {
+const handler: RequestHandler = async ({ request, url, locals, fetch }) => {
   const rawPath = url.pathname.replace(/^\/api\/v1/, '');
   const targetUrl = `${API_URL}/api/v1${rawPath}${url.search}`;
 

@@ -157,22 +157,20 @@ async def list_ingestions(
 
 @router.get("/{file_id}/meta")
 async def get_file_meta(
-    file_id: str,
+    file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Return ingestion metadata for a file."""
-    file_uuid = parse_uuid(file_id, "file", "id")
-
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
-        raise NotFoundError("File", file_id)
+        raise NotFoundError("File", str(file_id))
 
     record.last_opened_at = datetime.now(timezone.utc)
     db.commit()
 
-    job = FileIngestionService.get_job(db, file_uuid)
+    job = FileIngestionService.get_job(db, file_id)
     derivatives = [
         {
             "id": str(item.id),
@@ -181,7 +179,7 @@ async def get_file_meta(
             "mime": item.mime,
             "size_bytes": item.size_bytes,
         }
-        for item in FileIngestionService.list_derivatives(db, file_uuid)
+        for item in FileIngestionService.list_derivatives(db, file_id)
     ]
     derivatives = _filter_user_derivatives(derivatives, record.user_id)
 
@@ -219,7 +217,7 @@ async def get_file_meta(
 
 @router.get("/{file_id}/content")
 async def get_derivative_content(
-    file_id: str,
+    file_id: UUID,
     kind: str,
     request: Request,
     user_id: str = Depends(get_current_user_id),
@@ -227,13 +225,11 @@ async def get_derivative_content(
     db: Session = Depends(get_db),
 ):
     """Stream a derivative asset for viewing."""
-    file_uuid = parse_uuid(file_id, "file", "id")
-
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
-        raise NotFoundError("File", file_id)
+        raise NotFoundError("File", str(file_id))
 
-    derivative = FileIngestionService.get_derivative(db, file_uuid, kind)
+    derivative = FileIngestionService.get_derivative(db, file_id, kind)
     if not derivative:
         raise NotFoundError("Derivative", kind)
 
@@ -270,70 +266,71 @@ async def get_derivative_content(
 
 @router.post("/{file_id}/pause")
 async def pause_processing(
-    file_id: str,
+    file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Pause a processing job."""
-    file_uuid = parse_uuid(file_id, "file", "id")
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
-        raise NotFoundError("File", file_id)
-    job = FileIngestionService.update_job_status(db, file_uuid, status="paused")
+        raise NotFoundError("File", str(file_id))
+    job = FileIngestionService.update_job_status(db, file_id, status="paused")
     return {"status": job.status if job else "paused"}
 
 
 @router.post("/{file_id}/resume")
 async def resume_processing(
-    file_id: str,
+    file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Resume a paused processing job."""
-    file_uuid = parse_uuid(file_id, "file", "id")
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
-        raise NotFoundError("File", file_id)
-    job = FileIngestionService.update_job_status(db, file_uuid, status="queued")
+        raise NotFoundError("File", str(file_id))
+    job = FileIngestionService.update_job_status(db, file_id, status="queued")
     return {"status": job.status if job else "queued"}
 
 
 @router.post("/{file_id}/cancel")
 async def cancel_processing(
-    file_id: str,
+    file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Cancel processing and cleanup staged artifacts."""
-    file_uuid = parse_uuid(file_id, "file", "id")
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
-        raise NotFoundError("File", file_id)
+        raise NotFoundError("File", str(file_id))
 
-    job = FileIngestionService.update_job_status(db, file_uuid, status="canceled", stage="canceled")
-    _safe_cleanup(_staging_path(file_uuid))
+    job = FileIngestionService.update_job_status(
+        db,
+        file_id,
+        status="canceled",
+        stage="canceled",
+    )
+    _safe_cleanup(_staging_path(file_id))
     return {"status": job.status if job else "canceled"}
 
 
 @router.patch("/{file_id}/pin")
 async def update_pin(
-    file_id: str,
+    file_id: UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Pin or unpin an ingested file."""
-    file_uuid = parse_uuid(file_id, "file", "id")
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
-        raise NotFoundError("File", file_id)
+        raise NotFoundError("File", str(file_id))
 
     pinned = bool(request.get("pinned", False))
-    FileIngestionService.update_pinned(db, user_id, file_uuid, pinned)
+    FileIngestionService.update_pinned(db, user_id, file_id, pinned)
     return {"success": True}
 
 
@@ -358,51 +355,49 @@ async def update_pinned_order(
 
 @router.patch("/{file_id}/rename")
 async def rename_file(
-    file_id: str,
+    file_id: UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Rename an ingested file."""
-    file_uuid = parse_uuid(file_id, "file", "id")
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
-        raise NotFoundError("File", file_id)
+        raise NotFoundError("File", str(file_id))
 
     new_name = str(request.get("filename", "")).strip()
     if not new_name:
         raise BadRequestError("filename is required")
 
-    FileIngestionService.update_filename(db, user_id, file_uuid, new_name)
+    FileIngestionService.update_filename(db, user_id, file_id, new_name)
     return {"success": True, "filename": new_name}
 
 
 @router.delete("/{file_id}")
 async def delete_file(
-    file_id: str,
+    file_id: UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Soft-delete an ingested file if processing is complete."""
-    file_uuid = parse_uuid(file_id, "file", "id")
-    record = FileIngestionService.get_file(db, user_id, file_uuid)
+    record = FileIngestionService.get_file(db, user_id, file_id)
     if not record:
-        raise NotFoundError("File", file_id)
+        raise NotFoundError("File", str(file_id))
 
-    job = FileIngestionService.get_job(db, file_uuid)
+    job = FileIngestionService.get_job(db, file_id)
     if job and job.status not in {"ready", "failed", "canceled"}:
         raise ConflictError("File is still processing")
 
-    derivatives = FileIngestionService.list_derivatives(db, file_uuid)
+    derivatives = FileIngestionService.list_derivatives(db, file_id)
     storage = get_storage_backend()
     for derivative in derivatives:
         try:
             storage.delete_object(derivative.storage_key)
         except Exception as exc:
             raise InternalServerError("Failed to delete file data") from exc
-    FileIngestionService.delete_derivatives(db, file_uuid)
-    FileIngestionService.soft_delete_file(db, file_uuid)
-    _safe_cleanup(_staging_path(file_uuid))
+    FileIngestionService.delete_derivatives(db, file_id)
+    FileIngestionService.soft_delete_file(db, file_id)
+    _safe_cleanup(_staging_path(file_id))
     return {"status": "deleted"}

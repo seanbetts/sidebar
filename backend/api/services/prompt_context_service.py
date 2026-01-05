@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
+import logging
 from typing import Any
 
 from sqlalchemy.orm import Session, load_only
@@ -24,6 +25,8 @@ from api.constants import PromptContextLimits
 from api.services.storage.service import get_storage_backend
 import uuid
 from api.services.user_settings_service import UserSettingsService
+
+logger = logging.getLogger(__name__)
 
 
 class PromptContextService:
@@ -160,7 +163,16 @@ class PromptContextService:
             try:
                 content_bytes = storage.get_object(derivative.storage_key)
                 content = content_bytes.decode("utf-8", errors="ignore")
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "Failed to load file context content",
+                    exc_info=exc,
+                    extra={
+                        "user_id": user_id,
+                        "file_id": str(file_uuid),
+                        "storage_key": derivative.storage_key,
+                    },
+                )
                 content = None
         if content:
             content = PromptContextService._truncate_text(content, max_chars)
@@ -198,7 +210,16 @@ class PromptContextService:
                 try:
                     content_bytes = storage.get_object(derivative.storage_key)
                     content = content_bytes.decode("utf-8", errors="ignore")
-                except Exception:
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to load attachment context content",
+                        exc_info=exc,
+                        extra={
+                            "user_id": user_id,
+                            "file_id": str(file_uuid),
+                            "storage_key": derivative.storage_key,
+                        },
+                    )
                     content = None
             if content:
                 content = PromptContextService._truncate_text(content, max_chars)

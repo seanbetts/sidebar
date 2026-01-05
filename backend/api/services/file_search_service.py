@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 from typing import Optional
 
 from api.models.file_ingestion import IngestedFile, FileDerivative
@@ -12,6 +13,8 @@ from api.services.skill_file_ops_paths import (
     session_for_user,
 )
 from api.services.storage.service import get_storage_backend
+
+logger = logging.getLogger(__name__)
 
 
 class FileSearchService:
@@ -103,7 +106,17 @@ class FileSearchService:
                 continue
             try:
                 content = storage.get_object(derivative.storage_key).decode("utf-8", errors="ignore")
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "Failed to load file content during search",
+                    exc_info=exc,
+                    extra={
+                        "user_id": user_id,
+                        "file_id": str(record.id),
+                        "storage_key": derivative.storage_key,
+                        "path": record.path,
+                    },
+                )
                 continue
 
             matches = list(content_pattern.finditer(content))

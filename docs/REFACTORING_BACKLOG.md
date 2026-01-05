@@ -1,7 +1,7 @@
 # Refactoring Backlog
 
 **Date Created:** 2026-01-05
-**Last Updated:** 2026-01-05 (LOW-1 completed)
+**Last Updated:** 2026-01-05 (LOW-2 to LOW-5 completed)
 **Status:** Active
 
 This document tracks refactoring opportunities identified during code reviews. Items are prioritized and tracked to completion.
@@ -50,131 +50,7 @@ Issues that impact code quality, consistency, or maintainability but don't cause
 
 ## Low Priority
 
-Nice-to-have improvements that don't significantly impact functionality.
-
-### 🔴 LOW-2: UUID Type Inconsistency in Routers
-**Status:** 🔴 Not Started
-**Effort:** S (1 day)
-**Impact:** Inconsistent API design, duplicate validation
-
-**Description:**
-Some routers use FastAPI's native `UUID` type parameter, others accept `str` and parse manually:
-
-```python
-# Pattern 1: Native UUID type
-async def get_conversation(conversation_id: UUID, ...):
-
-# Pattern 2: String with manual parsing
-async def get_website(website_id: str, ...):
-    website_uuid = parse_uuid(website_id, "website", "id")
-```
-
-**Recommended Solution:**
-Standardize on FastAPI's `UUID` type for path parameters - it provides automatic validation and consistent error messages.
-
-**Files to Review:**
-- All routers in `backend/api/routers/`
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
-
-### 🔴 LOW-3: Missing Logging Context in Services
-**Status:** 🔴 Not Started
-**Effort:** M (ongoing)
-**Impact:** Harder to debug production issues
-
-**Description:**
-Error handling catches exceptions but doesn't log them with sufficient context (user_id, resource_id, operation).
-
-**Recommended Pattern:**
-
-```python
-try:
-    # operation
-except Exception as e:
-    logger.error(
-        "Failed to update note",
-        exc_info=e,
-        extra={
-            "user_id": user_id,
-            "note_id": str(note_id),
-            "operation": "update",
-            "context": additional_context
-        }
-    )
-    raise
-```
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
-
-### 🔴 LOW-4: Complex Tool Skill Matching Logic
-**Status:** 🔴 Not Started
-**Effort:** S (30 minutes)
-**Impact:** Minor - verbose code
-
-**Location:** `backend/api/services/tool_mapper.py:164-176,183-192`
-
-**Description:**
-The same skill set is checked in two places:
-
-```python
-if context and tool_config.get("skill") in {
-    "fs", "notes", "web-save", # ... 9 items
-}:
-
-# Later...
-if parameters.get("user_id") and tool_config.get("skill") in {
-    "fs", "pdf", "pptx", # ... 9 items
-}:
-```
-
-**Recommended Solution:**
-Define as constants:
-
-```python
-SKILLS_REQUIRING_USER_ID = {
-    "fs", "pdf", "pptx", "docx", "xlsx",
-    "youtube-download", "youtube-transcribe",
-    "audio-transcribe", "web-crawler-policy",
-    "notes", "web-save"
-}
-
-# Then use:
-if context and tool_config.get("skill") in SKILLS_REQUIRING_USER_ID:
-```
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
-
-### 🔴 LOW-5: Unused Parameters
-**Status:** 🔴 Not Started
-**Effort:** S (15 minutes)
-**Impact:** Minor code cleanliness
-
-**Location:** `frontend/src/routes/api/v1/[...path]/+server.ts:7`
-
-**Description:**
-The catch-all proxy receives `params` but never uses it:
-
-```typescript
-const handler: RequestHandler = async ({ request, params, url, locals, fetch }) => {
-  // params is never used, relies on url.pathname instead
-```
-
-**Recommended Solution:**
-Remove unused parameter or add linter suppression.
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
+**All low-priority items have been resolved.**
 
 ## Deferred Items
 
@@ -192,15 +68,14 @@ Items that have been reviewed and intentionally deferred.
 
 ## Metrics
 
-**Total Active Items:** 4
+**Total Active Items:** 0
 - **Critical:** 0
 - **High:** 0
 - **Medium:** 0
-- **Low:** 4
+- **Low:** 0
 - **Deferred:** 1
 
-**Total Estimated Effort:** ~2-4 days
-- Low: 2-4 days
+**Total Estimated Effort:** ~0 days
 
 ---
 
