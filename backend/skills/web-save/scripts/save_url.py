@@ -181,39 +181,46 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
     local_parsed = parsed
     if parsed is None or web_save_mode in {"jina", "compare"}:
         api_key = os.environ.get('JINA_API_KEY', '')
-        content = get_markdown_content(url, api_key)
-        parsed_metadata, cleaned_content = parse_jina_metadata(content)
-        title = parsed_metadata.get("title") or extract_title(cleaned_content) or urlparse(url).netloc
-        source = parsed_metadata.get("url_source") or url
-        published_at = parse_published_at(parsed_metadata.get("published_time"))
-        word_count = compute_word_count(cleaned_content)
-        domain = urlparse(source).netloc
-        tags = extract_tags(cleaned_content, domain, title)
-        frontmatter = build_frontmatter(
-            cleaned_content,
-            meta={
-                "source": source,
-                "title": title,
-                "published_date": published_at.isoformat() if published_at else None,
-                "domain": domain,
-                "word_count": word_count,
-                "reading_time": calculate_reading_time(word_count),
-                "tags": tags,
-                "saved_at": datetime.now(timezone.utc).isoformat(),
-            },
-        )
-        parsed = ParsedPage(
-            title=title, content=frontmatter, source=source, published_at=published_at
-        )
-        if web_save_mode == "compare" and local_parsed is not None:
-            logger.info(
-                "Compare parse for %s: jina_len=%s local_len=%s jina_title=%s local_title=%s",
-                url,
-                len(cleaned_content),
-                len(local_parsed.content),
-                title,
-                local_parsed.title,
+        try:
+            content = get_markdown_content(url, api_key)
+            parsed_metadata, cleaned_content = parse_jina_metadata(content)
+            title = parsed_metadata.get("title") or extract_title(cleaned_content) or urlparse(url).netloc
+            source = parsed_metadata.get("url_source") or url
+            published_at = parse_published_at(parsed_metadata.get("published_time"))
+            word_count = compute_word_count(cleaned_content)
+            domain = urlparse(source).netloc
+            tags = extract_tags(cleaned_content, domain, title)
+            frontmatter = build_frontmatter(
+                cleaned_content,
+                meta={
+                    "source": source,
+                    "title": title,
+                    "published_date": published_at.isoformat() if published_at else None,
+                    "domain": domain,
+                    "word_count": word_count,
+                    "reading_time": calculate_reading_time(word_count),
+                    "tags": tags,
+                    "saved_at": datetime.now(timezone.utc).isoformat(),
+                },
             )
+            parsed = ParsedPage(
+                title=title, content=frontmatter, source=source, published_at=published_at
+            )
+            if web_save_mode == "compare" and local_parsed is not None:
+                logger.info(
+                    "Compare parse for %s: jina_len=%s local_len=%s jina_title=%s local_title=%s",
+                    url,
+                    len(cleaned_content),
+                    len(local_parsed.content),
+                    title,
+                    local_parsed.title,
+                )
+        except Exception as exc:
+            if web_save_mode == "compare" and local_parsed is not None:
+                logger.info("Compare parse failed for %s: %s", url, str(exc))
+                parsed = local_parsed
+            else:
+                raise
     else:
         title = parsed.title
         source = parsed.source
