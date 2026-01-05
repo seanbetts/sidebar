@@ -30,6 +30,8 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
     user_id = session.info.get("app_user_id")
     if user_id:
         connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
+    if session.info.get("force_public_search_path") and not session.info.get("skip_search_path"):
+        connection.execute(text("SET search_path TO public"))
 
 
 def get_db(
@@ -37,6 +39,8 @@ def get_db(
 ) -> Generator[Session, None, None]:
     """Dependency for getting database session."""
     db = SessionLocal()
+    if os.getenv("TESTING"):
+        db.info["force_public_search_path"] = True
     try:
         set_session_user_id(db, user_id)
         yield db

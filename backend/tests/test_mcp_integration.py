@@ -27,7 +27,13 @@ def bearer_token():
 
 
 @pytest.fixture(scope="session")
-def mcp_http_client():
+def mcp_http_client(test_db_engine):
+    os.environ["DATABASE_URL"] = test_db_engine.url.render_as_string(hide_password=False)
+    from api.db import session as db_session
+
+    db_session.engine = test_db_engine
+    db_session.SessionLocal.configure(bind=test_db_engine)
+
     mcp = FastMCP("sidebar-tests")
     register_mcp_tools(mcp)
     mcp_app = mcp.http_app()

@@ -38,7 +38,6 @@ os.environ.setdefault("AUTH_DEV_MODE", "false")
 TEST_USER_ID = os.getenv("TEST_USER_ID")
 if not TEST_USER_ID:
     raise RuntimeError("TEST_USER_ID must be set for tests to avoid production data.")
-os.environ.setdefault("DEFAULT_USER_ID", TEST_USER_ID)
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-12345")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key-12345")
 os.environ.setdefault("WORKSPACE_BASE", "/tmp/test-workspace")
@@ -368,6 +367,7 @@ def test_db_engine():
         website,
         user_settings,
         user_memory,
+        file_ingestion,
     )
 
     # Use the test database URL
@@ -383,13 +383,17 @@ def test_db_engine():
         engine.dispose()
         pytest.skip(f"Test database unavailable: {exc}")
 
-    # Create all tables
-    Base.metadata.create_all(engine)
+    # Create all tables in public schema
+    with engine.connect() as connection:
+        connection.execute(text("SET search_path TO public"))
+        Base.metadata.create_all(bind=connection)
 
     yield engine
 
     # Cleanup: Drop all tables after all tests
-    Base.metadata.drop_all(engine)
+    with engine.connect() as connection:
+        connection.execute(text("SET search_path TO public"))
+        Base.metadata.drop_all(bind=connection)
     engine.dispose()
 
 
@@ -436,6 +440,10 @@ def test_client(test_db_engine):
     """
     from fastapi.testclient import TestClient
     from api.main import app
+    from api.db import session as db_session
+
+    db_session.engine = test_db_engine
+    db_session.SessionLocal.configure(bind=test_db_engine)
 
     with TestClient(app) as client:
         yield client
