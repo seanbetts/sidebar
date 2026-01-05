@@ -31,9 +31,11 @@ class Rule:
 
     id: str
     phase: str
+    priority: int
     trigger: dict
     remove: list[str]
     selector_overrides: dict
+    metadata: dict
 
 
 @dataclass(frozen=True)
@@ -152,6 +154,9 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     post_rules = engine.match_rules(final_url, article_html, phase="post")
     if post_rules:
         article_html = engine.apply_rules(article_html, post_rules)
+    overrides = extract_metadata_overrides(article_html, post_rules)
+    if overrides:
+        metadata.update(overrides)
     markdown = html_to_markdown(article_html)
     if not markdown:
         raise ValueError("No readable content extracted")
@@ -179,7 +184,23 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         published_at=published_at,
     )
 def _normalize_host(value: str) -> str:
-    return value.lower().lstrip("www.")
+    return value.lower().strip(".")
+
+
+def _host_variants(host: str) -> dict:
+    cleaned = _normalize_host(host)
+    no_www = cleaned[4:] if cleaned.startswith("www.") else cleaned
+    with_www = cleaned if cleaned.startswith("www.") else f"www.{no_www}"
+    parts = no_www.split(".")
+    etld_plus_one = no_www
+    if len(parts) >= 2:
+        etld_plus_one = ".".join(parts[-2:])
+    return {
+        "host_raw": cleaned,
+        "host_nw": no_www,
+        "host_with_www": with_www,
+        "etld_plus_one": etld_plus_one,
+    }
 
 
 class RuleEngine:
@@ -198,22 +219,25 @@ class RuleEngine:
                     Rule(
                         id=item["id"],
                         phase=item.get("phase", "post"),
+                        priority=item.get("priority", 0),
                         trigger=item.get("trigger", {}),
                         remove=item.get("remove", []) or [],
                         selector_overrides=item.get("selector_overrides", {}) or {},
+                        metadata=item.get("metadata", {}) or {},
                     )
                 )
+        rules.sort(key=lambda rule: rule.priority, reverse=True)
         return cls(rules)
 
     def match_rules(self, url: str, html: str, phase: str) -> list[Rule]:
-        host = _normalize_host(urlparse(url).netloc)
+        host_info = _host_variants(urlparse(url).netloc)
         tree = lxml_html.fromstring(html)
         matches: list[Rule] = []
 
         for rule in self._rules:
             if rule.phase not in {phase, "both"}:
                 continue
-            if self._matches_trigger(rule.trigger, host, tree):
+            if self._matches_trigger(rule.trigger, host_info, tree):
                 matches.append(rule)
         return matches
 
@@ -240,26 +264,70 @@ class RuleEngine:
 
         return lxml_html.tostring(tree, encoding="unicode")
 
-    def _matches_trigger(self, trigger: dict, host: str, tree: lxml_html.HtmlElement) -> bool:
+    def _matches_trigger(self, trigger: dict, host_info: dict, tree: lxml_html.HtmlElement) -> bool:
         if not trigger:
             return False
 
+        mode = trigger.get("mode", "all")
         host_rule = trigger.get("host") or {}
         dom_rule = trigger.get("dom") or {}
 
+        host_match = False
         if host_rule:
-            if "equals" in host_rule and _normalize_host(host_rule["equals"]) == host:
-                return True
-            if "ends_with" in host_rule and host.endswith(host_rule["ends_with"]):
-                return True
+            if "equals" in host_rule and _normalize_host(host_rule["equals"]) == host_info["host_nw"]:
+                host_match = True
+            if "equals_www" in host_rule and _normalize_host(host_rule["equals_www"]) == host_info["host_with_www"]:
+                host_match = True
+            if "ends_with" in host_rule:
+                target = _normalize_host(host_rule["ends_with"])
+                if host_info["host_nw"].endswith(target) or host_info["etld_plus_one"].endswith(target):
+                    host_match = True
+            if "etld_plus_one" in host_rule and _normalize_host(host_rule["etld_plus_one"]) == host_info["etld_plus_one"]:
+                host_match = True
 
+        dom_match = False
         dom_any = dom_rule.get("any") or []
-        if dom_any:
-            for selector in dom_any:
-                if tree.cssselect(selector):
-                    return True
+        dom_all = dom_rule.get("all") or []
+        text_any = dom_rule.get("any_text_contains") or []
 
-        return False
+        if dom_any:
+            dom_match = any(tree.cssselect(selector) for selector in dom_any)
+        if dom_all:
+            dom_match = all(tree.cssselect(selector) for selector in dom_all)
+        if text_any:
+            text = (tree.text_content() or "").lower()
+            dom_match = any(token.lower() in text for token in text_any)
+
+        if mode == "any":
+            return host_match or dom_match
+        if host_rule and dom_rule:
+            return host_match and dom_match
+        return host_match or dom_match
+
+
+def extract_metadata_overrides(html: str, rules: list[Rule]) -> dict:
+    """Extract metadata overrides from matched rules."""
+    if not rules:
+        return {}
+    tree = lxml_html.fromstring(html)
+    overrides: dict = {}
+    for rule in rules:
+        meta = rule.metadata or {}
+        for key in ("author", "published", "title"):
+            if key not in meta:
+                continue
+            selector = meta[key].get("selector")
+            attr = meta[key].get("attr")
+            if not selector:
+                continue
+            nodes = tree.cssselect(selector)
+            if not nodes:
+                continue
+            node = nodes[0]
+            value = node.get(attr) if attr else node.text_content()
+            if value:
+                overrides[key] = value.strip()
+    return overrides
 
 
 @lru_cache(maxsize=1)
