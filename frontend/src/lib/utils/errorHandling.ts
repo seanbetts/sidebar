@@ -1,3 +1,5 @@
+import { captureError } from '$lib/config/sentry';
+
 /**
  * Structured error payload for API responses.
  */
@@ -49,6 +51,7 @@ export function logError(
     context,
     timestamp: new Date().toISOString()
   });
+  captureError(error, { message, ...context });
 }
 
 /**

@@ -1,0 +1,64 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const onCLS = vi.fn();
+const onFCP = vi.fn();
+const onFID = vi.fn();
+const onLCP = vi.fn();
+const onTTFB = vi.fn();
+
+vi.mock('web-vitals', () => ({
+  onCLS,
+  onFCP,
+  onFID,
+  onLCP,
+  onTTFB
+}));
+
+vi.mock('$app/environment', () => ({
+  browser: true
+}));
+
+describe('initWebVitals', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    onCLS.mockClear();
+    onFCP.mockClear();
+    onFID.mockClear();
+    onLCP.mockClear();
+    onTTFB.mockClear();
+  });
+
+  it('skips initialization when disabled', async () => {
+    vi.doMock('$env/static/public', () => ({
+      PUBLIC_ENABLE_WEB_VITALS: 'false',
+      PUBLIC_WEB_VITALS_SAMPLE_RATE: '1',
+      PUBLIC_METRICS_ENDPOINT: ''
+    }));
+
+    const { initWebVitals } = await import('$lib/utils/performance');
+    initWebVitals(() => '/');
+
+    expect(onCLS).not.toHaveBeenCalled();
+    expect(onFCP).not.toHaveBeenCalled();
+    expect(onFID).not.toHaveBeenCalled();
+    expect(onLCP).not.toHaveBeenCalled();
+    expect(onTTFB).not.toHaveBeenCalled();
+  });
+
+  it('registers vitals when enabled', async () => {
+    vi.doMock('$env/static/public', () => ({
+      PUBLIC_ENABLE_WEB_VITALS: 'true',
+      PUBLIC_WEB_VITALS_SAMPLE_RATE: '1',
+      PUBLIC_METRICS_ENDPOINT: ''
+    }));
+
+    const { initWebVitals } = await import('$lib/utils/performance');
+    initWebVitals(() => '/');
+
+    expect(onCLS).toHaveBeenCalledTimes(1);
+    expect(onFCP).toHaveBeenCalledTimes(1);
+    expect(onFID).toHaveBeenCalledTimes(1);
+    expect(onLCP).toHaveBeenCalledTimes(1);
+    expect(onTTFB).toHaveBeenCalledTimes(1);
+  });
+});

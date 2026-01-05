@@ -1,8 +1,14 @@
 import type { HandleFetch } from '@sveltejs/kit';
+import * as Sentry from '@sentry/sveltekit';
 import { goto, invalidateAll } from '$app/navigation';
+import { initSentryClient } from '$lib/config/sentry';
 import { getSupabaseClient } from '$lib/supabase';
 
 let handlingUnauthorized = false;
+
+initSentryClient();
+
+export const handleError = Sentry.handleErrorWithSentry();
 
 export const handleFetch: HandleFetch = async ({ request, fetch }) => {
   const response = await fetch(request);

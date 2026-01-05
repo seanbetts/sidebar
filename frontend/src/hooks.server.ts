@@ -1,7 +1,12 @@
 import type { Handle } from '@sveltejs/kit';
+import { sequence } from '@sveltejs/kit/hooks';
+import * as Sentry from '@sentry/sveltekit';
+import { initSentryServer } from '$lib/config/sentry';
 import { createSupabaseServerClient } from '$lib/server/supabase';
 
-export const handle: Handle = async ({ event, resolve }) => {
+initSentryServer();
+
+const appHandle: Handle = async ({ event, resolve }) => {
   event.locals.supabase = createSupabaseServerClient(event.cookies);
 
   const accessToken = getAccessTokenFromCookies(event);
@@ -18,6 +23,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   return resolve(event);
 };
+
+export const handle = sequence(Sentry.sentryHandle(), appHandle);
+export const handleError = Sentry.handleErrorWithSentry();
 
 function getAccessTokenFromCookies(event: Parameters<Handle>[0]['event']): string | null {
   const cookieName = findSupabaseCookie(event);
