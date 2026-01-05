@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.website import Website
+from api.schemas.filters import WebsiteFilters
 from api.exceptions import WebsiteNotFoundError
 from api.utils.metadata_helpers import get_max_pinned_order
 from api.utils.search import build_text_search_filter
@@ -455,41 +456,19 @@ class WebsitesService:
     def list_websites(
         db: Session,
         user_id: str,
-        *,
-        domain: Optional[str] = None,
-        pinned: Optional[bool] = None,
-        archived: Optional[bool] = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        updated_after: Optional[datetime] = None,
-        updated_before: Optional[datetime] = None,
-        opened_after: Optional[datetime] = None,
-        opened_before: Optional[datetime] = None,
-        published_after: Optional[datetime] = None,
-        published_before: Optional[datetime] = None,
-        title_search: Optional[str] = None,
+        filters: WebsiteFilters | None = None,
     ) -> Iterable[Website]:
         """List websites using optional filters.
 
         Args:
             db: Database session.
             user_id: Current user ID.
-            domain: Optional domain filter.
-            pinned: Optional pinned filter.
-            archived: Optional archived filter.
-            created_after: Optional created_at lower bound.
-            created_before: Optional created_at upper bound.
-            updated_after: Optional updated_at lower bound.
-            updated_before: Optional updated_at upper bound.
-            opened_after: Optional last_opened_at lower bound.
-            opened_before: Optional last_opened_at upper bound.
-            published_after: Optional published_at lower bound.
-            published_before: Optional published_at upper bound.
-            title_search: Optional title substring search.
+            filters: Optional filters object.
 
         Returns:
             List of matching websites ordered by saved_at/created_at.
         """
+        filters = filters or WebsiteFilters()
         query = db.query(Website).options(load_only(
             Website.id,
             Website.title,
@@ -505,34 +484,38 @@ class WebsitesService:
             Website.deleted_at.is_(None),
         )
 
-        if domain is not None:
-            query = query.filter(Website.domain == domain)
+        if filters.domain is not None:
+            query = query.filter(Website.domain == filters.domain)
 
-        if pinned is not None:
-            query = query.filter(Website.metadata_["pinned"].astext == str(pinned).lower())
+        if filters.pinned is not None:
+            query = query.filter(
+                Website.metadata_["pinned"].astext == str(filters.pinned).lower()
+            )
 
-        if archived is not None:
-            query = query.filter(Website.metadata_["archived"].astext == str(archived).lower())
+        if filters.archived is not None:
+            query = query.filter(
+                Website.metadata_["archived"].astext == str(filters.archived).lower()
+            )
 
-        if created_after is not None:
-            query = query.filter(Website.created_at >= created_after)
-        if created_before is not None:
-            query = query.filter(Website.created_at <= created_before)
-        if updated_after is not None:
-            query = query.filter(Website.updated_at >= updated_after)
-        if updated_before is not None:
-            query = query.filter(Website.updated_at <= updated_before)
-        if opened_after is not None:
-            query = query.filter(Website.last_opened_at >= opened_after)
-        if opened_before is not None:
-            query = query.filter(Website.last_opened_at <= opened_before)
-        if published_after is not None:
-            query = query.filter(Website.published_at >= published_after)
-        if published_before is not None:
-            query = query.filter(Website.published_at <= published_before)
+        if filters.created_after is not None:
+            query = query.filter(Website.created_at >= filters.created_after)
+        if filters.created_before is not None:
+            query = query.filter(Website.created_at <= filters.created_before)
+        if filters.updated_after is not None:
+            query = query.filter(Website.updated_at >= filters.updated_after)
+        if filters.updated_before is not None:
+            query = query.filter(Website.updated_at <= filters.updated_before)
+        if filters.opened_after is not None:
+            query = query.filter(Website.last_opened_at >= filters.opened_after)
+        if filters.opened_before is not None:
+            query = query.filter(Website.last_opened_at <= filters.opened_before)
+        if filters.published_after is not None:
+            query = query.filter(Website.published_at >= filters.published_after)
+        if filters.published_before is not None:
+            query = query.filter(Website.published_at <= filters.published_before)
 
-        if title_search:
-            query = query.filter(Website.title.ilike(f"%{title_search}%"))
+        if filters.title_search:
+            query = query.filter(Website.title.ilike(f"%{filters.title_search}%"))
 
         return (
             query.order_by(Website.saved_at.desc().nullslast(), Website.created_at.desc())

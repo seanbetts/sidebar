@@ -17,9 +17,11 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
+    from api.schemas.filters import NoteFilters
 except Exception:
     SessionLocal = None
     NotesService = None
+    NoteFilters = None
 
 
 def parse_bool(value: str | None) -> bool | None:
@@ -38,16 +40,14 @@ def parse_datetime(value: str | None) -> datetime | None:
 
 
 def list_notes_database(args: argparse.Namespace) -> dict:
-    if SessionLocal is None or NotesService is None:
+    if SessionLocal is None or NotesService is None or NoteFilters is None:
         raise RuntimeError("Database dependencies are unavailable")
 
     db = SessionLocal()
 
     set_session_user_id(db, args.user_id)
     try:
-        notes = NotesService.list_notes(
-            db,
-            args.user_id,
+        filters = NoteFilters(
             folder=args.folder,
             pinned=parse_bool(args.pinned),
             archived=parse_bool(args.archived),
@@ -59,6 +59,7 @@ def list_notes_database(args: argparse.Namespace) -> dict:
             opened_before=parse_datetime(args.opened_before),
             title_search=args.title,
         )
+        notes = NotesService.list_notes(db, args.user_id, filters)
         items = []
         for note in notes:
             metadata = note.metadata_ or {}
