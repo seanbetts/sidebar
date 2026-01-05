@@ -61,7 +61,8 @@ const {
       updateLocalUploadProgress: vi.fn(),
       removeLocalUpload: vi.fn(),
       upsertItem: vi.fn(),
-      addLocalSource: vi.fn()
+      addLocalSource: vi.fn(),
+      startPolling: vi.fn()
     },
     ingestionViewerStore: {
       setLocalActive: vi.fn(),
