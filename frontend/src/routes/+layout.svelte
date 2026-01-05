@@ -9,10 +9,12 @@
 	import { toast } from 'svelte-sonner';
 	import { chatStore } from '$lib/stores/chat';
 	import { get } from 'svelte/store';
+	import { page } from '$app/stores';
 	import { clearCaches, clearInFlight, clearMemoryCache, listenForStorageEvents } from '$lib/utils/cache';
 	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
 	import { startRealtime, stopRealtime } from '$lib/realtime/realtime';
 	import { logError } from '$lib/utils/errorHandling';
+	import { initWebVitals } from '$lib/utils/performance';
 
 	let { data, children } = $props();
 	let healthChecked = false;
@@ -26,6 +28,7 @@
 			window.matchMedia('(prefers-color-scheme: dark)').matches;
 		const initialTheme = storedTheme ?? (prefersDark ? 'dark' : 'light');
 		applyThemeMode(initialTheme, false);
+		initWebVitals(() => get(page).url.pathname);
 
 		const supabaseUrl = data.supabaseUrl;
 		const supabaseAnonKey = data.supabaseAnonKey;
