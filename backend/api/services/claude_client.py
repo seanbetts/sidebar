@@ -6,6 +6,7 @@ import httpx
 from anthropic import AsyncAnthropic
 
 from api.config import Settings
+from api.schemas.tool_context import ToolExecutionContext
 from api.services.claude_streaming import stream_with_tools
 from api.services.tool_mapper import ToolMapper
 
@@ -60,7 +61,7 @@ class ClaudeClient:
         conversation_history: List[Dict[str, Any]] = None,
         system_prompt: str | None = None,
         allowed_skills: List[str] | None = None,
-        tool_context: Dict[str, Any] | None = None,
+        tool_context: ToolExecutionContext | Dict[str, Any] | None = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """Stream model responses while handling tool calls.
 

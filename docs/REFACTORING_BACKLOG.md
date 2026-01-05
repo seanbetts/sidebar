@@ -1,7 +1,7 @@
 # Refactoring Backlog
 
 **Date Created:** 2026-01-05
-**Last Updated:** 2026-01-05 (Completed MED-6)
+**Last Updated:** 2026-01-05 (MED-7 completed)
 **Status:** Active
 
 This document tracks refactoring opportunities identified during code reviews. Items are prioritized and tracked to completion.
@@ -47,123 +47,6 @@ Issues that cause bugs, performance problems, or significant maintainability con
 ## Medium Priority
 
 Issues that impact code quality, consistency, or maintainability but don't cause immediate problems.
-
-### 🔴 MED-7: Primitive Obsession - Tool Context
-**Status:** 🔴 Not Started
-**Effort:** M (2 days)
-**Impact:** No type safety, easy to misspell keys, hard to refactor
-
-**Location:**
-- `backend/api/routers/chat.py:225-235`
-- `backend/api/services/claude_streaming.py:23`
-
-**Description:**
-Tool context passed as `Dict[str, Any]` throughout codebase:
-
-```python
-tool_context = {
-    "db": db,
-    "user_id": user_id,
-    "open_context": open_context,
-    "attachments": attachments,
-    "conversation_id": str(conversation_uuid),
-    "user_message_id": str(user_message_id),
-    "assistant_message_id": str(assistant_message_id),
-    "notes_context": notes_context,
-}
-```
-
-**Issues:**
-- No type hints
-- Easy to typo keys: `user_id` vs `userId` vs `user-id`
-- Hard to know what fields are available
-- No IDE autocomplete
-- Difficult to refactor
-
-**Recommended Solution:**
-
-```python
-# backend/api/schemas/tool_context.py
-from dataclasses import dataclass, field
-from typing import Optional, Any
-from uuid import UUID
-from sqlalchemy.orm import Session
-
-@dataclass
-class ToolExecutionContext:
-    """Context passed to tool execution."""
-
-    # Required fields
-    db: Session
-    user_id: str
-
-    # Optional fields
-    open_context: Optional[dict[str, Any]] = None
-    attachments: list[dict[str, Any]] = field(default_factory=list)
-    conversation_id: Optional[UUID] = None
-    user_message_id: Optional[UUID] = None
-    assistant_message_id: Optional[UUID] = None
-    notes_context: Optional[str] = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dict for backward compatibility."""
-        return {
-            "db": self.db,
-            "user_id": self.user_id,
-            "open_context": self.open_context,
-            "attachments": self.attachments,
-            "conversation_id": str(self.conversation_id) if self.conversation_id else None,
-            "user_message_id": str(self.user_message_id) if self.user_message_id else None,
-            "assistant_message_id": str(self.assistant_message_id) if self.assistant_message_id else None,
-            "notes_context": self.notes_context,
-        }
-
-# Usage:
-from api.schemas.tool_context import ToolExecutionContext
-
-tool_context = ToolExecutionContext(
-    db=db,
-    user_id=user_id,
-    open_context=open_context,
-    attachments=attachments,
-    conversation_id=conversation_uuid,
-    user_message_id=user_message_id,
-    assistant_message_id=assistant_message_id,
-    notes_context=notes_context,
-)
-
-# Pass to streaming
-await ClaudeStreamingService.stream_chat(
-    ...,
-    context=tool_context.to_dict()  # Convert for backward compat
-)
-```
-
-**Migration Strategy:**
-1. Create `ToolExecutionContext` dataclass
-2. Update routers to build context object
-3. Convert to dict when passing to existing code
-4. Gradually update services to accept dataclass directly
-5. Remove `to_dict()` once migration complete
-
-**Files to Create:**
-- `backend/api/schemas/tool_context.py`
-
-**Files to Modify:**
-- `backend/api/routers/chat.py`
-- `backend/api/services/claude_streaming.py`
-- `backend/api/services/tool_mapper.py`
-
-**Benefits:**
-- Type safety
-- IDE autocomplete
-- Easier refactoring
-- Self-documenting code
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
 
 ## Low Priority
 

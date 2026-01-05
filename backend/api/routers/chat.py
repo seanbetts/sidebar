@@ -17,6 +17,7 @@ from api.services.claude_client import ClaudeClient
 from api.services.user_settings_service import UserSettingsService
 from api.services.skill_catalog_service import SkillCatalogService
 from api.services.prompt_context_service import PromptContextService
+from api.schemas.tool_context import ToolExecutionContext
 from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
@@ -198,6 +199,7 @@ async def stream_chat(
     if not message:
         raise BadRequestError("Message required")
 
+    conversation_uuid = None
     if conversation_id:
         conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
         conversation = ConversationService.get_conversation(db, user_id, conversation_uuid)
@@ -223,17 +225,19 @@ async def stream_chat(
 
     # Create Claude client
     claude_client = ClaudeClient(settings)
-    tool_context = {
-        "db": db,
-        "user_id": user_id,
-        "open_context": open_context,
-        "attachments": attachments,
-        "user_agent": user_agent,
-        "current_location": current_location,
-        "current_location_levels": current_location_levels,
-        "current_weather": current_weather,
-        "current_timezone": current_timezone,
-    }
+    tool_context = ToolExecutionContext(
+        db=db,
+        user_id=user_id,
+        open_context=open_context,
+        attachments=attachments,
+        conversation_id=conversation_uuid,
+        user_message_id=user_message_id,
+        user_agent=user_agent,
+        current_location=current_location,
+        current_location_levels=current_location_levels,
+        current_weather=current_weather,
+        current_timezone=current_timezone,
+    )
 
     async def event_generator():
         """Generate SSE events."""

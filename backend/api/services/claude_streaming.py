@@ -6,6 +6,7 @@ import logging
 from typing import Any, AsyncIterator, Dict, List
 
 from api.constants import ChatConstants
+from api.schemas.tool_context import ToolExecutionContext
 from api.services.web_search_builder import (
     build_web_search_location,
     serialize_web_search_result,
@@ -24,7 +25,7 @@ async def stream_with_tools(
     conversation_history: List[Dict[str, Any]] | None = None,
     system_prompt: str | None = None,
     allowed_skills: List[str] | None = None,
-    tool_context: Dict[str, Any] | None = None,
+    tool_context: ToolExecutionContext | Dict[str, Any] | None = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     """Stream chat with tool execution and multi-turn conversation.
 
@@ -36,16 +37,23 @@ async def stream_with_tools(
     Yields:
         Events: token, tool_call, tool_result, error.
     """
+    context_dict: Dict[str, Any] | None = None
+    if tool_context:
+        if isinstance(tool_context, ToolExecutionContext):
+            context_dict = tool_context.to_dict()
+        else:
+            context_dict = tool_context
+
     messages = conversation_history or []
     messages.append({"role": "user", "content": message})
 
     tools = tool_mapper.get_claude_tools(allowed_skills)
     if allowed_skills is None or "web-search" in allowed_skills:
         user_location = None
-        if tool_context:
+        if context_dict:
             user_location = build_web_search_location(
-                tool_context.get("current_location_levels"),
-                tool_context.get("current_timezone"),
+                context_dict.get("current_location_levels"),
+                context_dict.get("current_timezone"),
             )
         web_search_tool: Dict[str, Any] = {
             "type": "web_search_20250305",
@@ -228,7 +236,7 @@ async def stream_with_tools(
                                 tool_use["name"],
                                 tool_use["input"],
                                 allowed_skills=allowed_skills,
-                                context=tool_context,
+                                context=context_dict,
                             )
 
                             status = "success" if result.get("success") else "error"
