@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import secrets
+import logging
 from typing import Optional
 
 from fastapi import HTTPException
@@ -10,6 +11,8 @@ from api.config import settings
 from api.services.skill_catalog_service import SkillCatalogService
 from api.services.storage.service import get_storage_backend
 from api.services.user_settings_service import UserSettingsService
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_COMMUNICATION_STYLE = """Use UK English.
 
@@ -336,6 +339,14 @@ class SettingsService:
         try:
             return storage_backend.get_object(settings_record.profile_image_path)
         except Exception as exc:
+            logger.warning(
+                "Failed to load profile image from storage",
+                exc_info=exc,
+                extra={
+                    "user_id": user_id,
+                    "storage_key": settings_record.profile_image_path,
+                },
+            )
             raise HTTPException(status_code=404, detail="Profile image not found") from exc
 
     @staticmethod
@@ -359,6 +370,14 @@ class SettingsService:
         try:
             storage_backend.delete_object(settings_record.profile_image_path)
         except Exception as exc:
+            logger.error(
+                "Failed to delete profile image from storage",
+                exc_info=exc,
+                extra={
+                    "user_id": user_id,
+                    "storage_key": settings_record.profile_image_path,
+                },
+            )
             raise HTTPException(status_code=500, detail="Failed to delete profile image") from exc
 
         UserSettingsService.upsert_settings(

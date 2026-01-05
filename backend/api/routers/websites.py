@@ -116,17 +116,15 @@ async def quick_save_website(
 
 @router.get("/quick-save/{job_id}")
 async def get_quick_save_job(
-    job_id: str,
+    job_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
     """Return quick-save job status."""
-    job_uuid = parse_uuid(job_id, "job", "id")
-
-    job = WebsiteProcessingService.get_job(db, user_id, job_uuid)
+    job = WebsiteProcessingService.get_job(db, user_id, job_id)
     if not job:
-        raise NotFoundError("Website job", job_id)
+        raise NotFoundError("Website job", str(job_id))
 
     return {
         "id": str(job.id),
@@ -175,7 +173,7 @@ async def save_website(
 
 @router.get("/{website_id}")
 async def get_website(
-    website_id: str,
+    website_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
@@ -183,7 +181,7 @@ async def get_website(
     """Fetch a website by ID.
 
     Args:
-        website_id: Website ID (UUID string).
+        website_id: Website UUID.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -196,7 +194,7 @@ async def get_website(
     """
     website = WebsitesService.get_website(db, user_id, website_id, mark_opened=True)
     if not website:
-        raise NotFoundError("Website", website_id)
+        raise NotFoundError("Website", str(website_id))
 
     return {
         **website_summary(website),
@@ -208,7 +206,7 @@ async def get_website(
 
 @router.patch("/{website_id}/pin")
 async def update_pin(
-    website_id: str,
+    website_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -217,7 +215,7 @@ async def update_pin(
     """Pin or unpin a website.
 
     Args:
-        website_id: Website ID (UUID string).
+        website_id: Website UUID.
         request: Request payload with pinned.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
@@ -231,10 +229,9 @@ async def update_pin(
     """
     pinned = bool(request.get("pinned", False))
     try:
-        website_uuid = parse_uuid(website_id, "website", "id")
-        website = WebsitesService.update_pinned(db, user_id, website_uuid, pinned)
+        website = WebsitesService.update_pinned(db, user_id, website_id, pinned)
     except WebsiteNotFoundError:
-        raise NotFoundError("Website", website_id)
+        raise NotFoundError("Website", str(website_id))
 
     return website_summary(website)
 
@@ -243,7 +240,7 @@ async def update_pin(
 
 @router.patch("/{website_id}/rename")
 async def update_title(
-    website_id: str,
+    website_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -252,7 +249,7 @@ async def update_title(
     """Rename a website.
 
     Args:
-        website_id: Website ID (UUID string).
+        website_id: Website UUID.
         request: Request payload with title.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
@@ -269,17 +266,16 @@ async def update_title(
     if not title:
         raise BadRequestError("title required")
     try:
-        website_uuid = parse_uuid(website_id, "website", "id")
-        website = WebsitesService.update_website(db, user_id, website_uuid, title=title)
+        website = WebsitesService.update_website(db, user_id, website_id, title=title)
     except WebsiteNotFoundError:
-        raise NotFoundError("Website", website_id)
+        raise NotFoundError("Website", str(website_id))
 
     return website_summary(website)
 
 
 @router.patch("/{website_id}/archive")
 async def update_archive(
-    website_id: str,
+    website_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -288,7 +284,7 @@ async def update_archive(
     """Archive or unarchive a website.
 
     Args:
-        website_id: Website ID (UUID string).
+        website_id: Website UUID.
         request: Request payload with archived.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
@@ -302,17 +298,16 @@ async def update_archive(
     """
     archived = bool(request.get("archived", False))
     try:
-        website_uuid = parse_uuid(website_id, "website", "id")
-        website = WebsitesService.update_archived(db, user_id, website_uuid, archived)
+        website = WebsitesService.update_archived(db, user_id, website_id, archived)
     except WebsiteNotFoundError:
-        raise NotFoundError("Website", website_id)
+        raise NotFoundError("Website", str(website_id))
 
     return website_summary(website)
 
 
 @router.get("/{website_id}/download")
 async def download_website(
-    website_id: str,
+    website_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
@@ -320,7 +315,7 @@ async def download_website(
     """Download a website as a markdown attachment.
 
     Args:
-        website_id: Website ID (UUID string).
+        website_id: Website UUID.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -331,10 +326,9 @@ async def download_website(
     Raises:
         NotFoundError: If not found.
     """
-    website_uuid = parse_uuid(website_id, "website", "id")
-    website = WebsitesService.get_website(db, user_id, website_uuid, mark_opened=False)
+    website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
     if not website:
-        raise NotFoundError("Website", website_id)
+        raise NotFoundError("Website", str(website_id))
 
     filename = f"{website.title}.md"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
@@ -343,7 +337,7 @@ async def download_website(
 
 @router.delete("/{website_id}")
 async def delete_website(
-    website_id: str,
+    website_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db)
@@ -351,7 +345,7 @@ async def delete_website(
     """Delete a website by ID.
 
     Args:
-        website_id: Website ID (UUID string).
+        website_id: Website UUID.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -362,12 +356,11 @@ async def delete_website(
     Raises:
         NotFoundError: If not found.
     """
-    website_uuid = parse_uuid(website_id, "website", "id")
-    website = WebsitesService.get_website(db, user_id, website_uuid, mark_opened=False)
+    website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
     if not website:
-        raise NotFoundError("Website", website_id)
-    deleted = WebsitesService.delete_website(db, user_id, website_uuid)
+        raise NotFoundError("Website", str(website_id))
+    deleted = WebsitesService.delete_website(db, user_id, website_id)
     if not deleted:
-        raise NotFoundError("Website", website_id)
+        raise NotFoundError("Website", str(website_id))
 
     return website_summary(website)

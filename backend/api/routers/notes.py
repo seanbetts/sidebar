@@ -213,7 +213,7 @@ async def delete_folder(
 
 @router.get("/{note_id}")
 async def get_note(
-    note_id: str,
+    note_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -221,7 +221,7 @@ async def get_note(
     """Fetch a note by ID.
 
     Args:
-        note_id: Note ID (UUID string).
+        note_id: Note UUID.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -234,7 +234,7 @@ async def get_note(
         NotFoundError: If not found.
     """
     try:
-        return NotesWorkspaceService.get_note(db, user_id, note_id)
+        return NotesWorkspaceService.get_note(db, user_id, str(note_id))
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
@@ -282,7 +282,7 @@ async def create_note(
 
 @router.patch("/{note_id}/rename")
 async def rename_note(
-    note_id: str,
+    note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -291,7 +291,7 @@ async def rename_note(
     """Rename a note.
 
     Args:
-        note_id: Note ID (UUID string).
+        note_id: Note UUID.
         request: Request payload with newName.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
@@ -309,7 +309,7 @@ async def rename_note(
         raise BadRequestError("newName required")
 
     try:
-        return NotesWorkspaceService.rename_note(db, user_id, note_id, new_name)
+        return NotesWorkspaceService.rename_note(db, user_id, str(note_id), new_name)
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
@@ -318,7 +318,7 @@ async def rename_note(
 
 @router.delete("/{note_id}")
 async def delete_note(
-    note_id: str,
+    note_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -326,7 +326,7 @@ async def delete_note(
     """Delete a note by ID.
 
     Args:
-        note_id: Note ID (UUID string).
+        note_id: Note UUID.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -338,19 +338,18 @@ async def delete_note(
         BadRequestError: For invalid ID.
         NotFoundError: If not found.
     """
-    note_uuid = parse_uuid(note_id, "note", "id")
-    note = NotesService.get_note(db, user_id, note_uuid, mark_opened=False)
+    note = NotesService.get_note(db, user_id, note_id, mark_opened=False)
     if not note:
-        raise NotFoundError("Note", note_id)
-    deleted = NotesService.delete_note(db, user_id, note_uuid)
+        raise NotFoundError("Note", str(note_id))
+    deleted = NotesService.delete_note(db, user_id, note_id)
     if not deleted:
-        raise NotFoundError("Note", note_id)
+        raise NotFoundError("Note", str(note_id))
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
 @router.get("/{note_id}/download")
 async def download_note(
-    note_id: str,
+    note_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -358,7 +357,7 @@ async def download_note(
     """Download a note as a markdown attachment.
 
     Args:
-        note_id: Note ID (UUID string).
+        note_id: Note UUID.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -371,7 +370,7 @@ async def download_note(
         NotFoundError: If not found.
     """
     try:
-        result = NotesWorkspaceService.download_note(db, user_id, note_id)
+        result = NotesWorkspaceService.download_note(db, user_id, str(note_id))
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
@@ -383,7 +382,7 @@ async def download_note(
 
 @router.patch("/{note_id}/pin")
 async def update_pin(
-    note_id: str,
+    note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -392,7 +391,7 @@ async def update_pin(
     """Pin or unpin a note.
 
     Args:
-        note_id: Note ID (UUID string).
+        note_id: Note UUID.
         request: Request payload with pinned.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
@@ -407,16 +406,15 @@ async def update_pin(
     """
     pinned = bool(request.get("pinned", False))
     try:
-        note_uuid = parse_uuid(note_id, "note", "id")
-        note = NotesService.update_pinned(db, user_id, note_uuid, pinned)
+        note = NotesService.update_pinned(db, user_id, note_id, pinned)
     except NoteNotFoundError:
-        raise NotFoundError("Note", note_id)
+        raise NotFoundError("Note", str(note_id))
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
 @router.patch("/{note_id}")
 async def update_note(
-    note_id: str,
+    note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -425,7 +423,7 @@ async def update_note(
     """Update a note's content.
 
     Args:
-        note_id: Note ID (UUID string).
+        note_id: Note UUID.
         request: Request payload with content.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
@@ -443,7 +441,7 @@ async def update_note(
         raise BadRequestError("content required")
 
     try:
-        return NotesWorkspaceService.update_note(db, user_id, note_id, content)
+        return NotesWorkspaceService.update_note(db, user_id, str(note_id), content)
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
     except NoteNotFoundError:
@@ -452,7 +450,7 @@ async def update_note(
 
 @router.patch("/{note_id}/move")
 async def update_folder(
-    note_id: str,
+    note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -461,7 +459,7 @@ async def update_folder(
     """Move a note to a different folder.
 
     Args:
-        note_id: Note ID (UUID string).
+        note_id: Note UUID.
         request: Request payload with folder.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
@@ -476,16 +474,15 @@ async def update_folder(
     """
     folder = request.get("folder", "") or ""
     try:
-        note_uuid = parse_uuid(note_id, "note", "id")
-        note = NotesService.update_folder(db, user_id, note_uuid, folder)
+        note = NotesService.update_folder(db, user_id, note_id, folder)
     except NoteNotFoundError:
-        raise NotFoundError("Note", note_id)
+        raise NotFoundError("Note", str(note_id))
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
 @router.patch("/{note_id}/archive")
 async def update_archive(
-    note_id: str,
+    note_id: uuid.UUID,
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
@@ -494,7 +491,7 @@ async def update_archive(
     """Archive or unarchive a note.
 
     Args:
-        note_id: Note ID (UUID string).
+        note_id: Note UUID.
         request: Request payload with archived.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
@@ -510,8 +507,7 @@ async def update_archive(
     archived = bool(request.get("archived", False))
     folder = "Archive" if archived else ""
     try:
-        note_uuid = parse_uuid(note_id, "note", "id")
-        note = NotesService.update_folder(db, user_id, note_uuid, folder)
+        note = NotesService.update_folder(db, user_id, note_id, folder)
     except NoteNotFoundError:
-        raise NotFoundError("Note", note_id)
+        raise NotFoundError("Note", str(note_id))
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
