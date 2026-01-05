@@ -134,6 +134,25 @@ def html_to_markdown(html: str) -> str:
     return markdownify(html, heading_style="ATX").strip()
 
 
+def normalize_image_sources(html: str, base_url: str) -> str:
+    """Normalize image sources for markdown conversion."""
+    soup = BeautifulSoup(html, "html.parser")
+    for img in soup.find_all("img"):
+        src = img.get("src")
+        if not src:
+            for attr in ("data-src", "data-original", "data-lazy-src", "data-url", "data-srcset", "srcset"):
+                value = img.get(attr)
+                if not value:
+                    continue
+                if "srcset" in attr:
+                    value = value.split(",")[0].split()[0]
+                src = value
+                break
+        if src:
+            img["src"] = urljoin(base_url, src)
+    return str(soup)
+
+
 def build_frontmatter(markdown_text: str, *, meta: dict) -> str:
     """Build YAML frontmatter + markdown output."""
     payload = {key: value for key, value in meta.items() if value is not None}
@@ -217,6 +236,9 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     overrides = extract_metadata_overrides(article_html, post_rules)
     if overrides:
         metadata.update(overrides)
+    article_html = normalize_image_sources(
+        article_html, metadata.get("canonical") or final_url
+    )
     markdown = html_to_markdown(article_html)
     if not markdown:
         raise ValueError("No readable content extracted")

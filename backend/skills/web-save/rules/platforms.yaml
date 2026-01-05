@@ -49,6 +49,26 @@
     - ".subscription-widget-wrap"
     - ".comments"
 
+- id: substack-include-images
+  phase: pre
+  trigger:
+    host:
+      ends_with: "substack.com"
+  include:
+    - ".post-content img"
+    - ".available-content img"
+    - "figure img"
+
+- id: substack-include-images-dom
+  phase: pre
+  trigger:
+    dom:
+      any: [".available-content", ".post-content"]
+  include:
+    - ".post-content img"
+    - ".available-content img"
+    - "figure img"
+
 - id: github-cleanup
   phase: post
   trigger:
@@ -58,6 +78,24 @@
     - ".js-header-wrapper"
     - ".file-header"
     - ".js-footer"
+
+- id: github-include-images
+  phase: pre
+  trigger:
+    host:
+      ends_with: "github.com"
+  include:
+    - "article.markdown-body img"
+    - ".markdown-body img"
+
+- id: beehiiv-include-images
+  phase: pre
+  trigger:
+    dom:
+      any: [".rendered-post"]
+  include:
+    - ".rendered-post img"
+    - ".rendered-post figure img"
 
 - id: stackoverflow-cleanup
   phase: post
