@@ -10,6 +10,8 @@ const defaultScope = (action: string) => `notesActions.${action}`;
 
 /**
  * Provide reusable notes action handlers for pinned ordering.
+ *
+ * @returns Notes action handlers.
  */
 export function useNoteActions() {
   const updatePinnedOrder = async (

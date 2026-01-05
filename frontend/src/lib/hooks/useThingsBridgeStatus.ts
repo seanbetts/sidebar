@@ -11,6 +11,11 @@ type ThingsStatusState = {
 
 const refreshIntervalMs = 30_000;
 
+/**
+ * Track Things bridge status on an interval.
+ *
+ * @returns Writable store containing Things bridge status.
+ */
 export function useThingsBridgeStatus() {
   const state = writable<ThingsStatusState>({
     status: 'loading',

@@ -27,6 +27,9 @@ export interface ChatSSEConnectArgs {
 
 /**
  * Parse error messages and return user-friendly descriptions.
+ *
+ * @param error Raw error message string.
+ * @returns Friendly error message for display.
  */
 export function getUserFriendlyError(error: string): string {
   if (error.includes('credit balance is too low') || error.includes('insufficient_credits')) {
@@ -60,11 +63,14 @@ function buildPromptPreviewMarkdown(systemPrompt?: string, firstMessagePrompt?: 
 
 /**
  * Provide SSE connection helpers for chat streaming.
+ *
+ * @returns Chat SSE connection helpers.
  */
 export function useChatSSE() {
   const sseClient = new SSEClient();
 
   async function connect({ assistantMessageId, ...payload }: ChatSSEConnectArgs) {
+    const { conversationId } = payload;
     await sseClient.connect(payload, {
       onToken: (content) => {
         chatStore.appendToken(assistantMessageId, content);

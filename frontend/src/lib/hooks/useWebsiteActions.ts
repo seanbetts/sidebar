@@ -16,6 +16,8 @@ const defaultScope = (action: string) => `websiteActions.${action}`;
 
 /**
  * Provide reusable website action handlers for panels and viewers.
+ *
+ * @returns Website action handlers.
  */
 export function useWebsiteActions() {
   const openWebsite = async (websiteId: string) => {

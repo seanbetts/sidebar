@@ -26,6 +26,12 @@ export type IngestionUploadState = {
   onError: (title: string, message: string) => void;
 };
 
+/**
+ * Provide ingestion upload handlers bound to local UI state.
+ *
+ * @param state UI state helpers for ingestion uploads.
+ * @returns Upload event handlers.
+ */
 export function useIngestionUploads(state: IngestionUploadState): IngestionUploadHandlers {
   const handleUploadFileClick = (input: HTMLInputElement | null) => {
     input?.click();

@@ -14,6 +14,8 @@ const defaultScope = (action: string) => `ingestionActions.${action}`;
 
 /**
  * Provide reusable ingestion action handlers for file panels.
+ *
+ * @returns Ingestion action handlers.
  */
 export function useIngestionActions() {
   const deleteIngestion = async (

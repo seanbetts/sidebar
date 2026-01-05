@@ -201,6 +201,9 @@ function handleFileJobChange(payload: RealtimePostgresChangesPayload<any>) {
   }
 }
 
+/**
+ * Stop realtime subscriptions and timers.
+ */
 export function stopRealtime() {
   if (!channels.length) {
     activeUserId = null;
@@ -220,6 +223,11 @@ export function stopRealtime() {
   stopSessionListener();
 }
 
+/**
+ * Start realtime subscriptions for the active user.
+ *
+ * @param userId Supabase user id.
+ */
 export async function startRealtime(userId: string | null) {
   if (!userId) {
     stopRealtime();

@@ -140,6 +140,8 @@ class IngestionAPI {
 
   /**
    * List ingestion records.
+   *
+   * @returns Ingestion list response.
    */
   async list(): Promise<IngestionListResponse> {
     const response = await fetch(`${this.baseUrl}`);
@@ -149,6 +151,9 @@ class IngestionAPI {
 
   /**
    * Fetch ingestion metadata by file id.
+   *
+   * @param fileId Ingestion file id.
+   * @returns Ingestion metadata.
    */
   async get(fileId: string): Promise<IngestionMetaResponse> {
     const response = await fetch(`${this.baseUrl}/${fileId}/meta`);
@@ -158,6 +163,10 @@ class IngestionAPI {
 
   /**
    * Upload a file for ingestion.
+   *
+   * @param file File to upload.
+   * @param onProgress Optional progress callback.
+   * @returns Upload response payload.
    */
   async upload(file: File, onProgress?: (progress: number) => void): Promise<{ file_id: string }> {
     const formData = new FormData();
@@ -192,7 +201,7 @@ class IngestionAPI {
         try {
           const payload = JSON.parse(request.responseText);
           resolve(payload);
-        } catch (error) {
+        } catch {
           reject(new Error('Failed to upload file'));
         }
       };
@@ -205,6 +214,9 @@ class IngestionAPI {
 
   /**
    * Queue a YouTube URL for ingestion.
+   *
+   * @param url YouTube URL to ingest.
+   * @returns Ingestion response payload.
    */
   async ingestYoutube(url: string): Promise<{ file_id: string }> {
     const response = await fetch(`${this.baseUrl}/youtube`, {
@@ -229,6 +241,10 @@ class IngestionAPI {
 
   /**
    * Fetch a derivative asset for viewing.
+   *
+   * @param fileId Ingestion file id.
+   * @param kind Derivative kind to fetch.
+   * @returns Fetch response.
    */
   async getContent(fileId: string, kind: string): Promise<Response> {
     const response = await fetch(

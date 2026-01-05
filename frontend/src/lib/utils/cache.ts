@@ -78,6 +78,13 @@ function remember(key: string, value: unknown): void {
   }
 }
 
+/**
+ * Read cached data for a key if it exists and is fresh.
+ *
+ * @param key Cache key.
+ * @param config Cache configuration overrides.
+ * @returns Cached data or null.
+ */
 export function getCachedData<T>(key: string, config: CacheConfig = {}): T | null {
   if (!isCacheEnabled()) return null;
 
@@ -118,6 +125,13 @@ export function getCachedData<T>(key: string, config: CacheConfig = {}): T | nul
   }
 }
 
+/**
+ * Store data in the cache for a key.
+ *
+ * @param key Cache key.
+ * @param data Data to store.
+ * @param config Cache configuration overrides.
+ */
 export function setCachedData<T>(key: string, data: T, config: CacheConfig = {}): void {
   if (!isCacheEnabled()) return;
 
@@ -146,6 +160,13 @@ export function setCachedData<T>(key: string, data: T, config: CacheConfig = {})
   }
 }
 
+/**
+ * Check if cached data is past the stale threshold.
+ *
+ * @param key Cache key.
+ * @param maxAge Max age in milliseconds.
+ * @returns True when data is stale or missing.
+ */
 export function isCacheStale(key: string, maxAge: number = DEFAULT_TTL): boolean {
   if (!isCacheEnabled()) return true;
   try {
@@ -161,16 +182,31 @@ export function isCacheStale(key: string, maxAge: number = DEFAULT_TTL): boolean
   }
 }
 
+/**
+ * Remove a cached entry from persistent and memory caches.
+ *
+ * @param key Cache key.
+ */
 export function invalidateCache(key: string): void {
   if (!isCacheEnabled()) return;
   localStorage.removeItem(buildKey(key));
   clearMemoryCache([key]);
 }
 
+/**
+ * Invalidate multiple cache keys.
+ *
+ * @param keys Cache keys to remove.
+ */
 export function invalidateCaches(keys: string[]): void {
   keys.forEach(invalidateCache);
 }
 
+/**
+ * Clear cached entries for the active user.
+ *
+ * @param pattern Optional regex filter for cache keys.
+ */
 export function clearCaches(pattern?: RegExp): void {
   if (!isCacheEnabled()) return;
   const keys = Object.keys(localStorage);
@@ -206,6 +242,11 @@ function clearOldestCaches(): void {
   });
 }
 
+/**
+ * Compute cache size and age stats.
+ *
+ * @returns Cache statistics.
+ */
 export function getCacheStats(): {
   count: number;
   totalSize: number;
@@ -243,6 +284,11 @@ export function getCacheStats(): {
   };
 }
 
+/**
+ * Clear in-memory cache entries.
+ *
+ * @param keys Optional list of cache keys to clear.
+ */
 export function clearMemoryCache(keys?: string[]): void {
   if (!keys) {
     memoryCache.clear();
@@ -259,10 +305,20 @@ export function clearMemoryCache(keys?: string[]): void {
   }
 }
 
+/**
+ * Clear tracked in-flight fetches.
+ */
 export function clearInFlight(): void {
   inFlightRequests.clear();
 }
 
+/**
+ * Trigger a background refresh for cached data.
+ *
+ * @param cacheKey Cache key.
+ * @param apiFetcher Fetcher for fresh data.
+ * @param config Cache configuration overrides.
+ */
 export function revalidateInBackground<T>(
   cacheKey: string,
   apiFetcher: () => Promise<T>,
@@ -284,6 +340,11 @@ export function revalidateInBackground<T>(
     });
 }
 
+/**
+ * Listen for cache invalidation events across tabs.
+ *
+ * @returns Unsubscribe handler.
+ */
 export function listenForStorageEvents(): () => void {
   if (!browser) return () => undefined;
 
@@ -300,6 +361,14 @@ export function listenForStorageEvents(): () => void {
   return () => window.removeEventListener('storage', handler);
 }
 
+/**
+ * Load data with cache support and in-flight dedupe.
+ *
+ * @param cacheKey Cache key.
+ * @param apiFetcher Fetcher for fresh data.
+ * @param options Cache configuration overrides.
+ * @returns Data payload.
+ */
 export async function loadData<T>(
   cacheKey: string,
   apiFetcher: () => Promise<T>,

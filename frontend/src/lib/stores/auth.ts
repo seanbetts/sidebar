@@ -6,6 +6,14 @@ import { invalidateAll } from '$app/navigation';
 export const session = writable<Session | null>(null);
 export const user = writable<User | null>(null);
 
+/**
+ * Initialize auth state and keep session/user in sync.
+ *
+ * @param initialSession Initial session payload.
+ * @param initialUser Initial user payload.
+ * @param supabaseUrl Supabase project URL.
+ * @param supabaseAnonKey Supabase anon key.
+ */
 export function initAuth(
   initialSession: Session | null,
   initialUser: User | null,

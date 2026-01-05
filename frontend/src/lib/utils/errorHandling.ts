@@ -1,3 +1,6 @@
+/**
+ * Structured error payload for API responses.
+ */
 export interface StructuredError {
   message: string;
   status: number;
@@ -5,11 +8,19 @@ export interface StructuredError {
   context?: Record<string, unknown>;
 }
 
+/**
+ * Error wrapper that includes API metadata.
+ */
 export class APIError extends Error {
   status: number;
   code?: string;
   context?: Record<string, unknown>;
 
+  /**
+   * Create a new API error from a structured payload.
+   *
+   * @param error Structured error payload.
+   */
   constructor(error: StructuredError) {
     super(error.message);
     this.name = 'APIError';
@@ -21,6 +32,10 @@ export class APIError extends Error {
 
 /**
  * Log errors with structured context for debugging.
+ *
+ * @param message Log message.
+ * @param error Error instance or payload.
+ * @param context Extra context data.
  */
 export function logError(
   message: string,
@@ -38,6 +53,9 @@ export function logError(
 
 /**
  * Normalize errors into structured payloads.
+ *
+ * @param error Error instance or payload.
+ * @returns Normalized structured error.
  */
 export function parseError(error: unknown): StructuredError {
   if (error instanceof APIError) {
@@ -64,6 +82,9 @@ export function parseError(error: unknown): StructuredError {
 
 /**
  * Throw a structured APIError based on a failed fetch response.
+ *
+ * @param response Fetch response to parse.
+ * @returns Never returns; always throws.
  */
 export async function handleFetchError(response: Response): Promise<never> {
   const errorData = await response.json().catch(() => ({

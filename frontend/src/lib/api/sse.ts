@@ -39,6 +39,7 @@ export class SSEClient {
 	 * @param payload.conversationId Conversation id to append to.
 	 * @param payload.userMessageId Client-side message id.
 	 * @param payload.openContext Optional context blob from UI.
+	 * @param payload.attachments Optional file attachments.
 	 * @param payload.currentLocation User location string.
 	 * @param payload.currentLocationLevels Location hierarchy map.
 	 * @param payload.currentWeather Current weather metadata.
