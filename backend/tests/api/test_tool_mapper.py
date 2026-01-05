@@ -79,7 +79,11 @@ async def test_execute_tool_validates_write_path():
         }
     }
     mapper = _build_mapper(tools)
-    result = await mapper.execute_tool("Write File", {"path": "/docs/file.txt"})
+    result = await mapper.execute_tool(
+        "Write File",
+        {"path": "/docs/file.txt"},
+        context={"user_id": "user-1"},
+    )
     assert result["success"] is True
     assert mapper.path_validator.write_paths == ["/docs/file.txt"]
     assert mapper.executor.calls[0]["args"] == ["/docs/file.txt"]
@@ -131,3 +135,20 @@ def test_get_claude_tools_filters_skills():
     names = {tool["name"] for tool in claude_tools}
     assert mapper.tool_name_reverse["Read File"] in names
     assert mapper.tool_name_reverse["Create Note"] not in names
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_requires_user_id():
+    tools = {
+        "Read File": {
+            "description": "read file",
+            "input_schema": {},
+            "skill": "fs",
+            "script": "read.py",
+            "build_args": lambda _: [],
+        }
+    }
+    mapper = _build_mapper(tools)
+    result = await mapper.execute_tool("Read File", {})
+    assert result["success"] is False
+    assert "requires user_id" in result["error"]
