@@ -86,7 +86,7 @@ async def test_execute_tool_validates_write_path():
     )
     assert result["success"] is True
     assert mapper.path_validator.write_paths == ["/docs/file.txt"]
-    assert mapper.executor.calls[0]["args"] == ["/docs/file.txt"]
+    assert mapper.executor.calls[0]["args"] == ["/docs/file.txt", "--user-id", "user-1"]
 
 
 @pytest.mark.asyncio
