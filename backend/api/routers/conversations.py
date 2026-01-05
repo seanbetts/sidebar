@@ -54,6 +54,18 @@ class ConversationWithMessages(ConversationResponse):
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
+def _conversation_response(conversation) -> ConversationResponse:
+    return ConversationResponse(
+        id=str(conversation.id),
+        title=conversation.title,
+        titleGenerated=conversation.title_generated,
+        createdAt=conversation.created_at.isoformat(),
+        updatedAt=conversation.updated_at.isoformat(),
+        messageCount=conversation.message_count,
+        firstMessage=conversation.first_message
+    )
+
+
 @router.post("", response_model=ConversationResponse)
 @router.post("/", response_model=ConversationResponse)
 async def create_conversation(
@@ -64,15 +76,7 @@ async def create_conversation(
     """Create a new conversation."""
     conversation = ConversationService.create_conversation(db, user_id, data.title)
 
-    return ConversationResponse(
-        id=str(conversation.id),
-        title=conversation.title,
-        titleGenerated=conversation.title_generated,
-        createdAt=conversation.created_at.isoformat(),
-        updatedAt=conversation.updated_at.isoformat(),
-        messageCount=conversation.message_count,
-        firstMessage=conversation.first_message
-    )
+    return _conversation_response(conversation)
 
 
 @router.get("", response_model=List[ConversationResponse])
@@ -85,15 +89,7 @@ async def list_conversations(
     conversations = ConversationService.list_conversations(db, user_id)
 
     return [
-        ConversationResponse(
-            id=str(c.id),
-            title=c.title,
-            titleGenerated=c.title_generated,
-            createdAt=c.created_at.isoformat(),
-            updatedAt=c.updated_at.isoformat(),
-            messageCount=c.message_count,
-            firstMessage=c.first_message
-        )
+        _conversation_response(c)
         for c in conversations
     ]
 
@@ -119,7 +115,7 @@ async def get_conversation(
     )
 
 
-@router.post("/{conversation_id}/messages")
+@router.post("/{conversation_id}/messages", response_model=ConversationResponse)
 async def add_message(
     conversation_id: UUID,
     message: MessageCreate,
@@ -134,10 +130,10 @@ async def add_message(
         message.model_dump(),
     )
 
-    return {"success": True, "messageCount": conversation.message_count}
+    return _conversation_response(conversation)
 
 
-@router.put("/{conversation_id}")
+@router.put("/{conversation_id}", response_model=ConversationResponse)
 async def update_conversation(
     conversation_id: UUID,
     updates: ConversationUpdate,
@@ -145,7 +141,7 @@ async def update_conversation(
     db: Session = Depends(get_db)
 ):
     """Update conversation metadata."""
-    ConversationService.update_conversation(
+    conversation = ConversationService.update_conversation(
         db,
         user_id,
         conversation_id,
@@ -154,24 +150,24 @@ async def update_conversation(
         is_archived=updates.isArchived,
     )
 
-    return {"success": True}
+    return _conversation_response(conversation)
 
 
-@router.delete("/{conversation_id}")
+@router.delete("/{conversation_id}", response_model=ConversationResponse)
 async def delete_conversation(
     conversation_id: UUID,
     user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """Archive (soft delete) a conversation."""
-    ConversationService.update_conversation(
+    conversation = ConversationService.update_conversation(
         db,
         user_id,
         conversation_id,
         is_archived=True,
     )
 
-    return {"success": True}
+    return _conversation_response(conversation)
 
 
 @router.post("/search", response_model=List[ConversationResponse])
