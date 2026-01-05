@@ -1,7 +1,7 @@
 # Refactoring Backlog
 
 **Date Created:** 2026-01-05
-**Last Updated:** 2026-01-05 (Completed MED-3 and MED-4)
+**Last Updated:** 2026-01-05 (Completed MED-6)
 **Status:** Active
 
 This document tracks refactoring opportunities identified during code reviews. Items are prioritized and tracked to completion.
@@ -47,89 +47,6 @@ Issues that cause bugs, performance problems, or significant maintainability con
 ## Medium Priority
 
 Issues that impact code quality, consistency, or maintainability but don't cause immediate problems.
-
-### 🔴 MED-6: Inconsistent User ID Injection Logic
-**Status:** 🔴 Not Started
-**Effort:** M (2 days)
-**Impact:** Easy to forget user_id for new tools, potential security issue
-
-**Location:**
-- `backend/api/services/tool_mapper.py:177-196`
-- `backend/api/services/tools/parameter_builders/notes_builder.py`
-
-**Description:**
-User ID injection is handled inconsistently in multiple places:
-
-```python
-# In tool_mapper.py lines 177-196 - first injection
-if context and tool_config.get("skill") in {
-    "fs", "notes", "web-save", ...
-}:
-    user_id = context.get("user_id")
-    if user_id:
-        parameters = {**parameters, "user_id": user_id}
-
-# Then again in tool_mapper.py lines 183-195 - second injection
-if parameters.get("user_id") and tool_config.get("skill") in {...}:
-    if "--user-id" not in args:
-        args.extend(["--user-id", parameters["user_id"]])
-
-# And also in parameter builders
-NotesParameterBuilder.append_user_id(args, params)
-```
-
-**Issues:**
-- Duplicate skill set definitions
-- Easy to add new tool and forget user_id
-- Security risk if user_id missing for authenticated tools
-- Logic scattered across 3 places
-
-**Recommended Solution:**
-
-```python
-# Define once at top of tool_mapper.py
-SKILLS_REQUIRING_USER_ID = {
-    "fs", "pdf", "pptx", "docx", "xlsx",
-    "youtube-download", "youtube-transcribe",
-    "audio-transcribe", "web-crawler-policy",
-    "notes", "web-save"
-}
-
-# Consolidate injection in one place
-def inject_user_id(tool_config: dict, parameters: dict, context: dict) -> dict:
-    """
-    Inject user_id into parameters if skill requires it.
-
-    Raises ValueError if skill requires user_id but context missing it.
-    """
-    skill = tool_config.get("skill")
-
-    if skill not in SKILLS_REQUIRING_USER_ID:
-        return parameters
-
-    user_id = context.get("user_id")
-    if not user_id:
-        raise ValueError(f"Skill '{skill}' requires user_id in context")
-
-    return {**parameters, "user_id": user_id}
-
-# Use consistently
-parameters = inject_user_id(tool_config, parameters, context)
-```
-
-**Files to Modify:**
-- `backend/api/services/tool_mapper.py`
-- Parameter builders (remove duplicate logic)
-
-**Tests:**
-- Verify user_id injection for all required skills
-- Test error when user_id missing
-- Verify non-auth tools don't get user_id
-
-**Assigned to:** _Unassigned_
-**Date Started:** _Not started_
-
----
 
 ### 🔴 MED-7: Primitive Obsession - Tool Context
 **Status:** 🔴 Not Started

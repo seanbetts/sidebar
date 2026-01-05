@@ -15,6 +15,21 @@ from api.security.path_validator import PathValidator
 from api.security.audit_logger import AuditLogger
 
 
+SKILLS_REQUIRING_USER_ID = {
+    "fs",
+    "notes",
+    "web-save",
+    "audio-transcribe",
+    "youtube-transcribe",
+    "youtube-download",
+    "web-crawler-policy",
+    "docx",
+    "pdf",
+    "pptx",
+    "xlsx",
+}
+
+
 class ToolMapper:
     """Maps MCP tools to Claude tool definitions."""
 
@@ -78,6 +93,32 @@ class ToolMapper:
                 "data": data,
                 "error": error
             }
+
+    @staticmethod
+    def _inject_user_id(
+        skill: str | None,
+        parameters: Dict[str, Any],
+        context: Dict[str, Any] | None,
+    ) -> Dict[str, Any]:
+        """Ensure user_id is present for skills that require it."""
+        if not skill or skill not in SKILLS_REQUIRING_USER_ID:
+            return parameters
+        user_id = context.get("user_id") if context else None
+        if not user_id:
+            raise ValueError(f"Skill '{skill}' requires user_id in context")
+        if parameters.get("user_id") == user_id:
+            return parameters
+        return {**parameters, "user_id": user_id}
+
+    @staticmethod
+    def _ensure_user_id_arg(skill: str | None, args: List[str], user_id: str | None) -> None:
+        """Append --user-id when required and missing."""
+        if not skill or skill not in SKILLS_REQUIRING_USER_ID:
+            return
+        if not user_id:
+            raise ValueError(f"Skill '{skill}' requires user_id parameter")
+        if "--user-id" not in args:
+            args.extend(["--user-id", user_id])
 
         return {
             "success": True,
@@ -160,38 +201,12 @@ class ToolMapper:
                 path_to_validate = parameters.get("path") or parameters.get("directory", ".")
                 self.path_validator.validate_read_path(path_to_validate)
 
-            if context and tool_config.get("skill") in {
-                "fs",
-                "notes",
-                "web-save",
-                "audio-transcribe",
-                "youtube-transcribe",
-                "youtube-download",
-                "web-crawler-policy",
-                "docx",
-                "pdf",
-                "pptx",
-                "xlsx",
-            }:
-                user_id = context.get("user_id")
-                if user_id:
-                    parameters = {**parameters, "user_id": user_id}
+            skill = tool_config.get("skill")
+            parameters = self._inject_user_id(skill, parameters, context)
 
             # Build arguments using the tool's build function
             args = tool_config["build_args"](parameters)
-            if parameters.get("user_id") and tool_config.get("skill") in {
-                "fs",
-                "pdf",
-                "pptx",
-                "docx",
-                "xlsx",
-                "youtube-download",
-                "youtube-transcribe",
-                "audio-transcribe",
-                "web-crawler-policy",
-            }:
-                if "--user-id" not in args:
-                    args.extend(["--user-id", parameters["user_id"]])
+            self._ensure_user_id_arg(skill, args, parameters.get("user_id"))
 
             # Execute skill
             result = await self.executor.execute(
