@@ -194,6 +194,12 @@ class RuleEngine:
             self._apply_action(tree, action)
             return
 
+        if op == "remove_children":
+            for node in nodes:
+                for child in list(node):
+                    node.remove(child)
+            return
+
         if op == "wrap":
             wrapper_tag = action.get("wrapper_tag")
             if not wrapper_tag:

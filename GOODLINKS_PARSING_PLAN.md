@@ -3028,6 +3028,49 @@ Test with diverse URLs:
 run_at,git_sha,ok_count,error_count,avg_similarity,std_similarity,coverage_words,std_coverage_words,coverage_links,std_coverage_links,coverage_images,std_coverage_images,coverage_videos,std_coverage_videos,missing_words,extra_words,missing_links,extra_links,missing_images,extra_images,missing_videos,extra_videos
 ```
 
+---
+
+## Alignment With GoodLinks (Conversation Review)
+
+### What We Already Match
+
+- Readability-based extraction + deterministic post-rules.
+- Two-phase rules (pre/post), include/removals, metadata overrides, rendering controls.
+- Corpus comparison harness with similarity + coverage metrics.
+- Playwright fallback for JS-heavy/blocked pages.
+
+### Key Gaps Identified
+
+- **GoodLinks ruleset parity**: `ck-rules.js` is the authoritative ruleset (≈56 rules). We are still hand-curating rules instead of importing the real set.
+- **Rule action parity**: missing equivalents for GoodLinks actions (remove children, remove parent variants, move with target slot/index, remove attribute).
+- **Canonical text output**: GoodLinks stores a text-first canonical snapshot (their `index.html`), while we compare Markdown structure directly.
+- **Structure-level metrics**: we lack paragraph/list/code/blockquote/caption metrics for better clustering of failures.
+- **Image/caption pairing**: need tighter handling to preserve captions with images.
+
+### Next Tactics (Prioritized)
+
+1) **Import and map `ck-rules.js`**  
+   - Determine rule key hash (likely `md5(host)` or `md5(eTLD+1)`).
+   - Convert rules into our YAML schema (article root, removals, includes, actions, metadata).
+2) **Add missing action types**  
+   - `remove_children` (GoodLinks `rc`)  
+   - `remove_parent`/`remove_outer_parent` parity (GoodLinks `rp`)  
+   - `move` with target slot/index (GoodLinks `ts`)  
+   - `remove_attribute` (GoodLinks `ra`)  
+3) **Canonical text comparison**  
+   - Add a normalized text mode for comparison to better align with GoodLinks’ text-first snapshot.
+4) **Structure metrics + clustering**  
+   - Track paragraph/list/blockquote/code counts, caption associations, and add std dev for these metrics.
+5) **Caption + figure pairing**  
+   - Ensure `figure > img + figcaption` remains together in Markdown.
+
+### Tests to Add (If Implementing Above)
+
+- Action parity tests for new rule operations.
+- Canonical text normalization tests.
+- Caption pairing tests (figure + figcaption).
+- Structure metrics tests (paragraph/list/blockquote counts).
+
 **Usage**:
 - Run comparison, then append summary row for that run.
 - Use the history CSV to plot trends and detect regressions.
