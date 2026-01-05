@@ -50,6 +50,7 @@ export function useIngestionUploads(state: IngestionUploadState): IngestionUploa
       type: selected.type,
       size: selected.size
     });
+    ingestionStore.startPolling();
     ingestionViewerStore.setLocalActive(localItem);
     try {
       const { file_id } = await ingestionAPI.upload(selected, (progress) => {
@@ -109,6 +110,7 @@ export function useIngestionUploads(state: IngestionUploadState): IngestionUploa
       mime: 'video/youtube',
       url
     });
+    ingestionStore.startPolling();
     ingestionViewerStore.setLocalActive(localItem);
     try {
       const { file_id } = await ingestionAPI.ingestYoutube(url);
