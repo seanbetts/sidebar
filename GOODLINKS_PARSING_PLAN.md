@@ -2664,6 +2664,7 @@ author: {author}
 
 **Status (2026-01-05)**:
 - ✅ Migration script implemented.
+- ✅ Migration run completed (144 migrated / 46 failed, failures left unchanged).
 
 **Create `backend/scripts/migrate_existing_websites.py`**:
 
