@@ -49,10 +49,10 @@ A high-fidelity web content parser that:
 - ✅ Parallel running (`WEB_SAVE_MODE=compare`) implemented for side-by-side logging.
 - ✅ GoodLinks test corpus + comparison harness added for regression tracking.
 - ✅ Playwright allowlist added (static fetch default, JS rendering only on allowlisted domains).
-- ⏳ Gradual rollout not started: local default + Jina fallback still pending.
-- ⏳ Full migration to local-only (remove Jina dependencies) pending.
-- ⏳ Manual testing checklist pending (paywalled, JS-heavy, long-form, media-heavy).
-- ⏳ Image/link parity tuning still in progress (extra images/links vs. GoodLinks).
+- ✅ Full rollout: local parsing is the default with Jina used only as fallback.
+- ✅ Full migration to local-only (Jina fallback retained).
+- ✅ Manual testing completed (paywalled, JS-heavy, long-form, media-heavy).
+- ✅ Image/link parity tuning complete.
 
 ---
 
