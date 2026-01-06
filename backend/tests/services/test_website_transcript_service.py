@@ -25,7 +25,7 @@ def test_normalize_youtube_url_rejects_invalid():
         raise AssertionError("Expected ValueError for invalid YouTube URL")
 
 
-def test_append_transcript_inserts_marker_after_embed():
+def test_append_transcript_appends_block_to_end():
     markdown = "\n".join(
         [
             "---",
@@ -41,10 +41,14 @@ def test_append_transcript_inserts_marker_after_embed():
         markdown,
         youtube_url="https://www.youtube.com/watch?v=FUq9qRwrDrI",
         transcript_text="Hello transcript",
+        video_title="Example Video",
     )
     assert result.changed is True
     assert "YOUTUBE_TRANSCRIPT:FUq9qRwrDrI" in result.content
     assert "Hello transcript" in result.content
+    assert result.content.rstrip().endswith("Hello transcript")
+    assert "___" in result.content
+    assert "Transcript of Example Video video" in result.content
 
 
 def test_append_transcript_strips_transcript_frontmatter():
@@ -63,10 +67,12 @@ def test_append_transcript_strips_transcript_frontmatter():
         markdown,
         youtube_url="https://www.youtube.com/watch?v=FUq9qRwrDrI",
         transcript_text=transcript,
+        video_title="Sample",
     )
     assert result.changed is True
     assert "title: Example" not in result.content
     assert "Transcript body line one." in result.content
+    assert "Transcript of Sample video" in result.content
 
 
 def test_append_transcript_strips_hash_header_block():
@@ -85,7 +91,9 @@ def test_append_transcript_strips_hash_header_block():
         markdown,
         youtube_url="https://www.youtube.com/watch?v=FUq9qRwrDrI",
         transcript_text=transcript,
+        video_title="Example",
     )
     assert result.changed is True
     assert "Transcript of Example.mp3" not in result.content
     assert "Final transcript line." in result.content
+    assert "Transcript of Example video" in result.content
