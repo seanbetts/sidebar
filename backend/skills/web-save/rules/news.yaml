@@ -189,6 +189,7 @@
     - ".article__byline"
     - ".article__related"
     - ".article__footer"
+    - ".inline-cta__wrapper"
 
 - id: appleinsider-cleanup
   phase: post
