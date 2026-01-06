@@ -20,11 +20,11 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(BACKEND_ROOT))
+SCRIPTS_ROOT = Path(__file__).resolve().parent
+if str(SCRIPTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_ROOT))
 
-from api.db.session import SessionLocal, set_session_user_id
-from api.services.web_save_parser import ParsedPage, parse_url_local
-from api.services.websites_service import WebsitesService
+from db_env import setup_environment
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +62,10 @@ def import_sample(
     seed: Optional[int],
     dry_run: bool,
 ) -> None:
+    from api.db.session import SessionLocal, set_session_user_id
+    from api.services.web_save_parser import ParsedPage, parse_url_local
+    from api.services.websites_service import WebsitesService
+
     payload = json.loads(export_path.read_text())
     entries = iter_export_entries(payload)
     urls = []
@@ -130,6 +134,9 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
 def main(argv: Optional[Iterable[str]] = None) -> None:
     args = parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    setup_environment()
+    if str(BACKEND_ROOT) not in sys.path:
+        sys.path.insert(0, str(BACKEND_ROOT))
     import_sample(
         args.user_id,
         export_path=Path(args.export_path),
