@@ -355,6 +355,27 @@ def test_apply_include_reinsertion_handles_comment_root():
     assert "Special include" in updated
 
 
+def test_cleanup_verge_markdown_removes_gallery_chrome():
+    markdown = "\n".join(
+        [
+            "**1/5**Image: Dominic Preston / The Verge",
+            "[![](https://platform.theverge.com/wp-content/uploads/a.jpg)](https://platform.theverge.com/wp-content/uploads/a.jpg)",
+            "PreviousNext",
+            "**1/2**Image: Hyundai",
+        ]
+    )
+    cleaned = web_save_parser.cleanup_verge_markdown(markdown)
+    assert "Image: Dominic Preston" not in cleaned
+    assert "PreviousNext" not in cleaned
+    assert "Image: Hyundai" not in cleaned
+
+
+def test_simplify_linked_images_unwraps_matching_links():
+    markdown = "[![](https://example.com/img.jpg)](https://example.com/img.jpg)"
+    simplified = web_save_parser.simplify_linked_images(markdown)
+    assert simplified.strip() == "![](https://example.com/img.jpg)"
+
+
 def test_parse_url_local_force_rendering(monkeypatch):
     html = "<html><body><div class='force'>Placeholder</div></body></html>"
     rendered = "<html><head><title>Rendered</title></head><body><article>Rendered body</article></body></html>"
