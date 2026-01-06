@@ -10,6 +10,7 @@
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
   import { websitesStore } from '$lib/stores/websites';
+  import { websitesAPI } from '$lib/services/api';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
   import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
@@ -18,6 +19,7 @@
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
+  let isTranscribingYoutube = false;
   let isRenameDialogOpen = false;
   let renameValue = '';
   let deleteDialog: { openDialog: (name: string) => void } | null = null;
@@ -43,6 +45,30 @@
 
   function formatDomain(domain: string) {
     return domain.replace(/^www\./i, '');
+  }
+
+  function extractYouTubeId(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
+        return null;
+      }
+      if (parsed.hostname.includes('youtu.be')) {
+        return parsed.pathname.replace('/', '') || null;
+      }
+      if (parsed.pathname.startsWith('/shorts/')) {
+        return parsed.pathname.split('/')[2] ?? null;
+      }
+      return parsed.searchParams.get('v');
+    } catch {
+      return null;
+    }
+  }
+
+  function hasTranscriptForVideo(markdown: string, videoId: string | null): boolean {
+    if (!videoId) return false;
+    const marker = `<!-- YOUTUBE_TRANSCRIPT:${videoId} -->`;
+    return markdown.includes(marker);
   }
 
   onMount(() => {
@@ -73,11 +99,13 @@
         }
       }
     });
+    editorElement?.addEventListener('click', handleTranscriptClick);
   });
 
   onDestroy(() => {
     if (editor) editor.destroy();
     if (copyTimeout) clearTimeout(copyTimeout);
+    editorElement?.removeEventListener('click', handleTranscriptClick);
   });
 
   $: if (editor && $websitesStore.active) {
@@ -97,26 +125,9 @@
   }
 
   function buildYouTubeEmbed(url: string): string | null {
-    try {
-      const parsed = new URL(url);
-      if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
-        return null;
-      }
-      let videoId: string | null = null;
-      if (parsed.hostname.includes('youtu.be')) {
-        videoId = parsed.pathname.replace('/', '') || null;
-      } else {
-        videoId = parsed.searchParams.get('v');
-        if (!videoId && parsed.pathname.startsWith('/shorts/')) {
-          const parts = parsed.pathname.split('/');
-          videoId = parts[2] ?? null;
-        }
-      }
-      if (!videoId) return null;
-      return `https://www.youtube-nocookie.com/embed/${videoId}`;
-    } catch {
-      return null;
-    }
+    const videoId = extractYouTubeId(url);
+    if (!videoId) return null;
+    return `https://www.youtube-nocookie.com/embed/${videoId}`;
   }
 
   function buildVimeoEmbed(url: string): string | null {
@@ -136,6 +147,16 @@
     }
   }
 
+  function buildTranscriptHref(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      parsed.searchParams.set('sidebarTranscript', '1');
+      return parsed.toString();
+    } catch {
+      return null;
+    }
+  }
+
   function rewriteVideoEmbeds(markdown: string): string {
     const youtubePattern = /^\[YouTube\]\(([^)]+)\)$/gm;
     const vimeoPattern = /^\[Vimeo\]\(([^)]+)\)$/gm;
@@ -143,7 +164,12 @@
 
     let updated = markdown.replace(youtubePattern, (_, url: string) => {
       const embed = buildYouTubeEmbed(url.trim());
-      return embed ? `<div data-youtube-video><iframe src="${embed}"></iframe></div>` : _;
+      if (!embed) return _;
+      const videoId = extractYouTubeId(url.trim());
+      const showButton = !hasTranscriptForVideo(markdown, videoId);
+      const transcriptHref = buildTranscriptHref(url.trim());
+      const button = showButton && transcriptHref ? `\n\n[Get transcript](${transcriptHref})` : '';
+      return `<div data-youtube-video><iframe src="${embed}"></iframe></div>${button}`;
     });
 
     updated = updated.replace(vimeoPattern, (_, url: string) => {
@@ -154,7 +180,11 @@
     updated = updated.replace(bareUrlPattern, (match: string) => {
       const youtube = buildYouTubeEmbed(match.trim());
       if (youtube) {
-        return `<div data-youtube-video><iframe src="${youtube}"></iframe></div>`;
+        const videoId = extractYouTubeId(match.trim());
+        const showButton = !hasTranscriptForVideo(markdown, videoId);
+        const transcriptHref = buildTranscriptHref(match.trim());
+        const button = showButton && transcriptHref ? `\n\n[Get transcript](${transcriptHref})` : '';
+        return `<div data-youtube-video><iframe src="${youtube}"></iframe></div>${button}`;
       }
       const vimeo = buildVimeoEmbed(match.trim());
       return vimeo ? `<iframe src="${vimeo}"></iframe>` : match;
@@ -162,6 +192,42 @@
 
     return updated;
   }
+
+  async function handleTranscriptClick(event: MouseEvent) {
+    const target = event.target as HTMLElement | null;
+    const link = target?.closest('a') as HTMLAnchorElement | null;
+    const href = link?.getAttribute('href')?.trim();
+    if (!link || !href || isTranscribingYoutube) return;
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(href, window.location.href);
+    } catch {
+      return;
+    }
+    if (parsedUrl.searchParams.get('sidebarTranscript') !== '1') return;
+    parsedUrl.searchParams.delete('sidebarTranscript');
+    const url = parsedUrl.toString();
+    const active = $websitesStore.active;
+    if (!url || !active) return;
+
+    event.preventDefault();
+    link.setAttribute('aria-busy', 'true');
+    link.textContent = 'Transcribing...';
+    isTranscribingYoutube = true;
+    try {
+      const data = await websitesAPI.transcribeYouTube(active.id, url);
+      if (data && typeof data === 'object' && 'content' in data) {
+        websitesStore.updateActiveLocal({ content: (data as { content: string }).content });
+      }
+    } catch (error) {
+      logError('Failed to transcribe YouTube video', error, { scope: 'websitesViewer.transcribe', url });
+      link.removeAttribute('aria-busy');
+      link.textContent = 'Get transcript';
+    } finally {
+      isTranscribingYoutube = false;
+    }
+  }
+
 
   function openRenameDialog() {
     if (!$websitesStore.active) return;
@@ -437,6 +503,30 @@
   /* Hide ProseMirror gap cursor in image galleries */
   :global(.website-viewer .image-gallery-grid .ProseMirror-gapcursor) {
     display: none;
+  }
+
+  :global(.website-viewer [data-youtube-video]) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+  }
+
+  :global(.website-viewer a[href*='sidebarTranscript=1']) {
+    align-self: flex-start;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-muted);
+    color: var(--color-foreground);
+    padding: 0.35rem 0.9rem;
+    font-size: 0.9rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  :global(.website-viewer a[href*='sidebarTranscript=1'][aria-busy='true']) {
+    opacity: 0.6;
+    cursor: default;
   }
 
 </style>
