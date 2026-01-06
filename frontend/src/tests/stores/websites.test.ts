@@ -84,6 +84,7 @@ describe('websitesStore', () => {
       saved_at: null,
       published_at: null,
       pinned: false,
+      archived: true,
       updated_at: null,
       last_opened_at: null
     });
@@ -91,6 +92,7 @@ describe('websitesStore', () => {
     websitesStore.setPinnedLocal('3', true);
 
     expect(get(websitesStore).items[0].pinned).toBe(true);
+    expect(get(websitesStore).items[0].archived).toBe(false);
   });
 
   it('loads website details by id and updates active', async () => {

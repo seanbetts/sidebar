@@ -588,22 +588,7 @@ def _extract_transcript_metadata(text: str) -> tuple[str, dict]:
     lines = trimmed.split("\n")
     separator_index = next((idx for idx, line in enumerate(lines) if line.strip() == "---"), -1)
     if separator_index <= 0:
-    return trimmed, {}
-
-
-def _get_transcript_target(record: IngestedFile) -> tuple[uuid.UUID, str] | None:
-    metadata = record.source_metadata or {}
-    website_id = metadata.get("website_id")
-    if not website_id:
-        return None
-    try:
-        website_uuid = uuid.UUID(str(website_id))
-    except (TypeError, ValueError):
-        return None
-    youtube_url = metadata.get("youtube_url") or record.source_url
-    if not youtube_url:
-        return None
-    return website_uuid, str(youtube_url)
+        return trimmed, {}
     metadata_lines = lines[:separator_index]
     if not any(line.lstrip().startswith("#") for line in metadata_lines):
         return trimmed, {}
@@ -639,6 +624,21 @@ def _get_transcript_target(record: IngestedFile) -> tuple[uuid.UUID, str] | None
                 meta["transcription_usage_audio_tokens"] = int(tokens.group(1))
     body = "\n".join(lines[separator_index + 1:]).lstrip()
     return body, meta
+
+
+def _get_transcript_target(record: IngestedFile) -> tuple[uuid.UUID, str] | None:
+    metadata = record.source_metadata or {}
+    website_id = metadata.get("website_id")
+    if not website_id:
+        return None
+    try:
+        website_uuid = uuid.UUID(str(website_id))
+    except (TypeError, ValueError):
+        return None
+    youtube_url = metadata.get("youtube_url") or record.source_url
+    if not youtube_url:
+        return None
+    return website_uuid, str(youtube_url)
 
 
 def _transcribe_audio(source_path: Path, record: IngestedFile) -> str:

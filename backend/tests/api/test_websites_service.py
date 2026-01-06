@@ -59,11 +59,12 @@ def test_update_pinned_and_archived(db_session):
         source="https://example.com/a",
     )
 
-    pinned = WebsitesService.update_pinned(db_session, "test_user", website.id, True)
     archived = WebsitesService.update_archived(db_session, "test_user", website.id, True)
+    pinned = WebsitesService.update_pinned(db_session, "test_user", website.id, True)
 
     assert (pinned.metadata_ or {}).get("pinned") is True
     assert (archived.metadata_ or {}).get("archived") is True
+    assert (pinned.metadata_ or {}).get("archived") is False
 
 
 def test_update_pinned_assigns_next_order(db_session):

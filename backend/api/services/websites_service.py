@@ -308,6 +308,7 @@ class WebsitesService:
         metadata = website.metadata_ or {}
         metadata["pinned"] = pinned
         if pinned:
+            metadata["archived"] = False
             if metadata.get("pinned_order") is None:
                 lock_pinned_order(db, user_id, "websites")
                 metadata["pinned_order"] = get_max_pinned_order(db, Website, user_id) + 1
