@@ -507,6 +507,29 @@ def test_iter_youtube_elements_allows_verge_body_component():
     assert [item[0] for item in results] == ["abcd1234"]
 
 
+def test_techcrunch_cleanup_removes_inline_cta():
+    html = """
+    <html>
+      <body>
+        <article>
+          <p>Before</p>
+          <div class="inline-cta__wrapper">
+            <div class="inline-cta__flag">Techcrunch event</div>
+          </div>
+          <p>After</p>
+        </article>
+      </body>
+    </html>
+    """
+    engine = web_save_parser.get_rule_engine()
+    matched = engine.match_rules(
+        "https://techcrunch.com/2025/08/28/example", html, phase="post"
+    )
+    assert any(rule.id == "techcrunch-cleanup" for rule in matched)
+    cleaned = engine.apply_rules(html, matched)
+    assert "Techcrunch event" not in cleaned
+
+
 def test_insert_youtube_placeholders_handles_comment_sibling():
     extracted_html = "<article><p>Anchor</p></article>"
     raw_html = """
