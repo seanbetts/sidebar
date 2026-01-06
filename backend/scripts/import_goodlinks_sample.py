@@ -29,6 +29,11 @@ from db_env import setup_environment
 logger = logging.getLogger(__name__)
 
 
+class _SkipRuthlessRemovalFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "ruthless removal did not work." not in record.getMessage()
+
+
 def parse_datetime(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
@@ -65,9 +70,7 @@ def import_sample(
     import_all: bool,
     archived: bool,
 ) -> None:
-    from api.db.session import SessionLocal, set_session_user_id
     from api.services.web_save_parser import ParsedPage, parse_url_local
-    from api.services.websites_service import WebsitesService
 
     payload = json.loads(export_path.read_text())
     entries = iter_export_entries(payload)
@@ -89,8 +92,13 @@ def import_sample(
         rng = random.Random(seed)
         sample = rng.sample(urls, k=limit)
 
-    db = SessionLocal()
-    set_session_user_id(db, user_id)
+    db = None
+    if not dry_run:
+        from api.db.session import SessionLocal, set_session_user_id
+        from api.services.websites_service import WebsitesService
+
+        db = SessionLocal()
+        set_session_user_id(db, user_id)
     created = 0
     failed = 0
     try:
@@ -98,10 +106,9 @@ def import_sample(
             url = entry.get("url")
             added_at = parse_datetime(entry.get("addedAt"))
             try:
+                logger.info("Parsing %s", url)
                 parsed: ParsedPage = parse_url_local(url)
-                if dry_run:
-                    pass
-                else:
+                if not dry_run:
                     website = WebsitesService.upsert_website(
                         db,
                         user_id,
@@ -131,7 +138,8 @@ def import_sample(
                     failed,
                 )
     finally:
-        db.close()
+        if db is not None:
+            db.close()
 
     logger.info("Import complete. Imported=%s Failed=%s Total=%s", created, failed, limit)
 
@@ -164,13 +172,24 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         help="Mark imported websites as archived (default: enabled).",
     )
+    parser.add_argument(
+        "--database-url",
+        help="Optional database URL override (uses env by default).",
+    )
+    parser.add_argument(
+        "--supabase",
+        action="store_true",
+        help="Prompt for Supabase pooler credentials if not set.",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[Iterable[str]] = None) -> None:
     args = parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    setup_environment()
+    logging.getLogger().addFilter(_SkipRuthlessRemovalFilter())
+    logging.getLogger("api.services.web_save_parser").setLevel(logging.WARNING)
+    setup_environment(database_url=args.database_url, supabase=args.supabase)
     if str(BACKEND_ROOT) not in sys.path:
         sys.path.insert(0, str(BACKEND_ROOT))
     import_sample(
