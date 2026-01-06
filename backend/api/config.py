@@ -123,7 +123,7 @@ class Settings(BaseSettings):
     ]
 
     # Resource limits
-    skill_timeout_seconds: int = 30
+    skill_timeout_seconds: int = int(os.getenv("SKILL_TIMEOUT_SECONDS", "60"))
     skill_max_output_bytes: int = 10 * 1024 * 1024  # 10MB
     skill_max_concurrent: int = 5
 
