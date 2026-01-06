@@ -413,7 +413,7 @@
     display: block !important;
     margin-left: auto;
     margin-right: auto;
-    max-width: 100%;
+    max-width: 720px;
     max-height: 500px;
   }
 
