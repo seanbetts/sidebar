@@ -522,8 +522,20 @@ def test_wrap_gallery_blocks_ignores_single_captioned_image():
     markdown = '![](https://example.com/one.png \"Caption\")'
     wrapped = web_save_parser.wrap_gallery_blocks(markdown)
     assert wrapped.strip() == markdown
-    assert parsed.content.count("i0.wp.com/onlydeadfish.co.uk/wp-content/uploads/2026/01/Corporate-carpets.png") == 0
-    assert "[](" not in parsed.content
+
+
+def test_filter_non_content_images_removes_thumbnail_query():
+    html = """
+    <div>
+      <img src="https://example.com/thumb.jpg?w=290&h=145&crop=1" />
+      <img src="https://example.com/hero.jpg?w=1400&h=800" />
+    </div>
+    """
+    filtered = web_save_parser.filter_non_content_images(html)
+    soup = BeautifulSoup(filtered, "html.parser")
+    imgs = [img.get("src") for img in soup.find_all("img")]
+    assert "https://example.com/thumb.jpg?w=290&h=145&crop=1" not in imgs
+    assert "https://example.com/hero.jpg?w=1400&h=800" in imgs
 
 
 def test_parse_url_local_normalizes_lazy_images(monkeypatch):

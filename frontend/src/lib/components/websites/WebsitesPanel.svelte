@@ -292,88 +292,92 @@
           subtitle="Try a different search."
         />
       {:else}
-        <div class="websites-list">
-          {#each $websitesStore.items as site (site.id)}
-            <WebsiteRow
-              {site}
-              archived={isArchived(site)}
-              isMenuOpen={activeMenuId === site.id}
-              formatDomain={formatDomain}
-              onOpen={openWebsite}
-              onOpenMenu={openMenu}
-              onPin={handlePin}
-              onRename={openRenameDialog}
-              onDownload={handleDownload}
-              onArchive={handleArchive}
-              onDelete={openDeleteDialog}
-            />
-          {/each}
+        <div class="websites-scroll-area">
+          <div class="websites-list">
+            {#each $websitesStore.items as site (site.id)}
+              <WebsiteRow
+                {site}
+                archived={isArchived(site)}
+                isMenuOpen={activeMenuId === site.id}
+                formatDomain={formatDomain}
+                onOpen={openWebsite}
+                onOpenMenu={openMenu}
+                onPin={handlePin}
+                onRename={openRenameDialog}
+                onDownload={handleDownload}
+                onArchive={handleArchive}
+                onDelete={openDeleteDialog}
+              />
+            {/each}
+          </div>
         </div>
       {/if}
     </div>
   {:else}
-    <div class="websites-block">
-      <div class="websites-block-title">Pinned</div>
-      {#if pinnedItemsSorted.length === 0}
-        <div class="websites-empty">No pinned websites</div>
-      {:else}
-        <div class="websites-list">
-          {#each pinnedItemsSorted as site (site.id)}
-            <WebsiteRow
-              {site}
-              archived={isArchived(site)}
-              isMenuOpen={activeMenuId === site.id}
-              formatDomain={formatDomain}
-              onOpen={openWebsite}
-              onOpenMenu={openMenu}
-              onPin={handlePin}
-              onRename={openRenameDialog}
-              onDownload={handleDownload}
-              onArchive={handleArchive}
-              onDelete={openDeleteDialog}
-              showGrabHandle
-              isDragOver={dragOverPinnedId === site.id}
-              onGrabStart={(event) => handlePinnedDragStart(event, site.id)}
-              onGrabOver={(event) => handlePinnedDragOver(event, site.id)}
-              onGrabDrop={(event) => handlePinnedDrop(event, site.id)}
-              onGrabEnd={handlePinnedDragEnd}
-            />
-          {/each}
-          <div
-            class="pinned-drop-zone"
-            class:drag-over={dragOverPinnedId === PINNED_DROP_END}
-            role="separator"
-            aria-label="Drop pinned website at end"
-            ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
-            ondrop={handlePinnedDropEnd}
-          ></div>
-        </div>
-      {/if}
-    </div>
+    <div class="websites-scroll-area">
+      <div class="websites-block">
+        <div class="websites-block-title">Pinned</div>
+        {#if pinnedItemsSorted.length === 0}
+          <div class="websites-empty">No pinned websites</div>
+        {:else}
+          <div class="websites-list">
+            {#each pinnedItemsSorted as site (site.id)}
+              <WebsiteRow
+                {site}
+                archived={isArchived(site)}
+                isMenuOpen={activeMenuId === site.id}
+                formatDomain={formatDomain}
+                onOpen={openWebsite}
+                onOpenMenu={openMenu}
+                onPin={handlePin}
+                onRename={openRenameDialog}
+                onDownload={handleDownload}
+                onArchive={handleArchive}
+                onDelete={openDeleteDialog}
+                showGrabHandle
+                isDragOver={dragOverPinnedId === site.id}
+                onGrabStart={(event) => handlePinnedDragStart(event, site.id)}
+                onGrabOver={(event) => handlePinnedDragOver(event, site.id)}
+                onGrabDrop={(event) => handlePinnedDrop(event, site.id)}
+                onGrabEnd={handlePinnedDragEnd}
+              />
+            {/each}
+            <div
+              class="pinned-drop-zone"
+              class:drag-over={dragOverPinnedId === PINNED_DROP_END}
+              role="separator"
+              aria-label="Drop pinned website at end"
+              ondragover={(event) => handlePinnedDragOver(event, PINNED_DROP_END)}
+              ondrop={handlePinnedDropEnd}
+            ></div>
+          </div>
+        {/if}
+      </div>
 
-    <div class="websites-block">
-      <div class="websites-block-title">Websites</div>
-      {#if mainItems.length === 0}
-        <div class="websites-empty">No websites saved</div>
-      {:else}
-        <div class="websites-list">
-          {#each mainItems as site (site.id)}
-            <WebsiteRow
-              {site}
-              archived={isArchived(site)}
-              isMenuOpen={activeMenuId === site.id}
-              formatDomain={formatDomain}
-              onOpen={openWebsite}
-              onOpenMenu={openMenu}
-              onPin={handlePin}
-              onRename={openRenameDialog}
-              onDownload={handleDownload}
-              onArchive={handleArchive}
-              onDelete={openDeleteDialog}
-            />
-          {/each}
-        </div>
-      {/if}
+      <div class="websites-block">
+        <div class="websites-block-title">Websites</div>
+        {#if mainItems.length === 0}
+          <div class="websites-empty">No websites saved</div>
+        {:else}
+          <div class="websites-list">
+            {#each mainItems as site (site.id)}
+              <WebsiteRow
+                {site}
+                archived={isArchived(site)}
+                isMenuOpen={activeMenuId === site.id}
+                formatDomain={formatDomain}
+                onOpen={openWebsite}
+                onOpenMenu={openMenu}
+                onPin={handlePin}
+                onRename={openRenameDialog}
+                onDownload={handleDownload}
+                onArchive={handleArchive}
+                onDelete={openDeleteDialog}
+              />
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
 
     <div class="websites-block websites-archive">
@@ -428,6 +432,9 @@
     flex: 1;
     min-height: 0;
     padding-top: 0;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+    height: 100%;
   }
 
   .websites-block {
@@ -458,6 +465,14 @@
     flex-direction: column;
     gap: 0.35rem;
     padding: 0 0.25rem;
+  }
+
+  .websites-scroll-area {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .pinned-drop-zone {

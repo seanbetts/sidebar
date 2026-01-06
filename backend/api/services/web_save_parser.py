@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 import requests
 import yaml
@@ -514,6 +514,29 @@ def filter_non_content_images(html: str, *, domain: Optional[str] = None) -> str
         digits = re.sub(r"\D", "", value)
         return int(digits) if digits.isdigit() else None
 
+    def is_thumbnail_url(url: str) -> bool:
+        parsed = urlparse(url)
+        if not parsed.query:
+            return False
+        params = parse_qs(parsed.query)
+        width = params.get("w", [None])[0]
+        height = params.get("h", [None])[0]
+        crop = params.get("crop", [None])[0]
+        resize = params.get("resize", [None])[0]
+        width_val = parse_dimension(str(width)) if width else None
+        height_val = parse_dimension(str(height)) if height else None
+        if resize and "," in resize:
+            try:
+                resize_w, resize_h = resize.split(",", 1)
+                width_val = width_val or parse_dimension(resize_w)
+                height_val = height_val or parse_dimension(resize_h)
+            except ValueError:
+                pass
+        if width_val and height_val and width_val <= 320 and height_val <= 200:
+            if crop in {"1", "true"} or resize:
+                return True
+        return False
+
     for img in soup.find_all("img"):
         if img.find_parent("figure"):
             continue
@@ -538,6 +561,10 @@ def filter_non_content_images(html: str, *, domain: Optional[str] = None) -> str
             if value
         ).lower()
         if any(token in attr_text for token in decorative_tokens):
+            img.decompose()
+            continue
+        src = img.get("src") or ""
+        if src and is_thumbnail_url(src):
             img.decompose()
             continue
         width = parse_dimension(img.get("width"))

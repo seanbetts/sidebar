@@ -29,7 +29,18 @@
       </Button>
     </svelte:fragment>
   </SidebarSectionHeader>
-  <div class="files-content">
+  <div class="files-content websites-content">
     <WebsitesPanel />
   </div>
 </div>
+
+<style>
+  .websites-content {
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+</style>
