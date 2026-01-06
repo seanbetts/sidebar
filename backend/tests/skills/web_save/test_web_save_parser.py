@@ -592,6 +592,21 @@ def test_iter_youtube_elements_skips_9to5mac_cta_video():
     assert results == []
 
 
+def test_cleanup_youtube_markdown_keeps_single_embed():
+    markdown = "\n".join(
+        [
+            "![Thumb](https://i.ytimg.com/vi/FUq9qRwrDrI/maxresdefault.jpg)",
+            "[About](https://www.youtube.com/about/)",
+            "[YouTube](https://www.youtube.com/watch?v=FUq9qRwrDrI)",
+            "[Privacy](https://www.youtube.com/t/privacy)",
+        ]
+    )
+    cleaned = web_save_parser.cleanup_youtube_markdown(
+        markdown, "https://www.youtube.com/watch?v=FUq9qRwrDrI"
+    )
+    assert cleaned.strip() == "[YouTube](https://www.youtube.com/watch?v=FUq9qRwrDrI)"
+
+
 def test_insert_youtube_placeholders_handles_comment_sibling():
     extracted_html = "<article><p>Anchor</p></article>"
     raw_html = """
