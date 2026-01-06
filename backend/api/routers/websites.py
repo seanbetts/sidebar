@@ -9,6 +9,7 @@ from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
 from api.services.website_processing_service import WebsiteProcessingService
+from api.services.website_transcript_service import WebsiteTranscriptService
 from api.services.websites_service import WebsitesService
 from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
 from api.schemas.filters import WebsiteFilters
@@ -176,6 +177,51 @@ async def save_website(
         raise BadRequestError("Unable to save website")
 
     return result
+
+
+@router.post("/{website_id}/youtube-transcript")
+async def append_youtube_transcript(
+    website_id: uuid.UUID,
+    payload: dict,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Append a YouTube transcript to a website's markdown content."""
+    youtube_url = str(payload.get("url", "")).strip()
+    if not youtube_url:
+        raise BadRequestError("url required")
+
+    executor = request.app.state.executor
+    try:
+        content = await WebsiteTranscriptService.append_youtube_transcript(
+            db,
+            executor,
+            user_id,
+            website_id,
+            youtube_url,
+        )
+    except ValueError as exc:
+        raise BadRequestError(str(exc)) from exc
+    except RuntimeError as exc:
+        logger.error(
+            "websites transcript failed url=%s error=%s",
+            youtube_url,
+            str(exc),
+        )
+        raise BadRequestError("Unable to transcribe YouTube video") from exc
+
+    website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+    if not website:
+        raise NotFoundError("Website", str(website_id))
+
+    return {
+        **website_summary(website),
+        "content": content,
+        "source": website.source,
+        "url_full": website.url_full,
+    }
 
 
 @router.get("/{website_id}")

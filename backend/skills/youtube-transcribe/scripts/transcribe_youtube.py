@@ -13,6 +13,8 @@ import subprocess
 import time
 import tempfile
 import urllib.parse
+import contextlib
+import io
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -467,18 +469,33 @@ Requirements:
 
     try:
         # Transcribe the YouTube video
-        result = transcribe_youtube(
-            url=args.url,
-            language=args.language,
-            model=args.model,
-            output_dir=args.output_dir,
-            output_name=args.output_name,
-            audio_dir=args.audio_dir,
-            keep_audio=args.keep_audio,
-            database=args.database,
-            folder=args.folder,
-            user_id=args.user_id,
-        )
+        if args.json:
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = transcribe_youtube(
+                    url=args.url,
+                    language=args.language,
+                    model=args.model,
+                    output_dir=args.output_dir,
+                    output_name=args.output_name,
+                    audio_dir=args.audio_dir,
+                    keep_audio=args.keep_audio,
+                    database=args.database,
+                    folder=args.folder,
+                    user_id=args.user_id,
+                )
+        else:
+            result = transcribe_youtube(
+                url=args.url,
+                language=args.language,
+                model=args.model,
+                output_dir=args.output_dir,
+                output_name=args.output_name,
+                audio_dir=args.audio_dir,
+                keep_audio=args.keep_audio,
+                database=args.database,
+                folder=args.folder,
+                user_id=args.user_id,
+            )
 
         # Output results
         if args.json:
@@ -518,6 +535,7 @@ Requirements:
             print("\nSuggestions:", file=sys.stderr)
             for suggestion in error_output['error']['suggestions']:
                 print(f"  - {suggestion}", file=sys.stderr)
+        sys.exit(1)
 
         sys.exit(1)
 

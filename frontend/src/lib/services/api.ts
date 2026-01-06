@@ -466,6 +466,16 @@ class WebsitesAPI {
     if (!response.ok) throw new Error('Failed to delete website');
   }
 
+  async transcribeYouTube(id: string, url: string): Promise<unknown> {
+    const response = await fetch(`${this.baseUrl}/${id}/youtube-transcript`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!response.ok) throw new Error('Failed to transcribe YouTube video');
+    return response.json();
+  }
+
   async updatePinnedOrder(order: string[]): Promise<void> {
     const response = await fetch(`${this.baseUrl}/pinned-order`, {
       method: 'PATCH',
