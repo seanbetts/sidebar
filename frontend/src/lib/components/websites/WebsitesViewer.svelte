@@ -2,8 +2,10 @@
   import { onDestroy, onMount } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
+  import Youtube from '@tiptap/extension-youtube';
   import { ImageGallery } from '$lib/components/editor/ImageGallery';
   import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
+  import { VimeoEmbed } from '$lib/components/editor/VimeoEmbed';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
@@ -48,12 +50,20 @@
       element: editorElement,
       extensions: [
         StarterKit,
+        Youtube.configure({
+          controls: true,
+          modestBranding: true,
+          HTMLAttributes: {
+            class: 'video-embed'
+          }
+        }),
+        VimeoEmbed,
         ImageGallery,
         ImageWithCaption.configure({ inline: false, allowBase64: true }),
         TaskList,
         TaskItem.configure({ nested: true }),
         TableKit,
-        Markdown
+        Markdown.configure({ html: true })
       ],
       content: '',
       editable: false,
@@ -71,7 +81,8 @@
   });
 
   $: if (editor && $websitesStore.active) {
-    editor.commands.setContent(stripFrontmatter($websitesStore.active.content || ''));
+    const raw = stripFrontmatter($websitesStore.active.content || '');
+    editor.commands.setContent(rewriteVideoEmbeds(raw));
   }
 
   function stripFrontmatter(text: string): string {
@@ -83,6 +94,73 @@
     const separatorIndex = lines.findIndex((line) => line.trim() === '---');
     if (separatorIndex >= 0) return lines.slice(separatorIndex + 1).join('\n');
     return text;
+  }
+
+  function buildYouTubeEmbed(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
+        return null;
+      }
+      let videoId: string | null = null;
+      if (parsed.hostname.includes('youtu.be')) {
+        videoId = parsed.pathname.replace('/', '') || null;
+      } else {
+        videoId = parsed.searchParams.get('v');
+        if (!videoId && parsed.pathname.startsWith('/shorts/')) {
+          const parts = parsed.pathname.split('/');
+          videoId = parts[2] ?? null;
+        }
+      }
+      if (!videoId) return null;
+      return `https://www.youtube-nocookie.com/embed/${videoId}`;
+    } catch {
+      return null;
+    }
+  }
+
+  function buildVimeoEmbed(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      if (!parsed.hostname.includes('vimeo.com')) {
+        return null;
+      }
+      if (parsed.hostname.includes('player.vimeo.com')) {
+        return parsed.toString();
+      }
+      const match = parsed.pathname.match(/\/(\d+)/);
+      if (!match) return null;
+      return `https://player.vimeo.com/video/${match[1]}`;
+    } catch {
+      return null;
+    }
+  }
+
+  function rewriteVideoEmbeds(markdown: string): string {
+    const youtubePattern = /^\[YouTube\]\(([^)]+)\)$/gm;
+    const vimeoPattern = /^\[Vimeo\]\(([^)]+)\)$/gm;
+    const bareUrlPattern = /^(https?:\/\/[^\s]+)$/gm;
+
+    let updated = markdown.replace(youtubePattern, (_, url: string) => {
+      const embed = buildYouTubeEmbed(url.trim());
+      return embed ? `<div data-youtube-video><iframe src="${embed}"></iframe></div>` : _;
+    });
+
+    updated = updated.replace(vimeoPattern, (_, url: string) => {
+      const embed = buildVimeoEmbed(url.trim());
+      return embed ? `<iframe src="${embed}"></iframe>` : _;
+    });
+
+    updated = updated.replace(bareUrlPattern, (match: string) => {
+      const youtube = buildYouTubeEmbed(match.trim());
+      if (youtube) {
+        return `<div data-youtube-video><iframe src="${youtube}"></iframe></div>`;
+      }
+      const vimeo = buildVimeoEmbed(match.trim());
+      return vimeo ? `<iframe src="${vimeo}"></iframe>` : match;
+    });
+
+    return updated;
   }
 
   function openRenameDialog() {
@@ -336,20 +414,24 @@
     margin-left: auto;
     margin-right: auto;
     max-width: 100%;
+    max-height: 500px;
   }
 
   /* Image gallery grid - force 2 images per row */
-  :global(.website-viewer .image-gallery-grid) {
-    display: grid;
-    grid-template-columns: repeat(2, auto);
+  :global(.tiptap.website-viewer .image-gallery-grid) {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 0.5rem;
   }
 
-  :global(.website-viewer .image-gallery-grid img) {
+  :global(.tiptap.website-viewer .image-gallery-grid img) {
     display: block;
     margin: 0;
-    max-width: 100%;
+    width: 49% !important;
+    flex: 0 0 49% !important;
+    max-width: none !important;
+    max-height: 500px !important;
   }
 
   /* Hide ProseMirror gap cursor in image galleries */
