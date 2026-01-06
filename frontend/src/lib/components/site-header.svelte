@@ -22,7 +22,7 @@
 	const thingsStatus = useThingsBridgeStatus();
 	let bridgeStatus: "loading" | "online" | "offline" = "loading";
 	let bridgeSeenAt: string | null = null;
-	let transcriptStatus: "processing" | "ready" | "failed" | null = null;
+	let transcriptStatus: "processing" | null = null;
 	let transcriptLabel = "";
 	let transcriptPollingId: ReturnType<typeof setInterval> | null = null;
 	let transcriptPollingFileId: string | null = null;
@@ -69,21 +69,10 @@
 	$: {
 		const candidates = getTranscriptCandidates();
 		const pending = candidates.filter((item) => isTranscriptPending(item.entry.status));
-		const failed = candidates.filter((item) => isTranscriptFailed(item.entry.status));
-		const ready = candidates.filter((item) => item.entry.status === "ready");
-
 		if (pending.length > 0) {
 			transcriptStatus = "processing";
 			transcriptLabel = "Transcribing";
 			pendingTranscript = pickLatest(pending);
-		} else if (failed.length > 0) {
-			transcriptStatus = "failed";
-			transcriptLabel = "Transcript Failed";
-			pendingTranscript = null;
-		} else if (ready.length > 0) {
-			transcriptStatus = "ready";
-			transcriptLabel = "Transcript Ready";
-			pendingTranscript = null;
 		} else {
 			transcriptStatus = null;
 			transcriptLabel = "";
@@ -142,6 +131,8 @@
 					toast.success("Transcript ready", {
 						description: "Transcript appended to the website."
 					});
+					transcriptStatus = null;
+					transcriptLabel = "";
 					return;
 				}
 				if (status === "failed" || status === "canceled") {
@@ -158,6 +149,8 @@
 							onClick: () => retryTranscript(websiteId, videoId)
 						}
 					});
+					transcriptStatus = null;
+					transcriptLabel = "";
 				}
 			} catch (error) {
 				stopTranscriptPolling();
@@ -192,25 +185,27 @@
 			<div class="title">sideBar</div>
 			<div class="subtitle">Workspace</div>
 		</div>
-		<div
-			class="things-status"
-			aria-live="polite"
-			title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ""}
-		>
-			<span class="label">Bridge</span>
-			<span
-				class="dot"
-				class:online={bridgeStatus === "online"}
-				class:offline={bridgeStatus === "offline"}
-				class:loading={bridgeStatus === "loading"}
-			></span>
-		</div>
-		{#if transcriptStatus}
-			<div class="transcript-status" data-status={transcriptStatus}>
-				<span class="label">{transcriptLabel}</span>
-				<span class="dot"></span>
+		<div class="status-stack">
+			<div
+				class="things-status"
+				aria-live="polite"
+				title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ""}
+			>
+				<span class="label">Bridge</span>
+				<span
+					class="dot"
+					class:online={bridgeStatus === "online"}
+					class:offline={bridgeStatus === "offline"}
+					class:loading={bridgeStatus === "loading"}
+				></span>
 			</div>
-		{/if}
+			{#if transcriptStatus}
+				<div class="things-status transcript-status" data-status={transcriptStatus}>
+					<span class="label">{transcriptLabel}</span>
+					<span class="dot"></span>
+				</div>
+			{/if}
+		</div>
 	</div>
 	<div class="actions">
 		<div class="datetime-group">
@@ -263,6 +258,12 @@
 		gap: 0.75rem;
 	}
 
+	.status-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
 	.brand-logo {
 		height: 2rem;
 		width: auto;
@@ -284,36 +285,8 @@
 		flex-direction: column;
 	}
 
-	.transcript-status {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0.25rem 0.6rem;
-		border-radius: 999px;
-		border: 1px solid var(--color-border);
-		background: var(--color-muted);
-		font-size: 0.72rem;
-		font-weight: 600;
-		color: var(--color-foreground);
-	}
-
-	.transcript-status .dot {
-		width: 0.45rem;
-		height: 0.45rem;
-		border-radius: 999px;
-		background: var(--color-muted-foreground);
-	}
-
 	.transcript-status[data-status="processing"] .dot {
 		background: #d99a2b;
-	}
-
-	.transcript-status[data-status="ready"] .dot {
-		background: #38a169;
-	}
-
-	.transcript-status[data-status="failed"] .dot {
-		background: #e25555;
 	}
 
 	.title {
