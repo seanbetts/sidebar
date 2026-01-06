@@ -1663,6 +1663,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                         website_id=transcript_target[0],
                         youtube_url=transcript_target[1],
                         transcript_text=transcript,
+                        video_title=metadata.get("title") if isinstance(metadata, dict) else None,
                     )
         return
     except IngestionError as exc:

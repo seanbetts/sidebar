@@ -78,8 +78,9 @@ def append_transcript_to_markdown(
     *,
     youtube_url: str,
     transcript_text: str,
+    video_title: str | None = None,
 ) -> TranscriptAppendResult:
-    """Append transcript text below the YouTube embed link."""
+    """Append transcript text to the end of the markdown."""
     video_id = extract_youtube_id(youtube_url)
     if not video_id:
         return TranscriptAppendResult(content=markdown, changed=False)
@@ -90,12 +91,6 @@ def append_transcript_to_markdown(
 
     frontmatter, body = split_frontmatter(markdown)
     body_lines = body.splitlines()
-    insert_at = len(body_lines)
-    video_pattern = re.compile(rf"(youtube\.com|youtu\.be).+{re.escape(video_id)}")
-    for idx, line in enumerate(body_lines):
-        if video_pattern.search(line):
-            insert_at = idx + 1
-            break
 
     transcript_body = split_frontmatter(transcript_text)[1].strip()
     if transcript_body:
@@ -116,17 +111,22 @@ def append_transcript_to_markdown(
     if not transcript_body:
         return TranscriptAppendResult(content=markdown, changed=False)
 
+    title = (video_title or "").strip() or "YouTube"
     transcript_block = [
+        "___",
         "",
         marker,
         "",
-        "### Transcript",
+        f"### Transcript of {title} video",
         "",
         transcript_body,
-        "",
     ]
-    body_lines[insert_at:insert_at] = transcript_block
-    updated_body = "\n".join(body_lines).rstrip()
+    block_text = "\n".join(transcript_block).rstrip()
+    existing_body = "\n".join(body_lines).rstrip()
+    if existing_body:
+        updated_body = f"{existing_body}\n\n{block_text}"
+    else:
+        updated_body = block_text
     return TranscriptAppendResult(
         content=f"{frontmatter}{updated_body}\n",
         changed=True,
@@ -197,6 +197,7 @@ class WebsiteTranscriptService:
         website_id: uuid.UUID,
         youtube_url: str,
         transcript_text: str,
+        video_title: str | None = None,
     ) -> str:
         """Append transcript text to a website and return updated content."""
         website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
@@ -212,6 +213,7 @@ class WebsiteTranscriptService:
             website.content or "",
             youtube_url=normalized_url,
             transcript_text=transcript_text,
+            video_title=video_title,
         )
         if not append_result.changed:
             return website.content or ""
