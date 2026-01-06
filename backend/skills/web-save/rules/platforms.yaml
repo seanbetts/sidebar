@@ -64,7 +64,11 @@
   phase: pre
   trigger:
     dom:
-      any: [".available-content", ".post-content"]
+      any:
+        - '[data-component-name="Image2ToDOM"]'
+        - '[data-component-name="ImageGallery"]'
+        - ".image-gallery-embed"
+        - '[data-attrs*="gallery"]'
   include:
     - ".post-content img"
     - ".available-content img"
@@ -76,9 +80,13 @@
   priority: 80
   trigger:
     dom:
-      any: [".available-content", ".post-content"]
+      any:
+        - '[data-component-name="Image2ToDOM"]'
+        - '[data-component-name="ImageGallery"]'
+        - ".image-gallery-embed"
+        - '[data-attrs*="gallery"]'
   selector_overrides:
-    article: ".available-content"
+    article: ".available-content, .post-content"
 
 - id: darioamodei-article-override
   phase: pre

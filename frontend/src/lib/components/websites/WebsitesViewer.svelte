@@ -238,6 +238,10 @@
     cursor: pointer;
   }
 
+  :global(.tiptap.website-viewer a:hover) {
+    opacity: 0.7;
+  }
+
   :global(.website-viewer table) {
     width: 100%;
     border-collapse: collapse;
@@ -334,31 +338,23 @@
     max-width: 100%;
   }
 
-  /* When images are consecutive, display side-by-side and center as a group */
-  :global(.website-viewer > img + img),
-  :global(.website-viewer > img:has(+ img)) {
-    display: inline-block;
-    margin: 0.5rem;
-    vertical-align: top;
+  /* Image gallery grid - force 2 images per row */
+  :global(.website-viewer .image-gallery-grid) {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-content: center;
+    gap: 0.5rem;
   }
 
-  /* Use text-align to center consecutive images (works better with max-width elements) */
-  :global(.website-viewer:has(> img + img)) {
-    text-align: center;
+  :global(.website-viewer .image-gallery-grid img) {
+    display: block;
+    margin: 0;
+    max-width: 100%;
   }
 
-  /* Reset text-align for block-level text elements */
-  :global(.website-viewer:has(> img + img) > p),
-  :global(.website-viewer:has(> img + img) > h1),
-  :global(.website-viewer:has(> img + img) > h2),
-  :global(.website-viewer:has(> img + img) > h3),
-  :global(.website-viewer:has(> img + img) > h4),
-  :global(.website-viewer:has(> img + img) > h5),
-  :global(.website-viewer:has(> img + img) > h6),
-  :global(.website-viewer:has(> img + img) > blockquote),
-  :global(.website-viewer:has(> img + img) > ul),
-  :global(.website-viewer:has(> img + img) > ol) {
-    text-align: left;
+  /* Hide ProseMirror gap cursor in image galleries */
+  :global(.website-viewer .image-gallery-grid .ProseMirror-gapcursor) {
+    display: none;
   }
 
 </style>
