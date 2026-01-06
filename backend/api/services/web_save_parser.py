@@ -311,6 +311,42 @@ def wrap_gallery_blocks(markdown: str) -> str:
     return "\n".join(output).strip()
 
 
+def simplify_linked_images(markdown: str) -> str:
+    """Unwrap linked images that point to the same target URL."""
+    image_link_pattern = re.compile(
+        r"\[!\[[^\]]*]\(([^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)\]\(([^)\s]+)\)"
+    )
+
+    def _replace(match: re.Match[str]) -> str:
+        image_url = match.group(1)
+        link_url = match.group(2)
+        if _canonical_image_url(image_url) == _canonical_image_url(link_url):
+            return f"![]({image_url})"
+        return match.group(0)
+
+    return image_link_pattern.sub(_replace, markdown)
+
+
+def cleanup_verge_markdown(markdown: str) -> str:
+    """Remove Verge gallery chrome text from markdown."""
+    if not markdown:
+        return markdown
+    output: list[str] = []
+    caption_pattern = re.compile(r"^\*{2}\d+/\d+\*{2}\s*Image:\s*.+$")
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            output.append(line)
+            continue
+        if caption_pattern.match(stripped):
+            continue
+        lowered = stripped.lower()
+        if lowered in {"previousnext", "previous", "next"}:
+            continue
+        output.append(line)
+    return "\n".join(output).strip()
+
+
 def extract_body_html(html: str) -> str:
     """Extract inner body HTML from a full document."""
     soup = BeautifulSoup(html, "html.parser")
@@ -1351,6 +1387,9 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         resolved_image = urljoin(source_url, image_url)
         article_html = prepend_hero_image(article_html, resolved_image, title)
     markdown = html_to_markdown(article_html)
+    if domain.endswith("theverge.com"):
+        markdown = simplify_linked_images(markdown)
+        markdown = cleanup_verge_markdown(markdown)
     logger.info("web-save markdown url=%s len=%s", final_url, len(markdown))
     markdown, embedded_ids = replace_youtube_placeholders(markdown)
     embedded_ids = embedded_ids.union(pre_youtube_ids)
