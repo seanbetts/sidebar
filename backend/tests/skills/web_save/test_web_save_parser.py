@@ -355,6 +355,86 @@ def test_apply_include_reinsertion_handles_comment_root():
     assert "Special include" in updated
 
 
+def test_apply_include_reinsertion_preserves_include_order():
+    extracted_html = "<article><p>Anchor</p></article>"
+    original_html = """
+    <html>
+      <body>
+        <div class="gallery">First gallery</div>
+        <p>Anchor</p>
+        <div class="gallery">Second gallery</div>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+    updated = web_save_includes.apply_include_reinsertion(
+        extracted_html,
+        original_dom,
+        include_selectors=[".gallery"],
+        removal_rules=[],
+    )
+    first_index = updated.find("First gallery")
+    second_index = updated.find("Second gallery")
+    assert first_index != -1
+    assert second_index != -1
+    assert first_index < second_index
+
+
+def test_apply_include_reinsertion_uses_ancestor_siblings_for_position():
+    extracted_html = "<article><p>Before</p><p>Between</p><p>After</p></article>"
+    original_html = """
+    <html>
+      <body>
+        <div><p>Before</p></div>
+        <div class="wrap"><section class="duet--article--gallery">G1</section></div>
+        <p>Between</p>
+        <div class="wrap"><section class="duet--article--gallery">G2</section></div>
+        <p>After</p>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+    updated = web_save_includes.apply_include_reinsertion(
+        extracted_html,
+        original_dom,
+        include_selectors=[".duet--article--gallery"],
+        removal_rules=[],
+    )
+    before_index = updated.find("Before")
+    between_index = updated.find("Between")
+    g1_index = updated.find("G1")
+    g2_index = updated.find("G2")
+    assert before_index < g1_index < between_index
+    assert between_index < g2_index
+
+
+def test_apply_include_reinsertion_verge_gallery_uses_paragraph_index():
+    extracted_html = "<article><p>Repeat</p><p>Repeat</p><p>After</p></article>"
+    original_html = """
+    <html>
+      <body>
+        <article>
+          <p>Repeat</p>
+          <p>Repeat</p>
+          <section class="duet--article--gallery">G2</section>
+          <p>After</p>
+        </article>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+    updated = web_save_includes.apply_include_reinsertion(
+        extracted_html,
+        original_dom,
+        include_selectors=[".duet--article--gallery"],
+        removal_rules=[],
+    )
+    first_repeat = updated.find("<p>Repeat</p>")
+    second_repeat = updated.find("<p>Repeat</p>", first_repeat + 1)
+    g2_index = updated.find("G2")
+    assert second_repeat < g2_index
+
+
 def test_cleanup_verge_markdown_removes_gallery_chrome():
     markdown = "\n".join(
         [

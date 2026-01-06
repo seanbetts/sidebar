@@ -98,6 +98,9 @@
     - ".c-related-list"
     - ".c-entry-hero__subscribe"
     - ".c-ad"
+    - ".duet--article--gallery button"
+    - ".duet--article--gallery strong"
+    - ".duet--article--gallery .duet--media--caption"
 
 - id: theverge-include-images
   phase: pre
