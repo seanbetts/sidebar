@@ -507,6 +507,28 @@ def test_iter_youtube_elements_allows_verge_body_component():
     assert [item[0] for item in results] == ["abcd1234"]
 
 
+def test_insert_youtube_placeholders_handles_comment_sibling():
+    extracted_html = "<article><p>Anchor</p></article>"
+    raw_html = """
+    <html>
+      <body>
+        <article>
+          <p>Anchor</p>
+          <!-- comment -->
+          <iframe src="https://www.youtube.com/embed/abcd1234"></iframe>
+        </article>
+      </body>
+    </html>
+    """
+    raw_dom = lxml_html.fromstring(raw_html)
+    updated = web_save_parser.insert_youtube_placeholders(
+        extracted_html,
+        raw_dom,
+        "https://example.com/article",
+    )
+    assert "YOUTUBE_EMBED:abcd1234" in updated
+
+
 def test_simplify_linked_images_unwraps_matching_links():
     markdown = "[![](https://example.com/img.jpg)](https://example.com/img.jpg)"
     simplified = web_save_parser.simplify_linked_images(markdown)
