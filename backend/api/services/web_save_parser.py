@@ -357,6 +357,36 @@ def cleanup_verge_markdown(markdown: str) -> str:
     return "\n".join(output).strip()
 
 
+def cleanup_gizmodo_markdown(markdown: str) -> str:
+    """Remove Gizmodo inline promo blockquotes."""
+    if not markdown:
+        return markdown
+    output: list[str] = []
+    blockquote_lines: list[str] = []
+
+    def _flush_blockquote() -> None:
+        if not blockquote_lines:
+            return
+        content = " ".join(
+            line.lstrip("> ").strip() for line in blockquote_lines if line.strip()
+        ).lower()
+        if "want more io9 news" in content:
+            return
+        output.extend(blockquote_lines)
+
+    for line in markdown.splitlines():
+        if line.lstrip().startswith(">"):
+            blockquote_lines.append(line)
+            continue
+        if blockquote_lines:
+            _flush_blockquote()
+            blockquote_lines = []
+        output.append(line)
+
+    _flush_blockquote()
+    return "\n".join(output).strip()
+
+
 def extract_body_html(html: str) -> str:
     """Extract inner body HTML from a full document."""
     soup = BeautifulSoup(html, "html.parser")
@@ -1440,6 +1470,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if domain.endswith("theverge.com"):
         markdown = simplify_linked_images(markdown)
         markdown = cleanup_verge_markdown(markdown)
+    if domain.endswith("gizmodo.com"):
+        markdown = cleanup_gizmodo_markdown(markdown)
     logger.info("web-save markdown url=%s len=%s", final_url, len(markdown))
     markdown, embedded_ids = replace_youtube_placeholders(markdown)
     embedded_ids = embedded_ids.union(pre_youtube_ids)
