@@ -400,6 +400,18 @@ def test_dedupe_markdown_images_handles_linked_title():
     deduped = web_save_parser.dedupe_markdown_images(markdown)
     assert deduped.count("hero.png") == 1
     assert "[!]" not in deduped
+    assert "![Hero]" in deduped
+
+
+def test_dedupe_markdown_images_separates_adjacent_images():
+    markdown = (
+        "![](https://example.com/a.png)![](https://example.com/b.png)\n"
+        "[![](https://example.com/c.png)](https://example.com/c.png)"
+        "[![](https://example.com/d.png)](https://example.com/d.png)\n"
+    )
+    deduped = web_save_parser.dedupe_markdown_images(markdown)
+    assert "\n\n![](https://example.com/b.png)" in deduped
+    assert "\n\n[![](https://example.com/d.png)]" in deduped
 
 
 def test_parse_url_local_dedupes_wp_com_proxy_images(monkeypatch):
