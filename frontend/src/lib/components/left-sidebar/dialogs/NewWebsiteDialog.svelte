@@ -14,6 +14,20 @@
     }
     open = false;
   };
+
+  const isValidUrl = (input: string) => {
+    const trimmed = input.trim();
+    if (!trimmed) return false;
+    const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      const parsed = new URL(candidate);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  $: isUrlValid = isValidUrl(value);
 </script>
 
 <TextInputDialog
@@ -21,7 +35,9 @@
   title="Save a website"
   description="Paste a URL to save it to your archive."
   placeholder="https://example.com"
+  inputType="url"
   bind:value
+  isValid={isUrlValid}
   {isBusy}
   busyLabel="Saving..."
   confirmLabel="Save website"
