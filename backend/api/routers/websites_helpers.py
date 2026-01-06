@@ -116,6 +116,7 @@ def website_summary(website: Website) -> dict:
         "pinned": metadata.get("pinned", False),
         "pinned_order": metadata.get("pinned_order"),
         "archived": metadata.get("archived", False),
+        "youtube_transcripts": metadata.get("youtube_transcripts", {}),
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
         "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None,
     }
