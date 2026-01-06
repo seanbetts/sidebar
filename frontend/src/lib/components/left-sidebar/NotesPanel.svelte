@@ -307,6 +307,8 @@
 
   .notes-archive {
     margin-top: auto;
+    border-top: 1px solid var(--color-sidebar-border);
+    padding-top: 0;
   }
 
   .notes-block-title {
@@ -327,7 +329,7 @@
     border: none;
     background: none;
     cursor: pointer;
-    padding: 0.2rem 0.25rem;
+    padding: 1rem 0.25rem;
     border-radius: 0.375rem;
     text-align: left;
   }

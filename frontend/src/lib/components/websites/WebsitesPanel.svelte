@@ -430,7 +430,7 @@
     flex: 1;
     min-height: 0;
     padding-top: 0;
-    overflow-y: auto;
+    overflow: hidden;
     padding-right: 0.25rem;
     height: 100%;
   }
@@ -448,7 +448,7 @@
   .websites-archive {
     margin-top: auto;
     border-top: 1px solid var(--color-sidebar-border);
-    padding-top: 0.5rem;
+    padding-top: 0;
   }
 
   .websites-block-title {
@@ -506,7 +506,7 @@
     border: none;
     background: none;
     cursor: pointer;
-    padding: 0.2rem 0.25rem;
+    padding: 1rem 0.25rem;
     border-radius: 0.375rem;
     text-align: left;
   }
