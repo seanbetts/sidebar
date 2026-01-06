@@ -105,8 +105,8 @@
     host:
       ends_with: "theverge.com"
   include:
-    - ".duet--article--image-gallery-image img"
-    - ".duet--article--image img"
+    - ".duet--article--gallery"
+    - ".duet--article--article-body-component img"
 
 - id: nine-to-five-mac-article-override
   phase: pre

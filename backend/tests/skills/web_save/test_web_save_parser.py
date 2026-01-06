@@ -617,6 +617,39 @@ def test_parse_url_local_inserts_youtube_from_jsonld(monkeypatch):
     assert anchor_index < youtube_index < after_index
 
 
+def test_parse_url_local_includes_verge_gallery_images(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Verge Gallery</title>
+      </head>
+      <body>
+        <div class="duet--article--gallery">
+          <a href="https://platform.theverge.com/wp-content/uploads/a.jpg">
+            <img src="https://platform.theverge.com/wp-content/uploads/a.jpg"/>
+          </a>
+          <a href="https://platform.theverge.com/wp-content/uploads/b.jpg">
+            <img src="https://platform.theverge.com/wp-content/uploads/b.jpg"/>
+          </a>
+        </div>
+        <article>
+          <p>Gallery content.</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://www.theverge.com/news/123", False
+
+    web_save_parser.get_rule_engine.cache_clear()
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("https://www.theverge.com/news/123")
+    assert "https://platform.theverge.com/wp-content/uploads/a.jpg" in parsed.content
+    assert "https://platform.theverge.com/wp-content/uploads/b.jpg" in parsed.content
+
+
 def test_wrap_gallery_blocks_ignores_single_captioned_image():
     markdown = '![](https://example.com/one.png \"Caption\")'
     wrapped = web_save_parser.wrap_gallery_blocks(markdown)
