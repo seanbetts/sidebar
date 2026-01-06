@@ -607,6 +607,90 @@ def test_cleanup_youtube_markdown_keeps_single_embed():
     assert cleaned.strip() == "[YouTube](https://www.youtube.com/watch?v=FUq9qRwrDrI)"
 
 
+def test_cleanup_openai_markdown_removes_credits_block():
+    markdown = "\n".join(
+        [
+            "Intro paragraph.",
+            "",
+            "ResearchHarold Li, Dmytro Okhonko, Avi Verma",
+            "",
+            "ProductAndrew Kondrich, Andrew Sima",
+            "",
+            "Leadership",
+            "",
+            "Bill Peebles",
+            "",
+            "Built by OpenAI in San Francisco, California",
+            "Published September 30, MMXXV",
+        ]
+    )
+    cleaned = web_save_parser.cleanup_openai_markdown(markdown)
+    assert "ResearchHarold Li" not in cleaned
+    assert "ProductAndrew Kondrich" not in cleaned
+    assert "Bill Peebles" not in cleaned
+    assert "Built by OpenAI in San Francisco, California" in cleaned
+
+
+def test_extract_openai_body_html_prefers_article_and_removes_nav():
+    html = """
+    <html>
+      <body>
+        <main>
+          <nav>Nav</nav>
+          <article><p>Keep this.</p></article>
+        </main>
+      </body>
+    </html>
+    """
+    extracted = web_save_parser.extract_openai_body_html(html)
+    assert extracted is not None
+    assert "Keep this." in extracted
+    assert "Nav" not in extracted
+
+
+def test_cleanup_openai_markdown_removes_footer_and_chrome():
+    markdown = "\n".join(
+        [
+            "Intro paragraph.",
+            "",
+            "[Research](https://openai.com/news/research/)[Release](https://openai.com/research/index/release/)",
+            "",
+            "[Download the Sora app(opens in a new window)](https://apps.apple.com/app/id123)",
+            "Loading…",
+            "Share",
+            "",
+            "Built by OpenAI in San Francisco, California",
+            "Published September 30, MMXXV",
+            "",
+            "## Author",
+            "[The Sora team](https://openai.com/news/?author=the-sora-team#results)",
+            "",
+            "## Keep reading",
+            "[View all](https://openai.com/news/research/)",
+        ]
+    )
+    cleaned = web_save_parser.cleanup_openai_markdown(markdown)
+    assert "Loading…" not in cleaned
+    assert "Share" not in cleaned
+    assert "openai.com/news/research" not in cleaned
+    assert "opens in a new window" not in cleaned
+    assert "Intro paragraph." in cleaned
+    assert "Built by OpenAI in San Francisco, California" in cleaned
+
+
+def test_cleanup_openai_markdown_removes_category_links_row():
+    markdown = "\n".join(
+        [
+            "[Product](https://openai.com/news/product-releases/)[Release](https://openai.com/research/index/release/)",
+            "Keep this paragraph.",
+        ]
+    )
+    cleaned = web_save_parser.cleanup_openai_markdown(markdown)
+    assert "Product" not in cleaned
+    assert "Release" not in cleaned
+    assert "Keep this paragraph." in cleaned
+
+
 def test_insert_youtube_placeholders_handles_comment_sibling():
     extracted_html = "<article><p>Anchor</p></article>"
     raw_html = """
