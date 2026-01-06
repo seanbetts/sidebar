@@ -387,6 +387,19 @@ def cleanup_gizmodo_markdown(markdown: str) -> str:
     return "\n".join(output).strip()
 
 
+def cleanup_youtube_markdown(markdown: str, source_url: str) -> str:
+    """Reduce YouTube page markdown to a single embed link."""
+    if not markdown:
+        return markdown
+    video_id = extract_youtube_video_id(source_url)
+    if video_id:
+        return f"[YouTube](https://www.youtube.com/watch?v={video_id})"
+    match = YOUTUBE_VIDEO_PATTERN.search(markdown)
+    if match:
+        return f"[YouTube](https://www.youtube.com/watch?v={match.group(1)})"
+    return markdown
+
+
 def extract_body_html(html: str) -> str:
     """Extract inner body HTML from a full document."""
     soup = BeautifulSoup(html, "html.parser")
@@ -1485,6 +1498,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         markdown = cleanup_verge_markdown(markdown)
     if domain.endswith("gizmodo.com"):
         markdown = cleanup_gizmodo_markdown(markdown)
+    if domain.endswith("youtube.com"):
+        markdown = cleanup_youtube_markdown(markdown, source_url)
     logger.info("web-save markdown url=%s len=%s", final_url, len(markdown))
     markdown, embedded_ids = replace_youtube_placeholders(markdown)
     embedded_ids = embedded_ids.union(pre_youtube_ids)
