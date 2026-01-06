@@ -61,6 +61,9 @@ def import_sample(
     limit: int,
     seed: Optional[int],
     dry_run: bool,
+    log_every: int,
+    import_all: bool,
+    archived: bool,
 ) -> None:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.web_save_parser import ParsedPage, parse_url_local
@@ -77,25 +80,29 @@ def import_sample(
     if not urls:
         raise ValueError("No URLs found in GoodLinks export.")
 
-    if limit > len(urls):
-        limit = len(urls)
-    rng = random.Random(seed)
-    sample = rng.sample(urls, k=limit)
+    if import_all:
+        sample = urls
+        limit = len(sample)
+    else:
+        if limit > len(urls):
+            limit = len(urls)
+        rng = random.Random(seed)
+        sample = rng.sample(urls, k=limit)
 
     db = SessionLocal()
     set_session_user_id(db, user_id)
     created = 0
     failed = 0
     try:
-        for entry in sample:
+        for idx, entry in enumerate(sample, start=1):
             url = entry.get("url")
             added_at = parse_datetime(entry.get("addedAt"))
             try:
                 parsed: ParsedPage = parse_url_local(url)
                 if dry_run:
-                    logger.info("DRY RUN: would import %s", url)
+                    pass
                 else:
-                    WebsitesService.upsert_website(
+                    website = WebsitesService.upsert_website(
                         db,
                         user_id,
                         url=url,
@@ -105,12 +112,24 @@ def import_sample(
                         source=parsed.source,
                         saved_at=added_at or datetime.now(timezone.utc),
                         published_at=parsed.published_at,
+                        archived=archived,
                     )
-                    logger.info("Imported %s", url)
+                    if archived:
+                        WebsitesService.update_archived(
+                            db, user_id, website.id, archived=True
+                        )
                 created += 1
             except Exception as exc:
                 failed += 1
                 logger.warning("Failed to import %s: %s", url, str(exc))
+            if log_every > 0 and (idx % log_every == 0 or idx == limit):
+                logger.info(
+                    "Progress: %s/%s imported=%s failed=%s",
+                    idx,
+                    limit,
+                    created,
+                    failed,
+                )
     finally:
         db.close()
 
@@ -128,6 +147,23 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=10, help="Number of URLs to import.")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for repeatable samples.")
     parser.add_argument("--dry-run", action="store_true", help="Log without writing.")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Import every URL in the export (ignores --limit/--seed).",
+    )
+    parser.add_argument(
+        "--log-every",
+        type=int,
+        default=25,
+        help="Log progress every N URLs (0 disables progress logs).",
+    )
+    parser.add_argument(
+        "--archived",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Mark imported websites as archived (default: enabled).",
+    )
     return parser.parse_args(argv)
 
 
@@ -143,6 +179,9 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         limit=args.limit,
         seed=args.seed,
         dry_run=args.dry_run,
+        log_every=args.log_every,
+        import_all=args.all,
+        archived=args.archived,
     )
 
 
