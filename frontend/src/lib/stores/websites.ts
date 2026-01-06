@@ -5,7 +5,7 @@ import { logError } from '$lib/utils/errorHandling';
 
 const CACHE_KEY = 'websites.list';
 const CACHE_TTL = 15 * 60 * 1000;
-const CACHE_VERSION = '1.0';
+const CACHE_VERSION = '1.1';
 
 export interface WebsiteItem {
   id: string;

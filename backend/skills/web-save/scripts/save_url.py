@@ -168,7 +168,7 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
 
-    web_save_mode = os.getenv("WEB_SAVE_MODE", "jina").lower().strip()
+    web_save_mode = os.getenv("WEB_SAVE_MODE", "local").lower().strip()
     parsed = None
     parse_error = None
     if web_save_mode in {"local", "compare"}:

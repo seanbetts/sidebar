@@ -19,8 +19,9 @@ from readability import Document
 from lxml import html as lxml_html
 
 from api.services.web_save_constants import USER_AGENT
-from api.services.web_save_includes import apply_include_reinsertion
+from api.services.web_save_includes import apply_include_reinsertion, find_insertion_point
 from api.services.web_save_rendering import (
+    has_unrendered_youtube_embed,
     render_html_with_playwright,
     requires_js_rendering,
     resolve_rendering_settings,
@@ -314,6 +315,40 @@ def extract_body_html(html: str) -> str:
     return html
 
 
+def replace_youtube_iframes_with_placeholders(
+    html: str, base_url: str
+) -> tuple[str, set[str]]:
+    """Replace YouTube iframes with placeholders to preserve inline position."""
+    tree = lxml_html.fromstring(html)
+    embedded_ids: set[str] = set()
+
+    for iframe in tree.cssselect("iframe"):
+        src = iframe.get("src")
+        if not src:
+            continue
+        normalized = urljoin(base_url, src)
+        video_id = extract_youtube_embed_id(normalized)
+        if not video_id:
+            continue
+        for ancestor in iframe.iterancestors():
+            classes = " ".join(ancestor.get("class", [])).lower()
+            ident = ancestor.get("id", "").lower()
+            marker = f"{classes} {ident}"
+            if any(token in marker for token in ("ad", "advert", "sponsor", "cookie", "consent")):
+                video_id = None
+                break
+        if not video_id:
+            continue
+        placeholder = lxml_html.Element("p")
+        placeholder.text = f"YOUTUBE_EMBED:{video_id}"
+        parent = iframe.getparent()
+        if parent is not None:
+            parent.replace(iframe, placeholder)
+            embedded_ids.add(video_id)
+
+    return lxml_html.tostring(tree, encoding="unicode"), embedded_ids
+
+
 def normalize_image_sources(html: str, base_url: str) -> str:
     """Normalize image sources for markdown conversion."""
     soup = BeautifulSoup(html, "html.parser")
@@ -330,6 +365,22 @@ def normalize_image_sources(html: str, base_url: str) -> str:
                 break
         if src:
             img["src"] = urljoin(base_url, src)
+    return str(soup)
+
+
+def normalize_link_sources(html: str, base_url: str) -> str:
+    """Normalize hrefs to absolute URLs for markdown conversion."""
+    soup = BeautifulSoup(html, "html.parser")
+    for link in soup.find_all("a"):
+        href = link.get("href")
+        if not href:
+            continue
+        parsed = urlparse(href)
+        if parsed.scheme in {"mailto", "tel"}:
+            continue
+        if href.startswith("#"):
+            continue
+        link["href"] = urljoin(base_url, href)
     return str(soup)
 
 
@@ -629,29 +680,282 @@ def polish_article_html(html: str) -> str:
     return str(soup)
 
 
-def extract_youtube_embeds(html: str, base_url: str) -> list[str]:
-    """Extract YouTube embed URLs from HTML."""
+YOUTUBE_ID_PATTERN = re.compile(
+    r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([A-Za-z0-9_-]+)"
+)
+YOUTUBE_EMBED_PATTERN = re.compile(
+    r"(?:youtube(?:-nocookie)?\.com/(?:embed/|v/))([A-Za-z0-9_-]+)"
+)
+
+
+def extract_youtube_video_id(url: str) -> str | None:
+    match = YOUTUBE_ID_PATTERN.search(url)
+    return match.group(1) if match else None
+
+
+def extract_youtube_embed_id(url: str) -> str | None:
+    match = YOUTUBE_EMBED_PATTERN.search(url)
+    return match.group(1) if match else None
+
+
+def extract_youtube_video_ids_from_html(html: str, base_url: str) -> list[str]:
+    video_ids: list[str] = []
     soup = BeautifulSoup(html, "html.parser")
-    embeds: list[str] = []
     for iframe in soup.find_all("iframe"):
         src = iframe.get("src")
         if not src:
             continue
         normalized = urljoin(base_url, src)
-        if "youtube.com" in normalized or "youtu.be" in normalized:
-            if "youtube.com/embed/" in normalized:
-                video_id = normalized.split("youtube.com/embed/")[-1].split("?")[0]
-                normalized = f"https://www.youtube.com/watch?v={video_id}"
-            embeds.append(normalized)
-    # De-duplicate while preserving order
+        video_id = extract_youtube_embed_id(normalized)
+        if video_id:
+            video_ids.append(video_id)
+    scan_html = html.replace("\\/", "/")
+    for match in YOUTUBE_EMBED_PATTERN.finditer(scan_html):
+        video_ids.append(match.group(1))
+    return video_ids
+
+
+def extract_youtube_embeds(
+    html: str, base_url: str, *, fallback_html: str | None = None
+) -> list[str]:
+    """Extract YouTube embed URLs from HTML."""
+    sources = [html]
+    if fallback_html and fallback_html is not html:
+        sources.append(fallback_html)
+
+    video_ids: list[str] = []
+    for source_html in sources:
+        video_ids.extend(extract_youtube_video_ids_from_html(source_html, base_url))
+
     seen = set()
     ordered: list[str] = []
-    for url in embeds:
+    for video_id in video_ids:
+        if video_id in seen:
+            continue
+        seen.add(video_id)
+        ordered.append(f"https://www.youtube.com/watch?v={video_id}")
+    return ordered
+
+
+def extract_youtube_embed_urls_from_dom(
+    raw_dom: lxml_html.HtmlElement, base_url: str
+) -> list[str]:
+    """Extract YouTube embed URLs from iframe elements while skipping ad/cookie embeds."""
+    embed_urls: list[str] = []
+    for iframe in raw_dom.cssselect("iframe"):
+        src = iframe.get("src")
+        if not src:
+            continue
+        normalized = urljoin(base_url, src)
+        video_id = extract_youtube_embed_id(normalized)
+        if not video_id:
+            continue
+        blocked = False
+        for ancestor in iframe.iterancestors():
+            classes = " ".join(ancestor.get("class", [])).lower()
+            ident = ancestor.get("id", "").lower()
+            marker = f"{classes} {ident}"
+            if any(token in marker for token in ("ad", "advert", "sponsor", "cookie", "consent")):
+                blocked = True
+                break
+        if blocked:
+            continue
+        embed_urls.append(f"https://www.youtube.com/watch?v={video_id}")
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for url in embed_urls:
         if url in seen:
             continue
         seen.add(url)
         ordered.append(url)
     return ordered
+
+
+def insert_youtube_placeholders(
+    extracted_html: str, raw_dom: lxml_html.HtmlElement, base_url: str
+) -> str:
+    extracted_tree = lxml_html.fromstring(extracted_html)
+    body = extracted_tree.find(".//body") or extracted_tree
+    existing_ids: set[str] = set()
+    for elem in extracted_tree.iter():
+        text = (elem.text or "").strip()
+        if text.startswith("YOUTUBE_EMBED:"):
+            existing_ids.add(text.split("YOUTUBE_EMBED:", 1)[1])
+
+    anchor_by_id: dict[int, lxml_html.HtmlElement] = {}
+    last_text_elem: lxml_html.HtmlElement | None = None
+    for elem in raw_dom.iter():
+        if not isinstance(elem.tag, str):
+            continue
+        text = elem.text_content().strip()
+        if len(text) >= 5:
+            last_text_elem = elem
+        if last_text_elem is not None:
+            anchor_by_id[id(elem)] = last_text_elem
+
+    def find_anchor_node(node: lxml_html.HtmlElement) -> lxml_html.HtmlElement | None:
+        anchor = anchor_by_id.get(id(node))
+        if anchor is not None:
+            return anchor
+        current = node
+        while current is not None:
+            sibling = current.getprevious()
+            while sibling is not None:
+                text = sibling.text_content().strip()
+                if len(text) >= 5:
+                    return sibling
+                sibling = sibling.getprevious()
+            current = current.getparent()
+        return None
+
+    def insert_placeholder(video_id: str, node: lxml_html.HtmlElement | None) -> None:
+        if video_id in existing_ids:
+            return
+        placeholder = lxml_html.Element("p")
+        placeholder.text = f"YOUTUBE_EMBED:{video_id}"
+        insertion = None
+        if node is not None:
+            anchor = find_anchor_node(node)
+            anchor_node = anchor if anchor is not None else node
+            insertion = find_insertion_point(extracted_tree, anchor_node, raw_dom, anchor_node)
+        if insertion:
+            parent, index = insertion
+            parent.insert(index, placeholder)
+        else:
+            body.append(placeholder)
+        existing_ids.add(video_id)
+
+    for iframe in raw_dom.cssselect("iframe"):
+        src = iframe.get("src")
+        if not src:
+            continue
+        normalized = urljoin(base_url, src)
+        video_id = extract_youtube_embed_id(normalized)
+        if not video_id:
+            continue
+        blocked = False
+        for ancestor in iframe.iterancestors():
+            classes = " ".join(ancestor.get("class", [])).lower()
+            ident = ancestor.get("id", "").lower()
+            marker = f"{classes} {ident}"
+            if any(token in marker for token in ("ad", "advert", "sponsor", "cookie", "consent")):
+                blocked = True
+                break
+        if blocked:
+            continue
+        insert_placeholder(video_id, iframe)
+
+    return lxml_html.tostring(extracted_tree, encoding="unicode")
+
+
+def replace_youtube_placeholders(markdown: str) -> tuple[str, set[str]]:
+    replaced_ids: set[str] = set()
+
+    def _replace(match: re.Match[str]) -> str:
+        raw_id = match.group(1)
+        video_id = raw_id.replace("\\_", "_")
+        replaced_ids.add(video_id)
+        return f"[YouTube](https://www.youtube.com/watch?v={video_id})"
+
+    updated = re.sub(r"YOUTUBE\\?_EMBED:([A-Za-z0-9_\\-]+)", _replace, markdown)
+    return updated, replaced_ids
+
+
+def build_youtube_anchor_map(
+    raw_dom: lxml_html.HtmlElement, base_url: str
+) -> list[tuple[str, str]]:
+    anchor_by_id: dict[int, lxml_html.HtmlElement] = {}
+    last_text_elem: lxml_html.HtmlElement | None = None
+    for elem in raw_dom.iter():
+        if not isinstance(elem.tag, str):
+            continue
+        text = elem.text_content().strip()
+        if len(text) >= 5:
+            last_text_elem = elem
+        if last_text_elem is not None:
+            anchor_by_id[id(elem)] = last_text_elem
+
+    anchors: list[tuple[str, str]] = []
+    iframes = list(raw_dom.cssselect("iframe"))
+    for iframe in iframes:
+        src = iframe.get("src")
+        if not src:
+            continue
+        normalized = urljoin(base_url, src)
+        video_id = extract_youtube_embed_id(normalized)
+        if not video_id:
+            continue
+        anchor = anchor_by_id.get(id(iframe))
+        if anchor is None:
+            continue
+        anchor_text = anchor.text_content().strip()
+        if not anchor_text:
+            continue
+        anchors.append((video_id, anchor_text[:200]))
+
+    if anchors or iframes:
+        return anchors
+
+    raw_html = lxml_html.tostring(raw_dom, encoding="unicode")
+    embed_ids = extract_youtube_video_ids_from_html(raw_html, base_url)
+    if not embed_ids:
+        return anchors
+    soup = BeautifulSoup(raw_html, "html.parser")
+    paragraphs = [p for p in soup.find_all("p") if p.get_text(strip=True)]
+    if not paragraphs:
+        return anchors
+    paragraph_map = sorted(
+        ((p.sourceline or 0, p) for p in paragraphs), key=lambda item: item[0]
+    )
+    for video_id in embed_ids:
+        idx = raw_html.find(video_id)
+        if idx == -1:
+            continue
+        line_no = raw_html.count("\n", 0, idx) + 1
+        candidate = None
+        for line, paragraph in paragraph_map:
+            if line <= line_no:
+                candidate = paragraph
+            else:
+                break
+        if candidate is None:
+            continue
+        anchor_text = candidate.get_text(strip=True)
+        if anchor_text:
+            anchors.append((video_id, anchor_text[:200]))
+    return anchors
+
+
+def insert_youtube_after_anchors(
+    markdown: str, anchors: list[tuple[str, str]]
+) -> tuple[str, set[str]]:
+    inserted: set[str] = set()
+    if not anchors:
+        return markdown, inserted
+
+    lines = markdown.splitlines()
+
+    def _normalize_text(value: str) -> str:
+        return re.sub(r"\s+", " ", value).strip().lower()
+
+    for video_id, anchor_text in anchors:
+        link = f"[YouTube](https://www.youtube.com/watch?v={video_id})"
+        if link in markdown:
+            inserted.add(video_id)
+            continue
+        anchor_words = anchor_text.split()
+        anchor_key = _normalize_text(" ".join(anchor_words[:8])) if anchor_words else ""
+        if not anchor_key:
+            continue
+        for idx, line in enumerate(lines):
+            line_norm = _normalize_text(line)
+            if anchor_key in line_norm:
+                lines.insert(idx + 1, "")
+                lines.insert(idx + 2, link)
+                inserted.add(video_id)
+                break
+
+    return "\n".join(lines), inserted
 
 
 def build_frontmatter(markdown_text: str, *, meta: dict) -> str:
@@ -680,11 +984,21 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         )
         used_js_rendering = True
     elif render_mode == "auto" and requires_js_rendering(html):
-        if is_playwright_allowed(final_url):
+        unrendered_embed = has_unrendered_youtube_embed(html)
+        allow_render = is_playwright_allowed(final_url) or unrendered_embed
+        if allow_render:
             try:
-                html, final_url = render_html_with_playwright(
-                    final_url, timeout=render_timeout, wait_for=wait_for
-                )
+                if unrendered_embed:
+                    html, final_url = render_html_with_playwright(
+                        final_url,
+                        timeout=min(render_timeout, 15000),
+                        wait_for=wait_for,
+                        wait_until="domcontentloaded",
+                    )
+                else:
+                    html, final_url = render_html_with_playwright(
+                        final_url, timeout=render_timeout, wait_for=wait_for
+                    )
                 used_js_rendering = True
             except RuntimeError:
                 pass
@@ -692,7 +1006,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if html != initial_html or final_url != initial_url:
         pre_rules = engine.match_rules(final_url, html, phase="pre")
 
-    raw_html = html
+    raw_html_original = html
     metadata = extract_metadata(html, final_url)
     if pre_rules:
         html = engine.apply_rules(html, pre_rules)
@@ -711,7 +1025,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             published_at=None,
         )
 
-    raw_dom = lxml_html.fromstring(raw_html)
+    html, pre_youtube_ids = replace_youtube_iframes_with_placeholders(
+        html, metadata.get("canonical") or final_url
+    )
+    raw_dom = lxml_html.fromstring(html)
+    raw_dom_original = lxml_html.fromstring(raw_html_original)
     pre_dom = lxml_html.fromstring(html)
 
     document = Document(html)
@@ -770,7 +1088,13 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     article_html = normalize_image_sources(
         article_html, metadata.get("canonical") or final_url
     )
+    article_html = normalize_link_sources(
+        article_html, metadata.get("canonical") or final_url
+    )
     article_html = normalize_image_captions(article_html)
+    article_html = insert_youtube_placeholders(
+        article_html, raw_dom_original, metadata.get("canonical") or final_url
+    )
     title = (
         metadata.get("title")
         or document.short_title()
@@ -782,8 +1106,9 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if image_url:
         resolved_image = urljoin(source_url, image_url)
         article_html = prepend_hero_image(article_html, resolved_image, title)
-    embeds = extract_youtube_embeds(article_html, metadata.get("canonical") or final_url)
     markdown = html_to_markdown(article_html)
+    markdown, embedded_ids = replace_youtube_placeholders(markdown)
+    embedded_ids = embedded_ids.union(pre_youtube_ids)
     if not markdown:
         domain = urlparse(final_url).netloc
         if is_paywalled(html, domain) or is_paywalled(article_html, domain):
@@ -812,15 +1137,40 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     tags = extract_tags(markdown, domain, title)
     source_url = metadata.get("canonical") or final_url
 
+    embeds = extract_youtube_embed_urls_from_dom(
+        raw_dom_original, metadata.get("canonical") or final_url
+    )
+    if not embeds and not embedded_ids:
+        script_ids = extract_youtube_video_ids_from_html(
+            raw_html_original, metadata.get("canonical") or final_url
+        )
+        if script_ids:
+            embeds = [f"https://www.youtube.com/watch?v={script_ids[0]}"]
     if embeds:
         existing = markdown
         lines = []
         for embed_url in embeds:
+            video_id = extract_youtube_video_id(embed_url)
+            if video_id and video_id in embedded_ids:
+                continue
             if embed_url in existing:
                 continue
             lines.append(f"[YouTube]({embed_url})")
         if lines:
-            markdown = f"{markdown}\n\n" + "\n".join(lines)
+            cookie_marker = "content isn't visible due to your cookie preferences"
+            if cookie_marker in markdown:
+                split_lines = markdown.splitlines()
+                for idx, line in enumerate(split_lines):
+                    if cookie_marker in line.lower():
+                        insertion_index = idx + 1
+                        for offset, link in enumerate(lines):
+                            split_lines.insert(insertion_index + offset, link)
+                        markdown = "\n".join(split_lines)
+                        break
+                else:
+                    markdown = f"{markdown}\n\n" + "\n".join(lines)
+            else:
+                markdown = f"{markdown}\n\n" + "\n".join(lines)
 
     markdown = dedupe_markdown_images(markdown)
     markdown = wrap_gallery_blocks(markdown)
