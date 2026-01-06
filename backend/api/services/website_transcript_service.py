@@ -2,14 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
+from datetime import datetime, timezone
 import re
 import uuid
 from typing import Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
-from api.executors.skill_executor import SkillExecutor
+from api.services.file_ingestion_service import FileIngestionService
 from api.services.websites_service import WebsitesService
 
 
@@ -26,12 +27,34 @@ class TranscriptAppendResult:
     changed: bool
 
 
+@dataclass(frozen=True)
+class TranscriptEnqueueResult:
+    """Result for enqueuing transcript jobs."""
+
+    status: str
+    content: Optional[str]
+    file_id: Optional[uuid.UUID]
+
+
 def extract_youtube_id(url: str) -> Optional[str]:
     """Extract a YouTube video ID from a URL."""
     if not url:
         return None
     match = _YOUTUBE_ID_PATTERN.search(url)
     return match.group(1) if match else None
+
+
+def normalize_youtube_url(url: str) -> str:
+    """Normalize a YouTube URL to a canonical watch link."""
+    if not url:
+        raise ValueError("Invalid YouTube URL")
+    cleaned = url.strip()
+    if not cleaned.startswith(("http://", "https://")):
+        cleaned = f"https://{cleaned}"
+    video_id = extract_youtube_id(cleaned)
+    if not video_id:
+        raise ValueError("Invalid YouTube URL")
+    return f"https://www.youtube.com/watch?v={video_id}"
 
 
 def split_frontmatter(markdown: str) -> tuple[str, str]:
@@ -114,48 +137,84 @@ class WebsiteTranscriptService:
     """Transcribe YouTube videos and append transcripts to websites."""
 
     @staticmethod
-    async def append_youtube_transcript(
+    def enqueue_youtube_transcript(
         db: Session,
-        executor: SkillExecutor,
         user_id: str,
         website_id: uuid.UUID,
         youtube_url: str,
-    ) -> str:
-        """Append a YouTube transcript to a website's markdown content."""
+    ) -> TranscriptEnqueueResult:
+        """Queue a YouTube transcript job and return its status."""
         website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
         if not website:
             raise ValueError("Website not found")
 
+        normalized_url = normalize_youtube_url(youtube_url)
         content = website.content or ""
-        video_id = extract_youtube_id(youtube_url)
+        video_id = extract_youtube_id(normalized_url)
         if not video_id:
             raise ValueError("Invalid YouTube URL")
 
         marker = f"<!-- YOUTUBE_TRANSCRIPT:{video_id} -->"
         if marker in content:
-            return content
+            return TranscriptEnqueueResult(status="ready", content=content, file_id=None)
 
-        result = await executor.execute(
-            "youtube-transcribe",
-            "transcribe_youtube.py",
-            [youtube_url, "--user-id", user_id],
+        record, _job = FileIngestionService.create_ingestion(
+            db,
+            user_id,
+            filename_original="YouTube transcript",
+            mime_original="video/youtube",
+            size_bytes=0,
+            sha256=None,
+            source_url=normalized_url,
+            source_metadata={
+                "provider": "youtube",
+                "video_id": video_id,
+                "youtube_url": normalized_url,
+                "website_id": str(website_id),
+                "website_transcript": True,
+            },
         )
-        if not result.get("success"):
-            raise RuntimeError(result.get("error", "Failed to transcribe YouTube"))
 
-        data = result.get("data") or {}
-        transcript_path = data.get("transcript_local_path") or data.get("transcript_file")
-        if not transcript_path:
-            raise RuntimeError("Transcript path missing from transcriber output")
+        WebsiteTranscriptService._update_transcript_metadata(
+            db,
+            website,
+            video_id,
+            status="queued",
+            file_id=str(record.id),
+        )
 
-        transcript_text = Path(transcript_path).read_text(encoding="utf-8")
+        return TranscriptEnqueueResult(
+            status="queued",
+            content=None,
+            file_id=record.id,
+        )
+
+    @staticmethod
+    def append_transcript_from_text(
+        db: Session,
+        *,
+        user_id: str,
+        website_id: uuid.UUID,
+        youtube_url: str,
+        transcript_text: str,
+    ) -> str:
+        """Append transcript text to a website and return updated content."""
+        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        if not website:
+            raise ValueError("Website not found")
+
+        normalized_url = normalize_youtube_url(youtube_url)
+        video_id = extract_youtube_id(normalized_url)
+        if not video_id:
+            raise ValueError("Invalid YouTube URL")
+
         append_result = append_transcript_to_markdown(
-            content,
-            youtube_url=youtube_url,
+            website.content or "",
+            youtube_url=normalized_url,
             transcript_text=transcript_text,
         )
         if not append_result.changed:
-            return content
+            return website.content or ""
 
         WebsitesService.update_website(
             db,
@@ -163,4 +222,68 @@ class WebsiteTranscriptService:
             website_id,
             content=append_result.content,
         )
+        WebsiteTranscriptService._update_transcript_metadata(
+            db,
+            website,
+            video_id,
+            status="ready",
+        )
         return append_result.content
+
+    @staticmethod
+    def update_transcript_status(
+        db: Session,
+        *,
+        user_id: str,
+        website_id: uuid.UUID,
+        youtube_url: str,
+        status: str,
+        file_id: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> None:
+        """Update transcript job metadata on a website."""
+        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        if not website:
+            return
+        try:
+            normalized_url = normalize_youtube_url(youtube_url)
+        except ValueError:
+            return
+        video_id = extract_youtube_id(normalized_url)
+        if not video_id:
+            return
+        WebsiteTranscriptService._update_transcript_metadata(
+            db,
+            website,
+            video_id,
+            status=status,
+            file_id=file_id,
+            error=error,
+        )
+
+    @staticmethod
+    def _update_transcript_metadata(
+        db: Session,
+        website,
+        video_id: str,
+        *,
+        status: str,
+        file_id: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> None:
+        metadata = website.metadata_ or {}
+        transcripts = metadata.get("youtube_transcripts")
+        if not isinstance(transcripts, dict):
+            transcripts = {}
+        entry = dict(transcripts.get(video_id, {}))
+        entry["status"] = status
+        entry["updated_at"] = datetime.now(timezone.utc).isoformat()
+        if file_id:
+            entry["file_id"] = file_id
+        if error:
+            entry["error"] = error
+        transcripts[video_id] = entry
+        metadata["youtube_transcripts"] = transcripts
+        website.metadata_ = metadata
+        flag_modified(website, "metadata_")
+        db.commit()

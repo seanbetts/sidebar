@@ -11,6 +11,7 @@ import re
 import time
 import subprocess
 import statistics
+import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
@@ -37,6 +38,7 @@ from api.db.session import SessionLocal, set_session_user_id
 from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
 from api.config import settings
 from api.services.storage.service import get_storage_backend
+from api.services.website_transcript_service import WebsiteTranscriptService
 
 
 LEASE_SECONDS = 180
@@ -586,7 +588,22 @@ def _extract_transcript_metadata(text: str) -> tuple[str, dict]:
     lines = trimmed.split("\n")
     separator_index = next((idx for idx, line in enumerate(lines) if line.strip() == "---"), -1)
     if separator_index <= 0:
-        return trimmed, {}
+    return trimmed, {}
+
+
+def _get_transcript_target(record: IngestedFile) -> tuple[uuid.UUID, str] | None:
+    metadata = record.source_metadata or {}
+    website_id = metadata.get("website_id")
+    if not website_id:
+        return None
+    try:
+        website_uuid = uuid.UUID(str(website_id))
+    except (TypeError, ValueError):
+        return None
+    youtube_url = metadata.get("youtube_url") or record.source_url
+    if not youtube_url:
+        return None
+    return website_uuid, str(youtube_url)
     metadata_lines = lines[:separator_index]
     if not any(line.lstrip().startswith("#") for line in metadata_lines):
         return trimmed, {}
@@ -1581,53 +1598,95 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
     transcript = ""
     metadata: dict = {}
     derivatives: list[DerivativePayload] | None = None
-    for stage in PIPELINE_STAGES:
-        db.refresh(job)
-        if job.status in {"paused", "canceled"}:
-            raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
-        _set_stage(db, job, stage)
-        logger.info("Stage %s file_id=%s", stage, record.id)
-        _refresh_lease(db, job)
+    transcript_target = _get_transcript_target(record)
+    if transcript_target:
+        WebsiteTranscriptService.update_transcript_status(
+            db,
+            user_id=str(record.user_id),
+            website_id=transcript_target[0],
+            youtube_url=transcript_target[1],
+            status="processing",
+        )
+    try:
+        for stage in PIPELINE_STAGES:
+            db.refresh(job)
+            if job.status in {"paused", "canceled"}:
+                raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
+            _set_stage(db, job, stage)
+            logger.info("Stage %s file_id=%s", stage, record.id)
+            _refresh_lease(db, job)
 
-        if stage == "validating":
-            if not record.source_url:
-                raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
-        elif stage == "extracting":
-            transcript, metadata = _transcribe_youtube(record)
-        elif stage == "ai_md":
-            derivatives = _build_youtube_derivatives(record, transcript, metadata)
-        elif stage == "finalizing":
-            if derivatives is None:
-                raise IngestionError("DERIVATIVE_MISSING", "AI derivative missing", retryable=False)
-            existing_meta = record.source_metadata or {}
-            metadata = {**existing_meta, **metadata}
-            metadata.setdefault("provider", "youtube")
-            metadata.setdefault("youtube_url", record.source_url)
-            title = metadata.get("title")
-            if title:
-                record.filename_original = title
-            record.source_metadata = metadata
-            flag_modified(record, "source_metadata")
-            db.commit()
+            if stage == "validating":
+                if not record.source_url:
+                    raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
+            elif stage == "extracting":
+                transcript, metadata = _transcribe_youtube(record)
+            elif stage == "ai_md":
+                derivatives = _build_youtube_derivatives(record, transcript, metadata)
+            elif stage == "finalizing":
+                if derivatives is None:
+                    raise IngestionError("DERIVATIVE_MISSING", "AI derivative missing", retryable=False)
+                existing_meta = record.source_metadata or {}
+                metadata = {**existing_meta, **metadata}
+                metadata.setdefault("provider", "youtube")
+                metadata.setdefault("youtube_url", record.source_url)
+                title = metadata.get("title")
+                if title:
+                    record.filename_original = title
+                record.source_metadata = metadata
+                flag_modified(record, "source_metadata")
+                db.commit()
 
-            storage = get_storage_backend()
-            _write_derivatives_atomically(storage, record, derivatives)
+                storage = get_storage_backend()
+                _write_derivatives_atomically(storage, record, derivatives)
 
-            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
-            now = _now()
-            for item in derivatives:
-                db.add(
-                    FileDerivative(
-                        file_id=record.id,
-                        kind=item.kind,
-                        storage_key=item.storage_key,
-                        mime=item.mime,
-                        size_bytes=item.size_bytes,
-                        sha256=item.sha256,
-                        created_at=now,
+                db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+                now = _now()
+                for item in derivatives:
+                    db.add(
+                        FileDerivative(
+                            file_id=record.id,
+                            kind=item.kind,
+                            storage_key=item.storage_key,
+                            mime=item.mime,
+                            size_bytes=item.size_bytes,
+                            sha256=item.sha256,
+                            created_at=now,
+                        )
                     )
-                )
-            db.commit()
+                db.commit()
+
+                if transcript_target:
+                    WebsiteTranscriptService.append_transcript_from_text(
+                        db,
+                        user_id=str(record.user_id),
+                        website_id=transcript_target[0],
+                        youtube_url=transcript_target[1],
+                        transcript_text=transcript,
+                    )
+        return
+    except IngestionError as exc:
+        if transcript_target:
+            WebsiteTranscriptService.update_transcript_status(
+                db,
+                user_id=str(record.user_id),
+                website_id=transcript_target[0],
+                youtube_url=transcript_target[1],
+                status="retrying" if exc.retryable else "failed",
+                error=str(exc),
+            )
+        raise
+    except Exception as exc:
+        if transcript_target:
+            WebsiteTranscriptService.update_transcript_status(
+                db,
+                user_id=str(record.user_id),
+                website_id=transcript_target[0],
+                youtube_url=transcript_target[1],
+                status="failed",
+                error=str(exc),
+            )
+        raise
 
 
 def worker_loop() -> None:

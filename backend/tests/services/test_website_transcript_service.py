@@ -1,10 +1,28 @@
 """Tests for website transcript helpers."""
-from api.services.website_transcript_service import append_transcript_to_markdown, extract_youtube_id
+from api.services.website_transcript_service import (
+    append_transcript_to_markdown,
+    extract_youtube_id,
+    normalize_youtube_url,
+)
 
 
 def test_extract_youtube_id_handles_watch_url():
     video_id = extract_youtube_id("https://www.youtube.com/watch?v=FUq9qRwrDrI")
     assert video_id == "FUq9qRwrDrI"
+
+
+def test_normalize_youtube_url_handles_short_links():
+    url = normalize_youtube_url("https://youtu.be/FUq9qRwrDrI")
+    assert url == "https://www.youtube.com/watch?v=FUq9qRwrDrI"
+
+
+def test_normalize_youtube_url_rejects_invalid():
+    try:
+        normalize_youtube_url("https://example.com/watch?v=bad")
+    except ValueError as exc:
+        assert "Invalid YouTube URL" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for invalid YouTube URL")
 
 
 def test_append_transcript_inserts_marker_after_embed():

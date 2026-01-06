@@ -10,7 +10,7 @@
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
   import { websitesStore } from '$lib/stores/websites';
-  import { websitesAPI } from '$lib/services/api';
+  import { ingestionAPI, websitesAPI } from '$lib/services/api';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
   import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
@@ -20,6 +20,7 @@
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
   let isTranscribingYoutube = false;
+  let transcriptPollingId: ReturnType<typeof setInterval> | null = null;
   let isRenameDialogOpen = false;
   let renameValue = '';
   let deleteDialog: { openDialog: (name: string) => void } | null = null;
@@ -105,6 +106,7 @@
   onDestroy(() => {
     if (editor) editor.destroy();
     if (copyTimeout) clearTimeout(copyTimeout);
+    stopTranscriptPolling();
     editorElement?.removeEventListener('click', handleTranscriptClick);
   });
 
@@ -203,6 +205,53 @@
     return updated;
   }
 
+  function stopTranscriptPolling() {
+    if (transcriptPollingId) {
+      clearInterval(transcriptPollingId);
+      transcriptPollingId = null;
+    }
+  }
+
+  async function pollTranscriptJob(
+    fileId: string,
+    websiteId: string,
+    link: HTMLAnchorElement
+  ): Promise<void> {
+    stopTranscriptPolling();
+    transcriptPollingId = setInterval(async () => {
+      try {
+        const meta = await ingestionAPI.get(fileId);
+        const status = meta?.job?.status;
+        if (!status) return;
+        if (status === 'ready') {
+          stopTranscriptPolling();
+          await websitesStore.loadById(websiteId);
+          isTranscribingYoutube = false;
+          return;
+        }
+        if (status === 'failed' || status === 'canceled') {
+          stopTranscriptPolling();
+          isTranscribingYoutube = false;
+          link.removeAttribute('aria-busy');
+          link.textContent = 'Get Transcript';
+          logError('Failed to transcribe YouTube video', null, {
+            scope: 'websitesViewer.transcribe',
+            status
+          });
+        }
+      } catch (error) {
+        stopTranscriptPolling();
+        isTranscribingYoutube = false;
+        link.removeAttribute('aria-busy');
+        link.textContent = 'Get Transcript';
+        logError('Failed to check transcript status', error, {
+          scope: 'websitesViewer.transcribe',
+          fileId
+        });
+      }
+    }, 5000);
+  }
+
   async function handleTranscriptClick(event: MouseEvent) {
     const target = event.target as HTMLElement | null;
     const link = target?.closest('a') as HTMLAnchorElement | null;
@@ -226,15 +275,28 @@
     isTranscribingYoutube = true;
     try {
       const data = await websitesAPI.transcribeYouTube(active.id, url);
-      if (data && typeof data === 'object' && 'content' in data) {
-        websitesStore.updateActiveLocal({ content: (data as { content: string }).content });
+      if (data && typeof data === 'object') {
+        if ('content' in data) {
+          websitesStore.updateActiveLocal({ content: (data as { content: string }).content });
+          isTranscribingYoutube = false;
+          return;
+        }
+        const payload = data as { data?: { file_id?: string; status?: string } };
+        const fileId = payload?.data?.file_id;
+        if (fileId) {
+          await pollTranscriptJob(fileId, active.id, link);
+          return;
+        }
       }
+      throw new Error('Transcript request failed');
     } catch (error) {
       logError('Failed to transcribe YouTube video', error, { scope: 'websitesViewer.transcribe', url });
       link.removeAttribute('aria-busy');
-      link.textContent = 'Get transcript';
+      link.textContent = 'Get Transcript';
     } finally {
-      isTranscribingYoutube = false;
+      if (!transcriptPollingId) {
+        isTranscribingYoutube = false;
+      }
     }
   }
 

@@ -183,45 +183,47 @@ async def save_website(
 async def append_youtube_transcript(
     website_id: uuid.UUID,
     payload: dict,
-    request: Request,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """Append a YouTube transcript to a website's markdown content."""
+    """Queue a YouTube transcript job for a website."""
     youtube_url = str(payload.get("url", "")).strip()
     if not youtube_url:
         raise BadRequestError("url required")
 
-    executor = request.app.state.executor
     try:
-        content = await WebsiteTranscriptService.append_youtube_transcript(
+        result = WebsiteTranscriptService.enqueue_youtube_transcript(
             db,
-            executor,
             user_id,
             website_id,
             youtube_url,
         )
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
-    except RuntimeError as exc:
-        logger.error(
-            "websites transcript failed url=%s error=%s",
-            youtube_url,
-            str(exc),
-        )
-        raise BadRequestError("Unable to transcribe YouTube video") from exc
 
-    website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
-    if not website:
-        raise NotFoundError("Website", str(website_id))
+    if result.status == "ready":
+        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        if not website:
+            raise NotFoundError("Website", str(website_id))
 
-    return {
-        **website_summary(website),
-        "content": content,
-        "source": website.source,
-        "url_full": website.url_full,
-    }
+        return {
+            **website_summary(website),
+            "content": result.content,
+            "source": website.source,
+            "url_full": website.url_full,
+        }
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "success": True,
+            "data": {
+                "status": result.status,
+                "file_id": str(result.file_id) if result.file_id else None,
+            },
+        },
+    )
 
 
 @router.get("/{website_id}")
