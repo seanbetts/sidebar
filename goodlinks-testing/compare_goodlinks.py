@@ -69,6 +69,128 @@ def similarity(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, a, b).ratio()
 
 
+STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "but",
+    "by",
+    "for",
+    "from",
+    "has",
+    "have",
+    "he",
+    "in",
+    "is",
+    "it",
+    "its",
+    "of",
+    "on",
+    "or",
+    "she",
+    "that",
+    "the",
+    "their",
+    "they",
+    "this",
+    "to",
+    "was",
+    "were",
+    "will",
+    "with",
+    "you",
+    "your",
+}
+
+
+def normalize_text(text: str) -> str:
+    text = strip_frontmatter(text)
+    text = re.sub(r"!\[[^\]]*]\([^)]+\)", "", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"https?://\S+", "", text)
+    text = re.sub(r"[^\w\s]", " ", text)
+    return re.sub(r"\s+", " ", text).strip().lower()
+
+
+def tokenize(text: str) -> list[str]:
+    normalized = normalize_text(text)
+    tokens = [token for token in normalized.split() if token and token not in STOPWORDS]
+    return tokens
+
+
+def jaccard_similarity(a: str, b: str) -> float:
+    tokens_a = set(tokenize(a))
+    tokens_b = set(tokenize(b))
+    if not tokens_a and not tokens_b:
+        return 1.0
+    union = tokens_a | tokens_b
+    if not union:
+        return 0.0
+    return len(tokens_a & tokens_b) / len(union)
+
+
+def rouge_l_f1(reference: str, candidate: str) -> float:
+    ref_tokens = tokenize(reference)
+    cand_tokens = tokenize(candidate)
+    if not ref_tokens and not cand_tokens:
+        return 1.0
+    if not ref_tokens or not cand_tokens:
+        return 0.0
+
+    m, n = len(ref_tokens), len(cand_tokens)
+    dp = [0] * (n + 1)
+    for i in range(1, m + 1):
+        prev = 0
+        for j in range(1, n + 1):
+            temp = dp[j]
+            if ref_tokens[i - 1] == cand_tokens[j - 1]:
+                dp[j] = prev + 1
+            else:
+                dp[j] = max(dp[j], dp[j - 1])
+            prev = temp
+    lcs = dp[n]
+    precision = lcs / n if n else 0.0
+    recall = lcs / m if m else 0.0
+    if precision + recall == 0:
+        return 0.0
+    return 2 * precision * recall / (precision + recall)
+
+
+def classify_bucket(row: dict[str, str]) -> str:
+    def to_int(value: str) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    good_words = to_int(row.get("goodlinks_words", "0"))
+    local_words = to_int(row.get("local_words", "0"))
+    local_links = to_int(row.get("local_links", "0"))
+    local_images = to_int(row.get("local_images", "0"))
+    good_videos = to_int(row.get("goodlinks_videos", "0"))
+    status = row.get("status", "")
+    error = (row.get("error") or "").lower()
+    local_raw = (row.get("local_raw") or "").lower()
+
+    if "paywalled: true" in local_raw or status == "paywalled" or "paywall" in error:
+        return "paywall"
+
+    if local_words < 150 and good_words > 800 and local_links <= 1 and local_images <= 1:
+        return "client_rendered"
+
+    if local_words < 80 and local_links >= 5 and local_images <= 1 and good_videos >= 1:
+        return "social_video"
+
+    if good_words > 0 and local_words < 50 and "empty" in error:
+        return "client_rendered"
+
+    return "normal"
+
+
 def first_diff_snippet(a: str, b: str, *, max_lines: int = 6) -> str:
     a_lines = a.splitlines()
     b_lines = b.splitlines()
@@ -132,30 +254,32 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     history_path = output_dir / "history.csv"
     ok_rows = []
     error_count = 0
+    summary_fields = [
+        "id",
+        "url",
+        "status",
+        "error",
+        "goodlinks_chars",
+        "local_chars",
+        "goodlinks_words",
+        "local_words",
+        "goodlinks_headings",
+        "local_headings",
+        "goodlinks_images",
+        "local_images",
+        "goodlinks_links",
+        "local_links",
+        "goodlinks_videos",
+        "local_videos",
+        "similarity",
+        "jaccard_tokens",
+        "rouge_l_f1",
+        "bucket",
+        "diff_path",
+    ]
     with summary_path.open("w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(
-            [
-                "id",
-                "url",
-                "status",
-                "error",
-                "goodlinks_chars",
-                "local_chars",
-                "goodlinks_words",
-                "local_words",
-                "goodlinks_headings",
-                "local_headings",
-                "goodlinks_images",
-                "local_images",
-                "goodlinks_links",
-                "local_links",
-                "goodlinks_videos",
-                "local_videos",
-                "similarity",
-                "diff_path",
-            ]
-        )
+        writer = csv.DictWriter(f, fieldnames=summary_fields)
+        writer.writeheader()
 
         for row in rows:
             entry_id = row.get("id") or ""
@@ -170,7 +294,14 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             except Exception as exc:
                 status = "error"
                 error = f"read_error: {exc}"
-                writer.writerow([entry_id, url, status, error] + [""] * 14)
+                writer.writerow(
+                    {
+                        "id": entry_id,
+                        "url": url,
+                        "status": status,
+                        "error": error,
+                    }
+                )
                 error_count += 1
                 continue
 
@@ -180,11 +311,19 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             except Exception as exc:
                 status = "error"
                 error = f"parse_error: {exc}"
-                writer.writerow([entry_id, url, status, error] + [""] * 14)
+                writer.writerow(
+                    {
+                        "id": entry_id,
+                        "url": url,
+                        "status": status,
+                        "error": error,
+                    }
+                )
                 error_count += 1
                 continue
 
             goodlinks_body = goodlinks_md.strip()
+            local_raw = parsed.content
             local_body = local_md.strip()
 
             diff_text = first_diff_snippet(goodlinks_body, local_body)
@@ -192,39 +331,49 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                 diff_path = str(diffs_dir / f"{entry_id}.diff")
                 (diffs_dir / f"{entry_id}.diff").write_text(diff_text)
 
-            writer.writerow(
-                [
-                    entry_id,
-                    url,
-                    status,
-                    error,
-                    len(goodlinks_body),
-                    len(local_body),
-                    word_count(goodlinks_body),
-                    word_count(local_body),
-                    heading_count(goodlinks_body),
-                    heading_count(local_body),
-                    image_count(goodlinks_body),
-                    image_count(local_body),
-                    link_count(goodlinks_body),
-                    link_count(local_body),
-                    video_count(goodlinks_body),
-                    video_count(local_body),
-                    f"{similarity(goodlinks_body, local_body):.3f}",
-                    diff_path,
-                ]
+            jaccard = jaccard_similarity(goodlinks_body, local_body)
+            rouge = rouge_l_f1(goodlinks_body, local_body)
+            similarity_score = similarity(goodlinks_body, local_body)
+            row_payload = {
+                "id": entry_id,
+                "url": url,
+                "status": status,
+                "error": error,
+                "goodlinks_chars": len(goodlinks_body),
+                "local_chars": len(local_body),
+                "goodlinks_words": word_count(goodlinks_body),
+                "local_words": word_count(local_body),
+                "goodlinks_headings": heading_count(goodlinks_body),
+                "local_headings": heading_count(local_body),
+                "goodlinks_images": image_count(goodlinks_body),
+                "local_images": image_count(local_body),
+                "goodlinks_links": link_count(goodlinks_body),
+                "local_links": link_count(local_body),
+                "goodlinks_videos": video_count(goodlinks_body),
+                "local_videos": video_count(local_body),
+                "similarity": f"{similarity_score:.3f}",
+                "jaccard_tokens": f"{jaccard:.3f}",
+                "rouge_l_f1": f"{rouge:.3f}",
+                "bucket": "",
+                "diff_path": diff_path,
+            }
+            row_payload["bucket"] = classify_bucket(
+                {**{key: str(value) for key, value in row_payload.items()}, "local_raw": local_raw}
             )
+            writer.writerow(row_payload)
             ok_rows.append(
                 {
-                    "goodlinks_words": word_count(goodlinks_body),
-                    "local_words": word_count(local_body),
-                    "goodlinks_links": link_count(goodlinks_body),
-                    "local_links": link_count(local_body),
-                    "goodlinks_images": image_count(goodlinks_body),
-                    "local_images": image_count(local_body),
-                    "goodlinks_videos": video_count(goodlinks_body),
-                    "local_videos": video_count(local_body),
-                    "similarity": similarity(goodlinks_body, local_body),
+                    "goodlinks_words": row_payload["goodlinks_words"],
+                    "local_words": row_payload["local_words"],
+                    "goodlinks_links": row_payload["goodlinks_links"],
+                    "local_links": row_payload["local_links"],
+                    "goodlinks_images": row_payload["goodlinks_images"],
+                    "local_images": row_payload["local_images"],
+                    "goodlinks_videos": row_payload["goodlinks_videos"],
+                    "local_videos": row_payload["local_videos"],
+                    "similarity": similarity_score,
+                    "jaccard": jaccard,
+                    "rouge_l": rouge,
                 }
             )
 
@@ -242,10 +391,16 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             return missing, extra
 
         similarities = [item["similarity"] for item in ok_rows]
+        jaccards = [item["jaccard"] for item in ok_rows]
+        rouges = [item["rouge_l"] for item in ok_rows]
         avg_similarity = sum(similarities) / len(similarities)
         std_similarity = (
             statistics.pstdev(similarities) if len(similarities) > 1 else 0.0
         )
+        avg_jaccard = sum(jaccards) / len(jaccards)
+        std_jaccard = statistics.pstdev(jaccards) if len(jaccards) > 1 else 0.0
+        avg_rouge = sum(rouges) / len(rouges)
+        std_rouge = statistics.pstdev(rouges) if len(rouges) > 1 else 0.0
         missing_words, extra_words = compute_diff(ok_rows, "words")
         missing_links, extra_links = compute_diff(ok_rows, "links")
         missing_images, extra_images = compute_diff(ok_rows, "images")
@@ -302,6 +457,10 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             "error_count",
             "avg_similarity",
             "std_similarity",
+            "avg_jaccard",
+            "std_jaccard",
+            "avg_rouge_l",
+            "std_rouge_l",
             "coverage_words",
             "std_coverage_words",
             "coverage_links",
@@ -343,6 +502,10 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                     error_count,
                     f"{avg_similarity:.4f}",
                     f"{std_similarity:.4f}",
+                    f"{avg_jaccard:.4f}",
+                    f"{std_jaccard:.4f}",
+                    f"{avg_rouge:.4f}",
+                    f"{std_rouge:.4f}",
                     f"{coverage_words:.4f}",
                     f"{std_coverage_words:.4f}",
                     f"{coverage_links:.4f}",

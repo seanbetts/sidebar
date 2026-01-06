@@ -48,12 +48,22 @@ A high-fidelity web content parser that:
 - ✅ Phase 5 (Migration Script) implemented and run: 144 migrated / 46 failed (left unchanged).
 - ✅ Parallel running (`WEB_SAVE_MODE=compare`) implemented for side-by-side logging.
 - ✅ GoodLinks test corpus + comparison harness added for regression tracking.
+- ✅ Playwright allowlist added (static fetch default, JS rendering only on allowlisted domains).
 - ⏳ Gradual rollout not started: local default + Jina fallback still pending.
 - ⏳ Full migration to local-only (remove Jina dependencies) pending.
 - ⏳ Manual testing checklist pending (paywalled, JS-heavy, long-form, media-heavy).
 - ⏳ Image/link parity tuning still in progress (extra images/links vs. GoodLinks).
 
 ---
+
+## Locked Decisions (2026-01-05)
+
+- **Rule mapping strategy**: Host + signature rules, conservative DOM triggers only.
+- **Pipeline order**: pre-rules → Readability → post-rules → include reinsertion → HTML normalisation → hero selection → Markdown conversion → YAML frontmatter.
+- **Markdown output format**: frontmatter + Markdown body with normalized links/images.
+- **Image handling/hero logic**: normalize URLs, filter decorative images, insert hero before Markdown when missing.
+- **Default fetch mode**: static HTML; Playwright only for allowlisted domains.
+- **Playwright allowlist**: `backend/skills/web-save/rules/playwright_allowlist.yaml`.
 
 ## Current State: Web-Save Skill Analysis
 

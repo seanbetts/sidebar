@@ -1,0 +1,5 @@
+# Domains that should use Playwright rendering when auto-detected.
+- axios.com
+- archive.is
+- latent.space
+- portmaster.games
