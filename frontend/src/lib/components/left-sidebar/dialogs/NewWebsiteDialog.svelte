@@ -22,12 +22,19 @@
     try {
       const parsed = new URL(candidate);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
-      const host = parsed.hostname;
+      const host = parsed.hostname.toLowerCase();
       if (!host) return false;
-      if (host === 'localhost') return true;
-      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
-      if (host.includes(':')) return true;
-      return host.includes('.');
+      if (host === 'localhost') return false;
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return false;
+      if (host.includes(':')) return false;
+      if (!host.includes('.')) return false;
+      const labels = host.split('.');
+      if (labels.some(label => !label || !/^[a-z0-9-]+$/.test(label) || label.startsWith('-') || label.endsWith('-'))) {
+        return false;
+      }
+      const tld = labels[labels.length - 1];
+      if (!/^[a-z]{2,24}$/.test(tld)) return false;
+      return true;
     } catch {
       return false;
     }
