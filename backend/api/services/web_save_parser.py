@@ -400,6 +400,113 @@ def cleanup_youtube_markdown(markdown: str, source_url: str) -> str:
     return markdown
 
 
+def cleanup_openai_markdown(markdown: str) -> str:
+    """Remove OpenAI credits/team blocks from markdown."""
+    if not markdown:
+        return markdown
+
+    link_text_cleanup = re.compile(r"\(opens in a new window\)", re.IGNORECASE)
+    labels = {
+        "research",
+        "product",
+        "contributors",
+        "leadership",
+        "special thanks",
+        "safety, integrity, product policy, i2, user ops",
+        "legal",
+        "communications",
+        "marketing, design, & creative",
+        "global affairs",
+        "strategic finance",
+        "api",
+    }
+    output: list[str] = []
+    skipping = False
+    footer_mode = False
+    kept_footer_meta = 0
+
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        lowered = stripped.lower()
+
+        if footer_mode:
+            if kept_footer_meta < 2 and (
+                lowered.startswith("built by openai") or lowered.startswith("published ")
+            ):
+                output.append(stripped)
+                kept_footer_meta += 1
+            continue
+
+        if stripped in {"Loading…", "Loading...", "Share"}:
+            continue
+
+        if stripped.startswith("[Research]") and "openai.com" in stripped:
+            continue
+        if stripped.startswith("[") and "](" in stripped:
+            matches = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", stripped)
+            if len(matches) >= 2:
+                labels = {label.strip().lower() for label, _ in matches}
+                hrefs = [href for _, href in matches]
+                if labels.issubset({"research", "product", "release"}) and all(
+                    "openai.com" in href for href in hrefs
+                ):
+                    continue
+
+        if stripped.startswith("## "):
+            if lowered in {"## author", "## keep reading"}:
+                footer_mode = True
+                continue
+            if lowered == "## sora 2":
+                footer_mode = True
+                continue
+
+        if not skipping:
+            for label in labels:
+                if lowered == label or lowered.startswith(label):
+                    if len(stripped) > len(label) + 2 or "," in stripped or lowered == label:
+                        skipping = True
+                        break
+            if skipping:
+                continue
+
+        if skipping:
+            if lowered.startswith("built by openai") or lowered.startswith("published "):
+                skipping = False
+                output.append(line)
+            continue
+
+        if link_text_cleanup.search(stripped):
+            output.append(link_text_cleanup.sub("", stripped).strip())
+            continue
+
+        output.append(line)
+
+    return "\n".join(output).strip()
+
+
+def extract_openai_body_html(raw_html: str) -> Optional[str]:
+    """Extract the main OpenAI article content from rendered HTML."""
+    if not raw_html:
+        return None
+    try:
+        tree = lxml_html.fromstring(raw_html)
+    except ValueError:
+        tree = lxml_html.fragment_fromstring(raw_html, create_parent="div")
+    target = None
+    for selector in ("article", "main"):
+        nodes = tree.cssselect(selector)
+        if nodes:
+            target = nodes[0]
+            break
+    if target is None:
+        return None
+    for node in target.cssselect("nav, header, footer"):
+        parent = node.getparent()
+        if parent is not None:
+            parent.remove(node)
+    return lxml_html.tostring(target, encoding="unicode", method="html")
+
+
 def extract_body_html(html: str) -> str:
     """Extract inner body HTML from a full document."""
     soup = BeautifulSoup(html, "html.parser")
@@ -1405,6 +1512,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         metadata.update({key: value for key, value in substack_meta.items() if value})
     else:
         article_html = document.summary(html_partial=True)
+        if urlparse(final_url).netloc.endswith("openai.com"):
+            openai_html = extract_openai_body_html(raw_html_original)
+            if openai_html:
+                article_html = openai_html
     logger.info(
         "web-save readability url=%s article_len=%s",
         final_url,
@@ -1500,6 +1611,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         markdown = cleanup_gizmodo_markdown(markdown)
     if domain.endswith("youtube.com"):
         markdown = cleanup_youtube_markdown(markdown, source_url)
+    if domain.endswith("openai.com"):
+        markdown = cleanup_openai_markdown(markdown)
     logger.info("web-save markdown url=%s len=%s", final_url, len(markdown))
     markdown, embedded_ids = replace_youtube_placeholders(markdown)
     embedded_ids = embedded_ids.union(pre_youtube_ids)

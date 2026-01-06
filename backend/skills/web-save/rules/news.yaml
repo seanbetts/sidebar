@@ -78,6 +78,9 @@
       ends_with: "openai.com"
   selector_overrides:
     article: "article"
+  rendering:
+    mode: force
+    wait_for: "main"
 
 - id: washingtonpost-cleanup
   phase: post
