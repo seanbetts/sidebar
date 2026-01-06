@@ -322,28 +322,14 @@ def replace_youtube_iframes_with_placeholders(
     tree = lxml_html.fromstring(html)
     embedded_ids: set[str] = set()
 
-    for iframe in tree.cssselect("iframe"):
-        src = iframe.get("src")
-        if not src:
-            continue
-        normalized = urljoin(base_url, src)
-        video_id = extract_youtube_embed_id(normalized)
-        if not video_id:
-            continue
-        for ancestor in iframe.iterancestors():
-            classes = " ".join(ancestor.get("class", [])).lower()
-            ident = ancestor.get("id", "").lower()
-            marker = f"{classes} {ident}"
-            if any(token in marker for token in ("ad", "advert", "sponsor", "cookie", "consent")):
-                video_id = None
-                break
-        if not video_id:
+    for video_id, node in _iter_youtube_elements(tree, base_url):
+        if video_id in embedded_ids:
             continue
         placeholder = lxml_html.Element("p")
         placeholder.text = f"YOUTUBE_EMBED:{video_id}"
-        parent = iframe.getparent()
+        parent = node.getparent()
         if parent is not None:
-            parent.replace(iframe, placeholder)
+            parent.replace(node, placeholder)
             embedded_ids.add(video_id)
 
     return lxml_html.tostring(tree, encoding="unicode"), embedded_ids
@@ -686,6 +672,46 @@ YOUTUBE_ID_PATTERN = re.compile(
 YOUTUBE_EMBED_PATTERN = re.compile(
     r"(?:youtube(?:-nocookie)?\.com/(?:embed/|v/))([A-Za-z0-9_-]+)"
 )
+YOUTUBE_RAW_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{11}$")
+YOUTUBE_EMBED_TAGS = {"iframe", "lite-youtube", "amp-youtube", "youtube-player", "yt-embed"}
+YOUTUBE_ID_ATTRS = {
+    "data-youtube-id",
+    "data-youtubeid",
+    "data-yt-id",
+    "data-ytid",
+    "data-video-id",
+    "data-videoid",
+    "data-video",
+    "data-videoid",
+    "video-id",
+    "videoid",
+}
+YOUTUBE_URL_ATTRS = (
+    "src",
+    "data-src",
+    "data-lazy-src",
+    "data-original",
+    "data-url",
+    "data-embed",
+    "data-embed-url",
+    "data-video-url",
+    "data-youtube-url",
+    "data-yt-url",
+    "href",
+)
+YOUTUBE_BLOCKED_TOKENS = ("ad", "advert", "sponsor", "cookie", "consent")
+JSONLD_ARTICLE_TYPES = {
+    "Article",
+    "NewsArticle",
+    "BlogPosting",
+    "Report",
+    "LiveBlogPosting",
+}
+JSONLD_MEDIA_PATTERN = re.compile(r"\[(?:Media|Video):\s*(https?://[^\]]+)\]", re.IGNORECASE)
+JSONLD_YOUTUBE_PATTERN = re.compile(
+    r"https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[A-Za-z0-9_-]+",
+    re.IGNORECASE,
+)
 
 
 def extract_youtube_video_id(url: str) -> str | None:
@@ -696,6 +722,187 @@ def extract_youtube_video_id(url: str) -> str | None:
 def extract_youtube_embed_id(url: str) -> str | None:
     match = YOUTUBE_EMBED_PATTERN.search(url)
     return match.group(1) if match else None
+
+
+def _extract_youtube_id_from_text(text: str) -> str | None:
+    if not text:
+        return None
+    scan_text = text.replace("\\/", "/")
+    match = YOUTUBE_ID_PATTERN.search(scan_text)
+    if match:
+        return match.group(1)
+    match = YOUTUBE_EMBED_PATTERN.search(scan_text)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_youtube_id_from_element(
+    elem: lxml_html.HtmlElement, base_url: str
+) -> str | None:
+    for attr in YOUTUBE_URL_ATTRS:
+        value = elem.get(attr)
+        if not value:
+            continue
+        normalized = urljoin(base_url, value)
+        video_id = _extract_youtube_id_from_text(normalized)
+        if video_id:
+            return video_id
+        video_id = _extract_youtube_id_from_text(value)
+        if video_id:
+            return video_id
+    for attr, value in elem.attrib.items():
+        if not isinstance(value, str):
+            continue
+        if "youtube" in value or "youtu.be" in value:
+            video_id = _extract_youtube_id_from_text(value)
+            if video_id:
+                return video_id
+    for attr in YOUTUBE_ID_ATTRS:
+        value = elem.get(attr)
+        if not value:
+            continue
+        candidate = value.strip()
+        if YOUTUBE_RAW_ID_PATTERN.fullmatch(candidate):
+            return candidate
+    return None
+
+
+def _is_blocked_youtube_embed(elem: lxml_html.HtmlElement) -> bool:
+    for ancestor in elem.iterancestors():
+        classes = " ".join(ancestor.get("class", [])).lower()
+        ident = ancestor.get("id", "").lower()
+        marker = f"{classes} {ident}"
+        if any(token in marker for token in YOUTUBE_BLOCKED_TOKENS):
+            return True
+    return False
+
+
+def _is_within_article(elem: lxml_html.HtmlElement, has_article: bool) -> bool:
+    if not has_article:
+        return True
+    for ancestor in elem.iterancestors():
+        tag = ancestor.tag.lower() if isinstance(ancestor.tag, str) else ""
+        if tag in {"article", "main"}:
+            return True
+        role = (ancestor.get("role") or "").lower()
+        if role == "main":
+            return True
+    return False
+
+
+def _is_likely_youtube_embed_element(elem: lxml_html.HtmlElement) -> bool:
+    tag = elem.tag.lower() if isinstance(elem.tag, str) else ""
+    if tag in YOUTUBE_EMBED_TAGS:
+        return True
+    if tag in {"a", "script", "style", "meta", "link"}:
+        return False
+    if any(elem.get(attr) for attr in YOUTUBE_ID_ATTRS):
+        return True
+    provider = (elem.get("data-provider") or elem.get("data-service") or "").lower()
+    if "youtube" in provider:
+        return True
+    classes = " ".join(elem.get("class", [])).lower()
+    if "youtube" in classes and ("player" in classes or "embed" in classes):
+        return True
+    return False
+
+
+def _merge_youtube_anchors(
+    primary: list[tuple[str, str]],
+    secondary: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    merged: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for group in (primary, secondary):
+        for video_id, anchor_text in group:
+            if video_id in seen:
+                continue
+            seen.add(video_id)
+            merged.append((video_id, anchor_text))
+    return merged
+
+
+def _iter_jsonld_objects(raw_payload: Any) -> list[dict]:
+    if isinstance(raw_payload, list):
+        items: list[dict] = []
+        for entry in raw_payload:
+            items.extend(_iter_jsonld_objects(entry))
+        return items
+    if isinstance(raw_payload, dict):
+        graph = raw_payload.get("@graph")
+        if isinstance(graph, list):
+            return _iter_jsonld_objects(graph)
+        return [raw_payload]
+    return []
+
+
+def extract_youtube_anchors_from_jsonld(html: str) -> tuple[list[tuple[str, str]], set[str]]:
+    anchors: list[tuple[str, str]] = []
+    video_ids: set[str] = set()
+    soup = BeautifulSoup(html, "html.parser")
+    for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        if not script.string:
+            continue
+        try:
+            payload = json.loads(script.string)
+        except json.JSONDecodeError:
+            continue
+        for obj in _iter_jsonld_objects(payload):
+            raw_type = obj.get("@type")
+            types: set[str] = set()
+            if isinstance(raw_type, list):
+                types = {str(entry) for entry in raw_type}
+            elif isinstance(raw_type, str):
+                types = {raw_type}
+            if not types.intersection(JSONLD_ARTICLE_TYPES):
+                continue
+            article_body = obj.get("articleBody")
+            if not isinstance(article_body, str):
+                continue
+            lines = [line.strip() for line in article_body.splitlines() if line.strip()]
+            for idx, line in enumerate(lines):
+                match = JSONLD_MEDIA_PATTERN.search(line)
+                if match:
+                    url = match.group(1)
+                else:
+                    url_match = JSONLD_YOUTUBE_PATTERN.search(line)
+                    url = url_match.group(0) if url_match else None
+                if not url:
+                    continue
+                video_id = extract_youtube_video_id(url)
+                if not video_id:
+                    continue
+                anchor_text = ""
+                if idx > 0:
+                    anchor_text = lines[idx - 1]
+                elif idx + 1 < len(lines):
+                    anchor_text = lines[idx + 1]
+                if anchor_text:
+                    anchors.append((video_id, anchor_text[:200]))
+                video_ids.add(video_id)
+    return anchors, video_ids
+
+
+def _iter_youtube_elements(
+    raw_dom: lxml_html.HtmlElement, base_url: str
+) -> list[tuple[str, lxml_html.HtmlElement]]:
+    has_article = bool(raw_dom.cssselect("article"))
+    candidates: list[tuple[str, lxml_html.HtmlElement]] = []
+    for elem in raw_dom.iter():
+        if not isinstance(elem.tag, str):
+            continue
+        video_id = _extract_youtube_id_from_element(elem, base_url)
+        if not video_id:
+            continue
+        if not _is_likely_youtube_embed_element(elem):
+            continue
+        if not _is_within_article(elem, has_article):
+            continue
+        if _is_blocked_youtube_embed(elem):
+            continue
+        candidates.append((video_id, elem))
+    return candidates
 
 
 def extract_youtube_video_ids_from_html(html: str, base_url: str) -> list[str]:
@@ -742,24 +949,7 @@ def extract_youtube_embed_urls_from_dom(
 ) -> list[str]:
     """Extract YouTube embed URLs from iframe elements while skipping ad/cookie embeds."""
     embed_urls: list[str] = []
-    for iframe in raw_dom.cssselect("iframe"):
-        src = iframe.get("src")
-        if not src:
-            continue
-        normalized = urljoin(base_url, src)
-        video_id = extract_youtube_embed_id(normalized)
-        if not video_id:
-            continue
-        blocked = False
-        for ancestor in iframe.iterancestors():
-            classes = " ".join(ancestor.get("class", [])).lower()
-            ident = ancestor.get("id", "").lower()
-            marker = f"{classes} {ident}"
-            if any(token in marker for token in ("ad", "advert", "sponsor", "cookie", "consent")):
-                blocked = True
-                break
-        if blocked:
-            continue
+    for video_id, _node in _iter_youtube_elements(raw_dom, base_url):
         embed_urls.append(f"https://www.youtube.com/watch?v={video_id}")
     seen: set[str] = set()
     ordered: list[str] = []
@@ -822,28 +1012,14 @@ def insert_youtube_placeholders(
             parent, index = insertion
             parent.insert(index, placeholder)
         else:
-            body.append(placeholder)
+            if len(body):
+                body.insert(0, placeholder)
+            else:
+                body.append(placeholder)
         existing_ids.add(video_id)
 
-    for iframe in raw_dom.cssselect("iframe"):
-        src = iframe.get("src")
-        if not src:
-            continue
-        normalized = urljoin(base_url, src)
-        video_id = extract_youtube_embed_id(normalized)
-        if not video_id:
-            continue
-        blocked = False
-        for ancestor in iframe.iterancestors():
-            classes = " ".join(ancestor.get("class", [])).lower()
-            ident = ancestor.get("id", "").lower()
-            marker = f"{classes} {ident}"
-            if any(token in marker for token in ("ad", "advert", "sponsor", "cookie", "consent")):
-                blocked = True
-                break
-        if blocked:
-            continue
-        insert_placeholder(video_id, iframe)
+    for video_id, node in _iter_youtube_elements(raw_dom, base_url):
+        insert_placeholder(video_id, node)
 
     return lxml_html.tostring(extracted_tree, encoding="unicode")
 
@@ -876,16 +1052,9 @@ def build_youtube_anchor_map(
             anchor_by_id[id(elem)] = last_text_elem
 
     anchors: list[tuple[str, str]] = []
-    iframes = list(raw_dom.cssselect("iframe"))
-    for iframe in iframes:
-        src = iframe.get("src")
-        if not src:
-            continue
-        normalized = urljoin(base_url, src)
-        video_id = extract_youtube_embed_id(normalized)
-        if not video_id:
-            continue
-        anchor = anchor_by_id.get(id(iframe))
+    candidates = list(_iter_youtube_elements(raw_dom, base_url))
+    for video_id, node in candidates:
+        anchor = anchor_by_id.get(id(node))
         if anchor is None:
             continue
         anchor_text = anchor.text_content().strip()
@@ -893,7 +1062,7 @@ def build_youtube_anchor_map(
             continue
         anchors.append((video_id, anchor_text[:200]))
 
-    if anchors or iframes:
+    if anchors or candidates:
         return anchors
 
     raw_html = lxml_html.tostring(raw_dom, encoding="unicode")
@@ -1109,6 +1278,14 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     markdown = html_to_markdown(article_html)
     markdown, embedded_ids = replace_youtube_placeholders(markdown)
     embedded_ids = embedded_ids.union(pre_youtube_ids)
+    jsonld_anchors, jsonld_ids = extract_youtube_anchors_from_jsonld(raw_html_original)
+    anchors = _merge_youtube_anchors(
+        jsonld_anchors,
+        build_youtube_anchor_map(raw_dom_original, metadata.get("canonical") or final_url),
+    )
+    if anchors:
+        markdown, anchored_ids = insert_youtube_after_anchors(markdown, anchors)
+        embedded_ids = embedded_ids.union(anchored_ids)
     if not markdown:
         domain = urlparse(final_url).netloc
         if is_paywalled(html, domain) or is_paywalled(article_html, domain):
@@ -1141,11 +1318,17 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         raw_dom_original, metadata.get("canonical") or final_url
     )
     if not embeds and not embedded_ids:
-        script_ids = extract_youtube_video_ids_from_html(
-            raw_html_original, metadata.get("canonical") or final_url
-        )
-        if script_ids:
-            embeds = [f"https://www.youtube.com/watch?v={script_ids[0]}"]
+        if jsonld_ids:
+            embeds = [
+                f"https://www.youtube.com/watch?v={video_id}"
+                for video_id in sorted(jsonld_ids)
+            ]
+        else:
+            script_ids = extract_youtube_video_ids_from_html(
+                raw_html_original, metadata.get("canonical") or final_url
+            )
+            if script_ids:
+                embeds = [f"https://www.youtube.com/watch?v={script_ids[0]}"]
     if embeds:
         existing = markdown
         lines = []

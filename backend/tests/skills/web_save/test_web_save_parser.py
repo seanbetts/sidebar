@@ -518,6 +518,105 @@ def test_wrap_gallery_blocks_builds_html_gallery():
     assert "https://example.com/two.png" in wrapped
 
 
+def test_parse_url_local_inserts_youtube_link_after_anchor(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Inline Video</title>
+      </head>
+      <body>
+        <article>
+          <p>Intro text.</p>
+          <p>Video explains things clearly.</p>
+          <iframe src="https://www.youtube.com/embed/abc123"></iframe>
+          <p>More text follows.</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/video", False
+
+    def skip_placeholder(article_html: str, _raw_dom, _base_url: str) -> str:
+        return article_html
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "insert_youtube_placeholders", skip_placeholder
+    )
+
+    parsed = web_save_parser.parse_url_local("example.com/video")
+    content_lines = parsed.content.splitlines()
+    anchor_index = next(
+        index
+        for index, line in enumerate(content_lines)
+        if "Video explains things clearly." in line
+    )
+    youtube_index = next(
+        index
+        for index, line in enumerate(content_lines)
+        if "https://www.youtube.com/watch?v=abc123" in line
+    )
+    after_index = next(
+        index
+        for index, line in enumerate(content_lines)
+        if "More text follows." in line
+    )
+
+    assert anchor_index < youtube_index < after_index
+
+
+def test_parse_url_local_inserts_youtube_from_jsonld(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>JSON-LD Video</title>
+        <script type="application/ld+json">
+          {
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            "articleBody": "Intro text.\\n[Media: https://www.youtube.com/watch?v=abc123]\\nMore text."
+          }
+        </script>
+      </head>
+      <body>
+        <article>
+          <p>Intro text.</p>
+          <p>More text.</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/video", False
+
+    def skip_placeholder(article_html: str, _raw_dom, _base_url: str) -> str:
+        return article_html
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(
+        web_save_parser, "insert_youtube_placeholders", skip_placeholder
+    )
+
+    parsed = web_save_parser.parse_url_local("example.com/video")
+    content_lines = parsed.content.splitlines()
+    anchor_index = next(
+        index for index, line in enumerate(content_lines) if "Intro text." in line
+    )
+    youtube_index = next(
+        index
+        for index, line in enumerate(content_lines)
+        if "https://www.youtube.com/watch?v=abc123" in line
+    )
+    after_index = next(
+        index for index, line in enumerate(content_lines) if "More text." in line
+    )
+
+    assert anchor_index < youtube_index < after_index
+
+
 def test_wrap_gallery_blocks_ignores_single_captioned_image():
     markdown = '![](https://example.com/one.png \"Caption\")'
     wrapped = web_save_parser.wrap_gallery_blocks(markdown)
