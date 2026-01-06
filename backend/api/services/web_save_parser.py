@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 RULES_DIR = Path(__file__).resolve().parents[2] / "skills" / "web-save" / "rules"
 PLAYWRIGHT_ALLOWLIST_PATH = RULES_DIR / "playwright_allowlist.yaml"
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,13 @@ def ensure_url(value: str) -> str:
     if value.startswith(("http://", "https://")):
         return value
     return f"https://{value}"
+
+
+def strip_control_chars(value: str) -> str:
+    """Strip non-XML control characters that break lxml/readability."""
+    if not value:
+        return value
+    return CONTROL_CHARS_RE.sub("", value)
 
 
 def fetch_html(url: str, *, timeout: int = 30) -> tuple[str, str, bool]:
@@ -1413,6 +1421,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     normalized = ensure_url(url)
     logger.info("web-save parse start url=%s", normalized)
     html, final_url, used_js_rendering = fetch_html(normalized, timeout=timeout)
+    html = strip_control_chars(html)
     logger.info(
         "web-save fetched url=%s final_url=%s used_js=%s html_len=%s",
         normalized,
@@ -1475,6 +1484,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         render_timeout,
     )
 
+    html = strip_control_chars(html)
     raw_html_original = html
     metadata = extract_metadata(html, final_url)
     if pre_rules:
@@ -1511,7 +1521,11 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         article_html, substack_meta = substack_payload
         metadata.update({key: value for key, value in substack_meta.items() if value})
     else:
-        article_html = document.summary(html_partial=True)
+        try:
+            article_html = document.summary(html_partial=True)
+        except ValueError as exc:
+            logger.warning("web-save readability failed url=%s error=%s", final_url, exc)
+            article_html = html
         if urlparse(final_url).netloc.endswith("openai.com"):
             openai_html = extract_openai_body_html(raw_html_original)
             if openai_html:
