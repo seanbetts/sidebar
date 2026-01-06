@@ -13,11 +13,12 @@
   export let isBusy = false;
   export let inputType = 'text';
   export let disableWhenEmpty = true;
+  export let isValid = true;
   export let onConfirm: (() => void) | undefined = undefined;
   export let onCancel: (() => void) | undefined = undefined;
 
   let inputElement: HTMLInputElement | null = null;
-  $: isDisabled = isBusy || (disableWhenEmpty && !value.trim());
+  $: isDisabled = isBusy || (disableWhenEmpty && !value.trim()) || !isValid;
 </script>
 
 <AlertDialog.Root bind:open>
