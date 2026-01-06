@@ -58,7 +58,10 @@ export function useWebsiteActions() {
       await websitesAPI.setPinned(websiteId, pinned);
       websitesStore.setPinnedLocal?.(websiteId, pinned);
       if (options.updateActive) {
-        websitesStore.updateActiveLocal?.({ pinned });
+        websitesStore.updateActiveLocal?.({
+          pinned,
+          ...(pinned ? { archived: false } : {})
+        });
       }
       dispatchCacheEvent('website.pinned');
       return true;

@@ -240,7 +240,8 @@ function createWebsitesStore() {
             ? {
                 ...item,
                 pinned,
-                pinned_order: pinned ? (item.pinned_order ?? maxOrder + 1) : null
+                pinned_order: pinned ? (item.pinned_order ?? maxOrder + 1) : null,
+                archived: pinned ? false : item.archived
               }
             : item
         );
