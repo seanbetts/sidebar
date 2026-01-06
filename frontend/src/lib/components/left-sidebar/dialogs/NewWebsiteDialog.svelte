@@ -21,7 +21,13 @@
     const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     try {
       const parsed = new URL(candidate);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+      const host = parsed.hostname;
+      if (!host) return false;
+      if (host === 'localhost') return true;
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
+      if (host.includes(':')) return true;
+      return host.includes('.');
     } catch {
       return false;
     }
