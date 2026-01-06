@@ -530,6 +530,20 @@ def test_techcrunch_cleanup_removes_inline_cta():
     assert "Techcrunch event" not in cleaned
 
 
+def test_cleanup_gizmodo_markdown_removes_io9_promo():
+    markdown = "\n".join(
+        [
+            "> Want more io9 news? Check out when to expect the latest Marvel releases.",
+            "> And everything you need to know about the future of Doctor Who.",
+            "",
+            "Next paragraph.",
+        ]
+    )
+    cleaned = web_save_parser.cleanup_gizmodo_markdown(markdown)
+    assert "want more io9 news" not in cleaned.lower()
+    assert "Next paragraph." in cleaned
+
+
 def test_insert_youtube_placeholders_handles_comment_sibling():
     extracted_html = "<article><p>Anchor</p></article>"
     raw_html = """
