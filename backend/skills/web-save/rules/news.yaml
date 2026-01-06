@@ -332,6 +332,9 @@
     - ".sharedaddy"
     - ".jp-relatedposts"
     - "#comments"
+    - ".article__youtube-video"
+    - ".ad-disclaimer-container"
+    - "#h-best-iphone-accessories"
 
 - id: electrek-cleanup
   phase: post
