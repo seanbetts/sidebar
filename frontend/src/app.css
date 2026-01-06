@@ -115,8 +115,27 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    height: 100%;
+    /* Prevent iOS Safari from resizing text */
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
+    height: 100%;
+    /* Prevent elastic scrolling on iOS */
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
+  /* Safari-specific fix for mobile viewport */
+  @supports (-webkit-touch-callout: none) {
+    html {
+      height: -webkit-fill-available;
+    }
   }
 }
 

@@ -128,8 +128,16 @@
 	.app {
 		display: flex;
 		height: 100vh;
+		height: 100dvh; /* Dynamic viewport height for mobile browsers */
 		width: 100vw;
 		overflow: hidden;
+	}
+
+	/* Safari-specific fix for older versions that don't support dvh */
+	@supports (-webkit-touch-callout: none) {
+		.app {
+			height: -webkit-fill-available;
+		}
 	}
 
 	.main-content {
