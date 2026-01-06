@@ -196,7 +196,7 @@
       const button =
         showButton && transcriptHref
           ? isQueued
-            ? `<span data-youtube-transcript-status="queued">Queued</span>`
+            ? `<a data-youtube-transcript data-youtube-transcript-status="queued" aria-disabled="true" href="${escapeAttribute(transcriptHref)}">Queued</a>`
             : `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
           : '';
       return `<div data-youtube-video><iframe src="${embed}"></iframe>${button}</div>`;
@@ -218,7 +218,7 @@
         const button =
           showButton && transcriptHref
             ? isQueued
-              ? `<span data-youtube-transcript-status="queued">Queued</span>`
+              ? `<a data-youtube-transcript data-youtube-transcript-status="queued" aria-disabled="true" href="${escapeAttribute(transcriptHref)}">Queued</a>`
               : `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
             : '';
         return `<div data-youtube-video><iframe src="${youtube}"></iframe>${button}</div>`;
@@ -268,7 +268,7 @@
     const target = event.target as HTMLElement | null;
     const link = target?.closest('a') as HTMLAnchorElement | null;
     const href = link?.getAttribute('href')?.trim();
-    if (!link || !href) return;
+    if (!link || !href || link.getAttribute('aria-disabled') === 'true') return;
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(href, window.location.href);
@@ -612,6 +612,11 @@
     border-color: color-mix(in oklab, var(--color-border) 70%, var(--color-foreground) 12%);
   }
 
+  :global(.website-viewer p > a[href*='sidebarTranscript=1'][aria-disabled='true']:hover) {
+    background: var(--color-muted);
+    border-color: var(--color-border);
+  }
+
   :global(.website-viewer p > a[href*='sidebarTranscript=1'][aria-busy='true']) {
     opacity: 0.6;
     cursor: default;
@@ -635,6 +640,7 @@
     font-size: 0.95rem;
     font-weight: 600;
     text-transform: uppercase;
+    text-decoration: none;
   }
 
   :global(.website-viewer p:has(> [data-youtube-transcript-status='queued'])) {
