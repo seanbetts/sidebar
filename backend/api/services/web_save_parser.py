@@ -1096,6 +1096,9 @@ def insert_youtube_placeholders(
         while current is not None:
             sibling = current.getprevious()
             while sibling is not None:
+                if not isinstance(sibling.tag, str):
+                    sibling = sibling.getprevious()
+                    continue
                 text = sibling.text_content().strip()
                 if len(text) >= 5:
                     return sibling

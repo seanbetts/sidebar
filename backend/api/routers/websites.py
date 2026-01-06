@@ -1,4 +1,5 @@
 """Websites router for archived web content in Postgres."""
+import logging
 import uuid
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import Response, JSONResponse
@@ -13,6 +14,7 @@ from api.routers.websites_helpers import normalize_url, run_quick_save, website_
 from api.schemas.filters import WebsiteFilters
 from api.utils.validation import parse_uuid
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/websites", tags=["websites"])
 
 @router.get("")
@@ -166,7 +168,12 @@ async def save_website(
     executor = request.app.state.executor
     result = await executor.execute("web-save", "save_url.py", [url, "--database", "--user-id", user_id])
     if not result.get("success"):
-        raise BadRequestError(result.get("error", "Failed to save website"))
+        logger.error(
+            "websites save failed url=%s error=%s",
+            url,
+            result.get("error"),
+        )
+        raise BadRequestError("Unable to save website")
 
     return result
 
