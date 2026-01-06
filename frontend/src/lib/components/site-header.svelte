@@ -70,9 +70,10 @@
 		const candidates = getTranscriptCandidates();
 		const pending = candidates.filter((item) => isTranscriptPending(item.entry.status));
 		if (pending.length > 0) {
+			const latest = pickLatest(pending);
 			transcriptStatus = "processing";
 			transcriptLabel = "Transcribing";
-			pendingTranscript = pickLatest(pending);
+			pendingTranscript = latest;
 		} else {
 			transcriptStatus = null;
 			transcriptLabel = "";
@@ -118,6 +119,13 @@
 				const meta = await ingestionAPI.get(fileId);
 				const status = meta?.job?.status;
 				if (!status) return;
+				if (status !== "ready" && status !== "failed" && status !== "canceled") {
+					websitesStore.setTranscriptEntryLocal(websiteId, videoId, {
+						status: "processing",
+						file_id: fileId,
+						updated_at: new Date().toISOString()
+					});
+				}
 				if (status === "ready") {
 					stopTranscriptPolling();
 					websitesStore.setTranscriptEntryLocal(websiteId, videoId, {
@@ -287,6 +295,22 @@
 
 	.transcript-status[data-status="processing"] .dot {
 		background: #d99a2b;
+		animation: transcript-pulse 1.4s ease-in-out infinite;
+	}
+
+	@keyframes transcript-pulse {
+		0% {
+			transform: scale(1);
+			opacity: 0.6;
+		}
+		50% {
+			transform: scale(1.2);
+			opacity: 1;
+		}
+		100% {
+			transform: scale(1);
+			opacity: 0.6;
+		}
 	}
 
 	.title {
