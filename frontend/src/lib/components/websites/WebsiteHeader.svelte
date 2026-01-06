@@ -15,6 +15,11 @@
   export let onArchive: () => void;
   export let onDelete: () => void;
   export let onClose: () => void;
+
+  const getSourceUrl = (site: WebsiteItem) => {
+    const maybeDetail = site as WebsiteItem & { url_full?: string | null };
+    return maybeDetail.url_full || site.url;
+  };
 </script>
 
 <div class="website-header">
@@ -26,7 +31,7 @@
       </div>
       <div class="website-meta-row">
         <span class="subtitle">
-          <a class="source" href={website.url} target="_blank" rel="noopener noreferrer">
+          <a class="source" href={getSourceUrl(website)} target="_blank" rel="noopener noreferrer">
             <span>{formatDomain(website.domain)}</span>
           </a>
           {#if website.published_at}
