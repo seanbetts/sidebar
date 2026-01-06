@@ -311,4 +311,33 @@
   :global(.website-viewer p:has(> br.ProseMirror-trailingBreak:only-child)) {
     display: none;
   }
+
+  /* Center images by default */
+  :global(.website-viewer img) {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 100%;
+  }
+
+  /* When images are consecutive, display side-by-side and center as a group */
+  :global(.website-viewer > img + img),
+  :global(.website-viewer > img:has(+ img)) {
+    display: inline-block;
+    margin: 0.5rem;
+    vertical-align: top;
+  }
+
+  /* Use flexbox to center consecutive images */
+  :global(.website-viewer:has(> img + img)) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0;
+  }
+
+  /* Make non-image content full width in flex container */
+  :global(.website-viewer:has(> img + img) > *:not(img)) {
+    width: 100%;
+  }
 </style>
