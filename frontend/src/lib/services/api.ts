@@ -472,6 +472,9 @@ class WebsitesAPI {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url })
     });
+    if (response.status === 202) {
+      return response.json();
+    }
     if (!response.ok) throw new Error('Failed to transcribe YouTube video');
     return response.json();
   }
