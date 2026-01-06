@@ -106,6 +106,7 @@ describe('websitesStore', () => {
       published_at: null,
       pinned: false,
       archived: false,
+      youtube_transcripts: {},
       updated_at: null,
       last_opened_at: null
     });
@@ -115,6 +116,29 @@ describe('websitesStore', () => {
     const state = get(websitesStore);
     expect(state.active?.id).toBe('4');
     expect(state.items[0].id).toBe('4');
+  });
+
+  it('updates transcript metadata locally', () => {
+    websitesStore.upsertFromRealtime({
+      id: '7',
+      title: 'Video',
+      url: '',
+      domain: '',
+      saved_at: null,
+      published_at: null,
+      pinned: false,
+      archived: false,
+      updated_at: null,
+      last_opened_at: null
+    });
+
+    websitesStore.setTranscriptEntryLocal('7', 'vid123', {
+      status: 'queued',
+      file_id: 'file-1',
+      updated_at: '2026-01-06T20:00:00Z'
+    });
+
+    expect(get(websitesStore).items[0].youtube_transcripts?.vid123?.status).toBe('queued');
   });
 
   it('searches via API and updates items', async () => {

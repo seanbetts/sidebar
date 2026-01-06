@@ -17,8 +17,16 @@ export interface WebsiteItem {
   pinned: boolean;
   pinned_order?: number | null;
   archived?: boolean;
+  youtube_transcripts?: Record<string, WebsiteTranscriptEntry>;
   updated_at: string | null;
   last_opened_at: string | null;
+}
+
+export interface WebsiteTranscriptEntry {
+  status?: string;
+  file_id?: string;
+  updated_at?: string;
+  error?: string;
 }
 
 export interface WebsiteDetail extends WebsiteItem {
@@ -136,6 +144,7 @@ function createWebsitesStore() {
           pinned: data.pinned ?? false,
           pinned_order: data.pinned_order ?? null,
           archived: data.archived ?? false,
+          youtube_transcripts: data.youtube_transcripts ?? {},
           updated_at: data.updated_at,
           last_opened_at: data.last_opened_at
         };
@@ -268,6 +277,36 @@ function createWebsitesStore() {
         const items = state.items.map(item => (item.id === id ? { ...item, archived } : item));
         setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
         return { ...state, items };
+      });
+    },
+
+    setTranscriptEntryLocal(id: string, videoId: string, entry: WebsiteTranscriptEntry) {
+      update(state => {
+        const items = state.items.map(item =>
+          item.id === id
+            ? {
+                ...item,
+                youtube_transcripts: {
+                  ...(item.youtube_transcripts ?? {}),
+                  [videoId]: entry
+                }
+              }
+            : item
+        );
+        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
+
+        const active =
+          state.active && state.active.id === id
+            ? {
+                ...state.active,
+                youtube_transcripts: {
+                  ...(state.active.youtube_transcripts ?? {}),
+                  [videoId]: entry
+                }
+              }
+            : state.active;
+
+        return { ...state, items, active };
       });
     },
 

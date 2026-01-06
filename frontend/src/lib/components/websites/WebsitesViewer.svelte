@@ -9,18 +9,17 @@
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
-  import { websitesStore } from '$lib/stores/websites';
-  import { ingestionAPI, websitesAPI } from '$lib/services/api';
+  import { websitesStore, type WebsiteDetail, type WebsiteTranscriptEntry } from '$lib/stores/websites';
+  import { websitesAPI } from '$lib/services/api';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
   import WebsiteRenameDialog from '$lib/components/websites/WebsiteRenameDialog.svelte';
   import { logError } from '$lib/utils/errorHandling';
   import { useWebsiteActions } from '$lib/hooks/useWebsiteActions';
+  import { toast } from 'svelte-sonner';
 
   let editorElement: HTMLDivElement;
   let editor: Editor | null = null;
-  let isTranscribingYoutube = false;
-  let transcriptPollingId: ReturnType<typeof setInterval> | null = null;
   let isRenameDialogOpen = false;
   let renameValue = '';
   let deleteDialog: { openDialog: (name: string) => void } | null = null;
@@ -72,6 +71,24 @@
     return markdown.includes(marker);
   }
 
+  function isTranscriptPending(status?: string): boolean {
+    return status === 'queued' || status === 'processing' || status === 'retrying';
+  }
+
+  function getTranscriptEntries(website: WebsiteDetail | null): Record<string, WebsiteTranscriptEntry> {
+    if (!website || !website.youtube_transcripts) return {};
+    return typeof website.youtube_transcripts === 'object' ? website.youtube_transcripts : {};
+  }
+
+  function getTranscriptEntry(
+    website: WebsiteDetail | null,
+    videoId: string | null
+  ): WebsiteTranscriptEntry | null {
+    if (!videoId) return null;
+    const entries = getTranscriptEntries(website);
+    return entries[videoId] ?? null;
+  }
+
   onMount(() => {
     editor = new Editor({
       element: editorElement,
@@ -106,14 +123,14 @@
   onDestroy(() => {
     if (editor) editor.destroy();
     if (copyTimeout) clearTimeout(copyTimeout);
-    stopTranscriptPolling();
     editorElement?.removeEventListener('click', handleTranscriptClick);
   });
 
   $: if (editor && $websitesStore.active) {
     const raw = stripFrontmatter($websitesStore.active.content || '');
-    editor.commands.setContent(rewriteVideoEmbeds(raw));
+    editor.commands.setContent(rewriteVideoEmbeds(raw, $websitesStore.active));
   }
+
 
   function stripFrontmatter(text: string): string {
     const trimmed = text.trim();
@@ -163,7 +180,7 @@
     }
   }
 
-  function rewriteVideoEmbeds(markdown: string): string {
+  function rewriteVideoEmbeds(markdown: string, website: WebsiteDetail | null): string {
     const youtubePattern = /^\[YouTube\]\(([^)]+)\)$/gm;
     const vimeoPattern = /^\[Vimeo\]\(([^)]+)\)$/gm;
     const bareUrlPattern = /^(https?:\/\/[^\s]+)$/gm;
@@ -174,9 +191,13 @@
       const videoId = extractYouTubeId(url.trim());
       const showButton = !hasTranscriptForVideo(markdown, videoId);
       const transcriptHref = buildTranscriptHref(url.trim());
+      const transcriptEntry = getTranscriptEntry(website, videoId);
+      const isQueued = isTranscriptPending(transcriptEntry?.status);
       const button =
         showButton && transcriptHref
-          ? `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
+          ? isQueued
+            ? `<span data-youtube-transcript-status="queued">Queued</span>`
+            : `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
           : '';
       return `<div data-youtube-video><iframe src="${embed}"></iframe>${button}</div>`;
     });
@@ -192,9 +213,13 @@
         const videoId = extractYouTubeId(match.trim());
         const showButton = !hasTranscriptForVideo(markdown, videoId);
         const transcriptHref = buildTranscriptHref(match.trim());
+        const transcriptEntry = getTranscriptEntry(website, videoId);
+        const isQueued = isTranscriptPending(transcriptEntry?.status);
         const button =
           showButton && transcriptHref
-            ? `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
+            ? isQueued
+              ? `<span data-youtube-transcript-status="queued">Queued</span>`
+              : `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
             : '';
         return `<div data-youtube-video><iframe src="${youtube}"></iframe>${button}</div>`;
       }
@@ -205,58 +230,45 @@
     return updated;
   }
 
-  function stopTranscriptPolling() {
-    if (transcriptPollingId) {
-      clearInterval(transcriptPollingId);
-      transcriptPollingId = null;
-    }
-  }
-
-  async function pollTranscriptJob(
-    fileId: string,
-    websiteId: string,
-    link: HTMLAnchorElement
-  ): Promise<void> {
-    stopTranscriptPolling();
-    transcriptPollingId = setInterval(async () => {
-      try {
-        const meta = await ingestionAPI.get(fileId);
-        const status = meta?.job?.status;
-        if (!status) return;
-        if (status === 'ready') {
-          stopTranscriptPolling();
-          await websitesStore.loadById(websiteId);
-          isTranscribingYoutube = false;
-          return;
+  async function queueTranscript(websiteId: string, url: string): Promise<boolean> {
+    try {
+      const data = await websitesAPI.transcribeYouTube(websiteId, url);
+      if (data && typeof data === 'object') {
+        if ('content' in data) {
+          websitesStore.updateActiveLocal({ content: (data as { content: string }).content });
+          return true;
         }
-        if (status === 'failed' || status === 'canceled') {
-          stopTranscriptPolling();
-          isTranscribingYoutube = false;
-          link.removeAttribute('aria-busy');
-          link.textContent = 'Get Transcript';
-          logError('Failed to transcribe YouTube video', null, {
-            scope: 'websitesViewer.transcribe',
-            status
+        const payload = data as { data?: { file_id?: string; status?: string } };
+        const fileId = payload?.data?.file_id;
+        const status = payload?.data?.status;
+        const videoId = extractYouTubeId(url);
+        if (fileId && videoId) {
+          const active = $websitesStore.active;
+          const transcripts = active?.youtube_transcripts ?? {};
+          websitesStore.setTranscriptEntryLocal(websiteId, videoId, {
+            ...(transcripts[videoId] ?? {}),
+            status: status ?? 'queued',
+            file_id: fileId,
+            updated_at: new Date().toISOString()
           });
+          return true;
         }
-      } catch (error) {
-        stopTranscriptPolling();
-        isTranscribingYoutube = false;
-        link.removeAttribute('aria-busy');
-        link.textContent = 'Get Transcript';
-        logError('Failed to check transcript status', error, {
-          scope: 'websitesViewer.transcribe',
-          fileId
-        });
       }
-    }, 5000);
+      throw new Error('Transcript request failed');
+    } catch (error) {
+      logError('Failed to transcribe YouTube video', error, { scope: 'websitesViewer.transcribe', url });
+      toast.error('Transcript failed', {
+        description: 'Please try again.'
+      });
+      return false;
+    }
   }
 
   async function handleTranscriptClick(event: MouseEvent) {
     const target = event.target as HTMLElement | null;
     const link = target?.closest('a') as HTMLAnchorElement | null;
     const href = link?.getAttribute('href')?.trim();
-    if (!link || !href || isTranscribingYoutube) return;
+    if (!link || !href) return;
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(href, window.location.href);
@@ -269,35 +281,20 @@
     const active = $websitesStore.active;
     if (!url || !active) return;
 
+    const videoId = extractYouTubeId(url);
+    const transcriptEntry = getTranscriptEntry(active, videoId);
+    if (isTranscriptPending(transcriptEntry?.status)) {
+      return;
+    }
+
     event.preventDefault();
     link.setAttribute('aria-busy', 'true');
-    link.textContent = 'Transcribing...';
-    isTranscribingYoutube = true;
-    try {
-      const data = await websitesAPI.transcribeYouTube(active.id, url);
-      if (data && typeof data === 'object') {
-        if ('content' in data) {
-          websitesStore.updateActiveLocal({ content: (data as { content: string }).content });
-          isTranscribingYoutube = false;
-          return;
-        }
-        const payload = data as { data?: { file_id?: string; status?: string } };
-        const fileId = payload?.data?.file_id;
-        if (fileId) {
-          await pollTranscriptJob(fileId, active.id, link);
-          return;
-        }
-      }
-      throw new Error('Transcript request failed');
-    } catch (error) {
-      logError('Failed to transcribe YouTube video', error, { scope: 'websitesViewer.transcribe', url });
-      link.removeAttribute('aria-busy');
+    link.textContent = 'Queued';
+    const queued = await queueTranscript(active.id, url);
+    if (!queued) {
       link.textContent = 'Get Transcript';
-    } finally {
-      if (!transcriptPollingId) {
-        isTranscribingYoutube = false;
-      }
     }
+    link.removeAttribute('aria-busy');
   }
 
 
@@ -621,6 +618,26 @@
   }
 
   :global(.website-viewer p:has(> a[href*='sidebarTranscript=1'])) {
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+  }
+
+  :global(.website-viewer [data-youtube-transcript-status='queued']) {
+    display: block;
+    width: min(100%, 650px);
+    text-align: center;
+    border-radius: 0.7rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-muted);
+    color: var(--color-muted-foreground);
+    padding: 0.6rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  :global(.website-viewer p:has(> [data-youtube-transcript-status='queued'])) {
     margin: 0 auto;
     display: flex;
     justify-content: center;
