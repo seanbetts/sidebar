@@ -147,6 +147,10 @@
     }
   }
 
+  function escapeAttribute(value: string): string {
+    return value.replace(/"/g, '&quot;');
+  }
+
   function buildTranscriptHref(url: string): string | null {
     try {
       const parsed = new URL(url);
@@ -168,8 +172,11 @@
       const videoId = extractYouTubeId(url.trim());
       const showButton = !hasTranscriptForVideo(markdown, videoId);
       const transcriptHref = buildTranscriptHref(url.trim());
-      const button = showButton && transcriptHref ? `\n\n[Get transcript](${transcriptHref})` : '';
-      return `<div data-youtube-video><iframe src="${embed}"></iframe></div>${button}`;
+      const button =
+        showButton && transcriptHref
+          ? `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
+          : '';
+      return `<div data-youtube-video><iframe src="${embed}"></iframe>${button}</div>`;
     });
 
     updated = updated.replace(vimeoPattern, (_, url: string) => {
@@ -183,8 +190,11 @@
         const videoId = extractYouTubeId(match.trim());
         const showButton = !hasTranscriptForVideo(markdown, videoId);
         const transcriptHref = buildTranscriptHref(match.trim());
-        const button = showButton && transcriptHref ? `\n\n[Get transcript](${transcriptHref})` : '';
-        return `<div data-youtube-video><iframe src="${youtube}"></iframe></div>${button}`;
+        const button =
+          showButton && transcriptHref
+            ? `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
+            : '';
+        return `<div data-youtube-video><iframe src="${youtube}"></iframe>${button}</div>`;
       }
       const vimeo = buildVimeoEmbed(match.trim());
       return vimeo ? `<iframe src="${vimeo}"></iframe>` : match;
@@ -508,25 +518,50 @@
   :global(.website-viewer [data-youtube-video]) {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    margin: 1.5rem 0;
+    gap: 0.9rem;
+    margin: 1.5rem auto;
+    width: 100%;
   }
 
-  :global(.website-viewer a[href*='sidebarTranscript=1']) {
-    align-self: flex-start;
+  :global(.website-viewer [data-youtube-video] iframe) {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+    border-radius: 0.85rem;
+    background: var(--color-muted);
+  }
+
+  :global(.website-viewer p > a[href*='sidebarTranscript=1']) {
+    display: block;
+    width: min(100%, 650px);
+    text-align: center;
+    border-radius: 0.7rem;
     border: 1px solid var(--color-border);
-    border-radius: 999px;
     background: var(--color-muted);
     color: var(--color-foreground);
-    padding: 0.35rem 0.9rem;
-    font-size: 0.9rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: uppercase;
     text-decoration: none;
+    transition: background 160ms ease, border-color 160ms ease;
     cursor: pointer;
   }
 
-  :global(.website-viewer a[href*='sidebarTranscript=1'][aria-busy='true']) {
+  :global(.website-viewer p > a[href*='sidebarTranscript=1']:hover) {
+    background: color-mix(in oklab, var(--color-muted) 80%, var(--color-foreground) 8%);
+    border-color: color-mix(in oklab, var(--color-border) 70%, var(--color-foreground) 12%);
+  }
+
+  :global(.website-viewer p > a[href*='sidebarTranscript=1'][aria-busy='true']) {
     opacity: 0.6;
     cursor: default;
+  }
+
+  :global(.website-viewer p:has(> a[href*='sidebarTranscript=1'])) {
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
   }
 
 </style>
