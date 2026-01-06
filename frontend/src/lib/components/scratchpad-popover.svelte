@@ -3,7 +3,8 @@
 	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
-	import { Image } from '@tiptap/extension-image';
+	import { ImageGallery } from '$lib/components/editor/ImageGallery';
+	import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
 	import { TaskList, TaskItem } from '@tiptap/extension-list';
 	import { TableKit } from '@tiptap/extension-table';
 	import { Markdown } from 'tiptap-markdown';
@@ -149,7 +150,8 @@
 			element: editorElement,
 			extensions: [
 				StarterKit,
-				Image.configure({ inline: false, allowBase64: true }),
+				ImageGallery,
+				ImageWithCaption.configure({ inline: false, allowBase64: true }),
 				TaskList,
 				TaskItem.configure({ nested: true }),
 				TableKit,

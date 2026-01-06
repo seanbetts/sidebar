@@ -2,7 +2,8 @@
   import { onDestroy, onMount } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
-  import { Image } from '@tiptap/extension-image';
+  import { ImageGallery } from '$lib/components/editor/ImageGallery';
+  import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
   import { TaskList, TaskItem } from '@tiptap/extension-list';
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
@@ -47,7 +48,8 @@
       element: editorElement,
       extensions: [
         StarterKit,
-        Image.configure({ inline: false, allowBase64: true }),
+        ImageGallery,
+        ImageWithCaption.configure({ inline: false, allowBase64: true }),
         TaskList,
         TaskItem.configure({ nested: true }),
         TableKit,
@@ -223,6 +225,11 @@
     padding: 1.5rem 2rem 2rem;
   }
 
+  .website-content {
+    max-width: 856px;
+    margin: 0 auto;
+  }
+
   :global(.website-viewer [contenteditable='false']:focus) {
     outline: none;
   }
@@ -280,30 +287,37 @@
     line-height: 1.5;
   }
 
-  /* Heading hierarchy */
-  :global(.website-viewer h1) {
+  /* Heading hierarchy - use higher specificity to override .tiptap styles */
+  :global(.tiptap.website-viewer h1) {
     font-size: 2em;
     font-weight: 700;
-    margin: 0.67em 0;
+    margin: 0.67em 0 !important;
   }
 
-  :global(.website-viewer h2) {
+  :global(.tiptap.website-viewer h2) {
     font-size: 1.5em;
     font-weight: 600;
-    margin: 0.75em 0;
+    margin: 0.75em 0 !important;
   }
 
-  :global(.website-viewer h3) {
+  :global(.tiptap.website-viewer h3) {
     font-size: 1.17em;
     font-weight: 600;
-    margin: 0.83em 0;
+    margin: 0.83em 0 !important;
+  }
+
+  :global(.tiptap.website-viewer h4),
+  :global(.tiptap.website-viewer h5),
+  :global(.tiptap.website-viewer h6) {
+    font-weight: 600;
+    margin: 0.83em 0 !important;
   }
 
   /* Blockquote accent */
-  :global(.website-viewer blockquote) {
+  :global(.tiptap.website-viewer blockquote) {
     border-left: 3px solid var(--color-border);
     padding-left: 1em;
-    margin: 1em 0;
+    margin: 1em 0 !important;
     color: var(--color-muted-foreground);
   }
 
@@ -312,9 +326,9 @@
     display: none;
   }
 
-  /* Center images by default */
-  :global(.website-viewer img) {
-    display: block;
+  /* Center images by default - higher specificity to override app.css */
+  :global(.tiptap.website-viewer img) {
+    display: block !important;
     margin-left: auto;
     margin-right: auto;
     max-width: 100%;
@@ -328,16 +342,23 @@
     vertical-align: top;
   }
 
-  /* Use flexbox to center consecutive images */
+  /* Use text-align to center consecutive images (works better with max-width elements) */
   :global(.website-viewer:has(> img + img)) {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0;
+    text-align: center;
   }
 
-  /* Make non-image content full width in flex container */
-  :global(.website-viewer:has(> img + img) > *:not(img)) {
-    width: 100%;
+  /* Reset text-align for block-level text elements */
+  :global(.website-viewer:has(> img + img) > p),
+  :global(.website-viewer:has(> img + img) > h1),
+  :global(.website-viewer:has(> img + img) > h2),
+  :global(.website-viewer:has(> img + img) > h3),
+  :global(.website-viewer:has(> img + img) > h4),
+  :global(.website-viewer:has(> img + img) > h5),
+  :global(.website-viewer:has(> img + img) > h6),
+  :global(.website-viewer:has(> img + img) > blockquote),
+  :global(.website-viewer:has(> img + img) > ul),
+  :global(.website-viewer:has(> img + img) > ol) {
+    text-align: left;
   }
+
 </style>

@@ -159,3 +159,63 @@
   box-sizing: border-box;
   scroll-snap-align: center;
 }
+
+.tiptap figure.image-block,
+.tiptap-editor figure.image-block,
+.scratchpad-editor figure.image-block,
+.website-viewer figure.image-block,
+.chat-markdown figure.image-block,
+.ProseMirror figure.image-block {
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tiptap figure.image-gallery,
+.tiptap-editor figure.image-gallery,
+.scratchpad-editor figure.image-gallery,
+.website-viewer figure.image-gallery,
+.chat-markdown figure.image-gallery,
+.ProseMirror figure.image-gallery {
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tiptap .image-gallery-grid,
+.tiptap-editor .image-gallery-grid,
+.scratchpad-editor .image-gallery-grid,
+.website-viewer .image-gallery-grid,
+.chat-markdown .image-gallery-grid,
+.ProseMirror .image-gallery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.tiptap .image-gallery-grid img,
+.tiptap-editor .image-gallery-grid img,
+.scratchpad-editor .image-gallery-grid img,
+.website-viewer .image-gallery-grid img,
+.chat-markdown .image-gallery-grid img,
+.ProseMirror .image-gallery-grid img {
+  max-width: 240px;
+  width: 100%;
+  flex: 1 1 200px;
+  padding: 0;
+}
+
+.tiptap .image-caption,
+.tiptap-editor .image-caption,
+.scratchpad-editor .image-caption,
+.website-viewer .image-caption,
+.chat-markdown .image-caption,
+.ProseMirror .image-caption {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
