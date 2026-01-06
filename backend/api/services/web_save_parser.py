@@ -1425,7 +1425,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     engine = get_rule_engine()
     pre_rules = engine.match_rules(final_url, html, phase="pre")
     if pre_rules:
-        logger.info(
+        logger.debug(
             "web-save pre rules url=%s ids=%s",
             final_url,
             [rule.id for rule in pre_rules],
@@ -1461,7 +1461,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if html != initial_html or final_url != initial_url:
         pre_rules = engine.match_rules(final_url, html, phase="pre")
         if pre_rules:
-            logger.info(
+            logger.debug(
                 "web-save pre rules (post-render) url=%s ids=%s",
                 final_url,
                 [rule.id for rule in pre_rules],
@@ -1516,14 +1516,14 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             openai_html = extract_openai_body_html(raw_html_original)
             if openai_html:
                 article_html = openai_html
-    logger.info(
+    logger.debug(
         "web-save readability url=%s article_len=%s",
         final_url,
         len(article_html),
     )
     post_rules = engine.match_rules(final_url, article_html, phase="post")
     if post_rules:
-        logger.info(
+        logger.debug(
             "web-save post rules url=%s ids=%s",
             final_url,
             [rule.id for rule in post_rules],
@@ -1565,7 +1565,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             include_selectors,
             removal_selectors,
         )
-        logger.info(
+        logger.debug(
             "web-save include reinsertion url=%s selectors=%s removals=%s",
             final_url,
             len(include_selectors),
@@ -1575,7 +1575,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     before_img_count = len(BeautifulSoup(article_html, "html.parser").find_all("img"))
     article_html = filter_non_content_images(article_html, domain=domain)
     after_img_count = len(BeautifulSoup(article_html, "html.parser").find_all("img"))
-    logger.info(
+    logger.debug(
         "web-save images url=%s before=%s after=%s",
         final_url,
         before_img_count,
@@ -1613,7 +1613,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         markdown = cleanup_youtube_markdown(markdown, source_url)
     if domain.endswith("openai.com"):
         markdown = cleanup_openai_markdown(markdown)
-    logger.info("web-save markdown url=%s len=%s", final_url, len(markdown))
+    logger.debug("web-save markdown url=%s len=%s", final_url, len(markdown))
     markdown, embedded_ids = replace_youtube_placeholders(markdown)
     embedded_ids = embedded_ids.union(pre_youtube_ids)
     jsonld_anchors, jsonld_ids = extract_youtube_anchors_from_jsonld(raw_html_original)
@@ -1622,7 +1622,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         build_youtube_anchor_map(raw_dom_original, metadata.get("canonical") or final_url),
     )
     if jsonld_ids:
-        logger.info(
+        logger.debug(
             "web-save youtube jsonld url=%s ids=%s",
             final_url,
             sorted(jsonld_ids),
@@ -1630,7 +1630,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     if anchors:
         markdown, anchored_ids = insert_youtube_after_anchors(markdown, anchors)
         embedded_ids = embedded_ids.union(anchored_ids)
-        logger.info(
+        logger.debug(
             "web-save youtube anchors url=%s anchors=%s inserted=%s",
             final_url,
             len(anchors),
@@ -1705,7 +1705,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                     markdown = f"{markdown}\n\n" + "\n".join(lines)
             else:
                 markdown = f"{markdown}\n\n" + "\n".join(lines)
-        logger.info(
+        logger.debug(
             "web-save youtube fallback url=%s added=%s",
             final_url,
             len(lines),
