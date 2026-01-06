@@ -18,23 +18,38 @@ def apply_include_reinsertion(
     extracted_tree = lxml_html.fromstring(extracted_html)
     body = extracted_tree.find(".//body") or extracted_tree
 
+    include_candidates: list[lxml_html.HtmlElement] = []
     for selector in include_selectors:
         try:
-            for node in original_dom.cssselect(selector):
-                cloned = deepcopy(node)
-                for removal_selector in removal_rules:
-                    for elem in cloned.cssselect(removal_selector):
-                        parent = elem.getparent()
-                        if parent is not None:
-                            parent.remove(elem)
-                insertion = find_insertion_point(extracted_tree, cloned, original_dom, node)
-                if insertion:
-                    parent, index = insertion
-                    parent.insert(index, cloned)
-                else:
-                    body.append(cloned)
+            include_candidates.extend(original_dom.cssselect(selector))
         except Exception:
             continue
+
+    candidate_ids = {id(node): node for node in include_candidates}
+    ordered_candidates = [
+        node for node in original_dom.iter() if id(node) in candidate_ids
+    ]
+    filtered_candidates: list[lxml_html.HtmlElement] = []
+    included_ids: set[int] = set()
+    for node in ordered_candidates:
+        if any(id(ancestor) in included_ids for ancestor in node.iterancestors()):
+            continue
+        filtered_candidates.append(node)
+        included_ids.add(id(node))
+
+    for node in filtered_candidates:
+        cloned = deepcopy(node)
+        for removal_selector in removal_rules:
+            for elem in cloned.cssselect(removal_selector):
+                parent = elem.getparent()
+                if parent is not None:
+                    parent.remove(elem)
+        insertion = find_insertion_point(extracted_tree, cloned, original_dom, node)
+        if insertion:
+            parent, index = insertion
+            parent.insert(index, cloned)
+        else:
+            body.append(cloned)
 
     return lxml_html.tostring(extracted_tree, encoding="unicode")
 
@@ -47,6 +62,12 @@ def find_insertion_point(
 ) -> Optional[tuple[lxml_html.HtmlElement, int]]:
     """Find an insertion point for included elements."""
     node_text = cloned_node.text_content().strip()[:200]
+    media_tags = {"figure", "picture", "img"}
+    if cloned_node.tag in media_tags or cloned_node.cssselect("img"):
+        position_match = _find_by_position(extracted_tree, original_dom, original_node)
+        if position_match:
+            return position_match
+
     if node_text:
         best_match = None
         best_ratio = 0.3
@@ -89,13 +110,12 @@ def _find_by_position(
     preceding = original_node.getprevious()
     while preceding is not None:
         preceding_text = preceding.text_content().strip()[:100]
-        if preceding_text and len(preceding_text) > 20:
+        if preceding_text and len(preceding_text) >= 5:
             for elem in extracted_tree.iter():
                 elem_text = elem.text_content().strip()[:100]
                 if preceding_text in elem_text or elem_text in preceding_text:
                     parent = elem.getparent()
                     if parent is not None:
                         return parent, parent.index(elem) + 1
-            break
         preceding = preceding.getprevious()
     return None

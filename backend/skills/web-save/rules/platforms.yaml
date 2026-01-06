@@ -58,6 +58,7 @@
     - ".post-content img"
     - ".available-content img"
     - "figure img"
+    - 'figure[data-component-name="ImageGallery"]'
 
 - id: substack-include-images-dom
   phase: pre
@@ -68,6 +69,7 @@
     - ".post-content img"
     - ".available-content img"
     - "figure img"
+    - 'figure[data-component-name="ImageGallery"]'
 
 - id: substack-article-override
   phase: pre

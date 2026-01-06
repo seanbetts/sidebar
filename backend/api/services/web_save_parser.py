@@ -252,10 +252,12 @@ def dedupe_markdown_images(markdown: str) -> str:
 
     deduped = re.sub(linked_pattern, replace_linked, markdown)
     deduped = re.sub(image_url_pattern, replace_plain, deduped)
-    deduped = re.sub(r"\[\s*]\([^)]+\)", "", deduped)
+    deduped = re.sub(r"(?<!!)\[\s*]\([^)]+\)", "", deduped)
     deduped = re.sub(r"\[!\]\([^)]+\)", "", deduped)
     for index, value in enumerate(placeholders):
         deduped = deduped.replace(f"__IMG_PLACEHOLDER_{index}__", value)
+    deduped = re.sub(r"\)\s*(\!\[)", r")\n\n\1", deduped)
+    deduped = re.sub(r"\)\s*(\[!\[)", r")\n\n\1", deduped)
     return deduped.strip()
 
 
