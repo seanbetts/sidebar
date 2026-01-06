@@ -57,6 +57,8 @@ class RuleEngine:
     def from_rules_dir(cls, rules_dir: Path) -> "RuleEngine":
         rules: list[Rule] = []
         for path in sorted(rules_dir.glob("*.yaml")):
+            if path.name == "playwright_allowlist.yaml":
+                continue
             payload = yaml.safe_load(path.read_text()) or []
             for item in payload:
                 rules.append(

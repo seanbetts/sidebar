@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -31,6 +32,7 @@ from api.services.web_save_tagger import (
 )
 
 RULES_DIR = Path(__file__).resolve().parents[2] / "skills" / "web-save" / "rules"
+PLAYWRIGHT_ALLOWLIST_PATH = RULES_DIR / "playwright_allowlist.yaml"
 
 
 @dataclass(frozen=True)
@@ -452,13 +454,14 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         )
         used_js_rendering = True
     elif render_mode == "auto" and requires_js_rendering(html):
-        try:
-            html, final_url = render_html_with_playwright(
-                final_url, timeout=render_timeout, wait_for=wait_for
-            )
-            used_js_rendering = True
-        except RuntimeError:
-            pass
+        if is_playwright_allowed(final_url):
+            try:
+                html, final_url = render_html_with_playwright(
+                    final_url, timeout=render_timeout, wait_for=wait_for
+                )
+                used_js_rendering = True
+            except RuntimeError:
+                pass
 
     if html != initial_html or final_url != initial_url:
         pre_rules = engine.match_rules(final_url, html, phase="pre")
@@ -618,3 +621,23 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
 @lru_cache(maxsize=1)
 def get_rule_engine() -> RuleEngine:
     return RuleEngine.from_rules_dir(RULES_DIR)
+
+
+@lru_cache(maxsize=1)
+def get_playwright_allowlist() -> set[str]:
+    if not PLAYWRIGHT_ALLOWLIST_PATH.exists():
+        return set()
+    payload = yaml.safe_load(PLAYWRIGHT_ALLOWLIST_PATH.read_text()) or []
+    if isinstance(payload, list):
+        return {str(item).strip().lower() for item in payload if str(item).strip()}
+    return set()
+
+
+def is_playwright_allowed(url: str) -> bool:
+    host = urlparse(url).netloc.lower().strip(".")
+    if host.startswith("www."):
+        host = host[4:]
+    if not host:
+        return False
+    allowlist = get_playwright_allowlist()
+    return any(host == domain or host.endswith(f".{domain}") for domain in allowlist)
