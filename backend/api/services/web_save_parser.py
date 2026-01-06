@@ -881,6 +881,16 @@ def _is_blocked_youtube_embed(elem: lxml_html.HtmlElement) -> bool:
     return False
 
 
+def _has_ancestor_class(elem: lxml_html.HtmlElement, class_name: str) -> bool:
+    for ancestor in elem.iterancestors():
+        classes = ancestor.get("class", "")
+        if not classes:
+            continue
+        if class_name in classes.split():
+            return True
+    return False
+
+
 def _is_verge_article_body_component(elem: lxml_html.HtmlElement) -> bool:
     for ancestor in elem.iterancestors():
         classes = ancestor.get("class", "")
@@ -1003,6 +1013,7 @@ def _iter_youtube_elements(
 ) -> list[tuple[str, lxml_html.HtmlElement]]:
     has_article = bool(raw_dom.cssselect("article"))
     is_verge = urlparse(base_url).netloc.endswith("theverge.com")
+    is_9to5mac = urlparse(base_url).netloc.endswith("9to5mac.com")
     candidates: list[tuple[str, lxml_html.HtmlElement]] = []
     for elem in raw_dom.iter():
         if not isinstance(elem.tag, str):
@@ -1015,6 +1026,8 @@ def _iter_youtube_elements(
         if not _is_within_article(elem, has_article):
             continue
         if is_verge and not _is_verge_article_body_component(elem):
+            continue
+        if is_9to5mac and _has_ancestor_class(elem, "article__youtube-video"):
             continue
         if _is_blocked_youtube_embed(elem):
             continue

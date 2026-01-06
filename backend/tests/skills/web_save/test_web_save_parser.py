@@ -544,6 +544,54 @@ def test_cleanup_gizmodo_markdown_removes_io9_promo():
     assert "Next paragraph." in cleaned
 
 
+def test_9to5mac_cleanup_removes_youtube_cta_and_disclaimer():
+    html = """
+    <html>
+      <body>
+        <article>
+          <div class="article__youtube-video">
+            <iframe src="https://www.youtube.com/embed/71phz7W0Z1U"></iframe>
+          </div>
+          <h3 id="h-best-iphone-accessories">Best iPhone accessories</h3>
+          <div class="ad-disclaimer-container">
+            <p class="disclaimer-affiliate">FTC: We use income earning auto affiliate links.</p>
+          </div>
+          <p>Keep me</p>
+        </article>
+      </body>
+    </html>
+    """
+    engine = web_save_parser.get_rule_engine()
+    matched = engine.match_rules(
+        "https://9to5mac.com/2026/01/01/example", html, phase="post"
+    )
+    assert any(rule.id == "9to5mac-cleanup" for rule in matched)
+    cleaned = engine.apply_rules(html, matched)
+    assert "article__youtube-video" not in cleaned
+    assert "Best iPhone accessories" not in cleaned
+    assert "FTC: We use income earning auto affiliate links." not in cleaned
+    assert "Keep me" in cleaned
+
+
+def test_iter_youtube_elements_skips_9to5mac_cta_video():
+    html = """
+    <html>
+      <body>
+        <article>
+          <div class="article__youtube-video">
+            <iframe src="https://www.youtube.com/embed/71phz7W0Z1U"></iframe>
+          </div>
+        </article>
+      </body>
+    </html>
+    """
+    dom = lxml_html.fromstring(html)
+    results = web_save_parser._iter_youtube_elements(
+        dom, "https://9to5mac.com/2026/01/01/example"
+    )
+    assert results == []
+
+
 def test_insert_youtube_placeholders_handles_comment_sibling():
     extracted_html = "<article><p>Anchor</p></article>"
     raw_html = """
