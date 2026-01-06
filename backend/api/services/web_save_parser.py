@@ -333,14 +333,24 @@ def cleanup_verge_markdown(markdown: str) -> str:
         return markdown
     output: list[str] = []
     caption_pattern = re.compile(r"^\*{2}\d+/\d+\*{2}\s*Image:\s*.+$")
+    skip_follow_block = False
     for line in markdown.splitlines():
         stripped = line.strip()
+        lowered = stripped.lower()
+        if "follow topics and authors" in lowered:
+            skip_follow_block = True
+            continue
+        if skip_follow_block:
+            if not stripped:
+                continue
+            if stripped.startswith(("* ", "- ")):
+                continue
+            skip_follow_block = False
         if not stripped:
             output.append(line)
             continue
         if caption_pattern.match(stripped):
             continue
-        lowered = stripped.lower()
         if lowered in {"previousnext", "previous", "next"}:
             continue
         output.append(line)
