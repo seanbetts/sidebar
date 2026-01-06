@@ -8,6 +8,16 @@ from typing import Optional
 from lxml import html as lxml_html
 
 
+def _safe_html_tree(html_text: str) -> lxml_html.HtmlElement:
+    try:
+        tree = lxml_html.fromstring(html_text)
+    except (TypeError, ValueError):
+        return lxml_html.fragment_fromstring(html_text, create_parent="div")
+    if not isinstance(tree.tag, str):
+        return lxml_html.fragment_fromstring(html_text, create_parent="div")
+    return tree
+
+
 def apply_include_reinsertion(
     extracted_html: str,
     original_dom: lxml_html.HtmlElement,
@@ -15,7 +25,7 @@ def apply_include_reinsertion(
     removal_rules: list[str],
 ) -> str:
     """Reinsert forcibly included elements after Readability extraction."""
-    extracted_tree = lxml_html.fromstring(extracted_html)
+    extracted_tree = _safe_html_tree(extracted_html)
     body = extracted_tree.find(".//body") or extracted_tree
 
     include_candidates: list[lxml_html.HtmlElement] = []
@@ -72,6 +82,8 @@ def find_insertion_point(
         best_match = None
         best_ratio = 0.3
         for elem in extracted_tree.iter():
+            if not isinstance(elem.tag, str):
+                continue
             if elem.tag in {"script", "style", "meta", "link"}:
                 continue
             elem_text = elem.text_content().strip()[:200]
@@ -112,6 +124,8 @@ def _find_by_position(
         preceding_text = preceding.text_content().strip()[:100]
         if preceding_text and len(preceding_text) >= 5:
             for elem in extracted_tree.iter():
+                if not isinstance(elem.tag, str):
+                    continue
                 elem_text = elem.text_content().strip()[:100]
                 if preceding_text in elem_text or elem_text in preceding_text:
                     parent = elem.getparent()

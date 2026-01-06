@@ -5,10 +5,13 @@ import os
 import asyncio
 import time
 import sys
+import logging
 from pathlib import Path
 from typing import Dict, Any, List
 from api.config import settings
 from api.security.audit_logger import AuditLogger
+
+logger = logging.getLogger(__name__)
 
 
 class SkillExecutor:
@@ -205,6 +208,14 @@ class SkillExecutor:
                                 "stderr": result.stderr,
                             },
                         }
+                    stderr_text = result.stderr.strip()
+                    if stderr_text:
+                        logger.info(
+                            "Skill %s/%s stderr: %s",
+                            skill_name,
+                            script_name,
+                            stderr_text[:2000],
+                        )
                     # Audit log success
                     AuditLogger.log_tool_call(
                         tool_name=f"{skill_name}.{script_name}",

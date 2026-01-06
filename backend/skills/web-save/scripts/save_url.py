@@ -39,6 +39,12 @@ except Exception:
     WebsitesService = None
 
 
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
 logger = logging.getLogger(__name__)
 
 
@@ -169,17 +175,27 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
         url = 'https://' + url
 
     web_save_mode = os.getenv("WEB_SAVE_MODE", "local").lower().strip()
+    logger.info("web-save script start url=%s mode=%s", url, web_save_mode)
     parsed = None
-    parse_error = None
     if web_save_mode in {"local", "compare"}:
         try:
             parsed = parse_url_local(url)
+            logger.info(
+                "web-save script local parse ok url=%s title=%s content_len=%s",
+                url,
+                parsed.title,
+                len(parsed.content),
+            )
         except Exception as exc:
-            parse_error = exc
-            logger.info("Local parse failed for %s: %s", url, str(exc))
+            logger.exception(
+                "web-save script local parse failed url=%s error=%s",
+                url,
+                str(exc),
+            )
 
     local_parsed = parsed
     if parsed is None or web_save_mode in {"jina", "compare"}:
+        logger.info("web-save script using jina url=%s mode=%s", url, web_save_mode)
         api_key = os.environ.get('JINA_API_KEY', '')
         try:
             content = get_markdown_content(url, api_key)
@@ -227,7 +243,7 @@ def save_url_database(url: str, user_id: str) -> Dict[str, Any]:
         published_at = parsed.published_at
 
     if parsed is None:
-        raise RuntimeError(f"Failed to parse URL: {parse_error}")
+        raise RuntimeError("Failed to parse URL")
 
     db = SessionLocal()
 
