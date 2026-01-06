@@ -1108,6 +1108,37 @@ def test_parse_url_local_handles_comment_root(monkeypatch):
     assert "Content body" in parsed.content
 
 
+def test_parse_url_local_strips_control_chars_before_readability(monkeypatch):
+    html = """
+    <html>
+      <head><title>Control Chars</title></head>
+      <body><article>Content\x00body</article></body>
+    </html>
+    """
+
+    class FakeDocument:
+        def __init__(self, _html: str) -> None:
+            assert "\x00" not in _html
+
+        def summary(self, html_partial: bool = True) -> str:
+            return "<article>Content body</article>"
+
+        def short_title(self) -> str:
+            return ""
+
+        def title(self) -> str:
+            return "Control Chars"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "Document", FakeDocument)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "Content body" in parsed.content
+
+
 def test_wrap_gallery_blocks_ignores_single_captioned_image():
     markdown = '![](https://example.com/one.png \"Caption\")'
     wrapped = web_save_parser.wrap_gallery_blocks(markdown)
