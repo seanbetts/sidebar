@@ -450,6 +450,25 @@ def test_cleanup_verge_markdown_removes_gallery_chrome():
     assert "Image: Hyundai" not in cleaned
 
 
+def test_cleanup_verge_markdown_removes_follow_topics_block():
+    markdown = "\n".join(
+        [
+            "**Follow topics and authors** from this story to see more like this.",
+            "",
+            "* Andrew J. Hawkins",
+            "* Autonomous Cars",
+            "* Cars",
+            "",
+            "Next paragraph.",
+        ]
+    )
+    cleaned = web_save_parser.cleanup_verge_markdown(markdown)
+    assert "Follow topics and authors" not in cleaned
+    assert "Andrew J. Hawkins" not in cleaned
+    assert "Autonomous Cars" not in cleaned
+    assert "Next paragraph." in cleaned
+
+
 def test_simplify_linked_images_unwraps_matching_links():
     markdown = "[![](https://example.com/img.jpg)](https://example.com/img.jpg)"
     simplified = web_save_parser.simplify_linked_images(markdown)
