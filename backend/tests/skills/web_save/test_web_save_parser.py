@@ -1,6 +1,7 @@
 """Tests for the web-save local parser."""
 from datetime import datetime, timezone
 
+from bs4 import BeautifulSoup
 from api.services import web_save_parser
 
 
@@ -414,6 +415,68 @@ def test_dedupe_markdown_images_separates_adjacent_images():
     assert "\n\n[![](https://example.com/d.png)]" in deduped
 
 
+def test_normalize_image_captions_moves_figcaption():
+    html = """
+    <figure>
+      <img src="https://example.com/image.png" alt="Alt"/>
+      <figcaption>Caption text</figcaption>
+    </figure>
+    """
+    normalized = web_save_parser.normalize_image_captions(html)
+    soup = BeautifulSoup(normalized, "html.parser")
+    img = soup.find("img")
+    assert img is not None
+    assert img.get("title") == "Caption text"
+    assert soup.find("figcaption") is None
+
+
+def test_normalize_image_captions_from_gallery_data_attrs():
+    html = """
+    <div data-attrs='{"gallery":{"caption":"Gallery caption"}}'>
+      <img src="https://example.com/gallery.png" alt=""/>
+      <img src="https://example.com/gallery-last.png" alt=""/>
+    </div>
+    """
+    normalized = web_save_parser.normalize_image_captions(html)
+    soup = BeautifulSoup(normalized, "html.parser")
+    imgs = soup.find_all("img")
+    assert len(imgs) == 2
+    assert imgs[0].get("title") is None
+    assert imgs[-1].get("title") == "Gallery caption"
+
+
+def test_normalize_image_captions_from_gallery_sources_after_node():
+    html = """
+    <div data-attrs='{"gallery":{"caption":"Gallery caption","images":[{"src":"https://example.com/one.png"},{"src":"https://example.com/two.png"}]}}'></div>
+    <p>Text</p>
+    <img src="https://example.com/one.png" alt=""/>
+    <img src="https://example.com/two.png" alt=""/>
+    """
+    normalized = web_save_parser.normalize_image_captions(html)
+    soup = BeautifulSoup(normalized, "html.parser")
+    imgs = soup.find_all("img")
+    assert len(imgs) == 2
+    assert imgs[0].get("title") is None
+    assert imgs[-1].get("title") == "Gallery caption"
+
+
+def test_normalize_image_captions_moves_gallery_caption_to_last_image():
+    html = """
+    <figure>
+      <img src="https://example.com/one.png" title="Gallery caption"/>
+      <figcaption>Gallery caption</figcaption>
+    </figure>
+    <img src="https://example.com/two.png" alt=""/>
+    <div data-attrs='{"gallery":{"caption":"Gallery caption","images":[{"src":"https://example.com/one.png"},{"src":"https://example.com/two.png"}]}}'></div>
+    """
+    normalized = web_save_parser.normalize_image_captions(html)
+    soup = BeautifulSoup(normalized, "html.parser")
+    imgs = soup.find_all("img")
+    assert len(imgs) == 2
+    assert imgs[0].get("title") is None
+    assert imgs[-1].get("title") == "Gallery caption"
+
+
 def test_parse_url_local_dedupes_wp_com_proxy_images(monkeypatch):
     html = """
     <html>
@@ -437,6 +500,28 @@ def test_parse_url_local_dedupes_wp_com_proxy_images(monkeypatch):
 
     parsed = web_save_parser.parse_url_local("onlydeadfish.co.uk/article")
     assert parsed.content.count("Corporate-carpets.png") == 1
+
+
+def test_wrap_gallery_blocks_builds_html_gallery():
+    markdown = "\n".join(
+        [
+            "![](https://example.com/one.png)",
+            "",
+            "![](https://example.com/two.png \"Gallery caption\")",
+        ]
+    )
+    wrapped = web_save_parser.wrap_gallery_blocks(markdown)
+    assert "<figure" in wrapped
+    assert "image-gallery" in wrapped
+    assert "data-caption=\"Gallery caption\"" in wrapped
+    assert "https://example.com/one.png" in wrapped
+    assert "https://example.com/two.png" in wrapped
+
+
+def test_wrap_gallery_blocks_ignores_single_captioned_image():
+    markdown = '![](https://example.com/one.png \"Caption\")'
+    wrapped = web_save_parser.wrap_gallery_blocks(markdown)
+    assert wrapped.strip() == markdown
     assert parsed.content.count("i0.wp.com/onlydeadfish.co.uk/wp-content/uploads/2026/01/Corporate-carpets.png") == 0
     assert "[](" not in parsed.content
 

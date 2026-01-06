@@ -1,13 +1,14 @@
 """Local parsing utilities for the web-save skill."""
 from __future__ import annotations
 
+import html
+import json
 import re
-from functools import lru_cache
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import unquote, urljoin, urlparse
 
 import requests
@@ -261,6 +262,50 @@ def dedupe_markdown_images(markdown: str) -> str:
     return deduped.strip()
 
 
+def wrap_gallery_blocks(markdown: str) -> str:
+    """Wrap consecutive gallery images into a single HTML gallery block."""
+    image_line = re.compile(
+        r'^!\[[^\]]*]\(([^)\s]+)(?:\s+(?:\"([^\"]*)\"|\'([^\']*)\'))?\)\s*$'
+    )
+    lines = markdown.splitlines()
+    output: list[str] = []
+    index = 0
+    while index < len(lines):
+        if not lines[index].strip():
+            output.append(lines[index])
+            index += 1
+            continue
+        matches: list[tuple[str, str | None]] = []
+        consumed = 0
+        while index + consumed < len(lines):
+            line = lines[index + consumed]
+            if not line.strip():
+                consumed += 1
+                continue
+            match = image_line.match(line.strip())
+            if not match:
+                break
+            url = match.group(1)
+            title = match.group(2) or match.group(3)
+            matches.append((url, title))
+            consumed += 1
+        if matches:
+            caption = matches[-1][1]
+            if caption and len(matches) >= 2:
+                escaped_caption = html.escape(caption, quote=True)
+                output.append(f'<figure class="image-gallery" data-caption="{escaped_caption}">')
+                output.append('  <div class="image-gallery-grid">')
+                for url, _title in matches:
+                    output.append(f'    <img src="{html.escape(url, quote=True)}" />')
+                output.append('  </div>')
+                output.append('</figure>')
+                index += consumed
+                continue
+        output.append(lines[index])
+        index += 1
+    return "\n".join(output).strip()
+
+
 def extract_body_html(html: str) -> str:
     """Extract inner body HTML from a full document."""
     soup = BeautifulSoup(html, "html.parser")
@@ -324,6 +369,89 @@ def prepend_hero_image(html: str, image_url: str, title: str) -> str:
         target.insert(0, hero)
     else:
         target.append(hero)
+    return str(soup)
+
+
+def normalize_image_captions(html: str) -> str:
+    """Attach figure captions to image title attributes for Markdown rendering."""
+    soup = BeautifulSoup(html, "html.parser")
+
+    for figure in soup.find_all("figure"):
+        figcaption = figure.find("figcaption")
+        if not figcaption:
+            continue
+        caption = figcaption.get_text(" ", strip=True)
+        if not caption:
+            figcaption.decompose()
+            continue
+        img = figure.find("img")
+        if img and not img.get("title"):
+            img["title"] = caption
+        figcaption.decompose()
+
+    for node in soup.find_all(attrs={"data-attrs": True}):
+        data_attrs = node.get("data-attrs")
+        if not data_attrs:
+            continue
+        try:
+            payload = json.loads(data_attrs)
+        except json.JSONDecodeError:
+            continue
+        gallery = payload.get("gallery") if isinstance(payload, dict) else None
+        if not isinstance(gallery, dict):
+            continue
+        caption = gallery.get("caption")
+        if not caption:
+            continue
+        images = gallery.get("images")
+        gallery_sources: list[str] = []
+        if isinstance(images, list):
+            for item in images:
+                if not isinstance(item, dict):
+                    continue
+                src = item.get("src")
+                if src:
+                    gallery_sources.append(src)
+        if gallery_sources:
+            matched_imgs: list[Any] = []
+            used: set[int] = set()
+            all_imgs = soup.find_all("img")
+            for src in gallery_sources:
+                target_key = _canonical_image_url(src)
+                found = None
+                for img in all_imgs:
+                    if id(img) in used:
+                        continue
+                    candidate = img.get("src")
+                    if not candidate:
+                        continue
+                    if _canonical_image_url(candidate) == target_key:
+                        found = img
+                        break
+                if found is None:
+                    break
+                used.add(id(found))
+                matched_imgs.append(found)
+            if matched_imgs:
+                for img in matched_imgs[:-1]:
+                    if img.get("title") == caption:
+                        del img["title"]
+                img = matched_imgs[-1]
+                existing = img.get("title")
+                if existing is None or existing == caption:
+                    img["title"] = caption
+                continue
+        imgs = node.find_all("img")
+        if not imgs:
+            continue
+        for img in imgs[:-1]:
+            if img.get("title") == caption:
+                del img["title"]
+        img = imgs[-1]
+        existing = img.get("title")
+        if existing is None or existing == caption:
+            img["title"] = caption
+
     return str(soup)
 
 
@@ -615,6 +743,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     article_html = normalize_image_sources(
         article_html, metadata.get("canonical") or final_url
     )
+    article_html = normalize_image_captions(article_html)
     title = (
         metadata.get("title")
         or document.short_title()
@@ -667,6 +796,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             markdown = f"{markdown}\n\n" + "\n".join(lines)
 
     markdown = dedupe_markdown_images(markdown)
+    markdown = wrap_gallery_blocks(markdown)
 
     frontmatter_meta = {
         "source": metadata.get("canonical") or final_url,
