@@ -459,6 +459,8 @@ class WebsitesService:
         db: Session,
         user_id: str,
         filters: WebsiteFilters | None = None,
+        *,
+        include_deleted: bool = False,
     ) -> Iterable[Website]:
         """List websites using optional filters.
 
@@ -481,10 +483,10 @@ class WebsitesService:
             Website.metadata_,
             Website.updated_at,
             Website.last_opened_at,
-        )).filter(
-            Website.user_id == user_id,
-            Website.deleted_at.is_(None),
-        )
+        )).filter(Website.user_id == user_id)
+
+        if not include_deleted:
+            query = query.filter(Website.deleted_at.is_(None))
 
         if filters.domain is not None:
             query = query.filter(Website.domain == filters.domain)

@@ -4,6 +4,7 @@ Migrate existing websites to the new parsing pipeline.
 
 Usage:
     uv run backend/scripts/migrate_existing_websites.py --user-id USER_ID
+    uv run backend/scripts/migrate_existing_websites.py --user-id USER_ID --pinned true --limit 6
 """
 from __future__ import annotations
 
@@ -20,9 +21,21 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from api.db.session import SessionLocal, set_session_user_id
 from api.models.website import Website
 from api.services.web_save_parser import ParsedPage, parse_url_local
+from api.schemas.filters import WebsiteFilters
 from api.services.websites_service import WebsitesService
 
 logger = logging.getLogger(__name__)
+
+
+def parse_bool(value: str | None) -> bool | None:
+    if value is None:
+        return None
+    value = value.strip().lower()
+    if value in {"true", "1", "yes", "y"}:
+        return True
+    if value in {"false", "0", "no", "n"}:
+        return False
+    raise ValueError(f"Invalid boolean value: {value}")
 
 
 def iter_websites(
@@ -31,14 +44,18 @@ def iter_websites(
     *,
     include_deleted: bool,
     limit: Optional[int],
+    pinned: bool | None,
 ) -> list[Website]:
-    query = db.query(Website).filter(Website.user_id == user_id)
-    if not include_deleted:
-        query = query.filter(Website.deleted_at.is_(None))
-    query = query.order_by(Website.created_at.asc())
+    filters = WebsiteFilters(pinned=pinned)
+    websites = list(
+        WebsitesService.list_websites(
+            db, user_id, filters, include_deleted=include_deleted
+        )
+    )
+    websites.sort(key=lambda item: item.created_at)
     if limit:
-        query = query.limit(limit)
-    return query.all()
+        websites = websites[:limit]
+    return websites
 
 
 def migrate_websites(
@@ -48,10 +65,17 @@ def migrate_websites(
     limit: Optional[int],
     dry_run: bool,
     stop_on_error: bool,
+    pinned: bool | None,
 ) -> None:
     db = SessionLocal()
     set_session_user_id(db, user_id)
-    websites = iter_websites(db, user_id, include_deleted=include_deleted, limit=limit)
+    websites = iter_websites(
+        db,
+        user_id,
+        include_deleted=include_deleted,
+        limit=limit,
+        pinned=pinned,
+    )
     total = len(websites)
     logger.info("Found %s website(s) to migrate.", total)
     migrated = 0
@@ -103,6 +127,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--user-id", required=True, help="User ID to migrate.")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of websites.")
     parser.add_argument("--include-deleted", action="store_true", help="Include soft-deleted records.")
+    parser.add_argument("--pinned", default=None, help="true or false to filter pinned.")
     parser.add_argument("--dry-run", action="store_true", help="Log actions without updating.")
     parser.add_argument(
         "--stop-on-error",
@@ -121,6 +146,7 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         limit=args.limit,
         dry_run=args.dry_run,
         stop_on_error=args.stop_on_error,
+        pinned=parse_bool(args.pinned),
     )
 
 
