@@ -212,7 +212,8 @@
   async function handleDelete(): Promise<boolean> {
     if (!selectedSite) return false;
     const deleted = await deleteWebsite(selectedSite.id, {
-      scope: 'websitesPanel.delete'
+      scope: 'websitesPanel.delete',
+      clearActiveOnDelete: true
     });
     if (deleted) {
       selectedSite = null;
