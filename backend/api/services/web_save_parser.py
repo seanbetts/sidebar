@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 import requests
 import yaml
@@ -197,18 +197,65 @@ def html_to_markdown(html: str) -> str:
     return markdownify(html, heading_style="ATX").strip()
 
 
+def _canonical_image_url(url: str) -> str:
+    if not url:
+        return url
+    unquoted = unquote(url)
+    http_index = unquoted.rfind("http://")
+    https_index = unquoted.rfind("https://")
+    idx = max(http_index, https_index)
+    if idx > 0:
+        unquoted = unquoted[idx:]
+    parsed = urlparse(unquoted)
+    if parsed.scheme and parsed.netloc:
+        host = parsed.netloc.lower().strip(".")
+        if host.startswith("www."):
+            host = host[4:]
+        path = parsed.path or ""
+        if host.endswith(".wp.com") and path.startswith("/"):
+            parts = path.lstrip("/").split("/", 1)
+            if len(parts) == 2 and "." in parts[0]:
+                return f"https://{parts[0]}/{parts[1]}"
+        return parsed._replace(query="", fragment="").geturl()
+    http_index = unquoted.rfind("http://")
+    https_index = unquoted.rfind("https://")
+    idx = max(http_index, https_index)
+    if idx != -1:
+        return unquoted[idx:]
+    return unquoted
+
+
 def dedupe_markdown_images(markdown: str) -> str:
     """Remove duplicate image references while preserving order."""
-    seen = set()
+    seen: set[str] = set()
 
-    def replace(match: re.Match[str]) -> str:
+    image_url_pattern = r"!\[[^\]]*]\(([^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)"
+    linked_pattern = rf"\[{image_url_pattern}\]\([^)]+\)"
+    placeholders: list[str] = []
+
+    def replace_linked(match: re.Match[str]) -> str:
         url = match.group(1)
-        if url in seen:
+        key = _canonical_image_url(url)
+        if key in seen:
             return ""
-        seen.add(url)
+        seen.add(key)
+        placeholders.append(match.group(0))
+        return f"__IMG_PLACEHOLDER_{len(placeholders) - 1}__"
+
+    def replace_plain(match: re.Match[str]) -> str:
+        url = match.group(1)
+        key = _canonical_image_url(url)
+        if key in seen:
+            return ""
+        seen.add(key)
         return match.group(0)
 
-    deduped = re.sub(r"!\[[^\]]*]\(([^)]+)\)", replace, markdown)
+    deduped = re.sub(linked_pattern, replace_linked, markdown)
+    deduped = re.sub(image_url_pattern, replace_plain, deduped)
+    deduped = re.sub(r"\[\s*]\([^)]+\)", "", deduped)
+    deduped = re.sub(r"\[!\]\([^)]+\)", "", deduped)
+    for index, value in enumerate(placeholders):
+        deduped = deduped.replace(f"__IMG_PLACEHOLDER_{index}__", value)
     return deduped.strip()
 
 
@@ -239,13 +286,35 @@ def normalize_image_sources(html: str, base_url: str) -> str:
     return str(soup)
 
 
+def _normalize_image_identity(url: str) -> tuple[str, str]:
+    canonical = _canonical_image_url(url)
+    parsed = urlparse(canonical)
+    host = parsed.netloc.lower().strip(".")
+    if host.startswith("www."):
+        host = host[4:]
+    return host, parsed.path.rstrip("/")
+
+
+def _srcset_contains(srcset: str, candidate: str) -> bool:
+    return any(candidate in part.strip() for part in srcset.split(","))
+
+
 def prepend_hero_image(html: str, image_url: str, title: str) -> str:
     """Ensure hero image is present near the top of the extracted HTML."""
     if not image_url:
         return html
+    canonical_image = _canonical_image_url(image_url)
+    if image_url in html or canonical_image in unquote(html):
+        return html
     soup = BeautifulSoup(html, "html.parser")
+    candidate_identity = _normalize_image_identity(canonical_image)
     for img in soup.find_all("img"):
-        if img.get("src") == image_url:
+        src = img.get("src") or ""
+        if src:
+            if _normalize_image_identity(src) == candidate_identity:
+                return html
+        srcset = img.get("srcset")
+        if srcset and _srcset_contains(srcset, image_url):
             return html
     hero = soup.new_tag("img", src=image_url, alt=title or "Hero image")
     target = soup.body or soup

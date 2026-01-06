@@ -342,6 +342,93 @@ def test_parse_url_local_includes_hero_image(monkeypatch):
     assert "![Image Test](https://images.example.com/hero.jpg)" in parsed.content
 
 
+def test_parse_url_local_dedupes_hero_image(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Image Test</title>
+        <meta property="og:image" content="https://images.example.com/hero.jpg"/>
+      </head>
+      <body>
+        <article>
+          <img src="https://images.example.com/hero.jpg" alt="Hero"/>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert parsed.content.count("https://images.example.com/hero.jpg") == 1
+
+
+def test_parse_url_local_dedupes_encoded_hero_image(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>Substack Test</title>
+        <meta property="og:image" content="https://substackcdn.com/image/fetch/$s_abc,w_1200/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fhero.webp"/>
+      </head>
+      <body>
+        <article>
+          <img src="https://substackcdn.com/image/fetch/$s_def,w_1456/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fhero.webp"/>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert parsed.content.count("substack-post-media.s3.amazonaws.com/public/images/hero.webp") == 1
+
+
+def test_dedupe_markdown_images_handles_linked_title():
+    markdown = (
+        "![Hero](https://example.com/hero.png)\n\n"
+        "[![](https://example.com/hero.png \"Title\")](https://example.com/hero.png)\n"
+    )
+    deduped = web_save_parser.dedupe_markdown_images(markdown)
+    assert deduped.count("hero.png") == 1
+    assert "[!]" not in deduped
+
+
+def test_parse_url_local_dedupes_wp_com_proxy_images(monkeypatch):
+    html = """
+    <html>
+      <head>
+        <title>WP Test</title>
+        <meta property="og:image" content="https://onlydeadfish.co.uk/wp-content/uploads/2026/01/Corporate-carpets.png"/>
+      </head>
+      <body>
+        <article>
+          <img src="https://i0.wp.com/onlydeadfish.co.uk/wp-content/uploads/2026/01/Corporate-carpets.png?resize=1000%2C735&ssl=1"/>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://onlydeadfish.co.uk/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("onlydeadfish.co.uk/article")
+    assert parsed.content.count("Corporate-carpets.png") == 1
+    assert parsed.content.count("i0.wp.com/onlydeadfish.co.uk/wp-content/uploads/2026/01/Corporate-carpets.png") == 0
+    assert "[](" not in parsed.content
+
+
 def test_parse_url_local_normalizes_lazy_images(monkeypatch):
     html = """
     <html>
