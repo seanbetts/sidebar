@@ -469,6 +469,44 @@ def test_cleanup_verge_markdown_removes_follow_topics_block():
     assert "Next paragraph." in cleaned
 
 
+def test_iter_youtube_elements_skips_verge_non_body_component():
+    html = """
+    <html>
+      <body>
+        <article>
+          <div class="ad-slot" data-testid="advertisement">
+            <iframe src="https://www.youtube.com/embed/abcd1234"></iframe>
+          </div>
+        </article>
+      </body>
+    </html>
+    """
+    dom = lxml_html.fromstring(html)
+    results = web_save_parser._iter_youtube_elements(
+        dom, "https://www.theverge.com/test"
+    )
+    assert results == []
+
+
+def test_iter_youtube_elements_allows_verge_body_component():
+    html = """
+    <html>
+      <body>
+        <article>
+          <div class="duet--article--article-body-component">
+            <iframe src="https://www.youtube.com/embed/abcd1234"></iframe>
+          </div>
+        </article>
+      </body>
+    </html>
+    """
+    dom = lxml_html.fromstring(html)
+    results = web_save_parser._iter_youtube_elements(
+        dom, "https://www.theverge.com/test"
+    )
+    assert [item[0] for item in results] == ["abcd1234"]
+
+
 def test_simplify_linked_images_unwraps_matching_links():
     markdown = "[![](https://example.com/img.jpg)](https://example.com/img.jpg)"
     simplified = web_save_parser.simplify_linked_images(markdown)

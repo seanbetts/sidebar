@@ -749,7 +749,18 @@ YOUTUBE_URL_ATTRS = (
     "data-yt-url",
     "href",
 )
-YOUTUBE_BLOCKED_TOKENS = ("ad", "advert", "sponsor", "cookie", "consent")
+YOUTUBE_BLOCKED_TOKENS = (
+    "ad",
+    "ads",
+    "advert",
+    "advertisement",
+    "sponsor",
+    "sponsored",
+    "promo",
+    "promoted",
+    "cookie",
+    "consent",
+)
 JSONLD_ARTICLE_TYPES = {
     "Article",
     "NewsArticle",
@@ -818,12 +829,35 @@ def _extract_youtube_id_from_element(
     return None
 
 
+def _contains_blocked_token(value: str) -> bool:
+    if not value:
+        return False
+    return bool(
+        re.search(r"\b(ad|ads|advert|advertisement|sponsor|sponsored|promo|promoted)\b", value)
+    )
+
+
 def _is_blocked_youtube_embed(elem: lxml_html.HtmlElement) -> bool:
     for ancestor in elem.iterancestors():
         classes = " ".join(ancestor.get("class", [])).lower()
         ident = ancestor.get("id", "").lower()
         marker = f"{classes} {ident}"
         if any(token in marker for token in YOUTUBE_BLOCKED_TOKENS):
+            return True
+        for attr in ("aria-label", "role", "data-testid", "data-ad", "data-ad-unit"):
+            value = (ancestor.get(attr) or "").lower()
+            if _contains_blocked_token(value):
+                return True
+    return False
+
+
+def _is_verge_article_body_component(elem: lxml_html.HtmlElement) -> bool:
+    for ancestor in elem.iterancestors():
+        classes = ancestor.get("class", "")
+        if not classes:
+            continue
+        tokens = classes.split()
+        if "duet--article--article-body-component" in tokens:
             return True
     return False
 
@@ -938,6 +972,7 @@ def _iter_youtube_elements(
     raw_dom: lxml_html.HtmlElement, base_url: str
 ) -> list[tuple[str, lxml_html.HtmlElement]]:
     has_article = bool(raw_dom.cssselect("article"))
+    is_verge = urlparse(base_url).netloc.endswith("theverge.com")
     candidates: list[tuple[str, lxml_html.HtmlElement]] = []
     for elem in raw_dom.iter():
         if not isinstance(elem.tag, str):
@@ -948,6 +983,8 @@ def _iter_youtube_elements(
         if not _is_likely_youtube_embed_element(elem):
             continue
         if not _is_within_article(elem, has_article):
+            continue
+        if is_verge and not _is_verge_article_body_component(elem):
             continue
         if _is_blocked_youtube_embed(elem):
             continue
@@ -1461,11 +1498,12 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                 for video_id in sorted(jsonld_ids)
             ]
         else:
-            script_ids = extract_youtube_video_ids_from_html(
-                raw_html_original, metadata.get("canonical") or final_url
-            )
-            if script_ids:
-                embeds = [f"https://www.youtube.com/watch?v={script_ids[0]}"]
+            if not domain.endswith("theverge.com"):
+                script_ids = extract_youtube_video_ids_from_html(
+                    raw_html_original, metadata.get("canonical") or final_url
+                )
+                if script_ids:
+                    embeds = [f"https://www.youtube.com/watch?v={script_ids[0]}"]
     if embeds:
         existing = markdown
         lines = []
