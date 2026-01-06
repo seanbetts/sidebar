@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 
 from bs4 import BeautifulSoup
 from api.services import web_save_parser
+from api.services import web_save_includes
+from lxml import html as lxml_html
 
 
 def test_parse_url_local_builds_frontmatter(monkeypatch):
@@ -91,6 +93,47 @@ def test_rule_engine_trigger_mode_any_text_contains():
 
     matched = engine.match_rules("https://example.com", html, phase="post")
     assert len(matched) == 1
+
+
+def test_rule_engine_handles_comment_root():
+    html = "<!--comment--><article><p>Hello world</p></article>"
+    engine = web_save_parser.RuleEngine(
+        rules=[
+            web_save_parser.Rule(
+                id="comment-safe",
+                phase="post",
+                priority=0,
+                trigger={"mode": "any", "dom": {"any_text_contains": ["world"]}},
+                remove=[],
+                include=[],
+                selector_overrides={},
+                metadata={},
+                actions=[],
+            )
+        ]
+    )
+
+    matched = engine.match_rules("https://example.com", html, phase="post")
+    assert len(matched) == 1
+
+
+def test_metadata_overrides_handles_comment_root():
+    html = "<!--comment--><article><h1>Title</h1></article>"
+    rules = [
+        web_save_parser.Rule(
+            id="meta-comment",
+            phase="post",
+            priority=0,
+            trigger={"mode": "any", "dom": {"any": ["h1"]}},
+            remove=[],
+            include=[],
+            selector_overrides={},
+            metadata={"title": {"selector": "h1"}},
+            actions=[],
+        )
+    ]
+    overrides = web_save_parser.extract_metadata_overrides(html, rules)
+    assert overrides["title"] == "Title"
 
 
 def test_metadata_overrides_apply(monkeypatch):
@@ -290,6 +333,26 @@ def test_parse_url_local_includes_reinserted_nodes(monkeypatch):
 
     parsed = web_save_parser.parse_url_local("example.com/include")
     assert "Special include" in parsed.content
+
+
+def test_apply_include_reinsertion_handles_comment_root():
+    extracted_html = "<!--comment--><article><p>Primary content</p></article>"
+    original_html = """
+    <html>
+      <body>
+        <div class="include-me"><p>Special include</p></div>
+        <article><p>Primary content</p></article>
+      </body>
+    </html>
+    """
+    original_dom = lxml_html.fromstring(original_html)
+    updated = web_save_includes.apply_include_reinsertion(
+        extracted_html,
+        original_dom,
+        include_selectors=[".include-me"],
+        removal_rules=[],
+    )
+    assert "Special include" in updated
 
 
 def test_parse_url_local_force_rendering(monkeypatch):
@@ -648,6 +711,37 @@ def test_parse_url_local_includes_verge_gallery_images(monkeypatch):
     parsed = web_save_parser.parse_url_local("https://www.theverge.com/news/123")
     assert "https://platform.theverge.com/wp-content/uploads/a.jpg" in parsed.content
     assert "https://platform.theverge.com/wp-content/uploads/b.jpg" in parsed.content
+
+
+def test_parse_url_local_handles_comment_root(monkeypatch):
+    html = """
+    <html>
+      <head><title>Comment Root</title></head>
+      <body><!-- comment --><article><p>Content body</p></article></body>
+    </html>
+    """
+
+    class FakeDocument:
+        def __init__(self, _html: str) -> None:
+            pass
+
+        def summary(self, html_partial: bool = True) -> str:
+            return "<!--comment--><article><p>Content body</p></article>"
+
+        def short_title(self) -> str:
+            return ""
+
+        def title(self) -> str:
+            return "Comment Root"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "Document", FakeDocument)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "Content body" in parsed.content
 
 
 def test_wrap_gallery_blocks_ignores_single_captioned_image():

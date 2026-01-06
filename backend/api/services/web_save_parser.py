@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import re
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -32,6 +34,8 @@ from api.services.web_save_tagger import (
     compute_word_count,
     extract_tags,
 )
+
+logger = logging.getLogger(__name__)
 
 RULES_DIR = Path(__file__).resolve().parents[2] / "skills" / "web-save" / "rules"
 PLAYWRIGHT_ALLOWLIST_PATH = RULES_DIR / "playwright_allowlist.yaml"
@@ -319,7 +323,7 @@ def replace_youtube_iframes_with_placeholders(
     html: str, base_url: str
 ) -> tuple[str, set[str]]:
     """Replace YouTube iframes with placeholders to preserve inline position."""
-    tree = lxml_html.fromstring(html)
+    tree = _safe_html_tree(html)
     embedded_ids: set[str] = set()
 
     for video_id, node in _iter_youtube_elements(tree, base_url):
@@ -332,7 +336,7 @@ def replace_youtube_iframes_with_placeholders(
             parent.replace(node, placeholder)
             embedded_ids.add(video_id)
 
-    return lxml_html.tostring(tree, encoding="unicode"), embedded_ids
+    return _safe_html_tostring(tree, html), embedded_ids
 
 
 def normalize_image_sources(html: str, base_url: str) -> str:
@@ -905,6 +909,24 @@ def _iter_youtube_elements(
     return candidates
 
 
+def _safe_html_tree(html_text: str) -> lxml_html.HtmlElement:
+    try:
+        tree = lxml_html.fromstring(html_text)
+    except (TypeError, ValueError):
+        return lxml_html.fragment_fromstring(html_text, create_parent="div")
+    if not isinstance(tree.tag, str):
+        return lxml_html.fragment_fromstring(html_text, create_parent="div")
+    return tree
+
+
+def _safe_html_tostring(tree: lxml_html.HtmlElement, fallback_html: str) -> str:
+    try:
+        return lxml_html.tostring(tree, encoding="unicode")
+    except (TypeError, ValueError):
+        safe_tree = _safe_html_tree(fallback_html)
+        return lxml_html.tostring(safe_tree, encoding="unicode")
+
+
 def extract_youtube_video_ids_from_html(html: str, base_url: str) -> list[str]:
     video_ids: list[str] = []
     soup = BeautifulSoup(html, "html.parser")
@@ -964,7 +986,7 @@ def extract_youtube_embed_urls_from_dom(
 def insert_youtube_placeholders(
     extracted_html: str, raw_dom: lxml_html.HtmlElement, base_url: str
 ) -> str:
-    extracted_tree = lxml_html.fromstring(extracted_html)
+    extracted_tree = _safe_html_tree(extracted_html)
     body = extracted_tree.find(".//body") or extracted_tree
     existing_ids: set[str] = set()
     for elem in extracted_tree.iter():
@@ -1021,7 +1043,7 @@ def insert_youtube_placeholders(
     for video_id, node in _iter_youtube_elements(raw_dom, base_url):
         insert_placeholder(video_id, node)
 
-    return lxml_html.tostring(extracted_tree, encoding="unicode")
+    return _safe_html_tostring(extracted_tree, extracted_html)
 
 
 def replace_youtube_placeholders(markdown: str) -> tuple[str, set[str]]:
@@ -1065,7 +1087,7 @@ def build_youtube_anchor_map(
     if anchors or candidates:
         return anchors
 
-    raw_html = lxml_html.tostring(raw_dom, encoding="unicode")
+    raw_html = _safe_html_tostring(raw_dom, "")
     embed_ids = extract_youtube_video_ids_from_html(raw_html, base_url)
     if not embed_ids:
         return anchors
@@ -1138,12 +1160,27 @@ def build_frontmatter(markdown_text: str, *, meta: dict) -> str:
 
 def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     """Parse a URL locally into Markdown with frontmatter."""
+    start_time = time.monotonic()
     normalized = ensure_url(url)
+    logger.info("web-save parse start url=%s", normalized)
     html, final_url, used_js_rendering = fetch_html(normalized, timeout=timeout)
+    logger.info(
+        "web-save fetched url=%s final_url=%s used_js=%s html_len=%s",
+        normalized,
+        final_url,
+        used_js_rendering,
+        len(html),
+    )
     initial_html = html
     initial_url = final_url
     engine = get_rule_engine()
     pre_rules = engine.match_rules(final_url, html, phase="pre")
+    if pre_rules:
+        logger.info(
+            "web-save pre rules url=%s ids=%s",
+            final_url,
+            [rule.id for rule in pre_rules],
+        )
     render_mode, wait_for, render_timeout = resolve_rendering_settings(pre_rules)
     if used_js_rendering:
         pass
@@ -1174,6 +1211,20 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
 
     if html != initial_html or final_url != initial_url:
         pre_rules = engine.match_rules(final_url, html, phase="pre")
+        if pre_rules:
+            logger.info(
+                "web-save pre rules (post-render) url=%s ids=%s",
+                final_url,
+                [rule.id for rule in pre_rules],
+            )
+    logger.info(
+        "web-save rendering url=%s mode=%s used_js=%s wait_for=%s timeout_ms=%s",
+        final_url,
+        render_mode,
+        used_js_rendering,
+        wait_for,
+        render_timeout,
+    )
 
     raw_html_original = html
     metadata = extract_metadata(html, final_url)
@@ -1197,9 +1248,9 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     html, pre_youtube_ids = replace_youtube_iframes_with_placeholders(
         html, metadata.get("canonical") or final_url
     )
-    raw_dom = lxml_html.fromstring(html)
-    raw_dom_original = lxml_html.fromstring(raw_html_original)
-    pre_dom = lxml_html.fromstring(html)
+    raw_dom = _safe_html_tree(html)
+    raw_dom_original = _safe_html_tree(raw_html_original)
+    pre_dom = _safe_html_tree(html)
 
     document = Document(html)
     substack_payload = None
@@ -1212,11 +1263,21 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         metadata.update({key: value for key, value in substack_meta.items() if value})
     else:
         article_html = document.summary(html_partial=True)
+    logger.info(
+        "web-save readability url=%s article_len=%s",
+        final_url,
+        len(article_html),
+    )
     post_rules = engine.match_rules(final_url, article_html, phase="post")
     if post_rules:
-        post_tree = lxml_html.fromstring(article_html)
+        logger.info(
+            "web-save post rules url=%s ids=%s",
+            final_url,
+            [rule.id for rule in post_rules],
+        )
+        post_tree = _safe_html_tree(article_html)
         post_tree = engine.apply_rules_tree(post_tree, post_rules)
-        article_html = lxml_html.tostring(post_tree, encoding="unicode")
+        article_html = _safe_html_tostring(post_tree, article_html)
     discard_rule = next((rule for rule in post_rules if rule.discard), None)
     if discard_rule:
         content = _discard_frontmatter(
@@ -1251,8 +1312,22 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             include_selectors,
             removal_selectors,
         )
+        logger.info(
+            "web-save include reinsertion url=%s selectors=%s removals=%s",
+            final_url,
+            len(include_selectors),
+            len(removal_selectors),
+        )
     domain = urlparse(final_url).netloc
+    before_img_count = len(BeautifulSoup(article_html, "html.parser").find_all("img"))
     article_html = filter_non_content_images(article_html, domain=domain)
+    after_img_count = len(BeautifulSoup(article_html, "html.parser").find_all("img"))
+    logger.info(
+        "web-save images url=%s before=%s after=%s",
+        final_url,
+        before_img_count,
+        after_img_count,
+    )
     article_html = polish_article_html(article_html)
     article_html = normalize_image_sources(
         article_html, metadata.get("canonical") or final_url
@@ -1276,6 +1351,7 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         resolved_image = urljoin(source_url, image_url)
         article_html = prepend_hero_image(article_html, resolved_image, title)
     markdown = html_to_markdown(article_html)
+    logger.info("web-save markdown url=%s len=%s", final_url, len(markdown))
     markdown, embedded_ids = replace_youtube_placeholders(markdown)
     embedded_ids = embedded_ids.union(pre_youtube_ids)
     jsonld_anchors, jsonld_ids = extract_youtube_anchors_from_jsonld(raw_html_original)
@@ -1283,9 +1359,21 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
         jsonld_anchors,
         build_youtube_anchor_map(raw_dom_original, metadata.get("canonical") or final_url),
     )
+    if jsonld_ids:
+        logger.info(
+            "web-save youtube jsonld url=%s ids=%s",
+            final_url,
+            sorted(jsonld_ids),
+        )
     if anchors:
         markdown, anchored_ids = insert_youtube_after_anchors(markdown, anchors)
         embedded_ids = embedded_ids.union(anchored_ids)
+        logger.info(
+            "web-save youtube anchors url=%s anchors=%s inserted=%s",
+            final_url,
+            len(anchors),
+            len(anchored_ids),
+        )
     if not markdown:
         domain = urlparse(final_url).netloc
         if is_paywalled(html, domain) or is_paywalled(article_html, domain):
@@ -1354,9 +1442,22 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
                     markdown = f"{markdown}\n\n" + "\n".join(lines)
             else:
                 markdown = f"{markdown}\n\n" + "\n".join(lines)
+        logger.info(
+            "web-save youtube fallback url=%s added=%s",
+            final_url,
+            len(lines),
+        )
 
     markdown = dedupe_markdown_images(markdown)
     markdown = wrap_gallery_blocks(markdown)
+    gallery_blocks = markdown.count('class="image-gallery"')
+    logger.info(
+        "web-save postprocess url=%s markdown_len=%s galleries=%s elapsed_ms=%s",
+        final_url,
+        len(markdown),
+        gallery_blocks,
+        int((time.monotonic() - start_time) * 1000),
+    )
 
     frontmatter_meta = {
         "source": metadata.get("canonical") or final_url,

@@ -28,13 +28,20 @@ def run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None)
         set_session_user_id(db, user_id)
         WebsiteProcessingService.update_job(db, job_id, status="running")
         web_save_mode = settings.web_save_mode.lower().strip()
+        logger.info("web-save quick_save start url=%s mode=%s", url, web_save_mode)
         try:
             local_parsed = None
             if web_save_mode in {"local", "compare"}:
                 try:
                     local_parsed = parse_url_local(url)
+                    logger.info(
+                        "web-save local parse ok url=%s title=%s content_len=%s",
+                        url,
+                        local_parsed.title,
+                        len(local_parsed.content),
+                    )
                 except Exception as exc:
-                    logger.info("Local parse failed for %s: %s", url, str(exc))
+                    logger.info("web-save local parse failed url=%s error=%s", url, str(exc))
                     if web_save_mode == "local":
                         local_parsed = None
 
@@ -53,6 +60,7 @@ def run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None)
                     archived=False,
                 )
             else:
+                logger.info("web-save using jina url=%s mode=%s", url, web_save_mode)
                 markdown = JinaService.fetch_markdown(url)
                 metadata, cleaned = JinaService.parse_metadata(markdown)
                 resolved_title = title or metadata.get("title") or JinaService.extract_title(cleaned, url)

@@ -47,6 +47,16 @@ def _host_variants(host: str) -> dict:
     }
 
 
+def _safe_html_tree(html_text: str) -> lxml_html.HtmlElement:
+    try:
+        tree = lxml_html.fromstring(html_text)
+    except (TypeError, ValueError):
+        return lxml_html.fragment_fromstring(html_text, create_parent="div")
+    if not isinstance(tree.tag, str):
+        return lxml_html.fragment_fromstring(html_text, create_parent="div")
+    return tree
+
+
 class RuleEngine:
     """Minimal rule engine for web-save parsing."""
 
@@ -81,7 +91,7 @@ class RuleEngine:
 
     def match_rules(self, url: str, html: str, phase: str) -> list[Rule]:
         host_info = _host_variants(urlparse(url).netloc)
-        tree = lxml_html.fromstring(html)
+        tree = _safe_html_tree(html)
         matches: list[Rule] = []
 
         for rule in self._rules:
@@ -92,7 +102,7 @@ class RuleEngine:
         return matches
 
     def apply_rules(self, html: str, rules: list[Rule]) -> str:
-        tree = lxml_html.fromstring(html)
+        tree = _safe_html_tree(html)
         tree = self.apply_rules_tree(tree, rules)
         return lxml_html.tostring(tree, encoding="unicode")
 
@@ -370,7 +380,7 @@ def extract_metadata_overrides(html: str, rules: list[Rule]) -> dict:
     """Extract metadata overrides from matched rules."""
     if not rules:
         return {}
-    tree = lxml_html.fromstring(html)
+    tree = _safe_html_tree(html)
     overrides: dict = {}
     for rule in rules:
         meta = rule.metadata or {}
