@@ -62,8 +62,8 @@ def find_insertion_point(
 ) -> Optional[tuple[lxml_html.HtmlElement, int]]:
     """Find an insertion point for included elements."""
     node_text = cloned_node.text_content().strip()[:200]
-    media_tags = {"figure", "picture", "img"}
-    if cloned_node.tag in media_tags or cloned_node.cssselect("img"):
+    media_tags = {"figure", "picture", "img", "iframe"}
+    if cloned_node.tag in media_tags or cloned_node.cssselect("img, iframe"):
         position_match = _find_by_position(extracted_tree, original_dom, original_node)
         if position_match:
             return position_match

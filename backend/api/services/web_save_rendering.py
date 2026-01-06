@@ -11,9 +11,15 @@ def requires_js_rendering(html: str) -> bool:
     """Detect if the page likely requires JS rendering."""
     if len(html) < 500:
         return True
+    if "youtube.com/embed" in html and "<iframe" not in html:
+        return True
 
     markers = ("react-root", "ng-app", "__NEXT_DATA__", "nuxt", "__gatsby")
     return any(marker in html for marker in markers)
+
+
+def has_unrendered_youtube_embed(html: str) -> bool:
+    return "youtube.com/embed" in html and "<iframe" not in html
 
 
 def render_html_with_playwright(

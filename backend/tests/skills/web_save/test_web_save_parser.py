@@ -582,6 +582,90 @@ def test_parse_url_local_tracks_youtube_embed(monkeypatch):
     assert "[YouTube](https://www.youtube.com/watch?v=abc123)" in parsed.content
 
 
+def test_parse_url_local_tracks_youtube_embed_from_raw_html(monkeypatch):
+    html = """
+    <html>
+      <head><title>Video</title></head>
+      <body>
+        <div class="video">
+          <iframe src="https://www.youtube.com/embed/raw123"></iframe>
+        </div>
+        <article>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    class DummyDocument:
+        def __init__(self, _html: str) -> None:
+            pass
+
+        def summary(self, html_partial: bool = True) -> str:
+            return "<article><p>Content body</p></article>"
+
+        def short_title(self) -> str:
+            return "Video"
+
+        def title(self) -> str:
+            return "Video"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "Document", DummyDocument)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "[YouTube](https://www.youtube.com/watch?v=raw123)" in parsed.content
+
+
+def test_parse_url_local_tracks_youtube_embed_from_escaped_raw_html(monkeypatch):
+    html = """
+    <html>
+      <head><title>Video</title></head>
+      <body>
+        <script>
+          var data = {\"embed\": \"https:\\/\\/www.youtube.com\\/embed\\/esc123\"};
+        </script>
+        <article>
+          <p>Content body</p>
+        </article>
+      </body>
+    </html>
+    """
+
+    class DummyDocument:
+        def __init__(self, _html: str) -> None:
+            pass
+
+        def summary(self, html_partial: bool = True) -> str:
+            return "<article><p>Content body</p></article>"
+
+        def short_title(self) -> str:
+            return "Video"
+
+        def title(self) -> str:
+            return "Video"
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+    monkeypatch.setattr(web_save_parser, "Document", DummyDocument)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "[YouTube](https://www.youtube.com/watch?v=esc123)" in parsed.content
+
+
+def test_replace_youtube_placeholders_handles_escaped_underscores():
+    markdown, ids = web_save_parser.replace_youtube_placeholders(
+        "YOUTUBE\\_EMBED:I44\\_zbEwz\\_w"
+    )
+    assert markdown.strip() == "[YouTube](https://www.youtube.com/watch?v=I44_zbEwz_w)"
+    assert "I44_zbEwz_w" in ids
+
+
 def test_parse_url_local_filters_decorative_images(monkeypatch):
     html = """
     <html>
@@ -604,6 +688,27 @@ def test_parse_url_local_filters_decorative_images(monkeypatch):
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert "logo.png" not in parsed.content
     assert "![Story](https://example.com/images/story.jpg)" in parsed.content
+
+
+def test_parse_url_local_normalizes_relative_links(monkeypatch):
+    html = """
+    <html>
+      <head><title>Links</title></head>
+      <body>
+        <article>
+          <p><a href="/relative/path">Read more</a></p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def fake_fetch(url: str, *, timeout: int = 30):
+        return html, "https://example.com/article", False
+
+    monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
+
+    parsed = web_save_parser.parse_url_local("example.com/article")
+    assert "[Read more](https://example.com/relative/path)" in parsed.content
 
 
 def test_parse_url_local_dedupes_images(monkeypatch):
