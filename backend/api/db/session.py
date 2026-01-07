@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 
 from api.config import settings
+from api.metrics import db_connections_active
 from api.db.dependencies import get_current_user_id
 
 # Create engine - Always use PostgreSQL
@@ -23,6 +24,16 @@ engine = create_engine(
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
+
+
+@event.listens_for(engine, "checkout")
+def _track_db_checkout(dbapi_connection, connection_record, connection_proxy) -> None:
+    db_connections_active.inc()
+
+
+@event.listens_for(engine, "checkin")
+def _track_db_checkin(dbapi_connection, connection_record) -> None:
+    db_connections_active.dec()
 
 
 @event.listens_for(Session, "after_begin")

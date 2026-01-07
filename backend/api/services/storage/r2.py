@@ -10,6 +10,7 @@ from botocore.exceptions import ClientError  # type: ignore[import-untyped]
 
 from api.config import settings
 from api.services.storage.base import StorageBackend, StorageObject
+from api.metrics import storage_operations_total
 
 
 class R2Storage(StorageBackend):
@@ -66,46 +67,63 @@ class R2Storage(StorageBackend):
         results = []
         delimiter = None if recursive else "/"
 
-        while True:
-            params = {"Bucket": self.bucket, "Prefix": normalized}
-            if continuation:
-                params["ContinuationToken"] = continuation
-            if delimiter:
-                params["Delimiter"] = delimiter
-            response = self.client.list_objects_v2(**params)
+        try:
+            while True:
+                params = {"Bucket": self.bucket, "Prefix": normalized}
+                if continuation:
+                    params["ContinuationToken"] = continuation
+                if delimiter:
+                    params["Delimiter"] = delimiter
+                response = self.client.list_objects_v2(**params)
 
-            for item in response.get("Contents", []):
-                results.append(
-                    StorageObject(
-                        key=item["Key"],
-                        size=item.get("Size", 0),
-                        etag=item.get("ETag"),
-                        last_modified=item.get("LastModified"),
+                for item in response.get("Contents", []):
+                    results.append(
+                        StorageObject(
+                            key=item["Key"],
+                            size=item.get("Size", 0),
+                            etag=item.get("ETag"),
+                            last_modified=item.get("LastModified"),
+                        )
                     )
-                )
 
-            if response.get("IsTruncated"):
-                continuation = response.get("NextContinuationToken")
-                continue
-            break
+                if response.get("IsTruncated"):
+                    continuation = response.get("NextContinuationToken")
+                    continue
+                break
 
-        return results
+            storage_operations_total.labels("list", "success").inc()
+            return results
+        except Exception:
+            storage_operations_total.labels("list", "error").inc()
+            raise
 
     def get_object(self, key: str) -> bytes:
         """Retrieve object bytes by key."""
         normalized = self._normalize_key(key)
-        response = self.client.get_object(Bucket=self.bucket, Key=normalized)
-        return response["Body"].read()
+        try:
+            response = self.client.get_object(Bucket=self.bucket, Key=normalized)
+            data = response["Body"].read()
+            storage_operations_total.labels("get", "success").inc()
+            return data
+        except Exception:
+            storage_operations_total.labels("get", "error").inc()
+            raise
 
     def get_object_range(self, key: str, start: int, end: int) -> bytes:
         """Retrieve a byte range by key."""
         normalized = self._normalize_key(key)
-        response = self.client.get_object(
-            Bucket=self.bucket,
-            Key=normalized,
-            Range=f"bytes={start}-{end}",
-        )
-        return response["Body"].read()
+        try:
+            response = self.client.get_object(
+                Bucket=self.bucket,
+                Key=normalized,
+                Range=f"bytes={start}-{end}",
+            )
+            data = response["Body"].read()
+            storage_operations_total.labels("get_range", "success").inc()
+            return data
+        except Exception:
+            storage_operations_total.labels("get_range", "error").inc()
+            raise
 
     def put_object(self, key: str, data: bytes, content_type: Optional[str] = None) -> StorageObject:
         """Store object bytes under a key."""
@@ -117,28 +135,48 @@ class R2Storage(StorageBackend):
         }
         if content_type:
             params["ContentType"] = content_type
-        response = self.client.put_object(**params)
-        etag = response.get("ETag")
-        return StorageObject(key=normalized, size=len(data), etag=etag, content_type=content_type)
+        try:
+            response = self.client.put_object(**params)
+            etag = response.get("ETag")
+            storage_operations_total.labels("put", "success").inc()
+            return StorageObject(key=normalized, size=len(data), etag=etag, content_type=content_type)
+        except Exception:
+            storage_operations_total.labels("put", "error").inc()
+            raise
 
     def delete_object(self, key: str) -> None:
         """Delete an object by key."""
         normalized = self._normalize_key(key)
-        self.client.delete_object(Bucket=self.bucket, Key=normalized)
+        try:
+            self.client.delete_object(Bucket=self.bucket, Key=normalized)
+            storage_operations_total.labels("delete", "success").inc()
+        except Exception:
+            storage_operations_total.labels("delete", "error").inc()
+            raise
 
     def copy_object(self, source_key: str, destination_key: str) -> None:
         """Copy an object to a new key."""
         source = {"Bucket": self.bucket, "Key": self._normalize_key(source_key)}
         destination = self._normalize_key(destination_key)
-        self.client.copy_object(Bucket=self.bucket, CopySource=source, Key=destination)
+        try:
+            self.client.copy_object(Bucket=self.bucket, CopySource=source, Key=destination)
+            storage_operations_total.labels("copy", "success").inc()
+        except Exception:
+            storage_operations_total.labels("copy", "error").inc()
+            raise
 
     def object_exists(self, key: str) -> bool:
         """Return True if an object exists in the bucket."""
         normalized = self._normalize_key(key)
         try:
             self.client.head_object(Bucket=self.bucket, Key=normalized)
+            storage_operations_total.labels("exists", "success").inc()
             return True
         except ClientError as exc:
+            storage_operations_total.labels("exists", "success").inc()
             if exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode") == 404:
                 return False
             return False
+        except Exception:
+            storage_operations_total.labels("exists", "error").inc()
+            raise
