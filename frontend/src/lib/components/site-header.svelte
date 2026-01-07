@@ -130,7 +130,11 @@
 			if (transcriptPollingInFlight) return;
 			transcriptPollingInFlight = true;
 			try {
-				await websitesStore.loadById(websiteId);
+				if ($websitesStore.active?.id === websiteId) {
+					await websitesStore.loadById(websiteId);
+				} else {
+					await websitesStore.refreshItem(websiteId);
+				}
 				const entry = getTranscriptEntry(websiteId, videoId);
 				const status = entry?.status;
 				if (!status) return;

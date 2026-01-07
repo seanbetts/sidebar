@@ -14,6 +14,7 @@ import urllib.parse
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional
+import os
 
 import yt_dlp
 
@@ -28,6 +29,16 @@ except Exception:
 
 # Default output directory (files workspace)
 DEFAULT_R2_DIR = "files/videos"
+
+def _ensure_stdio() -> None:
+    for fd in (0, 1, 2):
+        try:
+            os.fstat(fd)
+        except OSError:
+            mode = os.O_RDONLY if fd == 0 else os.O_WRONLY
+            devnull_fd = os.open(os.devnull, mode)
+            os.dup2(devnull_fd, fd)
+            os.close(devnull_fd)
 
 
 def check_ffmpeg() -> bool:
@@ -204,6 +215,8 @@ def download_youtube(
         ValueError: If URL is invalid or ffmpeg not found
         Exception: If download fails
     """
+    _ensure_stdio()
+
     # Check ffmpeg
     if not check_ffmpeg():
         raise ValueError(
