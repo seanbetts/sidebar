@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import fnmatch
+import json
 import mimetypes
 import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from uuid import uuid4
 
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
@@ -31,6 +32,240 @@ from api.services.skill_file_ops_paths import (
     session_for_user,
 )
 from api.services.storage.service import get_storage_backend
+
+_FRONTMATTER_INGESTION_KEYS = (
+    "skill",
+    "model",
+    "language",
+    "duration_seconds",
+    "size_bytes",
+)
+
+
+def _yaml_escape(value: str) -> str:
+    if value == "":
+        return "\"\""
+    if any(ch in value for ch in (":", "#", "[", "]", "{", "}", ",", "&", "*", "?")) or value.startswith(("-", "?", "@")) or " " in value:
+        return json.dumps(value)
+    return value
+
+
+def _yaml_value(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return _yaml_escape(str(value))
+
+
+def _sanitize_kind(kind: str) -> str:
+    return kind.replace("/", "_").replace("\\", "_")
+
+
+def _build_ai_frontmatter(
+    record: IngestedFile,
+    frontmatter: dict[str, Any],
+    derivative_items: list[dict[str, Any]],
+) -> str:
+    lines: list[str] = ["---"]
+    lines.append(f"file_id: {_yaml_value(record.id)}")
+    lines.append(f"source_filename: {_yaml_value(record.filename_original)}")
+    lines.append(f"source_mime: {_yaml_value(record.mime_original)}")
+    lines.append(f"created_at: {_yaml_value(record.created_at.isoformat())}")
+    lines.append(f"sha256: {_yaml_value(record.sha256)}")
+
+    source_url = frontmatter.get("source_url")
+    if source_url:
+        lines.append(f"source_url: {_yaml_value(source_url)}")
+    source_type = frontmatter.get("source_type")
+    if source_type:
+        lines.append(f"source_type: {_yaml_value(source_type)}")
+
+    ingestion_meta = frontmatter.get("ingestion") or {}
+    if ingestion_meta:
+        lines.append("ingestion:")
+        for key in _FRONTMATTER_INGESTION_KEYS:
+            if key not in ingestion_meta:
+                continue
+            value = ingestion_meta.get(key)
+            if value is None:
+                continue
+            lines.append(f"  {key}: {_yaml_value(value)}")
+
+    derivatives_map = frontmatter.get("derivatives") or {}
+    derivatives_map["ai_md"] = True
+    for item in derivative_items:
+        kind = item.get("kind")
+        if kind:
+            derivatives_map[kind] = True
+    if derivatives_map:
+        lines.append("derivatives:")
+        for kind in sorted(derivatives_map.keys()):
+            lines.append(f"  {kind}: true")
+
+    if derivative_items:
+        lines.append("derivative_items:")
+        for item in derivative_items:
+            kind = item.get("kind")
+            path = item.get("path")
+            content_type = item.get("content_type")
+            if not kind or not path:
+                continue
+            lines.append(f"  - kind: {_yaml_value(kind)}")
+            lines.append(f"    path: {_yaml_value(path)}")
+            if content_type:
+                lines.append(f"    content_type: {_yaml_value(content_type)}")
+
+    lines.append("---")
+    return "\n".join(lines) + "\n\n"
+
+
+def create_ingested_file(
+    user_id: str,
+    filename: str,
+    mime: str,
+    size: int,
+    *,
+    source_url: str | None = None,
+    source_metadata: dict[str, Any] | None = None,
+    path: str | None = None,
+    sha256: str | None = None,
+) -> IngestedFile:
+    """Create an ingestion record for a generated file."""
+    normalized = normalize_path(path or filename, allow_root=False)
+    ensure_allowed_path(normalized)
+    now = now_utc()
+
+    with session_for_user(user_id) as db:
+        record = IngestedFile(
+            id=uuid4(),
+            user_id=user_id,
+            filename_original=filename,
+            path=normalized,
+            mime_original=mime,
+            size_bytes=size,
+            sha256=sha256,
+            source_url=source_url,
+            source_metadata=source_metadata,
+            created_at=now,
+            deleted_at=None,
+        )
+        db.add(record)
+        db.flush()
+        set_session_user_id(db, user_id)
+        db.add(
+            FileProcessingJob(
+                file_id=record.id,
+                status="processing",
+                stage="finalizing",
+                attempts=0,
+                started_at=now,
+                updated_at=now,
+            )
+        )
+        db.commit()
+        return record
+
+
+def write_ai_markdown(
+    user_id: str,
+    record: IngestedFile,
+    content: str,
+    *,
+    frontmatter: dict[str, Any],
+    derivative_items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Write ai.md content and return derivative metadata."""
+    storage = get_storage_backend()
+    ai_key = f"{user_id}/files/{record.id}/ai/ai.md"
+    ai_frontmatter = _build_ai_frontmatter(record, frontmatter, derivative_items)
+    payload = f"{ai_frontmatter}{content}".encode("utf-8")
+    storage.put_object(ai_key, payload, content_type="text/markdown")
+    return {
+        "kind": "ai_md",
+        "storage_key": ai_key,
+        "mime": "text/markdown",
+        "size_bytes": len(payload),
+        "sha256": hash_bytes(payload),
+        "content_type": "text/markdown",
+    }
+
+
+def write_derivative(
+    user_id: str,
+    record: IngestedFile,
+    local_path: Path,
+    *,
+    kind: str,
+    content_type: str | None = None,
+) -> dict[str, Any]:
+    """Write a derivative file and return metadata."""
+    storage = get_storage_backend()
+    safe_kind = _sanitize_kind(kind)
+    extension = local_path.suffix.lower()
+    filename = f"{safe_kind}{extension}" if extension else safe_kind
+    storage_key = f"{user_id}/files/{record.id}/derivatives/{filename}"
+    content = local_path.read_bytes()
+    mime = content_type or mimetypes.guess_type(local_path.name)[0] or "application/octet-stream"
+    storage.put_object(storage_key, content, content_type=mime)
+    return {
+        "kind": kind,
+        "storage_key": storage_key,
+        "mime": mime,
+        "size_bytes": len(content),
+        "sha256": hash_bytes(content),
+        "content_type": mime,
+    }
+
+
+def finalize_ingested_file(
+    user_id: str,
+    record: IngestedFile,
+    derivatives: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Persist derivative metadata and mark ingestion as ready."""
+    now = now_utc()
+    with session_for_user(user_id) as db:
+        existing = db.query(IngestedFile).filter(IngestedFile.id == record.id).first()
+        if not existing:
+            raise ValueError("Ingested file not found for finalize")
+        db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+        for item in derivatives:
+            db.add(
+                FileDerivative(
+                    file_id=record.id,
+                    kind=item["kind"],
+                    storage_key=item["storage_key"],
+                    mime=item["mime"],
+                    size_bytes=item["size_bytes"],
+                    sha256=item.get("sha256"),
+                    created_at=now,
+                )
+            )
+        job = db.query(FileProcessingJob).filter(FileProcessingJob.file_id == record.id).first()
+        if job:
+            job.status = "ready"
+            job.stage = "ready"
+            job.error_code = None
+            job.error_message = None
+            job.finished_at = now
+            job.updated_at = now
+        db.commit()
+
+    return {
+        "file_id": str(record.id),
+        "ai_path": f"{user_id}/files/{record.id}/ai/ai.md",
+        "derivatives": [
+            {
+                "kind": item["kind"],
+                "path": item["storage_key"],
+                "content_type": item.get("content_type"),
+            }
+            for item in derivatives
+        ],
+    }
 
 
 def list_entries(
