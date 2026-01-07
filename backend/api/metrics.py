@@ -27,6 +27,28 @@ chat_streaming_duration_seconds = Histogram(
     "Duration of chat streaming responses",
 )
 
+chat_first_token_latency_seconds = Histogram(
+    "chat_first_token_latency_seconds",
+    "Latency from user send to first token",
+)
+
+chat_sse_connect_seconds = Histogram(
+    "chat_sse_connect_seconds",
+    "Latency from stream start to first SSE event",
+)
+
+chat_stream_errors_total = Counter(
+    "chat_stream_errors_total",
+    "Total chat streaming errors",
+    ["type"],
+)
+
+chat_tool_duration_seconds = Histogram(
+    "chat_tool_duration_seconds",
+    "Client tool execution duration",
+    ["tool_name", "status"],
+)
+
 # Tool execution metrics
 tool_executions_total = Counter(
     "tool_executions_total",

@@ -12,6 +12,12 @@ import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { ingestionAPI } from '$lib/services/api';
 import { ingestionStore } from '$lib/stores/ingestion';
 import { logError } from '$lib/utils/errorHandling';
+import {
+	startChatStream,
+	markFirstToken,
+	markStreamComplete,
+	markStreamError
+} from '$lib/utils/chatMetrics';
 
 const LAST_CONVERSATION_KEY = 'sideBar.lastConversation';
 
@@ -141,6 +147,7 @@ function createChatStore() {
 
 			const userMessageId = crypto.randomUUID();
 			const assistantMessageId = crypto.randomUUID();
+			startChatStream(assistantMessageId);
 
 			const userMessage: Message = {
 				id: userMessageId,
@@ -191,6 +198,7 @@ function createChatStore() {
 		 * @param token Streamed token content.
 		 */
 		appendToken(messageId: string, token: string) {
+			markFirstToken(messageId);
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) => {
@@ -295,6 +303,7 @@ function createChatStore() {
 		 * @param messageId Message id to finalize.
 		 */
 		async finishStreaming(messageId: string) {
+			markStreamComplete(messageId);
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) =>
@@ -356,6 +365,7 @@ function createChatStore() {
 		 * @param error Error message to attach.
 		 */
 		setError(messageId: string, error: string) {
+			markStreamError(messageId);
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) =>

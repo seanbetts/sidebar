@@ -5,7 +5,15 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel, Field
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from api.metrics import web_vitals_observations_total, web_vitals_value
+from api.metrics import (
+    chat_first_token_latency_seconds,
+    chat_sse_connect_seconds,
+    chat_stream_errors_total,
+    chat_streaming_duration_seconds,
+    chat_tool_duration_seconds,
+    web_vitals_observations_total,
+    web_vitals_value,
+)
 
 
 router = APIRouter(tags=["metrics"])
@@ -21,6 +29,16 @@ class WebVitalPayload(BaseModel):
     value: float
     rating: str = Field(..., min_length=1)
     route: str | None = None
+    timestamp: str | None = None
+
+
+class ChatMetricPayload(BaseModel):
+    """Payload for chat metric events."""
+
+    name: str = Field(..., min_length=1)
+    value: float
+    tool_name: str | None = None
+    status: str | None = None
     timestamp: str | None = None
 
 
@@ -40,5 +58,29 @@ def record_web_vitals(payload: WebVitalPayload) -> Response:
 
     web_vitals_observations_total.labels(name=name, rating=rating).inc()
     web_vitals_value.labels(name=name, rating=rating).observe(payload.value)
+
+    return Response(status_code=204)
+
+
+@router.post("/api/v1/metrics/chat", status_code=204)
+def record_chat_metrics(payload: ChatMetricPayload) -> Response:
+    """Record a chat metric measurement."""
+    name = payload.name
+    if name == "first_token_latency_ms":
+        chat_first_token_latency_seconds.observe(payload.value / 1000)
+    elif name == "stream_duration_ms":
+        chat_streaming_duration_seconds.observe(payload.value / 1000)
+    elif name == "sse_connect_ms":
+        chat_sse_connect_seconds.observe(payload.value / 1000)
+    elif name == "tool_duration_ms":
+        tool_name = (payload.tool_name or "unknown").strip() or "unknown"
+        status = (payload.status or "success").strip() or "success"
+        chat_tool_duration_seconds.labels(tool_name=tool_name, status=status).observe(
+            payload.value / 1000
+        )
+    elif name in {"sse_error", "stream_error"}:
+        chat_stream_errors_total.labels(type=name).inc()
+    else:
+        return Response(status_code=400)
 
     return Response(status_code=204)

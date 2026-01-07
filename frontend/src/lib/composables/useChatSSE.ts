@@ -11,6 +11,10 @@ import { setThemeMode, type ThemeMode } from '$lib/utils/theme';
 import { logError } from '$lib/utils/errorHandling';
 import { get } from 'svelte/store';
 import { toast } from 'svelte-sonner';
+import {
+  markFirstEvent,
+  markSseError
+} from '$lib/utils/chatMetrics';
 
 export interface ChatSSEConnectArgs {
   assistantMessageId: string;
@@ -198,6 +202,10 @@ export function useChatSSE() {
         await memoriesStore.load();
       },
 
+      onFirstEvent: ({ elapsedMs }) => {
+        markFirstEvent(assistantMessageId, elapsedMs);
+      },
+
       onComplete: async () => {
         await chatStore.finishStreaming(assistantMessageId);
         dispatchCacheEvent('conversation.updated');
@@ -207,6 +215,7 @@ export function useChatSSE() {
         const friendlyError = getUserFriendlyError(error);
         toast.error(friendlyError);
         logError('Chat error', error, { scope: 'chatSSE.onError', conversationId });
+        markSseError(assistantMessageId);
         chatStore.setError(assistantMessageId, 'Request failed');
       }
     });
