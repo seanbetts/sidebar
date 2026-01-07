@@ -20,7 +20,7 @@ SCRIPTS_ROOT = Path(__file__).resolve().parent
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
-from db_env import setup_environment
+from db_env import setup_environment  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -163,11 +163,6 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
     if str(BACKEND_ROOT) not in sys.path:
         sys.path.insert(0, str(BACKEND_ROOT))
 
-    from api.db.session import SessionLocal, set_session_user_id
-    from api.models.website import Website
-    from api.schemas.filters import WebsiteFilters
-    from api.services.web_save_parser import ParsedPage, parse_url_local
-    from api.services.websites_service import WebsitesService
     migrate_websites(
         args.user_id,
         include_deleted=args.include_deleted,

@@ -402,7 +402,7 @@ def cleanup_youtube_markdown(markdown: str, source_url: str) -> str:
     video_id = extract_youtube_video_id(source_url)
     if video_id:
         return f"[YouTube](https://www.youtube.com/watch?v={video_id})"
-    match = YOUTUBE_VIDEO_PATTERN.search(markdown)
+    match = YOUTUBE_ID_PATTERN.search(markdown)
     if match:
         return f"[YouTube](https://www.youtube.com/watch?v={match.group(1)})"
     return markdown
