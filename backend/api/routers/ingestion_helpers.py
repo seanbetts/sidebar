@@ -180,9 +180,21 @@ def _extract_youtube_id(url: str) -> str | None:
     return None
 
 
-def _category_for_file(filename: str, mime: str) -> str:
+def _category_for_file(
+    filename: str,
+    mime: str,
+    *,
+    path: str | None = None,
+    source_metadata: dict | None = None,
+) -> str:
     lower_name = filename.lower()
     normalized_mime = (mime or "application/octet-stream").split(";")[0].strip().lower()
+    if source_metadata and source_metadata.get("provider") == "web-crawler-policy":
+        return "reports"
+    if path:
+        normalized_path = path.strip("/")
+        if normalized_path.lower().startswith("reports/"):
+            return "reports"
     if lower_name.endswith((".csv", ".tsv")):
         return "spreadsheets"
     if normalized_mime == "application/octet-stream":

@@ -134,7 +134,12 @@ async def list_ingestions(
                     "source_metadata": record.source_metadata,
                     "pinned": record.pinned,
                     "pinned_order": record.pinned_order,
-                    "category": _category_for_file(record.filename_original, record.mime_original),
+                    "category": _category_for_file(
+                        record.filename_original,
+                        record.mime_original,
+                        path=record.path,
+                        source_metadata=record.source_metadata,
+                    ),
                     "created_at": record.created_at.isoformat(),
                 },
                 "job": {
@@ -218,7 +223,12 @@ async def get_file_meta(
             "source_metadata": record.source_metadata,
             "pinned": record.pinned,
             "pinned_order": record.pinned_order,
-            "category": _category_for_file(record.filename_original, record.mime_original),
+            "category": _category_for_file(
+                record.filename_original,
+                record.mime_original,
+                path=record.path,
+                source_metadata=record.source_metadata,
+            ),
             "created_at": record.created_at.isoformat(),
         },
         "job": {
