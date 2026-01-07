@@ -31,7 +31,7 @@ def db_session(test_db_engine):
         connection.close()
 
 
-def test_enqueue_youtube_transcript_soft_deletes_ingestion(db_session):
+def test_enqueue_youtube_transcript_keeps_ingestion_visible(db_session):
     website = WebsitesService.save_website(
         db_session,
         "user-1",
@@ -49,12 +49,10 @@ def test_enqueue_youtube_transcript_soft_deletes_ingestion(db_session):
     )
 
     assert result.file_id is not None
-    assert FileIngestionService.get_file(db_session, "user-1", result.file_id) is None
-
     record = (
         db_session.query(IngestedFile)
         .filter(IngestedFile.id == result.file_id)
         .first()
     )
     assert record is not None
-    assert record.deleted_at is not None
+    assert record.deleted_at is None

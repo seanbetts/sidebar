@@ -174,7 +174,6 @@ class WebsiteTranscriptService:
                 "website_transcript": True,
             },
         )
-        FileIngestionService.soft_delete_file(db, record.id)
 
         WebsiteTranscriptService._update_transcript_metadata(
             db,
@@ -334,6 +333,8 @@ class WebsiteTranscriptService:
             entry["file_id"] = file_id
         if error:
             entry["error"] = error
+        elif status in {"queued", "processing", "retrying"}:
+            entry.pop("error", None)
         transcripts[video_id] = entry
         metadata["youtube_transcripts"] = transcripts
         website.metadata_ = metadata
