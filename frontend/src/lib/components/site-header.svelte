@@ -3,7 +3,7 @@
 	import { toast } from "svelte-sonner";
 	import { useSiteHeaderData } from "$lib/hooks/useSiteHeaderData";
 	import { useThingsBridgeStatus } from "$lib/hooks/useThingsBridgeStatus";
-	import { ingestionAPI, websitesAPI } from "$lib/services/api";
+	import { ingestionAPI } from "$lib/services/api";
 	import { websitesStore, type WebsiteTranscriptEntry } from "$lib/stores/websites";
 	import { transcriptStatusStore } from "$lib/stores/transcript-status";
 	import ModeToggle from "$lib/components/mode-toggle.svelte";
@@ -103,29 +103,6 @@
 		transcriptPollingInFlight = false;
 	}
 
-	async function retryTranscript(websiteId: string, videoId: string) {
-		const url = `https://www.youtube.com/watch?v=${videoId}`;
-		try {
-			const data = await websitesAPI.transcribeYouTube(websiteId, url);
-			const payload = data as { data?: { file_id?: string; status?: string } };
-			const fileId = payload?.data?.file_id;
-			if (!fileId) return;
-			websitesStore.setTranscriptEntryLocal(websiteId, videoId, {
-				status: payload?.data?.status ?? "queued",
-				file_id: fileId,
-				updated_at: new Date().toISOString()
-			});
-			transcriptStatusStore.set({
-				status: "processing",
-				websiteId,
-				videoId,
-				fileId
-			});
-		} catch (error) {
-			toast.error("Transcript failed", { description: "Please try again." });
-		}
-	}
-
 	async function pollTranscriptJob(
 		fileId: string,
 		websiteId: string,
@@ -173,13 +150,7 @@
 						file_id: fileId,
 						updated_at: new Date().toISOString()
 					});
-					toast.error("Transcript failed", {
-						description: "Click to retry transcription.",
-						action: {
-							label: "Retry",
-							onClick: () => retryTranscript(websiteId, videoId)
-						}
-					});
+					toast.error("Transcript failed", { description: "Please try again." });
 					transcriptStatus = null;
 					transcriptLabel = "";
 					transcriptStatusStore.set(null);
