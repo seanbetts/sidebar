@@ -3,6 +3,7 @@ import type { EditorStore } from '$lib/stores/editor';
 import type { TreeStore } from '$lib/stores/tree/store';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { logError } from '$lib/utils/errorHandling';
+import { toast } from 'svelte-sonner';
 
 type NoteNode = { pinned?: boolean; archived?: boolean } | null;
 
@@ -107,6 +108,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ newName: `${trimmed}.md` })
     });
     if (!response.ok) {
+      toast.error('Failed to rename note');
       logError('Failed to rename note', new Error('Request failed'), {
         scope: 'editorActions.rename',
         noteId: currentNoteId,
@@ -130,6 +132,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ folder })
     });
     if (!response.ok) {
+      toast.error('Failed to move note');
       logError('Failed to move note', new Error('Request failed'), {
         scope: 'editorActions.move',
         noteId: currentNoteId,
@@ -150,6 +153,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ archived: true })
     });
     if (!response.ok) {
+      toast.error('Failed to archive note');
       logError('Failed to archive note', new Error('Request failed'), {
         scope: 'editorActions.archive',
         noteId: currentNoteId,
@@ -171,6 +175,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ archived: false })
     });
     if (!response.ok) {
+      toast.error('Failed to unarchive note');
       logError('Failed to unarchive note', new Error('Request failed'), {
         scope: 'editorActions.unarchive',
         noteId: currentNoteId,
@@ -193,6 +198,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       body: JSON.stringify({ pinned })
     });
     if (!response.ok) {
+      toast.error('Failed to pin note');
       logError('Failed to update pin', new Error('Request failed'), {
         scope: 'editorActions.pin',
         noteId: currentNoteId,
@@ -242,6 +248,7 @@ export function useEditorActions(ctx: EditorActionsContext) {
       method: 'DELETE'
     });
     if (!response.ok) {
+      toast.error('Failed to delete note');
       logError('Failed to delete note', new Error('Request failed'), {
         scope: 'editorActions.delete',
         noteId: currentNoteId,
