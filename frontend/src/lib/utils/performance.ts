@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
-import { env as publicEnv } from '$env/dynamic/public';
 import type { Metric } from 'web-vitals';
+import { getPublicEnv } from '$lib/utils/publicEnv';
 
 export interface PerformanceMetric {
   name: 'CLS' | 'FCP' | 'INP' | 'LCP' | 'TTFB';
@@ -12,6 +12,7 @@ export interface PerformanceMetric {
 
 type RouteGetter = () => string;
 
+const publicEnv = getPublicEnv();
 const metricsEnabled = publicEnv.PUBLIC_ENABLE_WEB_VITALS === 'true';
 const metricsEndpoint = publicEnv.PUBLIC_METRICS_ENDPOINT ?? '';
 const metricsSampleRate = parseSampleRate(publicEnv.PUBLIC_WEB_VITALS_SAMPLE_RATE, 1);

@@ -4,9 +4,11 @@ vi.mock('$app/environment', () => ({
   browser: true
 }));
 
-vi.mock('$env/static/public', () => ({
-  PUBLIC_CHAT_METRICS_ENDPOINT: '/api/metrics/chat',
-  PUBLIC_CHAT_METRICS_SAMPLE_RATE: '1'
+vi.mock('$lib/utils/publicEnv', () => ({
+  getPublicEnv: () => ({
+    PUBLIC_CHAT_METRICS_ENDPOINT: '/api/metrics/chat',
+    PUBLIC_CHAT_METRICS_SAMPLE_RATE: '1'
+  })
 }));
 
 describe('chatMetrics', () => {

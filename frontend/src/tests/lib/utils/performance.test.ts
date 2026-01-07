@@ -29,10 +29,12 @@ describe('initWebVitals', () => {
   });
 
   it('skips initialization when disabled', async () => {
-    vi.doMock('$env/static/public', () => ({
-      PUBLIC_ENABLE_WEB_VITALS: 'false',
-      PUBLIC_WEB_VITALS_SAMPLE_RATE: '1',
-      PUBLIC_METRICS_ENDPOINT: ''
+    vi.doMock('$lib/utils/publicEnv', () => ({
+      getPublicEnv: () => ({
+        PUBLIC_ENABLE_WEB_VITALS: 'false',
+        PUBLIC_WEB_VITALS_SAMPLE_RATE: '1',
+        PUBLIC_METRICS_ENDPOINT: ''
+      })
     }));
 
     const { initWebVitals } = await import('$lib/utils/performance');
@@ -46,10 +48,12 @@ describe('initWebVitals', () => {
   });
 
   it('registers vitals when enabled', async () => {
-    vi.doMock('$env/static/public', () => ({
-      PUBLIC_ENABLE_WEB_VITALS: 'true',
-      PUBLIC_WEB_VITALS_SAMPLE_RATE: '1',
-      PUBLIC_METRICS_ENDPOINT: ''
+    vi.doMock('$lib/utils/publicEnv', () => ({
+      getPublicEnv: () => ({
+        PUBLIC_ENABLE_WEB_VITALS: 'true',
+        PUBLIC_WEB_VITALS_SAMPLE_RATE: '1',
+        PUBLIC_METRICS_ENDPOINT: ''
+      })
     }));
 
     const { initWebVitals } = await import('$lib/utils/performance');
