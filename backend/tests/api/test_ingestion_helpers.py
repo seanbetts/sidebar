@@ -28,6 +28,12 @@ def test_extract_youtube_id_variants():
 def test_category_for_file():
     assert _category_for_file("report.csv", "text/csv") == "spreadsheets"
     assert _category_for_file("report.pdf", "application/pdf") == "documents"
+    assert _category_for_file(
+        "crawler_policy_20250101.md",
+        "text/markdown",
+        path="Reports/example.com/crawler_policy_20250101.md",
+        source_metadata={"provider": "web-crawler-policy"},
+    ) == "reports"
 
 
 def test_filter_user_derivatives():
