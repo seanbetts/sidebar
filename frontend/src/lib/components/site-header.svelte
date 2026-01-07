@@ -43,13 +43,13 @@
 	const getTranscriptCandidates = () => {
 		const active = $websitesStore.active;
 		const candidates: { websiteId: string; videoId: string; entry: WebsiteTranscriptEntry }[] = [];
-		if (active?.youtube_transcripts) {
+		if (active?.youtube_transcripts && Object.keys(active.youtube_transcripts).length > 0) {
 			for (const [videoId, entry] of Object.entries(active.youtube_transcripts)) {
 				candidates.push({ websiteId: active.id, videoId, entry });
 			}
-			return candidates;
 		}
 		for (const item of $websitesStore.items) {
+			if (active && item.id === active.id) continue;
 			if (!item.youtube_transcripts) continue;
 			for (const [videoId, entry] of Object.entries(item.youtube_transcripts)) {
 				candidates.push({ websiteId: item.id, videoId, entry });

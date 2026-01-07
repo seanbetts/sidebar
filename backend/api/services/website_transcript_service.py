@@ -264,6 +264,55 @@ class WebsiteTranscriptService:
         )
 
     @staticmethod
+    def sync_transcript_status_from_ingestion(
+        db: Session,
+        *,
+        user_id: str,
+        website_id: uuid.UUID,
+        youtube_url: str,
+        status: str,
+        file_id: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> bool:
+        """Sync transcript status from ingestion jobs when metadata is stale."""
+        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        if not website:
+            return False
+        try:
+            normalized_url = normalize_youtube_url(youtube_url)
+        except ValueError:
+            return False
+        video_id = extract_youtube_id(normalized_url)
+        if not video_id:
+            return False
+
+        metadata = website.metadata_ or {}
+        transcripts = metadata.get("youtube_transcripts")
+        if not isinstance(transcripts, dict):
+            transcripts = {}
+        entry = transcripts.get(video_id) or {}
+        current_status = entry.get("status")
+        current_file_id = entry.get("file_id")
+        current_error = entry.get("error")
+
+        if (
+            current_status == status
+            and (not file_id or current_file_id == file_id)
+            and (not error or current_error == error)
+        ):
+            return False
+
+        WebsiteTranscriptService._update_transcript_metadata(
+            db,
+            website,
+            video_id,
+            status=status,
+            file_id=file_id,
+            error=error,
+        )
+        return True
+
+    @staticmethod
     def _update_transcript_metadata(
         db: Session,
         website,

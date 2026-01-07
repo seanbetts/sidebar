@@ -9,14 +9,14 @@ Combines youtube-download and audio-transcribe skills.
 import sys
 import json
 import argparse
-import subprocess
+import importlib.util
 import time
 import tempfile
 import urllib.parse
 import contextlib
 import io
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 # Add backend to sys.path for database mode.
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
@@ -90,48 +90,19 @@ def extract_video_id(url: str) -> Optional[str]:
         return None
     return None
 
-def run_command(cmd: list, stage: str) -> Dict[str, Any]:
-    """
-    Run a command and return parsed JSON output.
-
-    Args:
-        cmd: Command to run as list of arguments
-        stage: Stage name for error reporting ("download" or "transcription")
-
-    Returns:
-        Parsed JSON output from command
-
-    Raises:
-        RuntimeError: If command fails
-    """
+def _load_skill_function(path: Path, module_name: str, func_name: str) -> Callable[..., Dict[str, Any]]:
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if not spec or not spec.loader:
+        raise RuntimeError(f"Failed to load skill module at {path}")
+    module = importlib.util.module_from_spec(spec)
     try:
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False
-        )
-
-        if result.returncode != 0:
-            # Try to parse error JSON from stderr
-            try:
-                error_data = json.loads(result.stderr)
-                raise RuntimeError(
-                    f"{stage.capitalize()} failed: {error_data.get('error', {}).get('message', 'Unknown error')}"
-                )
-            except json.JSONDecodeError:
-                # If not JSON, use raw stderr
-                raise RuntimeError(f"{stage.capitalize()} failed: {result.stderr}")
-
-        # Parse successful JSON output
-        try:
-            return json.loads(result.stdout)
-        except json.JSONDecodeError:
-            raise RuntimeError(f"Failed to parse {stage} output as JSON")
-
-    except subprocess.SubprocessError as e:
-        raise RuntimeError(f"{stage.capitalize()} command failed: {e}") from e
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load skill module at {path}: {exc}") from exc
+    func = getattr(module, func_name, None)
+    if not callable(func):
+        raise RuntimeError(f"Skill function {func_name} not found in {path}")
+    return func
 
 
 def transcribe_youtube(
@@ -183,25 +154,21 @@ def transcribe_youtube(
     print("Downloading YouTube Audio...")
     print("=" * 80)
 
-    download_cmd = [
-        "python3",
-        str(YOUTUBE_DOWNLOAD_SCRIPT),
-        url,
-        "--audio",
-        "--json",
-        "--output", audio_dir or "files/videos",
-        "--user-id", user_id,
-        "--temp-dir", str(target_audio_dir),
-        "--keep-local",
-        "--no-upload",
-    ]
-
-    download_result = run_command(download_cmd, "download")
-
-    if not download_result.get('success'):
-        raise RuntimeError(f"Download failed: {download_result.get('error', {}).get('message', 'Unknown error')}")
-
-    download_data = download_result['data']
+    download_youtube = _load_skill_function(
+        YOUTUBE_DOWNLOAD_SCRIPT,
+        "youtube_download_skill",
+        "download_youtube",
+    )
+    download_data = download_youtube(
+        url=url,
+        audio_only=True,
+        output_dir=audio_dir or "files/videos",
+        quiet=True,
+        user_id=user_id,
+        temp_dir=str(target_audio_dir),
+        keep_local=True,
+        upload=False,
+    )
     audio_file_path = Path(download_data.get("local_path") or (Path(download_data['output_dir']) / download_data['filename']))
 
     print(f"Title: {download_data['title']}")
@@ -214,27 +181,23 @@ def transcribe_youtube(
     print("Transcribing Audio...")
     print("=" * 80)
 
-    transcribe_cmd = [
-        "python3",
-        str(AUDIO_TRANSCRIBE_SCRIPT),
-        str(audio_file_path),
-        "--language", language,
-        "--model", model,
-        "--json",
-        "--user-id", user_id,
-        "--output-dir", transcript_dir,
-        "--output-name", transcript_name,
-        "--temp-dir", str(temp_root / "transcripts"),
-        "--keep-local",
-    ]
+    transcribe_audio = _load_skill_function(
+        AUDIO_TRANSCRIBE_SCRIPT,
+        "audio_transcribe_skill",
+        "transcribe_audio",
+    )
 
     try:
-        transcribe_result = run_command(transcribe_cmd, "transcription")
-
-        if not transcribe_result.get('success'):
-            raise RuntimeError(f"Transcription failed: {transcribe_result.get('error', {}).get('message', 'Unknown error')}")
-
-        transcribe_data = transcribe_result['data']
+        transcribe_data = transcribe_audio(
+            str(audio_file_path),
+            language=language,
+            model=model,
+            output_dir=transcript_dir,
+            output_name=transcript_name,
+            temp_dir=str(temp_root / "transcripts"),
+            keep_local=True,
+            user_id=user_id,
+        )
 
         transcript_path = Path(transcribe_data.get("local_path") or transcribe_data['output_path'])
 

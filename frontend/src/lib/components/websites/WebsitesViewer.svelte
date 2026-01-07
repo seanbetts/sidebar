@@ -129,7 +129,7 @@
 
   $: if (editor && $websitesStore.active) {
     const raw = stripFrontmatter($websitesStore.active.content || '');
-    editor.commands.setContent(rewriteVideoEmbeds(raw, $websitesStore.active));
+    editor.commands.setContent(rewriteVideoEmbeds(raw, $websitesStore.active, $transcriptStatusStore));
   }
 
 
@@ -181,7 +181,11 @@
     }
   }
 
-  function rewriteVideoEmbeds(markdown: string, website: WebsiteDetail | null): string {
+  function rewriteVideoEmbeds(
+    markdown: string,
+    website: WebsiteDetail | null,
+    activeJob: { websiteId: string; videoId: string } | null
+  ): string {
     const youtubePattern = /^\[YouTube\]\(([^)]+)\)$/gm;
     const vimeoPattern = /^\[Vimeo\]\(([^)]+)\)$/gm;
     const bareUrlPattern = /^(https?:\/\/[^\s]+)$/gm;
@@ -193,7 +197,9 @@
       const showButton = !hasTranscriptForVideo(markdown, videoId);
       const transcriptHref = buildTranscriptHref(url.trim());
       const transcriptEntry = getTranscriptEntry(website, videoId);
-      const isQueued = isTranscriptPending(transcriptEntry?.status);
+      const isQueued =
+        isTranscriptPending(transcriptEntry?.status) ||
+        (activeJob?.websiteId === website?.id && activeJob?.videoId === videoId);
       const button =
         showButton && transcriptHref
           ? isQueued
@@ -215,7 +221,9 @@
         const showButton = !hasTranscriptForVideo(markdown, videoId);
         const transcriptHref = buildTranscriptHref(match.trim());
         const transcriptEntry = getTranscriptEntry(website, videoId);
-        const isQueued = isTranscriptPending(transcriptEntry?.status);
+        const isQueued =
+          isTranscriptPending(transcriptEntry?.status) ||
+          (activeJob?.websiteId === website?.id && activeJob?.videoId === videoId);
         const button =
           showButton && transcriptHref
           ? isQueued
@@ -658,7 +666,7 @@
     opacity: 1 !important;
   }
 
-  :global(.website-viewer a.transcript-queued::before) {
+  :global(.website-viewer a.transcript-queued::after) {
     content: '';
     display: inline-block;
     width: 0.5rem;
@@ -666,7 +674,7 @@
     border-radius: 999px;
     background: #d99a2b;
     animation: transcript-pulse 1.4s ease-in-out infinite;
-    margin-right: 0.5rem;
+    margin-left: 0.5rem;
   }
 
   :global(.tiptap.website-viewer a.transcript-queued:hover) {
