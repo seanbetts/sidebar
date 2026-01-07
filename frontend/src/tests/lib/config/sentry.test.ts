@@ -17,10 +17,12 @@ describe('initSentryClient', () => {
   });
 
   it('skips initialization without a DSN', async () => {
-    vi.doMock('$env/static/public', () => ({
-      PUBLIC_SENTRY_DSN_FRONTEND: '',
-      PUBLIC_SENTRY_ENVIRONMENT: 'test',
-      PUBLIC_SENTRY_SAMPLE_RATE: '0.1'
+    vi.doMock('$lib/utils/publicEnv', () => ({
+      getPublicEnv: () => ({
+        PUBLIC_SENTRY_DSN_FRONTEND: '',
+        PUBLIC_SENTRY_ENVIRONMENT: 'test',
+        PUBLIC_SENTRY_SAMPLE_RATE: '0.1'
+      })
     }));
 
     const { initSentryClient } = await import('$lib/config/sentry');
@@ -30,10 +32,12 @@ describe('initSentryClient', () => {
   });
 
   it('initializes when DSN is present', async () => {
-    vi.doMock('$env/static/public', () => ({
-      PUBLIC_SENTRY_DSN_FRONTEND: 'https://example@sentry.io/123',
-      PUBLIC_SENTRY_ENVIRONMENT: 'test',
-      PUBLIC_SENTRY_SAMPLE_RATE: '0.1'
+    vi.doMock('$lib/utils/publicEnv', () => ({
+      getPublicEnv: () => ({
+        PUBLIC_SENTRY_DSN_FRONTEND: 'https://example@sentry.io/123',
+        PUBLIC_SENTRY_ENVIRONMENT: 'test',
+        PUBLIC_SENTRY_SAMPLE_RATE: '0.1'
+      })
     }));
 
     const { initSentryClient } = await import('$lib/config/sentry');
