@@ -15,6 +15,7 @@ import tempfile
 import urllib.parse
 import contextlib
 import io
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable
 
@@ -34,6 +35,17 @@ except Exception:
 
 # Default directories (R2)
 DEFAULT_TRANSCRIPT_DIR = "files/videos/{video_id}/ai"
+
+def _ensure_stdio() -> None:
+    for fd in (0, 1, 2):
+        try:
+            os.fstat(fd)
+        except OSError:
+            mode = os.O_RDONLY if fd == 0 else os.O_WRONLY
+            devnull_fd = os.open(os.devnull, mode)
+            os.dup2(devnull_fd, fd)
+            os.close(devnull_fd)
+
 
 # Script paths - dynamically locate based on this script's location
 SCRIPT_DIR = Path(__file__).parent.parent.parent  # Go up to skills/
@@ -136,6 +148,7 @@ def transcribe_youtube(
     Raises:
         RuntimeError: If download or transcription fails
     """
+    _ensure_stdio()
     start_time = time.time()
 
     if not user_id:

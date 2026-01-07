@@ -52,6 +52,21 @@ const isWebsiteDetail = (value: unknown): value is WebsiteDetail => {
   return typeof item.content === 'string';
 };
 
+const buildWebsiteSummary = (data: WebsiteDetail): WebsiteItem => ({
+  id: data.id,
+  title: data.title,
+  url: data.url,
+  domain: data.domain,
+  saved_at: data.saved_at,
+  published_at: data.published_at,
+  pinned: data.pinned ?? false,
+  pinned_order: data.pinned_order ?? null,
+  archived: data.archived ?? false,
+  youtube_transcripts: data.youtube_transcripts ?? {},
+  updated_at: data.updated_at,
+  last_opened_at: data.last_opened_at
+});
+
 const extractWebsiteItems = (value: unknown): WebsiteItem[] => {
   const data = value as { items?: unknown[] };
   if (Array.isArray(data?.items)) {
@@ -134,20 +149,7 @@ function createWebsitesStore() {
         if (!isWebsiteDetail(data)) {
           throw new Error('Invalid website response');
         }
-        const summary: WebsiteItem = {
-          id: data.id,
-          title: data.title,
-          url: data.url,
-          domain: data.domain,
-          saved_at: data.saved_at,
-          published_at: data.published_at,
-          pinned: data.pinned ?? false,
-          pinned_order: data.pinned_order ?? null,
-          archived: data.archived ?? false,
-          youtube_transcripts: data.youtube_transcripts ?? {},
-          updated_at: data.updated_at,
-          last_opened_at: data.last_opened_at
-        };
+        const summary = buildWebsiteSummary(data);
         update(state => ({
           ...state,
           active: data,
@@ -158,6 +160,21 @@ function createWebsitesStore() {
       } catch (error) {
         logError('Failed to load website', error, { scope: 'websitesStore.loadById', websiteId: id });
         update(state => ({ ...state, loadingDetail: false, error: 'Failed to load website' }));
+      }
+    },
+
+    async refreshItem(id: string) {
+      try {
+        const data = await websitesAPI.get(id);
+        if (!isWebsiteDetail(data)) {
+          throw new Error('Invalid website response');
+        }
+        const summary = buildWebsiteSummary(data);
+        this.upsertFromRealtime(summary);
+        return data;
+      } catch (error) {
+        logError('Failed to refresh website', error, { scope: 'websitesStore.refreshItem', websiteId: id });
+        return null;
       }
     },
 
