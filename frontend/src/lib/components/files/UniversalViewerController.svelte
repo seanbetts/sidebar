@@ -27,7 +27,8 @@
   }
   $: isPdf = viewerKind === 'viewer_pdf';
   $: isAudio = viewerKind === 'audio_original';
-  $: isText = viewerKind === 'text_original' || viewerKind === 'ai_md';
+  $: isMarkdownOnly = viewerKind === 'ai_md';
+  $: isText = viewerKind === 'text_original';
   $: isSpreadsheet = viewerKind === 'viewer_json';
   $: isVideo = viewerKind === 'viewer_video';
   $: isImage = active?.file.category === 'images';
@@ -44,7 +45,8 @@
   $: canPrev = currentPage > 1;
   $: canNext = pageCount > 0 && currentPage < pageCount;
   $: hasMarkdown = Boolean(active?.derivatives?.some(item => item.kind === 'ai_md'));
-  $: showMarkdownToggle = hasMarkdown && !isSpreadsheet && !isAudio && !isVideo;
+  $: showMarkdownToggle =
+    hasMarkdown && !isSpreadsheet && !isAudio && !isVideo && !isMarkdownOnly;
   $: videoEmbedUrl = isVideo ? buildYouTubeEmbedUrl(active?.file.source_url) : null;
 
   let currentPage = 1;
@@ -79,7 +81,9 @@
       ingestionViewerStore.updateActiveJob(active.file.id, item.job);
     }
   }
-  $: if (!showMarkdownToggle) {
+  $: if (isMarkdownOnly) {
+    viewMode = 'markdown';
+  } else if (!showMarkdownToggle) {
     viewMode = 'content';
   }
   $: if (viewMode === 'markdown' && active?.file.id) {
