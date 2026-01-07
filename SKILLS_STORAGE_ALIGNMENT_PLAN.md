@@ -7,7 +7,7 @@
 - [x] Update audio-transcribe + youtube-download
 - [x] Update youtube-transcribe
 - [x] Update web-crawler-policy (single ingested file per run)
-- [ ] Update SKILL.md documentation
+- [x] Update SKILL.md documentation
 - [ ] Verify UI reads `ai/ai.md` consistently and ignores website transcript records
 
 ## Goals
