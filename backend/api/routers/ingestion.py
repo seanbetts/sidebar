@@ -19,6 +19,7 @@ from api.exceptions import (
     RangeNotSatisfiableError,
 )
 from api.services.file_ingestion_service import FileIngestionService
+from api.services.website_transcript_service import WebsiteTranscriptService
 from api.services.storage.service import get_storage_backend
 from api.routers.ingestion_helpers import (
     _category_for_file,
@@ -182,6 +183,28 @@ async def get_file_meta(
         for item in FileIngestionService.list_derivatives(db, file_id)
     ]
     derivatives = _filter_user_derivatives(derivatives, record.user_id)
+
+    metadata = record.source_metadata or {}
+    if (
+        job
+        and job.status in {"failed", "canceled", "ready"}
+        and metadata.get("website_transcript")
+        and metadata.get("website_id")
+    ):
+        try:
+            website_id = UUID(str(metadata.get("website_id")))
+        except (TypeError, ValueError):
+            website_id = None
+        if website_id:
+            WebsiteTranscriptService.sync_transcript_status_from_ingestion(
+                db,
+                user_id=str(record.user_id),
+                website_id=website_id,
+                youtube_url=str(metadata.get("youtube_url") or record.source_url or ""),
+                status=job.status,
+                file_id=str(record.id),
+                error=job.error_message or job.error_code,
+            )
 
     return {
         "file": {

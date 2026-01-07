@@ -488,8 +488,6 @@ def _load_audio_transcriber() -> Callable[..., dict]:
 
 def _load_youtube_transcriber() -> Callable[..., dict]:
     global _youtube_transcriber
-    if _youtube_transcriber is not None:
-        return _youtube_transcriber
     candidate_roots = [
         Path(settings.skills_dir),
         Path(__file__).resolve().parents[2] / "skills",
@@ -507,6 +505,7 @@ def _load_youtube_transcriber() -> Callable[..., dict]:
             f"YouTube transcription skill not found. Checked: {attempted}",
             retryable=False,
         )
+    logger.info("Loading YouTube transcriber from %s", skill_path)
     spec = importlib.util.spec_from_file_location("youtube_transcribe_skill", skill_path)
     if not spec or not spec.loader:
         raise IngestionError("VIDEO_TRANSCRIPTION_UNAVAILABLE", "YouTube transcription skill could not be loaded", retryable=False)
@@ -535,12 +534,30 @@ def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
             keep_audio=False,
         )
     except ValueError as exc:
+        logger.warning(
+            "YouTube transcription rejected file_id=%s url=%s error=%s",
+            record.id,
+            record.source_url,
+            str(exc),
+        )
         raise IngestionError("INVALID_YOUTUBE_URL", str(exc), retryable=False) from exc
     except RuntimeError as exc:
         message = str(exc)
         retryable = "rate" in message.lower() or "timeout" in message.lower()
+        logger.error(
+            "YouTube transcription runtime error file_id=%s url=%s retryable=%s error=%s",
+            record.id,
+            record.source_url,
+            retryable,
+            message,
+        )
         raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", message, retryable=retryable) from exc
     except Exception as exc:
+        logger.exception(
+            "YouTube transcription crashed file_id=%s url=%s",
+            record.id,
+            record.source_url,
+        )
         raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", "Video transcription failed", retryable=True) from exc
 
     transcript_path = Path(result.get("transcript_local_path") or result.get("transcript_file") or "")
@@ -1667,6 +1684,13 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                     )
         return
     except IngestionError as exc:
+        logger.warning(
+            "YouTube job failed file_id=%s url=%s code=%s retryable=%s",
+            record.id,
+            record.source_url,
+            exc.code,
+            exc.retryable,
+        )
         if transcript_target:
             WebsiteTranscriptService.update_transcript_status(
                 db,
@@ -1678,6 +1702,11 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
             )
         raise
     except Exception as exc:
+        logger.exception(
+            "YouTube job crashed file_id=%s url=%s",
+            record.id,
+            record.source_url,
+        )
         if transcript_target:
             WebsiteTranscriptService.update_transcript_status(
                 db,
