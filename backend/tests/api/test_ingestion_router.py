@@ -1,3 +1,4 @@
+import os
 import uuid
 
 from api.config import settings
@@ -46,7 +47,7 @@ def test_ingestion_pause_resume_cancel(test_client):
 
 
 def test_ingestion_meta_syncs_failed_transcript_status(test_client, test_db):
-    user_id = "user-1"
+    user_id = os.getenv("TEST_USER_ID", "user-1")
     video_id = "abc123xyz"
     youtube_url = f"https://www.youtube.com/watch?v={video_id}"
     file_id = uuid.uuid4()
@@ -92,7 +93,9 @@ def test_ingestion_meta_syncs_failed_transcript_status(test_client, test_db):
         error_code="VIDEO_TRANSCRIPTION_FAILED",
         error_message="Download failed",
     )
-    test_db.add_all([record, job])
+    test_db.add(record)
+    test_db.flush()
+    test_db.add(job)
     test_db.commit()
 
     response = test_client.get(f"/api/ingestion/{file_id}/meta", headers=_auth_headers())

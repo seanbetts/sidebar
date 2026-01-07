@@ -15,6 +15,7 @@ import asyncio
 import csv
 import os
 import tempfile
+import re
 from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 from collections import defaultdict
