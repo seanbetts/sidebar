@@ -27,7 +27,7 @@
   }
   $: isPdf = viewerKind === 'viewer_pdf';
   $: isAudio = viewerKind === 'audio_original';
-  $: isText = viewerKind === 'text_original';
+  $: isText = viewerKind === 'text_original' || viewerKind === 'ai_md';
   $: isSpreadsheet = viewerKind === 'viewer_json';
   $: isVideo = viewerKind === 'viewer_video';
   $: isImage = active?.file.category === 'images';

@@ -6,6 +6,7 @@ from api.routers.ingestion_helpers import (
     _extract_youtube_id,
     _filter_user_derivatives,
     _normalize_youtube_url,
+    _recommended_viewer,
     _user_message_for_error,
 )
 
@@ -34,6 +35,10 @@ def test_category_for_file():
         path="Reports/example.com/crawler_policy_20250101.md",
         source_metadata={"provider": "web-crawler-policy"},
     ) == "reports"
+
+
+def test_recommended_viewer_prefers_ai_md():
+    assert _recommended_viewer([{"kind": "ai_md"}]) == "ai_md"
 
 
 def test_filter_user_derivatives():
