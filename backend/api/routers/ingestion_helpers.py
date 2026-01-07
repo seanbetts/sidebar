@@ -142,6 +142,8 @@ def _recommended_viewer(derivatives: list[dict], record: IngestedFile | None = N
         return "audio_original"
     if "text_original" in kinds:
         return "text_original"
+    if "ai_md" in kinds:
+        return "ai_md"
     return None
 
 
