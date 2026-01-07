@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import {
     MoreHorizontal,
     Trash2,
@@ -12,6 +12,9 @@
     Download
   } from 'lucide-svelte';
   import type { FileNode } from '$lib/types/file';
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+  import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+  import { canShowTooltips } from '$lib/utils/tooltip';
 
   export let node: FileNode;
   export let basePath: string;
@@ -33,6 +36,11 @@
   let menuButton: HTMLButtonElement | null = null;
   let menuTimeout: ReturnType<typeof setTimeout> | null = null;
   let removeOutsideListener: (() => void) | null = null;
+  let tooltipsEnabled = false;
+
+  onMount(() => {
+    tooltipsEnabled = canShowTooltips();
+  });
 
   const toggleMenu = (event: MouseEvent) => {
     event.stopPropagation();
@@ -130,9 +138,22 @@
   });
 </script>
 
-<button class="menu-btn" on:click={toggleMenu} aria-label="More options" bind:this={menuButton}>
-  <MoreHorizontal size={16} />
-</button>
+<Tooltip disabled={!tooltipsEnabled}>
+  <TooltipTrigger>
+    {#snippet child({ props })}
+      <button
+        class="menu-btn"
+        on:click={toggleMenu}
+        aria-label="More options"
+        bind:this={menuButton}
+        {...props}
+      >
+        <MoreHorizontal size={16} />
+      </button>
+    {/snippet}
+  </TooltipTrigger>
+  <TooltipContent side="right">{TOOLTIP_COPY.moreActions}</TooltipContent>
+</Tooltip>
 
 {#if showMenu}
   <div class="menu" role="menu" tabindex="-1" bind:this={menuElement}>

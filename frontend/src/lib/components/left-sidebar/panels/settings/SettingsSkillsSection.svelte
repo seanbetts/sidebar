@@ -1,5 +1,9 @@
 <script lang="ts">
   import { Loader2 } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+  import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+  import { canShowTooltips } from '$lib/utils/tooltip';
 
   export let isLoadingSkills = false;
   export let skillsError = '';
@@ -11,20 +15,34 @@
   export let allSkillsEnabled = false;
   export let toggleAllSkills: (enabled: boolean) => void;
   export let toggleSkill: (id: string, enabled: boolean) => void;
+
+  let tooltipsEnabled = false;
+
+  onMount(() => {
+    tooltipsEnabled = canShowTooltips();
+  });
 </script>
 
 <h3>Skills</h3>
 <div class="skills-header">
   <p>Manage installed skills and permissions here.</p>
-  <label class="skill-toggle">
-    <input
-      type="checkbox"
-      checked={allSkillsEnabled}
-      on:change={(event) => toggleAllSkills((event.currentTarget as HTMLInputElement).checked)}
-    />
-    <span class="skill-switch" aria-hidden="true"></span>
-    <span class="skill-toggle-label">Enable all</span>
-  </label>
+  <Tooltip disabled={!tooltipsEnabled}>
+    <TooltipTrigger>
+      {#snippet child({ props })}
+        {@const { type: _type, ...restProps } = props}
+        <label class="skill-toggle" {...restProps}>
+          <input
+            type="checkbox"
+            checked={allSkillsEnabled}
+            on:change={(event) => toggleAllSkills((event.currentTarget as HTMLInputElement).checked)}
+          />
+          <span class="skill-switch" aria-hidden="true"></span>
+          <span class="skill-toggle-label">Enable all</span>
+        </label>
+      {/snippet}
+    </TooltipTrigger>
+    <TooltipContent side="top">{TOOLTIP_COPY.enableAllSkills}</TooltipContent>
+  </Tooltip>
 </div>
 
 <style>
@@ -183,16 +201,26 @@
             <div class="skill-row">
               <div class="skill-row-header">
                 <div class="skill-name">{skill.name}</div>
-                <label class="skill-toggle">
-                  <input
-                    type="checkbox"
-                    checked={enabledSkills.includes(skill.id)}
-                    on:change={(event) =>
-                      toggleSkill(skill.id, (event.currentTarget as HTMLInputElement).checked)
-                    }
-                  />
-                  <span class="skill-switch" aria-hidden="true"></span>
-                </label>
+                <Tooltip disabled={!tooltipsEnabled}>
+                  <TooltipTrigger>
+                    {#snippet child({ props })}
+                      {@const { type: _type, ...restProps } = props}
+                      <label class="skill-toggle" {...restProps}>
+                        <input
+                          type="checkbox"
+                          checked={enabledSkills.includes(skill.id)}
+                          on:change={(event) =>
+                            toggleSkill(skill.id, (event.currentTarget as HTMLInputElement).checked)
+                          }
+                        />
+                        <span class="skill-switch" aria-hidden="true"></span>
+                      </label>
+                    {/snippet}
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {enabledSkills.includes(skill.id) ? 'Disable' : 'Enable'} {skill.name}
+                  </TooltipContent>
+                </Tooltip>
               </div>
               <div class="skill-description">{skill.description}</div>
             </div>
