@@ -68,7 +68,6 @@ def generate_skills_md():
     categories = {
         "Filesystem": ["fs", "folder-config"],
         "Notes": ["notes"],
-        "Documents": ["docx", "xlsx", "pptx", "pdf"],
         "Web": ["web-save", "web-crawler-policy", "subdomain-discover", "jina-reader"],
         "Media": ["youtube-download", "youtube-transcribe", "audio-transcribe"],
         "Google Drive": ["drive-search", "drive-write"],
