@@ -3,8 +3,8 @@
 ## Progress Tracker
 
 - [ ] Add ingestion helper APIs + backward-compatible frontmatter schema
-- [ ] Deprecate/remove docx/pdf/pptx/xlsx skills and update docs/tool registry
-- [ ] Update audio-transcribe + youtube-download
+- [x] Deprecate/remove docx/pdf/pptx/xlsx skills and update docs/tool registry
+- [x] Update audio-transcribe + youtube-download
 - [ ] Update youtube-transcribe
 - [ ] Update web-crawler-policy (single ingested file per run)
 - [ ] Update SKILL.md documentation

@@ -86,6 +86,10 @@ ALLOWED_OCTET_EXTENSIONS = {
     ".flac",
     ".ogg",
     ".opus",
+    ".mp4",
+    ".mov",
+    ".mkv",
+    ".webm",
     ".txt",
     ".md",
     ".markdown",
@@ -748,7 +752,7 @@ def _normalize_mime(mime_original: str | None, filename: str) -> str:
 
 
 def _is_allowed_file(mime: str, filename: str) -> bool:
-    if mime.startswith(("image/", "audio/", "text/")):
+    if mime.startswith(("image/", "audio/", "text/", "video/")):
         return True
     if mime in ALLOWED_MIME_EXACT:
         return True
@@ -1404,6 +1408,17 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             content=content,
         )
         extraction_text = _transcribe_audio(source_path, record)
+    elif mime.startswith("video/"):
+        extension = _detect_extension(record.filename_original, mime)
+        viewer_payload = DerivativePayload(
+            kind="video_original",
+            storage_key=f"{user_prefix}/derivatives/video{extension or ''}",
+            mime=mime,
+            size_bytes=len(content),
+            sha256=sha256(content).hexdigest(),
+            content=content,
+        )
+        extraction_text = "Video file. No text extraction available."
     elif mime in {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",

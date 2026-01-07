@@ -41,6 +41,38 @@ def _ensure_stdio() -> None:
             os.close(devnull_fd)
 
 
+def _build_storage_payload(
+    user_id: Optional[str],
+    record: Any,
+    *,
+    audio_only: bool,
+    filename: str,
+) -> Dict[str, Any]:
+    if not user_id or not record:
+        return {
+            "file_id": None,
+            "ai_path": None,
+            "derivatives": [],
+        }
+    file_id = str(record.id)
+    extension = Path(filename).suffix
+    if extension:
+        extension = extension.lower()
+    kind = "audio_original" if audio_only else "video_original"
+    base_name = "audio" if audio_only else "video"
+    return {
+        "file_id": file_id,
+        "ai_path": f"{user_id}/files/{file_id}/ai/ai.md",
+        "derivatives": [
+            {
+                "kind": kind,
+                "path": f"{user_id}/files/{file_id}/derivatives/{base_name}{extension}",
+                "content_type": "audio/mpeg" if audio_only else "video/mp4",
+            }
+        ],
+    }
+
+
 def check_ffmpeg() -> bool:
     """
     Check if ffmpeg is installed and has required capabilities.
@@ -333,6 +365,12 @@ def download_youtube(
             content_type = "audio/mpeg" if audio_only else "video/mp4"
             r2_path = f"{r2_dir}/{final_filename}" if r2_dir else final_filename
             record = upload_file(user_id, r2_path, local_output, content_type=content_type)
+        storage_payload = _build_storage_payload(
+            user_id,
+            record,
+            audio_only=audio_only,
+            filename=final_filename,
+        )
 
         if not keep_local and temp_dir is None:
             local_output.unlink(missing_ok=True)
@@ -347,7 +385,8 @@ def download_youtube(
             'audio_only': audio_only,
             'is_playlist': is_playlist,
             'duration_seconds': int(duration),
-            'success': True
+            'success': True,
+            **storage_payload,
         }
 
     except yt_dlp.utils.DownloadError as e:

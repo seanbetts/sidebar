@@ -99,9 +99,9 @@ def test_is_allowed_file_accepts_supported_types():
     assert ingestion_worker._is_allowed_file("text/plain", "notes.txt")
     assert ingestion_worker._is_allowed_file("image/png", "image.png")
     assert ingestion_worker._is_allowed_file("audio/mpeg", "track.mp3")
+    assert ingestion_worker._is_allowed_file("video/mp4", "clip.mp4")
     assert ingestion_worker._is_allowed_file("application/octet-stream", "sheet.xlsx")
 
 
 def test_is_allowed_file_rejects_unsupported_types():
-    assert not ingestion_worker._is_allowed_file("video/mp4", "clip.mp4")
     assert not ingestion_worker._is_allowed_file("application/octet-stream", "archive.zip")
