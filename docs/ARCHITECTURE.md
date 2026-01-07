@@ -244,6 +244,10 @@ Example: Chat works without location, but becomes location-aware when provided.
 
 **Implementation:** `backend/api/services/storage/`, `docker-compose.yml` tmpfs config
 
+#### Skill Output Metadata
+- File-producing skills return `file_id` plus derivative metadata instead of raw storage paths.
+- AI context is standardized in `{user_id}/files/{file_id}/ai/ai.md` with backward-compatible frontmatter.
+
 ---
 
 ## Data Flow
