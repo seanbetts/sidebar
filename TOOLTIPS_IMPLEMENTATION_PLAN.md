@@ -779,25 +779,25 @@ As tooltips are implemented, remove corresponding `title` attributes to avoid do
 ## Checklist Summary
 
 ### Infrastructure Setup
-- [ ] Create `/frontend/src/lib/constants/tooltips.ts`
-- [ ] Add `TooltipProvider` to root layout
+- [x] Create `/frontend/src/lib/constants/tooltips.ts`
+- [x] Add `TooltipProvider` to root layout
 
 ### Phase 1: Critical (2 hours)
-- [ ] SidebarRail (6 tooltips)
-- [ ] EditorToolbar (8 tooltips)
-- [ ] WebsiteHeader (7 tooltips)
-- [ ] Site Header (3 tooltips)
+- [x] SidebarRail (6 tooltips)
+- [x] EditorToolbar (8 tooltips)
+- [x] WebsiteHeader (7 tooltips)
+- [x] Site Header (3 tooltips)
 
 ### Phase 2: Secondary (2 hours)
-- [ ] ChatInput (2 tooltips)
-- [ ] ChatWindow (4 tooltips)
-- [ ] FileTreeContextMenu (1 tooltip)
-- [ ] Theme Toggle (1 tooltip)
+- [x] ChatInput (2 tooltips)
+- [x] ChatWindow (4 tooltips)
+- [x] FileTreeContextMenu (1 tooltip)
+- [x] Theme Toggle (1 tooltip)
 
 ### Phase 3: Educational (2 hours)
-- [ ] Settings Skills (8+ tooltips)
-- [ ] Memory Toolbar (3 tooltips)
-- [ ] Scratchpad Popover (4 tooltips)
+- [x] Settings Skills (8+ tooltips)
+- [x] Memory Toolbar (3 tooltips)
+- [x] Scratchpad Popover (4 tooltips)
 
 ### Testing & Polish
 - [ ] Manual testing across all phases

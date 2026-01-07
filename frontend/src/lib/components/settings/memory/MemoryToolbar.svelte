@@ -1,24 +1,49 @@
 <script lang="ts">
   import { Plus, Search } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+  import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+  import { canShowTooltips } from '$lib/utils/tooltip';
 
   export let searchTerm = '';
   export let onCreate: () => void;
+
+  let tooltipsEnabled = false;
+
+  onMount(() => {
+    tooltipsEnabled = canShowTooltips();
+  });
 </script>
 
 <div class="memory-toolbar">
-  <div class="memory-search">
-    <Search size={14} />
-    <input
-      class="memory-search-input"
-      type="text"
-      placeholder="Search memories"
-      bind:value={searchTerm}
-    />
-  </div>
-  <button class="settings-button" on:click={onCreate}>
-    <Plus size={14} />
-    Add Memory
-  </button>
+  <Tooltip disabled={!tooltipsEnabled}>
+    <TooltipTrigger>
+      {#snippet child({ props })}
+        {@const { type: _type, ...restProps } = props}
+        <div class="memory-search" {...restProps}>
+          <Search size={14} />
+          <input
+            class="memory-search-input"
+            type="text"
+            placeholder="Search memories"
+            bind:value={searchTerm}
+          />
+        </div>
+      {/snippet}
+    </TooltipTrigger>
+    <TooltipContent side="top">{TOOLTIP_COPY.searchMemories}</TooltipContent>
+  </Tooltip>
+  <Tooltip disabled={!tooltipsEnabled}>
+    <TooltipTrigger>
+      {#snippet child({ props })}
+        <button class="settings-button" on:click={onCreate} {...props}>
+          <Plus size={14} />
+          Add Memory
+        </button>
+      {/snippet}
+    </TooltipTrigger>
+    <TooltipContent side="top">{TOOLTIP_COPY.addMemory}</TooltipContent>
+  </Tooltip>
 </div>
 
 <style>
