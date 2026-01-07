@@ -1780,216 +1780,220 @@ def worker_loop() -> None:
         logger.info("Ingestion DB URL: %s", safe_url)
     while True:
         with SessionLocal() as db:
-            if worker_user_id:
-                set_session_user_id(db, worker_user_id)
-            _requeue_stalled_jobs(db)
-            job = _claim_job(db, worker_id)
-            if not job:
-                time.sleep(SLEEP_SECONDS)
-                continue
-
-            record: IngestedFile | None = None
             try:
-                record = _get_file(db, job)
-                if record.user_id:
-                    set_session_user_id(db, str(record.user_id))
-                stop_heartbeat = _start_heartbeat(str(job.id), str(record.user_id) if record.user_id else None)
+                if worker_user_id:
+                    set_session_user_id(db, worker_user_id)
+                _requeue_stalled_jobs(db)
+                job = _claim_job(db, worker_id)
+                if not job:
+                    db.rollback()
+                    time.sleep(SLEEP_SECONDS)
+                    continue
+
+                record: IngestedFile | None = None
                 try:
-                    if record.source_url:
-                        _process_youtube_job(db, job, record)
-                        db.refresh(job)
-                        if job.status not in {"paused", "canceled"}:
-                            _mark_ready(db, job)
-                        continue
+                    record = _get_file(db, job)
+                    if record.user_id:
+                        set_session_user_id(db, str(record.user_id))
+                    stop_heartbeat = _start_heartbeat(str(job.id), str(record.user_id) if record.user_id else None)
+                    try:
+                        if record.source_url:
+                            _process_youtube_job(db, job, record)
+                            db.refresh(job)
+                            if job.status not in {"paused", "canceled"}:
+                                _mark_ready(db, job)
+                            continue
 
-                    source_path = _ensure_source_path(record)
+                        source_path = _ensure_source_path(record)
 
-                    logger.info("Processing file_id=%s name=%s", record.id, record.filename_original)
-                    mime = _normalize_mime(record.mime_original, record.filename_original)
-                    is_spreadsheet = (
-                        mime
-                        in {
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            "application/vnd.ms-excel",
-                            "text/csv",
-                            "application/csv",
-                            "text/tab-separated-values",
-                            "text/tsv",
-                        }
-                        or record.filename_original.lower().endswith((".csv", ".tsv"))
-                    )
-                    if _should_fast_track(mime, record.filename_original):
-                        _process_simple_file(db, job, record, source_path, mime)
+                        logger.info("Processing file_id=%s name=%s", record.id, record.filename_original)
+                        mime = _normalize_mime(record.mime_original, record.filename_original)
+                        is_spreadsheet = (
+                            mime
+                            in {
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                "application/vnd.ms-excel",
+                                "text/csv",
+                                "application/csv",
+                                "text/tab-separated-values",
+                                "text/tsv",
+                            }
+                            or record.filename_original.lower().endswith((".csv", ".tsv"))
+                        )
+                        if _should_fast_track(mime, record.filename_original):
+                            _process_simple_file(db, job, record, source_path, mime)
+                            db.refresh(job)
+                            if job.status not in {"paused", "canceled"}:
+                                _mark_ready(db, job)
+                                _cleanup_staging(str(record.id), str(record.user_id))
+                            continue
+                        source_bytes: bytes | None = None
+                        viewer_payload: DerivativePayload | None = None
+                        viewer_source_path: Path | None = None
+                        extraction_text = ""
+                        ai_payload: DerivativePayload | None = None
+                        thumb_payload: DerivativePayload | None = None
+
+                        for stage in PIPELINE_STAGES:
+                            db.refresh(job)
+                            if job.status in {"paused", "canceled"}:
+                                raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
+                            _set_stage(db, job, stage)
+                            logger.info("Stage %s file_id=%s", stage, record.id)
+                            _refresh_lease(db, job)
+
+                            if stage == "validating":
+                                if record.size_bytes <= 0:
+                                    raise IngestionError("FILE_EMPTY", "Uploaded file is empty", retryable=False)
+                                if not _is_allowed_file(mime, record.filename_original):
+                                    raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+                            elif stage == "converting":
+                                if mime == "application/pdf":
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    viewer_payload = _make_payload(
+                                        kind="viewer_pdf",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
+                                        mime="application/pdf",
+                                        content=source_bytes,
+                                    )
+                                    viewer_source_path = source_path
+                                elif mime.startswith("image/"):
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    extension = _detect_extension(record.filename_original, mime)
+                                    viewer_payload = _make_payload(
+                                        kind="image_original",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/image{extension or ''}",
+                                        mime=mime,
+                                        content=source_bytes,
+                                    )
+                                    viewer_source_path = source_path
+                                elif mime.startswith("audio/"):
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    extension = _detect_extension(record.filename_original, mime)
+                                    viewer_payload = _make_payload(
+                                        kind="audio_original",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/audio{extension or ''}",
+                                        mime=mime,
+                                        content=source_bytes,
+                                    )
+                                elif mime in {
+                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                                }:
+                                    pdf_path = _run_libreoffice_convert(source_path, _derivative_dir(str(record.id)))
+                                    pdf_bytes = pdf_path.read_bytes()
+                                    viewer_payload = _make_payload(
+                                        kind="viewer_pdf",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
+                                        mime="application/pdf",
+                                        content=pdf_bytes,
+                                    )
+                                    viewer_source_path = pdf_path
+                                elif mime.startswith("text/") or mime == "application/json":
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    viewer_payload = _make_payload(
+                                        kind="text_original",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/source.txt",
+                                        mime=mime,
+                                        content=source_bytes,
+                                    )
+                                elif not is_spreadsheet:
+                                    raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+                            elif stage == "extracting":
+                                if mime == "application/pdf":
+                                    extraction_text = _extract_pdf_text(source_path)
+                                elif mime.startswith("image/"):
+                                    extraction_text = "Image file. No text extraction available."
+                                elif mime.startswith("audio/"):
+                                    extraction_text = _transcribe_audio(source_path, record)
+                                elif mime.endswith("wordprocessingml.document"):
+                                    extraction_text = _extract_docx_text(source_path)
+                                elif mime.endswith("presentationml.presentation"):
+                                    extraction_text = _extract_pptx_text(source_path)
+                                elif is_spreadsheet:
+                                    data = _extract_spreadsheet_data(source_path, mime, record.filename_original)
+                                    data_json = json.dumps(data, ensure_ascii=False)
+                                    extraction_text = data_json
+                                    data_bytes = data_json.encode("utf-8")
+                                    viewer_payload = _make_payload(
+                                        kind="viewer_json",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/data.json",
+                                        mime="application/json",
+                                        content=data_bytes,
+                                    )
+                                elif mime.startswith("text/") or mime == "application/json":
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    extraction_text = source_bytes.decode("utf-8", errors="ignore").strip()
+                                else:
+                                    raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+                            elif stage == "ai_md":
+                                if viewer_payload is None:
+                                    raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
+                                ai_payload = _build_ai_md_payload(record, viewer_payload.kind, extraction_text)
+                            elif stage == "thumb":
+                                thumb_bytes: bytes | None = None
+                                if viewer_payload and viewer_payload.kind == "viewer_pdf" and viewer_source_path:
+                                    thumb_bytes = _generate_pdf_thumbnail(viewer_source_path, _derivative_dir(str(record.id)))
+                                elif viewer_payload and viewer_payload.kind == "image_original":
+                                    thumb_bytes = _generate_image_thumbnail(source_path)
+                                if thumb_bytes:
+                                    thumb_payload = _make_payload(
+                                        kind="thumb_png",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/thumb.png",
+                                        mime="image/png",
+                                        content=thumb_bytes,
+                                    )
+                            elif stage == "finalizing":
+                                if viewer_payload is None or ai_payload is None:
+                                    raise IngestionError("DERIVATIVE_MISSING", "Required derivatives missing", retryable=False)
+                                derivatives = [viewer_payload, ai_payload]
+                                if thumb_payload:
+                                    derivatives.append(thumb_payload)
+                                storage = get_storage_backend()
+                                _write_derivatives_atomically(storage, record, derivatives)
+
+                                db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+                                now = _now()
+                                for item in derivatives:
+                                    db.add(
+                                        FileDerivative(
+                                            file_id=record.id,
+                                            kind=item.kind,
+                                            storage_key=item.storage_key,
+                                            mime=item.mime,
+                                            size_bytes=item.size_bytes,
+                                            sha256=item.sha256,
+                                            created_at=now,
+                                        )
+                                    )
+                                db.commit()
+
                         db.refresh(job)
                         if job.status not in {"paused", "canceled"}:
                             _mark_ready(db, job)
                             _cleanup_staging(str(record.id), str(record.user_id))
+                    finally:
+                        stop_heartbeat()
+                except IngestionError as error:
+                    if error.code == "JOB_HALTED":
                         continue
-                    source_bytes: bytes | None = None
-                    viewer_payload: DerivativePayload | None = None
-                    viewer_source_path: Path | None = None
-                    extraction_text = ""
-                    ai_payload: DerivativePayload | None = None
-                    thumb_payload: DerivativePayload | None = None
-
-                    for stage in PIPELINE_STAGES:
-                        db.refresh(job)
-                        if job.status in {"paused", "canceled"}:
-                            raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
-                        _set_stage(db, job, stage)
-                        logger.info("Stage %s file_id=%s", stage, record.id)
-                        _refresh_lease(db, job)
-
-                        if stage == "validating":
-                            if record.size_bytes <= 0:
-                                raise IngestionError("FILE_EMPTY", "Uploaded file is empty", retryable=False)
-                            if not _is_allowed_file(mime, record.filename_original):
-                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
-                        elif stage == "converting":
-                            if mime == "application/pdf":
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                viewer_payload = _make_payload(
-                                    kind="viewer_pdf",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
-                                    mime="application/pdf",
-                                    content=source_bytes,
-                                )
-                                viewer_source_path = source_path
-                            elif mime.startswith("image/"):
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                extension = _detect_extension(record.filename_original, mime)
-                                viewer_payload = _make_payload(
-                                    kind="image_original",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/image{extension or ''}",
-                                    mime=mime,
-                                    content=source_bytes,
-                                )
-                                viewer_source_path = source_path
-                            elif mime.startswith("audio/"):
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                extension = _detect_extension(record.filename_original, mime)
-                                viewer_payload = _make_payload(
-                                    kind="audio_original",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/audio{extension or ''}",
-                                    mime=mime,
-                                    content=source_bytes,
-                                )
-                            elif mime in {
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                            }:
-                                pdf_path = _run_libreoffice_convert(source_path, _derivative_dir(str(record.id)))
-                                pdf_bytes = pdf_path.read_bytes()
-                                viewer_payload = _make_payload(
-                                    kind="viewer_pdf",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
-                                    mime="application/pdf",
-                                    content=pdf_bytes,
-                                )
-                                viewer_source_path = pdf_path
-                            elif mime.startswith("text/") or mime == "application/json":
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                viewer_payload = _make_payload(
-                                    kind="text_original",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/source.txt",
-                                    mime=mime,
-                                    content=source_bytes,
-                                )
-                            elif not is_spreadsheet:
-                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
-                        elif stage == "extracting":
-                            if mime == "application/pdf":
-                                extraction_text = _extract_pdf_text(source_path)
-                            elif mime.startswith("image/"):
-                                extraction_text = "Image file. No text extraction available."
-                            elif mime.startswith("audio/"):
-                                extraction_text = _transcribe_audio(source_path, record)
-                            elif mime.endswith("wordprocessingml.document"):
-                                extraction_text = _extract_docx_text(source_path)
-                            elif mime.endswith("presentationml.presentation"):
-                                extraction_text = _extract_pptx_text(source_path)
-                            elif is_spreadsheet:
-                                data = _extract_spreadsheet_data(source_path, mime, record.filename_original)
-                                data_json = json.dumps(data, ensure_ascii=False)
-                                extraction_text = data_json
-                                data_bytes = data_json.encode("utf-8")
-                                viewer_payload = _make_payload(
-                                    kind="viewer_json",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/data.json",
-                                    mime="application/json",
-                                    content=data_bytes,
-                                )
-                            elif mime.startswith("text/") or mime == "application/json":
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                extraction_text = source_bytes.decode("utf-8", errors="ignore").strip()
-                            else:
-                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
-                        elif stage == "ai_md":
-                            if viewer_payload is None:
-                                raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
-                            ai_payload = _build_ai_md_payload(record, viewer_payload.kind, extraction_text)
-                        elif stage == "thumb":
-                            thumb_bytes: bytes | None = None
-                            if viewer_payload and viewer_payload.kind == "viewer_pdf" and viewer_source_path:
-                                thumb_bytes = _generate_pdf_thumbnail(viewer_source_path, _derivative_dir(str(record.id)))
-                            elif viewer_payload and viewer_payload.kind == "image_original":
-                                thumb_bytes = _generate_image_thumbnail(source_path)
-                            if thumb_bytes:
-                                thumb_payload = _make_payload(
-                                    kind="thumb_png",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/thumb.png",
-                                    mime="image/png",
-                                    content=thumb_bytes,
-                                )
-                        elif stage == "finalizing":
-                            if viewer_payload is None or ai_payload is None:
-                                raise IngestionError("DERIVATIVE_MISSING", "Required derivatives missing", retryable=False)
-                            derivatives = [viewer_payload, ai_payload]
-                            if thumb_payload:
-                                derivatives.append(thumb_payload)
-                            storage = get_storage_backend()
-                            _write_derivatives_atomically(storage, record, derivatives)
-
-                            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
-                            now = _now()
-                            for item in derivatives:
-                                db.add(
-                                    FileDerivative(
-                                        file_id=record.id,
-                                        kind=item.kind,
-                                        storage_key=item.storage_key,
-                                        mime=item.mime,
-                                        size_bytes=item.size_bytes,
-                                        sha256=item.sha256,
-                                        created_at=now,
-                                    )
-                                )
-                            db.commit()
-
-                    db.refresh(job)
-                    if job.status not in {"paused", "canceled"}:
-                        _mark_ready(db, job)
-                        _cleanup_staging(str(record.id), str(record.user_id))
-                finally:
-                    stop_heartbeat()
-            except IngestionError as error:
-                if error.code == "JOB_HALTED":
-                    continue
+                    db.rollback()
+                    _retry_or_fail(db, job, error)
+                    if job.status == "failed" and _should_cleanup_after_failure(error):
+                        _cleanup_staging(str(job.file_id), str(record.user_id) if record else None)
+                except Exception as error:
+                    unknown_error = IngestionError("UNKNOWN_ERROR", str(error), retryable=True)
+                    db.rollback()
+                    _retry_or_fail(db, job, unknown_error)
+                    if job.status == "failed" and _should_cleanup_after_failure(unknown_error):
+                        _cleanup_staging(str(job.file_id), str(record.user_id) if record else None)
+            finally:
                 db.rollback()
-                _retry_or_fail(db, job, error)
-                if job.status == "failed" and _should_cleanup_after_failure(error):
-                    _cleanup_staging(str(job.file_id), str(record.user_id) if record else None)
-            except Exception as error:
-                unknown_error = IngestionError("UNKNOWN_ERROR", str(error), retryable=True)
-                db.rollback()
-                _retry_or_fail(db, job, unknown_error)
-                if job.status == "failed" and _should_cleanup_after_failure(unknown_error):
-                    _cleanup_staging(str(job.file_id), str(record.user_id) if record else None)
         time.sleep(SLEEP_SECONDS)
 
 
