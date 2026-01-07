@@ -1,6 +1,6 @@
 import { render, fireEvent } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
-import Sidebar from '$lib/components/left-sidebar/Sidebar.svelte';
+import SidebarWithProviders from '../fixtures/SidebarWithProviders.svelte';
 
 const { createStubComponent } = vi.hoisted(() => ({
   createStubComponent: (testId: string) => ({ target }: { target: HTMLElement }) => {
@@ -225,7 +225,7 @@ describe('file upload flow', () => {
       recommended_viewer: null
     });
 
-    const { container } = render(Sidebar);
+    const { container } = render(SidebarWithProviders);
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['hey'], 'test.txt', { type: 'text/plain' });
 

@@ -32,6 +32,7 @@
 		// Auto-focus the input when component mounts
 		textarea?.focus();
 		resizeTextarea();
+		tooltipsEnabled = canShowTooltips();
 	});
 
 	onDestroy(() => {
@@ -50,8 +51,6 @@
 	$: if (textarea && inputValue !== undefined) {
 		resizeTextarea();
 	}
-
-	$: tooltipsEnabled = canShowTooltips();
 
 	function handleSubmit() {
 		const message = inputValue.trim();
@@ -107,20 +106,23 @@
 					class="attachment-input"
 					multiple
 				/>
-				<Tooltip disabled={!tooltipsEnabled}>
-					<TooltipTrigger asChild>
+			<Tooltip disabled={!tooltipsEnabled}>
+				<TooltipTrigger>
+					{#snippet child({ props })}
 						<Button
 							size="icon"
 							variant="ghost"
 							onclick={handleAttachClick}
 							aria-label="Attach file"
 							disabled={disabled}
+							{...props}
 						>
 							<Paperclip size={16} />
 						</Button>
-					</TooltipTrigger>
-					<TooltipContent side="top">{TOOLTIP_COPY.attach}</TooltipContent>
-				</Tooltip>
+					{/snippet}
+				</TooltipTrigger>
+				<TooltipContent side="top">{TOOLTIP_COPY.attach}</TooltipContent>
+			</Tooltip>
 				{#if readyattachments.length > 0}
 					<div class="chat-attachment-pill-group">
 						{#each readyattachments as attachment (attachment.id)}
@@ -140,15 +142,18 @@
 				{/if}
 			</div>
 			<Tooltip disabled={!tooltipsEnabled}>
-				<TooltipTrigger asChild>
-					<Button
-						onclick={handleSubmit}
-						disabled={disabled || !inputValue.trim()}
-						size="icon"
-						aria-label="Send message"
-					>
-						<Send size={16} />
-					</Button>
+				<TooltipTrigger>
+					{#snippet child({ props })}
+						<Button
+							onclick={handleSubmit}
+							disabled={disabled || !inputValue.trim()}
+							size="icon"
+							aria-label="Send message"
+							{...props}
+						>
+							<Send size={16} />
+						</Button>
+					{/snippet}
 				</TooltipTrigger>
 				<TooltipContent side="top">{TOOLTIP_COPY.send}</TooltipContent>
 			</Tooltip>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { chatStore } from '$lib/stores/chat';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
@@ -35,6 +35,10 @@
 	let isMounted = true;
 	let previousConversationId: string | null = null;
 	let tooltipsEnabled = false;
+
+	onMount(() => {
+		tooltipsEnabled = canShowTooltips();
+	});
 
 	onDestroy(() => {
 		isMounted = false;
@@ -174,8 +178,6 @@
 	$: readyAttachments = attachments.filter((item) => item.status === 'ready');
 	$: pendingAttachments = attachments.filter((item) => item.status !== 'ready');
 	$: isSendDisabled = $chatStore.isStreaming || (attachments.length > 0 && hasPendingAttachments);
-	$: tooltipsEnabled = canShowTooltips();
-
 	async function handleAttach(files: FileList) {
 		const fileArray = Array.from(files);
 		for (const file of fileArray) {
@@ -300,28 +302,34 @@
 		{#if $chatStore.conversationId}
 			<div class="header-right">
 				<Tooltip disabled={!tooltipsEnabled}>
-					<TooltipTrigger asChild>
-						<Button
-							size="icon"
-							variant="ghost"
-							onclick={handleNewChat}
-							aria-label="New chat"
-						>
-							<Plus size={16} />
-						</Button>
+					<TooltipTrigger>
+						{#snippet child({ props })}
+							<Button
+								size="icon"
+								variant="ghost"
+								onclick={handleNewChat}
+								aria-label="New chat"
+								{...props}
+							>
+								<Plus size={16} />
+							</Button>
+						{/snippet}
 					</TooltipTrigger>
 					<TooltipContent side="bottom">{TOOLTIP_COPY.newChat}</TooltipContent>
 				</Tooltip>
 				<Tooltip disabled={!tooltipsEnabled}>
-					<TooltipTrigger asChild>
-						<Button
-							size="icon"
-							variant="ghost"
-							onclick={handleCloseChat}
-							aria-label="Close chat"
-						>
-							<X size={16} />
-						</Button>
+					<TooltipTrigger>
+						{#snippet child({ props })}
+							<Button
+								size="icon"
+								variant="ghost"
+								onclick={handleCloseChat}
+								aria-label="Close chat"
+								{...props}
+							>
+								<X size={16} />
+							</Button>
+						{/snippet}
 					</TooltipTrigger>
 					<TooltipContent side="bottom">{TOOLTIP_COPY.closeChat}</TooltipContent>
 				</Tooltip>
@@ -344,26 +352,32 @@
 						{#if attachment.status === 'failed'}
 							<div class="attachment-actions">
 								<Tooltip disabled={!tooltipsEnabled}>
-									<TooltipTrigger asChild>
-										<button
-											class="attachment-action"
-											onclick={() => handleRetryAttachment(attachment.id)}
-											aria-label="Retry attachment"
-										>
-											<RotateCcw size={14} />
-										</button>
+									<TooltipTrigger>
+										{#snippet child({ props })}
+											<button
+												class="attachment-action"
+												onclick={() => handleRetryAttachment(attachment.id)}
+												aria-label="Retry attachment"
+												{...props}
+											>
+												<RotateCcw size={14} />
+											</button>
+										{/snippet}
 									</TooltipTrigger>
 									<TooltipContent side="top">{TOOLTIP_COPY.retryAttachment}</TooltipContent>
 								</Tooltip>
 								<Tooltip disabled={!tooltipsEnabled}>
-									<TooltipTrigger asChild>
-										<button
-											class="attachment-action"
-											onclick={() => handleDeleteAttachment(attachment.id)}
-											aria-label="Delete attachment"
-										>
-											<Trash2 size={14} />
-										</button>
+									<TooltipTrigger>
+										{#snippet child({ props })}
+											<button
+												class="attachment-action"
+												onclick={() => handleDeleteAttachment(attachment.id)}
+												aria-label="Delete attachment"
+												{...props}
+											>
+												<Trash2 size={14} />
+											</button>
+										{/snippet}
 									</TooltipTrigger>
 									<TooltipContent side="top">{TOOLTIP_COPY.removeAttachment}</TooltipContent>
 								</Tooltip>

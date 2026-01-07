@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
@@ -43,6 +43,10 @@
 	};
 	const getMarkdown = (editor: Editor) =>
 		(editor as Editor & { storage: MarkdownStorage }).storage.markdown.getMarkdown();
+
+	onMount(() => {
+		tooltipsEnabled = canShowTooltips();
+	});
 
 	function applyScratchpadContent(content: string) {
 		lastSavedContent = content;
@@ -218,10 +222,16 @@
 
 <Popover.Root bind:open={isOpen}>
 	<Tooltip disabled={!tooltipsEnabled}>
-		<TooltipTrigger asChild>
-			<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'icon' })} aria-label="Open scratchpad">
-				<SquarePen size={18} />
-			</Popover.Trigger>
+		<TooltipTrigger>
+			{#snippet child({ props })}
+				<Popover.Trigger
+					class={buttonVariants({ variant: 'outline', size: 'icon' })}
+					aria-label="Open scratchpad"
+					{...props}
+				>
+					<SquarePen size={18} />
+				</Popover.Trigger>
+			{/snippet}
 		</TooltipTrigger>
 		<TooltipContent side="bottom">Quick scratchpad</TooltipContent>
 	</Tooltip>

@@ -4,9 +4,18 @@
   import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
   import WebsitesPanel from '$lib/components/websites/WebsitesPanel.svelte';
   import { Button } from '$lib/components/ui/button';
+  import { onMount } from 'svelte';
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+  import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+  import { canShowTooltips } from '$lib/utils/tooltip';
 
   export let active = false;
   export let onNewWebsite: () => void;
+
+  let tooltipsEnabled = false;
+  onMount(() => {
+    tooltipsEnabled = canShowTooltips();
+  });
 </script>
 
 <div class="panel-section" class:hidden={!active}>
@@ -17,16 +26,23 @@
     onClear={() => websitesStore.load(true)}
   >
     <svelte:fragment slot="actions">
-      <Button
-        size="icon"
-        variant="ghost"
-        class="panel-action"
-        onclick={onNewWebsite}
-        aria-label="Save website"
-        title="Save website"
-      >
-        <Plus size={16} />
-      </Button>
+      <Tooltip disabled={!tooltipsEnabled}>
+      <TooltipTrigger>
+        {#snippet child({ props })}
+          <Button
+            size="icon"
+            variant="ghost"
+            class="panel-action"
+            onclick={onNewWebsite}
+            aria-label="Save website"
+            {...props}
+          >
+            <Plus size={16} />
+          </Button>
+        {/snippet}
+      </TooltipTrigger>
+        <TooltipContent side="right">{TOOLTIP_COPY.saveWebsite}</TooltipContent>
+      </Tooltip>
     </svelte:fragment>
   </SidebarSectionHeader>
   <div class="files-content websites-content">

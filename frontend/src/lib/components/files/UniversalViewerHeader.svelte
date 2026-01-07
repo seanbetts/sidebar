@@ -24,6 +24,10 @@
   } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Popover from '$lib/components/ui/popover/index.js';
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+  import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+  import { canShowTooltips } from '$lib/utils/tooltip';
+  import { onMount } from 'svelte';
 
   export let isImage = false;
   export let isAudio = false;
@@ -58,6 +62,16 @@
   export let onCopyMarkdown: () => void;
   export let onDelete: () => void;
   export let onClose: () => void;
+
+  let tooltipsEnabled = false;
+  $: downloadLabel = isSpreadsheet ? TOOLTIP_COPY.downloadCsv : TOOLTIP_COPY.downloadFile;
+  $: copyLabel = isSpreadsheet ? TOOLTIP_COPY.copyCsv : TOOLTIP_COPY.copyMarkdown;
+  $: copyTooltip = isCopied ? TOOLTIP_COPY.copy.success : copyLabel;
+  $: pinTooltip = isPinned ? TOOLTIP_COPY.pin.on : TOOLTIP_COPY.pin.off;
+
+  onMount(() => {
+    tooltipsEnabled = canShowTooltips();
+  });
 </script>
 
 <div class="file-viewer-header" class:pdf-header={isPdf}>
@@ -86,30 +100,44 @@
   {#if showMarkdownToggle}
     <div class="viewer-toggle-center">
       <div class="viewer-toggle viewer-toggle--compact">
-        <button
-          class="viewer-toggle-button"
-          class:active={viewMode === 'content'}
-          onclick={() => (viewMode = 'content')}
-          aria-label="View file"
-          title="View file"
-        >
-          {#if isImage}
-            <Image size={16} />
-          {:else if isSpreadsheet}
-            <FileSpreadsheet size={16} />
-          {:else}
-            <FileText size={16} />
-          {/if}
-        </button>
-        <button
-          class="viewer-toggle-button"
-          class:active={viewMode === 'markdown'}
-          onclick={() => (viewMode = 'markdown')}
-          aria-label="View markdown"
-          title="View markdown"
-        >
-          <FilePenLine size={16} />
-        </button>
+        <Tooltip disabled={!tooltipsEnabled}>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <button
+                class="viewer-toggle-button"
+                class:active={viewMode === 'content'}
+                onclick={() => (viewMode = 'content')}
+                aria-label="View file"
+                {...props}
+              >
+                {#if isImage}
+                  <Image size={16} />
+                {:else if isSpreadsheet}
+                  <FileSpreadsheet size={16} />
+                {:else}
+                  <FileText size={16} />
+                {/if}
+              </button>
+            {/snippet}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{TOOLTIP_COPY.viewFile}</TooltipContent>
+        </Tooltip>
+        <Tooltip disabled={!tooltipsEnabled}>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <button
+                class="viewer-toggle-button"
+                class:active={viewMode === 'markdown'}
+                onclick={() => (viewMode = 'markdown')}
+                aria-label="View markdown"
+                {...props}
+              >
+                <FilePenLine size={16} />
+              </button>
+            {/snippet}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{TOOLTIP_COPY.viewMarkdown}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   {/if}
@@ -117,74 +145,158 @@
     {#if showMarkdownToggle}
       <div class="viewer-toggle-compact">
         <div class="viewer-toggle viewer-toggle--compact">
-          <button
-            class="viewer-toggle-button"
-            class:active={viewMode === 'content'}
-            onclick={() => (viewMode = 'content')}
-            aria-label="View file"
-            title="View file"
-          >
-            {#if isImage}
-              <Image size={16} />
-            {:else if isSpreadsheet}
-              <FileSpreadsheet size={16} />
-            {:else}
-              <FileText size={16} />
-            {/if}
-          </button>
-          <button
-            class="viewer-toggle-button"
-            class:active={viewMode === 'markdown'}
-            onclick={() => (viewMode = 'markdown')}
-            aria-label="View markdown"
-            title="View markdown"
-          >
-            <FilePenLine size={16} />
-          </button>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <button
+                  class="viewer-toggle-button"
+                  class:active={viewMode === 'content'}
+                  onclick={() => (viewMode = 'content')}
+                  aria-label="View file"
+                  {...props}
+                >
+                  {#if isImage}
+                    <Image size={16} />
+                  {:else if isSpreadsheet}
+                    <FileSpreadsheet size={16} />
+                  {:else}
+                    <FileText size={16} />
+                  {/if}
+                </button>
+              {/snippet}
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{TOOLTIP_COPY.viewFile}</TooltipContent>
+          </Tooltip>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <button
+                  class="viewer-toggle-button"
+                  class:active={viewMode === 'markdown'}
+                  onclick={() => (viewMode = 'markdown')}
+                  aria-label="View markdown"
+                  {...props}
+                >
+                  <FilePenLine size={16} />
+                </button>
+              {/snippet}
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{TOOLTIP_COPY.viewMarkdown}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     {/if}
     {#if isPdf}
       <div class="pdf-controls-inline" class:hidden={viewMode === 'markdown'}>
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
-          onclick={onPrevPage}
-          disabled={!canPrev}
-          aria-label="Previous page"
-        >
-          <ChevronLeft size={16} />
-        </Button>
+        <Tooltip disabled={!tooltipsEnabled}>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                class="viewer-control"
+                onclick={onPrevPage}
+                disabled={!canPrev}
+                aria-label="Previous page"
+                {...props}
+              >
+                <ChevronLeft size={16} />
+              </Button>
+            {/snippet}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{TOOLTIP_COPY.prevPage}</TooltipContent>
+        </Tooltip>
         <span class="viewer-page">{currentPage} / {pageCount || 1}</span>
-        <Button
-          size="icon"
-          variant="ghost"
-          class="viewer-control"
-          onclick={onNextPage}
-          disabled={!canNext}
-          aria-label="Next page"
-        >
-          <ChevronRight size={16} />
-        </Button>
+        <Tooltip disabled={!tooltipsEnabled}>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                class="viewer-control"
+                onclick={onNextPage}
+                disabled={!canNext}
+                aria-label="Next page"
+                {...props}
+              >
+                <ChevronRight size={16} />
+              </Button>
+            {/snippet}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{TOOLTIP_COPY.nextPage}</TooltipContent>
+        </Tooltip>
         <div class="viewer-divider"></div>
-        <Button size="icon" variant="ghost" class="viewer-control" onclick={onZoomOut} aria-label="Zoom out">
-          <Minus size={16} />
-        </Button>
+        <Tooltip disabled={!tooltipsEnabled}>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                class="viewer-control"
+                onclick={onZoomOut}
+                aria-label="Zoom out"
+                {...props}
+              >
+                <Minus size={16} />
+              </Button>
+            {/snippet}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{TOOLTIP_COPY.zoomOut}</TooltipContent>
+        </Tooltip>
         <span class="viewer-scale">{Math.round((isPdf ? normalizedScale : scale) * 100)}%</span>
-        <Button size="icon" variant="ghost" class="viewer-control" onclick={onZoomIn} aria-label="Zoom in">
-          <Plus size={16} />
-        </Button>
+        <Tooltip disabled={!tooltipsEnabled}>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                class="viewer-control"
+                onclick={onZoomIn}
+                aria-label="Zoom in"
+                {...props}
+              >
+                <Plus size={16} />
+              </Button>
+            {/snippet}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{TOOLTIP_COPY.zoomIn}</TooltipContent>
+        </Tooltip>
         <div class="viewer-divider"></div>
         <span class="viewer-control" data-active={fitMode === 'height'}>
-          <Button size="icon" variant="ghost" onclick={() => onSetFitMode('height')} aria-label="Fit to height">
-            <GalleryVertical size={16} />
-          </Button>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={() => onSetFitMode('height')}
+                  aria-label="Fit to height"
+                  {...props}
+                >
+                  <GalleryVertical size={16} />
+                </Button>
+              {/snippet}
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{TOOLTIP_COPY.fitHeight}</TooltipContent>
+          </Tooltip>
         </span>
         <span class="viewer-control" data-active={fitMode === 'width'}>
-          <Button size="icon" variant="ghost" onclick={() => onSetFitMode('width')} aria-label="Fit to width">
-            <GalleryHorizontal size={16} />
-          </Button>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={() => onSetFitMode('width')}
+                  aria-label="Fit to width"
+                  {...props}
+                >
+                  <GalleryHorizontal size={16} />
+                </Button>
+              {/snippet}
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{TOOLTIP_COPY.fitWidth}</TooltipContent>
+          </Tooltip>
         </span>
       </div>
     {/if}
@@ -192,80 +304,144 @@
       {#if isPdf && viewMode !== 'markdown'}
         <div class="viewer-divider"></div>
       {/if}
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        onclick={onPinToggle}
-        disabled={!hasActive}
-        aria-label="Pin file"
-        title="Pin file"
-      >
-        {#if isPinned}
-          <PinOff size={16} />
-        {:else}
-          <Pin size={16} />
-        {/if}
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        aria-label="Rename file"
-        title="Rename file"
-        onclick={onRename}
-        disabled={!hasActive}
-      >
-        <Pencil size={16} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        onclick={onDownload}
-        disabled={!viewerUrl || isVideo}
-        aria-label={isSpreadsheet ? 'Download CSV' : 'Download file'}
-        title={isSpreadsheet ? 'Download CSV' : 'Download file'}
-      >
-        <Download size={16} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        onclick={onCopyMarkdown}
-        disabled={!hasMarkdown && !isSpreadsheet}
-        aria-label={isSpreadsheet ? 'Copy CSV' : 'Copy markdown'}
-        title={isSpreadsheet ? 'Copy CSV' : hasMarkdown ? 'Copy markdown' : 'Markdown not available'}
-      >
-        {#if isCopied}
-          <Check size={16} />
-        {:else}
-          <Copy size={16} />
-        {/if}
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="viewer-control"
-        onclick={onDelete}
-        disabled={!hasActive}
-        aria-label="Delete file"
-        title="Delete file"
-      >
-        <Trash2 size={16} />
-      </Button>
-      <Button size="icon" variant="ghost" class="viewer-close" onclick={onClose} aria-label="Close file viewer">
-        <X size={16} />
-      </Button>
+      <Tooltip disabled={!tooltipsEnabled}>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <Button
+              size="icon"
+              variant="ghost"
+              class="viewer-control"
+              onclick={onPinToggle}
+              disabled={!hasActive}
+              aria-label="Pin file"
+              {...props}
+            >
+              {#if isPinned}
+                <PinOff size={16} />
+              {:else}
+                <Pin size={16} />
+              {/if}
+            </Button>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{pinTooltip}</TooltipContent>
+      </Tooltip>
+      <Tooltip disabled={!tooltipsEnabled}>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <Button
+              size="icon"
+              variant="ghost"
+              class="viewer-control"
+              aria-label="Rename file"
+              onclick={onRename}
+              disabled={!hasActive}
+              {...props}
+            >
+              <Pencil size={16} />
+            </Button>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{TOOLTIP_COPY.rename}</TooltipContent>
+      </Tooltip>
+      <Tooltip disabled={!tooltipsEnabled}>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <Button
+              size="icon"
+              variant="ghost"
+              class="viewer-control"
+              onclick={onDownload}
+              disabled={!viewerUrl || isVideo}
+              aria-label={isSpreadsheet ? 'Download CSV' : 'Download file'}
+              {...props}
+            >
+              <Download size={16} />
+            </Button>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{downloadLabel}</TooltipContent>
+      </Tooltip>
+      <Tooltip disabled={!tooltipsEnabled}>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <Button
+              size="icon"
+              variant="ghost"
+              class="viewer-control"
+              onclick={onCopyMarkdown}
+              disabled={!hasMarkdown && !isSpreadsheet}
+              aria-label={isSpreadsheet ? 'Copy CSV' : 'Copy markdown'}
+              {...props}
+            >
+              {#if isCopied}
+                <Check size={16} />
+              {:else}
+                <Copy size={16} />
+              {/if}
+            </Button>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {hasMarkdown || isSpreadsheet ? copyTooltip : 'Markdown not available'}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip disabled={!tooltipsEnabled}>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <Button
+              size="icon"
+              variant="ghost"
+              class="viewer-control"
+              onclick={onDelete}
+              disabled={!hasActive}
+              aria-label="Delete file"
+              {...props}
+            >
+              <Trash2 size={16} />
+            </Button>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{TOOLTIP_COPY.delete}</TooltipContent>
+      </Tooltip>
+      <Tooltip disabled={!tooltipsEnabled}>
+        <TooltipTrigger>
+          {#snippet child({ props })}
+            <Button
+              size="icon"
+              variant="ghost"
+              class="viewer-close"
+              onclick={onClose}
+              aria-label="Close file viewer"
+              {...props}
+            >
+              <X size={16} />
+            </Button>
+          {/snippet}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{TOOLTIP_COPY.close}</TooltipContent>
+      </Tooltip>
     </div>
     <div class="viewer-standard-compact">
       <Popover.Root>
         <Popover.Trigger>
-          {#snippet child({ props })}
-            <Button size="icon" variant="ghost" {...props} aria-label="More actions" title="More actions">
-              <Menu size={16} />
-            </Button>
+          {#snippet child({ props: popoverProps })}
+            <Tooltip disabled={!tooltipsEnabled}>
+              <TooltipTrigger>
+                {#snippet child({ props: tooltipProps })}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    {...popoverProps}
+                    {...tooltipProps}
+                    aria-label="More actions"
+                  >
+                    <Menu size={16} />
+                  </Button>
+                {/snippet}
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{TOOLTIP_COPY.moreActions}</TooltipContent>
+            </Tooltip>
           {/snippet}
         </Popover.Trigger>
         <Popover.Content class="viewer-actions-menu" align="end" sideOffset={8}>

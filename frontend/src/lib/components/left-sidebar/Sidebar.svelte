@@ -20,8 +20,11 @@
   import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
   import SidebarDialogs from '$lib/components/left-sidebar/SidebarDialogs.svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+  import { TOOLTIP_COPY } from '$lib/constants/tooltips';
   import { sidebarSectionStore } from '$lib/stores/sidebar-section';
   import { logError } from '$lib/utils/errorHandling';
+  import { canShowTooltips } from '$lib/utils/tooltip';
 
   let isCollapsed = false;
   let isErrorDialogOpen = false;
@@ -49,6 +52,7 @@
   let fileInput: HTMLInputElement | null = null;
   const sidebarLogoSrc = '/images/logo.svg';
   let isMounted = false;
+  let tooltipsEnabled = false;
   let lastConversationId: string | null = null;
   let lastMessageCount = 0;
   const { loadSectionData } = useSidebarSectionLoader();
@@ -106,6 +110,7 @@
     // Mark as mounted to enable reactive data loading
     isMounted = true;
     sidebarSectionStore.set(activeSection);
+    tooltipsEnabled = canShowTooltips();
 
     if (typeof window !== 'undefined') {
       window.addEventListener('keydown', handleSectionShortcut);
@@ -392,26 +397,40 @@
           onClear={() => treeStore.load('notes', true)}
         >
           <svelte:fragment slot="actions">
-            <Button
-              size="icon"
-              variant="ghost"
-              class="panel-action"
-              onclick={handleNewFolder}
-              aria-label="New folder"
-              title="New folder"
-            >
-              <Folder size={16} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              class="panel-action"
-              onclick={handleNewNote}
-              aria-label="New note"
-              title="New note"
-            >
-              <Plus size={16} />
-            </Button>
+            <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  class="panel-action"
+                  onclick={handleNewFolder}
+                  aria-label="New folder"
+                  {...props}
+                >
+                  <Folder size={16} />
+                </Button>
+              {/snippet}
+            </TooltipTrigger>
+              <TooltipContent side="right">{TOOLTIP_COPY.newFolder}</TooltipContent>
+            </Tooltip>
+            <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  class="panel-action"
+                  onclick={handleNewNote}
+                  aria-label="New note"
+                  {...props}
+                >
+                  <Plus size={16} />
+                </Button>
+              {/snippet}
+            </TooltipTrigger>
+              <TooltipContent side="right">{TOOLTIP_COPY.newNote}</TooltipContent>
+            </Tooltip>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="notes-content">
@@ -433,16 +452,23 @@
           onClear={() => thingsStore.clearSearch()}
         >
           <svelte:fragment slot="actions">
-            <Button
-              size="icon"
-              variant="ghost"
-              class="panel-action"
-              onclick={() => thingsStore.startNewTask()}
-              aria-label="New task"
-              title="New task"
-            >
-              <Plus size={16} />
-            </Button>
+            <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  class="panel-action"
+                  onclick={() => thingsStore.startNewTask()}
+                  aria-label="New task"
+                  {...props}
+                >
+                  <Plus size={16} />
+                </Button>
+              {/snippet}
+            </TooltipTrigger>
+              <TooltipContent side="right">{TOOLTIP_COPY.newTask}</TooltipContent>
+            </Tooltip>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="things-content">
@@ -465,28 +491,42 @@
               onchange={handleFileSelected}
               class="file-upload-input"
             />
-            <Button
-              size="icon"
-              variant="ghost"
-              class="panel-action"
-              onclick={handleAddYouTube}
-              aria-label="Add YouTube video"
-              title="Add YouTube video"
-              disabled={isAddingYoutube}
-            >
-              <FileVideoCamera size={16} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              class="panel-action"
-              onclick={() => handleUploadFileClick(fileInput)}
-              aria-label="Upload file"
-              title="Upload file"
-              disabled={isUploadingFile}
-            >
-              <Plus size={16} />
-            </Button>
+            <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  class="panel-action"
+                  onclick={handleAddYouTube}
+                  aria-label="Add YouTube video"
+                  disabled={isAddingYoutube}
+                  {...props}
+                >
+                  <FileVideoCamera size={16} />
+                </Button>
+              {/snippet}
+            </TooltipTrigger>
+              <TooltipContent side="right">{TOOLTIP_COPY.addYouTube}</TooltipContent>
+            </Tooltip>
+            <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  class="panel-action"
+                  onclick={() => handleUploadFileClick(fileInput)}
+                  aria-label="Upload file"
+                  disabled={isUploadingFile}
+                  {...props}
+                >
+                  <Plus size={16} />
+                </Button>
+              {/snippet}
+            </TooltipTrigger>
+              <TooltipContent side="right">{TOOLTIP_COPY.uploadFile}</TooltipContent>
+            </Tooltip>
           </svelte:fragment>
         </SidebarSectionHeader>
         <div class="files-content">
@@ -504,16 +544,23 @@
         >
           <svelte:fragment slot="actions">
             {#if showNewChatButton}
-              <Button
-                size="icon"
-                variant="ghost"
-                class="panel-action"
-                onclick={handleNewChat}
-                aria-label="New chat"
-                title="New chat"
-              >
-                <Plus size={16} />
-              </Button>
+              <Tooltip disabled={!tooltipsEnabled}>
+              <TooltipTrigger>
+                {#snippet child({ props })}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    class="panel-action"
+                    onclick={handleNewChat}
+                    aria-label="New chat"
+                    {...props}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                {/snippet}
+              </TooltipTrigger>
+                <TooltipContent side="right">{TOOLTIP_COPY.newChat}</TooltipContent>
+              </Tooltip>
             {/if}
           </svelte:fragment>
         </SidebarSectionHeader>

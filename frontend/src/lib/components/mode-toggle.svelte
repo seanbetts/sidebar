@@ -7,7 +7,7 @@
 
 	let isDark = $state(false);
 	let cleanupThemeListener: (() => void) | null = null;
-	let tooltipsEnabled = false;
+	let tooltipsEnabled = $state(false);
 
 	onMount(() => {
 		if (typeof window === 'undefined') {
@@ -30,9 +30,8 @@
 		};
 		window.addEventListener('themechange', handler);
 		cleanupThemeListener = () => window.removeEventListener('themechange', handler);
+		tooltipsEnabled = canShowTooltips();
 	});
-
-	$: tooltipsEnabled = canShowTooltips();
 
 	onDestroy(() => {
 		if (cleanupThemeListener) {
@@ -47,14 +46,16 @@
 </script>
 
 <Tooltip disabled={!tooltipsEnabled}>
-	<TooltipTrigger asChild>
-		<Button
-			variant="outline"
-			size="icon"
-			onclick={toggleTheme}
-			aria-label="Toggle theme"
-			class="border-border"
-		>
+	<TooltipTrigger>
+		{#snippet child({ props })}
+			<Button
+				variant="outline"
+				size="icon"
+				onclick={toggleTheme}
+				aria-label="Toggle theme"
+				class="border-border"
+				{...props}
+			>
 			{#if isDark}
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -92,7 +93,8 @@
 					<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
 				</svg>
 			{/if}
-		</Button>
+			</Button>
+		{/snippet}
 	</TooltipTrigger>
 	<TooltipContent side="bottom">Toggle dark/light mode</TooltipContent>
 </Tooltip>
