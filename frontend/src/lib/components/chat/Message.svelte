@@ -97,9 +97,12 @@
 							size="icon"
 							variant="ghost"
 							class="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-							onclick={handleCopy}
-							aria-label={isCopied ? 'Copied message' : 'Copy message'}
 							{...props}
+							onclick={(event) => {
+								props.onclick?.(event);
+								handleCopy(event);
+							}}
+							aria-label={isCopied ? 'Copied message' : 'Copy message'}
 						>
 							{#if isCopied}
 								<Check size={14} />

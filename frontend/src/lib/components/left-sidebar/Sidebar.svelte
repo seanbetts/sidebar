@@ -404,9 +404,12 @@
                   size="icon"
                   variant="ghost"
                   class="panel-action"
-                  onclick={handleNewFolder}
-                  aria-label="New folder"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    handleNewFolder(event);
+                  }}
+                  aria-label="New folder"
                 >
                   <Folder size={16} />
                 </Button>
@@ -421,9 +424,12 @@
                   size="icon"
                   variant="ghost"
                   class="panel-action"
-                  onclick={handleNewNote}
-                  aria-label="New note"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    handleNewNote(event);
+                  }}
+                  aria-label="New note"
                 >
                   <Plus size={16} />
                 </Button>
@@ -459,9 +465,12 @@
                   size="icon"
                   variant="ghost"
                   class="panel-action"
-                  onclick={() => thingsStore.startNewTask()}
-                  aria-label="New task"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    thingsStore.startNewTask();
+                  }}
+                  aria-label="New task"
                 >
                   <Plus size={16} />
                 </Button>
@@ -498,10 +507,13 @@
                   size="icon"
                   variant="ghost"
                   class="panel-action"
-                  onclick={handleAddYouTube}
+                  {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    handleAddYouTube(event);
+                  }}
                   aria-label="Add YouTube video"
                   disabled={isAddingYoutube}
-                  {...props}
                 >
                   <FileVideoCamera size={16} />
                 </Button>
@@ -516,10 +528,13 @@
                   size="icon"
                   variant="ghost"
                   class="panel-action"
-                  onclick={() => handleUploadFileClick(fileInput)}
+                  {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    handleUploadFileClick(fileInput);
+                  }}
                   aria-label="Upload file"
                   disabled={isUploadingFile}
-                  {...props}
                 >
                   <Plus size={16} />
                 </Button>
@@ -551,9 +566,12 @@
                     size="icon"
                     variant="ghost"
                     class="panel-action"
-                    onclick={handleNewChat}
-                    aria-label="New chat"
                     {...props}
+                    onclick={(event) => {
+                      props.onclick?.(event);
+                      handleNewChat(event);
+                    }}
+                    aria-label="New chat"
                   >
                     <Plus size={16} />
                   </Button>

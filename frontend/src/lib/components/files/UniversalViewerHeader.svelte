@@ -106,9 +106,12 @@
               <button
                 class="viewer-toggle-button"
                 class:active={viewMode === 'content'}
-                onclick={() => (viewMode = 'content')}
-                aria-label="View file"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  viewMode = 'content';
+                }}
+                aria-label="View file"
               >
                 {#if isImage}
                   <Image size={16} />
@@ -128,9 +131,12 @@
               <button
                 class="viewer-toggle-button"
                 class:active={viewMode === 'markdown'}
-                onclick={() => (viewMode = 'markdown')}
-                aria-label="View markdown"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  viewMode = 'markdown';
+                }}
+                aria-label="View markdown"
               >
                 <FilePenLine size={16} />
               </button>
@@ -151,9 +157,12 @@
                 <button
                   class="viewer-toggle-button"
                   class:active={viewMode === 'content'}
-                  onclick={() => (viewMode = 'content')}
-                  aria-label="View file"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    viewMode = 'content';
+                  }}
+                  aria-label="View file"
                 >
                   {#if isImage}
                     <Image size={16} />
@@ -173,9 +182,12 @@
                 <button
                   class="viewer-toggle-button"
                   class:active={viewMode === 'markdown'}
-                  onclick={() => (viewMode = 'markdown')}
-                  aria-label="View markdown"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    viewMode = 'markdown';
+                  }}
+                  aria-label="View markdown"
                 >
                   <FilePenLine size={16} />
                 </button>
@@ -195,10 +207,13 @@
                 size="icon"
                 variant="ghost"
                 class="viewer-control"
-                onclick={onPrevPage}
+                {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onPrevPage();
+                }}
                 disabled={!canPrev}
                 aria-label="Previous page"
-                {...props}
               >
                 <ChevronLeft size={16} />
               </Button>
@@ -214,10 +229,13 @@
                 size="icon"
                 variant="ghost"
                 class="viewer-control"
-                onclick={onNextPage}
+                {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onNextPage();
+                }}
                 disabled={!canNext}
                 aria-label="Next page"
-                {...props}
               >
                 <ChevronRight size={16} />
               </Button>
@@ -233,9 +251,12 @@
                 size="icon"
                 variant="ghost"
                 class="viewer-control"
-                onclick={onZoomOut}
-                aria-label="Zoom out"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onZoomOut();
+                }}
+                aria-label="Zoom out"
               >
                 <Minus size={16} />
               </Button>
@@ -251,9 +272,12 @@
                 size="icon"
                 variant="ghost"
                 class="viewer-control"
-                onclick={onZoomIn}
-                aria-label="Zoom in"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onZoomIn();
+                }}
+                aria-label="Zoom in"
               >
                 <Plus size={16} />
               </Button>
@@ -269,9 +293,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={() => onSetFitMode('height')}
-                  aria-label="Fit to height"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onSetFitMode('height');
+                  }}
+                  aria-label="Fit to height"
                 >
                   <GalleryVertical size={16} />
                 </Button>
@@ -287,9 +314,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={() => onSetFitMode('width')}
-                  aria-label="Fit to width"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onSetFitMode('width');
+                  }}
+                  aria-label="Fit to width"
                 >
                   <GalleryHorizontal size={16} />
                 </Button>
@@ -311,10 +341,13 @@
               size="icon"
               variant="ghost"
               class="viewer-control"
-              onclick={onPinToggle}
+              {...props}
+              onclick={(event) => {
+                props.onclick?.(event);
+                onPinToggle();
+              }}
               disabled={!hasActive}
               aria-label="Pin file"
-              {...props}
             >
               {#if isPinned}
                 <PinOff size={16} />
@@ -334,9 +367,12 @@
               variant="ghost"
               class="viewer-control"
               aria-label="Rename file"
-              onclick={onRename}
-              disabled={!hasActive}
               {...props}
+              onclick={(event) => {
+                props.onclick?.(event);
+                onRename();
+              }}
+              disabled={!hasActive}
             >
               <Pencil size={16} />
             </Button>
@@ -351,10 +387,13 @@
               size="icon"
               variant="ghost"
               class="viewer-control"
-              onclick={onDownload}
+              {...props}
+              onclick={(event) => {
+                props.onclick?.(event);
+                onDownload();
+              }}
               disabled={!viewerUrl || isVideo}
               aria-label={isSpreadsheet ? 'Download CSV' : 'Download file'}
-              {...props}
             >
               <Download size={16} />
             </Button>
@@ -369,10 +408,13 @@
               size="icon"
               variant="ghost"
               class="viewer-control"
-              onclick={onCopyMarkdown}
+              {...props}
+              onclick={(event) => {
+                props.onclick?.(event);
+                onCopyMarkdown();
+              }}
               disabled={!hasMarkdown && !isSpreadsheet}
               aria-label={isSpreadsheet ? 'Copy CSV' : 'Copy markdown'}
-              {...props}
             >
               {#if isCopied}
                 <Check size={16} />
@@ -393,10 +435,13 @@
               size="icon"
               variant="ghost"
               class="viewer-control"
-              onclick={onDelete}
+              {...props}
+              onclick={(event) => {
+                props.onclick?.(event);
+                onDelete();
+              }}
               disabled={!hasActive}
               aria-label="Delete file"
-              {...props}
             >
               <Trash2 size={16} />
             </Button>
@@ -411,9 +456,12 @@
               size="icon"
               variant="ghost"
               class="viewer-close"
-              onclick={onClose}
-              aria-label="Close file viewer"
               {...props}
+              onclick={(event) => {
+                props.onclick?.(event);
+                onClose();
+              }}
+              aria-label="Close file viewer"
             >
               <X size={16} />
             </Button>

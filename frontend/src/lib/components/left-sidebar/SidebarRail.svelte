@@ -27,9 +27,12 @@
     {#snippet child({ props })}
       <button
         class="rail-toggle"
-        on:click={onToggle}
-        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         {...props}
+        onclick={(event) => {
+          props.onclick?.(event);
+          onToggle?.();
+        }}
+        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         <Menu size={20} />
       </button>
@@ -45,11 +48,14 @@
     <TooltipTrigger>
       {#snippet child({ props })}
         <button
-          on:click={() => onOpenSection?.('notes')}
+          {...props}
+          onclick={(event) => {
+            props.onclick?.(event);
+            onOpenSection?.('notes');
+          }}
           class="rail-btn"
           class:active={activeSection === 'notes'}
           aria-label="Notes"
-          {...props}
         >
           <FileText size={18} />
         </button>
@@ -61,11 +67,14 @@
     <TooltipTrigger>
       {#snippet child({ props })}
         <button
-          on:click={() => onOpenSection?.('things')}
+          {...props}
+          onclick={(event) => {
+            props.onclick?.(event);
+            onOpenSection?.('things');
+          }}
           class="rail-btn"
           class:active={activeSection === 'things'}
           aria-label="Tasks"
-          {...props}
         >
           <CheckSquare size={18} />
         </button>
@@ -77,11 +86,14 @@
     <TooltipTrigger>
       {#snippet child({ props })}
         <button
-          on:click={() => onOpenSection?.('websites')}
+          {...props}
+          onclick={(event) => {
+            props.onclick?.(event);
+            onOpenSection?.('websites');
+          }}
           class="rail-btn"
           class:active={activeSection === 'websites'}
           aria-label="Websites"
-          {...props}
         >
           <Globe size={18} />
         </button>
@@ -93,11 +105,14 @@
     <TooltipTrigger>
       {#snippet child({ props })}
         <button
-          on:click={() => onOpenSection?.('workspace')}
+          {...props}
+          onclick={(event) => {
+            props.onclick?.(event);
+            onOpenSection?.('workspace');
+          }}
           class="rail-btn"
           class:active={activeSection === 'workspace'}
           aria-label="Files"
-          {...props}
         >
           <FolderOpen size={18} />
         </button>
@@ -109,11 +124,14 @@
     <TooltipTrigger>
       {#snippet child({ props })}
         <button
-          on:click={() => onOpenSection?.('history')}
+          {...props}
+          onclick={(event) => {
+            props.onclick?.(event);
+            onOpenSection?.('history');
+          }}
           class="rail-btn"
           class:active={activeSection === 'history'}
           aria-label="Chat"
-          {...props}
         >
           <MessageSquare size={18} />
         </button>
@@ -128,17 +146,20 @@
     <TooltipTrigger>
       {#snippet child({ props })}
         <button
-          on:click={onOpenSettings}
+          {...props}
+          onclick={(event) => {
+            props.onclick?.(event);
+            onOpenSettings?.();
+          }}
           class="rail-btn rail-btn-avatar"
           aria-label="Open settings"
-          {...props}
         >
           {#if profileImageSrc}
             <img
               class="rail-avatar"
               src={profileImageSrc}
               alt="Profile"
-              on:error={onProfileImageError}
+              onerror={onProfileImageError}
             />
           {:else}
             <img class="rail-avatar rail-avatar-logo" src={sidebarLogoSrc} alt="App logo" />

@@ -33,9 +33,12 @@
             size="icon"
             variant="ghost"
             class="panel-action"
-            onclick={onNewWebsite}
-            aria-label="Save website"
             {...props}
+            onclick={(event) => {
+              props.onclick?.(event);
+              onNewWebsite();
+            }}
+            aria-label="Save website"
           >
             <Plus size={16} />
           </Button>

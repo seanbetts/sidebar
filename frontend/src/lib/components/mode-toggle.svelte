@@ -51,10 +51,13 @@
 			<Button
 				variant="outline"
 				size="icon"
-				onclick={toggleTheme}
+				{...props}
+				onclick={(event) => {
+					props.onclick?.(event);
+					toggleTheme();
+				}}
 				aria-label="Toggle theme"
 				class="border-border"
-				{...props}
 			>
 			{#if isDark}
 				<svg

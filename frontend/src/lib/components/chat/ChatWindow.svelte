@@ -307,9 +307,12 @@
 							<Button
 								size="icon"
 								variant="ghost"
-								onclick={handleNewChat}
-								aria-label="New chat"
 								{...props}
+								onclick={(event) => {
+									props.onclick?.(event);
+									handleNewChat(event);
+								}}
+								aria-label="New chat"
 							>
 								<Plus size={16} />
 							</Button>
@@ -323,9 +326,12 @@
 							<Button
 								size="icon"
 								variant="ghost"
-								onclick={handleCloseChat}
-								aria-label="Close chat"
 								{...props}
+								onclick={(event) => {
+									props.onclick?.(event);
+									handleCloseChat(event);
+								}}
+								aria-label="Close chat"
 							>
 								<X size={16} />
 							</Button>
@@ -356,9 +362,12 @@
 										{#snippet child({ props })}
 											<button
 												class="attachment-action"
-												onclick={() => handleRetryAttachment(attachment.id)}
-												aria-label="Retry attachment"
 												{...props}
+												onclick={(event) => {
+													props.onclick?.(event);
+													handleRetryAttachment(attachment.id);
+												}}
+												aria-label="Retry attachment"
 											>
 												<RotateCcw size={14} />
 											</button>
@@ -371,9 +380,12 @@
 										{#snippet child({ props })}
 											<button
 												class="attachment-action"
-												onclick={() => handleDeleteAttachment(attachment.id)}
-												aria-label="Delete attachment"
 												{...props}
+												onclick={(event) => {
+													props.onclick?.(event);
+													handleDeleteAttachment(attachment.id);
+												}}
+												aria-label="Delete attachment"
 											>
 												<Trash2 size={14} />
 											</button>
