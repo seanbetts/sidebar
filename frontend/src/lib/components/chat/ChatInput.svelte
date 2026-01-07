@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+	import { canShowTooltips } from '$lib/utils/tooltip';
 	import { Paperclip, Send } from 'lucide-svelte';
 	import { chatStore } from '$lib/stores/chat';
 
@@ -14,6 +17,7 @@
 	let textarea: HTMLTextAreaElement;
 	let attachmentInput: HTMLInputElement;
 	let previousConversationId: string | null = null;
+	let tooltipsEnabled = false;
 	const MAX_TEXTAREA_HEIGHT = 220;
 
 	const resizeTextarea = () => {
@@ -46,6 +50,8 @@
 	$: if (textarea && inputValue !== undefined) {
 		resizeTextarea();
 	}
+
+	$: tooltipsEnabled = canShowTooltips();
 
 	function handleSubmit() {
 		const message = inputValue.trim();
@@ -101,16 +107,20 @@
 					class="attachment-input"
 					multiple
 				/>
-				<Button
-					size="icon"
-					variant="ghost"
-					onclick={handleAttachClick}
-					aria-label="Attach file"
-					title="Attach file"
-					disabled={disabled}
-				>
-					<Paperclip size={16} />
-				</Button>
+				<Tooltip disabled={!tooltipsEnabled}>
+					<TooltipTrigger asChild>
+						<Button
+							size="icon"
+							variant="ghost"
+							onclick={handleAttachClick}
+							aria-label="Attach file"
+							disabled={disabled}
+						>
+							<Paperclip size={16} />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent side="top">{TOOLTIP_COPY.attach}</TooltipContent>
+				</Tooltip>
 				{#if readyattachments.length > 0}
 					<div class="chat-attachment-pill-group">
 						{#each readyattachments as attachment (attachment.id)}
@@ -129,14 +139,19 @@
 					</div>
 				{/if}
 			</div>
-			<Button
-				onclick={handleSubmit}
-				disabled={disabled || !inputValue.trim()}
-				size="icon"
-				aria-label="Send message"
-			>
-				<Send size={16} />
-			</Button>
+			<Tooltip disabled={!tooltipsEnabled}>
+				<TooltipTrigger asChild>
+					<Button
+						onclick={handleSubmit}
+						disabled={disabled || !inputValue.trim()}
+						size="icon"
+						aria-label="Send message"
+					>
+						<Send size={16} />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent side="top">{TOOLTIP_COPY.send}</TooltipContent>
+			</Tooltip>
 		</div>
 	</div>
 </div>

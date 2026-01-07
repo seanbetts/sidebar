@@ -15,5 +15,11 @@ export const TOOLTIP_COPY = {
   move: 'Move to folder...',
   downloadMarkdown: 'Download as markdown',
   close: 'Close',
-  delete: 'Delete'
+  delete: 'Delete',
+  attach: 'Attach file (PDF, image, document)',
+  send: 'Send message (Enter)',
+  newChat: 'Start new chat',
+  closeChat: 'Close chat',
+  retryAttachment: 'Retry failed upload',
+  removeAttachment: 'Remove attachment'
 } as const;
