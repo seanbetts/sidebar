@@ -87,6 +87,35 @@ def update_transcript_metadata(transcript_path: str, youtube_url: str, title: st
         print(f"Warning: Could not update transcript metadata: {e}")
 
 
+def _build_storage_payload(
+    user_id: Optional[str],
+    record: Any,
+    fallback: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    file_id = None
+    if record is not None:
+        file_id = str(record.id)
+    elif fallback:
+        file_id = fallback.get("file_id")
+    if not user_id or not file_id:
+        return {
+            "file_id": None,
+            "ai_path": None,
+            "derivatives": [],
+        }
+    return {
+        "file_id": file_id,
+        "ai_path": f"{user_id}/files/{file_id}/ai/ai.md",
+        "derivatives": [
+            {
+                "kind": "text_original",
+                "path": f"{user_id}/files/{file_id}/derivatives/source.txt",
+                "content_type": "text/plain",
+            }
+        ],
+    }
+
+
 def extract_video_id(url: str) -> Optional[str]:
     """Extract a YouTube video id from a URL."""
     try:
@@ -226,8 +255,15 @@ def transcribe_youtube(
             url,
             download_data['title']
         )
+        uploaded_record = None
         if upload_transcript and upload_file is not None and user_id and transcribe_data.get("output_path"):
-            upload_file(user_id, transcribe_data["output_path"], transcript_path, content_type="text/plain")
+            uploaded_record = upload_file(
+                user_id,
+                transcribe_data["output_path"],
+                transcript_path,
+                content_type="text/plain",
+            )
+        storage_payload = _build_storage_payload(user_id, uploaded_record, transcribe_data)
 
         # Calculate transcription duration
         transcription_duration = int(time.time() - start_time) - download_data['duration_seconds']
@@ -271,6 +307,9 @@ def transcribe_youtube(
 
         usage = transcribe_data.get("usage") or {}
         usage_details = usage.get("input_token_details") or {}
+        transcript_r2_path = transcribe_data.get("output_path")
+        if uploaded_record is not None:
+            transcript_r2_path = uploaded_record.path
         result = {
             'youtube_url': url,
             'title': download_data['title'],
@@ -278,7 +317,7 @@ def transcribe_youtube(
             'audio_kept': audio_kept,
             'transcript_file': str(transcript_path),
             'transcript_local_path': str(transcript_path),
-            'transcript_r2_path': transcribe_data.get('output_path'),
+            'transcript_r2_path': transcript_r2_path,
             'transcription_usage_total_tokens': usage.get('total_tokens'),
             'transcription_usage_input_tokens': usage.get('input_tokens'),
             'transcription_usage_output_tokens': usage.get('output_tokens'),
@@ -290,6 +329,7 @@ def transcribe_youtube(
             'file_size': transcribe_data.get('file_size', 'Unknown'),
             'audio_duration': transcribe_data.get('duration', 'Unknown')
         }
+        result.update(storage_payload)
         if note_data:
             result['note'] = note_data
         return result
