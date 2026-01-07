@@ -30,6 +30,40 @@
 
 ---
 
+## Baseline Rules
+
+- **Remove `title` attributes** on icon-only buttons to avoid double tooltips.
+- **Keep `aria-label`** on icon-only buttons for accessibility.
+- **Always use state-aware tooltips** for toggles (pin/unpin, archive/restore).
+- **Do not show tooltips on touch/mobile** (disable via pointer type or breakpoint).
+- **Default placements**:
+  - Left sidebar rail: `right`
+  - Top headers/toolbars: `bottom`
+  - Bottom inputs (chat): `top`
+
+---
+
+## Shared Copy Strategy
+
+Create a centralized tooltip copy map for reused actions so Notes/Websites/Files stay consistent.
+
+**Suggested location**: `frontend/src/lib/constants/tooltips.ts`
+
+Example shape:
+```ts
+export const TOOLTIP_COPY = {
+  pin: { on: 'Pin to top of list', off: 'Unpin from top' },
+  archive: { on: 'Archive', off: 'Restore from archive' },
+  copy: { default: 'Copy content', success: 'Copied!' },
+  delete: 'Delete',
+  rename: 'Rename',
+  move: 'Move to folder…',
+  download: 'Download as markdown'
+};
+```
+
+---
+
 ## Tooltip Infrastructure Assessment
 
 ### ✅ Ready to Use
