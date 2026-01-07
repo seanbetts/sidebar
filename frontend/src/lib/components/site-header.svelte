@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from "svelte";
+	import { onDestroy, onMount } from "svelte";
 	import { toast } from "svelte-sonner";
 	import { useSiteHeaderData } from "$lib/hooks/useSiteHeaderData";
 	import { useThingsBridgeStatus } from "$lib/hooks/useThingsBridgeStatus";
@@ -37,7 +37,9 @@
 
 	$: ({ currentDate, currentTime, liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
 	$: ({ status: bridgeStatus, lastSeenAt: bridgeSeenAt } = $thingsStatus);
-	$: tooltipsEnabled = canShowTooltips();
+	onMount(() => {
+		tooltipsEnabled = canShowTooltips();
+	});
 	const isTranscriptPending = (status?: string) =>
 		status === "queued" || status === "processing" || status === "retrying";
 
@@ -251,16 +253,19 @@
 			{/if}
 		</div>
 		<Tooltip disabled={!tooltipsEnabled}>
-			<TooltipTrigger asChild>
-				<Button
-					size="icon"
-					variant="outline"
-					onclick={handleLayoutSwap}
-					aria-label="Swap layout"
-					class="swap-button border-border"
-				>
-					<ArrowLeftRight size={20} />
-				</Button>
+			<TooltipTrigger>
+				{#snippet child({ props })}
+					<Button
+						size="icon"
+						variant="outline"
+						onclick={handleLayoutSwap}
+						aria-label="Swap layout"
+						class="swap-button border-border"
+						{...props}
+					>
+						<ArrowLeftRight size={20} />
+					</Button>
+				{/snippet}
 			</TooltipTrigger>
 			<TooltipContent side="bottom">Swap chat and workspace positions</TooltipContent>
 		</Tooltip>

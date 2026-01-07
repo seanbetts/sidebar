@@ -2,6 +2,7 @@
   import { MessageSquare, FileText, Globe, Menu, FolderOpen, CheckSquare } from 'lucide-svelte';
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
   import { canShowTooltips } from '$lib/utils/tooltip';
+  import { onMount } from 'svelte';
   import type { SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
 
   export let isCollapsed = false;
@@ -14,20 +15,26 @@
   export let onProfileImageError: (() => void) | undefined;
 
   let tooltipsEnabled = false;
-  $: tooltipsEnabled = canShowTooltips();
+
+  onMount(() => {
+    tooltipsEnabled = canShowTooltips();
+  });
 </script>
 
 <div class="sidebar-rail">
   <Tooltip disabled={!tooltipsEnabled}>
-    <TooltipTrigger asChild>
+  <TooltipTrigger>
+    {#snippet child({ props })}
       <button
         class="rail-toggle"
         on:click={onToggle}
         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        {...props}
       >
         <Menu size={20} />
       </button>
-    </TooltipTrigger>
+    {/snippet}
+  </TooltipTrigger>
     <TooltipContent side="right">
       {isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
     </TooltipContent>
@@ -35,79 +42,96 @@
 
   <div class="rail-actions">
     <Tooltip disabled={!tooltipsEnabled}>
-      <TooltipTrigger asChild>
+    <TooltipTrigger>
+      {#snippet child({ props })}
         <button
           on:click={() => onOpenSection?.('notes')}
           class="rail-btn"
           class:active={activeSection === 'notes'}
           aria-label="Notes"
+          {...props}
         >
           <FileText size={18} />
         </button>
-      </TooltipTrigger>
+      {/snippet}
+    </TooltipTrigger>
       <TooltipContent side="right">Notes</TooltipContent>
     </Tooltip>
     <Tooltip disabled={!tooltipsEnabled}>
-      <TooltipTrigger asChild>
+    <TooltipTrigger>
+      {#snippet child({ props })}
         <button
           on:click={() => onOpenSection?.('things')}
           class="rail-btn"
           class:active={activeSection === 'things'}
           aria-label="Tasks"
+          {...props}
         >
           <CheckSquare size={18} />
         </button>
-      </TooltipTrigger>
+      {/snippet}
+    </TooltipTrigger>
       <TooltipContent side="right">Tasks</TooltipContent>
     </Tooltip>
     <Tooltip disabled={!tooltipsEnabled}>
-      <TooltipTrigger asChild>
+    <TooltipTrigger>
+      {#snippet child({ props })}
         <button
           on:click={() => onOpenSection?.('websites')}
           class="rail-btn"
           class:active={activeSection === 'websites'}
           aria-label="Websites"
+          {...props}
         >
           <Globe size={18} />
         </button>
-      </TooltipTrigger>
+      {/snippet}
+    </TooltipTrigger>
       <TooltipContent side="right">Websites</TooltipContent>
     </Tooltip>
     <Tooltip disabled={!tooltipsEnabled}>
-      <TooltipTrigger asChild>
+    <TooltipTrigger>
+      {#snippet child({ props })}
         <button
           on:click={() => onOpenSection?.('workspace')}
           class="rail-btn"
           class:active={activeSection === 'workspace'}
           aria-label="Files"
+          {...props}
         >
           <FolderOpen size={18} />
         </button>
-      </TooltipTrigger>
+      {/snippet}
+    </TooltipTrigger>
       <TooltipContent side="right">Files</TooltipContent>
     </Tooltip>
     <Tooltip disabled={!tooltipsEnabled}>
-      <TooltipTrigger asChild>
+    <TooltipTrigger>
+      {#snippet child({ props })}
         <button
           on:click={() => onOpenSection?.('history')}
           class="rail-btn"
           class:active={activeSection === 'history'}
           aria-label="Chat"
+          {...props}
         >
           <MessageSquare size={18} />
         </button>
-      </TooltipTrigger>
+      {/snippet}
+    </TooltipTrigger>
       <TooltipContent side="right">Chat</TooltipContent>
     </Tooltip>
   </div>
 
   <div class="rail-footer">
     <Tooltip disabled={!tooltipsEnabled}>
-      <TooltipTrigger asChild>
+    <TooltipTrigger>
+      {#snippet child({ props })}
         <button
           on:click={onOpenSettings}
           class="rail-btn rail-btn-avatar"
           aria-label="Open settings"
+          {...props}
         >
           {#if profileImageSrc}
             <img
@@ -120,7 +144,8 @@
             <img class="rail-avatar rail-avatar-logo" src={sidebarLogoSrc} alt="App logo" />
           {/if}
         </button>
-      </TooltipTrigger>
+      {/snippet}
+    </TooltipTrigger>
       <TooltipContent side="right">Settings</TooltipContent>
     </Tooltip>
   </div>

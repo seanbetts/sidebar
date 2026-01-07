@@ -1,6 +1,7 @@
 <script lang="ts">
   import { FileText, Save, Clock, X, Pencil, FolderInput, Archive, ArchiveRestore, Pin, PinOff, Copy, Check, Download, Trash2, Menu } from 'lucide-svelte';
   import * as Popover from '$lib/components/ui/popover/index.js';
+  import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
   import { TOOLTIP_COPY } from '$lib/constants/tooltips';
@@ -41,7 +42,9 @@
     didRequestMoveOptions = false;
   }
 
-  $: tooltipsEnabled = canShowTooltips();
+  onMount(() => {
+    tooltipsEnabled = canShowTooltips();
+  });
 </script>
 
 <div class="editor-header">
@@ -70,79 +73,99 @@
     <div class="note-actions">
       {#if isReadOnly}
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={onCopy}
-              aria-label={isCopied ? 'Copied preview' : 'Copy preview'}
-            >
-              {#if isCopied}
-                <Check size={16} />
-              {:else}
-                <Copy size={16} />
-              {/if}
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onCopy}
+                aria-label={isCopied ? 'Copied preview' : 'Copy preview'}
+                {...props}
+              >
+                {#if isCopied}
+                  <Check size={16} />
+                {:else}
+                  <Copy size={16} />
+                {/if}
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">
             {isCopied ? TOOLTIP_COPY.copy.success : 'Copy preview'}
           </TooltipContent>
         </Tooltip>
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={onClose}
-              aria-label="Close preview"
-            >
-              <X size={16} />
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onClose}
+                aria-label="Close preview"
+                {...props}
+              >
+                <X size={16} />
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">{TOOLTIP_COPY.close}</TooltipContent>
         </Tooltip>
       {:else}
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={onPinToggle}
-              aria-label="Pin note"
-            >
-              {#if noteNode?.pinned}
-                <PinOff size={16} />
-              {:else}
-                <Pin size={16} />
-              {/if}
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onPinToggle}
+                aria-label="Pin note"
+                {...props}
+              >
+                {#if noteNode?.pinned}
+                  <PinOff size={16} />
+                {:else}
+                  <Pin size={16} />
+                {/if}
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">
             {noteNode?.pinned ? TOOLTIP_COPY.pin.on : TOOLTIP_COPY.pin.off}
           </TooltipContent>
         </Tooltip>
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={onRename}
-              aria-label="Rename note"
-            >
-              <Pencil size={16} />
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onRename}
+                aria-label="Rename note"
+                {...props}
+              >
+                <Pencil size={16} />
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">{TOOLTIP_COPY.rename}</TooltipContent>
         </Tooltip>
         {#if !noteNode?.archived}
           <Popover.Root bind:open={isMoveOpen}>
             <Popover.Trigger>
-              {#snippet child({ props })}
+              {#snippet child({ props: popoverProps })}
                 <Tooltip disabled={!tooltipsEnabled}>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost" {...props} aria-label="Move note">
-                      <FolderInput size={16} />
-                    </Button>
+                  <TooltipTrigger>
+                    {#snippet child({ props: tooltipProps })}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        {...popoverProps}
+                        {...tooltipProps}
+                        aria-label="Move note"
+                      >
+                        <FolderInput size={16} />
+                      </Button>
+                    {/snippet}
                   </TooltipTrigger>
                   <TooltipContent side="bottom">{TOOLTIP_COPY.move}</TooltipContent>
                 </Tooltip>
@@ -162,79 +185,94 @@
           </Popover.Root>
         {/if}
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={onCopy}
-              aria-label={isCopied ? 'Copied note' : 'Copy note'}
-            >
-              {#if isCopied}
-                <Check size={16} />
-              {:else}
-                <Copy size={16} />
-              {/if}
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onCopy}
+                aria-label={isCopied ? 'Copied note' : 'Copy note'}
+                {...props}
+              >
+                {#if isCopied}
+                  <Check size={16} />
+                {:else}
+                  <Copy size={16} />
+                {/if}
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">
             {isCopied ? TOOLTIP_COPY.copy.success : TOOLTIP_COPY.copy.default}
           </TooltipContent>
         </Tooltip>
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={onDownload}
-              aria-label="Download note"
-            >
-              <Download size={16} />
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onDownload}
+                aria-label="Download note"
+                {...props}
+              >
+                <Download size={16} />
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">{TOOLTIP_COPY.downloadMarkdown}</TooltipContent>
         </Tooltip>
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={noteNode?.archived ? onUnarchive : onArchive}
-              aria-label={noteNode?.archived ? 'Unarchive note' : 'Archive note'}
-            >
-              {#if noteNode?.archived}
-                <ArchiveRestore size={16} />
-              {:else}
-                <Archive size={16} />
-              {/if}
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={noteNode?.archived ? onUnarchive : onArchive}
+                aria-label={noteNode?.archived ? 'Unarchive note' : 'Archive note'}
+                {...props}
+              >
+                {#if noteNode?.archived}
+                  <ArchiveRestore size={16} />
+                {:else}
+                  <Archive size={16} />
+                {/if}
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">
             {noteNode?.archived ? TOOLTIP_COPY.archive.on : TOOLTIP_COPY.archive.off}
           </TooltipContent>
         </Tooltip>
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={onDelete}
-              aria-label="Delete note"
-            >
-              <Trash2 size={16} />
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onDelete}
+                aria-label="Delete note"
+                {...props}
+              >
+                <Trash2 size={16} />
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">{TOOLTIP_COPY.delete}</TooltipContent>
         </Tooltip>
         <Tooltip disabled={!tooltipsEnabled}>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              onclick={onClose}
-              aria-label="Close note"
-            >
-              <X size={16} />
-            </Button>
+          <TooltipTrigger>
+            {#snippet child({ props })}
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onClose}
+                aria-label="Close note"
+                {...props}
+              >
+                <X size={16} />
+              </Button>
+            {/snippet}
           </TooltipTrigger>
           <TooltipContent side="bottom">{TOOLTIP_COPY.close}</TooltipContent>
         </Tooltip>
@@ -243,12 +281,20 @@
     <div class="note-actions-compact">
       <Popover.Root>
         <Popover.Trigger>
-          {#snippet child({ props })}
+          {#snippet child({ props: popoverProps })}
             <Tooltip disabled={!tooltipsEnabled}>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="ghost" {...props} aria-label="More actions">
-                  <Menu size={16} />
-                </Button>
+              <TooltipTrigger>
+                {#snippet child({ props: tooltipProps })}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    {...popoverProps}
+                    {...tooltipProps}
+                    aria-label="More actions"
+                  >
+                    <Menu size={16} />
+                  </Button>
+                {/snippet}
               </TooltipTrigger>
               <TooltipContent side="bottom">More actions</TooltipContent>
             </Tooltip>

@@ -4,6 +4,7 @@
   import * as Popover from '$lib/components/ui/popover/index.js';
   import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
   import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+  import { onMount } from 'svelte';
   import { canShowTooltips } from '$lib/utils/tooltip';
   import type { WebsiteItem } from '$lib/stores/websites';
 
@@ -20,7 +21,9 @@
   export let onClose: () => void;
 
   let tooltipsEnabled = false;
-  $: tooltipsEnabled = canShowTooltips();
+  onMount(() => {
+    tooltipsEnabled = canShowTooltips();
+  });
 
   const getSourceUrl = (site: WebsiteItem) => {
     const maybeDetail = site as WebsiteItem & { url_full?: string | null };
@@ -49,111 +52,132 @@
         </span>
         <div class="website-actions">
           <Tooltip disabled={!tooltipsEnabled}>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onclick={onPinToggle}
-                aria-label="Pin website"
-              >
-                {#if website.pinned}
-                  <PinOff size={16} />
-                {:else}
-                  <Pin size={16} />
-                {/if}
-              </Button>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={onPinToggle}
+                  aria-label="Pin website"
+                  {...props}
+                >
+                  {#if website.pinned}
+                    <PinOff size={16} />
+                  {:else}
+                    <Pin size={16} />
+                  {/if}
+                </Button>
+              {/snippet}
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {website.pinned ? TOOLTIP_COPY.pin.on : TOOLTIP_COPY.pin.off}
             </TooltipContent>
           </Tooltip>
           <Tooltip disabled={!tooltipsEnabled}>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onclick={onRename}
-                aria-label="Rename website"
-              >
-                <Pencil size={16} />
-              </Button>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={onRename}
+                  aria-label="Rename website"
+                  {...props}
+                >
+                  <Pencil size={16} />
+                </Button>
+              {/snippet}
             </TooltipTrigger>
             <TooltipContent side="bottom">{TOOLTIP_COPY.rename}</TooltipContent>
           </Tooltip>
           <Tooltip disabled={!tooltipsEnabled}>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onclick={onCopy}
-                aria-label={isCopied ? 'Copied website' : 'Copy website'}
-              >
-                {#if isCopied}
-                  <Check size={16} />
-                {:else}
-                  <Copy size={16} />
-                {/if}
-              </Button>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={onCopy}
+                  aria-label={isCopied ? 'Copied website' : 'Copy website'}
+                  {...props}
+                >
+                  {#if isCopied}
+                    <Check size={16} />
+                  {:else}
+                    <Copy size={16} />
+                  {/if}
+                </Button>
+              {/snippet}
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {isCopied ? TOOLTIP_COPY.copy.success : TOOLTIP_COPY.copy.default}
             </TooltipContent>
           </Tooltip>
           <Tooltip disabled={!tooltipsEnabled}>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onclick={onDownload}
-                aria-label="Download website"
-              >
-                <Download size={16} />
-              </Button>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={onDownload}
+                  aria-label="Download website"
+                  {...props}
+                >
+                  <Download size={16} />
+                </Button>
+              {/snippet}
             </TooltipTrigger>
             <TooltipContent side="bottom">{TOOLTIP_COPY.downloadMarkdown}</TooltipContent>
           </Tooltip>
           <Tooltip disabled={!tooltipsEnabled}>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onclick={onArchive}
-                aria-label={website.archived ? 'Unarchive website' : 'Archive website'}
-              >
-                {#if website.archived}
-                  <ArchiveRestore size={16} />
-                {:else}
-                  <Archive size={16} />
-                {/if}
-              </Button>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={onArchive}
+                  aria-label={website.archived ? 'Unarchive website' : 'Archive website'}
+                  {...props}
+                >
+                  {#if website.archived}
+                    <ArchiveRestore size={16} />
+                  {:else}
+                    <Archive size={16} />
+                  {/if}
+                </Button>
+              {/snippet}
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {website.archived ? TOOLTIP_COPY.archive.on : TOOLTIP_COPY.archive.off}
             </TooltipContent>
           </Tooltip>
           <Tooltip disabled={!tooltipsEnabled}>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onclick={onDelete}
-                aria-label="Delete website"
-              >
-                <Trash2 size={16} />
-              </Button>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={onDelete}
+                  aria-label="Delete website"
+                  {...props}
+                >
+                  <Trash2 size={16} />
+                </Button>
+              {/snippet}
             </TooltipTrigger>
             <TooltipContent side="bottom">{TOOLTIP_COPY.delete}</TooltipContent>
           </Tooltip>
           <Tooltip disabled={!tooltipsEnabled}>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onclick={onClose}
-                aria-label="Close website"
-              >
-                <X size={16} />
-              </Button>
+            <TooltipTrigger>
+              {#snippet child({ props })}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onclick={onClose}
+                  aria-label="Close website"
+                  {...props}
+                >
+                  <X size={16} />
+                </Button>
+              {/snippet}
             </TooltipTrigger>
             <TooltipContent side="bottom">{TOOLTIP_COPY.close}</TooltipContent>
           </Tooltip>
@@ -161,12 +185,20 @@
         <div class="website-actions-compact">
           <Popover.Root>
             <Popover.Trigger>
-              {#snippet child({ props })}
+              {#snippet child({ props: popoverProps })}
                 <Tooltip disabled={!tooltipsEnabled}>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="ghost" {...props} aria-label="More actions">
-                      <Menu size={16} />
-                    </Button>
+                  <TooltipTrigger>
+                    {#snippet child({ props: tooltipProps })}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        {...popoverProps}
+                        {...tooltipProps}
+                        aria-label="More actions"
+                      >
+                        <Menu size={16} />
+                      </Button>
+                    {/snippet}
                   </TooltipTrigger>
                   <TooltipContent side="bottom">More actions</TooltipContent>
                 </Tooltip>
