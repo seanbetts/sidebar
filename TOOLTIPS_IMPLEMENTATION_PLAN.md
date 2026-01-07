@@ -800,11 +800,11 @@ As tooltips are implemented, remove corresponding `title` attributes to avoid do
 - [x] Scratchpad Popover (4 tooltips)
 
 ### Testing & Polish
-- [ ] Manual testing across all phases
-- [ ] Keyboard navigation verification
-- [ ] Mobile/touch device testing
-- [ ] Accessibility audit
-- [ ] Remove old `title` attributes
+- [x] Manual testing across all phases
+- [x] Keyboard navigation verification
+- [x] Mobile/touch device testing
+- [x] Accessibility audit
+- [x] Remove old `title` attributes
 
 ---
 
