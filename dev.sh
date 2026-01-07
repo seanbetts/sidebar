@@ -15,6 +15,7 @@ THINGS_BRIDGE_PLIST="$HOME/Library/LaunchAgents/com.sidebar.things-bridge.plist"
 THINGS_BRIDGE_LABEL="com.sidebar.things-bridge"
 REPO_ROOT="$(pwd)"
 use_doppler=0
+RESTART_LOCK="/tmp/sidebar-dev-restart.lock"
 
 load_env() {
   if [[ -f ".env" ]]; then
@@ -121,6 +122,37 @@ stop_pid() {
   if kill -0 "${pid}" >/dev/null 2>&1; then
     kill -9 "${pid}" || true
   fi
+}
+
+cleanup_restart_processes() {
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return
+  fi
+  while read -r pid; do
+    [[ -z "${pid}" ]] && continue
+    [[ "${pid}" == "$$" ]] && continue
+    command=$(pid_command "${pid}")
+    if [[ "${command}" == *"./dev.sh restart"* ]]; then
+      echo "Cleaning stale restart process (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+  done < <(pgrep -f "./dev.sh restart" || true)
+}
+
+ensure_restart_lock() {
+  if [[ "${command}" != "restart" ]]; then
+    return
+  fi
+  if [[ -f "${RESTART_LOCK}" ]]; then
+    local pid
+    pid=$(cat "${RESTART_LOCK}")
+    if [[ -n "${pid}" ]] && kill -0 "${pid}" >/dev/null 2>&1; then
+      echo "Restart already running (PID ${pid})."
+      exit 1
+    fi
+  fi
+  echo "$$" >"${RESTART_LOCK}"
+  trap 'rm -f "${RESTART_LOCK}"' EXIT
 }
 
 ensure_port_available() {
@@ -446,6 +478,7 @@ command="${1:-start}"
 
 load_env
 detect_doppler
+ensure_restart_lock
 
 case "${command}" in
   start)
@@ -461,6 +494,7 @@ case "${command}" in
     stop_things_bridge
     ;;
   restart)
+    cleanup_restart_processes
     stop_service "${BACKEND_PID}" "backend"
     stop_service "${FRONTEND_PID}" "frontend"
     stop_service "${INGESTION_PID}" "ingestion worker"
