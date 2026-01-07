@@ -6,7 +6,7 @@ from typing import Optional
 import uuid
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func
 
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 from api.utils.pinned_order import lock_pinned_order

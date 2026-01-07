@@ -24,7 +24,7 @@ SCRIPTS_ROOT = Path(__file__).resolve().parent
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
-from db_env import setup_environment
+from db_env import setup_environment  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

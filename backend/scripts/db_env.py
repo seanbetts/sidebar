@@ -8,7 +8,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from urllib.parse import urlparse, urlunparse, urlencode
+from urllib.parse import urlparse, urlencode
 
 
 def _load_env_file(path: Path) -> None:

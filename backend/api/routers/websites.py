@@ -9,7 +9,6 @@ from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
 from api.services.website_processing_service import WebsiteProcessingService
-from api.services.website_transcript_service import WebsiteTranscriptService
 from api.services.websites_service import WebsitesService
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
