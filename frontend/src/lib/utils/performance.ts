@@ -5,7 +5,6 @@ import {
   PUBLIC_WEB_VITALS_SAMPLE_RATE
 } from '$env/static/public';
 import type { Metric } from 'web-vitals';
-import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals';
 
 export interface PerformanceMetric {
   name: 'CLS' | 'FCP' | 'INP' | 'LCP' | 'TTFB';
@@ -76,7 +75,7 @@ export function reportMetric(metric: PerformanceMetric): void {
  *
  * @param getRoute Optional route getter for associating metrics with paths.
  */
-export function initWebVitals(getRoute?: RouteGetter): void {
+export async function initWebVitals(getRoute?: RouteGetter): Promise<void> {
   if (!browser || !metricsEnabled || !shouldSample(metricsSampleRate)) return;
 
   const routeGetter = getRoute ?? (() => window.location.pathname);
@@ -84,6 +83,13 @@ export function initWebVitals(getRoute?: RouteGetter): void {
     reportMetric(toPerformanceMetric(metric, routeGetter()));
   };
 
+  let vitalsModule: typeof import('web-vitals');
+  try {
+    vitalsModule = await import('web-vitals');
+  } catch {
+    return;
+  }
+  const { onCLS, onFCP, onINP, onLCP, onTTFB } = vitalsModule;
   onCLS(handler);
   onFCP(handler);
   onINP(handler);

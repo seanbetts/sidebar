@@ -4,7 +4,7 @@ import {
   PUBLIC_SENTRY_ENVIRONMENT,
   PUBLIC_SENTRY_SAMPLE_RATE
 } from '$env/static/public';
-import type { Event as SentryEvent } from '@sentry/core';
+import type { Event as SentryEvent, EventHint } from '@sentry/core';
 import * as Sentry from '@sentry/sveltekit';
 
 type SentryContext = Record<string, unknown>;
@@ -22,21 +22,32 @@ function parseSampleRate(value: string | undefined, fallback: number): number {
   return Math.min(1, Math.max(0, parsed));
 }
 
-function sanitizeEvent(event: SentryEvent): SentryEvent {
-  if (!event.request?.headers || typeof event.request.headers !== 'object') {
-    return event;
+function sanitizeEvent(event: SentryEvent, _hint?: EventHint): SentryEvent | null {
+  const request = event.request ? { ...event.request } : undefined;
+  if (request?.headers && typeof request.headers === 'object') {
+    const headers = { ...request.headers } as Record<string, string>;
+    delete headers.authorization;
+    delete headers.cookie;
+    request.headers = headers;
   }
 
-  const headers = { ...event.request.headers } as Record<string, unknown>;
-  delete headers.authorization;
-  delete headers.cookie;
+  if (request?.url) {
+    request.url = request.url.split('?')[0];
+  }
+  if (request?.data) {
+    request.data = '[Filtered]';
+  }
+
+  const breadcrumbs = event.breadcrumbs?.map(breadcrumb => ({
+    ...breadcrumb,
+    data: undefined
+  }));
 
   return {
     ...event,
-    request: {
-      ...event.request,
-      headers
-    }
+    request,
+    user: undefined,
+    breadcrumbs
   };
 }
 

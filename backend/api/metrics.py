@@ -53,3 +53,15 @@ storage_operations_total = Counter(
     ["operation", "status"],
 )
 
+# Web Vitals metrics
+web_vitals_observations_total = Counter(
+    "web_vitals_observations_total",
+    "Total Web Vitals observations",
+    ["name", "rating"],
+)
+
+web_vitals_value = Histogram(
+    "web_vitals_value",
+    "Web Vitals measurement values",
+    ["name", "rating"],
+)
