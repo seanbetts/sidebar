@@ -189,9 +189,34 @@ function createWebsitesStore() {
     async revalidateInBackground() {
       try {
         const data = await websitesAPI.list();
-        const items = extractWebsiteItems(data);
-        setCachedData(CACHE_KEY, items, { ttl: CACHE_TTL, version: CACHE_VERSION });
-        update(state => ({ ...state, items }));
+        const freshItems = extractWebsiteItems(data);
+        update(state => {
+          const mergedItems = state.items.map(existingItem => {
+            const freshItem = freshItems.find(item => item.id === existingItem.id);
+            if (!freshItem) return existingItem;
+
+            const existingUpdatedAt = existingItem.updated_at || existingItem.saved_at || null;
+            const freshUpdatedAt = freshItem.updated_at || freshItem.saved_at || null;
+
+            if (existingUpdatedAt && freshUpdatedAt) {
+              const existingTime = new Date(existingUpdatedAt).getTime();
+              const freshTime = new Date(freshUpdatedAt).getTime();
+              if (Number.isFinite(existingTime) && Number.isFinite(freshTime) && existingTime > freshTime) {
+                return existingItem;
+              }
+            }
+
+            return { ...existingItem, ...freshItem };
+          });
+
+          const newItems = freshItems.filter(
+            freshItem => !state.items.some(existing => existing.id === freshItem.id)
+          );
+
+          const allItems = [...mergedItems, ...newItems];
+          setCachedData(CACHE_KEY, allItems, { ttl: CACHE_TTL, version: CACHE_VERSION });
+          return { ...state, items: allItems };
+        });
       } catch (error) {
         logError('Background revalidation failed', error, { scope: 'websitesStore.revalidateInBackground' });
       }
@@ -250,7 +275,8 @@ function createWebsitesStore() {
                 ...item,
                 pinned,
                 pinned_order: pinned ? (item.pinned_order ?? maxOrder + 1) : null,
-                archived: pinned ? false : item.archived
+                archived: pinned ? false : item.archived,
+                updated_at: new Date().toISOString()
               }
             : item
         );

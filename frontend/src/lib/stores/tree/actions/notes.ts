@@ -158,7 +158,8 @@ export function createNotesActions(context: TreeStoreContext) {
       const result = updateNoteInTree(tree.children, noteId, (node) => ({
         ...node,
         pinned,
-        ...(pinned ? { pinned_order: node.pinned_order ?? nextPinnedOrder } : { pinned_order: null })
+        ...(pinned ? { pinned_order: node.pinned_order ?? nextPinnedOrder } : { pinned_order: null }),
+        modified: new Date().toISOString()
       }));
       if (!result.changed) return state;
 

@@ -14,6 +14,60 @@ import { applyExpandedPaths, hasFilePath } from '$lib/stores/tree/nodes';
 import { handleFetchError, logError } from '$lib/utils/errorHandling';
 
 export function createLoadActions(context: TreeStoreContext) {
+  const mergeFileNodes = (existingNodes: FileNode[], freshNodes: FileNode[]): FileNode[] => {
+    const result: FileNode[] = [];
+    const freshMap = new Map(freshNodes.map(node => [node.path, node]));
+    const processedPaths = new Set<string>();
+
+    // Merge existing nodes with fresh data
+    for (const existingNode of existingNodes) {
+      const freshNode = freshMap.get(existingNode.path);
+      processedPaths.add(existingNode.path);
+
+      if (!freshNode) {
+        // Node was removed on server
+        continue;
+      }
+
+      if (existingNode.type === 'directory' && freshNode.type === 'directory') {
+        // Recursively merge directory children
+        const mergedChildren = existingNode.children && freshNode.children
+          ? mergeFileNodes(existingNode.children, freshNode.children)
+          : (freshNode.children || existingNode.children || []);
+        result.push({ ...freshNode, children: mergedChildren, expanded: existingNode.expanded });
+      } else if (existingNode.type === 'file' && freshNode.type === 'file') {
+        // Check timestamps for files
+        const existingModified = existingNode.modified;
+        const freshModified = freshNode.modified;
+
+        if (existingModified && freshModified) {
+          const existingTime = new Date(existingModified).getTime();
+          const freshTime = new Date(freshModified).getTime();
+          if (Number.isFinite(existingTime) && Number.isFinite(freshTime) && existingTime > freshTime) {
+            // Keep existing node if it's newer
+            result.push(existingNode);
+            continue;
+          }
+        }
+
+        // Use fresh data
+        result.push(freshNode);
+      } else {
+        // Type mismatch, use fresh
+        result.push(freshNode);
+      }
+    }
+
+    // Add new nodes from fresh data
+    for (const freshNode of freshNodes) {
+      if (!processedPaths.has(freshNode.path)) {
+        result.push(freshNode);
+      }
+    }
+
+    return result;
+  };
+
   const revalidateInBackground = async (basePath: string, expandedPaths: Set<string>) => {
     try {
       const endpoint = basePath === 'notes'
@@ -22,21 +76,34 @@ export function createLoadActions(context: TreeStoreContext) {
       const response = await fetch(endpoint);
       if (!response.ok) return;
       const data = await response.json();
-      const children: FileNode[] = data.children || [];
-      cacheTree(basePath, children);
-      context.update((state) => ({
-        trees: {
-          ...state.trees,
-          [basePath]: {
-            ...(state.trees[basePath] || { expandedPaths }),
-            children: applyExpandedPaths(children, expandedPaths),
-            expandedPaths,
-            loading: false,
-            error: null,
-            loaded: true
+      const freshChildren: FileNode[] = data.children || [];
+
+      context.update((state) => {
+        const existingTree = state.trees[basePath];
+        const existingChildren = existingTree?.children || [];
+
+        // Merge trees intelligently with timestamp checking
+        const mergedChildren = existingChildren.length > 0
+          ? mergeFileNodes(existingChildren, freshChildren)
+          : freshChildren;
+
+        const finalChildren = applyExpandedPaths(mergedChildren, expandedPaths);
+        cacheTree(basePath, finalChildren);
+
+        return {
+          trees: {
+            ...state.trees,
+            [basePath]: {
+              ...(state.trees[basePath] || { expandedPaths }),
+              children: finalChildren,
+              expandedPaths,
+              loading: false,
+              error: null,
+              loaded: true
+            }
           }
-        }
-      }));
+        };
+      });
     } catch (error) {
       logError('Background revalidation failed', error, { basePath });
     }
