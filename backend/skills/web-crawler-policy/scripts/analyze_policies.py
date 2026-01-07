@@ -1125,13 +1125,12 @@ Requirements:
         }
 
         # Output results
+        if args.json:
+            args.no_table = True
+
         if not args.no_table:
             print(create_output_summary(permission_data, domains_to_analyze))
             print(create_output_table(permission_data, domains_to_analyze, main_domain))
-
-        if args.json:
-            sys.stdout.write(json.dumps({"success": True, "data": output_data}, indent=2))
-            return
 
         # Export to CSV
         if args.output:

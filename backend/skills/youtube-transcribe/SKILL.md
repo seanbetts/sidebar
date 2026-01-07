@@ -124,7 +124,16 @@ JSON output combines results from both stages:
     "language": "en",
     "model": "gpt-4o-transcribe",
     "download_duration_seconds": 45,
-    "transcription_duration_seconds": 120
+    "transcription_duration_seconds": 120,
+    "file_id": "<uuid>",
+    "ai_path": "{user_id}/files/{file_id}/ai/ai.md",
+    "derivatives": [
+      {
+        "kind": "text_original",
+        "path": "{user_id}/files/{file_id}/derivatives/source.txt",
+        "content_type": "text/plain"
+      }
+    ]
   }
 }
 ```
@@ -192,6 +201,24 @@ Audio files are automatically deleted after transcription unless `--keep-audio` 
 **Transcripts (files workspace)**:
 ```
 files/videos/{video_id}/ai/ai.md
+```
+
+## Storage Output
+
+When upload is enabled, the JSON payload includes ingestion metadata:
+
+```json
+{
+  "file_id": "<uuid>",
+  "ai_path": "{user_id}/files/{file_id}/ai/ai.md",
+  "derivatives": [
+    {
+      "kind": "text_original",
+      "path": "{user_id}/files/{file_id}/derivatives/source.txt",
+      "content_type": "text/plain"
+    }
+  ]
+}
 ```
 
 ## Model Comparison
