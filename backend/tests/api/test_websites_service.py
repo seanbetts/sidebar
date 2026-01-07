@@ -60,10 +60,11 @@ def test_update_pinned_and_archived(db_session):
     )
 
     archived = WebsitesService.update_archived(db_session, "test_user", website.id, True)
+    assert (archived.metadata_ or {}).get("archived") is True
+
     pinned = WebsitesService.update_pinned(db_session, "test_user", website.id, True)
 
     assert (pinned.metadata_ or {}).get("pinned") is True
-    assert (archived.metadata_ or {}).get("archived") is True
     assert (pinned.metadata_ or {}).get("archived") is False
 
 

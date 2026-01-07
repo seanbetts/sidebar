@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, unquote, urljoin, urlparse
 import requests
 import yaml
 from bs4 import BeautifulSoup
-from markdownify import markdownify
+from markdownify import MarkdownConverter
 from readability import Document
 from lxml import html as lxml_html
 
@@ -206,9 +206,21 @@ def parse_datetime(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+class _PreservingMarkdownConverter(MarkdownConverter):
+    def convert_mark(self, el, text, parent_tags):
+        return f"<mark>{text}</mark>"
+
+    def convert_nav(self, el, text, parent_tags):
+        return str(el)
+
+    def convert_svg(self, el, text, parent_tags):
+        return str(el)
+
+
 def html_to_markdown(html: str) -> str:
     """Convert HTML to Markdown."""
-    return markdownify(html, heading_style="ATX").strip()
+    converter = _PreservingMarkdownConverter(heading_style="ATX")
+    return converter.convert(html).strip()
 
 
 def _canonical_image_url(url: str) -> str:
@@ -239,37 +251,41 @@ def _canonical_image_url(url: str) -> str:
     return unquoted
 
 
+def _unwrap_proxy_image_url(url: str) -> str:
+    if not url:
+        return url
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().strip(".")
+    if host.endswith("substackcdn.com") and "/image/fetch/" in parsed.path:
+        canonical = _canonical_image_url(url)
+        if canonical and canonical != url:
+            return canonical
+    return url
+
+
 def dedupe_markdown_images(markdown: str) -> str:
     """Remove duplicate image references while preserving order."""
     seen: set[str] = set()
 
     image_url_pattern = r"!\[[^\]]*]\(([^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)"
     linked_pattern = rf"\[{image_url_pattern}\]\([^)]+\)"
-    placeholders: list[str] = []
+    combined_pattern = re.compile(rf"{linked_pattern}|{image_url_pattern}")
 
-    def replace_linked(match: re.Match[str]) -> str:
-        url = match.group(1)
-        key = _canonical_image_url(url)
-        if key in seen:
-            return ""
-        seen.add(key)
-        placeholders.append(match.group(0))
-        return f"__IMG_PLACEHOLDER_{len(placeholders) - 1}__"
+    output: list[str] = []
+    last_end = 0
+    for match in combined_pattern.finditer(markdown):
+        output.append(markdown[last_end : match.start()])
+        url = match.group(1) or match.group(2)
+        key = _canonical_image_url(url) if url else ""
+        if key and key not in seen:
+            seen.add(key)
+            output.append(match.group(0))
+        last_end = match.end()
+    output.append(markdown[last_end:])
 
-    def replace_plain(match: re.Match[str]) -> str:
-        url = match.group(1)
-        key = _canonical_image_url(url)
-        if key in seen:
-            return ""
-        seen.add(key)
-        return match.group(0)
-
-    deduped = re.sub(linked_pattern, replace_linked, markdown)
-    deduped = re.sub(image_url_pattern, replace_plain, deduped)
+    deduped = "".join(output)
     deduped = re.sub(r"(?<!!)\[\s*]\([^)]+\)", "", deduped)
     deduped = re.sub(r"\[!\]\([^)]+\)", "", deduped)
-    for index, value in enumerate(placeholders):
-        deduped = deduped.replace(f"__IMG_PLACEHOLDER_{index}__", value)
     deduped = re.sub(r"\)\s*(\!\[)", r")\n\n\1", deduped)
     deduped = re.sub(r"\)\s*(\[!\[)", r")\n\n\1", deduped)
     return deduped.strip()
@@ -558,7 +574,8 @@ def normalize_image_sources(html: str, base_url: str) -> str:
                 src = value
                 break
         if src:
-            img["src"] = urljoin(base_url, src)
+            resolved = urljoin(base_url, src)
+            img["src"] = _unwrap_proxy_image_url(resolved)
     return str(soup)
 
 

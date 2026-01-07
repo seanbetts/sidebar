@@ -235,3 +235,8 @@ Files:
 5) Update web-crawler-policy outputs (single ingested file per run).
 6) Update SKILL.md documentation.
 7) Verify UI reads `ai/ai.md` consistently and ignores website transcript records.
+
+## Verification Notes
+
+- Website transcript records are filtered out of file listings/tree/search in `backend/api/services/file_ingestion_service.py` and `backend/api/services/files_workspace_service.py`.
+- The file viewer prefers `ai_md` when present (`frontend/src/lib/components/files/UniversalViewerController.svelte`).
