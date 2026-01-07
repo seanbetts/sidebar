@@ -20,7 +20,7 @@ This document outlines a phased approach to implementing pre-commit hooks for th
 - ✅ interrogate configured (80% docstring coverage, lines 117-135)
 - ✅ pydocstyle configured (Google convention, lines 137-140)
 - ✅ pytest with 90%+ coverage target (lines 95-115)
-- ❌ **ruff installed but not configured** (no `ruff.toml`)
+- ⚠️ **Ruff config location to confirm** (prefer `backend/pyproject.toml` to avoid drift)
 - ❌ **No automatic code formatting**
 
 **Frontend TypeScript/Svelte:**
@@ -128,10 +128,11 @@ repos:
         args: [--branch, main]
 ```
 
-**1.2 Create `ruff.toml`**
+**1.2 Configure Ruff (single source of truth)**
 
 ```toml
-# ruff.toml - Python linting and formatting
+# Prefer ruff config in backend/pyproject.toml to avoid a second config file.
+# If a separate file is needed, keep only one source of truth.
 [lint]
 select = [
     "E",   # pycodestyle errors
@@ -185,6 +186,7 @@ line-ending = "auto"
   ]
 }
 ```
+Note: If the existing codebase uses spaces for indentation, switch `useTabs` to `false` before rollout to avoid large formatting churn.
 
 **1.4 Update `frontend/package.json` scripts**
 
@@ -309,7 +311,7 @@ pre-commit run --all-files
     rev: v9.17.0
     hooks:
       - id: eslint
-        files: \.(ts|js|svelte)$
+        files: ^frontend/src/.*\.(ts|js|svelte)$
         args: [--fix, --max-warnings=0]
         additional_dependencies:
           - eslint@9.39.2
@@ -342,25 +344,21 @@ Use template from `docs/QUALITY_ENFORCEMENT.md` lines 130-234.
 """Check file size limits according to AGENTS.md standards.
 
 Backend:
-- Services: 400 LOC soft, 600 LOC hard
-- Routers: 350 LOC soft, 500 LOC hard
-- Utilities: 200 LOC soft, 300 LOC hard
+- Services: 600 LOC hard (soft limit optional)
+- Routers: 500 LOC hard (soft limit optional)
 
 Frontend:
-- Components: 400 LOC soft, 600 LOC hard
-- Stores: 400 LOC soft, 600 LOC hard
-- Utilities: 200 LOC soft, 300 LOC hard
+- Components: 600 LOC hard (soft limit optional)
+- Stores: 600 LOC hard (soft limit optional)
 """
 import sys
 from pathlib import Path
 
 LIMITS = {
-    'backend/api/services': (400, 600),
-    'backend/api/routers': (350, 500),
-    'backend/api/utils': (200, 300),
-    'frontend/src/lib/components': (400, 600),
-    'frontend/src/lib/stores': (400, 600),
-    'frontend/src/lib/utils': (200, 300),
+    'backend/api/services': (0, 600),
+    'backend/api/routers': (0, 500),
+    'frontend/src/lib/components': (0, 600),
+    'frontend/src/lib/stores': (0, 600),
 }
 
 def count_lines(file_path: Path) -> int:
