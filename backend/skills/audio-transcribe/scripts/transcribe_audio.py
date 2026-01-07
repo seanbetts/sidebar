@@ -389,6 +389,7 @@ def transcribe_audio(
     temp_dir: Optional[str] = None,
     keep_local: bool = False,
     output_name: Optional[str] = None,
+    upload_result: bool = True,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -399,6 +400,7 @@ def transcribe_audio(
         language: Language code (optional)
         model: Model to use
         output_dir: Output directory for transcripts
+        upload_result: Upload transcript to storage
         **kwargs: Additional API parameters
 
     Returns:
@@ -412,7 +414,7 @@ def transcribe_audio(
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY environment variable is not set")
-    if not user_id:
+    if upload_result and not user_id:
         raise ValueError("user_id is required for transcript storage")
 
     path = Path(file_path)
@@ -426,7 +428,7 @@ def transcribe_audio(
 
     # Local output directory (always temp)
     out_dir = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="transcripts-"))
-    r2_dir = (output_dir or DEFAULT_R2_DIR).strip("/")
+    r2_dir = (output_dir or DEFAULT_R2_DIR).strip("/") if upload_result else ""
 
     file_size_mb = path.stat().st_size / (1024 * 1024)
     print(f"📁 Processing {path.name} ({file_size_mb:.1f}MB) with model {model}")
@@ -488,7 +490,7 @@ def transcribe_audio(
         print(f"💾 Transcript saved to: {output_path}")
 
         r2_path = None
-        if user_id:
+        if upload_result and user_id:
             r2_path = save_transcript_to_r2(user_id, output_path, r2_dir)
 
         return {
@@ -521,7 +523,7 @@ def transcribe_audio(
         print(f"💾 Transcript saved to: {output_path}")
 
         r2_path = None
-        if user_id:
+        if upload_result and user_id:
             r2_path = save_transcript_to_r2(user_id, output_path, r2_dir)
 
         return {
