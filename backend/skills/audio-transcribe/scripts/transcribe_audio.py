@@ -130,7 +130,7 @@ def save_transcript_to_r2(
     user_id: str,
     transcript_path: Path,
     r2_dir: str,
-) -> str:
+) -> Any:
     if upload_file is None:
         raise RuntimeError("Storage dependencies are unavailable")
     r2_dir = (r2_dir or "").strip("/")
@@ -141,7 +141,28 @@ def save_transcript_to_r2(
         transcript_path,
         content_type="text/plain",
     )
-    return record.path
+    return record
+
+
+def _build_storage_payload(user_id: Optional[str], record: Any) -> Dict[str, Any]:
+    if not user_id or not record:
+        return {
+            "file_id": None,
+            "ai_path": None,
+            "derivatives": [],
+        }
+    file_id = str(record.id)
+    return {
+        "file_id": file_id,
+        "ai_path": f"{user_id}/files/{file_id}/ai/ai.md",
+        "derivatives": [
+            {
+                "kind": "text_original",
+                "path": f"{user_id}/files/{file_id}/derivatives/source.txt",
+                "content_type": "text/plain",
+            }
+        ],
+    }
 
 
 def post_to_api(
@@ -489,9 +510,12 @@ def transcribe_audio(
         )
         print(f"💾 Transcript saved to: {output_path}")
 
+        record = None
         r2_path = None
         if upload_result and user_id:
-            r2_path = save_transcript_to_r2(user_id, output_path, r2_dir)
+            record = save_transcript_to_r2(user_id, output_path, r2_dir)
+            r2_path = record.path if record else None
+        storage_payload = _build_storage_payload(user_id, record)
 
         return {
             'transcript': combined_transcript,
@@ -500,7 +524,8 @@ def transcribe_audio(
             'word_count': len(combined_transcript.split()),
             'chunks': len(transcripts),
             'model': model,
-            'usage': last_usage
+            'usage': last_usage,
+            **storage_payload,
         }
     else:
         print("📤 Uploading single file for transcription...")
@@ -522,9 +547,12 @@ def transcribe_audio(
         )
         print(f"💾 Transcript saved to: {output_path}")
 
+        record = None
         r2_path = None
         if upload_result and user_id:
-            r2_path = save_transcript_to_r2(user_id, output_path, r2_dir)
+            record = save_transcript_to_r2(user_id, output_path, r2_dir)
+            r2_path = record.path if record else None
+        storage_payload = _build_storage_payload(user_id, record)
 
         return {
             'transcript': transcript,
@@ -533,7 +561,8 @@ def transcribe_audio(
             'word_count': len(transcript.split()),
             'chunks': 1,
             'model': model,
-            'usage': usage_info
+            'usage': usage_info,
+            **storage_payload,
         }
 
 
