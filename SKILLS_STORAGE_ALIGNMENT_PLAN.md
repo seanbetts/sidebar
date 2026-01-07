@@ -1,11 +1,22 @@
 # Skills Storage Alignment Plan
 
+## Progress Tracker
+
+- [ ] Add ingestion helper APIs + backward-compatible frontmatter schema
+- [ ] Deprecate/remove docx/pdf/pptx/xlsx skills and update docs/tool registry
+- [ ] Update audio-transcribe + youtube-download
+- [ ] Update youtube-transcribe
+- [ ] Update web-crawler-policy (single ingested file per run)
+- [ ] Update SKILL.md documentation
+- [ ] Verify UI reads `ai/ai.md` consistently and ignores website transcript records
+
 ## Goals
 
 - Ensure all file-producing skills store outputs in the ingestion-backed `{user_id}/files/{file_id}/` structure.
-- Standardize `ai/ai.md` generation with frontmatter for AI context.
+- Standardize `ai/ai.md` generation with frontmatter for AI context, backward-compatible with current consumers.
 - Preserve derivatives for UI previews in `derivatives/`.
 - Update skill outputs and docs to reference `file_id` and derivative metadata instead of raw R2 paths.
+- Deprecate and remove `docx`, `pdf`, `pptx`, and `xlsx` skills from the codebase.
 
 ## Current Storage Model (Target)
 
@@ -37,24 +48,29 @@ Notes:
 - `write_derivative` should map `kind` to `derivatives/{kind}.{ext}` or `derivatives/{kind}`.
 - `finalize_ingested_file` should update ingestion tables with derivative info and processing status.
 
-### 2) Frontmatter Schema for ai/ai.md
+### 2) Frontmatter Schema for ai/ai.md (Backward-Compatible)
 
-Use a consistent schema across skills:
+Use a consistent schema across skills while keeping existing keys that current consumers rely on:
 
 ```
 ---
 file_id: <uuid>
-source_url: <string|null>
-source_type: <string> # e.g. "youtube", "audio", "web-crawler"
-title: <string|null>
+source_filename: <string>
+source_mime: <string>
 created_at: <iso8601>
+sha256: <string|null>
+source_url: <string|null>
+source_type: <string|null> # e.g. "youtube", "audio-transcribe", "web-crawler"
 ingestion:
-  skill: <skill-name>
+  skill: <string>
   model: <string|null>
   language: <string|null>
   duration_seconds: <number|null>
   size_bytes: <number|null>
 derivatives:
+  ai_md: true
+  text_original: true
+derivative_items:
   - kind: <string>
     path: <storage-key>
     content_type: <string|null>
@@ -141,7 +157,7 @@ Current:
 - Produces multiple files and uploads to `Reports/{domain}`.
 
 Target:
-- Create a single ingested file for each domain scan.
+- Create a single ingested file per scan run.
 - Write a synthesized `ai/ai.md` summary report.
 - Store raw artifacts under `derivatives/`:
   - `robots_txt`, `llms_txt`, `analysis_csv`, `analysis_json`, `report_md`
@@ -186,6 +202,18 @@ Files:
 - `backend/skills/notes/SKILL.md`
 - `backend/skills/web-save/SKILL.md`
 
+### docx / pdf / pptx / xlsx (Deprecate)
+
+Decision:
+- Remove these skills from the codebase as part of this alignment.
+- Update any docs and tool registries to reflect removal.
+
+Files:
+- `backend/skills/docx/`
+- `backend/skills/pdf/`
+- `backend/skills/pptx/`
+- `backend/skills/xlsx/`
+
 ## UI/UX Alignment
 
 - Ensure UI uses file type classification on derivatives, not on paths.
@@ -200,10 +228,10 @@ Files:
 
 ## Suggested Rollout
 
-1) Add ingestion helper APIs + frontmatter schema.
-2) Update audio-transcribe + youtube-download (lowest dependency).
-3) Update youtube-transcribe to reuse new helpers.
-4) Update web-crawler-policy outputs.
-5) Update SKILL.md documentation.
-6) Verify UI reads `ai/ai.md` consistently.
-
+1) Add ingestion helper APIs + backward-compatible frontmatter schema.
+2) Deprecate/remove docx/pdf/pptx/xlsx skills and update docs/tool registry.
+3) Update audio-transcribe + youtube-download (lowest dependency).
+4) Update youtube-transcribe to reuse new helpers.
+5) Update web-crawler-policy outputs (single ingested file per run).
+6) Update SKILL.md documentation.
+7) Verify UI reads `ai/ai.md` consistently and ignores website transcript records.
