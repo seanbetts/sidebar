@@ -11,6 +11,7 @@ from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
 from api.services.website_processing_service import WebsiteProcessingService
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.services.websites_service import WebsitesService
+from api.services.website_transcript_service import WebsiteTranscriptService
 from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
 from api.schemas.filters import WebsiteFilters
 from api.utils.validation import parse_uuid
@@ -250,6 +251,12 @@ async def get_website(
     website = WebsitesService.get_website(db, user_id, website_id, mark_opened=True)
     if not website:
         raise NotFoundError("Website", str(website_id))
+
+    WebsiteTranscriptService.sync_transcripts_for_website(
+        db,
+        user_id=user_id,
+        website_id=website_id,
+    )
 
     return {
         **website_summary(website),
