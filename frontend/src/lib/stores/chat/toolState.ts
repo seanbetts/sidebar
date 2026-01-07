@@ -1,4 +1,5 @@
 import type { ChatState } from '../chat';
+import { markToolEnd, markToolStart } from '$lib/utils/chatMetrics';
 
 type UpdateFn = (updater: (state: ChatState) => ChatState) => void;
 type GetStateFn = () => ChatState;
@@ -36,6 +37,7 @@ export function createToolStateHandlers(update: UpdateFn, getState: GetStateFn) 
 	const setActiveTool = (messageId: string, name: string, status: 'running' | 'success' | 'error') => {
 		clearToolTimers();
 		const startedAt = Date.now();
+		markToolStart(messageId, name);
 		update((state) => ({
 			...state,
 			activeTool: {
@@ -59,6 +61,7 @@ export function createToolStateHandlers(update: UpdateFn, getState: GetStateFn) 
 		const startedAt = getActiveToolStartTime(messageId, name) ?? now;
 		const elapsed = now - startedAt;
 		const updateDelay = Math.max(0, minRunningMs - elapsed);
+		markToolEnd(messageId, name, status);
 
 		toolUpdateTimeout = setTimeout(() => {
 			update((state) => ({
