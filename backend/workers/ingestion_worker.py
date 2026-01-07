@@ -20,6 +20,7 @@ import shutil
 from threading import Event, Thread
 from typing import Callable, Sequence
 from uuid import uuid4
+import sys
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm.attributes import flag_modified
@@ -162,6 +163,23 @@ _COMMON_SHORT_WORDS = {
 
 _audio_transcriber: Callable[..., dict] | None = None
 _youtube_transcriber: Callable[..., dict] | None = None
+
+
+def _ensure_stdio() -> None:
+    for fd in (0, 1, 2):
+        try:
+            os.fstat(fd)
+        except OSError:
+            mode = os.O_RDONLY if fd == 0 else os.O_WRONLY
+            devnull_fd = os.open(os.devnull, mode)
+            os.dup2(devnull_fd, fd)
+            os.close(devnull_fd)
+    if sys.stdin is None or sys.stdin.closed:
+        sys.stdin = open(0, "r", closefd=False)
+    if sys.stdout is None or sys.stdout.closed:
+        sys.stdout = open(1, "w", closefd=False)
+    if sys.stderr is None or sys.stderr.closed:
+        sys.stderr = open(2, "w", closefd=False)
 
 
 def _now() -> datetime:
@@ -1731,6 +1749,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
 def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
+    _ensure_stdio()
     if shutil.which("soffice") is None:
         logger.warning(
             "LibreOffice (soffice) not found. DOCX/XLSX/PPTX conversion will fail."
