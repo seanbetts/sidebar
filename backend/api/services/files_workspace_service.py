@@ -10,7 +10,6 @@ from pathlib import Path
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 from api.services.file_tree_service import FileTreeService
@@ -59,14 +58,7 @@ def _list_prefix(
     include_deleted: bool = False,
 ) -> list[IngestedFile]:
     prefix_norm = prefix.strip("/")
-    query = db.query(IngestedFile).filter(
-        IngestedFile.user_id == user_id,
-        func.coalesce(
-            IngestedFile.source_metadata["website_transcript"].astext,
-            "false",
-        )
-        != "true",
-    )
+    query = db.query(IngestedFile).filter(IngestedFile.user_id == user_id)
     if not include_deleted:
         query = query.filter(IngestedFile.deleted_at.is_(None))
     if prefix_norm:
@@ -189,11 +181,6 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
             IngestedFile.deleted_at.is_(None),
             IngestedFile.path.is_not(None),
             IngestedFile.path.ilike(like_pattern),
-            func.coalesce(
-                IngestedFile.source_metadata["website_transcript"].astext,
-                "false",
-            )
-            != "true",
         ]
         if base_path:
             filters.append(IngestedFile.path.like(f"{base_path}/%"))

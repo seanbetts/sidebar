@@ -174,6 +174,7 @@ class WebsiteTranscriptService:
                 "website_transcript": True,
             },
         )
+        FileIngestionService.soft_delete_file(db, record.id)
 
         WebsiteTranscriptService._update_transcript_metadata(
             db,
