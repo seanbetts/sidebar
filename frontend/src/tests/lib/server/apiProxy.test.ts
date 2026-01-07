@@ -1,4 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
+import type { Span } from '@opentelemetry/api';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createProxyHandler } from '$lib/server/apiProxy';
@@ -9,8 +10,8 @@ vi.mock('$lib/server/api', () => ({
 }));
 
 describe('createProxyHandler', () => {
-  type Span = {};
   const locals = { supabase: {} as App.Locals['supabase'], session: null, user: null };
+  const spanStub = {} as unknown as Span;
   const baseEvent: RequestEvent = {
     cookies: {
       get: vi.fn(),
@@ -33,8 +34,8 @@ describe('createProxyHandler', () => {
     isRemoteRequest: false,
     tracing: {
       enabled: false,
-      root: {} as Span,
-      current: {} as Span
+      root: spanStub,
+      current: spanStub
     }
   };
 

@@ -488,7 +488,7 @@
 
   <UniversalViewerBody
     {loading}
-    {error}
+    error={error ?? ''}
     viewerUrl={viewerUrlValue ?? ''}
     viewMode={viewMode}
     {isPdf}

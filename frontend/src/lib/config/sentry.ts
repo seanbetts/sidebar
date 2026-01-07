@@ -4,7 +4,7 @@ import {
   PUBLIC_SENTRY_ENVIRONMENT,
   PUBLIC_SENTRY_SAMPLE_RATE
 } from '$env/static/public';
-import type { Event as SentryEvent, EventHint } from '@sentry/core';
+import type { BrowserOptions } from '@sentry/browser';
 import * as Sentry from '@sentry/sveltekit';
 
 type SentryContext = Record<string, unknown>;
@@ -22,7 +22,7 @@ function parseSampleRate(value: string | undefined, fallback: number): number {
   return Math.min(1, Math.max(0, parsed));
 }
 
-function sanitizeEvent(event: SentryEvent, _hint?: EventHint): SentryEvent | null {
+const sanitizeEvent: NonNullable<BrowserOptions['beforeSend']> = (event, _hint) => {
   const request = event.request ? { ...event.request } : undefined;
   if (request?.headers && typeof request.headers === 'object') {
     const headers = { ...request.headers } as Record<string, string>;
@@ -49,7 +49,7 @@ function sanitizeEvent(event: SentryEvent, _hint?: EventHint): SentryEvent | nul
     user: undefined,
     breadcrumbs
   };
-}
+};
 
 function initSentrySdk(): void {
   if (sentryInitialized || !sentryDsn) return;
