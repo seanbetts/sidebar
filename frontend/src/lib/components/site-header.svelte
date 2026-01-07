@@ -5,6 +5,7 @@
 	import { useThingsBridgeStatus } from "$lib/hooks/useThingsBridgeStatus";
 	import { ingestionAPI, websitesAPI } from "$lib/services/api";
 	import { websitesStore, type WebsiteTranscriptEntry } from "$lib/stores/websites";
+	import { transcriptStatusStore } from "$lib/stores/transcript-status";
 	import ModeToggle from "$lib/components/mode-toggle.svelte";
 	import ScratchpadPopover from "$lib/components/scratchpad-popover.svelte";
 	import { Button } from "$lib/components/ui/button";
@@ -26,6 +27,7 @@
 	let transcriptLabel = "";
 	let transcriptPollingId: ReturnType<typeof setInterval> | null = null;
 	let transcriptPollingFileId: string | null = null;
+	let transcriptPollingInFlight = false;
 	let pendingTranscript:
 		| { websiteId: string; videoId: string; entry: WebsiteTranscriptEntry }
 		| null = null;
@@ -67,17 +69,28 @@
 			.sort((a, b) => b.updatedAt - a.updatedAt)[0];
 
 	$: {
-		const candidates = getTranscriptCandidates();
-		const pending = candidates.filter((item) => isTranscriptPending(item.entry.status));
-		if (pending.length > 0) {
-			const latest = pickLatest(pending);
+		const currentJob = $transcriptStatusStore;
+		if (currentJob) {
 			transcriptStatus = "processing";
 			transcriptLabel = "Transcribing";
-			pendingTranscript = latest;
+			pendingTranscript = {
+				websiteId: currentJob.websiteId,
+				videoId: currentJob.videoId,
+				entry: { file_id: currentJob.fileId, status: "processing" }
+			};
 		} else {
-			transcriptStatus = null;
-			transcriptLabel = "";
-			pendingTranscript = null;
+			const candidates = getTranscriptCandidates();
+			const pending = candidates.filter((item) => isTranscriptPending(item.entry.status));
+			if (pending.length > 0) {
+				const latest = pickLatest(pending);
+				transcriptStatus = "processing";
+				transcriptLabel = "Transcribing";
+				pendingTranscript = latest;
+			} else {
+				transcriptStatus = null;
+				transcriptLabel = "";
+				pendingTranscript = null;
+			}
 		}
 	}
 
@@ -87,6 +100,7 @@
 			transcriptPollingId = null;
 		}
 		transcriptPollingFileId = null;
+		transcriptPollingInFlight = false;
 	}
 
 	async function retryTranscript(websiteId: string, videoId: string) {
@@ -100,6 +114,12 @@
 				status: payload?.data?.status ?? "queued",
 				file_id: fileId,
 				updated_at: new Date().toISOString()
+			});
+			transcriptStatusStore.set({
+				status: "processing",
+				websiteId,
+				videoId,
+				fileId
 			});
 		} catch (error) {
 			toast.error("Transcript failed", { description: "Please try again." });
@@ -115,6 +135,8 @@
 		stopTranscriptPolling();
 		transcriptPollingFileId = fileId;
 		transcriptPollingId = setInterval(async () => {
+			if (transcriptPollingInFlight) return;
+			transcriptPollingInFlight = true;
 			try {
 				const meta = await ingestionAPI.get(fileId);
 				const status = meta?.job?.status;
@@ -141,6 +163,7 @@
 					});
 					transcriptStatus = null;
 					transcriptLabel = "";
+					transcriptStatusStore.set(null);
 					return;
 				}
 				if (status === "failed" || status === "canceled") {
@@ -159,9 +182,12 @@
 					});
 					transcriptStatus = null;
 					transcriptLabel = "";
+					transcriptStatusStore.set(null);
 				}
 			} catch (error) {
 				stopTranscriptPolling();
+			} finally {
+				transcriptPollingInFlight = false;
 			}
 		}, 5000);
 	}
@@ -269,6 +295,7 @@
 	.status-stack {
 		display: flex;
 		flex-direction: column;
+		align-items: flex-start;
 		gap: 0.25rem;
 	}
 

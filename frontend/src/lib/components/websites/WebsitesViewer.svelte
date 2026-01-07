@@ -10,6 +10,7 @@
   import { TableKit } from '@tiptap/extension-table';
   import { Markdown } from 'tiptap-markdown';
   import { websitesStore, type WebsiteDetail, type WebsiteTranscriptEntry } from '$lib/stores/websites';
+  import { transcriptStatusStore } from '$lib/stores/transcript-status';
   import { websitesAPI } from '$lib/services/api';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import WebsiteHeader from '$lib/components/websites/WebsiteHeader.svelte';
@@ -196,7 +197,7 @@
       const button =
         showButton && transcriptHref
           ? isQueued
-            ? `<a data-youtube-transcript data-youtube-transcript-status="queued" aria-disabled="true" href="${escapeAttribute(transcriptHref)}">Queued</a>`
+            ? `<a data-youtube-transcript data-youtube-transcript-status="queued" aria-disabled="true" class="transcript-queued" href="${escapeAttribute(transcriptHref)}">Transcribing</a>`
             : `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
           : '';
       return `<div data-youtube-video><iframe src="${embed}"></iframe>${button}</div>`;
@@ -217,9 +218,9 @@
         const isQueued = isTranscriptPending(transcriptEntry?.status);
         const button =
           showButton && transcriptHref
-            ? isQueued
-              ? `<a data-youtube-transcript data-youtube-transcript-status="queued" aria-disabled="true" href="${escapeAttribute(transcriptHref)}">Queued</a>`
-              : `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
+          ? isQueued
+            ? `<a data-youtube-transcript data-youtube-transcript-status="queued" aria-disabled="true" class="transcript-queued" href="${escapeAttribute(transcriptHref)}">Transcribing</a>`
+            : `<a data-youtube-transcript href="${escapeAttribute(transcriptHref)}">Get Transcript</a>`
             : '';
         return `<div data-youtube-video><iframe src="${youtube}"></iframe>${button}</div>`;
       }
@@ -251,6 +252,12 @@
             file_id: fileId,
             updated_at: new Date().toISOString()
           });
+          transcriptStatusStore.set({
+            status: 'processing',
+            websiteId,
+            videoId,
+            fileId
+          });
           return true;
         }
       }
@@ -268,7 +275,7 @@
     const target = event.target as HTMLElement | null;
     const link = target?.closest('a') as HTMLAnchorElement | null;
     const href = link?.getAttribute('href')?.trim();
-    if (!link || !href || link.getAttribute('aria-disabled') === 'true') return;
+    if (!link || !href) return;
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(href, window.location.href);
@@ -289,7 +296,10 @@
 
     event.preventDefault();
     link.setAttribute('aria-busy', 'true');
-    link.textContent = 'Queued';
+    link.setAttribute('aria-disabled', 'true');
+    link.classList.add('transcript-queued');
+    link.setAttribute('data-youtube-transcript-status', 'queued');
+    link.textContent = 'Transcribing';
     const queued = await queueTranscript(active.id, url);
     if (!queued) {
       link.textContent = 'Get Transcript';
@@ -628,12 +638,14 @@
     justify-content: center;
   }
 
-  :global(.website-viewer [data-youtube-transcript-status='queued']) {
-    display: block;
+  :global(.website-viewer a[href*='sidebarTranscript=1'].transcript-queued) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: min(100%, 650px);
     text-align: center;
     border-radius: 0.7rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border) !important;
     background: var(--color-muted);
     color: var(--color-muted-foreground);
     padding: 0.6rem 1rem;
@@ -641,12 +653,47 @@
     font-weight: 600;
     text-transform: uppercase;
     text-decoration: none;
+    pointer-events: none !important;
+    cursor: default;
+    opacity: 1 !important;
+  }
+
+  :global(.website-viewer a.transcript-queued::before) {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: #d99a2b;
+    animation: transcript-pulse 1.4s ease-in-out infinite;
+    margin-right: 0.5rem;
+  }
+
+  :global(.tiptap.website-viewer a.transcript-queued:hover) {
+    opacity: 1 !important;
+    background: var(--color-muted) !important;
+    border-color: var(--color-border) !important;
   }
 
   :global(.website-viewer p:has(> [data-youtube-transcript-status='queued'])) {
     margin: 0 auto;
     display: flex;
     justify-content: center;
+  }
+
+  @keyframes transcript-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
   }
 
 </style>
