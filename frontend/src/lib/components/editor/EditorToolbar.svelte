@@ -78,9 +78,12 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={onCopy}
-                aria-label={isCopied ? 'Copied preview' : 'Copy preview'}
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onCopy();
+                }}
+                aria-label={isCopied ? 'Copied preview' : 'Copy preview'}
               >
                 {#if isCopied}
                   <Check size={16} />
@@ -100,9 +103,12 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={onClose}
-                aria-label="Close preview"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onClose();
+                }}
+                aria-label="Close preview"
               >
                 <X size={16} />
               </Button>
@@ -117,9 +123,12 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={onPinToggle}
-                aria-label="Pin note"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onPinToggle();
+                }}
+                aria-label="Pin note"
               >
                 {#if noteNode?.pinned}
                   <PinOff size={16} />
@@ -139,9 +148,12 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={onRename}
-                aria-label="Rename note"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onRename();
+                }}
+                aria-label="Rename note"
               >
                 <Pencil size={16} />
               </Button>
@@ -190,9 +202,12 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={onCopy}
-                aria-label={isCopied ? 'Copied note' : 'Copy note'}
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onCopy();
+                }}
+                aria-label={isCopied ? 'Copied note' : 'Copy note'}
               >
                 {#if isCopied}
                   <Check size={16} />
@@ -212,9 +227,12 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={onDownload}
-                aria-label="Download note"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onDownload();
+                }}
+                aria-label="Download note"
               >
                 <Download size={16} />
               </Button>
@@ -228,9 +246,13 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={noteNode?.archived ? onUnarchive : onArchive}
-                aria-label={noteNode?.archived ? 'Unarchive note' : 'Archive note'}
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  const handler = noteNode?.archived ? onUnarchive : onArchive;
+                  handler?.();
+                }}
+                aria-label={noteNode?.archived ? 'Unarchive note' : 'Archive note'}
               >
                 {#if noteNode?.archived}
                   <ArchiveRestore size={16} />
@@ -250,9 +272,12 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={onDelete}
-                aria-label="Delete note"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onDelete();
+                }}
+                aria-label="Delete note"
               >
                 <Trash2 size={16} />
               </Button>
@@ -266,9 +291,12 @@
               <Button
                 size="icon"
                 variant="ghost"
-                onclick={onClose}
-                aria-label="Close note"
                 {...props}
+                onclick={(event) => {
+                  props.onclick?.(event);
+                  onClose();
+                }}
+                aria-label="Close note"
               >
                 <X size={16} />
               </Button>

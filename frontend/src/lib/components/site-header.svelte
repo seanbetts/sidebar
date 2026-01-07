@@ -258,10 +258,13 @@
 					<Button
 						size="icon"
 						variant="outline"
-						onclick={handleLayoutSwap}
+						{...props}
+						onclick={(event) => {
+							props.onclick?.(event);
+							handleLayoutSwap(event);
+						}}
 						aria-label="Swap layout"
 						class="swap-button border-border"
-						{...props}
 					>
 						<ArrowLeftRight size={20} />
 					</Button>

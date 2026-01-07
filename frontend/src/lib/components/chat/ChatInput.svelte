@@ -112,10 +112,13 @@
 						<Button
 							size="icon"
 							variant="ghost"
-							onclick={handleAttachClick}
+							{...props}
+							onclick={(event) => {
+								props.onclick?.(event);
+								handleAttachClick(event);
+							}}
 							aria-label="Attach file"
 							disabled={disabled}
-							{...props}
 						>
 							<Paperclip size={16} />
 						</Button>
@@ -145,11 +148,14 @@
 				<TooltipTrigger>
 					{#snippet child({ props })}
 						<Button
-							onclick={handleSubmit}
+							{...props}
+							onclick={(event) => {
+								props.onclick?.(event);
+								handleSubmit(event);
+							}}
 							disabled={disabled || !inputValue.trim()}
 							size="icon"
 							aria-label="Send message"
-							{...props}
 						>
 							<Send size={16} />
 						</Button>

@@ -57,9 +57,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={onPinToggle}
-                  aria-label="Pin website"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onPinToggle();
+                  }}
+                  aria-label="Pin website"
                 >
                   {#if website.pinned}
                     <PinOff size={16} />
@@ -79,9 +82,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={onRename}
-                  aria-label="Rename website"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onRename();
+                  }}
+                  aria-label="Rename website"
                 >
                   <Pencil size={16} />
                 </Button>
@@ -95,9 +101,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={onCopy}
-                  aria-label={isCopied ? 'Copied website' : 'Copy website'}
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onCopy();
+                  }}
+                  aria-label={isCopied ? 'Copied website' : 'Copy website'}
                 >
                   {#if isCopied}
                     <Check size={16} />
@@ -117,9 +126,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={onDownload}
-                  aria-label="Download website"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onDownload();
+                  }}
+                  aria-label="Download website"
                 >
                   <Download size={16} />
                 </Button>
@@ -133,9 +145,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={onArchive}
-                  aria-label={website.archived ? 'Unarchive website' : 'Archive website'}
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onArchive();
+                  }}
+                  aria-label={website.archived ? 'Unarchive website' : 'Archive website'}
                 >
                   {#if website.archived}
                     <ArchiveRestore size={16} />
@@ -155,9 +170,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={onDelete}
-                  aria-label="Delete website"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onDelete();
+                  }}
+                  aria-label="Delete website"
                 >
                   <Trash2 size={16} />
                 </Button>
@@ -171,9 +189,12 @@
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={onClose}
-                  aria-label="Close website"
                   {...props}
+                  onclick={(event) => {
+                    props.onclick?.(event);
+                    onClose();
+                  }}
+                  aria-label="Close website"
                 >
                   <X size={16} />
                 </Button>
