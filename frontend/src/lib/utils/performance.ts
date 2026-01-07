@@ -1,9 +1,5 @@
 import { browser } from '$app/environment';
-import {
-  PUBLIC_ENABLE_WEB_VITALS,
-  PUBLIC_METRICS_ENDPOINT,
-  PUBLIC_WEB_VITALS_SAMPLE_RATE
-} from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import type { Metric } from 'web-vitals';
 
 export interface PerformanceMetric {
@@ -16,9 +12,9 @@ export interface PerformanceMetric {
 
 type RouteGetter = () => string;
 
-const metricsEnabled = PUBLIC_ENABLE_WEB_VITALS === 'true';
-const metricsEndpoint = PUBLIC_METRICS_ENDPOINT ?? '';
-const metricsSampleRate = parseSampleRate(PUBLIC_WEB_VITALS_SAMPLE_RATE, 1);
+const metricsEnabled = publicEnv.PUBLIC_ENABLE_WEB_VITALS === 'true';
+const metricsEndpoint = publicEnv.PUBLIC_METRICS_ENDPOINT ?? '';
+const metricsSampleRate = parseSampleRate(publicEnv.PUBLIC_WEB_VITALS_SAMPLE_RATE, 1);
 
 function parseSampleRate(value: string | undefined, fallback: number): number {
   if (!value) return fallback;

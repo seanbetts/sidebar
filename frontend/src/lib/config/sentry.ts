@@ -1,17 +1,13 @@
 import { browser } from '$app/environment';
-import {
-  PUBLIC_SENTRY_DSN_FRONTEND,
-  PUBLIC_SENTRY_ENVIRONMENT,
-  PUBLIC_SENTRY_SAMPLE_RATE
-} from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import type { BrowserOptions } from '@sentry/browser';
 import * as Sentry from '@sentry/sveltekit';
 
 type SentryContext = Record<string, unknown>;
 
-const sentryDsn = PUBLIC_SENTRY_DSN_FRONTEND ?? '';
-const sentryEnvironment = PUBLIC_SENTRY_ENVIRONMENT || 'production';
-const sentrySampleRate = parseSampleRate(PUBLIC_SENTRY_SAMPLE_RATE, 1);
+const sentryDsn = publicEnv.PUBLIC_SENTRY_DSN_FRONTEND ?? '';
+const sentryEnvironment = publicEnv.PUBLIC_SENTRY_ENVIRONMENT || 'production';
+const sentrySampleRate = parseSampleRate(publicEnv.PUBLIC_SENTRY_SAMPLE_RATE, 1);
 
 let sentryInitialized = false;
 
