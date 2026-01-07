@@ -313,6 +313,63 @@ class WebsiteTranscriptService:
         return True
 
     @staticmethod
+    def sync_transcripts_for_website(
+        db: Session,
+        *,
+        user_id: str,
+        website_id: uuid.UUID,
+    ) -> bool:
+        """Sync transcript statuses for a website from ingestion jobs."""
+        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        if not website:
+            return False
+        metadata = website.metadata_ or {}
+        transcripts = metadata.get("youtube_transcripts")
+        if not isinstance(transcripts, dict) or not transcripts:
+            return False
+
+        updated = False
+        status_map = {
+            "queued": "queued",
+            "processing": "processing",
+            "ready": "ready",
+            "failed": "failed",
+            "canceled": "canceled",
+            "paused": "canceled",
+        }
+        for video_id, entry in transcripts.items():
+            if not isinstance(entry, dict):
+                continue
+            file_id = entry.get("file_id")
+            if not file_id:
+                continue
+            try:
+                file_uuid = uuid.UUID(str(file_id))
+            except (ValueError, TypeError):
+                continue
+            job = FileIngestionService.get_job(db, file_uuid)
+            if not job:
+                continue
+            mapped_status = status_map.get(job.status)
+            if not mapped_status:
+                continue
+            error = job.error_message
+            current_status = entry.get("status")
+            current_error = entry.get("error")
+            if mapped_status == current_status and (not error or error == current_error):
+                continue
+            WebsiteTranscriptService._update_transcript_metadata(
+                db,
+                website,
+                video_id,
+                status=mapped_status,
+                file_id=str(file_uuid),
+                error=error,
+            )
+            updated = True
+        return updated
+
+    @staticmethod
     def _update_transcript_metadata(
         db: Session,
         website,
@@ -339,4 +396,5 @@ class WebsiteTranscriptService:
         metadata["youtube_transcripts"] = transcripts
         website.metadata_ = metadata
         flag_modified(website, "metadata_")
+        website.updated_at = datetime.now(timezone.utc)
         db.commit()

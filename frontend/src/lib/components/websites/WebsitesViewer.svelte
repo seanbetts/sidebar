@@ -650,6 +650,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-direction: row;
+    gap: 0.5rem;
     width: min(100%, 650px);
     text-align: center;
     border-radius: 0.7rem;
@@ -674,7 +676,7 @@
     border-radius: 999px;
     background: #d99a2b;
     animation: transcript-pulse 1.4s ease-in-out infinite;
-    margin-left: 0.5rem;
+    order: 2;
   }
 
   :global(.tiptap.website-viewer a.transcript-queued:hover) {
