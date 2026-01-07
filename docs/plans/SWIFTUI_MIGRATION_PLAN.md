@@ -11,6 +11,146 @@ Based on comprehensive analysis of the SvelteKit frontend, this document outline
 
 ---
 
+## Repository Structure & Development Workflow
+
+### Monorepo Approach (Recommended)
+
+The iOS app will be developed within the existing repository as a monorepo, rather than as a separate repository or long-lived branch. This approach provides several critical benefits:
+
+**Benefits:**
+- Backend API changes are immediately visible to iOS development
+- Shared database migrations affect both frontends simultaneously
+- Single source of truth for API contracts and documentation
+- Easy context switching between backend/web/iOS work
+- Git history shows complete evolution across all platforms
+- No complicated merge conflicts from long-running branches
+
+**Repository Structure:**
+```
+sideBar/
+├── backend/          # Existing FastAPI backend
+│   ├── api/
+│   ├── alembic/
+│   └── ...
+├── frontend/         # Existing SvelteKit web app
+│   ├── src/
+│   └── ...
+├── ios/              # New SwiftUI universal app
+│   ├── sideBar.xcodeproj
+│   ├── sideBar/
+│   │   ├── Views/
+│   │   ├── ViewModels/
+│   │   ├── Services/
+│   │   ├── Models/
+│   │   └── Utilities/
+│   └── ...
+└── docs/             # Shared documentation and plans
+    └── plans/
+```
+
+### Development Workflow
+
+**Recommended: Direct commits to `main`**
+
+Since the iOS app lives in its own `ios/` directory and doesn't conflict with existing code, you can work directly on `main`:
+
+```bash
+# Work on iOS feature
+git checkout main
+cd ios/
+# make iOS changes
+git add ios/
+git commit -m "feat(ios): implement chat streaming"
+
+# Switch to backend work
+cd ../backend/
+# make backend changes
+git add backend/
+git commit -m "feat(api): add new endpoint for iOS"
+
+# iOS automatically sees backend changes
+```
+
+**Alternative: `ios-app` branch with periodic syncs**
+
+If you prefer more isolation during initial development:
+
+```bash
+# iOS development
+git checkout -b ios-app
+# work on iOS features
+git commit -m "feat(ios): implement foundation"
+
+# Periodically sync backend changes
+git checkout ios-app
+git merge main  # Pull in backend/API changes
+
+# When iOS feature is stable
+git checkout main
+git merge ios-app
+```
+
+### Git Ignore Updates
+
+Add iOS-specific entries to `.gitignore`:
+
+```gitignore
+# Xcode
+ios/**/*.xcodeproj/*
+!ios/**/*.xcodeproj/project.pbxproj
+!ios/**/*.xcodeproj/xcshareddata/
+ios/**/*.xcworkspace/*
+!ios/**/*.xcworkspace/contents.xcworkspacedata
+ios/**/xcuserdata/
+ios/**/*.xcscmblueprint
+ios/**/*.xccheckout
+
+# Swift Package Manager
+ios/**/.build/
+ios/**/Packages/
+ios/**/*.swiftpm
+
+# CocoaPods (if used)
+ios/**/Pods/
+ios/**/*.podspec
+
+# Build artifacts
+ios/**/DerivedData/
+ios/**/build/
+
+# macOS
+.DS_Store
+```
+
+### Continuous Integration
+
+Update CI/CD to handle both frontends:
+
+```yaml
+# .github/workflows/ios.yml
+name: iOS Build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build iOS
+        run: |
+          cd ios
+          xcodebuild -project sideBar.xcodeproj -scheme sideBar build
+```
+
+### Key Advantages for This Project
+
+1. **API contract visibility**: If you modify `/api/chat` endpoint, you'll immediately know to update iOS
+2. **Migration sync**: Database migrations in `backend/alembic/` are visible when building iOS features
+3. **Documentation coherence**: API docs, plans, and implementation stay together
+4. **No merge debt**: Unlike long-lived branches, you don't accumulate painful merge conflicts
+5. **Natural breaks**: Commit iOS work, switch to backend for a session, return to iOS later
+
+---
+
 ## Phase 1: Foundation & Architecture
 **Sessions: 3-4 | Critical Path: Yes**
 
