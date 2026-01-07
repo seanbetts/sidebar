@@ -28,7 +28,7 @@
 			window.matchMedia('(prefers-color-scheme: dark)').matches;
 		const initialTheme = storedTheme ?? (prefersDark ? 'dark' : 'light');
 		applyThemeMode(initialTheme, false);
-		initWebVitals(() => get(page).url.pathname);
+		void initWebVitals(() => get(page).url.pathname);
 
 		const supabaseUrl = data.supabaseUrl;
 		const supabaseAnonKey = data.supabaseAnonKey;

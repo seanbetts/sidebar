@@ -36,7 +36,7 @@ describe('initWebVitals', () => {
     }));
 
     const { initWebVitals } = await import('$lib/utils/performance');
-    initWebVitals(() => '/');
+    await initWebVitals(() => '/');
 
     expect(onCLS).not.toHaveBeenCalled();
     expect(onFCP).not.toHaveBeenCalled();
@@ -53,7 +53,7 @@ describe('initWebVitals', () => {
     }));
 
     const { initWebVitals } = await import('$lib/utils/performance');
-    initWebVitals(() => '/');
+    await initWebVitals(() => '/');
 
     expect(onCLS).toHaveBeenCalledTimes(1);
     expect(onFCP).toHaveBeenCalledTimes(1);
