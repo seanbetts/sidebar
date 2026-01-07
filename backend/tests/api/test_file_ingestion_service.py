@@ -52,6 +52,31 @@ def test_list_ingestions_filters_by_user(db_session):
     assert records[0].user_id == "user-1"
 
 
+def test_list_ingestions_hides_website_transcripts(db_session):
+    FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="transcript.md",
+        path="transcript.md",
+        mime_original="text/markdown",
+        size_bytes=10,
+        source_metadata={"website_transcript": True},
+    )
+    FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="report.pdf",
+        path="report.pdf",
+        mime_original="application/pdf",
+        size_bytes=10,
+    )
+
+    records = FileIngestionService.list_ingestions(db_session, "user-1", limit=50)
+
+    assert len(records) == 1
+    assert records[0].filename_original == "report.pdf"
+
+
 def test_update_pinned_assigns_next_order(db_session):
     file_a = FileIngestionService.create_ingestion(
         db_session,

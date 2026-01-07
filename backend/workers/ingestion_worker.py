@@ -38,6 +38,7 @@ from api.db.session import SessionLocal, set_session_user_id
 from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
 from api.config import settings
 from api.services.storage.service import get_storage_backend
+from api.services.file_ingestion_service import FileIngestionService
 from api.services.website_transcript_service import WebsiteTranscriptService
 
 
@@ -1682,6 +1683,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                         transcript_text=transcript,
                         video_title=metadata.get("title") if isinstance(metadata, dict) else None,
                     )
+                    FileIngestionService.soft_delete_file(db, record.id)
         return
     except IngestionError as exc:
         logger.warning(
