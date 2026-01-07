@@ -435,7 +435,7 @@
         return response.text();
       })
       .then((text) => {
-        textContent = text;
+        textContent = viewerKind === 'ai_md' ? stripFrontmatter(text) : text;
       })
       .catch((error) => {
         logError('Failed to load text content', error, {
