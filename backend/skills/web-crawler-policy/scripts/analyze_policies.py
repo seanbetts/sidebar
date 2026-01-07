@@ -28,9 +28,17 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
-    from api.services.skill_file_ops import upload_file
+    from api.services.skill_file_ops_ingestion import (
+        create_ingested_file,
+        finalize_ingested_file,
+        write_ai_markdown,
+        write_derivative,
+    )
 except Exception:
-    upload_file = None
+    create_ingested_file = None
+    finalize_ingested_file = None
+    write_ai_markdown = None
+    write_derivative = None
 # Try to import subdomain scanner if available
 try:
     sys.path.insert(0, str(Path(__file__).parent.parent.parent / "subdomain-discover" / "scripts"))
@@ -49,6 +57,37 @@ except ImportError:
 
 # Default output directory (R2)
 DEFAULT_OUTPUT_DIR = "Reports"
+
+
+def _slugify(value: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", "_", value.strip())
+    return cleaned.strip("_").lower() or "artifact"
+
+
+def _build_summary_markdown(
+    main_domain: str,
+    permission_data: Dict[str, Any],
+    domains: Set[str],
+) -> str:
+    summary = permission_data.get("summary", {})
+    lines = [
+        f"# Crawler policy report for {main_domain}",
+        "",
+        "## Summary",
+        "",
+        f"- Domains analyzed: {summary.get('total_domains', len(domains))}",
+        f"- Domains with robots.txt: {summary.get('domains_with_robots', 0)}",
+        f"- Domains with llms.txt: {summary.get('domains_with_llms', 0)}",
+        f"- Traditional crawlers found: {summary.get('traditional_crawlers_found', 0)}",
+        f"- LLM crawlers found: {summary.get('llm_crawlers_found', 0)}",
+        f"- Dual-purpose crawlers found: {summary.get('dual_purpose_crawlers_found', 0)}",
+    ]
+    llms_files = summary.get("llm_files_found")
+    if llms_files is not None:
+        lines.append(f"- Any llms.txt found: {'Yes' if llms_files else 'No'}")
+    lines.extend(["", "## Domains", ""])
+    lines.extend([f"- {domain}" for domain in sorted(domains)])
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def normalize_domain(domain: str) -> str:
@@ -1180,19 +1219,90 @@ Requirements:
                 print(f"Error generating report: {e}", file=sys.stderr)
                 print("Continuing with standard output...")
 
-        # Upload outputs to R2
-        if upload_file is None:
+        # Write outputs to ingestion-backed storage
+        if create_ingested_file is None or write_derivative is None or write_ai_markdown is None:
             raise RuntimeError("Storage dependencies are unavailable")
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"crawler_policy_{timestamp}.md"
+        report_path = f"{r2_base}/{main_domain}/{report_filename}".strip("/")
+        summary_markdown = _build_summary_markdown(main_domain, permission_data, domains_to_analyze)
+
+        record = create_ingested_file(
+            args.user_id,
+            report_filename,
+            "text/markdown",
+            size=len(summary_markdown.encode("utf-8")),
+            source_url=f"https://{main_domain}",
+            source_metadata={
+                "provider": "web-crawler-policy",
+                "domain": main_domain,
+                "domains_analyzed": sorted(domains_to_analyze),
+            },
+            path=report_path,
+        )
+
+        derivatives: list[dict[str, Any]] = []
         domain_folder = output_dir / main_domain
         if domain_folder.exists():
-            for file_path in domain_folder.rglob("*"):
+            for file_path in sorted(domain_folder.rglob("*")):
                 if not file_path.is_file():
                     continue
-                rel_path = file_path.relative_to(domain_folder).as_posix()
-                r2_path = f"{r2_base}/{main_domain}/{rel_path}".strip("/")
-                upload_file(args.user_id, r2_path, file_path)
+                filename = file_path.name
+                stem = _slugify(file_path.stem)
+                kind = None
+                if filename.startswith("robots_"):
+                    kind = f"robots_txt_{stem}"
+                elif filename.startswith("llms_"):
+                    kind = f"llms_txt_{stem}"
+                elif filename.endswith(".csv"):
+                    kind = "analysis_csv"
+                elif filename.endswith(".json"):
+                    kind = "analysis_json" if "analysis" in filename else f"scan_json_{stem}"
+                elif filename.endswith(".md"):
+                    kind = "report_md"
+                else:
+                    kind = f"artifact_{stem}"
+                derivatives.append(
+                    write_derivative(
+                        args.user_id,
+                        record,
+                        file_path,
+                        kind=kind,
+                    )
+                )
+
+        frontmatter = {
+            "source_url": f"https://{main_domain}",
+            "source_type": "web-crawler-policy",
+            "ingestion": {
+                "skill": "web-crawler-policy",
+                "model": args.llm_model if args.report else None,
+                "language": None,
+                "duration_seconds": None,
+                "size_bytes": len(summary_markdown.encode("utf-8")),
+            },
+        }
+        ai_derivative = write_ai_markdown(
+            args.user_id,
+            record,
+            summary_markdown,
+            frontmatter=frontmatter,
+            derivative_items=[
+                {
+                    "kind": item["kind"],
+                    "path": item["storage_key"],
+                    "content_type": item.get("content_type") or item.get("mime"),
+                }
+                for item in derivatives
+            ],
+        )
+        derivatives.append(ai_derivative)
+        payload = finalize_ingested_file(args.user_id, record, derivatives)
 
         print(f"\nScan complete. Analyzed {len(domains_to_analyze)} domains.")
+        if args.json:
+            sys.stdout.write(json.dumps({"success": True, "data": payload}, indent=2))
         sys.exit(0)
 
     except Exception as e:
