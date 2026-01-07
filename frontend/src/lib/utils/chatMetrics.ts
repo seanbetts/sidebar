@@ -65,6 +65,10 @@ function getStreamState(messageId: string): StreamState | null {
   return streams.get(messageId) ?? null;
 }
 
+/**
+ * Start tracking metrics for a new chat stream.
+ * @param messageId - Unique stream identifier.
+ */
 export function startChatStream(messageId: string): void {
   if (!browser || !metricsEndpoint) return;
   streams.set(messageId, {
@@ -74,6 +78,11 @@ export function startChatStream(messageId: string): void {
   });
 }
 
+/**
+ * Record the SSE connection latency for a stream.
+ * @param messageId - Unique stream identifier.
+ * @param elapsedMs - Milliseconds from start to first SSE event.
+ */
 export function markFirstEvent(messageId: string, elapsedMs: number): void {
   const state = getStreamState(messageId);
   if (!state || state.firstEventAt) return;
@@ -83,6 +92,10 @@ export function markFirstEvent(messageId: string, elapsedMs: number): void {
   }
 }
 
+/**
+ * Record time to first token once per stream.
+ * @param messageId - Unique stream identifier.
+ */
 export function markFirstToken(messageId: string): void {
   const state = getStreamState(messageId);
   if (!state || state.firstTokenAt) return;
@@ -95,6 +108,10 @@ export function markFirstToken(messageId: string): void {
   });
 }
 
+/**
+ * Record total stream duration and clear tracking state.
+ * @param messageId - Unique stream identifier.
+ */
 export function markStreamComplete(messageId: string): void {
   const state = getStreamState(messageId);
   if (!state) return;
@@ -107,6 +124,10 @@ export function markStreamComplete(messageId: string): void {
   streams.delete(messageId);
 }
 
+/**
+ * Record a stream-level error and clear tracking state.
+ * @param messageId - Unique stream identifier.
+ */
 export function markStreamError(messageId: string): void {
   const state = getStreamState(messageId);
   if (!state) return;
@@ -116,6 +137,10 @@ export function markStreamError(messageId: string): void {
   streams.delete(messageId);
 }
 
+/**
+ * Record an SSE error without clearing stream state.
+ * @param messageId - Unique stream identifier.
+ */
 export function markSseError(messageId: string): void {
   const state = getStreamState(messageId);
   if (!state) return;
@@ -124,12 +149,23 @@ export function markSseError(messageId: string): void {
   }
 }
 
+/**
+ * Track tool start time for duration metrics.
+ * @param messageId - Unique stream identifier.
+ * @param toolName - Tool identifier.
+ */
 export function markToolStart(messageId: string, toolName: string): void {
   const state = getStreamState(messageId);
   if (!state) return;
   state.toolStarts.set(toolName, Date.now());
 }
 
+/**
+ * Emit tool duration metrics and clear tracked start time.
+ * @param messageId - Unique stream identifier.
+ * @param toolName - Tool identifier.
+ * @param status - Tool execution status.
+ */
 export function markToolEnd(messageId: string, toolName: string, status: ToolStatus): void {
   const state = getStreamState(messageId);
   if (!state) return;

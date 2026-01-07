@@ -9,6 +9,10 @@ export type PublicEnv = {
   PUBLIC_SENTRY_SAMPLE_RATE?: string;
 };
 
+/**
+ * Return public env values from SvelteKit or Node contexts.
+ * @returns Public environment variables for metrics and telemetry.
+ */
 export function getPublicEnv(): PublicEnv {
   const metaEnv =
     typeof import.meta !== 'undefined' ? (import.meta as ImportMeta).env ?? {} : {};
