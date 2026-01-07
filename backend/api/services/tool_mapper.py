@@ -24,10 +24,6 @@ SKILLS_REQUIRING_USER_ID = {
     "youtube-transcribe",
     "youtube-download",
     "web-crawler-policy",
-    "docx",
-    "pdf",
-    "pptx",
-    "xlsx",
 }
 
 
