@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 from collections import defaultdict
 from datetime import datetime
+from urllib.parse import urlparse
 
 import aiohttp
 from tabulate import tabulate
@@ -92,10 +93,19 @@ def _build_summary_markdown(
 
 
 def normalize_domain(domain: str) -> str:
-    """Normalize domain by removing www prefix for consolidation."""
-    if domain.startswith('www.'):
-        return domain[4:]
-    return domain
+    """Normalize domain by stripping scheme/paths and removing www prefix."""
+    cleaned = domain.strip()
+    if "://" in cleaned:
+        parsed = urlparse(cleaned)
+        cleaned = parsed.netloc or parsed.path
+    if "/" in cleaned:
+        cleaned = cleaned.split("/", 1)[0]
+    if ":" in cleaned:
+        cleaned = cleaned.split(":", 1)[0]
+    cleaned = cleaned.lower()
+    if cleaned.startswith("www."):
+        cleaned = cleaned[4:]
+    return cleaned
 
 
 class RobotsAnalyzer:
@@ -1046,6 +1056,7 @@ Requirements:
         print("Error: Must specify either domain or --domains", file=sys.stderr)
         sys.exit(1)
 
+    main_domain = normalize_domain(main_domain)
     r2_base = (args.output_dir or DEFAULT_OUTPUT_DIR).strip("/")
     local_output_dir = Path(tempfile.mkdtemp(prefix="crawler-reports-"))
 
@@ -1053,7 +1064,7 @@ Requirements:
         # Determine which domains to analyze
         if args.domains:
             # Use specified domains
-            domains_to_analyze = set(args.domains)
+            domains_to_analyze = {normalize_domain(domain) for domain in args.domains}
             print(f"Analyzing {len(domains_to_analyze)} specified domains")
         elif args.no_discover:
             # Just analyze the main domain
@@ -1079,7 +1090,8 @@ Requirements:
 
             # Discover subdomains
             scanner = SubdomainScanner(main_domain, timeout=args.timeout, dns_timeout=args.dns_timeout)
-            domains_to_analyze = await scanner.discover_subdomains(wordlist)
+            discovered = await scanner.discover_subdomains(wordlist)
+            domains_to_analyze = {normalize_domain(domain) for domain in discovered}
 
             print(f"Found {len(domains_to_analyze)} domains/subdomains:")
             for subdomain in sorted(domains_to_analyze):
