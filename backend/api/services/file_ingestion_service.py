@@ -6,7 +6,7 @@ from typing import Optional
 import uuid
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func
 
 from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 from api.utils.pinned_order import lock_pinned_order
@@ -105,11 +105,6 @@ class FileIngestionService:
             .filter(
                 IngestedFile.user_id == user_id,
                 IngestedFile.deleted_at.is_(None),
-                func.coalesce(
-                    IngestedFile.source_metadata["website_transcript"].astext,
-                    "false",
-                )
-                != "true",
             )
             .order_by(IngestedFile.created_at.desc())
             .limit(limit)

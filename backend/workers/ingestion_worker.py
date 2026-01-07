@@ -1706,6 +1706,8 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                 status="retrying" if exc.retryable else "failed",
                 error=str(exc),
             )
+            if not exc.retryable:
+                FileIngestionService.soft_delete_file(db, record.id)
         raise
     except Exception as exc:
         logger.exception(
@@ -1722,6 +1724,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                 status="failed",
                 error=str(exc),
             )
+            FileIngestionService.soft_delete_file(db, record.id)
         raise
 
 

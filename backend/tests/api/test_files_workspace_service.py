@@ -31,13 +31,7 @@ def db_session(test_db_engine):
         connection.close()
 
 
-def _create_file(
-    db_session,
-    user_id: str,
-    path: str,
-    *,
-    source_metadata: dict | None = None,
-) -> IngestedFile:
+def _create_file(db_session, user_id: str, path: str) -> IngestedFile:
     record = IngestedFile(
         id=uuid.uuid4(),
         user_id=user_id,
@@ -46,7 +40,6 @@ def _create_file(
         mime_original="text/plain",
         size_bytes=10,
         created_at=datetime.now(timezone.utc),
-        source_metadata=source_metadata,
     )
     db_session.add(record)
     db_session.commit()
@@ -104,19 +97,3 @@ def test_delete_removes_derivatives_when_storage_succeeds(db_session, monkeypatc
 
     remaining = db_session.query(FileDerivative).filter(FileDerivative.file_id == record.id).all()
     assert remaining == []
-
-
-def test_get_tree_hides_website_transcript_files(db_session):
-    _create_file(
-        db_session,
-        "user-1",
-        "hidden.md",
-        source_metadata={"website_transcript": True},
-    )
-    _create_file(db_session, "user-1", "visible.md")
-
-    tree = FilesWorkspaceService.get_tree(db_session, "user-1", "")
-    children = tree.get("children", [])
-
-    assert any(node.get("name") == "visible.md" for node in children)
-    assert not any(node.get("name") == "hidden.md" for node in children)

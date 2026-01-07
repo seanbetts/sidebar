@@ -3,7 +3,7 @@
 	import { toast } from "svelte-sonner";
 	import { useSiteHeaderData } from "$lib/hooks/useSiteHeaderData";
 	import { useThingsBridgeStatus } from "$lib/hooks/useThingsBridgeStatus";
-	import { ingestionAPI } from "$lib/services/api";
+	import { get } from "svelte/store";
 	import { websitesStore, type WebsiteTranscriptEntry } from "$lib/stores/websites";
 	import { transcriptStatusStore } from "$lib/stores/transcript-status";
 	import ModeToggle from "$lib/components/mode-toggle.svelte";
@@ -26,7 +26,7 @@
 	let transcriptStatus: "processing" | null = null;
 	let transcriptLabel = "";
 	let transcriptPollingId: ReturnType<typeof setInterval> | null = null;
-	let transcriptPollingFileId: string | null = null;
+	let transcriptPollingKey: string | null = null;
 	let transcriptPollingInFlight = false;
 	let pendingTranscript:
 		| { websiteId: string; videoId: string; entry: WebsiteTranscriptEntry }
@@ -99,24 +99,40 @@
 			clearInterval(transcriptPollingId);
 			transcriptPollingId = null;
 		}
-		transcriptPollingFileId = null;
+		transcriptPollingKey = null;
 		transcriptPollingInFlight = false;
 	}
 
+	function getTranscriptEntry(
+		websiteId: string,
+		videoId: string
+	): WebsiteTranscriptEntry | null {
+		const state = get(websitesStore);
+		const activeEntry =
+			state.active?.id === websiteId
+				? state.active?.youtube_transcripts?.[videoId]
+				: null;
+		if (activeEntry) return activeEntry;
+		const item = state.items.find((entry) => entry.id === websiteId);
+		return item?.youtube_transcripts?.[videoId] ?? null;
+	}
+
 	async function pollTranscriptJob(
-		fileId: string,
+		fileId: string | undefined,
 		websiteId: string,
 		videoId: string
 	): Promise<void> {
-		if (transcriptPollingFileId === fileId) return;
+		const pollingKey = `${websiteId}:${videoId}`;
+		if (transcriptPollingKey === pollingKey) return;
 		stopTranscriptPolling();
-		transcriptPollingFileId = fileId;
+		transcriptPollingKey = pollingKey;
 		transcriptPollingId = setInterval(async () => {
 			if (transcriptPollingInFlight) return;
 			transcriptPollingInFlight = true;
 			try {
-				const meta = await ingestionAPI.get(fileId);
-				const status = meta?.job?.status;
+				await websitesStore.loadById(websiteId);
+				const entry = getTranscriptEntry(websiteId, videoId);
+				const status = entry?.status;
 				if (!status) return;
 				if (status !== "ready" && status !== "failed" && status !== "canceled") {
 					websitesStore.setTranscriptEntryLocal(websiteId, videoId, {
@@ -163,7 +179,7 @@
 		}, 5000);
 	}
 
-	$: if (pendingTranscript && pendingTranscript.entry.file_id) {
+	$: if (pendingTranscript) {
 		pollTranscriptJob(
 			pendingTranscript.entry.file_id,
 			pendingTranscript.websiteId,
