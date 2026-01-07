@@ -9,7 +9,9 @@
 	import ModeToggle from "$lib/components/mode-toggle.svelte";
 	import ScratchpadPopover from "$lib/components/scratchpad-popover.svelte";
 	import { Button } from "$lib/components/ui/button";
+	import { Tooltip, TooltipContent, TooltipTrigger } from "$lib/components/ui/tooltip";
 	import { layoutStore } from "$lib/stores/layout";
+	import { canShowTooltips } from "$lib/utils/tooltip";
 	import { resolveWeatherIcon } from "$lib/utils/weatherIcons";
 	import { ArrowLeftRight } from "lucide-svelte";
 
@@ -31,9 +33,11 @@
 	let pendingTranscript:
 		| { websiteId: string; videoId: string; entry: WebsiteTranscriptEntry }
 		| null = null;
+	let tooltipsEnabled = false;
 
 	$: ({ currentDate, currentTime, liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
 	$: ({ status: bridgeStatus, lastSeenAt: bridgeSeenAt } = $thingsStatus);
+	$: tooltipsEnabled = canShowTooltips();
 	const isTranscriptPending = (status?: string) =>
 		status === "queued" || status === "processing" || status === "retrying";
 
@@ -246,16 +250,20 @@
 				</span>
 			{/if}
 		</div>
-		<Button
-			size="icon"
-			variant="outline"
-			onclick={handleLayoutSwap}
-			aria-label="Swap layout"
-			title="Swap chat and workspace positions"
-			class="swap-button border-border"
-		>
-			<ArrowLeftRight size={20} />
-		</Button>
+		<Tooltip disabled={!tooltipsEnabled}>
+			<TooltipTrigger asChild>
+				<Button
+					size="icon"
+					variant="outline"
+					onclick={handleLayoutSwap}
+					aria-label="Swap layout"
+					class="swap-button border-border"
+				>
+					<ArrowLeftRight size={20} />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">Swap chat and workspace positions</TooltipContent>
+		</Tooltip>
 		<ScratchpadPopover />
 		<ModeToggle />
 	</div>

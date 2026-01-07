@@ -12,6 +12,7 @@
 	import { SquarePen } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import ScratchpadHeader from '$lib/components/scratchpad/ScratchpadHeader.svelte';
 	import {
 		removeEmptyTaskItems,
@@ -19,6 +20,7 @@
 		withHeading
 	} from '$lib/utils/scratchpad';
 	import { logError } from '$lib/utils/errorHandling';
+	import { canShowTooltips } from '$lib/utils/tooltip';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -27,6 +29,7 @@
 	let isSaving = false;
 	let saveError: string | null = null;
 	let lastSavedContent = '';
+	let tooltipsEnabled = false;
 
 	// Flag to prevent infinite loops:
 	// When we programmatically update the editor (e.g., loading scratchpad),
@@ -178,6 +181,8 @@
 		}
 	});
 
+	$: tooltipsEnabled = canShowTooltips();
+
 	onDestroy(() => {
 		// Cleanup all timers and subscriptions
 		if (saveTimeout) clearTimeout(saveTimeout);
@@ -212,9 +217,14 @@
 </script>
 
 <Popover.Root bind:open={isOpen}>
-	<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'icon' })} aria-label="Open scratchpad">
-		<SquarePen size={18} />
-	</Popover.Trigger>
+	<Tooltip disabled={!tooltipsEnabled}>
+		<TooltipTrigger asChild>
+			<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'icon' })} aria-label="Open scratchpad">
+				<SquarePen size={18} />
+			</Popover.Trigger>
+		</TooltipTrigger>
+		<TooltipContent side="bottom">Quick scratchpad</TooltipContent>
+	</Tooltip>
 	<Popover.Content class="w-[95vw] max-w-[840px] p-0" align="end" sideOffset={8}>
 		<div class="scratchpad-popover">
 			<ScratchpadHeader {isSaving} {saveError} />
