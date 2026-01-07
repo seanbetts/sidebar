@@ -4,6 +4,7 @@ import type { EditorStore } from '$lib/stores/editor';
 import type { TreeStore } from '$lib/stores/tree/store';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { logError } from '$lib/utils/errorHandling';
+import { toast } from 'svelte-sonner';
 
 const NOTE_ARCHIVE_NAME = 'Archive';
 
@@ -132,6 +133,7 @@ export function useFileActions(ctx: FileActionsContext) {
           dispatchCacheEvent('file.renamed');
         }
       } catch (error) {
+        toast.error('Failed to rename');
         logError('Failed to rename', error, {
           scope: 'fileActions.rename',
           basePath,
@@ -166,6 +168,7 @@ export function useFileActions(ctx: FileActionsContext) {
       ctx.treeStore.setNotePinned?.(node.path, pinned);
       dispatchCacheEvent('note.pinned');
     } catch (error) {
+      toast.error('Failed to pin note');
       logError('Failed to pin note', error, {
         scope: 'fileActions.pin',
         noteId: node.path
@@ -186,6 +189,7 @@ export function useFileActions(ctx: FileActionsContext) {
       ctx.treeStore.archiveNoteNode?.(node.path, true);
       dispatchCacheEvent('note.archived');
     } catch (error) {
+      toast.error('Failed to archive note');
       logError('Failed to archive note', error, {
         scope: 'fileActions.archive',
         noteId: node.path
@@ -206,6 +210,7 @@ export function useFileActions(ctx: FileActionsContext) {
       ctx.treeStore.archiveNoteNode?.(node.path, false);
       dispatchCacheEvent('note.archived');
     } catch (error) {
+      toast.error('Failed to unarchive note');
       logError('Failed to unarchive note', error, {
         scope: 'fileActions.unarchive',
         noteId: node.path
@@ -241,6 +246,7 @@ export function useFileActions(ctx: FileActionsContext) {
         dispatchCacheEvent('file.moved');
       }
     } catch (error) {
+      toast.error('Failed to move file');
       logError('Failed to move file', error, {
         scope: 'fileActions.move',
         basePath: ctx.getBasePath(),
@@ -281,6 +287,7 @@ export function useFileActions(ctx: FileActionsContext) {
         dispatchCacheEvent('file.moved');
       }
     } catch (error) {
+      toast.error('Failed to move folder');
       logError('Failed to move folder', error, {
         scope: 'fileActions.moveFolder',
         basePath: ctx.getBasePath(),
@@ -354,6 +361,7 @@ export function useFileActions(ctx: FileActionsContext) {
       }
       return true;
     } catch (error) {
+      toast.error('Failed to delete');
       logError('Failed to delete', error, {
         scope: 'fileActions.delete',
         basePath: ctx.getBasePath(),

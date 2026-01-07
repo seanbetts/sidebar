@@ -7,6 +7,7 @@
   import { conversationsAPI } from '$lib/services/api';
   import DeleteDialogController from '$lib/components/files/DeleteDialogController.svelte';
   import { logError } from '$lib/utils/errorHandling';
+  import { toast } from 'svelte-sonner';
 
   export let conversation: Conversation;
 
@@ -40,6 +41,7 @@
         conversation.title = editedTitle.trim();
         conversationListStore.updateConversationTitle(conversation.id, conversation.title, false);
       } catch (error) {
+        toast.error('Failed to rename conversation');
         logError('Failed to rename conversation', error, {
           scope: 'ConversationItem',
           conversationId: conversation.id
@@ -79,6 +81,7 @@
       }
       return true;
     } catch (error) {
+      toast.error('Failed to delete conversation');
       logError('Failed to delete conversation', error, {
         scope: 'ConversationItem',
         conversationId: conversation.id

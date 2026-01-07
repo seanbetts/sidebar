@@ -4,6 +4,7 @@ import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { logError } from '$lib/utils/errorHandling';
 import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 import { editorStore, currentNoteId } from '$lib/stores/editor';
+import { toast } from 'svelte-sonner';
 
 type WebsiteActionOptions = {
   scope?: string;
@@ -41,6 +42,7 @@ export function useWebsiteActions() {
       dispatchCacheEvent('website.renamed');
       return true;
     } catch (error) {
+      toast.error('Failed to rename website');
       logError('Failed to rename website', error, {
         scope: options.scope ?? defaultScope('rename'),
         websiteId
@@ -66,6 +68,7 @@ export function useWebsiteActions() {
       dispatchCacheEvent('website.pinned');
       return true;
     } catch (error) {
+      toast.error('Failed to pin website');
       logError('Failed to update website pin', error, {
         scope: options.scope ?? defaultScope('pin'),
         websiteId,
@@ -91,6 +94,7 @@ export function useWebsiteActions() {
       }
       return true;
     } catch (error) {
+      toast.error('Failed to archive website');
       logError('Failed to archive website', error, {
         scope: options.scope ?? defaultScope('archive'),
         websiteId,
@@ -113,6 +117,7 @@ export function useWebsiteActions() {
       }
       return true;
     } catch (error) {
+      toast.error('Failed to delete website');
       logError('Failed to delete website', error, {
         scope: options.scope ?? defaultScope('delete'),
         websiteId
