@@ -453,6 +453,24 @@ sideBar implements multiple security layers:
 
 ---
 
+## Performance Monitoring
+
+### Frontend Metrics
+- **Web Vitals:** Captured in `frontend/src/lib/utils/performance.ts` and sent to `/api/v1/metrics/web-vitals`.
+- **Chat Metrics:** Captured in `frontend/src/lib/utils/chatMetrics.ts` and sent to `/api/v1/metrics/chat`.
+- **Transport:** Uses `navigator.sendBeacon` with fetch fallback to avoid blocking UX.
+- **Env Controls:** Metrics endpoints and sampling are driven by `PUBLIC_*` env vars (see `.env.example`).
+
+### Backend Metrics
+- **Prometheus:** `/metrics` exposes HTTP, chat, tool, storage, and DB pool metrics (`backend/api/metrics.py`).
+- **Ingestion:** `backend/api/routers/metrics.py` accepts web-vitals and chat metrics from the frontend.
+
+### Error Monitoring
+- **Sentry (Frontend):** Initialized in `frontend/src/lib/config/sentry.ts` and `frontend/src/hooks.client.ts`.
+- **Sentry (Backend):** Configured in `backend/api/main.py` via `SENTRY_*` settings.
+
+---
+
 ## Learnings & Trade-offs
 
 ### What Worked Well
