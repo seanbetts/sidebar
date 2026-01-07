@@ -4,6 +4,7 @@
 	import SiteHeader from '$lib/components/site-header.svelte';
 	import HoldingPage from '$lib/components/HoldingPage.svelte';
 	import { Toaster } from 'svelte-sonner';
+	import { TooltipProvider } from '$lib/components/ui/tooltip';
 	import { initAuth, user } from '$lib/stores/auth';
 	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -111,17 +112,19 @@
 {:else if !data.isAuthenticated}
 	{@render children()}
 {:else}
-	<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
-		<Sidebar />
-		<main class="main-content">
-			<SiteHeader />
-			<div class="page-content">
-				{@render children()}
-			</div>
-		</main>
-	</div>
+	<TooltipProvider delayDuration={250}>
+		<div class="app" data-sveltekit-preload-code="tap" data-sveltekit-preload-data="tap">
+			<Sidebar />
+			<main class="main-content">
+				<SiteHeader />
+				<div class="page-content">
+					{@render children()}
+				</div>
+			</main>
+		</div>
 
-	<Toaster richColors position="top-right" />
+		<Toaster richColors position="top-right" />
+	</TooltipProvider>
 {/if}
 
 <style>

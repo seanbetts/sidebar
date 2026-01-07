@@ -2,6 +2,9 @@
   import { FileTerminal, Pin, PinOff, Pencil, Copy, Check, Download, Archive, ArchiveRestore, Trash2, X, Menu } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Popover from '$lib/components/ui/popover/index.js';
+  import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+  import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+  import { canShowTooltips } from '$lib/utils/tooltip';
   import type { WebsiteItem } from '$lib/stores/websites';
 
   export let website: WebsiteItem | null = null;
@@ -15,6 +18,9 @@
   export let onArchive: () => void;
   export let onDelete: () => void;
   export let onClose: () => void;
+
+  let tooltipsEnabled = false;
+  $: tooltipsEnabled = canShowTooltips();
 
   const getSourceUrl = (site: WebsiteItem) => {
     const maybeDetail = site as WebsiteItem & { url_full?: string | null };
@@ -42,89 +48,128 @@
           {/if}
         </span>
         <div class="website-actions">
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={onPinToggle}
-            aria-label="Pin website"
-            title="Pin website"
-          >
-            {#if website.pinned}
-              <PinOff size={16} />
-            {:else}
-              <Pin size={16} />
-            {/if}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={onRename}
-            aria-label="Rename website"
-            title="Rename website"
-          >
-            <Pencil size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={onCopy}
-            aria-label={isCopied ? 'Copied website' : 'Copy website'}
-            title={isCopied ? 'Copied' : 'Copy website'}
-          >
-            {#if isCopied}
-              <Check size={16} />
-            {:else}
-              <Copy size={16} />
-            {/if}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={onDownload}
-            aria-label="Download website"
-            title="Download website"
-          >
-            <Download size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={onArchive}
-            aria-label={website.archived ? 'Unarchive website' : 'Archive website'}
-            title={website.archived ? 'Unarchive website' : 'Archive website'}
-          >
-            {#if website.archived}
-              <ArchiveRestore size={16} />
-            {:else}
-              <Archive size={16} />
-            {/if}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={onDelete}
-            aria-label="Delete website"
-            title="Delete website"
-          >
-            <Trash2 size={16} />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onclick={onClose}
-            aria-label="Close website"
-            title="Close website"
-          >
-            <X size={16} />
-          </Button>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onPinToggle}
+                aria-label="Pin website"
+              >
+                {#if website.pinned}
+                  <PinOff size={16} />
+                {:else}
+                  <Pin size={16} />
+                {/if}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {website.pinned ? TOOLTIP_COPY.pin.on : TOOLTIP_COPY.pin.off}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onRename}
+                aria-label="Rename website"
+              >
+                <Pencil size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{TOOLTIP_COPY.rename}</TooltipContent>
+          </Tooltip>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onCopy}
+                aria-label={isCopied ? 'Copied website' : 'Copy website'}
+              >
+                {#if isCopied}
+                  <Check size={16} />
+                {:else}
+                  <Copy size={16} />
+                {/if}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {isCopied ? TOOLTIP_COPY.copy.success : TOOLTIP_COPY.copy.default}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onDownload}
+                aria-label="Download website"
+              >
+                <Download size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{TOOLTIP_COPY.downloadMarkdown}</TooltipContent>
+          </Tooltip>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onArchive}
+                aria-label={website.archived ? 'Unarchive website' : 'Archive website'}
+              >
+                {#if website.archived}
+                  <ArchiveRestore size={16} />
+                {:else}
+                  <Archive size={16} />
+                {/if}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {website.archived ? TOOLTIP_COPY.archive.on : TOOLTIP_COPY.archive.off}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onDelete}
+                aria-label="Delete website"
+              >
+                <Trash2 size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{TOOLTIP_COPY.delete}</TooltipContent>
+          </Tooltip>
+          <Tooltip disabled={!tooltipsEnabled}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onclick={onClose}
+                aria-label="Close website"
+              >
+                <X size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{TOOLTIP_COPY.close}</TooltipContent>
+          </Tooltip>
         </div>
         <div class="website-actions-compact">
           <Popover.Root>
             <Popover.Trigger>
               {#snippet child({ props })}
-                <Button size="icon" variant="ghost" {...props} aria-label="More actions" title="More actions">
-                  <Menu size={16} />
-                </Button>
+                <Tooltip disabled={!tooltipsEnabled}>
+                  <TooltipTrigger asChild>
+                    <Button size="icon" variant="ghost" {...props} aria-label="More actions">
+                      <Menu size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">More actions</TooltipContent>
+                </Tooltip>
               {/snippet}
             </Popover.Trigger>
             <Popover.Content class="website-actions-menu" align="end" sideOffset={8}>
