@@ -23,6 +23,7 @@ from api.auth import verify_bearer_token
 from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
 from api.services.conversation_service import ConversationService
+from api.metrics import chat_messages_total, chat_streaming_duration_seconds, chat_stream_errors_total
 from api.exceptions import BadRequestError
 from api.utils.validation import parse_uuid
 
@@ -205,6 +206,8 @@ async def stream_chat(
     if not message:
         raise BadRequestError("Message required")
 
+    chat_messages_total.inc()
+
     conversation_uuid = None
     if conversation_id:
         conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
@@ -244,6 +247,8 @@ async def stream_chat(
         current_weather=current_weather,
         current_timezone=current_timezone,
     )
+
+    stream_started_at = time.perf_counter()
 
     async def event_generator():
         """Generate SSE events."""
@@ -286,6 +291,7 @@ async def stream_chat(
 
                 elif event_type == "error":
                     # Error occurred
+                    chat_stream_errors_total.labels(type="stream_error").inc()
                     yield f"event: error\ndata: {json.dumps(event)}\n\n"
                     return
 
@@ -294,7 +300,12 @@ async def stream_chat(
 
         except Exception as e:
             error_event = {"type": "error", "error": str(e)}
+            chat_stream_errors_total.labels(type="server_error").inc()
             yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
+        finally:
+            chat_streaming_duration_seconds.observe(
+                max(0, time.perf_counter() - stream_started_at)
+            )
 
     return StreamingResponse(
         event_generator(),

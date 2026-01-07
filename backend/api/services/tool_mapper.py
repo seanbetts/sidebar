@@ -13,6 +13,7 @@ from api.config import settings
 from api.executors.skill_executor import SkillExecutor
 from api.security.path_validator import PathValidator
 from api.security.audit_logger import AuditLogger
+from api.metrics import tool_executions_total, tool_execution_duration_seconds
 
 
 SKILLS_REQUIRING_USER_ID = {
@@ -146,6 +147,7 @@ class ToolMapper:
     ) -> Dict[str, Any]:
         """Execute tool via skill executor."""
         start_time = time.time()
+        tool_skill = None
 
         try:
             # Get tool config
@@ -162,6 +164,7 @@ class ToolMapper:
                     "success": False,
                     "error": f"Skill disabled: {tool_config.get('skill')}"
                 })
+            tool_skill = tool_config.get("skill") or display_name
 
             # Special case: UI theme (no skill execution)
             if display_name == "Set UI Theme":
@@ -173,7 +176,11 @@ class ToolMapper:
                     success=result.get("success", False),
                 )
 
-                return self._normalize_result(result)
+                normalized = self._normalize_result(result)
+                status = "success" if normalized.get("success") else "error"
+                tool_executions_total.labels(tool_skill, status).inc()
+                tool_execution_duration_seconds.labels(tool_skill).observe(time.time() - start_time)
+                return normalized
 
             # Special case: prompt preview
             if display_name == "Generate Prompts":
@@ -185,12 +192,20 @@ class ToolMapper:
                     success=result.get("success", False),
                 )
 
-                return self._normalize_result(result)
+                normalized = self._normalize_result(result)
+                status = "success" if normalized.get("success") else "error"
+                tool_executions_total.labels(tool_skill, status).inc()
+                tool_execution_duration_seconds.labels(tool_skill).observe(time.time() - start_time)
+                return normalized
 
             # Special case: memory tool
             if display_name == "Memory Tool":
                 result = handle_memory_tool(context, parameters)
-                return self._normalize_result(result)
+                normalized = self._normalize_result(result)
+                status = "success" if normalized.get("success") else "error"
+                tool_executions_total.labels(tool_skill, status).inc()
+                tool_execution_duration_seconds.labels(tool_skill).observe(time.time() - start_time)
+                return normalized
 
             # Validate paths if needed
             if tool_config.get("validate_write"):
@@ -229,7 +244,11 @@ class ToolMapper:
                 success=result.get("success", False)
             )
 
-            return self._normalize_result(result)
+            normalized = self._normalize_result(result)
+            status = "success" if normalized.get("success") else "error"
+            tool_executions_total.labels(tool_skill, status).inc()
+            tool_execution_duration_seconds.labels(tool_skill).observe(time.time() - start_time)
+            return normalized
 
         except Exception as e:
             AuditLogger.log_tool_call(
@@ -239,6 +258,9 @@ class ToolMapper:
                 success=False,
                 error=str(e)
             )
+            tool_skill = tool_skill or name
+            tool_executions_total.labels(tool_skill, "error").inc()
+            tool_execution_duration_seconds.labels(tool_skill).observe(time.time() - start_time)
             return self._normalize_result({"success": False, "error": str(e)})
 
     @staticmethod
