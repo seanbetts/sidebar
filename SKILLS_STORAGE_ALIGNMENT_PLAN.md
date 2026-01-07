@@ -2,13 +2,13 @@
 
 ## Progress Tracker
 
-- [ ] Add ingestion helper APIs + backward-compatible frontmatter schema
+- [x] Add ingestion helper APIs + backward-compatible frontmatter schema
 - [x] Deprecate/remove docx/pdf/pptx/xlsx skills and update docs/tool registry
 - [x] Update audio-transcribe + youtube-download
 - [x] Update youtube-transcribe
 - [x] Update web-crawler-policy (single ingested file per run)
 - [x] Update SKILL.md documentation
-- [ ] Verify UI reads `ai/ai.md` consistently and ignores website transcript records
+- [x] Verify UI reads `ai/ai.md` consistently and ignores website transcript records
 
 ## Goals
 
