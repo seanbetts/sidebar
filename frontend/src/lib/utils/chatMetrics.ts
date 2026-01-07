@@ -1,8 +1,5 @@
 import { browser } from '$app/environment';
-import {
-  PUBLIC_CHAT_METRICS_ENDPOINT,
-  PUBLIC_CHAT_METRICS_SAMPLE_RATE
-} from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 
 type ChatMetricName =
   | 'first_token_latency_ms'
@@ -22,8 +19,8 @@ type StreamState = {
   toolStarts: Map<string, number>;
 };
 
-const metricsEndpoint = PUBLIC_CHAT_METRICS_ENDPOINT ?? '';
-const metricsSampleRate = parseSampleRate(PUBLIC_CHAT_METRICS_SAMPLE_RATE, 1);
+const metricsEndpoint = publicEnv.PUBLIC_CHAT_METRICS_ENDPOINT ?? '';
+const metricsSampleRate = parseSampleRate(publicEnv.PUBLIC_CHAT_METRICS_SAMPLE_RATE, 1);
 
 const streams = new Map<string, StreamState>();
 
