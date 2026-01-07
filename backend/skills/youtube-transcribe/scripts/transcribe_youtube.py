@@ -113,6 +113,7 @@ def transcribe_youtube(
     output_name: Optional[str] = None,
     audio_dir: Optional[str] = None,
     keep_audio: bool = False,
+    upload_transcript: bool = True,
     database: bool = False,
     folder: Optional[str] = None,
     user_id: Optional[str] = None,
@@ -127,6 +128,7 @@ def transcribe_youtube(
         output_dir: R2 folder for transcripts (default: Transcripts)
         audio_dir: R2 folder for audio files (default: Videos)
         keep_audio: Keep audio file after transcription
+        upload_transcript: Upload transcript to storage
 
     Returns:
         Dictionary with combined results from both stages
@@ -196,7 +198,8 @@ def transcribe_youtube(
             output_name=transcript_name,
             temp_dir=str(temp_root / "transcripts"),
             keep_local=True,
-            user_id=user_id,
+            user_id=user_id if upload_transcript else None,
+            upload_result=upload_transcript,
         )
 
         transcript_path = Path(transcribe_data.get("local_path") or transcribe_data['output_path'])
@@ -210,7 +213,7 @@ def transcribe_youtube(
             url,
             download_data['title']
         )
-        if upload_file is not None and transcribe_data.get("output_path"):
+        if upload_transcript and upload_file is not None and user_id and transcribe_data.get("output_path"):
             upload_file(user_id, transcribe_data["output_path"], transcript_path, content_type="text/plain")
 
         # Calculate transcription duration

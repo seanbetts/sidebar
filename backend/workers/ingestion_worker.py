@@ -519,7 +519,7 @@ def _load_youtube_transcriber() -> Callable[..., dict]:
     return transcriber
 
 
-def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
+def _transcribe_youtube(record: IngestedFile, *, upload_transcript: bool = True) -> tuple[str, dict]:
     if not record.source_url:
         raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
     transcriber = _load_youtube_transcriber()
@@ -533,6 +533,7 @@ def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
             output_name="ai.md",
             audio_dir="files/videos",
             keep_audio=False,
+            upload_transcript=upload_transcript,
         )
     except ValueError as exc:
         logger.warning(
@@ -1617,6 +1618,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
     metadata: dict = {}
     derivatives: list[DerivativePayload] | None = None
     transcript_target = _get_transcript_target(record)
+    is_website_transcript = transcript_target is not None
     if transcript_target:
         WebsiteTranscriptService.update_transcript_status(
             db,
@@ -1638,12 +1640,11 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                 if not record.source_url:
                     raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
             elif stage == "extracting":
-                transcript, metadata = _transcribe_youtube(record)
+                transcript, metadata = _transcribe_youtube(record, upload_transcript=not is_website_transcript)
             elif stage == "ai_md":
-                derivatives = _build_youtube_derivatives(record, transcript, metadata)
+                if not is_website_transcript:
+                    derivatives = _build_youtube_derivatives(record, transcript, metadata)
             elif stage == "finalizing":
-                if derivatives is None:
-                    raise IngestionError("DERIVATIVE_MISSING", "AI derivative missing", retryable=False)
                 existing_meta = record.source_metadata or {}
                 metadata = {**existing_meta, **metadata}
                 metadata.setdefault("provider", "youtube")
@@ -1655,24 +1656,27 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                 flag_modified(record, "source_metadata")
                 db.commit()
 
-                storage = get_storage_backend()
-                _write_derivatives_atomically(storage, record, derivatives)
+                if not is_website_transcript:
+                    if derivatives is None:
+                        raise IngestionError("DERIVATIVE_MISSING", "AI derivative missing", retryable=False)
+                    storage = get_storage_backend()
+                    _write_derivatives_atomically(storage, record, derivatives)
 
-                db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
-                now = _now()
-                for item in derivatives:
-                    db.add(
-                        FileDerivative(
-                            file_id=record.id,
-                            kind=item.kind,
-                            storage_key=item.storage_key,
-                            mime=item.mime,
-                            size_bytes=item.size_bytes,
-                            sha256=item.sha256,
-                            created_at=now,
+                    db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+                    now = _now()
+                    for item in derivatives:
+                        db.add(
+                            FileDerivative(
+                                file_id=record.id,
+                                kind=item.kind,
+                                storage_key=item.storage_key,
+                                mime=item.mime,
+                                size_bytes=item.size_bytes,
+                                sha256=item.sha256,
+                                created_at=now,
+                            )
                         )
-                    )
-                db.commit()
+                    db.commit()
 
                 if transcript_target:
                     WebsiteTranscriptService.append_transcript_from_text(
