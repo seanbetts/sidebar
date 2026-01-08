@@ -1,9 +1,10 @@
 """Helper utilities for website router flows."""
+
 from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from api.config import settings
 from api.db.session import SessionLocal, set_session_user_id
@@ -15,6 +16,7 @@ from api.services.websites_service import WebsitesService
 
 logger = logging.getLogger(__name__)
 
+
 def normalize_url(value: str) -> str:
     """Ensure the URL has a scheme."""
     if value.startswith(("http://", "https://")):
@@ -22,7 +24,9 @@ def normalize_url(value: str) -> str:
     return f"https://{value}"
 
 
-def run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None) -> None:
+def run_quick_save(
+    job_id: uuid.UUID, user_id: str, url: str, title: str | None
+) -> None:
     """Background task to save a website quickly."""
     with SessionLocal() as db:
         set_session_user_id(db, user_id)
@@ -41,7 +45,9 @@ def run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None)
                         len(local_parsed.content),
                     )
                 except Exception as exc:
-                    logger.info("web-save local parse failed url=%s error=%s", url, str(exc))
+                    logger.info(
+                        "web-save local parse failed url=%s error=%s", url, str(exc)
+                    )
                     if web_save_mode == "local":
                         local_parsed = None
 
@@ -54,7 +60,7 @@ def run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None)
                     content=local_parsed.content,
                     source=local_parsed.source,
                     url_full=url,
-                    saved_at=datetime.now(timezone.utc),
+                    saved_at=datetime.now(UTC),
                     published_at=local_parsed.published_at,
                     pinned=False,
                     archived=False,
@@ -63,9 +69,15 @@ def run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None)
                 logger.info("web-save using jina url=%s mode=%s", url, web_save_mode)
                 markdown = JinaService.fetch_markdown(url)
                 metadata, cleaned = JinaService.parse_metadata(markdown)
-                resolved_title = title or metadata.get("title") or JinaService.extract_title(cleaned, url)
+                resolved_title = (
+                    title
+                    or metadata.get("title")
+                    or JinaService.extract_title(cleaned, url)
+                )
                 source = metadata.get("url_source") or url
-                published_at = JinaService.parse_published_at(metadata.get("published_time"))
+                published_at = JinaService.parse_published_at(
+                    metadata.get("published_time")
+                )
                 website = WebsitesService.upsert_website(
                     db,
                     user_id,
@@ -74,7 +86,7 @@ def run_quick_save(job_id: uuid.UUID, user_id: str, url: str, title: str | None)
                     content=cleaned,
                     source=source,
                     url_full=url,
-                    saved_at=datetime.now(timezone.utc),
+                    saved_at=datetime.now(UTC),
                     published_at=published_at,
                     pinned=False,
                     archived=False,
@@ -112,11 +124,15 @@ def website_summary(website: Website) -> dict:
         "url": website.url,
         "domain": website.domain,
         "saved_at": website.saved_at.isoformat() if website.saved_at else None,
-        "published_at": website.published_at.isoformat() if website.published_at else None,
+        "published_at": website.published_at.isoformat()
+        if website.published_at
+        else None,
         "pinned": metadata.get("pinned", False),
         "pinned_order": metadata.get("pinned_order"),
         "archived": metadata.get("archived", False),
         "youtube_transcripts": metadata.get("youtube_transcripts", {}),
         "updated_at": website.updated_at.isoformat() if website.updated_at else None,
-        "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None,
+        "last_opened_at": website.last_opened_at.isoformat()
+        if website.last_opened_at
+        else None,
     }

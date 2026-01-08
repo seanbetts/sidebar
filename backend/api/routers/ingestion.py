@@ -1,11 +1,12 @@
 """File ingestion router for uploads and processing status."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import Response, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -18,9 +19,6 @@ from api.exceptions import (
     NotFoundError,
     RangeNotSatisfiableError,
 )
-from api.services.file_ingestion_service import FileIngestionService
-from api.services.website_transcript_service import WebsiteTranscriptService
-from api.services.storage.service import get_storage_backend
 from api.routers.ingestion_helpers import (
     _category_for_file,
     _extract_youtube_id,
@@ -32,8 +30,10 @@ from api.routers.ingestion_helpers import (
     _staging_path,
     _user_message_for_error,
 )
+from api.services.file_ingestion_service import FileIngestionService
+from api.services.storage.service import get_storage_backend
+from api.services.website_transcript_service import WebsiteTranscriptService
 from api.utils.validation import parse_uuid
-
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
@@ -63,7 +63,10 @@ async def quick_upload_file(
     file_id, job_id = await _handle_upload(file, folder, user_id, db)
     return JSONResponse(
         status_code=202,
-        content={"success": True, "data": {"file_id": str(file_id), "job_id": str(job_id)}},
+        content={
+            "success": True,
+            "data": {"file_id": str(file_id), "job_id": str(job_id)},
+        },
     )
 
 
@@ -120,7 +123,9 @@ async def list_ingestions(
             }
             for item in derivatives
         ]
-        derivative_payload = _filter_user_derivatives(derivative_payload, record.user_id)
+        derivative_payload = _filter_user_derivatives(
+            derivative_payload, record.user_id
+        )
         items.append(
             {
                 "file": {
@@ -152,7 +157,9 @@ async def list_ingestions(
                         job.status if job else None,
                     ),
                     "attempts": job.attempts if job else 0,
-                    "updated_at": job.updated_at.isoformat() if job and job.updated_at else None,
+                    "updated_at": job.updated_at.isoformat()
+                    if job and job.updated_at
+                    else None,
                 },
                 "recommended_viewer": _recommended_viewer(derivative_payload, record),
             }
@@ -173,7 +180,7 @@ async def get_file_meta(
     if not record:
         raise NotFoundError("File", str(file_id))
 
-    record.last_opened_at = datetime.now(timezone.utc)
+    record.last_opened_at = datetime.now(UTC)
     db.commit()
 
     job = FileIngestionService.get_job(db, file_id)
@@ -241,7 +248,9 @@ async def get_file_meta(
                 job.status if job else None,
             ),
             "attempts": job.attempts if job else 0,
-            "updated_at": job.updated_at.isoformat() if job and job.updated_at else None,
+            "updated_at": job.updated_at.isoformat()
+            if job and job.updated_at
+            else None,
         },
         "derivatives": derivatives,
         "recommended_viewer": _recommended_viewer(derivatives, record),

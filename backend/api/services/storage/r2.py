@@ -1,20 +1,22 @@
 """Cloudflare R2 storage backend via S3-compatible API."""
+
 from __future__ import annotations
 
 import os
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
-import boto3  # type: ignore[import-untyped]
-from botocore.config import Config  # type: ignore[import-untyped]
-from botocore.exceptions import ClientError  # type: ignore[import-untyped]
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from api.config import settings
-from api.services.storage.base import StorageBackend, StorageObject
 from api.metrics import storage_operations_total
+from api.services.storage.base import StorageBackend, StorageObject
 
 
 class R2Storage(StorageBackend):
     """R2-backed storage adapter using the S3 API."""
+
     def __init__(
         self,
         *,
@@ -52,7 +54,9 @@ class R2Storage(StorageBackend):
         """Normalize a storage key by stripping leading slashes."""
         return key.lstrip("/")
 
-    def list_objects(self, prefix: str, recursive: bool = True) -> Iterable[StorageObject]:
+    def list_objects(
+        self, prefix: str, recursive: bool = True
+    ) -> Iterable[StorageObject]:
         """List objects in the bucket under a prefix.
 
         Args:
@@ -125,7 +129,9 @@ class R2Storage(StorageBackend):
             storage_operations_total.labels("get_range", "error").inc()
             raise
 
-    def put_object(self, key: str, data: bytes, content_type: Optional[str] = None) -> StorageObject:
+    def put_object(
+        self, key: str, data: bytes, content_type: str | None = None
+    ) -> StorageObject:
         """Store object bytes under a key."""
         normalized = self._normalize_key(key)
         params = {
@@ -139,7 +145,9 @@ class R2Storage(StorageBackend):
             response = self.client.put_object(**params)
             etag = response.get("ETag")
             storage_operations_total.labels("put", "success").inc()
-            return StorageObject(key=normalized, size=len(data), etag=etag, content_type=content_type)
+            return StorageObject(
+                key=normalized, size=len(data), etag=etag, content_type=content_type
+            )
         except Exception:
             storage_operations_total.labels("put", "error").inc()
             raise
@@ -159,7 +167,9 @@ class R2Storage(StorageBackend):
         source = {"Bucket": self.bucket, "Key": self._normalize_key(source_key)}
         destination = self._normalize_key(destination_key)
         try:
-            self.client.copy_object(Bucket=self.bucket, CopySource=source, Key=destination)
+            self.client.copy_object(
+                Bucket=self.bucket, CopySource=source, Key=destination
+            )
             storage_operations_total.labels("copy", "success").inc()
         except Exception:
             storage_operations_total.labels("copy", "error").inc()

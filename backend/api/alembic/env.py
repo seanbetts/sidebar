@@ -1,24 +1,25 @@
 """Alembic environment configuration."""
+
 import os
 from logging.config import fileConfig
 
 import sqlalchemy as sa
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from api.config import settings
 
 # Import Base for autogenerate support
 from api.db.base import Base
-from api.config import settings
 
 # Import all models here so Alembic can detect them
-from api.models import conversation  # noqa: F401
-from api.models import note  # noqa: F401
-from api.models import website  # noqa: F401
-from api.models import user_settings  # noqa: F401
-from api.models import user_memory  # noqa: F401
-from api.models import file_ingestion  # noqa: F401
+from api.models import (
+    conversation,  # noqa: F401
+    file_ingestion,  # noqa: F401
+    note,  # noqa: F401
+    user_memory,  # noqa: F401
+    user_settings,  # noqa: F401
+    website,  # noqa: F401
+)
+from sqlalchemy import engine_from_config, pool
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -91,9 +92,7 @@ def run_migrations_online() -> None:
             )
         )
         connection.commit()
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

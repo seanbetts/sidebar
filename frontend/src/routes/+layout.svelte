@@ -11,7 +11,12 @@
 	import { chatStore } from '$lib/stores/chat';
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
-	import { clearCaches, clearInFlight, clearMemoryCache, listenForStorageEvents } from '$lib/utils/cache';
+	import {
+		clearCaches,
+		clearInFlight,
+		clearMemoryCache,
+		listenForStorageEvents
+	} from '$lib/utils/cache';
 	import { applyThemeMode, getStoredTheme } from '$lib/utils/theme';
 	import { startRealtime, stopRealtime } from '$lib/realtime/realtime';
 	import { logError } from '$lib/utils/errorHandling';
@@ -25,8 +30,7 @@
 	onMount(() => {
 		const storedTheme = getStoredTheme();
 		const prefersDark =
-			typeof window !== 'undefined' &&
-			window.matchMedia('(prefers-color-scheme: dark)').matches;
+			typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 		const initialTheme = storedTheme ?? (prefersDark ? 'dark' : 'light');
 		applyThemeMode(initialTheme, false);
 		void initWebVitals(() => get(page).url.pathname);
@@ -34,17 +38,16 @@
 		const supabaseUrl = data.supabaseUrl;
 		const supabaseAnonKey = data.supabaseAnonKey;
 		if (!supabaseUrl || !supabaseAnonKey) {
-			logError('Missing Supabase config', new Error('SUPABASE_URL or SUPABASE_ANON_KEY is missing'), {
-				scope: 'layout.initAuth'
-			});
+			logError(
+				'Missing Supabase config',
+				new Error('SUPABASE_URL or SUPABASE_ANON_KEY is missing'),
+				{
+					scope: 'layout.initAuth'
+				}
+			);
 			return;
 		}
-		initAuth(
-			null,
-			data.user,
-			supabaseUrl,
-			supabaseAnonKey
-		);
+		initAuth(null, data.user, supabaseUrl, supabaseAnonKey);
 		stopRealtimeListener = user.subscribe((currentUser) => {
 			if (currentUser?.id) {
 				void startRealtime(currentUser.id);

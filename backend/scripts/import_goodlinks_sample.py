@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Import a random sample of GoodLinks URLs into Website records.
+"""Import a random sample of GoodLinks URLs into Website records.
 
 Usage:
     uv run backend/scripts/import_goodlinks_sample.py \
@@ -8,6 +7,7 @@ Usage:
         --export-path goodlinks-testing/GoodLinks-Export-2025.json \
         --limit 10
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,9 +15,9 @@ import json
 import logging
 import random
 import sys
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, Optional
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = Path(__file__).resolve().parent
@@ -34,12 +34,12 @@ class _SkipRuthlessRemovalFilter(logging.Filter):
         return "ruthless removal did not work." not in record.getMessage()
 
 
-def parse_datetime(value: Optional[str]) -> Optional[datetime]:
+def parse_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(value, tz=timezone.utc)
+            return datetime.fromtimestamp(value, tz=UTC)
         except (OSError, ValueError):
             return None
     cleaned = str(value).strip()
@@ -64,7 +64,7 @@ def import_sample(
     *,
     export_path: Path,
     limit: int,
-    seed: Optional[int],
+    seed: int | None,
     dry_run: bool,
     log_every: int,
     import_all: bool,
@@ -117,7 +117,7 @@ def import_sample(
                         title=parsed.title,
                         content=parsed.content,
                         source=parsed.source,
-                        saved_at=added_at or datetime.now(timezone.utc),
+                        saved_at=added_at or datetime.now(UTC),
                         published_at=parsed.published_at,
                         archived=archived,
                     )
@@ -141,10 +141,12 @@ def import_sample(
         if db is not None:
             db.close()
 
-    logger.info("Import complete. Imported=%s Failed=%s Total=%s", created, failed, limit)
+    logger.info(
+        "Import complete. Imported=%s Failed=%s Total=%s", created, failed, limit
+    )
 
 
-def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
+def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Import random GoodLinks URLs.")
     parser.add_argument("--user-id", required=True, help="User ID to import into.")
     parser.add_argument(
@@ -152,8 +154,12 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         required=True,
         help="Path to GoodLinks export JSON.",
     )
-    parser.add_argument("--limit", type=int, default=10, help="Number of URLs to import.")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for repeatable samples.")
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Number of URLs to import."
+    )
+    parser.add_argument(
+        "--seed", type=int, default=None, help="Random seed for repeatable samples."
+    )
     parser.add_argument("--dry-run", action="store_true", help="Log without writing.")
     parser.add_argument(
         "--all",
@@ -184,7 +190,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[Iterable[str]] = None) -> None:
+def main(argv: Iterable[str] | None = None) -> None:
     args = parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     logging.getLogger().addFilter(_SkipRuthlessRemovalFilter())

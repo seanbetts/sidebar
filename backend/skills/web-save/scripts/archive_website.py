@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Archive Website
+"""Archive Website
 
 Set archived state for a website in the database.
 """
@@ -34,7 +33,9 @@ def archive_website_database(user_id: str, website_id: str, archived: bool) -> d
 
     set_session_user_id(db, user_id)
     try:
-        website = WebsitesService.update_archived(db, user_id, uuid.UUID(website_id), archived)
+        website = WebsitesService.update_archived(
+            db, user_id, uuid.UUID(website_id), archived
+        )
         return {"id": str(website.id), "archived": archived}
     finally:
         db.close()
@@ -57,7 +58,9 @@ def main() -> None:
         if not args.user_id:
             raise ValueError("user_id is required for database mode")
 
-        result = archive_website_database(args.user_id, args.website_id, parse_bool(args.archived))
+        result = archive_website_database(
+            args.user_id, args.website_id, parse_bool(args.archived)
+        )
         output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)

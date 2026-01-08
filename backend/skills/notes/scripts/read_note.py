@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Read Note
+"""Read Note
 
 Fetch a note from the database.
 """
@@ -45,7 +44,9 @@ def read_note_database(user_id: str, note_id: str) -> dict:
             "archived": archived,
             "created_at": note.created_at.isoformat() if note.created_at else None,
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
-            "last_opened_at": note.last_opened_at.isoformat() if note.last_opened_at else None,
+            "last_opened_at": note.last_opened_at.isoformat()
+            if note.last_opened_at
+            else None,
         }
     finally:
         db.close()

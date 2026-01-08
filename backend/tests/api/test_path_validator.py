@@ -1,8 +1,10 @@
 """Tests for PathValidator security."""
-import pytest
+
 from pathlib import Path
-from fastapi import HTTPException
+
+import pytest
 from api.security.path_validator import PathValidator
+from fastapi import HTTPException
 
 
 @pytest.fixture
@@ -27,10 +29,7 @@ def temp_workspace(tmp_path):
 @pytest.fixture
 def validator(temp_workspace):
     """Create a PathValidator for testing."""
-    writable_paths = [
-        str(temp_workspace / "notes"),
-        str(temp_workspace / "documents")
-    ]
+    writable_paths = [str(temp_workspace / "notes"), str(temp_workspace / "documents")]
     return PathValidator(temp_workspace, writable_paths)
 
 
@@ -61,7 +60,9 @@ class TestPathValidatorRead:
         assert exc_info.value.status_code == 403
         assert "Path outside workspace" in str(exc_info.value.detail)
 
-    def test_validate_read_accepts_absolute_in_workspace(self, validator, temp_workspace):
+    def test_validate_read_accepts_absolute_in_workspace(
+        self, validator, temp_workspace
+    ):
         """Should accept absolute paths within workspace."""
         abs_path = str(temp_workspace / "notes" / "test.md")
         result = validator.validate_read_path(abs_path)
@@ -105,8 +106,7 @@ class TestPathValidatorSymlinks:
     """Test symlink protection."""
 
     @pytest.mark.skipif(
-        not hasattr(Path, 'symlink_to'),
-        reason="Symlink support not available"
+        not hasattr(Path, "symlink_to"), reason="Symlink support not available"
     )
     def test_validate_rejects_symlinks(self, validator, temp_workspace, tmp_path):
         """Should reject symlink attempts to escape workspace."""

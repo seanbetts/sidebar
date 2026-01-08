@@ -4,8 +4,8 @@ Revision ID: 017_add_ingested_files_last_opened_at
 Revises: 016_add_ingested_files_source_fields
 Create Date: 2026-01-04 13:00:00.000000
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "017_add_ingested_files_last_opened_at"
 down_revision = "016_add_ingested_files_source_fields"

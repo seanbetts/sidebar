@@ -1,6 +1,6 @@
 """Tests for authentication middleware."""
-import pytest
 
+import pytest
 from api.config import settings
 
 
@@ -36,16 +36,14 @@ class TestAuthenticationMiddleware:
     def test_valid_bearer_token_grants_access(self, test_client, valid_token):
         """Valid bearer token should grant access."""
         response = test_client.get(
-            "/docs",
-            headers={"Authorization": f"Bearer {valid_token}"}
+            "/docs", headers={"Authorization": f"Bearer {valid_token}"}
         )
         assert response.status_code == 200
 
     def test_invalid_bearer_token_denied(self, test_client):
         """Invalid bearer token should be denied."""
         response = test_client.get(
-            "/docs",
-            headers={"Authorization": "Bearer invalid-token"}
+            "/docs", headers={"Authorization": "Bearer invalid-token"}
         )
         assert response.status_code == 401
         assert "Invalid" in _error_message(response)
@@ -75,8 +73,7 @@ class TestAuthenticationMiddleware:
 
         for scheme in schemes:
             response = test_client.get(
-                "/docs",
-                headers={"Authorization": f"{scheme} {valid_token}"}
+                "/docs", headers={"Authorization": f"{scheme} {valid_token}"}
             )
             assert response.status_code == 200
 
@@ -93,17 +90,13 @@ class TestAuthenticationEdgeCases:
 
     def test_empty_token_denied(self, test_client):
         """Empty token should be denied."""
-        response = test_client.get(
-            "/docs",
-            headers={"Authorization": "Bearer "}
-        )
+        response = test_client.get("/docs", headers={"Authorization": "Bearer "})
         assert response.status_code == 401
 
     def test_whitespace_in_token_denied(self, test_client):
         """Token with whitespace should be denied."""
         response = test_client.get(
-            "/docs",
-            headers={"Authorization": "Bearer token with spaces"}
+            "/docs", headers={"Authorization": "Bearer token with spaces"}
         )
         assert response.status_code == 401
 
@@ -112,10 +105,7 @@ class TestAuthenticationEdgeCases:
         # Note: httpx.Client combines multiple headers with the same name
         # This tests implementation-specific behavior
         response = test_client.get(
-            "/docs",
-            headers={
-                "Authorization": f"Bearer {valid_token}"
-            }
+            "/docs", headers={"Authorization": f"Bearer {valid_token}"}
         )
         assert response.status_code == 200
 
@@ -123,7 +113,7 @@ class TestAuthenticationEdgeCases:
         """Bearer token should not appear in error responses."""
         response = test_client.get(
             "/docs",
-            headers={"Authorization": f"Bearer {valid_token}x"}  # Invalid token
+            headers={"Authorization": f"Bearer {valid_token}x"},  # Invalid token
         )
         assert response.status_code == 401
         # Check that token is not in the response body
@@ -137,12 +127,8 @@ class TestAuthenticationWithMCP:
         """MCP endpoint should require authentication."""
         response = test_client.post(
             "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "id": 1
-            },
-            headers={"Accept": "application/json, text/event-stream"}
+            json={"jsonrpc": "2.0", "method": "tools/list", "id": 1},
+            headers={"Accept": "application/json, text/event-stream"},
         )
         assert response.status_code == 401
 
@@ -156,14 +142,14 @@ class TestAuthenticationWithMCP:
                 "params": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {},
-                    "clientInfo": {"name": "test", "version": "1.0"}
+                    "clientInfo": {"name": "test", "version": "1.0"},
                 },
-                "id": 1
+                "id": 1,
             },
             headers={
                 "Authorization": f"Bearer {valid_token}",
-                "Accept": "application/json, text/event-stream"
-            }
+                "Accept": "application/json, text/event-stream",
+            },
         )
         # Should not be 401 (might be 200 or other, but not unauthorized)
         assert response.status_code != 401

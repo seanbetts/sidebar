@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Scratchpad Get
+"""Scratchpad Get
 
 Fetch the scratchpad note by fixed title.
 """
@@ -31,7 +30,9 @@ def get_scratchpad(user_id: str) -> dict:
 
     set_session_user_id(db, user_id)
     try:
-        note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=True)
+        note = NotesService.get_note_by_title(
+            db, user_id, SCRATCHPAD_TITLE, mark_opened=True
+        )
         if not note:
             note = NotesService.create_note(
                 db,
@@ -47,7 +48,9 @@ def get_scratchpad(user_id: str) -> dict:
             "content": note.content,
             "created_at": note.created_at.isoformat() if note.created_at else None,
             "updated_at": note.updated_at.isoformat() if note.updated_at else None,
-            "last_opened_at": note.last_opened_at.isoformat() if note.last_opened_at else None,
+            "last_opened_at": note.last_opened_at.isoformat()
+            if note.last_opened_at
+            else None,
         }
     finally:
         db.close()

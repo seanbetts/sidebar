@@ -1,9 +1,9 @@
 """Include reinsertion helpers for web-save parsing."""
+
 from __future__ import annotations
 
 from copy import deepcopy
 from difflib import SequenceMatcher
-from typing import Optional
 
 from lxml import html as lxml_html
 
@@ -86,7 +86,7 @@ def find_insertion_point(
     cloned_node: lxml_html.HtmlElement,
     original_dom: lxml_html.HtmlElement,
     original_node: lxml_html.HtmlElement,
-) -> Optional[tuple[lxml_html.HtmlElement, int]]:
+) -> tuple[lxml_html.HtmlElement, int] | None:
     """Find an insertion point for included elements."""
     position_match = _find_by_position(extracted_tree, original_dom, original_node)
     if position_match:
@@ -128,8 +128,9 @@ def _find_by_position(
     extracted_tree: lxml_html.HtmlElement,
     original_dom: lxml_html.HtmlElement,
     original_node: lxml_html.HtmlElement,
-) -> Optional[tuple[lxml_html.HtmlElement, int]]:
+) -> tuple[lxml_html.HtmlElement, int] | None:
     """Match insertion point using original DOM ordering."""
+
     def _has_class(node: lxml_html.HtmlElement, class_name: str) -> bool:
         class_attr = node.get("class") if isinstance(node.tag, str) else ""
         if not class_attr:
@@ -137,6 +138,7 @@ def _find_by_position(
         return class_name in class_attr.split()
 
     if _has_class(original_node, "duet--article--gallery"):
+
         def _normalize_text(value: str) -> str:
             return " ".join(value.split())
 

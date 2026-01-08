@@ -1,7 +1,7 @@
 import { createProxyHandler } from '$lib/server/apiProxy';
 
 export const POST = createProxyHandler({
-  method: 'POST',
-  pathBuilder: () => '/api/v1/things/bridges/url-token',
-  bodyFromRequest: true
+	method: 'POST',
+	pathBuilder: () => '/api/v1/things/bridges/url-token',
+	bodyFromRequest: true
 });

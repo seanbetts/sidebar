@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Helper script to scan skill Python scripts and add missing dependencies to pyproject.toml.
+"""Helper script to scan skill Python scripts and add missing dependencies to pyproject.toml.
 
 Usage:
     python scripts/add_skill_dependencies.py <skill-name>
@@ -16,13 +15,12 @@ import ast
 import sys
 import tomllib
 from pathlib import Path
-from typing import Set
 
 
-def get_imports_from_file(file_path: Path) -> Set[str]:
+def get_imports_from_file(file_path: Path) -> set[str]:
     """Extract top-level package names from imports in a Python file."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             tree = ast.parse(f.read(), filename=str(file_path))
     except (SyntaxError, UnicodeDecodeError) as e:
         print(f"⚠️  Warning: Could not parse {file_path}: {e}")
@@ -34,12 +32,12 @@ def get_imports_from_file(file_path: Path) -> Set[str]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 # Get top-level package (e.g., 'requests' from 'requests.api')
-                top_level = alias.name.split('.')[0]
+                top_level = alias.name.split(".")[0]
                 imports.add(top_level)
         elif isinstance(node, ast.ImportFrom):
             if node.module:
                 # Get top-level package (e.g., 'PIL' from 'PIL.Image')
-                top_level = node.module.split('.')[0]
+                top_level = node.module.split(".")[0]
                 imports.add(top_level)
 
     return imports
@@ -50,12 +48,12 @@ def get_skill_directory(skill_arg: str) -> Path:
     skill_path = Path(skill_arg)
 
     # If it's already a path to skills/<name>, use it
-    if skill_path.is_dir() and (skill_path / 'SKILL.md').exists():
+    if skill_path.is_dir() and (skill_path / "SKILL.md").exists():
         return skill_path
 
     # If it's just a name, look in skills/
-    skills_dir = Path('skills') / skill_arg
-    if skills_dir.is_dir() and (skills_dir / 'SKILL.md').exists():
+    skills_dir = Path("skills") / skill_arg
+    if skills_dir.is_dir() and (skills_dir / "SKILL.md").exists():
         return skills_dir
 
     # Try as absolute path
@@ -65,16 +63,16 @@ def get_skill_directory(skill_arg: str) -> Path:
     raise ValueError(f"Could not find skill directory for: {skill_arg}")
 
 
-def scan_skill_scripts(skill_dir: Path) -> Set[str]:
+def scan_skill_scripts(skill_dir: Path) -> set[str]:
     """Scan all Python scripts in a skill and return imported packages."""
-    scripts_dir = skill_dir / 'scripts'
+    scripts_dir = skill_dir / "scripts"
 
     if not scripts_dir.exists():
         print(f"ℹ️  No scripts directory found in {skill_dir}")
         return set()
 
     all_imports = set()
-    python_files = list(scripts_dir.rglob('*.py'))
+    python_files = list(scripts_dir.rglob("*.py"))
 
     if not python_files:
         print(f"ℹ️  No Python files found in {scripts_dir}")
@@ -91,13 +89,13 @@ def scan_skill_scripts(skill_dir: Path) -> Set[str]:
     return all_imports
 
 
-def filter_stdlib_and_local(imports: Set[str]) -> Set[str]:
+def filter_stdlib_and_local(imports: set[str]) -> set[str]:
     """Filter out standard library modules and local imports."""
     # Python 3.10+ has sys.stdlib_module_names
     stdlib_modules = sys.stdlib_module_names
 
     # Also filter out local packages (relative imports or known local modules)
-    local_modules = {'ooxml', 'skills', 'scripts', 'references', 'assets'}
+    local_modules = {"ooxml", "skills", "scripts", "references", "assets"}
 
     external = set()
     for imp in imports:
@@ -107,24 +105,24 @@ def filter_stdlib_and_local(imports: Set[str]) -> Set[str]:
     return external
 
 
-def get_current_dependencies() -> Set[str]:
+def get_current_dependencies() -> set[str]:
     """Read current dependencies from pyproject.toml."""
-    pyproject_path = Path('pyproject.toml')
+    pyproject_path = Path("pyproject.toml")
 
     if not pyproject_path.exists():
         print("❌ pyproject.toml not found")
         sys.exit(1)
 
-    with open(pyproject_path, 'rb') as f:
+    with open(pyproject_path, "rb") as f:
         data = tomllib.load(f)
 
-    dependencies = data.get('project', {}).get('dependencies', [])
+    dependencies = data.get("project", {}).get("dependencies", [])
 
     # Extract package names (everything before >=, ==, etc.)
     current = set()
     for dep in dependencies:
         # Handle both "package>=1.0" and "package @ git+..." formats
-        pkg_name = dep.split('>=')[0].split('==')[0].split('[')[0].split('@')[0].strip()
+        pkg_name = dep.split(">=")[0].split("==")[0].split("[")[0].split("@")[0].strip()
         current.add(pkg_name.lower())
 
     return current
@@ -134,17 +132,17 @@ def normalize_package_name(name: str) -> str:
     """Normalize package name for PyPI (handle special cases)."""
     # Map import names to PyPI package names
     name_map = {
-        'PIL': 'Pillow',
-        'cv2': 'opencv-python',
-        'sklearn': 'scikit-learn',
-        'yaml': 'PyYAML',
+        "PIL": "Pillow",
+        "cv2": "opencv-python",
+        "sklearn": "scikit-learn",
+        "yaml": "PyYAML",
         # Add more mappings as needed
     }
 
     return name_map.get(name, name)
 
 
-def add_dependencies_to_pyproject(packages: Set[str], auto_confirm: bool = False):
+def add_dependencies_to_pyproject(packages: set[str], auto_confirm: bool = False):
     """Add missing packages to pyproject.toml dependencies."""
     if not packages:
         print("\n✅ No new dependencies to add!")
@@ -154,23 +152,23 @@ def add_dependencies_to_pyproject(packages: Set[str], auto_confirm: bool = False
 
     if not auto_confirm:
         response = input("\n❓ Add these dependencies to pyproject.toml? (y/n): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             print("❌ Cancelled")
             return
 
-    pyproject_path = Path('pyproject.toml')
+    pyproject_path = Path("pyproject.toml")
     content = pyproject_path.read_text()
 
     # Find the dependencies list
-    lines = content.split('\n')
+    lines = content.split("\n")
 
     # Find where to insert new dependencies (before the closing bracket)
     insert_index = None
     for i, line in enumerate(lines):
-        if 'dependencies = [' in line:
+        if "dependencies = [" in line:
             # Find the closing bracket
             for j in range(i + 1, len(lines)):
-                if lines[j].strip() == ']':
+                if lines[j].strip() == "]":
                     insert_index = j
                     break
             break
@@ -189,7 +187,7 @@ def add_dependencies_to_pyproject(packages: Set[str], auto_confirm: bool = False
     lines[insert_index:insert_index] = new_lines
 
     # Write back
-    pyproject_path.write_text('\n'.join(lines))
+    pyproject_path.write_text("\n".join(lines))
 
     print(f"\n✅ Added {len(packages)} new dependencies to pyproject.toml")
     print("\n⚠️  Next steps:")
@@ -208,7 +206,7 @@ def main():
         sys.exit(1)
 
     skill_arg = sys.argv[1]
-    auto_confirm = '--auto' in sys.argv
+    auto_confirm = "--auto" in sys.argv
 
     try:
         skill_dir = get_skill_directory(skill_arg)
@@ -236,7 +234,9 @@ def main():
 
     # Step 3: Check what's already in pyproject.toml
     current_deps = get_current_dependencies()
-    print(f"📋 Current dependencies: {', '.join(sorted(current_deps)) if current_deps else 'none'}")
+    print(
+        f"📋 Current dependencies: {', '.join(sorted(current_deps)) if current_deps else 'none'}"
+    )
 
     # Step 4: Find what's missing
     missing = set()

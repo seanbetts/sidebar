@@ -1,17 +1,18 @@
 import uuid
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
-
 from api.db.base import Base
 from api.exceptions import ConflictError, NotFoundError
 from api.services.memory_service import MemoryService
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
 def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    connection = test_db_engine.connect().execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
     schema = f"test_{uuid.uuid4().hex}"
 
     connection.execute(text(f'CREATE SCHEMA "{schema}"'))
@@ -31,7 +32,9 @@ def db_session(test_db_engine):
 
 
 def test_create_and_read_memory(db_session):
-    memory = MemoryService.create_memory(db_session, "user-1", "/notes/test.md", "Hello")
+    memory = MemoryService.create_memory(
+        db_session, "user-1", "/notes/test.md", "Hello"
+    )
     fetched = MemoryService.get_memory(db_session, "user-1", memory.id)
 
     assert fetched.path == "/memories/notes/test.md"
@@ -39,7 +42,9 @@ def test_create_and_read_memory(db_session):
 
 
 def test_update_memory(db_session):
-    memory = MemoryService.create_memory(db_session, "user-1", "/notes/test.md", "Hello")
+    memory = MemoryService.create_memory(
+        db_session, "user-1", "/notes/test.md", "Hello"
+    )
     updated = MemoryService.update_memory(
         db_session,
         "user-1",
@@ -57,11 +62,15 @@ def test_update_memory_conflict(db_session):
     MemoryService.create_memory(db_session, "user-1", "/notes/second.md", "Two")
 
     with pytest.raises(ConflictError):
-        MemoryService.update_memory(db_session, "user-1", first.id, path="/notes/second.md")
+        MemoryService.update_memory(
+            db_session, "user-1", first.id, path="/notes/second.md"
+        )
 
 
 def test_delete_memory(db_session):
-    memory = MemoryService.create_memory(db_session, "user-1", "/notes/test.md", "Hello")
+    memory = MemoryService.create_memory(
+        db_session, "user-1", "/notes/test.md", "Hello"
+    )
     MemoryService.delete_memory(db_session, "user-1", memory.id)
 
     with pytest.raises(NotFoundError):

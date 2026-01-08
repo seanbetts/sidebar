@@ -1,5 +1,4 @@
 import pytest
-
 from api.exceptions import BadRequestError
 from api.routers.ingestion_helpers import (
     _category_for_file,
@@ -29,12 +28,15 @@ def test_extract_youtube_id_variants():
 def test_category_for_file():
     assert _category_for_file("report.csv", "text/csv") == "spreadsheets"
     assert _category_for_file("report.pdf", "application/pdf") == "documents"
-    assert _category_for_file(
-        "crawler_policy_20250101.md",
-        "text/markdown",
-        path="Reports/example.com/crawler_policy_20250101.md",
-        source_metadata={"provider": "web-crawler-policy"},
-    ) == "reports"
+    assert (
+        _category_for_file(
+            "crawler_policy_20250101.md",
+            "text/markdown",
+            path="Reports/example.com/crawler_policy_20250101.md",
+            source_metadata={"provider": "web-crawler-policy"},
+        )
+        == "reports"
+    )
 
 
 def test_recommended_viewer_prefers_ai_md():
@@ -52,4 +54,7 @@ def test_filter_user_derivatives():
 
 def test_user_message_for_error():
     assert _user_message_for_error(None, "failed") is None
-    assert _user_message_for_error("FILE_EMPTY", "failed") == "This file appears to be empty."
+    assert (
+        _user_message_for_error("FILE_EMPTY", "failed")
+        == "This file appears to be empty."
+    )

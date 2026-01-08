@@ -1,8 +1,7 @@
 """Add user_id to notes and websites with backfill."""
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "011_add_notes_websites_user_id"
 down_revision = "010"

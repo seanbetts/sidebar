@@ -1,9 +1,9 @@
 """Service helpers for website quick-save jobs."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,7 @@ class WebsiteProcessingService:
     @staticmethod
     def create_job(db: Session, user_id: str, url: str) -> WebsiteProcessingJob:
         """Create a new quick-save job."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         job = WebsiteProcessingJob(
             user_id=user_id,
             url=url,
@@ -30,7 +30,9 @@ class WebsiteProcessingService:
         return job
 
     @staticmethod
-    def get_job(db: Session, user_id: str, job_id: uuid.UUID) -> Optional[WebsiteProcessingJob]:
+    def get_job(
+        db: Session, user_id: str, job_id: uuid.UUID
+    ) -> WebsiteProcessingJob | None:
         """Fetch a job by ID for a user."""
         return (
             db.query(WebsiteProcessingJob)
@@ -47,16 +49,20 @@ class WebsiteProcessingService:
         job_id: uuid.UUID,
         *,
         status: str,
-        error_message: Optional[str] = None,
-        website_id: Optional[uuid.UUID] = None,
+        error_message: str | None = None,
+        website_id: uuid.UUID | None = None,
     ) -> None:
         """Update job status and metadata."""
-        job = db.query(WebsiteProcessingJob).filter(WebsiteProcessingJob.id == job_id).first()
+        job = (
+            db.query(WebsiteProcessingJob)
+            .filter(WebsiteProcessingJob.id == job_id)
+            .first()
+        )
         if not job:
             return
         job.status = status
         job.error_message = error_message
         if website_id is not None:
             job.website_id = website_id
-        job.updated_at = datetime.now(timezone.utc)
+        job.updated_at = datetime.now(UTC)
         db.commit()

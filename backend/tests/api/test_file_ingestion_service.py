@@ -1,16 +1,17 @@
 import uuid
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
-
 from api.db.base import Base
 from api.services.file_ingestion_service import FileIngestionService
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
 def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    connection = test_db_engine.connect().execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
     schema = f"test_{uuid.uuid4().hex}"
 
     connection.execute(text(f'CREATE SCHEMA "{schema}"'))

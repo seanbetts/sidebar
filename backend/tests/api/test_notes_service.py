@@ -1,18 +1,19 @@
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from api.db.base import Base
+from api.schemas.filters import NoteFilters
+from api.services.notes_service import NotesService
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
-
-from api.db.base import Base
-from api.services.notes_service import NotesService
-from api.schemas.filters import NoteFilters
 
 
 @pytest.fixture
 def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    connection = test_db_engine.connect().execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
     schema = f"test_{uuid.uuid4().hex}"
 
     connection.execute(text(f'CREATE SCHEMA "{schema}"'))
@@ -44,7 +45,9 @@ def test_create_and_read_note(db_session):
 
 def test_update_note_title(db_session):
     note = NotesService.create_note(db_session, "test_user", "# Old Title\n\nBody")
-    updated = NotesService.update_note(db_session, "test_user", note.id, "# New Title\n\nBody")
+    updated = NotesService.update_note(
+        db_session, "test_user", note.id, "# New Title\n\nBody"
+    )
 
     assert updated.title == "New Title"
     assert "New Title" in updated.content
@@ -52,7 +55,9 @@ def test_update_note_title(db_session):
 
 def test_update_folder_and_pinned(db_session):
     note = NotesService.create_note(db_session, "test_user", "# Folder Note\n\nBody")
-    moved = NotesService.update_folder(db_session, "test_user", note.id, "Projects/Alpha")
+    moved = NotesService.update_folder(
+        db_session, "test_user", note.id, "Projects/Alpha"
+    )
     pinned = NotesService.update_pinned(db_session, "test_user", note.id, True)
 
     assert (moved.metadata_ or {}).get("folder") == "Projects/Alpha"
@@ -71,11 +76,15 @@ def test_update_pinned_assigns_next_order(db_session):
 
 
 def test_list_notes_filters(db_session):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     earlier = now - timedelta(days=2)
 
-    note_a = NotesService.create_note(db_session, "test_user", "# Alpha\n\nBody", folder="Work")
-    note_b = NotesService.create_note(db_session, "test_user", "# Beta\n\nBody", folder="Archive/Old")
+    note_a = NotesService.create_note(
+        db_session, "test_user", "# Alpha\n\nBody", folder="Work"
+    )
+    note_b = NotesService.create_note(
+        db_session, "test_user", "# Beta\n\nBody", folder="Archive/Old"
+    )
     NotesService.update_pinned(db_session, "test_user", note_a.id, True)
 
     note_a.created_at = earlier
@@ -84,7 +93,9 @@ def test_list_notes_filters(db_session):
     note_b.updated_at = now
     db_session.commit()
 
-    pinned_notes = NotesService.list_notes(db_session, "test_user", NoteFilters(pinned=True))
+    pinned_notes = NotesService.list_notes(
+        db_session, "test_user", NoteFilters(pinned=True)
+    )
     assert any(n.id == note_a.id for n in pinned_notes)
 
     archived_notes = NotesService.list_notes(

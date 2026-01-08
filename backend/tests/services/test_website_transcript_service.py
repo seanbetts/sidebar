@@ -1,4 +1,5 @@
 """Tests for website transcript helpers."""
+
 from api.services.website_transcript_service import (
     append_transcript_to_markdown,
     extract_youtube_id,

@@ -1,4 +1,5 @@
 """Typed tool execution context payloads."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -33,9 +34,15 @@ class ToolExecutionContext:
             "user_id": self.user_id,
             "open_context": self.open_context,
             "attachments": self.attachments,
-            "conversation_id": str(self.conversation_id) if self.conversation_id else None,
-            "user_message_id": str(self.user_message_id) if self.user_message_id else None,
-            "assistant_message_id": str(self.assistant_message_id) if self.assistant_message_id else None,
+            "conversation_id": str(self.conversation_id)
+            if self.conversation_id
+            else None,
+            "user_message_id": str(self.user_message_id)
+            if self.user_message_id
+            else None,
+            "assistant_message_id": str(self.assistant_message_id)
+            if self.assistant_message_id
+            else None,
             "notes_context": self.notes_context,
             "user_agent": self.user_agent,
             "current_location": self.current_location,

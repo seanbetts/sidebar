@@ -128,7 +128,9 @@
 	</div>
 
 	{#if message.error}
-		<div class="mt-3 p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
+		<div
+			class="mt-3 p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive"
+		>
 			<strong>Error:</strong>
 			{message.error}
 		</div>

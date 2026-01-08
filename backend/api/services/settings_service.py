@@ -1,9 +1,9 @@
 """Settings orchestration for profile and preference management."""
+
 from __future__ import annotations
 
-import secrets
 import logging
-from typing import Optional
+import secrets
 
 from fastapi import HTTPException
 
@@ -48,14 +48,16 @@ storage_backend = get_storage_backend()
 
 class SettingsService:
     """High-level settings operations for the API layer."""
+
     SHORTCUTS_PAT_PREFIX = "sb_pat_"
 
     @staticmethod
     def _generate_shortcuts_pat() -> str:
         """Generate a new shortcuts PAT token."""
         return f"{SettingsService.SHORTCUTS_PAT_PREFIX}{secrets.token_urlsafe(24)}"
+
     @staticmethod
-    def _resolve_default(value: Optional[str], default: str) -> Optional[str]:
+    def _resolve_default(value: str | None, default: str) -> str | None:
         """Return a trimmed value or the default.
 
         Args:
@@ -71,7 +73,7 @@ class SettingsService:
         return trimmed if trimmed else default
 
     @staticmethod
-    def _profile_image_url(settings_record) -> Optional[str]:
+    def _profile_image_url(settings_record) -> str | None:
         """Build a profile image URL for a settings record.
 
         Args:
@@ -80,9 +82,12 @@ class SettingsService:
         Returns:
             Profile image URL or None.
         """
-        if settings_record and settings_record.profile_image_path:
-            if storage_backend.object_exists(settings_record.profile_image_path):
-                return "/api/settings/profile-image"
+        if (
+            settings_record
+            and settings_record.profile_image_path
+            and storage_backend.object_exists(settings_record.profile_image_path)
+        ):
+            return "/api/settings/profile-image"
         return None
 
     @staticmethod
@@ -99,11 +104,17 @@ class SettingsService:
         all_ids = [skill["id"] for skill in catalog]
         if not settings_record or settings_record.enabled_skills is None:
             return all_ids
-        enabled = [skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids]
+        enabled = [
+            skill_id
+            for skill_id in settings_record.enabled_skills
+            if skill_id in all_ids
+        ]
         return enabled
 
     @staticmethod
-    def _clean_text_field(value: Optional[str], field_name: str, max_length: int) -> Optional[str]:
+    def _clean_text_field(
+        value: str | None, field_name: str, max_length: int
+    ) -> str | None:
         """Validate and normalize a text field.
 
         Args:
@@ -225,7 +236,9 @@ class SettingsService:
         if "enabled_skills" in updates and updates["enabled_skills"] is not None:
             catalog = SkillCatalogService.list_skills(settings.skills_dir)
             allowed = {skill["id"] for skill in catalog}
-            invalid = [skill for skill in updates["enabled_skills"] if skill not in allowed]
+            invalid = [
+                skill for skill in updates["enabled_skills"] if skill not in allowed
+            ]
             if invalid:
                 raise HTTPException(
                     status_code=400,
@@ -316,7 +329,9 @@ class SettingsService:
             user_id,
             profile_image_path=object_key,
         )
-        return {"profile_image_url": SettingsService._profile_image_url(settings_record)}
+        return {
+            "profile_image_url": SettingsService._profile_image_url(settings_record)
+        }
 
     @staticmethod
     def get_profile_image(db, user_id: str) -> bytes:
@@ -347,7 +362,9 @@ class SettingsService:
                     "storage_key": settings_record.profile_image_path,
                 },
             )
-            raise HTTPException(status_code=404, detail="Profile image not found") from exc
+            raise HTTPException(
+                status_code=404, detail="Profile image not found"
+            ) from exc
 
     @staticmethod
     def delete_profile_image(db, user_id: str) -> dict:
@@ -378,7 +395,9 @@ class SettingsService:
                     "storage_key": settings_record.profile_image_path,
                 },
             )
-            raise HTTPException(status_code=500, detail="Failed to delete profile image") from exc
+            raise HTTPException(
+                status_code=500, detail="Failed to delete profile image"
+            ) from exc
 
         UserSettingsService.upsert_settings(
             db,

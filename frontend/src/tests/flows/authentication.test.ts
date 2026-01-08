@@ -5,44 +5,44 @@ import { describe, expect, it, vi } from 'vitest';
 import LoginForm from '$lib/components/auth/LoginForm.svelte';
 
 const { signInWithPassword, goto } = vi.hoisted(() => ({
-  signInWithPassword: vi.fn(),
-  goto: vi.fn()
+	signInWithPassword: vi.fn(),
+	goto: vi.fn()
 }));
 
 vi.mock('$app/navigation', () => ({
-  goto
+	goto
 }));
 
 vi.mock('$app/stores', () => ({
-  page: readable({ url: new URL('http://localhost/login') })
+	page: readable({ url: new URL('http://localhost/login') })
 }));
 
 vi.mock('$lib/supabase', () => ({
-  getSupabaseClient: () => ({
-    auth: {
-      signInWithPassword
-    }
-  })
+	getSupabaseClient: () => ({
+		auth: {
+			signInWithPassword
+		}
+	})
 }));
 
 describe('authentication flow', () => {
-  it('signs in and redirects on success', async () => {
-    signInWithPassword.mockResolvedValue({ error: null });
-    const user = userEvent.setup();
+	it('signs in and redirects on success', async () => {
+		signInWithPassword.mockResolvedValue({ error: null });
+		const user = userEvent.setup();
 
-    render(LoginForm);
+		render(LoginForm);
 
-    await user.type(screen.getByLabelText('Email'), 'test@example.com');
-    await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
+		await user.type(screen.getByLabelText('Email'), 'test@example.com');
+		await user.type(screen.getByLabelText('Password'), 'password123');
+		await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-    await waitFor(() => {
-      expect(signInWithPassword).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        password: 'password123'
-      });
-    });
+		await waitFor(() => {
+			expect(signInWithPassword).toHaveBeenCalledWith({
+				email: 'test@example.com',
+				password: 'password123'
+			});
+		});
 
-    expect(goto).toHaveBeenCalledWith('/', { invalidateAll: true });
-  });
+		expect(goto).toHaveBeenCalledWith('/', { invalidateAll: true });
+	});
 });

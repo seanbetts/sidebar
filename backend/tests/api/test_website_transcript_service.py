@@ -1,19 +1,23 @@
 import uuid
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
-
 from api.db.base import Base
 from api.models.file_ingestion import IngestedFile
 from api.services.file_ingestion_service import FileIngestionService
-from api.services.website_transcript_service import WebsiteTranscriptService, extract_youtube_id
+from api.services.website_transcript_service import (
+    WebsiteTranscriptService,
+    extract_youtube_id,
+)
 from api.services.websites_service import WebsitesService
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
 def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    connection = test_db_engine.connect().execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
     schema = f"test_{uuid.uuid4().hex}"
 
     connection.execute(text(f'CREATE SCHEMA "{schema}"'))
@@ -50,9 +54,7 @@ def test_enqueue_youtube_transcript_keeps_ingestion_visible(db_session):
 
     assert result.file_id is not None
     record = (
-        db_session.query(IngestedFile)
-        .filter(IngestedFile.id == result.file_id)
-        .first()
+        db_session.query(IngestedFile).filter(IngestedFile.id == result.file_id).first()
     )
     assert record is not None
     assert record.deleted_at is None
@@ -91,7 +93,9 @@ def test_sync_transcripts_for_website_updates_failed_status(db_session):
     )
     assert updated is True
 
-    refreshed = WebsitesService.get_website(db_session, "user-1", website.id, mark_opened=False)
+    refreshed = WebsitesService.get_website(
+        db_session, "user-1", website.id, mark_opened=False
+    )
     video_id = extract_youtube_id("https://www.youtube.com/watch?v=FUq9qRwrDrI")
     entry = (refreshed.metadata_ or {}).get("youtube_transcripts", {}).get(video_id)
     assert entry["status"] == "failed"

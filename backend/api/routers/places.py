@@ -1,4 +1,5 @@
 """Places API proxy endpoints."""
+
 import json
 import logging
 from urllib.parse import urlencode
@@ -7,10 +8,9 @@ from urllib.request import Request, urlopen
 from fastapi import APIRouter, Depends
 from fastapi.concurrency import run_in_threadpool
 
-from api.config import settings
 from api.auth import verify_bearer_token
+from api.config import settings
 from api.exceptions import ExternalServiceError, ServiceUnavailableError
-
 
 router = APIRouter(prefix="/places", tags=["places"])
 logger = logging.getLogger(__name__)
@@ -45,7 +45,9 @@ def _fetch_autocomplete(input_text: str) -> dict:
                 exc_info=exc,
                 extra={"response_preview": preview, "query": input_text},
             )
-            raise ExternalServiceError("Google Places", "Places returned invalid data") from exc
+            raise ExternalServiceError(
+                "Google Places", "Places returned invalid data"
+            ) from exc
 
 
 def _fetch_nearby_place(lat: float, lng: float) -> dict:
@@ -79,7 +81,9 @@ def _fetch_nearby_place(lat: float, lng: float) -> dict:
                 exc_info=exc,
                 extra={"response_preview": preview, "lat": lat, "lng": lng},
             )
-            raise ExternalServiceError("Google Places", "Places returned invalid data") from exc
+            raise ExternalServiceError(
+                "Google Places", "Places returned invalid data"
+            ) from exc
 
 
 def _fetch_place_details(place_id: str) -> dict:
@@ -111,7 +115,9 @@ def _fetch_place_details(place_id: str) -> dict:
                 exc_info=exc,
                 extra={"response_preview": preview, "place_id": place_id},
             )
-            raise ExternalServiceError("Google Places", "Places returned invalid data") from exc
+            raise ExternalServiceError(
+                "Google Places", "Places returned invalid data"
+            ) from exc
 
 
 def _extract_component(components: list[dict], component_type: str) -> str | None:

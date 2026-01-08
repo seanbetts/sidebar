@@ -1,16 +1,16 @@
 import { createProxyHandler } from '$lib/server/apiProxy';
 
 export const GET = createProxyHandler({
-  pathBuilder: (params) => `/api/v1/notes/${params.id}`
+	pathBuilder: (params) => `/api/v1/notes/${params.id}`
 });
 
 export const PATCH = createProxyHandler({
-  method: 'PATCH',
-  pathBuilder: (params) => `/api/v1/notes/${params.id}`,
-  bodyFromRequest: true
+	method: 'PATCH',
+	pathBuilder: (params) => `/api/v1/notes/${params.id}`,
+	bodyFromRequest: true
 });
 
 export const DELETE = createProxyHandler({
-  method: 'DELETE',
-  pathBuilder: (params) => `/api/v1/notes/${params.id}`
+	method: 'DELETE',
+	pathBuilder: (params) => `/api/v1/notes/${params.id}`
 });

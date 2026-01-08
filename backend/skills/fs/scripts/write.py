@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""
-Write File to Workspace
+"""Write File to Workspace
 
 Create or update files in workspace with multiple modes.
 """
 
-import sys
-import json
 import argparse
+import json
 import os
+import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if sys.path and sys.path[0] == str(SCRIPT_DIR):
@@ -29,37 +28,28 @@ def write_file(
     filename: str,
     content: str,
     mode: str = "replace",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Write content to a file."""
     wait_for_ready = os.getenv("TESTING", "").lower() not in {"1", "true", "yes", "on"}
-    return write_text(user_id, filename, content, mode=mode, wait_for_ready=wait_for_ready)
+    return write_text(
+        user_id, filename, content, mode=mode, wait_for_ready=wait_for_ready
+    )
 
 
 def main():
     """Main entry point for write script."""
-    parser = argparse.ArgumentParser(
-        description='Write file content to workspace'
-    )
+    parser = argparse.ArgumentParser(description="Write file content to workspace")
 
+    parser.add_argument("filename", help="File to write (relative to workspace)")
+    parser.add_argument("--content", required=True, help="Content to write to file")
     parser.add_argument(
-        'filename',
-        help='File to write (relative to workspace)'
+        "--mode",
+        default="replace",
+        choices=["create", "replace", "append"],
+        help="Write mode: create (fail if exists), replace (default), or append",
     )
     parser.add_argument(
-        '--content',
-        required=True,
-        help='Content to write to file'
-    )
-    parser.add_argument(
-        '--mode',
-        default='replace',
-        choices=['create', 'replace', 'append'],
-        help='Write mode: create (fail if exists), replace (default), or append'
-    )
-    parser.add_argument(
-        '--json',
-        action='store_true',
-        help='Output results in JSON format'
+        "--json", action="store_true", help="Output results in JSON format"
     )
     parser.add_argument(
         "--user-id",
@@ -77,29 +67,20 @@ def main():
             args.mode,
         )
 
-        output = {
-            'success': True,
-            'data': result
-        }
+        output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)
 
     except (ValueError, FileExistsError, FileNotFoundError) as e:
-        error_output = {
-            'success': False,
-            'error': str(e)
-        }
+        error_output = {"success": False, "error": str(e)}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
-        error_output = {
-            'success': False,
-            'error': f'Unexpected error: {str(e)}'
-        }
+        error_output = {"success": False, "error": f"Unexpected error: {str(e)}"}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
