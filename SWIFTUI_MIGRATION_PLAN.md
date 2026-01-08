@@ -4,6 +4,55 @@
 
 Based on comprehensive analysis of the SvelteKit frontend, this document outlines a detailed roadmap for building a universal macOS/iOS/iPadOS app with full feature parity. This plan assumes an architect/director role working with an AI coding agent.
 
+---
+
+## Addendum: Codebase Parity Gaps (Jan 2026 Review)
+
+The current web app includes additional features and data-flow specifics that are not called out in the original plan. To achieve true parity, incorporate the following:
+
+### 1) Things Integration (Mac-Only Bridge)
+- Add a dedicated phase (or extend Phase 7) for Things tasks.
+- Feature scope: list tasks, filter views (today/upcoming/area/project/search), task actions (rename, move, defer, due date, delete), and bridge status/installation UI.
+- Note: The bridge runs on macOS and requires bearer token auth; iOS/iPadOS should surface read-only or "bridge unavailable" messaging.
+
+### 1a) Native Things Integration (SwiftUI) and Future Migration
+- The SwiftUI app can integrate directly with Things on macOS/iOS using native APIs, separate from the existing bridge.
+- Treat the current bridge as web-only legacy; SwiftUI should not depend on it.
+- Plan a later transition to an in-app todo system once SwiftUI is stable; design the SwiftUI task layer behind an interface so swapping the backend is low-impact.
+
+### 1b) Task System Architecture (for Future Migration)
+- Define a TaskProvider interface in Swift (list, search, create, update, delete, defer, move, set due).
+- Implement a ThingsTaskProvider first, backed by native Things APIs.
+- Add an InAppTaskProvider later, backed by sideBar storage and API services.
+- Keep view models unaware of concrete provider details (dependency injection).
+- Plan for a one-time import flow from Things into the in-app model.
+
+### 2) Skills Management in Settings
+- Add Skills section in Settings (view available skills, enable/disable list).
+- Mirrors existing web Settings capability and supports tool filtering in chat.
+
+### 3) Scratchpad Implementation Detail
+- Scratchpad is backed by a special note title and realtime updates.
+- iOS should follow the same mapping (no separate scratchpad entity).
+
+### 4) Files: Workspace vs Ingestion
+- Split file features into two tracks:
+  - Workspace files: tree browsing + file operations (rename, move, delete).
+  - Ingestion files: upload processing status, pinned order, and viewer state.
+- UI should reflect ingestion job status and allow viewing processed content.
+
+### 5) SSE Event Coverage Beyond Tokens
+- The chat SSE stream emits UI events beyond tokens and tool calls:
+  - note_created, note_updated, note_deleted
+  - website_saved, website_deleted
+  - ui_theme_set
+  - scratchpad_updated, scratchpad_cleared
+  - prompt_preview
+  - tool_start, tool_end
+- iOS should handle these to stay in sync with web behavior.
+
+These gaps are additive and do not change the MVP-first strategy, but they should be scheduled into the relevant phases to avoid late-stage parity surprises.
+
 ### Delivery Strategy: MVP-First Approach
 
 **This plan uses a two-phase delivery strategy:**
@@ -112,6 +161,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 3.4 Message List
 - [ ] 3.5 Message Rendering (MarkdownUI)
 - [ ] 3.6 Tool Call Visualization
+- [ ] 3.6a SSE UI Event Handling (note/website/theme/scratchpad/prompt/tool_start/tool_end)
 - [ ] 3.8 Real-time Conversation Sync
 
 **Post-MVP (Phase 10.1): Chat Input**
@@ -121,6 +171,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 **MVP Scope: Read-Only Note Viewer**
 - [ ] 4.1 File Tree Browser (expand/collapse, search, navigation)
 - [ ] 4.2 Read-Only Note Viewer (MarkdownUI rendering)
+- [ ] 4.2a Scratchpad Note Mapping (special title + realtime updates)
 - [ ] 4.6 Search Notes
 - [ ] 4.7 Real-time Sync (see updates from web)
 
@@ -132,7 +183,9 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 #### Phase 5: File Viewing (4-6 sessions)
 **MVP Scope: Full (already read-only)**
-- [ ] 5.1 File Tree View
+- [ ] 5.1 Workspace File Tree View
+- [ ] 5.2 Workspace File Operations (rename, move, delete)
+- [ ] 5.3 Ingestion File List + Status (jobs, pinned order, processed content)
 - [ ] 5.4 Universal File Viewer
 - [ ] 5.5 PDF Viewer (PDFKit)
 - [ ] 5.6 Image Viewer (pinch-zoom, pan)
@@ -157,8 +210,14 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 **MVP Scope: View-Only**
 - [ ] 7.1 Memory Management (view memories, search)
 - [ ] 7.3 Settings Panel (view profile, settings - read-only)
+- [ ] 7.3a Skills Management (view skills, enable/disable)
+- [ ] 7.3b Things Integration (native macOS/iOS; bridge is web-only legacy)
 - [ ] 7.4 Weather Integration
 - [ ] 7.5 Keyboard Shortcuts (macOS)
+
+**Post-MVP (Future Transition)**
+- [ ] 7.T1 Task System Migration (replace Things dependency with in-app todo management)
+  - Sessions: 3-5 (estimate)
 
 **Post-MVP (Phase 10.4): Editing**
 - [ ] 7.1 Memory Management (add, edit, delete memories)
@@ -1580,14 +1639,16 @@ Same pattern as notes/conversations.
 | 7. Additional | 3-4 | 6-16 hrs | Medium |
 | 8. Platform | 5-7 | 10-28 hrs | High |
 | 9. Testing | 4-6 | 8-24 hrs | Critical |
-| **Total (Planned)** | **36-51** | **72-204 hrs** | |
+| 7.T1 Task System Migration (post-MVP) | 3-5 | 6-20 hrs | Medium |
+| **Total (Planned)** | **39-56** | **78-224 hrs** | |
 
-**Note**: The planned breakdown above totals 36-51 sessions. However, the timeline estimates below include buffer time for unexpected complexity, iteration, and overruns (particularly in Phases 4 and 8), bringing the realistic total to 40-70 sessions.
+**Note**: The planned breakdown above totals 39-56 sessions including the optional post-MVP task system migration. The timeline estimates below include buffer time for unexpected complexity, iteration, and overruns (particularly in Phases 4 and 8), bringing the realistic total to 40-70 sessions (or 43-75 with the migration).
 
 **Assuming 3-4 sessions/week at 3-4 hours each:**
 - **Optimistic**: 9-10 weeks (36-40 sessions × 3 hrs = 108-120 hrs)
 - **Realistic**: 12-14 weeks (45-55 sessions × 3.5 hrs = 157-192 hrs)
 - **Conservative**: 15-18 weeks (51-70 sessions × 4 hrs = 204-280 hrs)
+- **With migration**: +1-2 weeks (3-5 sessions)
 
 ---
 
