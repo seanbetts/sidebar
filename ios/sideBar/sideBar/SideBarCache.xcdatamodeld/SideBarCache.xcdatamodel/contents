@@ -2,15 +2,10 @@
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24553" systemVersion="25B78" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
     <entity name="CacheEntry" representedClassName="CacheEntry" codeGenerationType="manual">
         <attribute name="key" optional="NO" attributeType="String"/>
-        <attribute name="payload" optional="NO" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
+        <attribute name="payload" optional="NO" attributeType="Binary"/>
         <attribute name="expiresAt" optional="NO" attributeType="Date"/>
         <attribute name="createdAt" optional="YES" attributeType="Date"/>
         <attribute name="updatedAt" optional="YES" attributeType="Date"/>
         <attribute name="typeName" optional="YES" attributeType="String"/>
-        <uniquenessConstraints>
-            <uniquenessConstraint>
-                <constraint value="key"/>
-            </uniquenessConstraint>
-        </uniquenessConstraints>
     </entity>
 </model>
