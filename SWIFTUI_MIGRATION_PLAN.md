@@ -123,9 +123,9 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 ### Overall Progress
 
 **Current Target**: Read-Only MVP
-**Status**: Planning complete (Phase 1.0), implementation not started
-**Sessions Completed (Implementation)**: 0 / 22-33 (MVP) or 0 / 36-51 (Full App)
-**Hours Logged (Implementation)**: 0 / 88-132 (MVP) or 0 / 157-280 (Full App)
+**Status**: Phase 1.1 complete (Xcode project setup), implementation in progress
+**Sessions Completed (Implementation)**: 1 / 22-33 (MVP) or 1 / 36-51 (Full App)
+**Hours Logged (Implementation)**: TBD / 88-132 (MVP) or TBD / 157-280 (Full App)
 **Weeks Elapsed (Implementation)**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
 
 ```
@@ -142,7 +142,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 | Phase | Status | Sessions (MVP) | Sessions (Full) | Complete | MVP Scope |
 |-------|--------|----------------|-----------------|----------|-----------|
-| **1. Foundation & Architecture** | ⬜ Not Started | 0 / 3-4 | 0 / 3-4 | 0% | Full |
+| **1. Foundation & Architecture** | 🟨 In Progress | 1 / 3-4 | 1 / 3-4 | 25% | Full |
 | **2. Navigation & Layout** | ⬜ Not Started | 0 / 3-4 | 0 / 3-4 | 0% | Full |
 | **3. Chat Viewer** | ⬜ Not Started | 0 / 4-5 | 0 / 5-7 | 0% | Modified (no input) |
 | **4. Note Viewer** | ⬜ Not Started | 0 / 2-3 | 0 / 7-10 | 0% | Heavily Reduced (read-only) |
@@ -183,7 +183,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 1.0i Permissions + realtime handling + telemetry notes
 - [x] 1.0j Native navigation matrix + cache TTL notes + realtime mapping notes
 - [x] 1.0k Native API inventory + dependency plan + Info.plist permissions
-- [ ] 1.1 Xcode Project Setup
+- [x] 1.1 Xcode Project Setup
 - [ ] 1.2 Core Data Models
 - [ ] 1.3 Supabase Integration
 - [ ] 1.4 API Service Layer
@@ -404,7 +404,7 @@ Evaluate RichTextKit capabilities. Choose:
 
 | Date | Phase | Sessions | Hours | Notes |
 |------|-------|----------|-------|-------|
-| - | - | 0 | 0.0 | Awaiting start |
+| 2026-01-08 | 1.1 | 1 | TBD | Created `ios/sideBar/sideBar.xcodeproj`, moved existing Swift sources into target, fixed build errors, verified iPhone/iPad/macOS builds |
 
 ---
 
