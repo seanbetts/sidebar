@@ -139,6 +139,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 #### Phase 1: Foundation & Architecture (3-4 sessions)
 - [ ] 1.1 Xcode Project Setup
+- [x] 1.0 Pre-Xcode scaffolding (ios/ structure + API/SSE docs)
 - [ ] 1.2 Core Data Models
 - [ ] 1.3 Supabase Integration
 - [ ] 1.4 API Service Layer
