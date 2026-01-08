@@ -3,11 +3,11 @@ import Foundation
 public struct AnyCodable: Codable {
     public let value: Any
 
-    nonisolated public init(_ value: Any) {
+    public init(_ value: Any) {
         self.value = value
     }
 
-    nonisolated public init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let intValue = try? container.decode(Int.self) {
             value = intValue
@@ -30,7 +30,7 @@ public struct AnyCodable: Codable {
         }
     }
 
-    nonisolated public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch value {
         case let intValue as Int:
@@ -42,9 +42,9 @@ public struct AnyCodable: Codable {
         case let stringValue as String:
             try container.encode(stringValue)
         case let arrayValue as [Any]:
-            try container.encode(arrayValue.map(AnyCodable.init))
+            try container.encode(arrayValue.map { AnyCodable($0) })
         case let dictValue as [String: Any]:
-            let encoded = dictValue.mapValues(AnyCodable.init)
+            let encoded = dictValue.mapValues { AnyCodable($0) }
             try container.encode(encoded)
         default:
             try container.encodeNil()
