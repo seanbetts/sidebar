@@ -23,6 +23,9 @@
 - [x] Native navigation matrix
 - [x] Cache TTL adjustments (native UX)
 - [x] Realtime mapping notes (doc-only)
+- [x] Native API inventory
+- [x] Dependency plan
+- [x] Info.plist permission checklist
 
 ## After Xcode Project Is Added
 - [ ] Add Swift files to the Xcode target
