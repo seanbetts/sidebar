@@ -123,10 +123,10 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 ### Overall Progress
 
 **Current Target**: Read-Only MVP
-**Status**: Not Started
-**Sessions Completed**: 0 / 22-33 (MVP) or 0 / 36-51 (Full App)
-**Hours Logged**: 0 / 88-132 (MVP) or 0 / 157-280 (Full App)
-**Weeks Elapsed**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
+**Status**: Planning complete (Phase 1.0), implementation not started
+**Sessions Completed (Implementation)**: 0 / 22-33 (MVP) or 0 / 36-51 (Full App)
+**Hours Logged (Implementation)**: 0 / 88-132 (MVP) or 0 / 157-280 (Full App)
+**Weeks Elapsed (Implementation)**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
 
 ```
 MVP Progress:      [░░░░░░░░░░░░░░░░░░░░] 0%
@@ -218,6 +218,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 3.6 Tool Call Visualization
 - [ ] 3.6a SSE UI Event Handling (note/website/theme/scratchpad/prompt/tool_start/tool_end)
 - [ ] 3.8 Real-time Conversation Sync
+- [ ] 3.9 State reconciliation rules (cache vs SSE, ordering/pinning, soft-delete tombstones)
 
 **Native UX Requirements (Phase 3)**
 - Use native list/stack layouts with Dynamic Type and VoiceOver labels.
@@ -248,7 +249,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 #### Phase 5: File Viewing (4-6 sessions)
 **MVP Scope: Full (already read-only)**
 - [ ] 5.1 Workspace File Tree View
-- [ ] 5.2 Workspace File Operations (rename, move, delete)
+- [ ] 5.2 Workspace File Operations (view-only: browse, open, download, pin/unpin)
 - [ ] 5.3 Ingestion File List + Status (jobs, pinned order, processed content)
 - [ ] 5.4 File Viewer (Quick Look first, native viewers as needed)
 - [ ] 5.5 PDF Viewer (PDFKit)
@@ -256,7 +257,10 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 5.7 Audio/Video Player (AVFoundation)
 - [ ] 5.8 Spreadsheet Viewer
 - [ ] 5.9 Markdown Extraction Display
-- [ ] 5.10 File Operations (view only - download, pin/unpin)
+- [ ] 5.10 Non-browsable ingestion records (e.g. website transcripts) must be filtered from Files UI
+
+**Post-MVP (File Editing)**
+- [ ] 5.P1 Workspace File Operations (rename, move, delete)
 
 **Native UX Requirements (Phase 5)**
 - Prefer Quick Look where it improves native affordances and share workflows.
