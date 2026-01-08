@@ -14,6 +14,9 @@
 - [x] Auth adapter and state store scaffolding
 - [x] Navigation state storage keys
 - [x] Realtime payload mapping stubs
+- [x] Error mapping utility stub
+- [x] Cache strategy draft
+- [x] Theme model stub
 
 ## After Xcode Project Is Added
 - [ ] Add Swift files to the Xcode target
