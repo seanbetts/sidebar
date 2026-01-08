@@ -25,7 +25,7 @@ This app should feel like a first-class Apple platform app, not a web replica. T
 
 ## Addendum: Codebase Parity Gaps (Jan 2026 Review)
 
-The current web app includes additional features and data-flow specifics that are not called out in the original plan. To achieve true parity, incorporate the following:
+The current app includes additional features and data-flow specifics that are not called out in the original plan. To achieve true parity, incorporate the following:
 
 ### 1) Things Integration (Mac-Only Bridge)
 - Add a dedicated phase (or extend Phase 7) for Things tasks.
@@ -46,7 +46,7 @@ The current web app includes additional features and data-flow specifics that ar
 
 ### 2) Skills Management in Settings
 - Add Skills section in Settings (view available skills, enable/disable list).
-- Mirrors existing web Settings capability and supports tool filtering in chat.
+- Mirrors existing Settings capability and supports tool filtering in chat.
 
 ### 3) Scratchpad Implementation Detail
 - Scratchpad is backed by a special note title and realtime updates.
@@ -66,7 +66,7 @@ The current web app includes additional features and data-flow specifics that ar
   - scratchpad_updated, scratchpad_cleared
   - prompt_preview
   - tool_start, tool_end
-- iOS should handle these to stay in sync with web behavior.
+- iOS should handle these to stay in sync with existing behavior.
 
 These gaps are additive and do not change the MVP-first strategy, but they should be scheduled into the relevant phases to avoid late-stage parity surprises.
 
@@ -194,7 +194,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 **MVP Scope: Read-Only Chat Viewer**
 - [ ] 3.1 Conversation List
 - [ ] 3.2 Chat Window Layout
-- [ ] 3.3 SSE Streaming Implementation (for viewing web updates)
+- [ ] 3.3 SSE Streaming Implementation (for cross-device updates)
 - [ ] 3.4 Message List
 - [ ] 3.5 Message Rendering (MarkdownUI)
 - [ ] 3.6 Tool Call Visualization
@@ -215,7 +215,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 4.2 Read-Only Note Viewer (MarkdownUI rendering)
 - [ ] 4.2a Scratchpad Note Mapping (special title + realtime updates)
 - [ ] 4.6 Search Notes
-- [ ] 4.7 Real-time Sync (see updates from web)
+- [ ] 4.7 Real-time Sync (see updates from other devices)
 
 **Native UX Requirements (Phase 4)**
 - Use native outline/list patterns for the tree (`OutlineGroup` on macOS/iPad).
@@ -396,7 +396,7 @@ This plan takes a **two-phase delivery approach**: ship a read-only viewer app f
 
 **1. Faster Time to Value (7-11 weeks vs 12-18 weeks)**
 - Get a functional, useful app in ~40% less time
-- Can use app daily for reference/viewing while continuing web editing
+- Can use app daily for reference/viewing while editing remains in the desktop workflow
 - Natural break point for context switching to other features
 
 **2. De-Risks Hardest Technical Challenges**
@@ -414,7 +414,7 @@ This plan takes a **two-phase delivery approach**: ship a read-only viewer app f
 **4. Perfect for Context Switching**
 ```
 Weeks 1-7:   Build read-only iOS app (MVP)
-Weeks 8-10:  Ship MVP, switch to backend/web features
+Weeks 8-10:  Ship MVP, switch to backend features
 Weeks 11-15: Return to iOS, add editing (Phase 10)
 ```
 
@@ -425,7 +425,7 @@ Even read-only, the app provides genuine utility:
 - ✅ View PDFs and files on the go
 - ✅ Check memories quickly
 - ✅ Browse archived websites
-- ✅ Real-time sync (see updates from web instantly)
+- ✅ Real-time sync (see updates from other devices instantly)
 
 ### What's Included in MVP
 
@@ -468,7 +468,7 @@ Even read-only, the app provides genuine utility:
 
 **Backend as sync + AI layer**
 - Backend APIs power AI features and cross-device sync.
-- UI flows should follow Apple HIG even if web UX differs.
+- UI flows should follow Apple HIG even if existing UX differs.
 
 **Local-first caching**
 - Cache primary lists and recent items for fast startup and offline reading.
@@ -487,7 +487,7 @@ At the end of Phase 9 (MVP Testing), evaluate:
 **Option 1: Ship MVP & Take Break** (Recommended)
 - Use read-only app daily for 2-4 weeks
 - Identify UX improvements through real usage
-- Switch to backend/web development
+- Switch to backend development
 - Return to Phase 10 when ready for editing features
 
 **Option 2: Continue to Phase 10 Immediately**
@@ -508,7 +508,7 @@ At the end of Phase 9 (MVP Testing), evaluate:
 ✅ Log in with Supabase auth
 ✅ View all conversations
 ✅ Read all messages with markdown rendering
-✅ See tool calls and streaming updates from web
+✅ See tool calls and streaming updates from other devices
 ✅ Browse note file tree
 ✅ Read notes with syntax highlighting
 ✅ Search across all notes
@@ -578,7 +578,7 @@ The iOS app will be developed within the existing repository as a monorepo, rath
 - Backend API changes are immediately visible to iOS development
 - Shared database migrations affect both frontends simultaneously
 - Single source of truth for API contracts and documentation
-- Easy context switching between backend/web/iOS work
+- Easy context switching between backend and iOS work
 - Git history shows complete evolution across all platforms
 - No complicated merge conflicts from long-running branches
 
@@ -771,7 +771,7 @@ jobs:
 
 **1.5 Cache Layer**
 - Create `CacheManager` using UserDefaults + FileManager:
-  - TTL-based caching (mirroring web cache.ts)
+  - TTL-based caching (mirroring existing cache strategy)
   - Cache keys versioning
   - Background revalidation
 - Implement cache for:
@@ -1163,7 +1163,7 @@ Evaluate RichTextKit capabilities. If major feature gaps exist (especially for t
 - **Tree state**: Persist expanded folders to UserDefaults
 
 ### Risks & Challenges
-- **Native markdown editing** is significantly more work than web TipTap
+- **Native markdown editing** is significantly more work than a web editor
 - **Tables in markdown** are complex to edit natively
 - **Conflict resolution** during simultaneous edits across devices
 - **Performance** with large notes (>10,000 words)
