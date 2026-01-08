@@ -28,8 +28,9 @@ repos:
     rev: 1.7.0
     hooks:
       - id: interrogate
-        args: [--fail-under=80, --verbose, --ignore-init-method]
-        files: ^backend/api/(?!alembic/versions/).*\.py$
+        pass_filenames: false
+        args: [--fail-under=80, --verbose, --ignore-init-method, --exclude=backend/api/alembic, backend/api]
+        files: ^backend/api/
 
   # Python - Docstring style
   - repo: https://github.com/pycqa/pydocstyle

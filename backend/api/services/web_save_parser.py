@@ -14,6 +14,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 import yaml
 from bs4 import BeautifulSoup
+from lxml import html as lxml_html
 from markdownify import MarkdownConverter
 from readability import Document
 
@@ -37,6 +38,9 @@ from api.services.web_save_parser_cleanup import (
     wrap_gallery_blocks,
 )
 from api.services.web_save_parser_html import _safe_html_tostring, _safe_html_tree
+from api.services.web_save_parser_youtube import (
+    _iter_youtube_elements as _iter_youtube_elements_impl,
+)
 from api.services.web_save_parser_youtube import (
     _merge_youtube_anchors,
     build_youtube_anchor_map,
@@ -67,6 +71,13 @@ logger = logging.getLogger(__name__)
 RULES_DIR = Path(__file__).resolve().parents[2] / "skills" / "web-save" / "rules"
 PLAYWRIGHT_ALLOWLIST_PATH = RULES_DIR / "playwright_allowlist.yaml"
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
+
+
+def _iter_youtube_elements(
+    raw_dom: lxml_html.HtmlElement, base_url: str
+) -> list[tuple[str, lxml_html.HtmlElement]]:
+    """Compatibility wrapper for older imports/tests."""
+    return _iter_youtube_elements_impl(raw_dom, base_url)
 
 
 @dataclass(frozen=True)

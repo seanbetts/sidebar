@@ -131,8 +131,6 @@ exclude = ["setup.py", "docs", "tests", "alembic"]
 verbose = 2                       # Detailed output
 quiet = false
 color = true
-generate-badge = "."              # Generate badge in current directory
-badge-format = "svg"
 
 [tool.pydocstyle]
 # Pydocstyle configuration (also reads from .pydocstyle file)
