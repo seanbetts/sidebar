@@ -56,6 +56,8 @@ public struct IngestedFileRealtimeRecord: Codable {
     public let sourceMetadata: [String: AnyCodable]?
     public let pinned: Bool?
     public let pinnedOrder: Int?
+    public let createdAt: String?
+    public let updatedAt: String?
     public let deletedAt: String?
 }
 

@@ -1,6 +1,6 @@
 import Foundation
 
-public enum RealtimeEventType: String {
+public enum RealtimeEventType: String, Codable {
     case insert = "INSERT"
     case update = "UPDATE"
     case delete = "DELETE"

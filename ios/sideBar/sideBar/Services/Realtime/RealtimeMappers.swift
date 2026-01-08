@@ -47,7 +47,7 @@ public struct RealtimeMappers {
             category: nil,
             sourceUrl: record.sourceUrl,
             sourceMetadata: record.sourceMetadata,
-            createdAt: record.updatedAt ?? ""
+            createdAt: record.createdAt ?? record.updatedAt ?? ""
         )
     }
 
