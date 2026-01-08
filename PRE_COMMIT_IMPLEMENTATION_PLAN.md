@@ -344,21 +344,21 @@ Use template from `docs/QUALITY_ENFORCEMENT.md` lines 130-234.
 """Check file size limits according to AGENTS.md standards.
 
 Backend:
-- Services: 600 LOC hard (soft limit optional)
-- Routers: 500 LOC hard (soft limit optional)
+- Services: 400 LOC soft, 600 LOC hard
+- Routers: 350 LOC soft, 500 LOC hard
 
 Frontend:
-- Components: 600 LOC hard (soft limit optional)
-- Stores: 600 LOC hard (soft limit optional)
+- Components: 400 LOC soft, 600 LOC hard
+- Stores: 400 LOC soft, 600 LOC hard
 """
 import sys
 from pathlib import Path
 
 LIMITS = {
-    'backend/api/services': (0, 600),
-    'backend/api/routers': (0, 500),
-    'frontend/src/lib/components': (0, 600),
-    'frontend/src/lib/stores': (0, 600),
+    'backend/api/services': (400, 600),
+    'backend/api/routers': (350, 500),
+    'frontend/src/lib/components': (400, 600),
+    'frontend/src/lib/stores': (400, 600),
 }
 
 def count_lines(file_path: Path) -> int:

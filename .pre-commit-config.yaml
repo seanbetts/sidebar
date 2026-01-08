@@ -46,6 +46,21 @@ repos:
           - prettier@3.4.2
           - prettier-plugin-svelte@3.2.8
 
+  # Frontend - ESLint (all files)
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.17.0
+    hooks:
+      - id: eslint
+        files: ^frontend/src/.*\.(ts|js|svelte)$
+        args: [--fix, --max-warnings=0]
+        additional_dependencies:
+          - eslint@9.39.2
+          - eslint-plugin-jsdoc@61.5.0
+          - eslint-plugin-svelte@2.46.1
+          - svelte-eslint-parser@0.38.3
+          - '@typescript-eslint/eslint-plugin@8.50.1'
+          - '@typescript-eslint/parser@8.50.1'
+
   # General - File hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -59,3 +74,12 @@ repos:
       - id: trailing-whitespace
       - id: no-commit-to-branch
         args: [--branch, main]
+
+  # Custom - File size limits
+  - repo: local
+    hooks:
+      - id: check-file-size-limits
+        name: check-file-size-limits
+        entry: python scripts/check_file_sizes.py
+        language: system
+        pass_filenames: false

@@ -9,19 +9,19 @@ const jsdoc =
   nodeMajor >= 20 ? (await import('eslint-plugin-jsdoc')).default : null;
 const jsdocRules = jsdoc
   ? {
-      'jsdoc/check-alignment': 'warn',
-      'jsdoc/check-param-names': 'warn',
-      'jsdoc/check-tag-names': 'warn',
-      'jsdoc/check-types': 'warn',
-      'jsdoc/require-description': 'warn',
-      'jsdoc/require-param': 'warn',
-      'jsdoc/require-param-description': 'warn',
+      'jsdoc/check-alignment': 'error',
+      'jsdoc/check-param-names': 'error',
+      'jsdoc/check-tag-names': 'error',
+      'jsdoc/check-types': 'error',
+      'jsdoc/require-description': 'error',
+      'jsdoc/require-param': 'error',
+      'jsdoc/require-param-description': 'error',
       'jsdoc/require-param-type': 'off',
-      'jsdoc/require-returns': 'warn',
-      'jsdoc/require-returns-description': 'warn',
+      'jsdoc/require-returns': 'error',
+      'jsdoc/require-returns-description': 'error',
       'jsdoc/require-returns-type': 'off',
       'jsdoc/require-jsdoc': [
-        'warn',
+        'error',
         {
           require: {
             FunctionDeclaration: true,
