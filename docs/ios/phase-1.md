@@ -17,6 +17,9 @@
 - [x] Error mapping utility stub
 - [x] Cache strategy draft
 - [x] Theme model stub
+- [x] Permissions plan doc
+- [x] Realtime handling doc
+- [x] Telemetry plan doc (optional)
 
 ## After Xcode Project Is Added
 - [ ] Add Swift files to the Xcode target
