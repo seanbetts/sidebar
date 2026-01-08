@@ -20,6 +20,9 @@
 - [x] Permissions plan doc
 - [x] Realtime handling doc
 - [x] Telemetry plan doc (optional)
+- [x] Native navigation matrix
+- [x] Cache TTL adjustments (native UX)
+- [x] Realtime mapping notes (doc-only)
 
 ## After Xcode Project Is Added
 - [ ] Add Swift files to the Xcode target

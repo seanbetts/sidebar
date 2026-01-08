@@ -12,7 +12,14 @@
 - Ingestion list (TTL: 5m)
 - Scratchpad content (TTL: 7d)
 
-TODO: Revisit TTLs once native UX flows are implemented (likely longer-lived caches).
+## Suggested TTL Adjustments (Native UX)
+- Conversations list: 30m (frequent list access, low change rate)
+- Note tree: 30m; note content: 2h (reading-heavy flows)
+- Websites list: 30m; website detail: 2h
+- Ingestion list: 5-10m (processing updates matter)
+- Scratchpad: 7d (always cache)
+
+TODO: Confirm TTLs after initial native flows and realtime behavior.
 
 ## Storage
 - In-memory cache for the MVP (fast iteration).
