@@ -1838,6 +1838,8 @@ Once core app is complete, consider:
 
 ## Current Frontend Architecture (Reference)
 
+This section is **reference-only** for data flows and feature scope. It is **not** a UI or interaction spec for SwiftUI. Do not mirror these layouts in the native app.
+
 ### Technology Stack
 - **Framework**: SvelteKit 5 with TypeScript
 - **Styling**: Tailwind CSS v4 with CSS custom properties
@@ -1860,6 +1862,7 @@ Custom Svelte stores:
 - `ingestionViewerStore` - Active file viewer state
 
 ### Component Architecture
+Web-only UI structure for reference. SwiftUI should use native navigation patterns instead.
 ```
 +layout.svelte (App shell)
 ├── Sidebar (Left nav)
@@ -1888,6 +1891,7 @@ Custom Svelte stores:
 7. **Scratchpad**: Quick notes with auto-sync
 
 ### Complex Components
+Implementation references for behavior and data flow only; do not replicate web UI layout.
 - **ChatWindow**: SSE streaming, token appending, tool call updates
 - **MarkdownEditor**: TipTap-based editor with 15+ formatting options
 - **UniversalViewer**: Multi-format file viewer (40KB+ code)
