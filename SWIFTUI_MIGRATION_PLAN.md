@@ -146,6 +146,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 1.0e API contract test checklist
 - [x] 1.0f SwiftUI view shells + auth/session stubs + DI container
 - [x] 1.0g Auth adapter + navigation state + realtime mappers
+- [x] 1.0h Error mapping + cache strategy + theme stub
 - [ ] 1.1 Xcode Project Setup
 - [ ] 1.2 Core Data Models
 - [ ] 1.3 Supabase Integration
