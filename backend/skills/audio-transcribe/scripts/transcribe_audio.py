@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""
-Transcribe Audio
+"""Transcribe Audio
 
 Transcribe audio files using OpenAI's transcription API with automatic chunking.
 """
 
-import sys
-import json
 import argparse
 import io
+import json
 import os
-import time
+import sys
 import tempfile
-from pathlib import Path
+import time
 from datetime import datetime
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Any
 
 import requests
 from tqdm import tqdm
@@ -26,7 +25,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 try:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.notes_service import NotesService
-    from api.services.skill_file_ops import upload_file, download_file
+    from api.services.skill_file_ops import download_file, upload_file
 except Exception:
     SessionLocal = None
     NotesService = None
@@ -46,7 +45,7 @@ def save_transcript_database(
     content: str,
     title: str,
     folder: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if SessionLocal is None or NotesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
@@ -75,11 +74,10 @@ def save_transcript(
     original_file: Path,
     model: str,
     output_dir: Path,
-    usage_info: Optional[Dict[str, Any]] = None,
-    output_name: Optional[str] = None,
+    usage_info: dict[str, Any] | None = None,
+    output_name: str | None = None,
 ) -> Path:
-    """
-    Save transcript to specified folder with timestamp and metadata.
+    """Save transcript to specified folder with timestamp and metadata.
 
     Args:
         transcript: Transcribed text
@@ -121,7 +119,7 @@ def save_transcript(
 """
 
     # Save transcript with metadata
-    output_path.write_text(metadata + transcript, encoding='utf-8')
+    output_path.write_text(metadata + transcript, encoding="utf-8")
 
     return output_path
 
@@ -130,7 +128,7 @@ def save_transcript_to_r2(
     user_id: str,
     transcript_path: Path,
     r2_dir: str,
-) -> str:
+) -> Any:
     if upload_file is None:
         raise RuntimeError("Storage dependencies are unavailable")
     r2_dir = (r2_dir or "").strip("/")
@@ -141,20 +139,40 @@ def save_transcript_to_r2(
         transcript_path,
         content_type="text/plain",
     )
-    return record.path
+    return record
+
+
+def _build_storage_payload(user_id: str | None, record: Any) -> dict[str, Any]:
+    if not user_id or not record:
+        return {
+            "file_id": None,
+            "ai_path": None,
+            "derivatives": [],
+        }
+    file_id = str(record.id)
+    return {
+        "file_id": file_id,
+        "ai_path": f"{user_id}/files/{file_id}/ai/ai.md",
+        "derivatives": [
+            {
+                "kind": "text_original",
+                "path": f"{user_id}/files/{file_id}/derivatives/source.txt",
+                "content_type": "text/plain",
+            }
+        ],
+    }
 
 
 def post_to_api(
     file_obj: io.BytesIO | io.BufferedReader,
     filename: str,
-    language: Optional[str],
+    language: str | None,
     model: str,
     api_key: str,
     max_retries: int = 3,
-    **kwargs
-) -> Dict[str, Any]:
-    """
-    Send a single file object to the transcription API with retry logic.
+    **kwargs,
+) -> dict[str, Any]:
+    """Send a single file object to the transcription API with retry logic.
 
     Args:
         file_obj: File object to transcribe
@@ -180,14 +198,21 @@ def post_to_api(
         data["language"] = language
 
     # Add optional parameters
-    for key in ['chunking_strategy', 'include', 'prompt', 'response_format', 'temperature', 'timestamp_granularities']:
+    for key in [
+        "chunking_strategy",
+        "include",
+        "prompt",
+        "response_format",
+        "temperature",
+        "timestamp_granularities",
+    ]:
         if key in kwargs and kwargs[key] is not None:
             data[key] = kwargs[key]
 
     headers = {"Authorization": f"Bearer {api_key}"}
 
     # Calculate timeout based on file size
-    if hasattr(file_obj, 'getvalue'):
+    if hasattr(file_obj, "getvalue"):
         file_size_mb = len(file_obj.getvalue()) / (1024 * 1024)
     else:
         file_size_mb = 10
@@ -196,7 +221,7 @@ def post_to_api(
     for attempt in range(max_retries):
         try:
             # Reset file position for retry attempts
-            if hasattr(file_obj, 'seek'):
+            if hasattr(file_obj, "seek"):
                 file_obj.seek(0)
 
             response = requests.post(
@@ -216,8 +241,10 @@ def post_to_api(
 
         except requests.exceptions.Timeout as exc:
             if attempt < max_retries - 1:
-                wait_time = 2 ** attempt  # Exponential backoff
-                tqdm.write(f"⏰ Timeout on attempt {attempt + 1}/{max_retries}. Retrying in {wait_time}s...")
+                wait_time = 2**attempt  # Exponential backoff
+                tqdm.write(
+                    f"⏰ Timeout on attempt {attempt + 1}/{max_retries}. Retrying in {wait_time}s..."
+                )
                 time.sleep(wait_time)
                 continue
             else:
@@ -236,30 +263,35 @@ def post_to_api(
                     message = exc.response.text
 
             # Retry on server errors
-            if attempt < max_retries - 1 and exc.response and exc.response.status_code >= 500:
-                wait_time = 2 ** attempt
-                tqdm.write(f"🔄 Server error on attempt {attempt + 1}/{max_retries}. Retrying in {wait_time}s...")
+            if (
+                attempt < max_retries - 1
+                and exc.response
+                and exc.response.status_code >= 500
+            ):
+                wait_time = 2**attempt
+                tqdm.write(
+                    f"🔄 Server error on attempt {attempt + 1}/{max_retries}. Retrying in {wait_time}s..."
+                )
                 time.sleep(wait_time)
                 continue
             else:
-                raise RuntimeError(f"Failed to call transcription API: {message or exc}") from exc
+                raise RuntimeError(
+                    f"Failed to call transcription API: {message or exc}"
+                ) from exc
 
     raise RuntimeError("Max retries exceeded")
 
 
 def progress_hook(d):
     """Progress hook for displaying download progress."""
-    if d['status'] == 'finished':
+    if d["status"] == "finished":
         tqdm.write(f"  ✓ {Path(d['filename']).name}")
 
 
 def segment_audio(
-    path: Path,
-    max_size: int = MAX_SIZE,
-    force_max_duration: Optional[int] = None
+    path: Path, max_size: int = MAX_SIZE, force_max_duration: int | None = None
 ) -> list[io.BytesIO]:
-    """
-    Split an audio file into valid chunks under max_size bytes.
+    """Split an audio file into valid chunks under max_size bytes.
 
     Args:
         path: Path to audio file
@@ -297,29 +329,33 @@ def segment_audio(
     # If force_max_duration is specified (for token limits), use that
     if force_max_duration:
         max_chunk_ms = force_max_duration * 1000
-        print(f"🔒 Forcing max chunk duration to {force_max_duration/60:.1f} minutes for token limits")
+        print(
+            f"🔒 Forcing max chunk duration to {force_max_duration/60:.1f} minutes for token limits"
+        )
 
     chunk_ms = max(min_chunk_ms, min(target_chunk_ms, max_chunk_ms))
 
     # Calculate number of chunks
     num_chunks = int((total_ms + chunk_ms - 1) // chunk_ms)
 
-    print(f"📐 Splitting into {num_chunks} chunks of ~{chunk_ms / 1000 / 60:.1f} minutes each")
+    print(
+        f"📐 Splitting into {num_chunks} chunks of ~{chunk_ms / 1000 / 60:.1f} minutes each"
+    )
 
     # Map file extensions to compatible ffmpeg formats
     format_mapping = {
-        '.m4a': 'mp4',
-        '.aac': 'mp4',
-        '.mp4': 'mp4',
-        '.mp3': 'mp3',
-        '.wav': 'wav',
-        '.flac': 'flac',
-        '.ogg': 'ogg'
+        ".m4a": "mp4",
+        ".aac": "mp4",
+        ".mp4": "mp4",
+        ".mp3": "mp3",
+        ".wav": "wav",
+        ".flac": "flac",
+        ".ogg": "ogg",
     }
 
     original_ext = path.suffix.lower()
-    export_format = format_mapping.get(original_ext, 'mp3')
-    export_ext = '.mp3' if export_format == 'mp3' else original_ext
+    export_format = format_mapping.get(original_ext, "mp3")
+    export_ext = ".mp3" if export_format == "mp3" else original_ext
 
     chunks: list[io.BytesIO] = []
 
@@ -330,23 +366,29 @@ def segment_audio(
 
     while current_start < total_ms:
         end = min(current_start + chunk_ms, total_ms)
-        chunks_info.append({
-            'index': chunk_index,
-            'start': current_start,
-            'end': end,
-            'duration': end - current_start
-        })
+        chunks_info.append(
+            {
+                "index": chunk_index,
+                "start": current_start,
+                "end": end,
+                "duration": end - current_start,
+            }
+        )
         current_start = end
         chunk_index += 1
 
-    print(f"📊 Will create {len(chunks_info)} chunks covering {total_ms/1000/60:.1f} minutes")
+    print(
+        f"📊 Will create {len(chunks_info)} chunks covering {total_ms/1000/60:.1f} minutes"
+    )
 
     # Create chunks with progress bar
-    with tqdm(total=len(chunks_info), desc="🔪 Splitting audio", unit="chunk", leave=False) as pbar:
+    with tqdm(
+        total=len(chunks_info), desc="🔪 Splitting audio", unit="chunk", leave=False
+    ) as pbar:
         for chunk_info in chunks_info:
-            start = chunk_info['start']
-            end = chunk_info['end']
-            index = chunk_info['index']
+            start = chunk_info["start"]
+            end = chunk_info["end"]
+            index = chunk_info["index"]
 
             segment = audio[start:end]
             duration_sec = len(segment) / 1000
@@ -364,41 +406,46 @@ def segment_audio(
                     f"{max_size/(1024*1024):.1f}MB limit"
                 )
 
-            tqdm.write(f"📝 Chunk {index}: {start/1000/60:.1f}-{end/1000/60:.1f}min "
-                      f"({duration_sec:.1f}s, {chunk_size_mb:.1f}MB)")
+            tqdm.write(
+                f"📝 Chunk {index}: {start/1000/60:.1f}-{end/1000/60:.1f}min "
+                f"({duration_sec:.1f}s, {chunk_size_mb:.1f}MB)"
+            )
 
             chunks.append(buf)
             pbar.update(1)
 
     # Verify coverage
-    total_chunk_duration = sum(info['duration'] for info in chunks_info)
+    total_chunk_duration = sum(info["duration"] for info in chunks_info)
     coverage_percent = (total_chunk_duration / total_ms) * 100
-    print(f"✅ Audio coverage: {coverage_percent:.1f}% "
-          f"({total_chunk_duration/1000/60:.1f}/{total_ms/1000/60:.1f} minutes)")
+    print(
+        f"✅ Audio coverage: {coverage_percent:.1f}% "
+        f"({total_chunk_duration/1000/60:.1f}/{total_ms/1000/60:.1f} minutes)"
+    )
 
     return chunks
 
 
 def transcribe_audio(
     file_path: str,
-    language: Optional[str] = None,
+    language: str | None = None,
     model: str = "gpt-4o-transcribe",
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
     *,
-    user_id: Optional[str] = None,
-    temp_dir: Optional[str] = None,
+    user_id: str | None = None,
+    temp_dir: str | None = None,
     keep_local: bool = False,
-    output_name: Optional[str] = None,
-    **kwargs
-) -> Dict[str, Any]:
-    """
-    Transcribe an audio file using OpenAI's transcription endpoint.
+    output_name: str | None = None,
+    upload_result: bool = True,
+    **kwargs,
+) -> dict[str, Any]:
+    """Transcribe an audio file using OpenAI's transcription endpoint.
 
     Args:
         file_path: Path to audio file
         language: Language code (optional)
         model: Model to use
         output_dir: Output directory for transcripts
+        upload_result: Upload transcript to storage
         **kwargs: Additional API parameters
 
     Returns:
@@ -412,11 +459,13 @@ def transcribe_audio(
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY environment variable is not set")
-    if not user_id:
+    if upload_result and not user_id:
         raise ValueError("user_id is required for transcript storage")
 
     path = Path(file_path)
-    temp_root = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="audio-input-"))
+    temp_root = (
+        Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="audio-input-"))
+    )
     if not path.exists() or not path.is_file():
         if not user_id or download_file is None:
             raise FileNotFoundError(f"Audio file not found: {file_path}")
@@ -425,20 +474,24 @@ def transcribe_audio(
         path = local_input
 
     # Local output directory (always temp)
-    out_dir = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="transcripts-"))
-    r2_dir = (output_dir or DEFAULT_R2_DIR).strip("/")
+    out_dir = (
+        Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp(prefix="transcripts-"))
+    )
+    r2_dir = (output_dir or DEFAULT_R2_DIR).strip("/") if upload_result else ""
 
     file_size_mb = path.stat().st_size / (1024 * 1024)
     print(f"📁 Processing {path.name} ({file_size_mb:.1f}MB) with model {model}")
 
     # Check if we need to chunk for gpt-4o models
     needs_chunking_for_tokens = False
-    if model.startswith('gpt-4o'):
+    if model.startswith("gpt-4o"):
         estimated_minutes = file_size_mb * 0.8
         if estimated_minutes > 8:
             needs_chunking_for_tokens = True
-            print(f"🔄 File estimated at {estimated_minutes:.1f} minutes - "
-                  "chunking to avoid gpt-4o token limits")
+            print(
+                f"🔄 File estimated at {estimated_minutes:.1f} minutes - "
+                "chunking to avoid gpt-4o token limits"
+            )
 
     # Process file
     if path.stat().st_size > MAX_SIZE or needs_chunking_for_tokens:
@@ -448,7 +501,7 @@ def transcribe_audio(
             print("📏 Splitting into chunks to avoid token limits...")
 
         transcripts = []
-        force_duration = 300 if model.startswith('gpt-4o') else None
+        force_duration = 300 if model.startswith("gpt-4o") else None
         chunks = segment_audio(path, force_max_duration=force_duration)
 
         print(f"🎯 Created {len(chunks)} chunks, starting transcription...")
@@ -457,12 +510,16 @@ def transcribe_audio(
         with tqdm(total=len(chunks), desc="🎙️  Transcribing", unit="chunk") as pbar:
             for idx, chunk in enumerate(chunks, start=1):
                 chunk_size_mb = len(chunk.getvalue()) / (1024 * 1024)
-                pbar.set_description(f"🎙️  Transcribing chunk {idx}/{len(chunks)} ({chunk_size_mb:.1f}MB)")
+                pbar.set_description(
+                    f"🎙️  Transcribing chunk {idx}/{len(chunks)} ({chunk_size_mb:.1f}MB)"
+                )
 
                 try:
-                    response = post_to_api(chunk, chunk.name, language, model, api_key, **kwargs)
-                    transcript = response.get('text', '')
-                    last_usage = response.get('usage')
+                    response = post_to_api(
+                        chunk, chunk.name, language, model, api_key, **kwargs
+                    )
+                    transcript = response.get("text", "")
+                    last_usage = response.get("usage")
                     transcripts.append(transcript)
 
                     word_count = len(transcript.split()) if transcript else 0
@@ -487,25 +544,29 @@ def transcribe_audio(
         )
         print(f"💾 Transcript saved to: {output_path}")
 
+        record = None
         r2_path = None
-        if user_id:
-            r2_path = save_transcript_to_r2(user_id, output_path, r2_dir)
+        if upload_result and user_id:
+            record = save_transcript_to_r2(user_id, output_path, r2_dir)
+            r2_path = record.path if record else None
+        storage_payload = _build_storage_payload(user_id, record)
 
         return {
-            'transcript': combined_transcript,
-            'output_path': r2_path or str(output_path),
-            'local_path': str(output_path) if keep_local else None,
-            'word_count': len(combined_transcript.split()),
-            'chunks': len(transcripts),
-            'model': model,
-            'usage': last_usage
+            "transcript": combined_transcript,
+            "output_path": r2_path or str(output_path),
+            "local_path": str(output_path) if keep_local else None,
+            "word_count": len(combined_transcript.split()),
+            "chunks": len(transcripts),
+            "model": model,
+            "usage": last_usage,
+            **storage_payload,
         }
     else:
         print("📤 Uploading single file for transcription...")
         with path.open("rb") as f:
             response = post_to_api(f, path.name, language, model, api_key, **kwargs)
-            transcript = response.get('text', '')
-            usage_info = response.get('usage')
+            transcript = response.get("text", "")
+            usage_info = response.get("usage")
 
         print("✅ Transcription complete!")
         print(f"📊 Total words: {len(transcript.split())}")
@@ -520,25 +581,29 @@ def transcribe_audio(
         )
         print(f"💾 Transcript saved to: {output_path}")
 
+        record = None
         r2_path = None
-        if user_id:
-            r2_path = save_transcript_to_r2(user_id, output_path, r2_dir)
+        if upload_result and user_id:
+            record = save_transcript_to_r2(user_id, output_path, r2_dir)
+            r2_path = record.path if record else None
+        storage_payload = _build_storage_payload(user_id, record)
 
         return {
-            'transcript': transcript,
-            'output_path': r2_path or str(output_path),
-            'local_path': str(output_path) if keep_local else None,
-            'word_count': len(transcript.split()),
-            'chunks': 1,
-            'model': model,
-            'usage': usage_info
+            "transcript": transcript,
+            "output_path": r2_path or str(output_path),
+            "local_path": str(output_path) if keep_local else None,
+            "word_count": len(transcript.split()),
+            "chunks": 1,
+            "model": model,
+            "usage": usage_info,
+            **storage_payload,
         }
 
 
 def main() -> None:
     """Main entry point for transcribe_audio script."""
     parser = argparse.ArgumentParser(
-        description='Transcribe audio using OpenAI API',
+        description="Transcribe audio using OpenAI API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"""
 Default Output (R2): {DEFAULT_R2_DIR}
@@ -567,22 +632,40 @@ Supported Models:
 Requirements:
   - OPENAI_API_KEY environment variable
   - ffmpeg (for audio processing)
-        """
+        """,
     )
 
     parser.add_argument("file", help="Path to audio file")
     parser.add_argument("--language", default="en", help="Language hint (default: en)")
-    parser.add_argument("--model", default="gpt-4o-transcribe", help="Transcription model")
-    parser.add_argument("--output-dir", help="R2 folder for transcripts (default: Transcripts)")
-    parser.add_argument("--output-name", help="Output filename override (default: timestamped)")
-    parser.add_argument("--chunking-strategy", help="Use 'auto' for automatic VAD-based chunking")
+    parser.add_argument(
+        "--model", default="gpt-4o-transcribe", help="Transcription model"
+    )
+    parser.add_argument(
+        "--output-dir", help="R2 folder for transcripts (default: Transcripts)"
+    )
+    parser.add_argument(
+        "--output-name", help="Output filename override (default: timestamped)"
+    )
+    parser.add_argument(
+        "--chunking-strategy", help="Use 'auto' for automatic VAD-based chunking"
+    )
     parser.add_argument("--include", action="append", help="Additional info to include")
     parser.add_argument("--prompt", help="Optional text to guide the model's style")
-    parser.add_argument("--response-format", default="json", help="Output format (default: json)")
-    parser.add_argument("--temperature", type=float, default=0.0, help="Sampling temperature")
-    parser.add_argument("--timestamp-granularities", action="append", help="Timestamp granularities")
-    parser.add_argument("--json", action="store_true", help="Output results in JSON format")
-    parser.add_argument("--database", action="store_true", help="Save transcript to the database")
+    parser.add_argument(
+        "--response-format", default="json", help="Output format (default: json)"
+    )
+    parser.add_argument(
+        "--temperature", type=float, default=0.0, help="Sampling temperature"
+    )
+    parser.add_argument(
+        "--timestamp-granularities", action="append", help="Timestamp granularities"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Output results in JSON format"
+    )
+    parser.add_argument(
+        "--database", action="store_true", help="Save transcript to the database"
+    )
     parser.add_argument("--user-id", help="User id for storage/database access")
     parser.add_argument("--temp-dir", help="Temporary working directory")
     parser.add_argument(
@@ -600,7 +683,9 @@ Requirements:
     # Parse chunking strategy
     chunking_strategy = None
     if args.chunking_strategy:
-        chunking_strategy = "auto" if args.chunking_strategy == "auto" else args.chunking_strategy
+        chunking_strategy = (
+            "auto" if args.chunking_strategy == "auto" else args.chunking_strategy
+        )
 
     try:
         redirected_stdout = None
@@ -622,7 +707,7 @@ Requirements:
                 prompt=args.prompt,
                 response_format=args.response_format,
                 temperature=args.temperature,
-                timestamp_granularities=args.timestamp_granularities
+                timestamp_granularities=args.timestamp_granularities,
             )
         finally:
             if redirected_stdout is not None:
@@ -645,55 +730,55 @@ Requirements:
         if args.json:
             # Don't include full transcript in JSON output (it's saved to file)
             output = {
-                'success': True,
-                'data': {
-                    'output_path': result['output_path'],
-                    'local_path': result.get('local_path'),
-                    'word_count': result['word_count'],
-                    'chunks': result['chunks'],
-                    'model': result['model'],
-                    'usage': result.get('usage'),
-                    'note': note_data
-                }
+                "success": True,
+                "data": {
+                    "output_path": result["output_path"],
+                    "local_path": result.get("local_path"),
+                    "word_count": result["word_count"],
+                    "chunks": result["chunks"],
+                    "model": result["model"],
+                    "usage": result.get("usage"),
+                    "note": note_data,
+                },
             }
             print(json.dumps(output, indent=2))
         else:
             if note_data:
                 print(f"🗒️ Note created: {note_data['id']}")
-            print("\n" + result['transcript'])
+            print("\n" + result["transcript"])
 
         sys.exit(0)
 
     except (RuntimeError, FileNotFoundError) as e:
         error_output = {
-            'success': False,
-            'error': {
-                'type': 'ValidationError',
-                'message': str(e),
-                'suggestions': [
-                    'Ensure OPENAI_API_KEY environment variable is set',
-                    'Verify audio file exists and is readable',
-                    'Check that ffmpeg is installed',
-                    'Ensure pydub is installed (pip install pydub)'
-                ]
-            }
+            "success": False,
+            "error": {
+                "type": "ValidationError",
+                "message": str(e),
+                "suggestions": [
+                    "Ensure OPENAI_API_KEY environment variable is set",
+                    "Verify audio file exists and is readable",
+                    "Check that ffmpeg is installed",
+                    "Ensure pydub is installed (pip install pydub)",
+                ],
+            },
         }
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
         error_output = {
-            'success': False,
-            'error': {
-                'type': 'TranscriptionError',
-                'message': str(e),
-                'suggestions': [
-                    'Check your internet connection',
-                    'Verify OpenAI API key is valid',
-                    'Try with a smaller audio file',
-                    'Check if audio format is supported'
-                ]
-            }
+            "success": False,
+            "error": {
+                "type": "TranscriptionError",
+                "message": str(e),
+                "suggestions": [
+                    "Check your internet connection",
+                    "Verify OpenAI API key is valid",
+                    "Try with a smaller audio file",
+                    "Check if audio format is supported",
+                ],
+            },
         }
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)

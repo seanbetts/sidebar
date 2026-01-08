@@ -1,8 +1,9 @@
 """Centralized path validation and jailing."""
+
 from pathlib import Path
 from typing import TYPE_CHECKING
-from fastapi import HTTPException, status
 
+from fastapi import HTTPException, status
 
 if TYPE_CHECKING:
     from api.config import Settings
@@ -39,7 +40,7 @@ class PathValidator:
     def _validate_path(self, path: str, check_writable: bool) -> Path:
         """Core path validation logic."""
         # In R2 mode, enforce string-level path rules only.
-        app_settings: "Settings | None"
+        app_settings: Settings | None
         try:
             from api.config import settings as app_settings
         except Exception:
@@ -49,18 +50,20 @@ class PathValidator:
             if ".." in path:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Path traversal not allowed: {path}"
+                    detail=f"Path traversal not allowed: {path}",
                 )
             if Path(path).is_absolute():
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Absolute paths not allowed: {path}"
+                    detail=f"Absolute paths not allowed: {path}",
                 )
             normalized = path.replace("\\", "/").strip("/")
-            if normalized == "profile-images" or normalized.startswith("profile-images/"):
+            if normalized == "profile-images" or normalized.startswith(
+                "profile-images/"
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Path not writable: profile-images"
+                    detail="Path not writable: profile-images",
                 )
             return (self.workspace_base / normalized).resolve()
 
@@ -68,7 +71,7 @@ class PathValidator:
         if ".." in path:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Path traversal not allowed: {path}"
+                detail=f"Path traversal not allowed: {path}",
             )
 
         # Convert to absolute path relative to workspace
@@ -81,17 +84,17 @@ class PathValidator:
         if abs_path.is_symlink():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Symlinks not allowed: {path}"
+                detail=f"Symlinks not allowed: {path}",
             )
 
         # Ensure path is within workspace
         try:
             abs_path.relative_to(self.workspace_base)
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Path outside workspace: {path}"
-            )
+                detail=f"Path outside workspace: {path}",
+            ) from exc
 
         # Check write permissions if needed
         if check_writable:
@@ -100,9 +103,10 @@ class PathValidator:
                 for writable in self.writable_paths
             )
             if not allowed:
+                allowlist = ", ".join(str(p) for p in self.writable_paths)
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Path not writable (allowlist: {[str(p) for p in self.writable_paths]})"
+                    detail=f"Path not writable (allowlist: {allowlist})",
                 )
 
         return abs_path

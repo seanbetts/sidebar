@@ -1,7 +1,9 @@
 """Deprecation warning middleware."""
+
 from __future__ import annotations
 
 import logging
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -28,13 +30,17 @@ class DeprecationMiddleware(BaseHTTPMiddleware):
     """Add deprecation warnings to legacy endpoints."""
 
     async def dispatch(self, request: Request, call_next):
+        """Handle request and append deprecation warnings when needed."""
         path = request.url.path
 
         for old_path, new_path in DEPRECATED_PATHS.items():
             if path.startswith(old_path):
                 logger.warning(
                     "Deprecated API path used",
-                    extra={"path": path, "client": request.client.host if request.client else None},
+                    extra={
+                        "path": path,
+                        "client": request.client.host if request.client else None,
+                    },
                 )
                 response = await call_next(request)
                 response.headers["X-API-Deprecated"] = "true"
@@ -44,4 +50,3 @@ class DeprecationMiddleware(BaseHTTPMiddleware):
                 return response
 
         return await call_next(request)
-

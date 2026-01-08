@@ -11,32 +11,32 @@ const inFlight = new Set<string>();
  * @throws Error when the API request fails.
  */
 export async function generateConversationTitle(conversationId: string): Promise<void> {
-  const state = get(conversationListStore);
-  const conversation = state.conversations.find(item => item.id === conversationId);
-  if (conversation?.titleGenerated || inFlight.has(conversationId)) {
-    return;
-  }
+	const state = get(conversationListStore);
+	const conversation = state.conversations.find((item) => item.id === conversationId);
+	if (conversation?.titleGenerated || inFlight.has(conversationId)) {
+		return;
+	}
 
-  inFlight.add(conversationId);
-  conversationListStore.setGeneratingTitle(conversationId, true);
+	inFlight.add(conversationId);
+	conversationListStore.setGeneratingTitle(conversationId, true);
 
-  try {
-    const response = await fetch('/api/v1/chat/generate-title', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversation_id: conversationId })
-    });
+	try {
+		const response = await fetch('/api/v1/chat/generate-title', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ conversation_id: conversationId })
+		});
 
-    if (!response.ok) {
-      await handleFetchError(response);
-    }
+		if (!response.ok) {
+			await handleFetchError(response);
+		}
 
-    const data = await response.json();
-    conversationListStore.updateConversationTitle(conversationId, data.title, !data.fallback);
-  } catch (error) {
-    logError('Title generation error', error, { conversationId });
-    conversationListStore.setGeneratingTitle(conversationId, false);
-  } finally {
-    inFlight.delete(conversationId);
-  }
+		const data = await response.json();
+		conversationListStore.updateConversationTitle(conversationId, data.title, !data.fallback);
+	} catch (error) {
+		logError('Title generation error', error, { conversationId });
+		conversationListStore.setGeneratingTitle(conversationId, false);
+	} finally {
+		inFlight.delete(conversationId);
+	}
 }

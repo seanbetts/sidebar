@@ -1,37 +1,46 @@
 """Chat router with SSE streaming support."""
+
 import asyncio
 import hashlib
 import json
 import logging
 import os
 import time
+from datetime import UTC, datetime
 from typing import TypedDict
-from datetime import datetime, timezone
-from fastapi import APIRouter, Request, Depends
+
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
 from google import genai
 from google.genai import types
+from sqlalchemy.orm import Session
+
+from api.auth import verify_bearer_token
 from api.config import settings
 from api.constants import ChatConstants
-from api.services.claude_client import ClaudeClient
-from api.services.user_settings_service import UserSettingsService
-from api.services.skill_catalog_service import SkillCatalogService
-from api.services.prompt_context_service import PromptContextService
-from api.schemas.tool_context import ToolExecutionContext
-from api.auth import verify_bearer_token
-from api.db.session import get_db
 from api.db.dependencies import get_current_user_id
-from api.services.conversation_service import ConversationService
+from api.db.session import get_db
 from api.exceptions import BadRequestError
+from api.metrics import (
+    chat_messages_total,
+    chat_stream_errors_total,
+    chat_streaming_duration_seconds,
+)
+from api.schemas.tool_context import ToolExecutionContext
+from api.services.claude_client import ClaudeClient
+from api.services.conversation_service import ConversationService
+from api.services.prompt_context_service import PromptContextService
+from api.services.skill_catalog_service import SkillCatalogService
+from api.services.user_settings_service import UserSettingsService
 from api.utils.validation import parse_uuid
-
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
 
 TITLE_CACHE_TTL_SECONDS = ChatConstants.TITLE_CACHE_TTL_SECONDS
 TITLE_CACHE_MAX_ENTRIES = ChatConstants.TITLE_CACHE_MAX_ENTRIES
+
+
 class _TitleCacheEntry(TypedDict):
     title: str
     timestamp: float
@@ -90,7 +99,9 @@ def _resolve_enabled_skills(settings_record):
     all_ids = [skill["id"] for skill in catalog]
     if not settings_record or settings_record.enabled_skills is None:
         return all_ids
-    return [skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids]
+    return [
+        skill_id for skill_id in settings_record.enabled_skills if skill_id in all_ids
+    ]
 
 
 def _build_title_cache_key(user_msg: str, assistant_msg: str) -> str:
@@ -111,15 +122,9 @@ def _get_cached_title(cache_key: str) -> _TitleCacheEntry | None:
 
 def _set_cached_title(cache_key: str, title: str) -> None:
     if len(TITLE_CACHE) >= TITLE_CACHE_MAX_ENTRIES:
-        oldest_key = min(
-            TITLE_CACHE.items(),
-            key=lambda item: item[1]["timestamp"]
-        )[0]
+        oldest_key = min(TITLE_CACHE.items(), key=lambda item: item[1]["timestamp"])[0]
         TITLE_CACHE.pop(oldest_key, None)
-    TITLE_CACHE[cache_key] = {
-        "title": title,
-        "timestamp": time.time()
-    }
+    TITLE_CACHE[cache_key] = {"title": title, "timestamp": time.time()}
 
 
 def _sanitize_title(raw_title: str) -> str:
@@ -128,14 +133,14 @@ def _sanitize_title(raw_title: str) -> str:
         raise ValueError("Empty title returned")
     if title.lower().startswith("title:"):
         title = title.split(":", 1)[1].strip()
-    title = title.strip('"\'').strip()
+    title = title.strip("\"'").strip()
     if "\n" in title:
         title = title.splitlines()[0].strip()
     title = " ".join(title.split())
 
     words = title.split()
     if len(words) > ChatConstants.TITLE_MAX_WORDS:
-        title = " ".join(words[:ChatConstants.TITLE_MAX_WORDS])
+        title = " ".join(words[: ChatConstants.TITLE_MAX_WORDS])
 
     if not title:
         raise ValueError("Invalid title after sanitization")
@@ -148,9 +153,8 @@ def _is_retryable_error(error: Exception) -> bool:
     if isinstance(error, ValueError):
         return False
     error_name = error.__class__.__name__
-    if error_name in {"AuthenticationError", "PermissionDenied", "InvalidArgument"}:
-        return False
-    return True
+    non_retryable = {"AuthenticationError", "PermissionDenied", "InvalidArgument"}
+    return error_name not in non_retryable
 
 
 def _extract_response_text(response) -> str:
@@ -167,6 +171,7 @@ def _extract_response_text(response) -> str:
             if part_text:
                 return part_text
     return ""
+
 
 @router.post("/stream")
 async def stream_chat(
@@ -205,15 +210,19 @@ async def stream_chat(
     if not message:
         raise BadRequestError("Message required")
 
+    chat_messages_total.inc()
+
     conversation_uuid = None
     if conversation_id:
         conversation_uuid = parse_uuid(conversation_id, "conversation", "id")
-        conversation = ConversationService.get_conversation(db, user_id, conversation_uuid)
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_uuid
+        )
         history = _build_history(conversation.messages, user_message_id, message)
 
     settings_record = UserSettingsService.get_settings(db, user_id)
     user_agent = request.headers.get("user-agent")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     system_prompt, first_message_prompt = PromptContextService.build_prompts(
         db=db,
         user_id=user_id,
@@ -244,6 +253,8 @@ async def stream_chat(
         current_weather=current_weather,
         current_timezone=current_timezone,
     )
+
+    stream_started_at = time.perf_counter()
 
     async def event_generator():
         """Generate SSE events."""
@@ -282,10 +293,12 @@ async def stream_chat(
                     "tool_start",
                     "tool_end",
                 }:
-                    yield f"event: {event_type}\ndata: {json.dumps(event.get('data', {}))}\n\n"
+                    data = json.dumps(event.get("data", {}))
+                    yield f"event: {event_type}\ndata: {data}\n\n"
 
                 elif event_type == "error":
                     # Error occurred
+                    chat_stream_errors_total.labels(type="stream_error").inc()
                     yield f"event: error\ndata: {json.dumps(event)}\n\n"
                     return
 
@@ -294,7 +307,12 @@ async def stream_chat(
 
         except Exception as e:
             error_event = {"type": "error", "error": str(e)}
+            chat_stream_errors_total.labels(type="server_error").inc()
             yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
+        finally:
+            chat_streaming_duration_seconds.observe(
+                max(0, time.perf_counter() - stream_started_at)
+            )
 
     return StreamingResponse(
         event_generator(),
@@ -302,8 +320,8 @@ async def stream_chat(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # Disable nginx buffering
-        }
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
     )
 
 
@@ -311,7 +329,7 @@ async def stream_chat(
 async def generate_title(
     request: Request,
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(get_current_user_id),
 ):
     """Generate a concise title for a conversation using Gemini.
 
@@ -346,8 +364,8 @@ async def generate_title(
     if not messages or len(messages) < 2:
         raise BadRequestError("Need at least 2 messages to generate title")
 
-    user_msg = messages[0].get('content', '')
-    assistant_msg = messages[1].get('content', '')
+    user_msg = messages[0].get("content", "")
+    assistant_msg = messages[1].get("content", "")
     cache_key = _build_title_cache_key(user_msg, assistant_msg)
     cached = _get_cached_title(cache_key)
     if cached:
@@ -382,7 +400,7 @@ async def generate_title(
         for attempt in range(3):
             try:
                 response = client.models.generate_content(
-                    model='gemini-3-flash-preview',
+                    model="gemini-3-flash-preview",
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         temperature=0,
@@ -391,17 +409,15 @@ async def generate_title(
                         automatic_function_calling=types.AutomaticFunctionCallingConfig(
                             disable=True
                         ),
-                        thinking_config=types.ThinkingConfig(
-                            thinking_budget=0
-                        )
-                    )
+                        thinking_config=types.ThinkingConfig(thinking_budget=0),
+                    ),
                 )
                 break
             except Exception as error:
                 last_error = error
                 if not _is_retryable_error(error) or attempt == 2:
                     raise
-                backoff_seconds = 0.5 * (2 ** attempt)
+                backoff_seconds = 0.5 * (2**attempt)
                 await asyncio.sleep(backoff_seconds)
 
         if response is None:

@@ -1,18 +1,24 @@
 """Helper functions for ingestion routes."""
+
 from __future__ import annotations
 
-from hashlib import sha256
 import logging
-from pathlib import Path
 import shutil
 import urllib.parse
 import uuid
+from hashlib import sha256
+from pathlib import Path
 
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from api.config import settings
-from api.exceptions import APIError, BadRequestError, InternalServerError, PayloadTooLargeError
+from api.exceptions import (
+    APIError,
+    BadRequestError,
+    InternalServerError,
+    PayloadTooLargeError,
+)
 from api.models.file_ingestion import IngestedFile
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.storage.service import get_storage_backend
@@ -100,7 +106,9 @@ async def _handle_upload(
         if settings.storage_backend.lower() == "r2":
             storage = get_storage_backend()
             staged_key = _staging_storage_key(user_id, file_id)
-            storage.put_object(staged_key, staging_path.read_bytes(), content_type=mime_original)
+            storage.put_object(
+                staged_key, staging_path.read_bytes(), content_type=mime_original
+            )
     except APIError:
         _safe_cleanup(staging_path)
         if staged_key and storage:
@@ -125,10 +133,14 @@ def _build_ingestion_path(folder: str | None, filename: str) -> str:
 
 def _filter_user_derivatives(derivatives: list[dict], user_id: str) -> list[dict]:
     prefix = f"{user_id}/"
-    return [item for item in derivatives if item.get("storage_key", "").startswith(prefix)]
+    return [
+        item for item in derivatives if item.get("storage_key", "").startswith(prefix)
+    ]
 
 
-def _recommended_viewer(derivatives: list[dict], record: IngestedFile | None = None) -> str | None:
+def _recommended_viewer(
+    derivatives: list[dict], record: IngestedFile | None = None
+) -> str | None:
     kinds = {item["kind"] for item in derivatives}
     if "viewer_pdf" in kinds:
         return "viewer_pdf"
@@ -142,11 +154,15 @@ def _recommended_viewer(derivatives: list[dict], record: IngestedFile | None = N
         return "audio_original"
     if "text_original" in kinds:
         return "text_original"
+    if "ai_md" in kinds:
+        return "ai_md"
     return None
 
 
 def _normalize_youtube_url(url: str) -> str:
-    parsed = urllib.parse.urlparse(url if url.startswith(("http://", "https://")) else f"https://{url}")
+    parsed = urllib.parse.urlparse(
+        url if url.startswith(("http://", "https://")) else f"https://{url}"
+    )
     if not parsed.netloc:
         raise BadRequestError("Invalid URL")
     if not any(domain in parsed.netloc for domain in ("youtube.com", "youtu.be")):
@@ -180,21 +196,40 @@ def _extract_youtube_id(url: str) -> str | None:
     return None
 
 
-def _category_for_file(filename: str, mime: str) -> str:
+def _category_for_file(
+    filename: str,
+    mime: str,
+    *,
+    path: str | None = None,
+    source_metadata: dict | None = None,
+) -> str:
     lower_name = filename.lower()
     normalized_mime = (mime or "application/octet-stream").split(";")[0].strip().lower()
+    if source_metadata and source_metadata.get("provider") == "web-crawler-policy":
+        return "reports"
+    if path:
+        normalized_path = path.strip("/")
+        if normalized_path.lower().startswith("reports/"):
+            return "reports"
     if lower_name.endswith((".csv", ".tsv")):
         return "spreadsheets"
     if normalized_mime == "application/octet-stream":
-        if lower_name.endswith((".csv", ".tsv", ".xls", ".xlsx", ".xlsm", ".xltx", ".xltm")):
+        if lower_name.endswith(
+            (".csv", ".tsv", ".xls", ".xlsx", ".xlsm", ".xltx", ".xltm")
+        ):
             return "spreadsheets"
-        if lower_name.endswith((".md", ".markdown", ".txt", ".log", ".json", ".yml", ".yaml", ".pdf")):
+        if lower_name.endswith(
+            (".md", ".markdown", ".txt", ".log", ".json", ".yml", ".yaml", ".pdf")
+        ):
             return "documents"
     if normalized_mime.startswith("image/"):
         return "images"
     if normalized_mime == "application/pdf":
         return "documents"
-    if normalized_mime == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    if (
+        normalized_mime
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ):
         return "documents"
     if normalized_mime in {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -205,7 +240,10 @@ def _category_for_file(filename: str, mime: str) -> str:
         "text/tsv",
     }:
         return "spreadsheets"
-    if normalized_mime == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    if (
+        normalized_mime
+        == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ):
         return "presentations"
     if normalized_mime.startswith("text/"):
         return "documents"
@@ -219,4 +257,6 @@ def _category_for_file(filename: str, mime: str) -> str:
 def _user_message_for_error(error_code: str | None, status: str | None) -> str | None:
     if not error_code or status != "failed":
         return None
-    return ERROR_MESSAGES.get(error_code, "We couldn't process this file. Please try again.")
+    return ERROR_MESSAGES.get(
+        error_code, "We couldn't process this file. Please try again."
+    )

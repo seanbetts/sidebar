@@ -1,9 +1,11 @@
 """Local filesystem storage backend."""
+
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional
 
+from api.metrics import storage_operations_total
 from api.services.storage.base import StorageBackend, StorageObject
 
 
@@ -23,7 +25,9 @@ class LocalStorage(StorageBackend):
         normalized = key.lstrip("/")
         return self.base_path / normalized
 
-    def list_objects(self, prefix: str, recursive: bool = True) -> Iterable[StorageObject]:
+    def list_objects(
+        self, prefix: str, recursive: bool = True
+    ) -> Iterable[StorageObject]:
         """List local objects under a prefix.
 
         Args:
@@ -34,71 +38,113 @@ class LocalStorage(StorageBackend):
             Iterable of StorageObject metadata.
         """
         root = self._resolve_key(prefix)
-        if not root.exists():
-            return []
+        try:
+            if not root.exists():
+                storage_operations_total.labels("list", "success").inc()
+                return []
 
-        if root.is_file():
-            stat = root.stat()
-            return [
-                StorageObject(
-                    key=str(root.relative_to(self.base_path)),
-                    size=stat.st_size,
-                    last_modified=None,
-                )
-            ]
+            if root.is_file():
+                stat = root.stat()
+                storage_operations_total.labels("list", "success").inc()
+                return [
+                    StorageObject(
+                        key=str(root.relative_to(self.base_path)),
+                        size=stat.st_size,
+                        last_modified=None,
+                    )
+                ]
 
-        objects = []
-        iterator = root.rglob("*") if recursive else root.glob("*")
-        for path in iterator:
-            if path.is_dir():
-                continue
-            stat = path.stat()
-            objects.append(
-                StorageObject(
-                    key=str(path.relative_to(self.base_path)),
-                    size=stat.st_size,
-                    last_modified=None,
+            objects = []
+            iterator = root.rglob("*") if recursive else root.glob("*")
+            for path in iterator:
+                if path.is_dir():
+                    continue
+                stat = path.stat()
+                objects.append(
+                    StorageObject(
+                        key=str(path.relative_to(self.base_path)),
+                        size=stat.st_size,
+                        last_modified=None,
+                    )
                 )
-            )
-        return objects
+            storage_operations_total.labels("list", "success").inc()
+            return objects
+        except Exception:
+            storage_operations_total.labels("list", "error").inc()
+            raise
 
     def get_object(self, key: str) -> bytes:
         """Read object bytes from local storage."""
-        return self._resolve_key(key).read_bytes()
+        try:
+            data = self._resolve_key(key).read_bytes()
+            storage_operations_total.labels("get", "success").inc()
+            return data
+        except Exception:
+            storage_operations_total.labels("get", "error").inc()
+            raise
 
     def get_object_range(self, key: str, start: int, end: int) -> bytes:
         """Read a byte range from local storage."""
         path = self._resolve_key(key)
-        with path.open("rb") as handle:
-            handle.seek(start)
-            return handle.read(end - start + 1)
+        try:
+            with path.open("rb") as handle:
+                handle.seek(start)
+                data = handle.read(end - start + 1)
+            storage_operations_total.labels("get_range", "success").inc()
+            return data
+        except Exception:
+            storage_operations_total.labels("get_range", "error").inc()
+            raise
 
-    def put_object(self, key: str, data: bytes, content_type: Optional[str] = None) -> StorageObject:
+    def put_object(
+        self, key: str, data: bytes, content_type: str | None = None
+    ) -> StorageObject:
         """Write object bytes to local storage."""
         path = self._resolve_key(key)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
-        stat = path.stat()
-        return StorageObject(
-            key=str(path.relative_to(self.base_path)),
-            size=stat.st_size,
-            content_type=content_type,
-            last_modified=None,
-        )
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            stat = path.stat()
+            storage_operations_total.labels("put", "success").inc()
+            return StorageObject(
+                key=str(path.relative_to(self.base_path)),
+                size=stat.st_size,
+                content_type=content_type,
+                last_modified=None,
+            )
+        except Exception:
+            storage_operations_total.labels("put", "error").inc()
+            raise
 
     def delete_object(self, key: str) -> None:
         """Delete a local object by key."""
         path = self._resolve_key(key)
-        if path.exists():
-            path.unlink()
+        try:
+            if path.exists():
+                path.unlink()
+            storage_operations_total.labels("delete", "success").inc()
+        except Exception:
+            storage_operations_total.labels("delete", "error").inc()
+            raise
 
     def copy_object(self, source_key: str, destination_key: str) -> None:
         """Copy a local object to a new key."""
         source = self._resolve_key(source_key)
         dest = self._resolve_key(destination_key)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(source.read_bytes())
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(source.read_bytes())
+            storage_operations_total.labels("copy", "success").inc()
+        except Exception:
+            storage_operations_total.labels("copy", "error").inc()
+            raise
 
     def object_exists(self, key: str) -> bool:
         """Return True if the local object exists."""
-        return self._resolve_key(key).exists()
+        try:
+            exists = self._resolve_key(key).exists()
+            storage_operations_total.labels("exists", "success").inc()
+            return exists
+        except Exception:
+            storage_operations_total.labels("exists", "error").inc()
+            raise

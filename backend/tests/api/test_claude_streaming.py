@@ -1,6 +1,6 @@
-import pytest
 from types import SimpleNamespace
 
+import pytest
 from api.services.claude_streaming import stream_with_tools
 
 
@@ -18,6 +18,7 @@ class FakeStream:
         async def _gen():
             for event in self._events:
                 yield event
+
         return _gen()
 
 
@@ -54,8 +55,13 @@ class DummyToolMapper:
 @pytest.mark.asyncio
 async def test_stream_with_tools_emits_tokens():
     events = [
-        SimpleNamespace(type="content_block_start", content_block=SimpleNamespace(type="text")),
-        SimpleNamespace(type="content_block_delta", delta=SimpleNamespace(type="text_delta", text="Hello")),
+        SimpleNamespace(
+            type="content_block_start", content_block=SimpleNamespace(type="text")
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="text_delta", text="Hello"),
+        ),
         SimpleNamespace(type="message_stop"),
     ]
     client = FakeClient(events)
@@ -81,11 +87,15 @@ async def test_stream_with_tools_handles_tool_use():
     events = [
         SimpleNamespace(
             type="content_block_start",
-            content_block=SimpleNamespace(type="tool_use", id="tool-1", name="test_tool"),
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
         ),
         SimpleNamespace(
             type="content_block_delta",
-            delta=SimpleNamespace(type="input_json_delta", partial_json='{"foo": "bar"}'),
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"foo": "bar"}'
+            ),
         ),
         SimpleNamespace(type="message_stop"),
     ]
@@ -115,7 +125,9 @@ async def test_stream_with_tools_handles_bad_tool_json():
     events = [
         SimpleNamespace(
             type="content_block_start",
-            content_block=SimpleNamespace(type="tool_use", id="tool-1", name="test_tool"),
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
         ),
         SimpleNamespace(
             type="content_block_delta",
@@ -150,7 +162,9 @@ async def test_stream_with_tools_emits_memory_event():
         ),
         SimpleNamespace(
             type="content_block_delta",
-            delta=SimpleNamespace(type="input_json_delta", partial_json='{"command": "create"}'),
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"command": "create"}'
+            ),
         ),
         SimpleNamespace(type="message_stop"),
     ]
@@ -181,11 +195,15 @@ async def test_stream_with_tools_emits_error_on_exception():
     events = [
         SimpleNamespace(
             type="content_block_start",
-            content_block=SimpleNamespace(type="tool_use", id="tool-1", name="test_tool"),
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
         ),
         SimpleNamespace(
             type="content_block_delta",
-            delta=SimpleNamespace(type="input_json_delta", partial_json='{"foo": "bar"}'),
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"foo": "bar"}'
+            ),
         ),
         SimpleNamespace(type="message_stop"),
     ]

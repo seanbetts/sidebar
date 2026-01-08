@@ -1,8 +1,7 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
-
 from api.services import notes_workspace_service as service_module
 from api.services.notes_workspace_service import NotesWorkspaceService
 
@@ -53,14 +52,18 @@ def _note(title="Title", content="Body", folder="", pinned=False):
         title=title,
         content=content,
         metadata_={"folder": folder, "pinned": pinned},
-        updated_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        updated_at=datetime(2024, 1, 1, tzinfo=UTC),
         deleted_at=None,
     )
 
 
 def test_list_tree_uses_notes_service(monkeypatch):
     db = FakeDB([_note()])
-    monkeypatch.setattr(service_module.NotesService, "build_notes_tree", lambda notes: {"children": notes})
+    monkeypatch.setattr(
+        service_module.NotesService,
+        "build_notes_tree",
+        lambda notes: {"children": notes},
+    )
 
     result = NotesWorkspaceService.list_tree(db, "user-1")
     assert result["children"]

@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """Things bridge service (macOS)."""
+
 from __future__ import annotations
 
 import json
 import os
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
-import sys
-from urllib.parse import urlencode, quote
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from urllib import request as urlrequest
-from typing import Any, Optional
+from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Header, HTTPException, status
-
 
 app = FastAPI(title="sideBar Things Bridge", version="0.1.0")
 
@@ -28,7 +28,7 @@ HEARTBEAT_INTERVAL = int(os.getenv("THINGS_BRIDGE_HEARTBEAT_SECONDS", "60"))
 THINGS_URL_TOKEN = os.getenv("THINGS_URL_TOKEN", "")
 
 
-def require_token(x_things_token: Optional[str] = Header(default=None)) -> None:
+def require_token(x_things_token: str | None = Header(default=None)) -> None:
     token = _get_bridge_token()
     if not token:
         raise HTTPException(
@@ -36,13 +36,17 @@ def require_token(x_things_token: Optional[str] = Header(default=None)) -> None:
             detail="THINGS_BRIDGE_TOKEN is not set",
         )
     if not x_things_token or x_things_token != token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bridge token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bridge token"
+        )
 
 
 def _run_jxa(script: str) -> dict[str, Any]:
     command = ["osascript", "-l", "JavaScript", "-e", script]
     try:
-        result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            command, check=True, capture_output=True, text=True, timeout=10
+        )
     except subprocess.TimeoutExpired as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -68,7 +72,7 @@ def _run_jxa(script: str) -> dict[str, Any]:
         ) from exc
 
 
-def _things_date_to_iso(value: Any) -> Optional[str]:
+def _things_date_to_iso(value: Any) -> str | None:
     if value is None:
         return None
     try:
@@ -81,22 +85,29 @@ def _things_date_to_iso(value: Any) -> Optional[str]:
         base_units = 131611392
         days = (raw - base_units) / 128
         if 0 <= days <= 365 * 200:
-            base = datetime(2001, 1, 1, tzinfo=timezone.utc)
+            base = datetime(2001, 1, 1, tzinfo=UTC)
             dt = base + timedelta(days=days)
             return dt.isoformat().replace("+00:00", "Z")
     if raw > 1e10:
         raw = raw / 1000.0
-    base = datetime(2001, 1, 1, tzinfo=timezone.utc)
+    base = datetime(2001, 1, 1, tzinfo=UTC)
     dt = base + timedelta(seconds=raw)
     return dt.isoformat().replace("+00:00", "Z")
 
 
-def _find_things_db() -> Optional[Path]:
-    base = Path.home() / "Library" / "Group Containers" / "JLMPQHK86H.com.culturedcode.ThingsMac"
+def _find_things_db() -> Path | None:
+    base = (
+        Path.home()
+        / "Library"
+        / "Group Containers"
+        / "JLMPQHK86H.com.culturedcode.ThingsMac"
+    )
     if not base.exists():
         print(f"Things bridge: Things DB base not found at {base}", file=sys.stderr)
         return None
-    candidates = list(base.glob("ThingsData-*/Things Database.thingsdatabase/main.sqlite"))
+    candidates = list(
+        base.glob("ThingsData-*/Things Database.thingsdatabase/main.sqlite")
+    )
     if not candidates:
         print(f"Things bridge: Things DB not found under {base}", file=sys.stderr)
         return None
@@ -158,15 +169,26 @@ def _read_task_metadata(task_ids: list[str]) -> dict[str, dict[str, Any]]:
         conn = sqlite3.connect(str(db_path))
         cursor = conn.execute(query, task_ids)
         for row in cursor.fetchall():
-            task_id, start_date, deadline, recurrence_rule, next_instance, repeating_template = row
+            (
+                task_id,
+                start_date,
+                deadline,
+                recurrence_rule,
+                next_instance,
+                repeating_template,
+            ) = row
             is_template = bool(recurrence_rule)
             is_repeating = bool(recurrence_rule or repeating_template)
             deadline_iso = _things_date_to_iso(deadline)
-            next_instance_iso = _things_date_to_iso(next_instance) if is_repeating else None
+            next_instance_iso = (
+                _things_date_to_iso(next_instance) if is_repeating else None
+            )
             if not deadline_iso and next_instance_iso:
                 try:
-                    next_dt = datetime.fromisoformat(next_instance_iso.replace("Z", "+00:00"))
-                    if next_dt >= datetime(2010, 1, 1, tzinfo=timezone.utc):
+                    next_dt = datetime.fromisoformat(
+                        next_instance_iso.replace("Z", "+00:00")
+                    )
+                    if next_dt >= datetime(2010, 1, 1, tzinfo=UTC):
                         deadline_iso = next_instance_iso
                 except ValueError:
                     pass
@@ -193,7 +215,9 @@ def _enrich_tasks_payload(payload: dict[str, Any]) -> dict[str, Any]:
     tasks = payload.get("tasks")
     if not isinstance(tasks, list):
         return payload
-    task_ids = [task.get("id") for task in tasks if isinstance(task, dict) and task.get("id")]
+    task_ids = [
+        task.get("id") for task in tasks if isinstance(task, dict) and task.get("id")
+    ]
     metadata = _read_task_metadata(task_ids)
     if not metadata:
         return payload
@@ -675,11 +699,17 @@ def _build_counts_script() -> str:
 def _build_apply_script(payload: dict[str, Any]) -> str:
     op = payload.get("op")
     todo_id = payload.get("id")
-    deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
+    deadline = (
+        payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
+    )
     if not op:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="op is required")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="op is required"
+        )
     if op != "add" and not todo_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="id is required")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="id is required"
+        )
     deadline_value = json.dumps(deadline)
     if op == "add":
         title = (payload.get("title") or "").strip()
@@ -687,7 +717,9 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
         list_id = payload.get("list_id") or payload.get("listId")
         list_name = payload.get("list_name") or payload.get("listName")
         if not title:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="title is required")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="title is required"
+            )
         title_value = json.dumps(title)
         notes_value = json.dumps(notes)
         list_value = json.dumps(list_id)
@@ -774,7 +806,15 @@ def _build_apply_script(payload: dict[str, Any]) -> str:
 def _read_keychain_value(account: str) -> str:
     try:
         result = subprocess.run(
-            ["security", "find-generic-password", "-s", "sidebar-things-bridge", "-a", account, "-w"],
+            [
+                "security",
+                "find-generic-password",
+                "-s",
+                "sidebar-things-bridge",
+                "-a",
+                account,
+                "-w",
+            ],
             check=True,
             capture_output=True,
             text=True,
@@ -800,22 +840,14 @@ def _apply_via_url(payload: dict[str, Any]) -> bool:
         if not todo_id:
             return False
         params = {"auth-token": token, "id": todo_id, "completed": "true"}
-    elif op == "set_due":
+    elif op == "set_due" or op == "defer":
         if not token:
             return False
         if not todo_id:
             return False
-        deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
-        if not deadline:
-            return False
-        deadline_value = str(deadline)[:10]
-        params = {"auth-token": token, "id": todo_id, "when": deadline_value}
-    elif op == "defer":
-        if not token:
-            return False
-        if not todo_id:
-            return False
-        deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
+        deadline = (
+            payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
+        )
         if not deadline:
             return False
         deadline_value = str(deadline)[:10]
@@ -852,7 +884,9 @@ def _apply_via_url(payload: dict[str, Any]) -> bool:
         if not title:
             return False
         notes = payload.get("notes") or ""
-        deadline = payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
+        deadline = (
+            payload.get("due_date") or payload.get("dueDate") or payload.get("deadline")
+        )
         list_id = payload.get("list_id") or payload.get("listId")
         list_name = payload.get("list_name") or payload.get("listName")
         params = {"title": title}
@@ -894,7 +928,9 @@ async def health() -> dict:
 
 
 @app.get("/lists/{scope}")
-async def get_list(scope: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def get_list(
+    scope: str, x_things_token: str | None = Header(default=None)
+) -> dict:
     require_token(x_things_token)
     script = _build_list_script(scope)
     payload = _run_jxa(script)
@@ -902,18 +938,24 @@ async def get_list(scope: str, x_things_token: Optional[str] = Header(default=No
 
 
 @app.get("/search")
-async def search_tasks(query: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def search_tasks(
+    query: str, x_things_token: str | None = Header(default=None)
+) -> dict:
     require_token(x_things_token)
     query = query.strip()
     if not query:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="query required")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="query required"
+        )
     script = _build_search_script(query)
     payload = _run_jxa(script)
     return _enrich_tasks_payload(payload)
 
 
 @app.post("/apply")
-async def apply_operation(request: dict, x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def apply_operation(
+    request: dict, x_things_token: str | None = Header(default=None)
+) -> dict:
     require_token(x_things_token)
     if _apply_via_url(request):
         return {"status": "ok", "via": "url"}
@@ -922,11 +964,15 @@ async def apply_operation(request: dict, x_things_token: Optional[str] = Header(
 
 
 @app.post("/url-token")
-async def set_url_token(request: dict, x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def set_url_token(
+    request: dict, x_things_token: str | None = Header(default=None)
+) -> dict:
     require_token(x_things_token)
     token = (request.get("token") or "").strip()
     if not token:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="token is required")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="token is required"
+        )
     try:
         subprocess.run(
             [
@@ -953,7 +999,9 @@ async def set_url_token(request: dict, x_things_token: Optional[str] = Header(de
 
 
 @app.get("/projects/{project_id}/tasks")
-async def get_project_tasks(project_id: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def get_project_tasks(
+    project_id: str, x_things_token: str | None = Header(default=None)
+) -> dict:
     require_token(x_things_token)
     script = _build_project_tasks_script(project_id)
     payload = _run_jxa(script)
@@ -961,7 +1009,9 @@ async def get_project_tasks(project_id: str, x_things_token: Optional[str] = Hea
 
 
 @app.get("/areas/{area_id}/tasks")
-async def get_area_tasks(area_id: str, x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def get_area_tasks(
+    area_id: str, x_things_token: str | None = Header(default=None)
+) -> dict:
     require_token(x_things_token)
     script = _build_area_tasks_script(area_id)
     payload = _run_jxa(script)
@@ -969,21 +1019,23 @@ async def get_area_tasks(area_id: str, x_things_token: Optional[str] = Header(de
 
 
 @app.get("/counts")
-async def get_counts(x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def get_counts(x_things_token: str | None = Header(default=None)) -> dict:
     require_token(x_things_token)
     script = _build_counts_script()
     return _run_jxa(script)
 
 
 @app.get("/completed/today")
-async def get_completed_today(x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def get_completed_today(
+    x_things_token: str | None = Header(default=None),
+) -> dict:
     require_token(x_things_token)
     script = _build_completed_today_script()
     return _run_jxa(script)
 
 
 @app.get("/diagnostics")
-async def get_diagnostics(x_things_token: Optional[str] = Header(default=None)) -> dict:
+async def get_diagnostics(x_things_token: str | None = Header(default=None)) -> dict:
     require_token(x_things_token)
     return _check_db_access()
 

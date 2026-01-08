@@ -24,6 +24,10 @@ dependencies = [
     "requests>=2.31.0",
     # YAML processing (folder-config skill)
     "PyYAML>=6.0",
+    # Web-save parsing
+    "readability-lxml>=0.8.1",
+    "markdownify>=0.11.6",
+    "beautifulsoup4>=4.12.0",
     # YouTube downloading (youtube-download skill)
     "yt-dlp>=2024.0.0",
     # Audio transcription (audio-transcribe skill)
@@ -127,8 +131,6 @@ exclude = ["setup.py", "docs", "tests", "alembic"]
 verbose = 2                       # Detailed output
 quiet = false
 color = true
-generate-badge = "."              # Generate badge in current directory
-badge-format = "svg"
 
 [tool.pydocstyle]
 # Pydocstyle configuration (also reads from .pydocstyle file)
@@ -141,4 +143,79 @@ plugins = ["sqlalchemy.ext.mypy.plugin"]
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
-exclude = "api/alembic/versions"
+exclude = "backend/api/alembic"
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = ["backend/api/alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "N",   # pep8-naming
+    "D",   # pydocstyle (docstrings)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "T20", # flake8-print (no print statements)
+    "SIM", # flake8-simplify
+]
+
+ignore = [
+    "D104",  # Missing docstring in public package
+    "D107",  # Missing docstring in __init__
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["D104"]
+"backend/api/alembic/versions/*.py" = ["D", "E501"]
+"backend/api/auth.py" = ["B008"]
+"backend/api/db/dependencies.py" = ["B008"]
+"backend/api/routers/*.py" = ["B008"]
+"backend/api/routers/files.py" = ["N803"]
+"backend/api/routers/conversations.py" = ["N815"]
+"backend/api/routers/ingestion_helpers.py" = ["E501"]
+"backend/api/routers/things.py" = ["E501"]
+"backend/api/routers/weather.py" = ["E501"]
+"backend/api/routers/websites_helpers.py" = ["E501"]
+"backend/api/services/settings_service.py" = ["E501"]
+"backend/api/services/tools/definitions_fs.py" = ["E501"]
+"backend/tests/**/*.py" = ["D", "T20", "SIM", "UP", "N806", "E501", "E402"]
+"backend/workers/ingestion_worker.py" = ["D", "E501", "SIM", "UP"]
+
+[[tool.mypy.overrides]]
+module = [
+    "alembic.*",
+    "anthropic",
+    "boto3",
+    "botocore.*",
+    "bs4",
+    "fastmcp",
+    "fastmcp.*",
+    "google",
+    "google.*",
+    "google.genai",
+    "httpx",
+    "jwt",
+    "lxml",
+    "markdownify",
+    "pydantic_settings",
+    "playwright.sync_api",
+    "prometheus_client",
+    "readability",
+    "sentry_sdk",
+    "sentry_sdk.*",
+    "yaml",
+]
+ignore_missing_imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

@@ -1,4 +1,5 @@
 """Supabase JWT validation utilities."""
+
 from __future__ import annotations
 
 import json
@@ -22,6 +23,7 @@ class SupabaseJWTValidator:
     """Validate Supabase-issued JWTs using cached JWKS."""
 
     def __init__(self, supabase_url: str | None = None) -> None:
+        """Initialize the JWT verifier with Supabase metadata."""
         self.supabase_url = supabase_url or settings.supabase_url
         if not self.supabase_url:
             raise JWTValidationError("Supabase URL is not configured.")
@@ -79,7 +81,9 @@ class SupabaseJWTValidator:
 
         if alg == "HS256":
             if not settings.supabase_jwt_secret:
-                raise JWTValidationError("Missing SUPABASE_JWT_SECRET for HS256 validation.")
+                raise JWTValidationError(
+                    "Missing SUPABASE_JWT_SECRET for HS256 validation."
+                )
             try:
                 return jwt.decode(
                     token,

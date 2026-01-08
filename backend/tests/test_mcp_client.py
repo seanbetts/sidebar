@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Test client for MCP Streamable HTTP protocol."""
+
 import asyncio
-import httpx
 import json
 import os
-from typing import Dict, Any, Optional
+from typing import Any
 
+import httpx
 from fastapi.testclient import TestClient
 
 
@@ -16,34 +17,34 @@ class MCPClient:
         self,
         base_url: str,
         bearer_token: str,
-        http_client: Optional[httpx.AsyncClient] = None,
+        http_client: httpx.AsyncClient | None = None,
     ):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.bearer_token = bearer_token
         self.session_id = None
         self.http_client = http_client
 
-    def _get_headers(self, accept: str = "application/json") -> Dict[str, str]:
+    def _get_headers(self, accept: str = "application/json") -> dict[str, str]:
         """Get headers with authentication."""
         headers = {
             "Authorization": f"Bearer {self.bearer_token}",
             "Content-Type": "application/json",
-            "Accept": accept
+            "Accept": accept,
         }
         # Add session ID if we have one
         if self.session_id:
             headers["mcp-session-id"] = self.session_id
         return headers
 
-    def _parse_sse_response(self, text: str) -> Dict[str, Any]:
+    def _parse_sse_response(self, text: str) -> dict[str, Any]:
         """Parse Server-Sent Events response."""
-        lines = text.strip().split('\n')
-        data_lines = [line[6:] for line in lines if line.startswith('data: ')]
+        lines = text.strip().split("\n")
+        data_lines = [line[6:] for line in lines if line.startswith("data: ")]
         if data_lines:
             return json.loads(data_lines[0])
         return {}
 
-    async def _post(self, payload: Dict[str, Any], accept: str) -> httpx.Response:
+    async def _post(self, payload: dict[str, Any], accept: str) -> httpx.Response:
         """Post MCP requests with either a shared or ad-hoc client."""
         if self.http_client is not None:
             return await self.http_client.post(
@@ -59,7 +60,7 @@ class MCPClient:
                 json=payload,
             )
 
-    async def initialize_session(self) -> Dict[str, Any]:
+    async def initialize_session(self) -> dict[str, Any]:
         """Initialize an MCP session."""
         response = await self._post(
             {
@@ -68,12 +69,9 @@ class MCPClient:
                 "params": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {},
-                    "clientInfo": {
-                        "name": "test-client",
-                        "version": "1.0.0"
-                    }
+                    "clientInfo": {"name": "test-client", "version": "1.0.0"},
                 },
-                "id": 1
+                "id": 1,
             },
             "application/json, text/event-stream",
         )
@@ -90,14 +88,10 @@ class MCPClient:
             return result
         raise Exception(f"Failed to initialize: {response.text}")
 
-    async def list_tools(self) -> Dict[str, Any]:
+    async def list_tools(self) -> dict[str, Any]:
         """List all available tools."""
         response = await self._post(
-            {
-                "jsonrpc": "2.0",
-                "method": "tools/list",
-                "id": 2
-            },
+            {"jsonrpc": "2.0", "method": "tools/list", "id": 2},
             "application/json, text/event-stream",
         )
 
@@ -107,17 +101,16 @@ class MCPClient:
             return self._parse_sse_response(response.text)
         raise Exception(f"Failed to list tools: {response.text}")
 
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def call_tool(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
         """Call a specific tool."""
         response = await self._post(
             {
                 "jsonrpc": "2.0",
                 "method": "tools/call",
-                "params": {
-                    "name": tool_name,
-                    "arguments": arguments
-                },
-                "id": 3
+                "params": {"name": tool_name, "arguments": arguments},
+                "id": 3,
             },
             "application/json, text/event-stream",
         )
@@ -137,7 +130,7 @@ class SyncMCPClient:
         self.bearer_token = bearer_token
         self.session_id = None
 
-    def _get_headers(self, accept: str = "application/json") -> Dict[str, str]:
+    def _get_headers(self, accept: str = "application/json") -> dict[str, str]:
         headers = {
             "Authorization": f"Bearer {self.bearer_token}",
             "Content-Type": "application/json",
@@ -147,14 +140,14 @@ class SyncMCPClient:
             headers["mcp-session-id"] = self.session_id
         return headers
 
-    def _parse_sse_response(self, text: str) -> Dict[str, Any]:
-        lines = text.strip().split('\n')
-        data_lines = [line[6:] for line in lines if line.startswith('data: ')]
+    def _parse_sse_response(self, text: str) -> dict[str, Any]:
+        lines = text.strip().split("\n")
+        data_lines = [line[6:] for line in lines if line.startswith("data: ")]
         if data_lines:
             return json.loads(data_lines[0])
         return {}
 
-    def initialize_session(self) -> Dict[str, Any]:
+    def initialize_session(self) -> dict[str, Any]:
         response = self.client.post(
             "/mcp",
             headers=self._get_headers("application/json, text/event-stream"),
@@ -178,7 +171,7 @@ class SyncMCPClient:
             return self._parse_sse_response(response.text)
         raise Exception(f"Failed to initialize: {response.text}")
 
-    def list_tools(self) -> Dict[str, Any]:
+    def list_tools(self) -> dict[str, Any]:
         response = self.client.post(
             "/mcp",
             headers=self._get_headers("application/json, text/event-stream"),
@@ -189,7 +182,7 @@ class SyncMCPClient:
             return self._parse_sse_response(response.text)
         raise Exception(f"Failed to list tools: {response.text}")
 
-    def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         response = self.client.post(
             "/mcp",
             headers=self._get_headers("application/json, text/event-stream"),

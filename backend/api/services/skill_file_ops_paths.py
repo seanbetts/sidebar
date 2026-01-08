@@ -1,12 +1,12 @@
 """Path helpers for skill-backed file operations."""
+
 from __future__ import annotations
 
-from contextlib import contextmanager
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 from api.db.session import SessionLocal, set_session_user_id
-
 
 PROFILE_IMAGES_PREFIX = "profile-images"
 
@@ -50,7 +50,9 @@ def normalize_path(raw_path: str, *, allow_root: bool = True) -> str:
 def is_profile_images_path(path: str) -> bool:
     """Return True if the path is within profile-images."""
     normalized = normalize_path(path)
-    return normalized == PROFILE_IMAGES_PREFIX or normalized.startswith(f"{PROFILE_IMAGES_PREFIX}/")
+    return normalized == PROFILE_IMAGES_PREFIX or normalized.startswith(
+        f"{PROFILE_IMAGES_PREFIX}/"
+    )
 
 
 def ensure_allowed_path(path: str) -> None:

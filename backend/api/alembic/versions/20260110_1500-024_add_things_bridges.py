@@ -5,10 +5,9 @@ Revises: 023_add_realtime_select_policies
 Create Date: 2026-01-10 15:00:00
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "024_add_things_bridges"
 down_revision = "023_add_realtime_select_policies"

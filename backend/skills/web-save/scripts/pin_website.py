@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Pin Website
+"""Pin Website
 
 Set pinned state for a website in the database.
 """
@@ -34,7 +33,9 @@ def pin_website_database(user_id: str, website_id: str, pinned: bool) -> dict:
 
     set_session_user_id(db, user_id)
     try:
-        website = WebsitesService.update_pinned(db, user_id, uuid.UUID(website_id), pinned)
+        website = WebsitesService.update_pinned(
+            db, user_id, uuid.UUID(website_id), pinned
+        )
         return {"id": str(website.id), "pinned": pinned}
     finally:
         db.close()
@@ -57,7 +58,9 @@ def main() -> None:
         if not args.user_id:
             raise ValueError("user_id is required for database mode")
 
-        result = pin_website_database(args.user_id, args.website_id, parse_bool(args.pinned))
+        result = pin_website_database(
+            args.user_id, args.website_id, parse_bool(args.pinned)
+        )
         output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)

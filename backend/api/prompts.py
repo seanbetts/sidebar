@@ -1,4 +1,5 @@
 """Prompt templates and helpers for chat context injection."""
+
 from __future__ import annotations
 
 import re
@@ -51,7 +52,9 @@ __all__ = [
 _TOKEN_PATTERN = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
 
-def resolve_template(template: str, variables: dict[str, Any], keep_unknown: bool = True) -> str:
+def resolve_template(
+    template: str, variables: dict[str, Any], keep_unknown: bool = True
+) -> str:
     """Resolve template variables into a string.
 
     Args:
@@ -62,6 +65,7 @@ def resolve_template(template: str, variables: dict[str, Any], keep_unknown: boo
     Returns:
         Resolved template string.
     """
+
     def replace(match: re.Match[str]) -> str:
         """Replace a matched token with its resolved value."""
         key = match.group(1)
@@ -102,34 +106,54 @@ def build_prompt_variables(
         Variables mapping for prompt templates.
     """
     name = (
-        getattr(settings_record, "name", "") or ""
-    ).strip() if settings_record else None
+        (getattr(settings_record, "name", "") or "").strip()
+        if settings_record
+        else None
+    )
     owner = name or "the user"
     gender = (
-        getattr(settings_record, "gender", "") or ""
-    ).strip() if settings_record else None
+        (getattr(settings_record, "gender", "") or "").strip()
+        if settings_record
+        else None
+    )
     pronouns = (
-        getattr(settings_record, "pronouns", "") or ""
-    ).strip() if settings_record else None
+        (getattr(settings_record, "pronouns", "") or "").strip()
+        if settings_record
+        else None
+    )
     job_title = (
-        getattr(settings_record, "job_title", "") or ""
-    ).strip() if settings_record else None
+        (getattr(settings_record, "job_title", "") or "").strip()
+        if settings_record
+        else None
+    )
     employer = (
-        getattr(settings_record, "employer", "") or ""
-    ).strip() if settings_record else None
+        (getattr(settings_record, "employer", "") or "").strip()
+        if settings_record
+        else None
+    )
     home_location = (
-        getattr(settings_record, "location", "") or ""
-    ).strip() if settings_record else None
-    date_of_birth = getattr(settings_record, "date_of_birth", None) if settings_record else None
+        (getattr(settings_record, "location", "") or "").strip()
+        if settings_record
+        else None
+    )
+    date_of_birth = (
+        getattr(settings_record, "date_of_birth", None) if settings_record else None
+    )
     age = calculate_age(date_of_birth, now.date())
     timezone_label = now.tzname() or "UTC"
     current_date = now.strftime("%Y-%m-%d")
     current_time = f"{now.strftime('%H:%M')} {timezone_label}"
     formatted_levels = format_location_levels(current_location_levels)
     formatted_weather = format_weather(current_weather)
-    things_snapshot_raw = getattr(settings_record, "things_ai_snapshot", "") if settings_record else ""
-    things_snapshot = things_snapshot_raw.strip() if isinstance(things_snapshot_raw, str) else ""
-    things_snapshot_block = f"<tasks>\n{things_snapshot}\n</tasks>" if things_snapshot else ""
+    things_snapshot_raw = (
+        getattr(settings_record, "things_ai_snapshot", "") if settings_record else ""
+    )
+    things_snapshot = (
+        things_snapshot_raw.strip() if isinstance(things_snapshot_raw, str) else ""
+    )
+    things_snapshot_block = (
+        f"<tasks>\n{things_snapshot}\n</tasks>" if things_snapshot else ""
+    )
 
     return {
         "owner": owner,
@@ -181,7 +205,8 @@ def build_recent_activity_block(
         for note in notes:
             folder = f", folder: {note['folder']}" if note.get("folder") else ""
             lines.append(
-                f"- {note['title']} (last_opened_at: {note['last_opened_at']}, id: {note['id']}{folder})"
+                f"- {note['title']} (last_opened_at: {note['last_opened_at']}, "
+                f"id: {note['id']}{folder})"
             )
 
     if websites:
@@ -192,7 +217,8 @@ def build_recent_activity_block(
             domain = f", domain: {website['domain']}" if website.get("domain") else ""
             url = f", url: {website['url']}" if website.get("url") else ""
             lines.append(
-                f"- {website['title']} (last_opened_at: {website['last_opened_at']}, id: {website['id']}{domain}{url})"
+                f"- {website['title']} (last_opened_at: {website['last_opened_at']}, "
+                f"id: {website['id']}{domain}{url})"
             )
 
     if conversations:
@@ -205,8 +231,11 @@ def build_recent_activity_block(
                 if conversation.get("message_count") is not None
                 else ""
             )
+            last_opened = conversation["last_opened_at"]
+            convo_id = conversation["id"]
             lines.append(
-                f"- {conversation['title']} (last_opened_at: {conversation['last_opened_at']}, id: {conversation['id']}{message_count})"
+                f"- {conversation['title']} (last_opened_at: {last_opened}, "
+                f"id: {convo_id}{message_count})"
             )
 
     if files:
@@ -216,7 +245,8 @@ def build_recent_activity_block(
         for file in files:
             mime = f", type: {file['mime']}" if file.get("mime") else ""
             lines.append(
-                f"- {file['filename']} (last_opened_at: {file['last_opened_at']}, id: {file['id']}{mime})"
+                f"- {file['filename']} (last_opened_at: {file['last_opened_at']}, "
+                f"id: {file['id']}{mime})"
             )
 
     if not lines:
@@ -245,6 +275,8 @@ def build_open_context_block(
     Args:
         note: Open note payload.
         website: Open website payload.
+        file_item: Open file payload.
+        attachments: Attached file metadata payloads.
         max_chars: Max characters to include for content. Defaults to 20000.
 
     Returns:
@@ -368,7 +400,9 @@ def build_first_message_prompt(
         settings_record.working_relationship if settings_record else None,
         DEFAULT_WORKING_RELATIONSHIP,
     )
-    variables = build_prompt_variables(settings_record, "", None, None, operating_system, now)
+    variables = build_prompt_variables(
+        settings_record, "", None, None, operating_system, now
+    )
     age = variables.get("age")
     name = variables.get("name")
     gender = variables.get("gender")
@@ -395,7 +429,9 @@ def build_first_message_prompt(
     elif job_title:
         context_lines.append(f"I am {job_title}.")
 
-    conversation_context = "\n\n".join(context_lines) if context_lines else "I am the user."
+    conversation_context = (
+        "\n\n".join(context_lines) if context_lines else "I am the user."
+    )
     variables.update(
         {
             "conversation_context": conversation_context,

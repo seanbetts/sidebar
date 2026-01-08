@@ -106,6 +106,24 @@ Filenames include timestamps:
 meeting_20251220_143045_transcript.txt
 ```
 
+## Storage Output
+
+When upload is enabled, the JSON payload includes ingestion metadata:
+
+```json
+{
+  "file_id": "<uuid>",
+  "ai_path": "{user_id}/files/{file_id}/ai/ai.md",
+  "derivatives": [
+    {
+      "kind": "text_original",
+      "path": "{user_id}/files/{file_id}/derivatives/source.txt",
+      "content_type": "text/plain"
+    }
+  ]
+}
+```
+
 ## Default Save Location
 
 Transcripts are saved to:

@@ -1,9 +1,10 @@
 """Storage backend interfaces and data structures."""
+
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, Optional
 
 
 @dataclass(frozen=True)
@@ -12,15 +13,17 @@ class StorageObject:
 
     key: str
     size: int
-    etag: Optional[str] = None
-    content_type: Optional[str] = None
-    last_modified: Optional[datetime] = None
+    etag: str | None = None
+    content_type: str | None = None
+    last_modified: datetime | None = None
 
 
 class StorageBackend:
     """Interface for storage backends."""
 
-    def list_objects(self, prefix: str, recursive: bool = True) -> Iterable[StorageObject]:
+    def list_objects(
+        self, prefix: str, recursive: bool = True
+    ) -> Iterable[StorageObject]:
         """List objects under a prefix.
 
         Args:
@@ -56,7 +59,9 @@ class StorageBackend:
         """
         raise NotImplementedError
 
-    def put_object(self, key: str, data: bytes, content_type: Optional[str] = None) -> StorageObject:
+    def put_object(
+        self, key: str, data: bytes, content_type: str | None = None
+    ) -> StorageObject:
         """Store object bytes under a key.
 
         Args:

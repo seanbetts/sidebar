@@ -1,10 +1,10 @@
 """Install token helpers for Things bridge."""
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -20,9 +20,10 @@ class ThingsBridgeInstallService:
 
     @staticmethod
     def create_token(db: Session, user_id: str, ttl_minutes: int = 15) -> dict:
+        """Create and persist a one-time install token."""
         token = f"tb_inst_{secrets.token_urlsafe(32)}"
         token_hash = ThingsBridgeInstallService._hash_token(token)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         record = ThingsBridgeInstallToken(
             user_id=user_id,
             token_hash=token_hash,
@@ -40,7 +41,8 @@ class ThingsBridgeInstallService:
         }
 
     @staticmethod
-    def consume_token(db: Session, token: str) -> Optional[ThingsBridgeInstallToken]:
+    def consume_token(db: Session, token: str) -> ThingsBridgeInstallToken | None:
+        """Validate and mark a token as used, returning the record."""
         token_hash = ThingsBridgeInstallService._hash_token(token)
         record = (
             db.query(ThingsBridgeInstallToken)
@@ -49,7 +51,7 @@ class ThingsBridgeInstallService:
         )
         if not record:
             return None
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if record.used_at is not None:
             return None
         if record.expires_at < now:

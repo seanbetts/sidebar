@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { chatStore } from '$lib/stores/chat';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
@@ -18,6 +18,9 @@
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 	import { getUserFriendlyError, useChatSSE } from '$lib/composables/useChatSSE';
 	import { logError } from '$lib/utils/errorHandling';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+	import { canShowTooltips } from '$lib/utils/tooltip';
 
 	const chatSse = useChatSSE();
 	let attachments: Array<{
@@ -31,6 +34,11 @@
 	let attachmentPolls = new Map<string, ReturnType<typeof setTimeout>>();
 	let isMounted = true;
 	let previousConversationId: string | null = null;
+	let tooltipsEnabled = false;
+
+	onMount(() => {
+		tooltipsEnabled = canShowTooltips();
+	});
 
 	onDestroy(() => {
 		isMounted = false;
@@ -53,7 +61,7 @@
 		const { conversationId } = get(chatStore);
 		const attachmentsForMessage = attachments
 			.filter(
-				(item): item is (typeof item & { fileId: string }) =>
+				(item): item is typeof item & { fileId: string } =>
 					item.status === 'ready' && Boolean(item.fileId)
 			)
 			.map((item) => ({
@@ -101,18 +109,21 @@
 				};
 			}
 
-			const currentLocation = getCachedData<string>('location.live', {
-				ttl: 30 * 60 * 1000,
-				version: '1.0'
-			}) || '';
-			const currentLocationLevels = getCachedData<Record<string, string>>('location.levels', {
-				ttl: 30 * 60 * 1000,
-				version: '1.0'
-			}) ?? undefined;
-			const currentWeather = getCachedData<Record<string, unknown>>('weather.snapshot', {
-				ttl: 30 * 60 * 1000,
-				version: '1.0'
-			}) ?? undefined;
+			const currentLocation =
+				getCachedData<string>('location.live', {
+					ttl: 30 * 60 * 1000,
+					version: '1.0'
+				}) || '';
+			const currentLocationLevels =
+				getCachedData<Record<string, string>>('location.levels', {
+					ttl: 30 * 60 * 1000,
+					version: '1.0'
+				}) ?? undefined;
+			const currentWeather =
+				getCachedData<Record<string, unknown>>('weather.snapshot', {
+					ttl: 30 * 60 * 1000,
+					version: '1.0'
+				}) ?? undefined;
 			const currentTimezone =
 				typeof window !== 'undefined'
 					? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -170,7 +181,6 @@
 	$: readyAttachments = attachments.filter((item) => item.status === 'ready');
 	$: pendingAttachments = attachments.filter((item) => item.status !== 'ready');
 	$: isSendDisabled = $chatStore.isStreaming || (attachments.length > 0 && hasPendingAttachments);
-
 	async function handleAttach(files: FileList) {
 		const fileArray = Array.from(files);
 		for (const file of fileArray) {
@@ -182,7 +192,9 @@
 			try {
 				const data = await ingestionAPI.upload(file);
 				attachments = attachments.map((item) =>
-					item.id === id ? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' } : item
+					item.id === id
+						? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' }
+						: item
 				);
 				startAttachmentPolling(id, data.file_id);
 			} catch (error) {
@@ -209,7 +221,9 @@
 		try {
 			const data = await ingestionAPI.upload(attachment.file);
 			attachments = attachments.map((item) =>
-				item.id === attachmentId ? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' } : item
+				item.id === attachmentId
+					? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' }
+					: item
 			);
 			startAttachmentPolling(attachmentId, data.file_id);
 		} catch (error) {
@@ -294,24 +308,44 @@
 		</div>
 		{#if $chatStore.conversationId}
 			<div class="header-right">
-				<Button
-					size="icon"
-					variant="ghost"
-					onclick={handleNewChat}
-					aria-label="New chat"
-					title="New chat"
-				>
-					<Plus size={16} />
-				</Button>
-				<Button
-					size="icon"
-					variant="ghost"
-					onclick={handleCloseChat}
-					aria-label="Close chat"
-					title="Close chat"
-				>
-					<X size={16} />
-				</Button>
+				<Tooltip disabled={!tooltipsEnabled}>
+					<TooltipTrigger>
+						{#snippet child({ props })}
+							<Button
+								size="icon"
+								variant="ghost"
+								{...props}
+								onclick={(event) => {
+									props.onclick?.(event);
+									handleNewChat(event);
+								}}
+								aria-label="New chat"
+							>
+								<Plus size={16} />
+							</Button>
+						{/snippet}
+					</TooltipTrigger>
+					<TooltipContent side="bottom">{TOOLTIP_COPY.newChat}</TooltipContent>
+				</Tooltip>
+				<Tooltip disabled={!tooltipsEnabled}>
+					<TooltipTrigger>
+						{#snippet child({ props })}
+							<Button
+								size="icon"
+								variant="ghost"
+								{...props}
+								onclick={(event) => {
+									props.onclick?.(event);
+									handleCloseChat(event);
+								}}
+								aria-label="Close chat"
+							>
+								<X size={16} />
+							</Button>
+						{/snippet}
+					</TooltipTrigger>
+					<TooltipContent side="bottom">{TOOLTIP_COPY.closeChat}</TooltipContent>
+				</Tooltip>
 			</div>
 		{/if}
 	</div>
@@ -330,20 +364,42 @@
 						<span class="attachment-status">{attachment.stage || attachment.status}</span>
 						{#if attachment.status === 'failed'}
 							<div class="attachment-actions">
-								<button
-									class="attachment-action"
-									onclick={() => handleRetryAttachment(attachment.id)}
-									aria-label="Retry attachment"
-								>
-									<RotateCcw size={14} />
-								</button>
-								<button
-									class="attachment-action"
-									onclick={() => handleDeleteAttachment(attachment.id)}
-									aria-label="Delete attachment"
-								>
-									<Trash2 size={14} />
-								</button>
+								<Tooltip disabled={!tooltipsEnabled}>
+									<TooltipTrigger>
+										{#snippet child({ props })}
+											<button
+												class="attachment-action"
+												{...props}
+												onclick={(event) => {
+													props.onclick?.(event);
+													handleRetryAttachment(attachment.id);
+												}}
+												aria-label="Retry attachment"
+											>
+												<RotateCcw size={14} />
+											</button>
+										{/snippet}
+									</TooltipTrigger>
+									<TooltipContent side="top">{TOOLTIP_COPY.retryAttachment}</TooltipContent>
+								</Tooltip>
+								<Tooltip disabled={!tooltipsEnabled}>
+									<TooltipTrigger>
+										{#snippet child({ props })}
+											<button
+												class="attachment-action"
+												{...props}
+												onclick={(event) => {
+													props.onclick?.(event);
+													handleDeleteAttachment(attachment.id);
+												}}
+												aria-label="Delete attachment"
+											>
+												<Trash2 size={14} />
+											</button>
+										{/snippet}
+									</TooltipTrigger>
+									<TooltipContent side="top">{TOOLTIP_COPY.removeAttachment}</TooltipContent>
+								</Tooltip>
 							</div>
 						{/if}
 					</div>

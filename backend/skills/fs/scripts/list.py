@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""
-List Files in Workspace
+"""List Files in Workspace
 
 List files in the workspace directory with pattern filtering and recursive option.
 """
 
-import sys
-import json
 import argparse
+import json
+import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if sys.path and sys.path[0] == str(SCRIPT_DIR):
@@ -28,7 +27,7 @@ def list_files(
     directory: str = ".",
     pattern: str = "*",
     recursive: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List files in a directory."""
     return list_entries(user_id, directory, pattern, recursive)
 
@@ -36,31 +35,25 @@ def list_files(
 def main():
     """Main entry point for list script."""
     parser = argparse.ArgumentParser(
-        description='List files in the workspace directory',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="List files in the workspace directory",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     # Optional arguments
     parser.add_argument(
-        'directory',
-        nargs='?',
-        default='.',
-        help='Directory to list (relative to workspace, default: ".")'
+        "directory",
+        nargs="?",
+        default=".",
+        help='Directory to list (relative to workspace, default: ".")',
     )
     parser.add_argument(
-        '--pattern',
-        default='*',
-        help='Filter by glob pattern (e.g., "*.md")'
+        "--pattern", default="*", help='Filter by glob pattern (e.g., "*.md")'
     )
     parser.add_argument(
-        '--recursive',
-        action='store_true',
-        help='List files recursively'
+        "--recursive", action="store_true", help="List files recursively"
     )
     parser.add_argument(
-        '--json',
-        action='store_true',
-        help='Output results in JSON format'
+        "--json", action="store_true", help="Output results in JSON format"
     )
     parser.add_argument(
         "--user-id",
@@ -80,37 +73,25 @@ def main():
         )
 
         # Output results
-        output = {
-            'success': True,
-            'data': result
-        }
+        output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)
 
     except ValueError as e:
-        error_output = {
-            'success': False,
-            'error': str(e)
-        }
+        error_output = {"success": False, "error": str(e)}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
     except FileNotFoundError as e:
-        error_output = {
-            'success': False,
-            'error': str(e)
-        }
+        error_output = {"success": False, "error": str(e)}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
-        error_output = {
-            'success': False,
-            'error': f'Unexpected error: {str(e)}'
-        }
+        error_output = {"success": False, "error": f"Unexpected error: {str(e)}"}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

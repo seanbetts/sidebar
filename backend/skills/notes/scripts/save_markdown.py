@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""
-Save Markdown Note
+"""Save Markdown Note
 
 Create or update markdown notes stored in the database.
 """
 
+import argparse
+import json
 import sys
 import uuid
-import json
-import argparse
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 # Add backend to sys.path for database mode.
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
@@ -32,7 +31,7 @@ def save_markdown_database(
     folder: str | None = None,
     note_id: str | None = None,
     tags: list[str] | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if SessionLocal is None or NotesService is None:
         raise RuntimeError("Database dependencies are unavailable")
 
@@ -43,12 +42,16 @@ def save_markdown_database(
         if mode in {"update", "append"}:
             resolved_id = note_id
             if not resolved_id:
-                note = NotesService.get_note_by_title(db, user_id, title, mark_opened=False)
+                note = NotesService.get_note_by_title(
+                    db, user_id, title, mark_opened=False
+                )
                 if not note:
                     raise ValueError("note_id is required for update mode")
                 resolved_id = str(note.id)
             else:
-                note = NotesService.get_note(db, user_id, uuid.UUID(resolved_id), mark_opened=False)
+                note = NotesService.get_note(
+                    db, user_id, uuid.UUID(resolved_id), mark_opened=False
+                )
 
             if not note:
                 raise ValueError("note_id is required for update mode")
@@ -89,7 +92,7 @@ def save_markdown_database(
 def main():
     """Main entry point for save_markdown script."""
     parser = argparse.ArgumentParser(
-        description='Save markdown note with metadata',
+        description="Save markdown note with metadata",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -101,50 +104,25 @@ Examples:
 
   # Custom folder
   %(prog)s "Personal Note" --content "Content" --folder "personal" --database
-        """
+        """,
     )
 
+    parser.add_argument("title", help="Note title")
+    parser.add_argument("--content", required=True, help="Note content (markdown)")
     parser.add_argument(
-        'title',
-        help='Note title'
+        "--mode",
+        default="create",
+        choices=["create", "update", "append"],
+        help="Operation mode (default: create)",
     )
+    parser.add_argument("--folder", help="Subfolder in notes/ (default: YYYY/Month)")
+    parser.add_argument("--tags", help="Comma-separated tag list")
+    parser.add_argument("--note-id", help="Note UUID for update mode")
     parser.add_argument(
-        '--content',
-        required=True,
-        help='Note content (markdown)'
+        "--json", action="store_true", help="Output results in JSON format"
     )
-    parser.add_argument(
-        '--mode',
-        default='create',
-        choices=['create', 'update', 'append'],
-        help='Operation mode (default: create)'
-    )
-    parser.add_argument(
-        '--folder',
-        help='Subfolder in notes/ (default: YYYY/Month)'
-    )
-    parser.add_argument(
-        '--tags',
-        help='Comma-separated tag list'
-    )
-    parser.add_argument(
-        '--note-id',
-        help='Note UUID for update mode'
-    )
-    parser.add_argument(
-        '--json',
-        action='store_true',
-        help='Output results in JSON format'
-    )
-    parser.add_argument(
-        '--database',
-        action='store_true',
-        help='Save to database'
-    )
-    parser.add_argument(
-        '--user-id',
-        help='User id for database access'
-    )
+    parser.add_argument("--database", action="store_true", help="Save to database")
+    parser.add_argument("--user-id", help="User id for database access")
 
     args = parser.parse_args()
 
@@ -165,29 +143,20 @@ Examples:
             args.tags.split(",") if args.tags else None,
         )
 
-        output = {
-            'success': True,
-            'data': result
-        }
+        output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)
 
     except ValueError as e:
-        error_output = {
-            'success': False,
-            'error': str(e)
-        }
+        error_output = {"success": False, "error": str(e)}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
-        error_output = {
-            'success': False,
-            'error': f'Unexpected error: {str(e)}'
-        }
+        error_output = {"success": False, "error": f"Unexpected error: {str(e)}"}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

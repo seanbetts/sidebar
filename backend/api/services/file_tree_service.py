@@ -1,7 +1,8 @@
 """Helpers for file tree building and path normalization."""
+
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
 class FileTreeService:
@@ -64,7 +65,7 @@ class FileTreeService:
         return f"{user_id}/{full_path.strip('/')}"
 
     @staticmethod
-    def build_tree(records: list, base_path: str) -> Dict[str, Any]:
+    def build_tree(records: list, base_path: str) -> dict[str, Any]:
         """Build a directory tree from file records.
 
         Args:
@@ -74,14 +75,14 @@ class FileTreeService:
         Returns:
             Tree dict suitable for UI rendering.
         """
-        root: Dict[str, Any] = {
+        root: dict[str, Any] = {
             "name": base_path or "files",
             "path": "/",
             "type": "directory",
             "children": [],
             "expanded": False,
         }
-        index: Dict[str, Dict[str, Any]] = {"": root}
+        index: dict[str, dict[str, Any]] = {"": root}
 
         for record in records:
             if record.deleted_at is not None:
@@ -99,7 +100,7 @@ class FileTreeService:
             for part in parts[:-1]:
                 current = f"{current}/{part}" if current else part
                 if current not in index:
-                    node: Dict[str, Any] = {
+                    node: dict[str, Any] = {
                         "name": part,
                         "path": current,
                         "type": "directory",
@@ -113,7 +114,7 @@ class FileTreeService:
             if record.category == "folder":
                 folder_path = "/".join(parts)
                 if folder_path and folder_path not in index:
-                    folder_node: Dict[str, Any] = {
+                    folder_node: dict[str, Any] = {
                         "name": parts[-1],
                         "path": folder_path,
                         "type": "directory",
@@ -134,14 +135,19 @@ class FileTreeService:
                     "path": "/".join(parts),
                     "type": "file",
                     "size": record.size,
-                    "modified": record.updated_at.timestamp() if record.updated_at else None,
+                    "modified": record.updated_at.timestamp()
+                    if record.updated_at
+                    else None,
                 }
             )
 
-        def sort_children(node: Dict[str, Any]) -> None:
+        def sort_children(node: dict[str, Any]) -> None:
             """Sort children nodes with directories first, then by name."""
             node["children"].sort(
-                key=lambda item: (item.get("type") != "directory", item.get("name", "").lower())
+                key=lambda item: (
+                    item.get("type") != "directory",
+                    item.get("name", "").lower(),
+                )
             )
             for child in node["children"]:
                 if child.get("type") == "directory":

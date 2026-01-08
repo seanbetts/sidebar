@@ -1,4 +1,5 @@
 """Helpers for pinned order concurrency control."""
+
 from __future__ import annotations
 
 from sqlalchemy import text

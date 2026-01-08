@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from api.models.file_ingestion import IngestedFile, FileProcessingJob
+from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from workers import ingestion_worker
 
 
@@ -13,7 +13,7 @@ def _make_ingested_file(test_db, file_id):
         mime_original="application/pdf",
         size_bytes=123,
         sha256="abc123",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     test_db.add(record)
     test_db.commit()
@@ -28,12 +28,14 @@ def test_retryable_error_requeues_with_backoff(test_db):
         status="processing",
         stage="extracting",
         attempts=0,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(job)
     test_db.commit()
 
-    error = ingestion_worker.IngestionError("CONVERSION_TIMEOUT", "timeout", retryable=True)
+    error = ingestion_worker.IngestionError(
+        "CONVERSION_TIMEOUT", "timeout", retryable=True
+    )
     ingestion_worker._retry_or_fail(test_db, job, error)
 
     test_db.refresh(job)
@@ -53,12 +55,14 @@ def test_retryable_error_exhausts_attempts(test_db):
         status="processing",
         stage="extracting",
         attempts=ingestion_worker.MAX_ATTEMPTS - 1,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(job)
     test_db.commit()
 
-    error = ingestion_worker.IngestionError("CONVERSION_TIMEOUT", "timeout", retryable=True)
+    error = ingestion_worker.IngestionError(
+        "CONVERSION_TIMEOUT", "timeout", retryable=True
+    )
     ingestion_worker._retry_or_fail(test_db, job, error)
 
     test_db.refresh(job)
@@ -77,8 +81,8 @@ def test_requeue_stalled_jobs_marks_retryable(test_db):
         status="processing",
         stage="converting",
         attempts=0,
-        updated_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-        lease_expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        updated_at=datetime.now(UTC) - timedelta(minutes=10),
+        lease_expires_at=datetime.now(UTC) - timedelta(minutes=1),
     )
     test_db.add(job)
     test_db.commit()
@@ -99,9 +103,11 @@ def test_is_allowed_file_accepts_supported_types():
     assert ingestion_worker._is_allowed_file("text/plain", "notes.txt")
     assert ingestion_worker._is_allowed_file("image/png", "image.png")
     assert ingestion_worker._is_allowed_file("audio/mpeg", "track.mp3")
+    assert ingestion_worker._is_allowed_file("video/mp4", "clip.mp4")
     assert ingestion_worker._is_allowed_file("application/octet-stream", "sheet.xlsx")
 
 
 def test_is_allowed_file_rejects_unsupported_types():
-    assert not ingestion_worker._is_allowed_file("video/mp4", "clip.mp4")
-    assert not ingestion_worker._is_allowed_file("application/octet-stream", "archive.zip")
+    assert not ingestion_worker._is_allowed_file(
+        "application/octet-stream", "archive.zip"
+    )

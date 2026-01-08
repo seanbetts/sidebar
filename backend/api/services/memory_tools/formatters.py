@@ -1,11 +1,12 @@
 """Formatters for memory tool output."""
+
 from __future__ import annotations
 
 from typing import Any
 
+from api.models.user_memory import UserMemory
 from api.services.memory_tools.constants import LINE_LIMIT
 from api.services.memory_tools.path_utils import is_visible_path
-from api.models.user_memory import UserMemory
 
 
 def format_file_view(path: str, content: str, view_range: Any) -> str:
@@ -31,7 +32,7 @@ def format_file_view(path: str, content: str, view_range: Any) -> str:
     end = len(lines)
     if view_range is not None:
         if (
-            not isinstance(view_range, (list, tuple))
+            not isinstance(view_range, list | tuple)
             or len(view_range) != 2
             or not all(isinstance(value, int) for value in view_range)
         ):
@@ -61,11 +62,7 @@ def format_directory_listing(path: str, memories: list[UserMemory]) -> str:
     Returns:
         Formatted directory listing string.
     """
-    visible_memories = [
-        memory
-        for memory in memories
-        if is_visible_path(memory.path)
-    ]
+    visible_memories = [memory for memory in memories if is_visible_path(memory.path)]
     base_size = directory_size(path, visible_memories)
     header = (
         "Here're the files and directories up to 2 levels deep in "
@@ -76,7 +73,7 @@ def format_directory_listing(path: str, memories: list[UserMemory]) -> str:
     for memory in visible_memories:
         if not memory.path.startswith(f"{path}/"):
             continue
-        relative = memory.path[len(path) + 1:]
+        relative = memory.path[len(path) + 1 :]
         parts = relative.split("/")
         if len(parts) <= 2:
             entries.append((memory.path, content_size(memory.content)))
@@ -105,10 +102,7 @@ def directory_size(path: str, memories: list[UserMemory]) -> int:
     Returns:
         Total size in bytes.
     """
-    if path == "/memories":
-        prefix = "/memories/"
-    else:
-        prefix = f"{path}/"
+    prefix = "/memories/" if path == "/memories" else f"{path}/"
     return sum(
         content_size(memory.content)
         for memory in memories

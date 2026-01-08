@@ -12,6 +12,12 @@ import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 import { ingestionAPI } from '$lib/services/api';
 import { ingestionStore } from '$lib/stores/ingestion';
 import { logError } from '$lib/utils/errorHandling';
+import {
+	startChatStream,
+	markFirstToken,
+	markStreamComplete,
+	markStreamError
+} from '$lib/utils/chatMetrics';
 
 const LAST_CONVERSATION_KEY = 'sideBar.lastConversation';
 
@@ -85,7 +91,7 @@ function createChatStore() {
 			setLastConversationId(conversationId);
 			set({
 				conversationId,
-				messages: conversation.messages.map(msg => ({
+				messages: conversation.messages.map((msg) => ({
 					...msg,
 					timestamp: new Date(msg.timestamp)
 				})),
@@ -141,6 +147,7 @@ function createChatStore() {
 
 			const userMessageId = crypto.randomUUID();
 			const assistantMessageId = crypto.randomUUID();
+			startChatStream(assistantMessageId);
 
 			const userMessage: Message = {
 				id: userMessageId,
@@ -191,6 +198,7 @@ function createChatStore() {
 		 * @param token Streamed token content.
 		 */
 		appendToken(messageId: string, token: string) {
+			markFirstToken(messageId);
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) => {
@@ -248,13 +256,17 @@ function createChatStore() {
 		 * @param result Tool result payload.
 		 * @param status Tool result status.
 		 */
-		updateToolResult(messageId: string, toolCallId: string, result: any, status: 'success' | 'error') {
+		updateToolResult(
+			messageId: string,
+			toolCallId: string,
+			result: any,
+			status: 'success' | 'error'
+		) {
 			const state = get({ subscribe });
 			const toolName = state.messages
 				.find((msg) => msg.id === messageId)
 				?.toolCalls?.find((tc) => tc.id === toolCallId)
-				?.name
-				?.toLowerCase();
+				?.name?.toLowerCase();
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) => {
@@ -269,7 +281,11 @@ function createChatStore() {
 					};
 				})
 			}));
-			if (status === 'success' && toolName && (toolName.includes('fs.write') || toolName === 'write file')) {
+			if (
+				status === 'success' &&
+				toolName &&
+				(toolName.includes('fs.write') || toolName === 'write file')
+			) {
 				const fileId = result?.data?.file_id ?? result?.data?.fileId;
 				if (!fileId) return;
 				void ingestionAPI
@@ -295,6 +311,7 @@ function createChatStore() {
 		 * @param messageId Message id to finalize.
 		 */
 		async finishStreaming(messageId: string) {
+			markStreamComplete(messageId);
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) =>
@@ -306,7 +323,7 @@ function createChatStore() {
 
 			// Persist assistant message to backend
 			const state = get({ subscribe });
-			const assistantMessage = state.messages.find(m => m.id === messageId);
+			const assistantMessage = state.messages.find((m) => m.id === messageId);
 
 			if (state.conversationId && assistantMessage) {
 				try {
@@ -328,7 +345,7 @@ function createChatStore() {
 						});
 
 						// Trigger title generation (generating state was set when conversation was created)
-						generateConversationTitle(state.conversationId).catch(err => {
+						generateConversationTitle(state.conversationId).catch((err) => {
 							logError('Title generation failed', err, {
 								scope: 'chatStore.generateTitle',
 								conversationId: state.conversationId
@@ -356,6 +373,7 @@ function createChatStore() {
 		 * @param error Error message to attach.
 		 */
 		setError(messageId: string, error: string) {
+			markStreamError(messageId);
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) =>

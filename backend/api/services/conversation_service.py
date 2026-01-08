@@ -1,11 +1,11 @@
 """Conversation service for shared conversation business logic."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import cast, String
+from sqlalchemy import String, cast
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -52,16 +52,20 @@ class ConversationService:
         """
         return (
             db.query(Conversation)
-            .options(load_only(
-                Conversation.id,
-                Conversation.title,
-                Conversation.title_generated,
-                Conversation.created_at,
-                Conversation.updated_at,
-                Conversation.message_count,
-                Conversation.first_message,
-            ))
-            .filter(Conversation.user_id == user_id, Conversation.is_archived.is_(False))
+            .options(
+                load_only(
+                    Conversation.id,
+                    Conversation.title,
+                    Conversation.title_generated,
+                    Conversation.created_at,
+                    Conversation.updated_at,
+                    Conversation.message_count,
+                    Conversation.first_message,
+                )
+            )
+            .filter(
+                Conversation.user_id == user_id, Conversation.is_archived.is_(False)
+            )
             .order_by(Conversation.updated_at.desc())
             .all()
         )
@@ -112,14 +116,16 @@ class ConversationService:
         Returns:
             Updated conversation record.
         """
-        conversation = ConversationService.get_conversation(db, user_id, conversation_id)
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_id
+        )
         messages = conversation.messages or []
         messages.append(message)
         conversation.messages = messages
         flag_modified(conversation, "messages")
 
         conversation.message_count = len(messages)
-        conversation.updated_at = datetime.now(timezone.utc)
+        conversation.updated_at = datetime.now(UTC)
 
         if conversation.message_count == 1:
             first_content = message.get("content")
@@ -136,9 +142,9 @@ class ConversationService:
         user_id: str,
         conversation_id: UUID,
         *,
-        title: Optional[str] = None,
-        title_generated: Optional[bool] = None,
-        is_archived: Optional[bool] = None,
+        title: str | None = None,
+        title_generated: bool | None = None,
+        is_archived: bool | None = None,
     ) -> Conversation:
         """Update conversation metadata.
 
@@ -153,7 +159,9 @@ class ConversationService:
         Returns:
             Updated conversation record.
         """
-        conversation = ConversationService.get_conversation(db, user_id, conversation_id)
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_id
+        )
 
         if title is not None:
             conversation.title = title
@@ -161,7 +169,7 @@ class ConversationService:
             conversation.title_generated = title_generated
         if is_archived is not None:
             conversation.is_archived = is_archived
-            conversation.updated_at = datetime.now(timezone.utc)
+            conversation.updated_at = datetime.now(UTC)
 
         db.commit()
         db.refresh(conversation)
@@ -188,7 +196,9 @@ class ConversationService:
         Returns:
             Updated conversation record.
         """
-        conversation = ConversationService.get_conversation(db, user_id, conversation_id)
+        conversation = ConversationService.get_conversation(
+            db, user_id, conversation_id
+        )
         conversation.title = title
         conversation.title_generated = generated
         db.commit()

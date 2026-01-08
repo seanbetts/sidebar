@@ -1,4 +1,5 @@
 """Health check endpoint."""
+
 import os
 
 from fastapi import APIRouter, status
@@ -40,7 +41,7 @@ async def health_check():
             content={
                 "status": "unhealthy",
                 "missing": missing,
-                "message": "Missing required configuration."
+                "message": "Missing required configuration.",
             },
         )
     return {"status": "healthy"}

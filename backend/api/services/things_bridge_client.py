@@ -1,4 +1,5 @@
 """HTTP client for Things bridge calls."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -15,37 +16,49 @@ class ThingsBridgeClient:
     """Client for calling a Things bridge instance."""
 
     def __init__(self, bridge: ThingsBridge):
+        """Initialize the client with bridge connection details."""
         self.bridge = bridge
         self.base_url = bridge.base_url.rstrip("/")
 
     async def get_list(self, scope: str) -> dict[str, Any]:
+        """Fetch a list payload for a Things scope."""
         return await self._request("GET", f"/lists/{scope}")
 
     async def apply(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Send task creation/update actions to the bridge."""
         return await self._request("POST", "/apply", json=payload)
 
     async def project_tasks(self, project_id: str) -> dict[str, Any]:
+        """Fetch tasks for a specific project."""
         return await self._request("GET", f"/projects/{project_id}/tasks")
 
     async def area_tasks(self, area_id: str) -> dict[str, Any]:
+        """Fetch tasks for a specific area."""
         return await self._request("GET", f"/areas/{area_id}/tasks")
 
     async def counts(self) -> dict[str, Any]:
+        """Fetch counts across Things lists."""
         return await self._request("GET", "/counts")
 
     async def diagnostics(self) -> dict[str, Any]:
+        """Fetch diagnostics information from the bridge."""
         return await self._request("GET", "/diagnostics")
 
     async def completed_today(self) -> dict[str, Any]:
+        """Fetch tasks completed today."""
         return await self._request("GET", "/completed/today")
 
     async def search(self, query: str) -> dict[str, Any]:
+        """Search Things tasks by query string."""
         return await self._request("GET", f"/search?query={quote(query)}")
 
     async def set_url_token(self, token: str) -> dict[str, Any]:
+        """Set the URL token for the Things bridge."""
         return await self._request("POST", "/url-token", json={"token": token})
 
-    async def _request(self, method: str, path: str, json: dict | None = None) -> dict[str, Any]:
+    async def _request(
+        self, method: str, path: str, json: dict | None = None
+    ) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         headers = {"X-Things-Token": self.bridge.bridge_token}
         timeout = settings.things_bridge_timeout_seconds

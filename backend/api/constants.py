@@ -1,4 +1,5 @@
 """Shared constants for chat and prompt behavior."""
+
 from __future__ import annotations
 
 

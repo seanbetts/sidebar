@@ -1,8 +1,11 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import type { Message } from '$lib/types/chat';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	import { TOOLTIP_COPY } from '$lib/constants/tooltips';
+	import { canShowTooltips } from '$lib/utils/tooltip';
 	import { AlertTriangle, Check, Copy, Wrench } from 'lucide-svelte';
 	import ChatMarkdown from './ChatMarkdown.svelte';
 	import { logError } from '$lib/utils/errorHandling';
@@ -17,6 +20,7 @@
 
 	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isCopied = false;
+	let tooltipsEnabled = false;
 
 	$: roleColor = message.role === 'user' ? 'bg-muted' : 'bg-card';
 	$: roleName = message.role === 'user' ? 'You' : 'sideBar';
@@ -31,6 +35,9 @@
 		}
 		return `Using ${name}`;
 	})();
+	onMount(() => {
+		tooltipsEnabled = canShowTooltips();
+	});
 
 	function formatTime(date: Date): string {
 		return new Date(date).toLocaleTimeString('en-US', {
@@ -83,20 +90,32 @@
 			{/if}
 		</div>
 		{#if message.content}
-			<Button
-				size="icon"
-				variant="ghost"
-				class="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-				onclick={handleCopy}
-				aria-label={isCopied ? 'Copied message' : 'Copy message'}
-				title={isCopied ? 'Copied' : 'Copy message'}
-			>
-				{#if isCopied}
-					<Check size={14} />
-				{:else}
-					<Copy size={14} />
-				{/if}
-			</Button>
+			<Tooltip disabled={!tooltipsEnabled}>
+				<TooltipTrigger>
+					{#snippet child({ props })}
+						<Button
+							size="icon"
+							variant="ghost"
+							class="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+							{...props}
+							onclick={(event) => {
+								props.onclick?.(event);
+								handleCopy(event);
+							}}
+							aria-label={isCopied ? 'Copied message' : 'Copy message'}
+						>
+							{#if isCopied}
+								<Check size={14} />
+							{:else}
+								<Copy size={14} />
+							{/if}
+						</Button>
+					{/snippet}
+				</TooltipTrigger>
+				<TooltipContent side="top">
+					{isCopied ? TOOLTIP_COPY.copyMessage.success : TOOLTIP_COPY.copyMessage.default}
+				</TooltipContent>
+			</Tooltip>
 		{/if}
 	</div>
 
@@ -109,7 +128,9 @@
 	</div>
 
 	{#if message.error}
-		<div class="mt-3 p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
+		<div
+			class="mt-3 p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive"
+		>
 			<strong>Error:</strong>
 			{message.error}
 		</div>

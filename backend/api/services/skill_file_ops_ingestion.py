@@ -1,4 +1,5 @@
 """Ingestion-backed file operations for fs skill."""
+
 from __future__ import annotations
 
 import fnmatch
@@ -7,11 +8,11 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any
 from uuid import uuid4
 
-from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
 from api.db.session import set_session_user_id
+from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.services.skill_file_ops_helpers import (
     build_frontmatter,
     find_record_by_path,
@@ -20,8 +21,10 @@ from api.services.skill_file_ops_helpers import (
     hash_bytes,
     now_utc,
     pick_derivative,
+    sanitize_kind,
     staging_path,
     strip_frontmatter,
+    yaml_value,
 )
 from api.services.skill_file_ops_paths import (
     ensure_allowed_path,
@@ -31,6 +34,226 @@ from api.services.skill_file_ops_paths import (
     session_for_user,
 )
 from api.services.storage.service import get_storage_backend
+
+_FRONTMATTER_INGESTION_KEYS = (
+    "skill",
+    "model",
+    "language",
+    "duration_seconds",
+    "size_bytes",
+)
+
+
+def _build_ai_frontmatter(
+    record: IngestedFile,
+    frontmatter: dict[str, Any],
+    derivative_items: list[dict[str, Any]],
+) -> str:
+    lines: list[str] = ["---"]
+    lines.append(f"file_id: {yaml_value(record.id)}")
+    lines.append(f"source_filename: {yaml_value(record.filename_original)}")
+    lines.append(f"source_mime: {yaml_value(record.mime_original)}")
+    lines.append(f"created_at: {yaml_value(record.created_at.isoformat())}")
+    lines.append(f"sha256: {yaml_value(record.sha256)}")
+
+    source_url = frontmatter.get("source_url")
+    if source_url:
+        lines.append(f"source_url: {yaml_value(source_url)}")
+    source_type = frontmatter.get("source_type")
+    if source_type:
+        lines.append(f"source_type: {yaml_value(source_type)}")
+
+    ingestion_meta = frontmatter.get("ingestion") or {}
+    if ingestion_meta:
+        lines.append("ingestion:")
+        for key in _FRONTMATTER_INGESTION_KEYS:
+            if key not in ingestion_meta:
+                continue
+            value = ingestion_meta.get(key)
+            if value is None:
+                continue
+            lines.append(f"  {key}: {yaml_value(value)}")
+
+    derivatives_map = frontmatter.get("derivatives") or {}
+    derivatives_map["ai_md"] = True
+    for item in derivative_items:
+        kind = item.get("kind")
+        if kind:
+            derivatives_map[kind] = True
+    if derivatives_map:
+        lines.append("derivatives:")
+        for kind in sorted(derivatives_map.keys()):
+            lines.append(f"  {kind}: true")
+
+    if derivative_items:
+        lines.append("derivative_items:")
+        for item in derivative_items:
+            kind = item.get("kind")
+            path = item.get("path")
+            content_type = item.get("content_type")
+            if not kind or not path:
+                continue
+            lines.append(f"  - kind: {yaml_value(kind)}")
+            lines.append(f"    path: {yaml_value(path)}")
+            if content_type:
+                lines.append(f"    content_type: {yaml_value(content_type)}")
+
+    lines.append("---")
+    return "\n".join(lines) + "\n\n"
+
+
+def create_ingested_file(
+    user_id: str,
+    filename: str,
+    mime: str,
+    size: int,
+    *,
+    source_url: str | None = None,
+    source_metadata: dict[str, Any] | None = None,
+    path: str | None = None,
+    sha256: str | None = None,
+) -> IngestedFile:
+    """Create an ingestion record for a generated file."""
+    normalized = normalize_path(path or filename, allow_root=False)
+    ensure_allowed_path(normalized)
+    now = now_utc()
+
+    with session_for_user(user_id) as db:
+        record = IngestedFile(
+            id=uuid4(),
+            user_id=user_id,
+            filename_original=filename,
+            path=normalized,
+            mime_original=mime,
+            size_bytes=size,
+            sha256=sha256,
+            source_url=source_url,
+            source_metadata=source_metadata,
+            created_at=now,
+            deleted_at=None,
+        )
+        db.add(record)
+        db.flush()
+        set_session_user_id(db, user_id)
+        db.add(
+            FileProcessingJob(
+                file_id=record.id,
+                status="processing",
+                stage="finalizing",
+                attempts=0,
+                started_at=now,
+                updated_at=now,
+            )
+        )
+        db.commit()
+        return record
+
+
+def write_ai_markdown(
+    user_id: str,
+    record: IngestedFile,
+    content: str,
+    *,
+    frontmatter: dict[str, Any],
+    derivative_items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Write ai.md content and return derivative metadata."""
+    storage = get_storage_backend()
+    ai_key = f"{user_id}/files/{record.id}/ai/ai.md"
+    ai_frontmatter = _build_ai_frontmatter(record, frontmatter, derivative_items)
+    payload = f"{ai_frontmatter}{content}".encode()
+    storage.put_object(ai_key, payload, content_type="text/markdown")
+    return {
+        "kind": "ai_md",
+        "storage_key": ai_key,
+        "mime": "text/markdown",
+        "size_bytes": len(payload),
+        "sha256": hash_bytes(payload),
+        "content_type": "text/markdown",
+    }
+
+
+def write_derivative(
+    user_id: str,
+    record: IngestedFile,
+    local_path: Path,
+    *,
+    kind: str,
+    content_type: str | None = None,
+) -> dict[str, Any]:
+    """Write a derivative file and return metadata."""
+    storage = get_storage_backend()
+    safe_kind = sanitize_kind(kind)
+    extension = local_path.suffix.lower()
+    filename = f"{safe_kind}{extension}" if extension else safe_kind
+    storage_key = f"{user_id}/files/{record.id}/derivatives/{filename}"
+    content = local_path.read_bytes()
+    mime = (
+        content_type
+        or mimetypes.guess_type(local_path.name)[0]
+        or "application/octet-stream"
+    )
+    storage.put_object(storage_key, content, content_type=mime)
+    return {
+        "kind": kind,
+        "storage_key": storage_key,
+        "mime": mime,
+        "size_bytes": len(content),
+        "sha256": hash_bytes(content),
+        "content_type": mime,
+    }
+
+
+def finalize_ingested_file(
+    user_id: str,
+    record: IngestedFile,
+    derivatives: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Persist derivative metadata and mark ingestion as ready."""
+    now = now_utc()
+    with session_for_user(user_id) as db:
+        existing = db.query(IngestedFile).filter(IngestedFile.id == record.id).first()
+        if not existing:
+            raise ValueError("Ingested file not found for finalize")
+        db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+        for item in derivatives:
+            db.add(
+                FileDerivative(
+                    file_id=record.id,
+                    kind=item["kind"],
+                    storage_key=item["storage_key"],
+                    mime=item["mime"],
+                    size_bytes=item["size_bytes"],
+                    sha256=item.get("sha256"),
+                    created_at=now,
+                )
+            )
+        job = (
+            db.query(FileProcessingJob)
+            .filter(FileProcessingJob.file_id == record.id)
+            .first()
+        )
+        if job:
+            job.status = "ready"
+            job.stage = "ready"
+            job.error_code = None
+            job.error_message = None
+            job.finished_at = now
+            job.updated_at = now
+        db.commit()
+
+    return {
+        "file_id": str(record.id),
+        "ai_path": f"{user_id}/files/{record.id}/ai/ai.md",
+        "derivatives": [
+            {
+                "kind": item["kind"],
+                "path": item["storage_key"],
+                "content_type": item.get("content_type"),
+            }
+            for item in derivatives
+        ],
+    }
 
 
 def list_entries(
@@ -86,7 +309,7 @@ def list_entries(
     entries: list[dict] = []
     dir_meta: dict[str, datetime] = {}
 
-    def register_dir(path: str, updated_at: Optional[datetime]) -> None:
+    def register_dir(path: str, updated_at: datetime | None) -> None:
         if not path:
             return
         existing = dir_meta.get(path)
@@ -115,7 +338,9 @@ def list_entries(
                 "name": parts[-1],
                 "path": "/".join(parts),
                 "size": record.size_bytes,
-                "modified": record.created_at.isoformat() if record.created_at else None,
+                "modified": record.created_at.isoformat()
+                if record.created_at
+                else None,
                 "is_file": True,
                 "is_directory": False,
             }
@@ -211,7 +436,9 @@ def write_text(
             if derivative is None:
                 raise ValueError(f"File not ready for append: {path}")
             storage = get_storage_backend()
-            raw = storage.get_object(derivative.storage_key).decode("utf-8", errors="ignore")
+            raw = storage.get_object(derivative.storage_key).decode(
+                "utf-8", errors="ignore"
+            )
             base_content = strip_frontmatter(raw)
             content = base_content + content
 
@@ -331,9 +558,13 @@ def write_text(
                     raise ValueError(f"File processing {job.status}: {detail}")
             time.sleep(0.5)
         else:
-            raise TimeoutError(f"File processing still {last_status} after {timeout_seconds:.0f}s")
+            raise TimeoutError(
+                f"File processing still {last_status} after {timeout_seconds:.0f}s"
+            )
 
-    action = "created" if not existing else ("appended" if mode == "append" else "updated")
+    action = (
+        "created" if not existing else ("appended" if mode == "append" else "updated")
+    )
     return {
         "path": normalized,
         "action": action,
@@ -349,7 +580,7 @@ def upload_file(
     path: str,
     local_path: Path,
     *,
-    content_type: Optional[str] = None,
+    content_type: str | None = None,
 ) -> IngestedFile:
     """Upload a local file via ingestion."""
     normalized = normalize_path(path, allow_root=False)
@@ -359,7 +590,9 @@ def upload_file(
     digest = hash_bytes(content)
     size = len(content)
     filename = Path(normalized).name or "upload"
-    mime = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    mime = (
+        content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    )
 
     file_id = uuid4()
     source_path = staging_path(str(file_id))
@@ -432,7 +665,9 @@ def delete_path(user_id: str, path: str) -> dict:
             )
             for item in derivatives:
                 storage.delete_object(item.storage_key)
-            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+            db.query(FileDerivative).filter(
+                FileDerivative.file_id == record.id
+            ).delete()
             record.deleted_at = now_utc()
             db.commit()
             if record.path is None:
@@ -457,9 +692,7 @@ def delete_path(user_id: str, path: str) -> dict:
             if item.path is None:
                 continue
             derivatives = (
-                db.query(FileDerivative)
-                .filter(FileDerivative.file_id == item.id)
-                .all()
+                db.query(FileDerivative).filter(FileDerivative.file_id == item.id).all()
             )
             for derivative in derivatives:
                 storage.delete_object(derivative.storage_key)
@@ -518,7 +751,7 @@ def move_path(user_id: str, source: str, destination: str) -> dict:
             raise FileExistsError(f"Destination already exists: {destination}")
 
         for item in records:
-            suffix = item.path[len(prefix):]
+            suffix = item.path[len(prefix) :]
             item.path = f"{dest}/{suffix}" if suffix else dest
             item.filename_original = Path(item.path).name
 
@@ -527,7 +760,9 @@ def move_path(user_id: str, source: str, destination: str) -> dict:
     return {"source": src, "destination": dest, "type": "directory"}
 
 
-def _copy_storage_key(user_id: str, source_id: str, target_id: str, storage_key: str) -> str:
+def _copy_storage_key(
+    user_id: str, source_id: str, target_id: str, storage_key: str
+) -> str:
     """Build a new storage key for a copied derivative."""
     prefix = f"{user_id}/files/{source_id}/"
     if storage_key.startswith(prefix):
@@ -567,9 +802,7 @@ def _copy_record(
     db.flush()
 
     derivatives = (
-        db.query(FileDerivative)
-        .filter(FileDerivative.file_id == record.id)
-        .all()
+        db.query(FileDerivative).filter(FileDerivative.file_id == record.id).all()
     )
     if not derivatives:
         job = get_job(db, record.id)
@@ -578,7 +811,9 @@ def _copy_record(
         raise ValueError(f"No copyable content for: {record.path}")
 
     for item in derivatives:
-        new_key = _copy_storage_key(record.user_id, str(record.id), str(new_id), item.storage_key)
+        new_key = _copy_storage_key(
+            record.user_id, str(record.id), str(new_id), item.storage_key
+        )
         storage.copy_object(item.storage_key, new_key)
         db.add(
             FileDerivative(
@@ -640,7 +875,7 @@ def copy_path(user_id: str, source: str, destination: str) -> dict:
             raise FileExistsError(f"Destination already exists: {destination}")
 
         for item in records:
-            suffix = item.path[len(prefix):]
+            suffix = item.path[len(prefix) :]
             target_path = f"{dest}/{suffix}" if suffix else dest
             _copy_record(db, storage, item, target_path)
 
@@ -662,7 +897,9 @@ def info(user_id: str, path: str) -> dict:
                 "path": record.path,
                 "size": record.size_bytes,
                 "mime": record.mime_original,
-                "modified": record.created_at.isoformat() if record.created_at else None,
+                "modified": record.created_at.isoformat()
+                if record.created_at
+                else None,
                 "status": job.status if job else None,
                 "stage": job.stage if job else None,
                 "is_file": True,
@@ -682,7 +919,9 @@ def info(user_id: str, path: str) -> dict:
         if not records:
             raise FileNotFoundError(f"Path not found: {path}")
 
-        latest = max((item.created_at for item in records if item.created_at), default=None)
+        latest = max(
+            (item.created_at for item in records if item.created_at), default=None
+        )
 
     return {
         "path": normalized,

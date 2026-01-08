@@ -3,7 +3,10 @@
 SKILL_DISPLAY = {
     "fs": {
         "name": "Files",
-        "description": "Browse, read, search, and write ingested files. Reads return extracted text (ai.md) with frontmatter.",
+        "description": (
+            "Browse, read, search, and write ingested files. Reads return "
+            "extracted text (ai.md) with frontmatter."
+        ),
     },
     "notes": {
         "name": "Notes",
@@ -11,7 +14,9 @@ SKILL_DISPLAY = {
     },
     "web-save": {
         "name": "Web Save",
-        "description": "Save web pages as clean markdown in the database for later use.",
+        "description": (
+            "Save web pages as clean markdown in the database for later use."
+        ),
     },
     "web-search": {
         "name": "Web Search",
@@ -31,11 +36,17 @@ SKILL_DISPLAY = {
     },
     "youtube-download": {
         "name": "YouTube Download",
-        "description": "Download YouTube video or audio to the files workspace (videos by default).",
+        "description": (
+            "Download YouTube video or audio to the files workspace "
+            "(videos by default)."
+        ),
     },
     "youtube-transcribe": {
         "name": "YouTube Transcription",
-        "description": "Transcribe YouTube videos into text and store transcripts in the files workspace.",
+        "description": (
+            "Transcribe YouTube videos into text and store transcripts in the "
+            "files workspace."
+        ),
     },
     "mcp-builder": {
         "name": "MCP Builder",

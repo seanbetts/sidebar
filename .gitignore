@@ -57,3 +57,26 @@ frontend/coverage/
 
 # Docker volumes and workspaces
 /workspace/
+
+# iOS/Xcode
+ios/**/*.xcodeproj/*
+!ios/**/*.xcodeproj/project.pbxproj
+!ios/**/*.xcodeproj/xcshareddata/
+ios/**/*.xcworkspace/*
+!ios/**/*.xcworkspace/contents.xcworkspacedata
+ios/**/xcuserdata/
+ios/**/*.xcscmblueprint
+ios/**/*.xccheckout
+
+# Swift Package Manager
+ios/**/.build/
+ios/**/Packages/
+ios/**/*.swiftpm
+
+# CocoaPods (if used)
+ios/**/Pods/
+ios/**/*.podspec
+
+# Build artifacts
+ios/**/DerivedData/
+ios/**/build/

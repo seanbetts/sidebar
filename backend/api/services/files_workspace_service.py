@@ -1,20 +1,22 @@
 """Workspace file operations backed by ingestion."""
+
 from __future__ import annotations
 
 import logging
 import mimetypes
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
+from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.services.file_tree_service import FileTreeService
-from api.services.storage.service import get_storage_backend
 from api.services.skill_file_ops_ingestion import write_text as write_ingested_text
+from api.services.storage.service import get_storage_backend
 from api.services.workspace_service import WorkspaceService
 
 storage_backend = get_storage_backend()
@@ -58,7 +60,14 @@ def _list_prefix(
     include_deleted: bool = False,
 ) -> list[IngestedFile]:
     prefix_norm = prefix.strip("/")
-    query = db.query(IngestedFile).filter(IngestedFile.user_id == user_id)
+    query = db.query(IngestedFile).filter(
+        IngestedFile.user_id == user_id,
+        func.coalesce(
+            IngestedFile.source_metadata["website_transcript"].astext,
+            "false",
+        )
+        != "true",
+    )
     if not include_deleted:
         query = query.filter(IngestedFile.deleted_at.is_(None))
     if prefix_norm:
@@ -77,9 +86,7 @@ def _pick_download_derivative(db: Session, file_id) -> FileDerivative | None:
         "ai_md",
     ]
     derivatives = (
-        db.query(FileDerivative)
-        .filter(FileDerivative.file_id == file_id)
-        .all()
+        db.query(FileDerivative).filter(FileDerivative.file_id == file_id).all()
     )
     by_kind = {item.kind: item for item in derivatives}
     for kind in preferred:
@@ -127,7 +134,7 @@ def _strip_frontmatter(content: str) -> str:
     idx = content.find(marker)
     if idx == -1:
         return content
-    return content[idx + len(marker):]
+    return content[idx + len(marker) :]
 
 
 class FilesWorkspaceService(WorkspaceService[IngestedFile]):
@@ -147,7 +154,9 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         return _list_prefix(db, user_id, base_path, include_deleted=include_deleted)
 
     @classmethod
-    def _build_tree(cls, items: list[IngestedFile], *, base_path: str = "", **kwargs: object) -> dict:
+    def _build_tree(
+        cls, items: list[IngestedFile], *, base_path: str = "", **kwargs: object
+    ) -> dict:
         base_path = FileTreeService.normalize_base_path(base_path)
         tree_records = [
             _TreeRecord(
@@ -181,6 +190,11 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
             IngestedFile.deleted_at.is_(None),
             IngestedFile.path.is_not(None),
             IngestedFile.path.ilike(like_pattern),
+            func.coalesce(
+                IngestedFile.source_metadata["website_transcript"].astext,
+                "false",
+            )
+            != "true",
         ]
         if base_path:
             filters.append(IngestedFile.path.like(f"{base_path}/%"))
@@ -194,7 +208,9 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         return records
 
     @classmethod
-    def _item_to_dict(cls, item: IngestedFile, *, base_path: str = "", **kwargs: object) -> dict:
+    def _item_to_dict(
+        cls, item: IngestedFile, *, base_path: str = "", **kwargs: object
+    ) -> dict:
         base_path = FileTreeService.normalize_base_path(base_path)
         assert item.path is not None
         rel_path = _relative_path(base_path, item.path)
@@ -265,12 +281,16 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
             HTTPException: 400 if target exists, 404 if item not found.
         """
         old_full_path = _full_path(base_path, old_path)
-        parent = str(Path(old_path).parent) if Path(old_path).parent != Path(".") else ""
+        parent = (
+            str(Path(old_path).parent) if Path(old_path).parent != Path(".") else ""
+        )
         new_rel = f"{parent}/{new_name}".strip("/")
         new_full_path = _full_path(base_path, new_rel)
 
         if _find_record(db, user_id, new_full_path):
-            raise HTTPException(status_code=400, detail="An item with that name already exists")
+            raise HTTPException(
+                status_code=400, detail="An item with that name already exists"
+            )
 
         record = _find_record(db, user_id, old_full_path)
         if record:
@@ -319,14 +339,19 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         new_full_path = _full_path(base_path, f"{destination}/{filename}")
 
         if _find_record(db, user_id, new_full_path):
-            raise HTTPException(status_code=400, detail="An item with that name already exists")
+            raise HTTPException(
+                status_code=400, detail="An item with that name already exists"
+            )
 
         record = _find_record(db, user_id, full_path)
         if record:
             record.path = new_full_path
             record.filename_original = Path(new_full_path).name
             db.commit()
-            return {"success": True, "newPath": _relative_path(base_path, new_full_path)}
+            return {
+                "success": True,
+                "newPath": _relative_path(base_path, new_full_path),
+            }
 
         prefix_records = _list_prefix(db, user_id, full_path)
         if not prefix_records:
@@ -359,10 +384,14 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         full_path = _full_path(base_path, path)
         record = _find_record(db, user_id, full_path)
         if record:
-            job = db.query(FileProcessingJob).filter(FileProcessingJob.file_id == record.id).first()
+            job = (
+                db.query(FileProcessingJob)
+                .filter(FileProcessingJob.file_id == record.id)
+                .first()
+            )
             if job and job.status not in {"ready", "failed", "canceled"}:
                 raise HTTPException(status_code=409, detail="File is still processing")
-            record.deleted_at = datetime.now(timezone.utc)
+            record.deleted_at = datetime.now(UTC)
             db.commit()
             try:
                 derivatives = (
@@ -393,7 +422,7 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         if not records:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for item in records:
             item.deleted_at = now
         db.commit()
@@ -450,7 +479,11 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
             raise HTTPException(status_code=404, detail="File data missing")
 
         content = storage_backend.get_object(derivative.storage_key)
-        content_type = derivative.mime or mimetypes.guess_type(path)[0] or "application/octet-stream"
+        content_type = (
+            derivative.mime
+            or mimetypes.guess_type(path)[0]
+            or "application/octet-stream"
+        )
         return {
             "content": content,
             "content_type": content_type,
@@ -494,7 +527,9 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         try:
             decoded = content.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise HTTPException(status_code=400, detail="File is not a text file") from exc
+            raise HTTPException(
+                status_code=400, detail="File is not a text file"
+            ) from exc
         if derivative.kind == "ai_md":
             decoded = _strip_frontmatter(decoded)
 
@@ -506,7 +541,9 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         }
 
     @staticmethod
-    def update_content(db: Session, user_id: str, base_path: str, path: str, content: str) -> dict:
+    def update_content(
+        db: Session, user_id: str, base_path: str, path: str, content: str
+    ) -> dict:
         """Write text content to storage and update metadata.
 
         Args:
@@ -523,5 +560,5 @@ class FilesWorkspaceService(WorkspaceService[IngestedFile]):
         write_ingested_text(user_id, full_path, content, mode="replace")
         return {
             "success": True,
-            "modified": datetime.now(timezone.utc).timestamp(),
+            "modified": datetime.now(UTC).timestamp(),
         }

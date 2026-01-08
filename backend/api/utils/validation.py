@@ -1,7 +1,7 @@
 """Common validation utilities."""
+
 from __future__ import annotations
 
-from typing import Optional
 import uuid
 
 from api.exceptions import BadRequestError
@@ -35,10 +35,10 @@ def parse_uuid(
 
 
 def parse_optional_uuid(
-    value: Optional[str],
+    value: str | None,
     resource_name: str = "resource",
     field_name: str = "id",
-) -> Optional[uuid.UUID]:
+) -> uuid.UUID | None:
     """Parse an optional UUID string.
 
     Args:

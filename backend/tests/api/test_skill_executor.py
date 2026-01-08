@@ -1,8 +1,10 @@
 """Tests for SkillExecutor security and functionality."""
-import pytest
+
 import asyncio
-from api.executors.skill_executor import SkillExecutor
+
+import pytest
 from api.config import settings
+from api.executors.skill_executor import SkillExecutor
 
 
 @pytest.fixture
@@ -19,7 +21,7 @@ def temp_skills_dir(tmp_path):
 
     # Create a simple test script that echoes JSON
     test_script = scripts_dir / "echo.py"
-    test_script.write_text('''#!/usr/bin/env python3
+    test_script.write_text("""#!/usr/bin/env python3
 import sys
 import json
 import argparse
@@ -38,7 +40,7 @@ if args.json:
     print(json.dumps(result))
 else:
     print(result["data"]["message"])
-''')
+""")
 
     return skills_dir
 
@@ -111,11 +113,7 @@ class TestSkillExecutorSecurity:
     @pytest.mark.asyncio
     async def test_validates_workspace_paths_in_args(self, executor):
         """Should reject path traversal in arguments."""
-        result = await executor.execute(
-            "test-skill",
-            "echo.py",
-            ["../../etc/passwd"]
-        )
+        result = await executor.execute("test-skill", "echo.py", ["../../etc/passwd"])
         assert result["success"] is False
         assert "Path traversal not allowed" in result["error"]
 
@@ -125,12 +123,12 @@ class TestSkillExecutorSecurity:
         # Create a script that sleeps
         test_skill = temp_skills_dir / "test-skill" / "scripts"
         slow_script = test_skill / "slow.py"
-        slow_script.write_text('''#!/usr/bin/env python3
+        slow_script.write_text("""#!/usr/bin/env python3
 import time
 import json
 time.sleep(60)  # Sleep longer than timeout
 print(json.dumps({"success": True}))
-''')
+""")
 
         # Set a short timeout
         original_timeout = settings.skill_timeout_seconds
@@ -149,12 +147,12 @@ print(json.dumps({"success": True}))
         # Create a script that produces huge output
         test_skill = temp_skills_dir / "test-skill" / "scripts"
         huge_script = test_skill / "huge.py"
-        huge_script.write_text('''#!/usr/bin/env python3
+        huge_script.write_text("""#!/usr/bin/env python3
 import json
 # Generate huge output (> 10MB)
 data = "x" * (11 * 1024 * 1024)  # 11MB
 print(json.dumps({"success": True, "data": data}))
-''')
+""")
 
         result = await executor.execute("test-skill", "huge.py", [])
         assert result["success"] is False
@@ -166,12 +164,12 @@ print(json.dumps({"success": True, "data": data}))
         # Create a script that takes some time
         test_skill = temp_skills_dir / "test-skill" / "scripts"
         delay_script = test_skill / "delay.py"
-        delay_script.write_text('''#!/usr/bin/env python3
+        delay_script.write_text("""#!/usr/bin/env python3
 import time
 import json
 time.sleep(0.5)
 print(json.dumps({"success": True}))
-''')
+""")
 
         # Set low concurrency limit
         original_limit = settings.skill_max_concurrent
@@ -179,10 +177,7 @@ print(json.dumps({"success": True}))
 
         try:
             # Launch more tasks than the limit
-            tasks = [
-                executor.execute("test-skill", "delay.py", [])
-                for _ in range(5)
-            ]
+            tasks = [executor.execute("test-skill", "delay.py", []) for _ in range(5)]
 
             # All should complete, but only 2 should run concurrently
             results = await asyncio.gather(*tasks)
@@ -201,17 +196,19 @@ class TestSkillExecutorExecution:
         assert result["data"]["message"] == "test message"
 
     @pytest.mark.asyncio
-    async def test_sets_workspace_environment(self, executor, temp_workspace, temp_skills_dir):
+    async def test_sets_workspace_environment(
+        self, executor, temp_workspace, temp_skills_dir
+    ):
         """Should set WORKSPACE_BASE environment variable."""
         # Create a script that checks the environment
         test_skill = temp_skills_dir / "test-skill" / "scripts"
         env_script = test_skill / "check_env.py"
-        env_script.write_text('''#!/usr/bin/env python3
+        env_script.write_text("""#!/usr/bin/env python3
 import os
 import json
 workspace = os.getenv("WORKSPACE_BASE")
 print(json.dumps({"success": True, "data": {"workspace": workspace}}))
-''')
+""")
 
         result = await executor.execute("test-skill", "check_env.py", [])
         assert result["success"] is True
@@ -223,12 +220,12 @@ print(json.dumps({"success": True, "data": {"workspace": workspace}}))
         # Create a script that fails
         test_skill = temp_skills_dir / "test-skill" / "scripts"
         error_script = test_skill / "error.py"
-        error_script.write_text('''#!/usr/bin/env python3
+        error_script.write_text("""#!/usr/bin/env python3
 import sys
 import json
 print(json.dumps({"success": False, "error": "Something went wrong"}), file=sys.stderr)
 sys.exit(1)
-''')
+""")
 
         result = await executor.execute("test-skill", "error.py", [])
         assert result["success"] is False
@@ -240,13 +237,13 @@ sys.exit(1)
         # Create a script that would be vulnerable if shell=True
         test_skill = temp_skills_dir / "test-skill" / "scripts"
         injection_test = test_skill / "injection.py"
-        injection_test.write_text('''#!/usr/bin/env python3
+        injection_test.write_text("""#!/usr/bin/env python3
 import sys
 import json
 # If this receives shell metacharacters, it should treat them as literal
 message = sys.argv[1] if len(sys.argv) > 1 else ""
 print(json.dumps({"success": True, "data": {"message": message}}))
-''')
+""")
 
         # Try to inject shell commands
         malicious_input = "; rm -rf / #"
