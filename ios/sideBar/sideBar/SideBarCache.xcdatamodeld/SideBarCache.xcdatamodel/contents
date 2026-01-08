@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="99999" systemVersion="24A000" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
-    <entity name="CacheEntry" representedClassName="CacheEntry" codeGenerationType="manual" syncable="YES">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24553" systemVersion="25B78" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="CacheEntry" representedClassName="CacheEntry" codeGenerationType="manual">
         <attribute name="key" optional="NO" attributeType="String"/>
         <attribute name="payload" optional="NO" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
         <attribute name="expiresAt" optional="NO" attributeType="Date"/>
