@@ -1,6 +1,6 @@
 import Foundation
 
-public struct AnyCodable: Codable, Hashable {
+public struct AnyCodable: Codable {
     public let value: Any
 
     public init(_ value: Any) {

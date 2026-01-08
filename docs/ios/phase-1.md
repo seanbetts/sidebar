@@ -4,6 +4,8 @@
 - [x] Repository `ios/` structure created
 - [x] Swift DTO scaffolding added
 - [x] API/SSE/realtime documentation drafted
+- [x] API client extensions + typed service wrappers drafted
+- [x] SSE parser + realtime payload stubs added
 
 ## After Xcode Project Is Added
 - [ ] Add Swift files to the Xcode target

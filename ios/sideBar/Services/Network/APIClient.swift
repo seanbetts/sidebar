@@ -20,7 +20,7 @@ public enum APIClientError: Error {
 }
 
 public final class APIClient {
-    private let config: APIClientConfig
+    let config: APIClientConfig
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
@@ -97,7 +97,7 @@ public final class APIClient {
         }
     }
 
-    private static func decodeErrorMessage(data: Data, decoder: JSONDecoder) -> String? {
+    static func decodeErrorMessage(data: Data, decoder: JSONDecoder) -> String? {
         guard let payload = try? decoder.decode(APIErrorResponse.self, from: data) else {
             return nil
         }

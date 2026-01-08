@@ -10,7 +10,7 @@ public struct FileNode: Codable {
     public let path: String
     public let type: FileNodeType
     public let size: Int?
-    public let modified: String?
+    public let modified: Double?
     public let children: [FileNode]?
     public let expanded: Bool?
     public let pinned: Bool?
@@ -21,6 +21,13 @@ public struct FileNode: Codable {
 
 public struct FileTree: Codable {
     public let children: [FileNode]
+}
+
+public struct FileContent: Codable {
+    public let content: String
+    public let name: String
+    public let path: String
+    public let modified: Double?
 }
 
 public struct IngestedFileMeta: Codable {
