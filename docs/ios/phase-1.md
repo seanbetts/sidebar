@@ -9,6 +9,8 @@
 - [x] SSE URLSession client draft
 - [x] View model shells for core domains
 - [x] API contract test checklist drafted
+- [x] SwiftUI view shells for navigation + sections
+- [x] Auth/session stubs and DI container skeleton
 
 ## After Xcode Project Is Added
 - [ ] Add Swift files to the Xcode target
