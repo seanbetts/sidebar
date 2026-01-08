@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 
+// TODO: Revisit to prefer native-first data sources where applicable.
+
 @MainActor
 public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public private(set) var messages: [Message] = []

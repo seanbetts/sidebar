@@ -23,6 +23,7 @@ public struct ContentView: View {
     }
 
     public var body: some View {
+        // TODO: Replace with platform-specific navigation (tab on iPhone, split on iPad/macOS).
         NavigationSplitView {
             List(AppSection.allCases, selection: $selection) { section in
                 Text(section.title)
@@ -41,6 +42,7 @@ public struct SectionDetailView: View {
     }
 
     public var body: some View {
+        // TODO: Swap placeholders for native views per platform conventions.
         switch section {
         case .chat:
             ChatView()

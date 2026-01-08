@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+// TODO: Revisit to prefer native-first data sources where applicable.
+
 @MainActor
 public final class NavigationState: ObservableObject {
     @AppStorage(AppStorageKeys.lastSelectedSection) public var lastSectionRaw: String = AppSection.chat.rawValue
@@ -10,4 +12,6 @@ public final class NavigationState: ObservableObject {
         get { AppSection(rawValue: lastSectionRaw) ?? .chat }
         set { lastSectionRaw = newValue.rawValue }
     }
+
+    // TODO: Extend to support per-platform navigation state (tabs vs split).
 }

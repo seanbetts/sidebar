@@ -3,6 +3,7 @@ import Foundation
 public struct RealtimeMappers {
     public static func mapNote(_ record: NoteRealtimeRecord) -> NotePayload? {
         let id = record.id
+        // TODO: Align note mapping with native models and folder/archive semantics.
         return NotePayload(
             id: id,
             name: "\(record.title ?? "Untitled").md",
@@ -14,6 +15,7 @@ public struct RealtimeMappers {
 
     public static func mapWebsite(_ record: WebsiteRealtimeRecord) -> WebsiteItem? {
         let id = record.id
+        // TODO: Align website mapping with native list models and pinning rules.
         return WebsiteItem(
             id: id,
             title: record.title ?? "",
@@ -32,6 +34,7 @@ public struct RealtimeMappers {
 
     public static func mapIngestedFile(_ record: IngestedFileRealtimeRecord) -> IngestedFileMeta? {
         let id = record.id
+        // TODO: Normalize ingestion fields to native viewer model once defined.
         return IngestedFileMeta(
             id: id,
             filenameOriginal: record.filenameOriginal ?? "",

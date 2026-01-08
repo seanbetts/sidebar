@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 
+// TODO: Revisit to prefer native-first data sources where applicable.
+
 @MainActor
 public final class IngestionViewModel: ObservableObject {
     @Published public private(set) var items: [IngestionListItem] = []
