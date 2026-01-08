@@ -12,6 +12,8 @@
 - Ingestion list (TTL: 5m)
 - Scratchpad content (TTL: 7d)
 
+TODO: Revisit TTLs once native UX flows are implemented (likely longer-lived caches).
+
 ## Storage
 - In-memory cache for the MVP (fast iteration).
 - Add disk cache after Xcode project lands, using a simple key/value store.
