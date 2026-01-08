@@ -1,4 +1,6 @@
 import js from '@eslint/js';
+import svelte from 'eslint-plugin-svelte';
+import svelteParser from 'svelte-eslint-parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 
@@ -47,6 +49,7 @@ const jsdocSettings = jsdoc
 
 export default [
   js.configs.recommended,
+  ...svelte.configs['flat/recommended'],
   {
     files: ['**/*.ts', '**/*.js'],
     plugins: {
@@ -95,6 +98,21 @@ export default [
     },
     settings: {
       ...jsdocSettings
+    }
+  },
+  {
+    files: ['**/*.svelte'],
+    languageOptions: {
+      parser: svelteParser,
+      parserOptions: {
+        parser: tsParser,
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        extraFileExtensions: ['.svelte']
+      }
+    },
+    plugins: {
+      svelte
     }
   },
   {
