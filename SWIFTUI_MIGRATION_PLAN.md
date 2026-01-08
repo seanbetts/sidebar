@@ -185,6 +185,11 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - Use native toolbars and `ToolbarItem` placements instead of a web-style header bar.
 - Embrace native behaviors: context menus, keyboard shortcuts, search fields, inspector panels.
 
+**Platform UX Matrix (Phase 2)**
+- **macOS**: Sidebar + content + optional inspector; toolbar with primary actions; multiple windows.
+- **iPadOS**: 2-3 column split view; contextual toolbars; drag and drop between panes.
+- **iOS**: Tab bar for top-level sections; stack navigation for detail; bottom sheets for actions.
+
 #### Phase 3: Chat Viewer (4-5 sessions MVP, 5-7 full)
 **MVP Scope: Read-Only Chat Viewer**
 - [ ] 3.1 Conversation List
@@ -197,8 +202,9 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 3.8 Real-time Conversation Sync
 
 **Native UX Requirements (Phase 3)**
-- Use native list/stack layouts with dynamic type and voiceover labels.
+- Use native list/stack layouts with Dynamic Type and VoiceOver labels.
 - Prefer native context menus and swipe actions for message utilities.
+- macOS: command-click selection, keyboard navigation, and copy/select behaviors.
 
 **Post-MVP (Phase 10.1): Chat Input**
 - [ ] 3.7 Chat Input (text editor, send button, attachments)
@@ -213,7 +219,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 **Native UX Requirements (Phase 4)**
 - Use native outline/list patterns for the tree (`OutlineGroup` on macOS/iPad).
-- Use native text selection and share actions.
+- Use native text selection, share sheet, and Quick Look for attachments.
 
 **Post-MVP (Phases 10.2-10.3): Editing Capabilities**
 - [ ] 4.2 Native Markdown Editor (RichTextKit or custom)
@@ -236,6 +242,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 **Native UX Requirements (Phase 5)**
 - Prefer Quick Look where it improves native affordances and share workflows.
+- Use native file pickers, share sheets, and drag-drop on macOS/iPadOS.
 
 **Note**: File upload and ingestion deferred to post-launch (not part of MVP or Phase 10)
 
@@ -245,6 +252,10 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 6.2 Website Viewer (WKWebView or MarkdownUI)
 - [ ] 6.4 Website Operations (view only - pin/unpin, open in Safari)
 - [ ] 6.5 Real-time Sync
+
+**Native UX Requirements (Phase 6)**
+- Use `SFSafariViewController` on iOS for external viewing.
+- Use `WKWebView` in-app only when needed; prefer markdown/native text for speed.
 
 **Post-MVP (Phase 10.4): Content Creation**
 - [ ] 6.3 Save Website (URL input, validation, loading state)
@@ -257,6 +268,10 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 7.3b Things Integration (native macOS/iOS; bridge is web-only legacy)
 - [ ] 7.4 Weather Integration
 - [ ] 7.5 Keyboard Shortcuts (macOS)
+
+**Native UX Requirements (Phase 7)**
+- Use native Settings layouts (Form + sections) and platform conventions.
+- macOS: use menu bar commands and keyboard shortcuts for key actions.
 
 **Post-MVP (Future Transition)**
 - [ ] 7.T1 Task System Migration (replace Things dependency with in-app todo management)
