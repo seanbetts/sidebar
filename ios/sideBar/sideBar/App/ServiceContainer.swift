@@ -43,7 +43,7 @@ public final class ServiceContainer {
     public func makeChatStreamClient(handler: ChatStreamEventHandler?) -> ChatStreamClient {
         URLSessionChatStreamClient(
             baseUrl: config.apiBaseUrl,
-            accessTokenProvider: { authSession.accessToken },
+            accessTokenProvider: { [authSession] in authSession.accessToken },
             handler: handler
         )
     }
