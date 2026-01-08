@@ -2,7 +2,24 @@
 
 ## Executive Summary
 
-Based on comprehensive analysis of the SvelteKit frontend, this document outlines a detailed roadmap for building a universal macOS/iOS/iPadOS app with full feature parity. This plan assumes an architect/director role working with an AI coding agent.
+Based on comprehensive analysis of the SvelteKit frontend, this document outlines a detailed roadmap for building a universal macOS/iOS/iPadOS app with native UX and capability parity. This plan assumes an architect/director role working with an AI coding agent.
+
+### Native-First Design Principles (Non-Negotiable)
+
+This app should feel like a first-class Apple platform app, not a web replica. These principles supersede web parity when they conflict.
+
+1. **Native UI over web mimicry**
+   - Use SwiftUI patterns, Apple HIG navigation, and platform conventions.
+   - macOS: toolbar + sidebar + multiwindow; iOS: tab or split layouts; iPad: 2-3 column layouts.
+2. **Prefer native APIs when available**
+   - Use platform frameworks (PDFKit, AVFoundation, Quick Look, CoreLocation, etc.).
+   - For Things, use native APIs (no bridge dependency in SwiftUI).
+3. **Backend as sync source, not UX driver**
+   - The backend enables data sync and AI capabilities, but the UX should be built for native behaviors.
+4. **Platform-specific UX is expected**
+   - Embrace differences: context menus, keyboard shortcuts, windowing, drag/drop, and multi-pane navigation.
+5. **Design for offline reading and fast local interactions**
+   - Cache first, revalidate in background, and show native loading states.
 
 ---
 
@@ -67,7 +84,7 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 - Add chat input and message sending
 - Build full markdown editor with formatting toolbar
 - Enable note creation and editing
-- Complete feature parity with web app
+- Complete capability parity with native UX
 
 ### Effort Estimates
 
@@ -163,6 +180,11 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 2.5 Site Header Bar
 - [ ] 2.6 Settings Sheet
 
+**Native UX Requirements (Phase 2)**
+- Use `NavigationSplitView` for macOS/iPad, `NavigationStack` or tabbed layout for iPhone.
+- Use native toolbars and `ToolbarItem` placements instead of a web-style header bar.
+- Embrace native behaviors: context menus, keyboard shortcuts, search fields, inspector panels.
+
 #### Phase 3: Chat Viewer (4-5 sessions MVP, 5-7 full)
 **MVP Scope: Read-Only Chat Viewer**
 - [ ] 3.1 Conversation List
@@ -174,6 +196,10 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 3.6a SSE UI Event Handling (note/website/theme/scratchpad/prompt/tool_start/tool_end)
 - [ ] 3.8 Real-time Conversation Sync
 
+**Native UX Requirements (Phase 3)**
+- Use native list/stack layouts with dynamic type and voiceover labels.
+- Prefer native context menus and swipe actions for message utilities.
+
 **Post-MVP (Phase 10.1): Chat Input**
 - [ ] 3.7 Chat Input (text editor, send button, attachments)
 
@@ -184,6 +210,10 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 4.2a Scratchpad Note Mapping (special title + realtime updates)
 - [ ] 4.6 Search Notes
 - [ ] 4.7 Real-time Sync (see updates from web)
+
+**Native UX Requirements (Phase 4)**
+- Use native outline/list patterns for the tree (`OutlineGroup` on macOS/iPad).
+- Use native text selection and share actions.
 
 **Post-MVP (Phases 10.2-10.3): Editing Capabilities**
 - [ ] 4.2 Native Markdown Editor (RichTextKit or custom)
@@ -203,6 +233,9 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 5.8 Spreadsheet Viewer
 - [ ] 5.9 Markdown Extraction Display
 - [ ] 5.10 File Operations (view only - download, pin/unpin)
+
+**Native UX Requirements (Phase 5)**
+- Prefer Quick Look where it improves native affordances and share workflows.
 
 **Note**: File upload and ingestion deferred to post-launch (not part of MVP or Phase 10)
 
@@ -256,7 +289,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 **Post-MVP (Phase 10.5): Full App Testing**
 - [ ] Test editing features
 - [ ] Test creation workflows
-- [ ] End-to-end feature parity validation
+- [ ] End-to-end capability parity validation (native UX)
 
 ---
 
@@ -303,7 +336,7 @@ Evaluate RichTextKit capabilities. Choose:
 #### Phase 10.5: Full App Testing (1-2 sessions)
 - [ ] Test all editing workflows
 - [ ] Test creation and deletion
-- [ ] Verify feature parity with web app
+- [ ] Verify capability parity with native UX
 - [ ] Final polish and bug fixes
 
 ### Critical Milestones
@@ -328,7 +361,7 @@ Evaluate RichTextKit capabilities. Choose:
 - [ ] **Milestone 7**: Can send chat messages (End of Phase 10.1)
 - [ ] **Milestone 8**: Can create and edit notes (End of Phase 10.2-10.3)
 - [ ] **Milestone 9**: Can create content everywhere (End of Phase 10.4)
-- [ ] **FULL APP COMPLETE**: Feature parity with web app (End of Phase 10.5)
+- [ ] **FULL APP COMPLETE**: Capability parity with native UX (End of Phase 10.5)
 
 ### Session Log
 
@@ -410,6 +443,22 @@ Even read-only, the app provides genuine utility:
 - Memory editing
 - Scratchpad editing
 
+---
+
+## Native API and Sync Strategy
+
+**Native-first data sources**
+- Use platform frameworks for viewing and interaction (Quick Look, PDFKit, AVFoundation, CoreLocation).
+- SwiftUI should use native Things APIs (no bridge dependency).
+
+**Backend as sync + AI layer**
+- Backend APIs power AI features and cross-device sync.
+- UI flows should follow Apple HIG even if web UX differs.
+
+**Local-first caching**
+- Cache primary lists and recent items for fast startup and offline reading.
+- Revalidate in background and reconcile realtime updates.
+
 **Why Defer These:**
 - Markdown editor alone: 6-9 sessions (most complex component)
 - Chat input: 2-3 sessions
@@ -476,7 +525,7 @@ When ready to resume (estimated 11-17 additional sessions):
 | Markdown Editor | 6-9 | **Very High** | RichTextKit or custom solution, critical decision point |
 | Note Operations | 1-2 | Low | Create, rename, move, delete with API calls |
 | Content Creation | 1 | Low | Save websites, edit memories, scratchpad |
-| Full Testing | 1-2 | Medium | End-to-end feature parity validation |
+| Full Testing | 1-2 | Medium | End-to-end capability parity validation (native UX) |
 
 **Critical Decision in Phase 10.2:**
 After 3-5 sessions evaluating RichTextKit for markdown editing:
@@ -1695,7 +1744,7 @@ You can parallelize:
 
 2. **iPhone Navigation Pattern** (Week 10-11)
    - Tab bar vs. hamburger menu vs. gesture-based navigation
-   - Focus on chat + notes simplicity vs. attempting full feature parity
+   - Focus on chat + notes simplicity vs. attempting full capability parity
 
 3. **Offline Mode Scope** (Week 11-12)
    - Read-only cached content vs. full offline editing with sync queue
@@ -1735,7 +1784,7 @@ All libraries are actively maintained and have permissive licenses.
 ## Success Metrics
 
 **Definition of Done**:
-- [ ] All features from web app functional on Mac, iPad, iPhone
+- [ ] All capabilities available with native UX on Mac, iPad, iPhone
 - [ ] Real-time sync working reliably
 - [ ] Offline reading supported with smart caching
 - [ ] App feels native (not like a web wrapper)
