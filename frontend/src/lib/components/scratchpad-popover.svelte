@@ -14,11 +14,7 @@
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import ScratchpadHeader from '$lib/components/scratchpad/ScratchpadHeader.svelte';
-	import {
-		removeEmptyTaskItems,
-		stripHeading,
-		withHeading
-	} from '$lib/utils/scratchpad';
+	import { removeEmptyTaskItems, stripHeading, withHeading } from '$lib/utils/scratchpad';
 	import { logError } from '$lib/utils/errorHandling';
 	import { canShowTooltips } from '$lib/utils/tooltip';
 
@@ -79,7 +75,6 @@
 			isUpdatingContent = false;
 		}
 	}
-
 
 	async function ensureScratchpadExists() {
 		const response = await fetch('/api/v1/scratchpad');
@@ -193,7 +188,7 @@
 		unsubscribeScratchpad();
 		if (editor) {
 			editor.destroy();
-			editor = null;  // Set to null to prevent double destruction
+			editor = null; // Set to null to prevent double destruction
 		}
 	});
 
@@ -261,7 +256,6 @@
 		overflow: hidden;
 		padding: 1rem 0.5rem 1rem 1rem;
 	}
-
 
 	.scratchpad-body {
 		flex: 1;

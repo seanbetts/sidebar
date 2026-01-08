@@ -1,19 +1,20 @@
 """Websites service for shared website business logic."""
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Iterable, Optional
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
 
+from api.exceptions import WebsiteNotFoundError
 from api.models.website import Website
 from api.schemas.filters import WebsiteFilters
-from api.utils.pinned_order import lock_pinned_order
-from api.exceptions import WebsiteNotFoundError
 from api.utils.metadata_helpers import get_max_pinned_order
+from api.utils.pinned_order import lock_pinned_order
 from api.utils.search import build_text_search_filter
 
 
@@ -49,12 +50,8 @@ class WebsitesService:
 
     @staticmethod
     def get_by_url(
-        db: Session,
-        user_id: str,
-        url: str,
-        *,
-        include_deleted: bool = False
-    ) -> Optional[Website]:
+        db: Session, user_id: str, url: str, *, include_deleted: bool = False
+    ) -> Website | None:
         """Fetch a website by normalized URL.
 
         Args:
@@ -83,10 +80,10 @@ class WebsitesService:
         url: str,
         title: str,
         content: str,
-        source: Optional[str] = None,
-        url_full: Optional[str] = None,
-        saved_at: Optional[datetime] = None,
-        published_at: Optional[datetime] = None,
+        source: str | None = None,
+        url_full: str | None = None,
+        saved_at: datetime | None = None,
+        published_at: datetime | None = None,
         pinned: bool = False,
         archived: bool = False,
     ) -> Website:
@@ -108,7 +105,7 @@ class WebsitesService:
         Returns:
             Newly created Website.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         normalized_url = WebsitesService.normalize_url(url)
         domain = WebsitesService.extract_domain(normalized_url)
         metadata = {"pinned": pinned, "archived": archived}
@@ -142,10 +139,10 @@ class WebsitesService:
         url: str,
         title: str,
         content: str,
-        source: Optional[str] = None,
-        url_full: Optional[str] = None,
-        saved_at: Optional[datetime] = None,
-        published_at: Optional[datetime] = None,
+        source: str | None = None,
+        url_full: str | None = None,
+        saved_at: datetime | None = None,
+        published_at: datetime | None = None,
         pinned: bool = False,
         archived: bool = False,
     ) -> Website:
@@ -167,11 +164,13 @@ class WebsitesService:
         Returns:
             Upserted Website.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         normalized_url = WebsitesService.normalize_url(url)
         domain = WebsitesService.extract_domain(normalized_url)
 
-        website = WebsitesService.get_by_url(db, user_id, normalized_url, include_deleted=True)
+        website = WebsitesService.get_by_url(
+            db, user_id, normalized_url, include_deleted=True
+        )
         if website:
             website.url_full = url_full or website.url_full
             website.domain = domain
@@ -220,11 +219,11 @@ class WebsitesService:
         user_id: str,
         website_id: uuid.UUID,
         *,
-        title: Optional[str] = None,
-        content: Optional[str] = None,
-        source: Optional[str] = None,
-        saved_at: Optional[datetime] = None,
-        published_at: Optional[datetime] = None,
+        title: str | None = None,
+        content: str | None = None,
+        source: str | None = None,
+        saved_at: datetime | None = None,
+        published_at: datetime | None = None,
     ) -> Website:
         """Update a website record by ID.
 
@@ -267,7 +266,7 @@ class WebsitesService:
         if published_at is not None:
             website.published_at = published_at
 
-        website.updated_at = datetime.now(timezone.utc)
+        website.updated_at = datetime.now(UTC)
         db.commit()
         db.refresh(website)
         return website
@@ -311,12 +310,14 @@ class WebsitesService:
             metadata["archived"] = False
             if metadata.get("pinned_order") is None:
                 lock_pinned_order(db, user_id, "websites")
-                metadata["pinned_order"] = get_max_pinned_order(db, Website, user_id) + 1
+                metadata["pinned_order"] = (
+                    get_max_pinned_order(db, Website, user_id) + 1
+                )
         else:
             metadata.pop("pinned_order", None)
         website.metadata_ = metadata
         flag_modified(website, "metadata_")
-        website.updated_at = datetime.now(timezone.utc)
+        website.updated_at = datetime.now(UTC)
         db.commit()
         db.refresh(website)
         return website
@@ -346,7 +347,7 @@ class WebsitesService:
             metadata["pinned_order"] = order_map.get(website.id)
             website.metadata_ = metadata
             flag_modified(website, "metadata_")
-            website.updated_at = datetime.now(timezone.utc)
+            website.updated_at = datetime.now(UTC)
         db.commit()
 
     @staticmethod
@@ -384,7 +385,7 @@ class WebsitesService:
 
         website.metadata_ = {**(website.metadata_ or {}), "archived": archived}
         flag_modified(website, "metadata_")
-        website.updated_at = datetime.now(timezone.utc)
+        website.updated_at = datetime.now(UTC)
         db.commit()
         db.refresh(website)
         return website
@@ -413,7 +414,7 @@ class WebsitesService:
         if not website:
             return False
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         website.deleted_at = now
         website.updated_at = now
         db.commit()
@@ -426,7 +427,7 @@ class WebsitesService:
         website_id: uuid.UUID,
         *,
         mark_opened: bool = True,
-    ) -> Optional[Website]:
+    ) -> Website | None:
         """Fetch a website by ID.
 
         Args:
@@ -451,7 +452,7 @@ class WebsitesService:
             return None
 
         if mark_opened:
-            website.last_opened_at = datetime.now(timezone.utc)
+            website.last_opened_at = datetime.now(UTC)
             db.commit()
         return website
 
@@ -469,22 +470,29 @@ class WebsitesService:
             db: Database session.
             user_id: Current user ID.
             filters: Optional filters object.
+            include_deleted: Whether to include soft-deleted records.
 
         Returns:
             List of matching websites ordered by saved_at/created_at.
         """
         filters = filters or WebsiteFilters()
-        query = db.query(Website).options(load_only(
-            Website.id,
-            Website.title,
-            Website.url,
-            Website.domain,
-            Website.saved_at,
-            Website.published_at,
-            Website.metadata_,
-            Website.updated_at,
-            Website.last_opened_at,
-        )).filter(Website.user_id == user_id)
+        query = (
+            db.query(Website)
+            .options(
+                load_only(
+                    Website.id,
+                    Website.title,
+                    Website.url,
+                    Website.domain,
+                    Website.saved_at,
+                    Website.published_at,
+                    Website.metadata_,
+                    Website.updated_at,
+                    Website.last_opened_at,
+                )
+            )
+            .filter(Website.user_id == user_id)
+        )
 
         if not include_deleted:
             query = query.filter(Website.deleted_at.is_(None))
@@ -522,10 +530,9 @@ class WebsitesService:
         if filters.title_search:
             query = query.filter(Website.title.ilike(f"%{filters.title_search}%"))
 
-        return (
-            query.order_by(Website.saved_at.desc().nullslast(), Website.created_at.desc())
-            .all()
-        )
+        return query.order_by(
+            Website.saved_at.desc().nullslast(), Website.created_at.desc()
+        ).all()
 
     @staticmethod
     def search_websites(

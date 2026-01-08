@@ -1,9 +1,9 @@
 """Tests for the web-save local parser."""
-from datetime import datetime, timezone
 
+from datetime import UTC, datetime
+
+from api.services import web_save_includes, web_save_parser
 from bs4 import BeautifulSoup
-from api.services import web_save_parser
-from api.services import web_save_includes
 from lxml import html as lxml_html
 
 
@@ -35,7 +35,7 @@ def test_parse_url_local_builds_frontmatter(monkeypatch):
 
     assert parsed.title == "Svelte Example Article"
     assert parsed.source == "https://example.com/article"
-    assert parsed.published_at == datetime(2025, 1, 1, 12, 0, tzinfo=timezone.utc)
+    assert parsed.published_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC)
     assert parsed.content.startswith("---\n")
     frontmatter = parsed.content.split("---\n", 2)[1]
     data = web_save_parser.yaml.safe_load(frontmatter)
@@ -176,7 +176,7 @@ def test_metadata_overrides_apply(monkeypatch):
 
     parsed = web_save_parser.parse_url_local("example.com/article")
     assert parsed.title == "Override Title"
-    assert parsed.published_at == datetime(2024, 12, 31, 10, 0, tzinfo=timezone.utc)
+    assert parsed.published_at == datetime(2024, 12, 31, 10, 0, tzinfo=UTC)
 
 
 def test_rule_engine_actions_retag_and_unwrap():
@@ -207,7 +207,9 @@ def test_rule_engine_actions_retag_and_unwrap():
 
 
 def test_rule_engine_actions_move_and_set_attr():
-    html = "<html><body><div class='target'></div><p class='move'>Move</p></body></html>"
+    html = (
+        "<html><body><div class='target'></div><p class='move'>Move</p></body></html>"
+    )
     engine = web_save_parser.RuleEngine(
         rules=[
             web_save_parser.Rule(
@@ -221,7 +223,12 @@ def test_rule_engine_actions_move_and_set_attr():
                 metadata={},
                 actions=[
                     {"op": "move", "selector": ".move", "target": ".target"},
-                    {"op": "set_attr", "selector": ".target", "attr": "data-test", "value": "ok"},
+                    {
+                        "op": "set_attr",
+                        "selector": ".target",
+                        "attr": "data-test",
+                        "value": "ok",
+                    },
                 ],
             )
         ]
@@ -229,7 +236,7 @@ def test_rule_engine_actions_move_and_set_attr():
 
     matched = engine.match_rules("https://example.com", html, phase="post")
     cleaned = engine.apply_rules(html, matched)
-    assert "data-test=\"ok\"" in cleaned
+    assert 'data-test="ok"' in cleaned
     assert cleaned.find("Move") < cleaned.find("</div>")
 
 
@@ -247,7 +254,12 @@ def test_rule_engine_actions_group_siblings():
                 selector_overrides={},
                 metadata={},
                 actions=[
-                    {"op": "group_siblings", "selector": ".cap", "wrapper_tag": "div", "class": "caps"},
+                    {
+                        "op": "group_siblings",
+                        "selector": ".cap",
+                        "wrapper_tag": "div",
+                        "class": "caps",
+                    },
                 ],
             )
         ]
@@ -255,11 +267,13 @@ def test_rule_engine_actions_group_siblings():
 
     matched = engine.match_rules("https://example.com", html, phase="post")
     cleaned = engine.apply_rules(html, matched)
-    assert "class=\"caps\"" in cleaned
+    assert 'class="caps"' in cleaned
 
 
 def test_rule_engine_actions_remove_children():
-    html = "<html><body><div class='box'><p>Remove me</p></div><p>Keep</p></body></html>"
+    html = (
+        "<html><body><div class='box'><p>Remove me</p></div><p>Keep</p></body></html>"
+    )
     engine = web_save_parser.RuleEngine(
         rules=[
             web_save_parser.Rule(
@@ -726,7 +740,9 @@ def test_parse_url_local_force_rendering(monkeypatch):
     def fake_fetch(url: str, *, timeout: int = 30):
         return html, "https://example.com/render", False
 
-    def fake_render(url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"):
+    def fake_render(
+        url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"
+    ):
         return rendered, "https://example.com/rendered"
 
     rule = web_save_parser.Rule(
@@ -817,13 +833,18 @@ def test_parse_url_local_dedupes_encoded_hero_image(monkeypatch):
     monkeypatch.setattr(web_save_parser, "fetch_html", fake_fetch)
 
     parsed = web_save_parser.parse_url_local("example.com/article")
-    assert parsed.content.count("substack-post-media.s3.amazonaws.com/public/images/hero.webp") == 1
+    assert (
+        parsed.content.count(
+            "substack-post-media.s3.amazonaws.com/public/images/hero.webp"
+        )
+        == 1
+    )
 
 
 def test_dedupe_markdown_images_handles_linked_title():
     markdown = (
         "![Hero](https://example.com/hero.png)\n\n"
-        "[![](https://example.com/hero.png \"Title\")](https://example.com/hero.png)\n"
+        '[![](https://example.com/hero.png "Title")](https://example.com/hero.png)\n'
     )
     deduped = web_save_parser.dedupe_markdown_images(markdown)
     assert deduped.count("hero.png") == 1
@@ -934,13 +955,13 @@ def test_wrap_gallery_blocks_builds_html_gallery():
         [
             "![](https://example.com/one.png)",
             "",
-            "![](https://example.com/two.png \"Gallery caption\")",
+            '![](https://example.com/two.png "Gallery caption")',
         ]
     )
     wrapped = web_save_parser.wrap_gallery_blocks(markdown)
     assert "<figure" in wrapped
     assert "image-gallery" in wrapped
-    assert "data-caption=\"Gallery caption\"" in wrapped
+    assert 'data-caption="Gallery caption"' in wrapped
     assert "https://example.com/one.png" in wrapped
     assert "https://example.com/two.png" in wrapped
 
@@ -1140,7 +1161,7 @@ def test_parse_url_local_strips_control_chars_before_readability(monkeypatch):
 
 
 def test_wrap_gallery_blocks_ignores_single_captioned_image():
-    markdown = '![](https://example.com/one.png \"Caption\")'
+    markdown = '![](https://example.com/one.png "Caption")'
     wrapped = web_save_parser.wrap_gallery_blocks(markdown)
     assert wrapped.strip() == markdown
 
@@ -1454,7 +1475,9 @@ def test_fetch_html_falls_back_to_playwright_on_forbidden(monkeypatch):
     def fake_get(url: str, headers=None, timeout: int = 30):
         return FakeResponse()
 
-    def fake_render(url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"):
+    def fake_render(
+        url: str, *, timeout: int = 30000, wait_for=None, wait_until="networkidle"
+    ):
         return "<html><body>Rendered</body></html>", "https://example.com/allowed"
 
     monkeypatch.setattr(web_save_parser.requests, "get", fake_get)

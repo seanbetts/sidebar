@@ -1,4 +1,5 @@
 """File system tool definitions."""
+
 from __future__ import annotations
 
 from api.services.tools import parameter_mapper as pm
@@ -12,9 +13,18 @@ def get_fs_definitions() -> dict:
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string", "description": "Directory path (default: '.')"},
-                    "pattern": {"type": "string", "description": "Glob pattern (default: '*')"},
-                    "recursive": {"type": "boolean", "description": "Search recursively"},
+                    "path": {
+                        "type": "string",
+                        "description": "Directory path (default: '.')",
+                    },
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern (default: '*')",
+                    },
+                    "recursive": {
+                        "type": "boolean",
+                        "description": "Search recursively",
+                    },
                 },
                 "required": [],
             },
@@ -29,8 +39,14 @@ def get_fs_definitions() -> dict:
                 "type": "object",
                 "properties": {
                     "path": {"type": "string", "description": "File path to read"},
-                    "start_line": {"type": "integer", "description": "Start line number (optional)"},
-                    "end_line": {"type": "integer", "description": "End line number (optional)"},
+                    "start_line": {
+                        "type": "integer",
+                        "description": "Start line number (optional)",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line number (optional)",
+                    },
                 },
                 "required": ["path"],
             },
@@ -46,7 +62,10 @@ def get_fs_definitions() -> dict:
                 "properties": {
                     "path": {"type": "string", "description": "File path to write"},
                     "content": {"type": "string", "description": "Content to write"},
-                    "dry_run": {"type": "boolean", "description": "Preview without executing"},
+                    "dry_run": {
+                        "type": "boolean",
+                        "description": "Preview without executing",
+                    },
                 },
                 "required": ["path", "content"],
             },
@@ -60,13 +79,22 @@ def get_fs_definitions() -> dict:
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "directory": {"type": "string", "description": "Directory to search (default: '.')"},
+                    "directory": {
+                        "type": "string",
+                        "description": "Directory to search (default: '.')",
+                    },
                     "name_pattern": {
                         "type": "string",
                         "description": "Filename pattern (* and ? wildcards)",
                     },
-                    "content_pattern": {"type": "string", "description": "Content pattern (regex)"},
-                    "case_sensitive": {"type": "boolean", "description": "Case-sensitive search"},
+                    "content_pattern": {
+                        "type": "string",
+                        "description": "Content pattern (regex)",
+                    },
+                    "case_sensitive": {
+                        "type": "boolean",
+                        "description": "Case-sensitive search",
+                    },
                 },
             },
             "skill": "fs",

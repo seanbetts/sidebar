@@ -91,7 +91,7 @@ function createChatStore() {
 			setLastConversationId(conversationId);
 			set({
 				conversationId,
-				messages: conversation.messages.map(msg => ({
+				messages: conversation.messages.map((msg) => ({
 					...msg,
 					timestamp: new Date(msg.timestamp)
 				})),
@@ -256,13 +256,17 @@ function createChatStore() {
 		 * @param result Tool result payload.
 		 * @param status Tool result status.
 		 */
-		updateToolResult(messageId: string, toolCallId: string, result: any, status: 'success' | 'error') {
+		updateToolResult(
+			messageId: string,
+			toolCallId: string,
+			result: any,
+			status: 'success' | 'error'
+		) {
 			const state = get({ subscribe });
 			const toolName = state.messages
 				.find((msg) => msg.id === messageId)
 				?.toolCalls?.find((tc) => tc.id === toolCallId)
-				?.name
-				?.toLowerCase();
+				?.name?.toLowerCase();
 			update((state) => ({
 				...state,
 				messages: state.messages.map((msg) => {
@@ -277,7 +281,11 @@ function createChatStore() {
 					};
 				})
 			}));
-			if (status === 'success' && toolName && (toolName.includes('fs.write') || toolName === 'write file')) {
+			if (
+				status === 'success' &&
+				toolName &&
+				(toolName.includes('fs.write') || toolName === 'write file')
+			) {
 				const fileId = result?.data?.file_id ?? result?.data?.fileId;
 				if (!fileId) return;
 				void ingestionAPI
@@ -315,7 +323,7 @@ function createChatStore() {
 
 			// Persist assistant message to backend
 			const state = get({ subscribe });
-			const assistantMessage = state.messages.find(m => m.id === messageId);
+			const assistantMessage = state.messages.find((m) => m.id === messageId);
 
 			if (state.conversationId && assistantMessage) {
 				try {
@@ -337,7 +345,7 @@ function createChatStore() {
 						});
 
 						// Trigger title generation (generating state was set when conversation was created)
-						generateConversationTitle(state.conversationId).catch(err => {
+						generateConversationTitle(state.conversationId).catch((err) => {
 							logError('Title generation failed', err, {
 								scope: 'chatStore.generateTitle',
 								conversationId: state.conversationId

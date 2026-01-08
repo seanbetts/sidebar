@@ -1,10 +1,10 @@
 """Service helpers for Things bridge registry."""
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import secrets
-from typing import Optional
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -24,10 +24,10 @@ class ThingsBridgeService:
         device_id: str,
         device_name: str,
         base_url: str,
-        capabilities: Optional[dict] = None,
+        capabilities: dict | None = None,
     ) -> ThingsBridge:
         """Register or update a Things bridge for a user."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         bridge = (
             db.query(ThingsBridge)
             .filter(
@@ -62,7 +62,9 @@ class ThingsBridgeService:
         return bridge
 
     @staticmethod
-    def heartbeat(db: Session, user_id: str, bridge_id: uuid.UUID) -> Optional[ThingsBridge]:
+    def heartbeat(
+        db: Session, user_id: str, bridge_id: uuid.UUID
+    ) -> ThingsBridge | None:
         """Update last_seen_at for a bridge."""
         bridge = (
             db.query(ThingsBridge)
@@ -74,7 +76,7 @@ class ThingsBridgeService:
         )
         if not bridge:
             return None
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         bridge.last_seen_at = now
         bridge.updated_at = now
         db.commit()
@@ -92,16 +94,17 @@ class ThingsBridgeService:
         )
 
     @staticmethod
-    def select_active_bridge(db: Session, user_id: str) -> Optional[ThingsBridge]:
+    def select_active_bridge(db: Session, user_id: str) -> ThingsBridge | None:
         """Pick the most recently seen bridge within the staleness window."""
-        cutoff = datetime.now(timezone.utc) - timedelta(seconds=settings.things_bridge_stale_seconds)
-        query = (
-            db.query(ThingsBridge)
-            .filter(
-                ThingsBridge.user_id == user_id,
-                ThingsBridge.last_seen_at >= cutoff,
-            )
+        cutoff = datetime.now(UTC) - timedelta(
+            seconds=settings.things_bridge_stale_seconds
+        )
+        query = db.query(ThingsBridge).filter(
+            ThingsBridge.user_id == user_id,
+            ThingsBridge.last_seen_at >= cutoff,
         )
         if settings.things_bridge_device_id:
-            query = query.filter(ThingsBridge.device_id == settings.things_bridge_device_id)
+            query = query.filter(
+                ThingsBridge.device_id == settings.things_bridge_device_id
+            )
         return query.order_by(ThingsBridge.last_seen_at.desc()).first()

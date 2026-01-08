@@ -1,8 +1,7 @@
 """Add pinned flag to ingested files."""
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "015_add_ingested_files_pinned"
 down_revision = "014_add_file_ingestion_tables"

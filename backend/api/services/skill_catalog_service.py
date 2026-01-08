@@ -1,19 +1,19 @@
 """Skill catalog loader for UI and defaults."""
+
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
 
 import yaml
 
-from api.services.tools.skill_metadata import SKILL_DISPLAY, EXPOSED_SKILLS
+from api.services.tools.skill_metadata import EXPOSED_SKILLS, SKILL_DISPLAY
 
 
 class SkillCatalogService:
     """Load skill metadata from SKILL.md frontmatter."""
 
     @staticmethod
-    def list_skills(skills_dir: Path) -> List[Dict[str, str]]:
+    def list_skills(skills_dir: Path) -> list[dict[str, str]]:
         """List available skills with display metadata.
 
         Args:
@@ -22,7 +22,7 @@ class SkillCatalogService:
         Returns:
             List of skill metadata dicts.
         """
-        skills: List[Dict[str, str]] = []
+        skills: list[dict[str, str]] = []
         category_map = SkillCatalogService._category_map()
 
         if not skills_dir.exists():
@@ -37,7 +37,9 @@ class SkillCatalogService:
             skill_id = skill_path.name
             display = SKILL_DISPLAY.get(skill_id, {})
             name = (display.get("name") or metadata.get("name") or skill_id).strip()
-            description = (display.get("description") or metadata.get("description") or "").strip()
+            description = (
+                display.get("description") or metadata.get("description") or ""
+            ).strip()
             category = category_map.get(skill_id, "Other")
             skills.append(
                 {
@@ -93,7 +95,7 @@ class SkillCatalogService:
         return [skill for skill in skills if skill["id"] in EXPOSED_SKILLS]
 
     @staticmethod
-    def _read_frontmatter(skill_md: Path) -> Dict[str, str]:
+    def _read_frontmatter(skill_md: Path) -> dict[str, str]:
         """Read YAML frontmatter from a SKILL.md file.
 
         Args:
@@ -121,7 +123,7 @@ class SkillCatalogService:
         return data
 
     @staticmethod
-    def _category_map() -> Dict[str, str]:
+    def _category_map() -> dict[str, str]:
         """Return the static skill category map."""
         return {
             "fs": "Documents",

@@ -1,9 +1,8 @@
 """Add files metadata table for storage objects."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "013_add_files_table"
 down_revision = "012_enable_rls_policies"

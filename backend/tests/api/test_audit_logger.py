@@ -1,7 +1,9 @@
 """Tests for AuditLogger."""
-import pytest
+
 import logging
 from pathlib import Path
+
+import pytest
 from api.security.audit_logger import AuditLogger
 
 
@@ -22,7 +24,7 @@ class TestAuditLogger:
             parameters={"path": ".", "pattern": "*.txt"},
             resolved_path=Path("/tmp/skills/documents"),
             duration_ms=125.5,
-            success=True
+            success=True,
         )
 
         assert len(capture_logs.records) == 1
@@ -40,7 +42,7 @@ class TestAuditLogger:
             parameters={"path": "test.txt"},
             duration_ms=50.0,
             success=False,
-            error="Permission denied"
+            error="Permission denied",
         )
 
         assert len(capture_logs.records) == 1
@@ -60,9 +62,9 @@ class TestAuditLogger:
                 "api_key": "secret-key-12345",
                 "password": "super-secret",
                 "token": "bearer-token",
-                "data": "normal data"
+                "data": "normal data",
             },
-            success=True
+            success=True,
         )
 
         record = capture_logs.records[0]
@@ -83,9 +85,7 @@ class TestAuditLogger:
         long_content = "x" * 200
 
         AuditLogger.log_tool_call(
-            tool_name="fs_write",
-            parameters={"content": long_content},
-            success=True
+            tool_name="fs_write", parameters={"content": long_content}, success=True
         )
 
         record = capture_logs.records[0]
@@ -103,7 +103,7 @@ class TestAuditLogger:
             tool_name="fs_delete",
             parameters={"path": "old-file.txt"},
             success=True,
-            user_id="user-123"
+            user_id="user-123",
         )
 
         record = capture_logs.records[0]
@@ -111,11 +111,7 @@ class TestAuditLogger:
 
     def test_log_without_optional_fields(self, capture_logs):
         """Should handle missing optional fields."""
-        AuditLogger.log_tool_call(
-            tool_name="simple_tool",
-            parameters={},
-            success=True
-        )
+        AuditLogger.log_tool_call(tool_name="simple_tool", parameters={}, success=True)
 
         # Should not raise exception
         assert len(capture_logs.records) == 1
@@ -130,7 +126,7 @@ class TestAuditLogger:
             resolved_path=Path("/tmp/skills/test"),
             duration_ms=100.0,
             success=True,
-            user_id="user-1"
+            user_id="user-1",
         )
 
         record = capture_logs.records[0]
@@ -158,13 +154,8 @@ class TestAuditLoggerEdgeCases:
         """Should handle nested dictionaries (flatten for now)."""
         AuditLogger.log_tool_call(
             tool_name="test",
-            parameters={
-                "config": {
-                    "api_key": "secret",
-                    "url": "https://example.com"
-                }
-            },
-            success=True
+            parameters={"config": {"api_key": "secret", "url": "https://example.com"}},
+            success=True,
         )
 
         # Should not crash
@@ -178,7 +169,7 @@ class TestAuditLoggerEdgeCases:
             success=True,
             error=None,
             user_id=None,
-            resolved_path=None
+            resolved_path=None,
         )
 
         assert len(capture_logs.records) == 1
@@ -189,14 +180,15 @@ class TestAuditLoggerEdgeCases:
             tool_name="test",
             parameters={
                 "path": "file with spaces & special-chars.txt",
-                "content": "Line 1\nLine 2\tTabbed"
+                "content": "Line 1\nLine 2\tTabbed",
             },
-            success=True
+            success=True,
         )
 
         record = capture_logs.records[0]
         # Should not crash and should be valid JSON
         import json
+
         json_start = record.message.index("{")
         data = json.loads(record.message[json_start:])
         assert data["parameters"]["path"] == "file with spaces & special-chars.txt"

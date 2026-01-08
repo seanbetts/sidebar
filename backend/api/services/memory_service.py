@@ -1,8 +1,8 @@
 """Memory service for shared memory business logic."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -85,7 +85,7 @@ class MemoryService:
         if existing:
             raise ConflictError("Memory already exists")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         memory = UserMemory(
             user_id=user_id,
             path=normalized_path,
@@ -104,8 +104,8 @@ class MemoryService:
         user_id: str,
         memory_id: UUID,
         *,
-        path: Optional[str] = None,
-        content: Optional[str] = None,
+        path: str | None = None,
+        content: str | None = None,
     ) -> UserMemory:
         """Update a memory record.
 
@@ -129,7 +129,10 @@ class MemoryService:
             if normalized_path != memory.path:
                 conflict = (
                     db.query(UserMemory)
-                    .filter(UserMemory.user_id == user_id, UserMemory.path == normalized_path)
+                    .filter(
+                        UserMemory.user_id == user_id,
+                        UserMemory.path == normalized_path,
+                    )
                     .first()
                 )
                 if conflict:
@@ -143,7 +146,7 @@ class MemoryService:
                 raise BadRequestError(str(exc)) from exc
             memory.content = content
 
-        memory.updated_at = datetime.now(timezone.utc)
+        memory.updated_at = datetime.now(UTC)
         db.commit()
         db.refresh(memory)
         return memory

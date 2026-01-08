@@ -1,12 +1,14 @@
 """Unified authentication for both MCP and REST endpoints."""
+
 import logging
-from fastapi import HTTPException, status, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 
 from api.config import settings
 from api.models.user_settings import UserSettings
-from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
+from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
 # Unified bearer authentication (Supabase JWTs)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -37,6 +39,7 @@ async def verify_bearer_token(
     token = credentials.credentials
     if token.startswith("sb_pat_"):
         from api.db.session import SessionLocal
+
         with SessionLocal() as db:
             db.execute(text("SET app.pat_token = :token"), {"token": token})
             record = (
@@ -69,7 +72,7 @@ async def verify_bearer_token(
 
 
 async def verify_supabase_jwt(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> dict:
     """Verify Supabase JWT token and return payload."""
     if settings.auth_dev_mode:

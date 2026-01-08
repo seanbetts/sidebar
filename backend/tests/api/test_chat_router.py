@@ -38,7 +38,9 @@ def test_stream_chat_emits_token_and_complete(test_client, monkeypatch):
 
 def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
     user_id = "user-1"
-    conversation = ConversationService.create_conversation(test_db, user_id, "Test Chat")
+    conversation = ConversationService.create_conversation(
+        test_db, user_id, "Test Chat"
+    )
     ConversationService.add_message(
         test_db,
         user_id,
@@ -59,7 +61,9 @@ def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
         def generate_content(self, *_args, **_kwargs):
             raise ValueError("boom")
 
-    monkeypatch.setattr(chat_router.genai, "Client", lambda *_args, **_kwargs: FakeGeminiClient())
+    monkeypatch.setattr(
+        chat_router.genai, "Client", lambda *_args, **_kwargs: FakeGeminiClient()
+    )
 
     app.dependency_overrides[get_current_user_id] = lambda: user_id
     caplog.set_level(logging.WARNING, logger=chat_router.logger.name)
@@ -76,4 +80,7 @@ def test_generate_title_logs_failure(test_client, test_db, monkeypatch, caplog):
     body = response.json()
     assert body["fallback"] is True
     assert body["title"].startswith("Hello")
-    assert any("Title generation failed, using fallback" in record.message for record in caplog.records)
+    assert any(
+        "Title generation failed, using fallback" in record.message
+        for record in caplog.records
+    )

@@ -1,4 +1,5 @@
 """Web tool definitions."""
+
 from __future__ import annotations
 
 from api.services.tools import parameter_mapper as pm
@@ -26,7 +27,9 @@ def get_web_definitions() -> dict:
             "build_args": pm.build_subdomain_discover_args,
         },
         "Crawler Policy Check": {
-            "description": "Analyze a site's crawler policy for robots.txt and llms.txt.",
+            "description": (
+                "Analyze a site's crawler policy for robots.txt and llms.txt."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {

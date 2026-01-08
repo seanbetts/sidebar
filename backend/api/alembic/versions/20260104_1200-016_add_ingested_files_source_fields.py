@@ -4,8 +4,8 @@ Revision ID: 016_add_ingested_files_source_fields
 Revises: 015_add_ingested_files_pinned
 Create Date: 2026-01-04 12:00:00.000000
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = "016_add_ingested_files_source_fields"

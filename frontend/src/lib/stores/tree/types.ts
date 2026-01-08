@@ -4,7 +4,7 @@ export type TreeStoreUpdater = (fn: (state: FileTreeState) => FileTreeState) => 
 export type TreeStoreSetter = (state: FileTreeState) => void;
 
 export type TreeStoreContext = {
-  update: TreeStoreUpdater;
-  set: TreeStoreSetter;
-  getState: () => FileTreeState;
+	update: TreeStoreUpdater;
+	set: TreeStoreSetter;
+	getState: () => FileTreeState;
 };

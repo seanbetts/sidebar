@@ -1,6 +1,8 @@
 """Claude API client with streaming and tool support."""
+
 import ssl
-from typing import AsyncIterator, Dict, Any, List
+from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
 from anthropic import AsyncAnthropic
@@ -39,7 +41,10 @@ class ClaudeClient:
         ssl_verify: bool | ssl.SSLContext = True
         ssl_context: ssl.SSLContext | None = None
 
-        if settings.app_env in {"local", "development", "dev", "test"} and settings.disable_ssl_verify:
+        if (
+            settings.app_env in {"local", "development", "dev", "test"}
+            and settings.disable_ssl_verify
+        ):
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
@@ -58,11 +63,11 @@ class ClaudeClient:
     async def stream_with_tools(
         self,
         message: str,
-        conversation_history: List[Dict[str, Any]] | None = None,
+        conversation_history: list[dict[str, Any]] | None = None,
         system_prompt: str | None = None,
-        allowed_skills: List[str] | None = None,
-        tool_context: ToolExecutionContext | Dict[str, Any] | None = None,
-    ) -> AsyncIterator[Dict[str, Any]]:
+        allowed_skills: list[str] | None = None,
+        tool_context: ToolExecutionContext | dict[str, Any] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
         """Stream model responses while handling tool calls.
 
         Args:

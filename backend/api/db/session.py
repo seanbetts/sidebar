@@ -1,13 +1,15 @@
 """Database session management."""
+
 import os
+from collections.abc import Generator
+
 from fastapi import Depends
 from sqlalchemy import create_engine, event, text
-from sqlalchemy.orm import sessionmaker, Session
-from typing import Generator
+from sqlalchemy.orm import Session, sessionmaker
 
 from api.config import settings
-from api.metrics import db_connections_active
 from api.db.dependencies import get_current_user_id
+from api.metrics import db_connections_active
 
 # Create engine - Always use PostgreSQL
 use_pooler = "pooler." in settings.database_url
@@ -19,11 +21,13 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_size=pool_size,
     max_overflow=max_overflow,
-    pool_timeout=5
+    pool_timeout=5,
 )
 
 # Create SessionLocal class
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
+SessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine, expire_on_commit=False
+)
 
 
 @event.listens_for(engine, "checkout")
@@ -41,7 +45,9 @@ def _set_app_user_id(session: Session, transaction, connection) -> None:
     user_id = session.info.get("app_user_id")
     if user_id:
         connection.execute(text("SET app.user_id = :user_id"), {"user_id": user_id})
-    if session.info.get("force_public_search_path") and not session.info.get("skip_search_path"):
+    if session.info.get("force_public_search_path") and not session.info.get(
+        "skip_search_path"
+    ):
         connection.execute(text("SET search_path TO public"))
 
 

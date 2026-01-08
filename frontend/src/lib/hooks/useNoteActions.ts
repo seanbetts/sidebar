@@ -3,7 +3,7 @@ import { treeStore } from '$lib/stores/tree';
 import { logError } from '$lib/utils/errorHandling';
 
 type NotesActionOptions = {
-  scope?: string;
+	scope?: string;
 };
 
 const defaultScope = (action: string) => `notesActions.${action}`;
@@ -14,23 +14,23 @@ const defaultScope = (action: string) => `notesActions.${action}`;
  * @returns Notes action handlers.
  */
 export function useNoteActions() {
-  const updatePinnedOrder = async (
-    order: string[],
-    options: NotesActionOptions = {}
-  ): Promise<boolean> => {
-    treeStore.setNotePinnedOrder(order);
-    try {
-      await notesAPI.updatePinnedOrder(order);
-      return true;
-    } catch (error) {
-      logError('Failed to update pinned order', error, {
-        scope: options.scope ?? defaultScope('pinnedOrder')
-      });
-      return false;
-    }
-  };
+	const updatePinnedOrder = async (
+		order: string[],
+		options: NotesActionOptions = {}
+	): Promise<boolean> => {
+		treeStore.setNotePinnedOrder(order);
+		try {
+			await notesAPI.updatePinnedOrder(order);
+			return true;
+		} catch (error) {
+			logError('Failed to update pinned order', error, {
+				scope: options.scope ?? defaultScope('pinnedOrder')
+			});
+			return false;
+		}
+	};
 
-  return {
-    updatePinnedOrder
-  };
+	return {
+		updatePinnedOrder
+	};
 }

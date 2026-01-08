@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from api.services.file_tree_service import FileTreeService
@@ -9,7 +9,7 @@ def _record(path, category="file", size=0, deleted_at=None):
         path=path,
         category=category,
         size=size,
-        updated_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        updated_at=datetime(2024, 1, 1, tzinfo=UTC),
         deleted_at=deleted_at,
     )
 
@@ -23,7 +23,9 @@ def test_path_helpers():
 
 
 def test_bucket_key():
-    assert FileTreeService.bucket_key("user-1", "/docs/file.txt") == "user-1/docs/file.txt"
+    assert (
+        FileTreeService.bucket_key("user-1", "/docs/file.txt") == "user-1/docs/file.txt"
+    )
 
 
 def test_build_tree_sorts_and_filters():
@@ -31,7 +33,7 @@ def test_build_tree_sorts_and_filters():
         _record("docs/a.txt", size=1),
         _record("docs/folder", category="folder"),
         _record("docs/folder/b.txt", size=2),
-        _record("docs/removed.txt", deleted_at=datetime(2024, 1, 2, tzinfo=timezone.utc)),
+        _record("docs/removed.txt", deleted_at=datetime(2024, 1, 2, tzinfo=UTC)),
     ]
     tree = FileTreeService.build_tree(records, "docs")
     children = tree["children"]

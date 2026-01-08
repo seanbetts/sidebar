@@ -13,69 +13,69 @@ const sentrySampleRate = parseSampleRate(publicEnv.PUBLIC_SENTRY_SAMPLE_RATE, 1)
 let sentryInitialized = false;
 
 function parseSampleRate(value: string | undefined, fallback: number): number {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(1, Math.max(0, parsed));
+	if (!value) return fallback;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.min(1, Math.max(0, parsed));
 }
 
 const sanitizeEvent: NonNullable<BrowserOptions['beforeSend']> = (event, _hint) => {
-  const request = event.request ? { ...event.request } : undefined;
-  if (request?.headers && typeof request.headers === 'object') {
-    const headers = { ...request.headers } as Record<string, string>;
-    delete headers.authorization;
-    delete headers.cookie;
-    request.headers = headers;
-  }
+	const request = event.request ? { ...event.request } : undefined;
+	if (request?.headers && typeof request.headers === 'object') {
+		const headers = { ...request.headers } as Record<string, string>;
+		delete headers.authorization;
+		delete headers.cookie;
+		request.headers = headers;
+	}
 
-  if (request?.url) {
-    request.url = request.url.split('?')[0];
-  }
-  if (request?.data) {
-    request.data = '[Filtered]';
-  }
+	if (request?.url) {
+		request.url = request.url.split('?')[0];
+	}
+	if (request?.data) {
+		request.data = '[Filtered]';
+	}
 
-  const breadcrumbs = event.breadcrumbs?.map(breadcrumb => ({
-    ...breadcrumb,
-    data: undefined
-  }));
+	const breadcrumbs = event.breadcrumbs?.map((breadcrumb) => ({
+		...breadcrumb,
+		data: undefined
+	}));
 
-  return {
-    ...event,
-    request,
-    user: undefined,
-    breadcrumbs
-  };
+	return {
+		...event,
+		request,
+		user: undefined,
+		breadcrumbs
+	};
 };
 
 function initSentrySdk(): void {
-  if (sentryInitialized || !sentryDsn) return;
+	if (sentryInitialized || !sentryDsn) return;
 
-  Sentry.init({
-    dsn: sentryDsn,
-    environment: sentryEnvironment,
-    sampleRate: sentrySampleRate,
-    tracesSampleRate: sentrySampleRate,
-    beforeSend: sanitizeEvent
-  });
+	Sentry.init({
+		dsn: sentryDsn,
+		environment: sentryEnvironment,
+		sampleRate: sentrySampleRate,
+		tracesSampleRate: sentrySampleRate,
+		beforeSend: sanitizeEvent
+	});
 
-  sentryInitialized = true;
+	sentryInitialized = true;
 }
 
 /**
  * Initialize Sentry for browser execution.
  */
 export function initSentryClient(): void {
-  if (!browser) return;
-  initSentrySdk();
+	if (!browser) return;
+	initSentrySdk();
 }
 
 /**
  * Initialize Sentry for server execution.
  */
 export function initSentryServer(): void {
-  if (browser) return;
-  initSentrySdk();
+	if (browser) return;
+	initSentrySdk();
 }
 
 /**
@@ -85,17 +85,17 @@ export function initSentryServer(): void {
  * @param context Extra context to attach.
  */
 export function captureError(error: unknown, context?: SentryContext): void {
-  if (!sentryInitialized) return;
+	if (!sentryInitialized) return;
 
-  Sentry.withScope(scope => {
-    if (context) {
-      scope.setContext('context', context);
-    }
+	Sentry.withScope((scope) => {
+		if (context) {
+			scope.setContext('context', context);
+		}
 
-    if (error instanceof Error) {
-      Sentry.captureException(error);
-    } else {
-      Sentry.captureMessage(String(error));
-    }
-  });
+		if (error instanceof Error) {
+			Sentry.captureException(error);
+		} else {
+			Sentry.captureMessage(String(error));
+		}
+	});
 }

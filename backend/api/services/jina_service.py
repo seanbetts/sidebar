@@ -1,9 +1,9 @@
 """Jina reader helper for website quick saves."""
+
 from __future__ import annotations
 
-from datetime import datetime
 import re
-from typing import Optional, Tuple
+from datetime import datetime
 from urllib.parse import urlparse
 
 import httpx
@@ -29,7 +29,7 @@ class JinaService:
             return response.text
 
     @staticmethod
-    def parse_metadata(markdown: str) -> Tuple[dict[str, str | None], str]:
+    def parse_metadata(markdown: str) -> tuple[dict[str, str | None], str]:
         """Extract Jina metadata and return cleaned markdown."""
         metadata: dict[str, str | None] = {
             "title": None,
@@ -59,7 +59,7 @@ class JinaService:
         return metadata, cleaned
 
     @staticmethod
-    def parse_published_at(value: Optional[str]) -> Optional[datetime]:
+    def parse_published_at(value: str | None) -> datetime | None:
         """Parse published time into datetime."""
         if not value:
             return None
@@ -81,7 +81,11 @@ class JinaService:
 
         for line in markdown.split("\n"):
             stripped = line.strip()
-            if stripped and not stripped.startswith("---") and not stripped.startswith("#"):
+            if (
+                stripped
+                and not stripped.startswith("---")
+                and not stripped.startswith("#")
+            ):
                 return stripped[:100]
 
         parsed = urlparse(url)

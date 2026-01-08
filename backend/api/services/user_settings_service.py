@@ -1,9 +1,10 @@
 """Service layer for user settings."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import secrets
-from typing import Optional, Any
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -17,7 +18,7 @@ class UserSettingsService:
     UNSET = object()
 
     @staticmethod
-    def get_settings(db: Session, user_id: str) -> Optional[UserSettings]:
+    def get_settings(db: Session, user_id: str) -> UserSettings | None:
         """Fetch settings for a user.
 
         Args:
@@ -30,14 +31,16 @@ class UserSettingsService:
         return db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
 
     @staticmethod
-    def get_user_id_for_shortcuts_pat(db: Session, token: str) -> Optional[str]:
+    def get_user_id_for_shortcuts_pat(db: Session, token: str) -> str | None:
         """Resolve a user_id for a shortcuts PAT token."""
         record = (
-            db.query(UserSettings)
-            .filter(UserSettings.shortcuts_pat == token)
-            .first()
+            db.query(UserSettings).filter(UserSettings.shortcuts_pat == token).first()
         )
-        if record and record.shortcuts_pat and secrets.compare_digest(record.shortcuts_pat, token):
+        if (
+            record
+            and record.shortcuts_pat
+            and secrets.compare_digest(record.shortcuts_pat, token)
+        ):
             return record.user_id
         return None
 
@@ -81,11 +84,12 @@ class UserSettingsService:
             profile_image_path: Optional profile image path.
             enabled_skills: Optional list of enabled skills.
             shortcuts_pat: Optional shortcuts PAT token.
+            things_ai_snapshot: Optional Things AI snapshot payload.
 
         Returns:
             Upserted UserSettings record.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         settings = UserSettingsService.get_settings(db, user_id)
         if settings:
             if system_prompt is not UserSettingsService.UNSET:
@@ -123,21 +127,39 @@ class UserSettingsService:
         else:
             settings = UserSettings(
                 user_id=user_id,
-                system_prompt=None if system_prompt is UserSettingsService.UNSET else system_prompt,
-                first_message_prompt=None if first_message_prompt is UserSettingsService.UNSET else first_message_prompt,
-                communication_style=None if communication_style is UserSettingsService.UNSET else communication_style,
-                working_relationship=None if working_relationship is UserSettingsService.UNSET else working_relationship,
+                system_prompt=None
+                if system_prompt is UserSettingsService.UNSET
+                else system_prompt,
+                first_message_prompt=None
+                if first_message_prompt is UserSettingsService.UNSET
+                else first_message_prompt,
+                communication_style=None
+                if communication_style is UserSettingsService.UNSET
+                else communication_style,
+                working_relationship=None
+                if working_relationship is UserSettingsService.UNSET
+                else working_relationship,
                 name=None if name is UserSettingsService.UNSET else name,
                 job_title=None if job_title is UserSettingsService.UNSET else job_title,
                 employer=None if employer is UserSettingsService.UNSET else employer,
-                date_of_birth=None if date_of_birth is UserSettingsService.UNSET else date_of_birth,
+                date_of_birth=None
+                if date_of_birth is UserSettingsService.UNSET
+                else date_of_birth,
                 gender=None if gender is UserSettingsService.UNSET else gender,
                 pronouns=None if pronouns is UserSettingsService.UNSET else pronouns,
                 location=None if location is UserSettingsService.UNSET else location,
-                profile_image_path=None if profile_image_path is UserSettingsService.UNSET else profile_image_path,
-                enabled_skills=None if enabled_skills is UserSettingsService.UNSET else enabled_skills,
-                shortcuts_pat=None if shortcuts_pat is UserSettingsService.UNSET else shortcuts_pat,
-                things_ai_snapshot=None if things_ai_snapshot is UserSettingsService.UNSET else things_ai_snapshot,
+                profile_image_path=None
+                if profile_image_path is UserSettingsService.UNSET
+                else profile_image_path,
+                enabled_skills=None
+                if enabled_skills is UserSettingsService.UNSET
+                else enabled_skills,
+                shortcuts_pat=None
+                if shortcuts_pat is UserSettingsService.UNSET
+                else shortcuts_pat,
+                things_ai_snapshot=None
+                if things_ai_snapshot is UserSettingsService.UNSET
+                else things_ai_snapshot,
                 created_at=now,
                 updated_at=now,
             )

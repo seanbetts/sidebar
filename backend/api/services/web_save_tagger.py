@@ -1,4 +1,5 @@
 """Auto-tagging helpers for web-save parsing."""
+
 from __future__ import annotations
 
 import re
@@ -80,7 +81,9 @@ def calculate_reading_time(word_count: int, *, wpm: int = 200) -> str:
     return f"{minutes} min"
 
 
-def extract_tags(content: str, domain: str, title: str, *, max_tags: int = 5) -> list[str]:
+def extract_tags(
+    content: str, domain: str, title: str, *, max_tags: int = 5
+) -> list[str]:
     """Extract tags from content using simple heuristics."""
     tags: list[str] = []
 

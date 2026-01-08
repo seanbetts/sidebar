@@ -1,13 +1,15 @@
 """Things integration router."""
+
 import asyncio
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
+from api.config import settings
 from api.db.dependencies import get_current_user_id
 from api.db.session import SessionLocal, get_db, set_session_user_id
 from api.exceptions import (
@@ -18,14 +20,12 @@ from api.exceptions import (
     ServiceUnavailableError,
 )
 from api.models.things_bridge import ThingsBridge
-from api.services.things_bridge_service import ThingsBridgeService
 from api.services.things_bridge_client import ThingsBridgeClient
+from api.services.things_bridge_install_service import ThingsBridgeInstallService
+from api.services.things_bridge_service import ThingsBridgeService
 from api.services.things_snapshot_service import ThingsSnapshotService
 from api.services.user_settings_service import UserSettingsService
-from api.services.things_bridge_install_service import ThingsBridgeInstallService
-from api.config import settings
 from api.utils.validation import parse_uuid
-
 
 router = APIRouter(prefix="/things", tags=["things"])
 
@@ -39,7 +39,9 @@ async def _update_snapshot_async(user_id: str, today_payload: dict) -> None:
         client = ThingsBridgeClient(bridge)
         try:
             upcoming = await client.get_list("upcoming")
-            tomorrow_tasks = ThingsSnapshotService.filter_tomorrow(upcoming.get("tasks", []))
+            tomorrow_tasks = ThingsSnapshotService.filter_tomorrow(
+                upcoming.get("tasks", [])
+            )
             completed_today_payload = await client.completed_today()
             completed_today = completed_today_payload.get("tasks", [])
             snapshot = ThingsSnapshotService.build_snapshot(
@@ -121,7 +123,7 @@ async def heartbeat_bridge(
         "bridgeId": str(bridge.id),
         "lastSeenAt": bridge.last_seen_at.isoformat(),
         "updatedAt": bridge.updated_at.isoformat(),
-        "serverTime": datetime.now(timezone.utc).isoformat(),
+        "serverTime": datetime.now(UTC).isoformat(),
     }
 
 
@@ -276,12 +278,18 @@ echo "Things bridge installed and running."
     return Response(
         script,
         media_type="text/plain",
-        headers={"Content-Disposition": "attachment; filename=install-things-bridge.command"},
+        headers={
+            "Content-Disposition": "attachment; filename=install-things-bridge.command"
+        },
     )
 
 
 @router.post("/bridges/install")
-async def install_bridge(request: dict, x_install_token: str | None = Header(default=None), db: Session = Depends(get_db)):
+async def install_bridge(
+    request: dict,
+    x_install_token: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
     """Install a Things bridge using a one-time token."""
     token = x_install_token or request.get("installToken")
     if not token:

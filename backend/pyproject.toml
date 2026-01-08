@@ -145,10 +145,11 @@ plugins = ["sqlalchemy.ext.mypy.plugin"]
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
-exclude = "api/alembic/versions"
+exclude = "backend/api/alembic"
 
 [tool.ruff]
 target-version = "py311"
+extend-exclude = ["backend/api/alembic/versions"]
 
 [tool.ruff.lint]
 select = [
@@ -174,9 +175,47 @@ ignore = [
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["D"]
 "**/__init__.py" = ["D104"]
-"backend/api/alembic/versions/*.py" = ["D"]
+"backend/api/alembic/versions/*.py" = ["D", "E501"]
+"backend/api/auth.py" = ["B008"]
+"backend/api/db/dependencies.py" = ["B008"]
+"backend/api/routers/*.py" = ["B008"]
+"backend/api/routers/files.py" = ["N803"]
+"backend/api/routers/conversations.py" = ["N815"]
+"backend/api/routers/ingestion_helpers.py" = ["E501"]
+"backend/api/routers/things.py" = ["E501"]
+"backend/api/routers/weather.py" = ["E501"]
+"backend/api/routers/websites_helpers.py" = ["E501"]
+"backend/api/services/settings_service.py" = ["E501"]
+"backend/api/services/tools/definitions_fs.py" = ["E501"]
+"backend/tests/**/*.py" = ["D", "T20", "SIM", "UP", "N806", "E501", "E402"]
+"backend/workers/ingestion_worker.py" = ["D", "E501", "SIM", "UP"]
+
+[[tool.mypy.overrides]]
+module = [
+    "alembic.*",
+    "anthropic",
+    "boto3",
+    "botocore.*",
+    "bs4",
+    "fastmcp",
+    "fastmcp.*",
+    "google",
+    "google.*",
+    "google.genai",
+    "httpx",
+    "jwt",
+    "lxml",
+    "markdownify",
+    "pydantic_settings",
+    "playwright.sync_api",
+    "prometheus_client",
+    "readability",
+    "sentry_sdk",
+    "sentry_sdk.*",
+    "yaml",
+]
+ignore_missing_imports = true
 
 [tool.ruff.format]
 quote-style = "double"

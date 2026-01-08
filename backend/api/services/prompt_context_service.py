@@ -1,29 +1,30 @@
 """Prompt context assembly for chat and tools."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
 import logging
+import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session, load_only
 
+from api.constants import PromptContextLimits
 from api.models.conversation import Conversation
+from api.models.file_ingestion import IngestedFile
 from api.models.note import Note
 from api.models.website import Website
-from api.models.file_ingestion import IngestedFile
 from api.prompts import (
+    CONTEXT_GUIDANCE_TEMPLATE,
     build_first_message_prompt,
-    build_system_prompt,
-    build_recent_activity_block,
     build_open_context_block,
+    build_recent_activity_block,
+    build_system_prompt,
     detect_operating_system,
     resolve_template,
-    CONTEXT_GUIDANCE_TEMPLATE,
 )
 from api.services.file_ingestion_service import FileIngestionService
-from api.constants import PromptContextLimits
 from api.services.storage.service import get_storage_backend
-import uuid
 from api.services.user_settings_service import UserSettingsService
 
 logger = logging.getLogger(__name__)
@@ -38,8 +39,7 @@ class PromptContextService:
     MAX_ATTACHMENT_CHARS = PromptContextLimits.MAX_ATTACHMENT_CHARS
     RECENT_ACTIVITY_CACHE_TTL = timedelta(minutes=5)
     _recent_activity_cache: dict[
-        str,
-        tuple[datetime, tuple[list[dict], list[dict], list[dict], list[dict]]]
+        str, tuple[datetime, tuple[list[dict], list[dict], list[dict], list[dict]]]
     ] = {}
 
     @staticmethod
@@ -70,7 +70,7 @@ class PromptContextService:
         Returns:
             Tuple of (system_prompt, first_message_prompt).
         """
-        timestamp = now or datetime.now(timezone.utc)
+        timestamp = now or datetime.now(UTC)
         settings_record = UserSettingsService.get_settings(db, user_id)
         resolved_location = current_location or "Current location not available"
         operating_system = detect_operating_system(user_agent)
@@ -84,10 +84,16 @@ class PromptContextService:
         )
         context_guidance = resolve_template(
             CONTEXT_GUIDANCE_TEMPLATE,
-            {"name": settings_record.name.strip() if settings_record and settings_record.name else "the user"},
+            {
+                "name": settings_record.name.strip()
+                if settings_record and settings_record.name
+                else "the user"
+            },
         )
         open_note = open_context.get("note") if isinstance(open_context, dict) else None
-        open_website = open_context.get("website") if isinstance(open_context, dict) else None
+        open_website = (
+            open_context.get("website") if isinstance(open_context, dict) else None
+        )
         open_file = open_context.get("file") if isinstance(open_context, dict) else None
         resolved_file = PromptContextService._resolve_file_context(
             db, user_id, open_file, PromptContextService.MAX_OPEN_FILE_CHARS
@@ -102,8 +108,8 @@ class PromptContextService:
             resolved_attachments,
         )
 
-        note_items, website_items, conversation_items, file_items = PromptContextService._get_recent_activity(
-            db, user_id, timestamp
+        note_items, website_items, conversation_items, file_items = (
+            PromptContextService._get_recent_activity(db, user_id, timestamp)
         )
         recent_activity_block = build_recent_activity_block(
             note_items,
@@ -274,7 +280,9 @@ class PromptContextService:
 
         notes = (
             db.query(Note)
-            .options(load_only(Note.id, Note.title, Note.last_opened_at, Note.metadata_))
+            .options(
+                load_only(Note.id, Note.title, Note.last_opened_at, Note.metadata_)
+            )
             .filter(Note.last_opened_at >= start_of_day)
             .filter(Note.user_id == user_id)
             .order_by(Note.last_opened_at.desc())
@@ -299,7 +307,14 @@ class PromptContextService:
         )
         conversations = (
             db.query(Conversation)
-            .options(load_only(Conversation.id, Conversation.title, Conversation.updated_at, Conversation.message_count))
+            .options(
+                load_only(
+                    Conversation.id,
+                    Conversation.title,
+                    Conversation.updated_at,
+                    Conversation.message_count,
+                )
+            )
             .filter(
                 Conversation.user_id == user_id,
                 Conversation.is_archived.is_(False),
@@ -331,7 +346,9 @@ class PromptContextService:
             {
                 "id": str(note.id),
                 "title": note.title,
-                "last_opened_at": note.last_opened_at.isoformat() if note.last_opened_at else None,
+                "last_opened_at": note.last_opened_at.isoformat()
+                if note.last_opened_at
+                else None,
                 "folder": note.metadata_.get("folder") if note.metadata_ else None,
             }
             for note in notes
@@ -340,7 +357,9 @@ class PromptContextService:
             {
                 "id": str(website.id),
                 "title": website.title,
-                "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None,
+                "last_opened_at": website.last_opened_at.isoformat()
+                if website.last_opened_at
+                else None,
                 "domain": website.domain,
                 "url": website.url_full or website.url,
             }
@@ -350,7 +369,9 @@ class PromptContextService:
             {
                 "id": str(conversation.id),
                 "title": conversation.title,
-                "last_opened_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+                "last_opened_at": conversation.updated_at.isoformat()
+                if conversation.updated_at
+                else None,
                 "message_count": conversation.message_count,
             }
             for conversation in conversations
@@ -359,7 +380,9 @@ class PromptContextService:
             {
                 "id": str(file.id),
                 "filename": file.filename_original,
-                "last_opened_at": file.last_opened_at.isoformat() if file.last_opened_at else None,
+                "last_opened_at": file.last_opened_at.isoformat()
+                if file.last_opened_at
+                else None,
                 "mime": file.mime_original,
             }
             for file in files

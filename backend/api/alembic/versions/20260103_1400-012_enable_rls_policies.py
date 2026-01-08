@@ -2,7 +2,6 @@
 
 from alembic import op
 
-
 revision = "012_enable_rls_policies"
 down_revision = "011_add_notes_websites_user_id"
 branch_labels = None

@@ -5,6 +5,6 @@ import { browser } from '$app/environment';
  * @returns True when a fine pointer and hover are available.
  */
 export function canShowTooltips(): boolean {
-  if (!browser || typeof window === 'undefined') return false;
-  return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+	if (!browser || typeof window === 'undefined') return false;
+	return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 }

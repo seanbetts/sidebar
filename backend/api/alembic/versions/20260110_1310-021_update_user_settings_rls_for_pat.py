@@ -7,7 +7,6 @@ Create Date: 2026-01-10 13:10:00
 
 from alembic import op
 
-
 revision = "021_update_user_settings_rls_for_pat"
 down_revision = "020_add_user_settings_shortcuts_pat"
 branch_labels = None

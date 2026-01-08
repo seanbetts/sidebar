@@ -1,12 +1,13 @@
 """Tests for search utility helpers."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 from api.models.note import Note
 from api.utils.search import build_text_search_filter
 
 
 def _create_note(test_db, user_id: str, title: str) -> Note:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     note = Note(
         user_id=user_id,
         title=title,

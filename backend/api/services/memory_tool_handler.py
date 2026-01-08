@@ -1,7 +1,8 @@
 """Memory tool handler for persistent user memory."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -15,7 +16,9 @@ class MemoryToolHandler:
     """Execute memory tool commands against user memories."""
 
     @staticmethod
-    def execute_command(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def execute_command(
+        db: Session, user_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         """Execute a memory tool command and log the result.
 
         Args:
@@ -26,7 +29,7 @@ class MemoryToolHandler:
         Returns:
             Normalized tool result payload.
         """
-        start = datetime.now(timezone.utc)
+        start = datetime.now(UTC)
         command = (payload.get("command") or "").strip()
         try:
             if command == "view":
@@ -47,7 +50,7 @@ class MemoryToolHandler:
             AuditLogger.log_tool_call(
                 tool_name="Memory Tool",
                 parameters=payload,
-                duration_ms=(datetime.now(timezone.utc) - start).total_seconds() * 1000,
+                duration_ms=(datetime.now(UTC) - start).total_seconds() * 1000,
                 success=result.get("success", False),
                 error=result.get("error"),
                 user_id=user_id,
@@ -59,7 +62,7 @@ class MemoryToolHandler:
             AuditLogger.log_tool_call(
                 tool_name="Memory Tool",
                 parameters=payload,
-                duration_ms=(datetime.now(timezone.utc) - start).total_seconds() * 1000,
+                duration_ms=(datetime.now(UTC) - start).total_seconds() * 1000,
                 success=False,
                 error=str(exc),
                 user_id=user_id,
@@ -69,7 +72,7 @@ class MemoryToolHandler:
             AuditLogger.log_tool_call(
                 tool_name="Memory Tool",
                 parameters=payload,
-                duration_ms=(datetime.now(timezone.utc) - start).total_seconds() * 1000,
+                duration_ms=(datetime.now(UTC) - start).total_seconds() * 1000,
                 success=False,
                 error=str(exc),
                 user_id=user_id,
