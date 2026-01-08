@@ -141,6 +141,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 1.0 Pre-Xcode scaffolding (ios/ structure + API/SSE docs)
 - [x] 1.0a Swift DTO + service scaffolding (API client, SSE parser, realtime stubs)
 - [x] 1.0b iOS planning docs (architecture + Phase 1 checklist)
+- [x] 1.0c Typed API wrappers + realtime adapter outline
 - [ ] 1.1 Xcode Project Setup
 - [ ] 1.2 Core Data Models
 - [ ] 1.3 Supabase Integration

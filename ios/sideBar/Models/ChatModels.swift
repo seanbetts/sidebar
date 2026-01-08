@@ -47,7 +47,7 @@ public struct Message: Codable, Identifiable {
     public let status: MessageStatus
     public let toolCalls: [ToolCall]?
     public let needsNewline: Bool?
-    public let timestamp: Date
+    public let timestamp: String
     public let error: String?
 }
 
