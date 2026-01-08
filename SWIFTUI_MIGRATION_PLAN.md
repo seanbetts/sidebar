@@ -4,6 +4,22 @@
 
 Based on comprehensive analysis of the SvelteKit frontend, this document outlines a detailed roadmap for building a universal macOS/iOS/iPadOS app with native UX and capability parity. This plan assumes an architect/director role working with an AI coding agent.
 
+### Prep Docs (SwiftUI Native Planning)
+- `docs/ios/architecture.md`
+- `docs/ios/api-surface.md`
+- `docs/ios/realtime-and-sse.md`
+- `docs/ios/phase-1.md`
+- `docs/ios/api-contract-tests.md`
+- `docs/ios/cache-strategy.md`
+- `docs/ios/navigation-matrix.md`
+- `docs/ios/realtime-handling.md`
+- `docs/ios/realtime-mapping-notes.md`
+- `docs/ios/permissions.md`
+- `docs/ios/telemetry.md`
+- `docs/ios/native-api-inventory.md`
+- `docs/ios/dependency-plan.md`
+- `docs/ios/infoplist-permissions.md`
+
 ### Native-First Design Principles (Non-Negotiable)
 
 This app should feel like a first-class Apple platform app, not a web replica. These principles supersede web parity when they conflict.
