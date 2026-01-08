@@ -4,6 +4,7 @@ public final class ServiceContainer {
     public let config: EnvironmentConfig
     public let authSession: AuthSession
     public let apiClient: APIClient
+    public let cacheClient: CacheClient
 
     public let chatAPI: ChatAPI
     public let conversationsAPI: ConversationsAPI
@@ -18,9 +19,10 @@ public final class ServiceContainer {
     public let placesAPI: PlacesAPI
     public let scratchpadAPI: ScratchpadAPI
 
-    public init(config: EnvironmentConfig, authSession: AuthSession) {
+    public init(config: EnvironmentConfig, authSession: AuthSession, cacheClient: CacheClient) {
         self.config = config
         self.authSession = authSession
+        self.cacheClient = cacheClient
         self.apiClient = APIClient(config: APIClientConfig(
             baseUrl: config.apiBaseUrl,
             accessTokenProvider: { authSession.accessToken }
