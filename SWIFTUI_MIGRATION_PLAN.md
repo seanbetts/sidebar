@@ -517,7 +517,7 @@ At the end of Phase 9 (MVP Testing), evaluate:
 ✅ Browse spreadsheet data
 ✅ Read archived websites
 ✅ Check your memories
-✅ See real-time updates from web app
+✅ See real-time updates from other devices
 ✅ Use offline (cached content)
 ```
 
@@ -563,7 +563,7 @@ After 3-5 sessions evaluating RichTextKit for markdown editing:
 
 **User Value:**
 - A read-only reference app has genuine daily utility
-- You can use it immediately while web app handles editing
+- You can use it immediately while editing remains in the desktop workflow
 - Real-world usage informs editing UX decisions
 
 ---
@@ -1909,7 +1909,7 @@ Implementation references for behavior and data flow only; do not replicate web 
 
 ## Final Thoughts
 
-This is an **ambitious but achievable** project. The web app is well-architected, which makes migration straightforward conceptually. The main challenges are:
+This is an **ambitious but achievable** project. The existing system is well-architected, which makes migration straightforward conceptually. The main challenges are:
 
 1. **Native markdown editor** - allocate extra time here
 2. **SSE streaming** - test thoroughly
