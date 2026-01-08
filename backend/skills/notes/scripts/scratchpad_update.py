@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Scratchpad Update
+"""Scratchpad Update
 
 Update the scratchpad content by fixed title.
 """
@@ -37,7 +36,9 @@ def update_scratchpad(user_id: str, content: str) -> dict:
 
     set_session_user_id(db, user_id)
     try:
-        note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=False)
+        note = NotesService.get_note_by_title(
+            db, user_id, SCRATCHPAD_TITLE, mark_opened=False
+        )
         if not note:
             note = NotesService.create_note(
                 db,

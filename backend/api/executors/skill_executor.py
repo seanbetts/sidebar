@@ -1,14 +1,19 @@
 """Execute skill scripts with security hardening and resource limits."""
-import subprocess
-import json
-import os
+
 import asyncio
-import time
+import json
+import logging
+import os
+import subprocess
 import sys
+import time
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
+
 from api.config import settings
 from api.security.audit_logger import AuditLogger
+
+logger = logging.getLogger(__name__)
 
 
 class SkillExecutor:
@@ -59,7 +64,9 @@ class SkillExecutor:
         if "/" in script_name or "\\" in script_name:
             script_path = (self.skills_dir / skill_name / script_name).resolve()
         else:
-            default_path = (self.skills_dir / skill_name / "scripts" / script_name).resolve()
+            default_path = (
+                self.skills_dir / skill_name / "scripts" / script_name
+            ).resolve()
             if default_path.exists():
                 script_path = default_path
             else:
@@ -68,8 +75,10 @@ class SkillExecutor:
         # Validate path is within skills directory
         try:
             script_path.relative_to(self.skills_dir)
-        except ValueError:
-            raise ValueError(f"Script path outside skills directory: {script_path}")
+        except ValueError as err:
+            raise ValueError(
+                f"Script path outside skills directory: {script_path}"
+            ) from err
 
         # Validate file exists and is a Python file
         if not script_path.exists():
@@ -80,7 +89,7 @@ class SkillExecutor:
 
         return script_path
 
-    def _validate_workspace_paths(self, args: List[str]) -> None:
+    def _validate_workspace_paths(self, args: list[str]) -> None:
         """Validate that any file paths in args are within workspace."""
         # This is a basic check - scripts should also validate paths
         for arg in args:
@@ -90,19 +99,19 @@ class SkillExecutor:
                     path = Path(arg).resolve()
                     # Allow if within workspace
                     path.relative_to(self.workspace_base)
-                except (ValueError, RuntimeError):
+                except (ValueError, RuntimeError) as err:
                     # Path traversal attempt or outside workspace
                     if ".." in arg:
-                        raise ValueError(f"Path traversal not allowed: {arg}")
+                        raise ValueError(f"Path traversal not allowed: {arg}") from err
 
     async def execute(
         self,
         skill_name: str,
         script_name: str,
-        args: List[str],
+        args: list[str],
         user_id: str | None = None,
         expect_json: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute skill script with resource limits and audit logging."""
         start_time = time.time()
 
@@ -131,7 +140,8 @@ class SkillExecutor:
                     "PYTHONPATH": pythonpath,
                 }
 
-                # Add selected runtime secrets/config if present (required for DB-backed skills)
+                # Add selected runtime secrets/config if present.
+                # Required for DB-backed skills.
                 for key in (
                     "DOPPLER_TOKEN",
                     "BEARER_TOKEN",
@@ -175,21 +185,23 @@ class SkillExecutor:
                     env=env,
                     timeout=settings.skill_timeout_seconds,
                     shell=False,  # Explicit: never use shell
-                    cwd=self.workspace_base  # Run in workspace (not skills dir)
+                    cwd=self.workspace_base,  # Run in workspace (not skills dir)
                 )
 
                 # Enforce output size limits
-                stdout_bytes = len(result.stdout.encode('utf-8'))
-                stderr_bytes = len(result.stderr.encode('utf-8'))
+                stdout_bytes = len(result.stdout.encode("utf-8"))
+                stderr_bytes = len(result.stderr.encode("utf-8"))
 
                 if stdout_bytes > settings.skill_max_output_bytes:
                     raise ValueError(
-                        f"stdout exceeded limit: {stdout_bytes} > {settings.skill_max_output_bytes}"
+                        "stdout exceeded limit: "
+                        f"{stdout_bytes} > {settings.skill_max_output_bytes}"
                     )
 
                 if stderr_bytes > settings.skill_max_output_bytes:
                     raise ValueError(
-                        f"stderr exceeded limit: {stderr_bytes} > {settings.skill_max_output_bytes}"
+                        "stderr exceeded limit: "
+                        f"{stderr_bytes} > {settings.skill_max_output_bytes}"
                     )
 
                 duration_ms = (time.time() - start_time) * 1000
@@ -205,13 +217,21 @@ class SkillExecutor:
                                 "stderr": result.stderr,
                             },
                         }
+                    stderr_text = result.stderr.strip()
+                    if stderr_text:
+                        logger.info(
+                            "Skill %s/%s stderr: %s",
+                            skill_name,
+                            script_name,
+                            stderr_text[:2000],
+                        )
                     # Audit log success
                     AuditLogger.log_tool_call(
                         tool_name=f"{skill_name}.{script_name}",
                         parameters={"args": args},
                         duration_ms=duration_ms,
                         success=True,
-                        user_id=user_id
+                        user_id=user_id,
                     )
                     return output
                 else:
@@ -227,20 +247,22 @@ class SkillExecutor:
                         duration_ms=duration_ms,
                         success=False,
                         error=error.get("error", "Unknown error"),
-                        user_id=user_id
+                        user_id=user_id,
                     )
                     return {"success": False, **error}
 
             except subprocess.TimeoutExpired:
                 duration_ms = (time.time() - start_time) * 1000
-                error_msg = f"Script execution timeout ({settings.skill_timeout_seconds}s)"
+                error_msg = (
+                    f"Script execution timeout ({settings.skill_timeout_seconds}s)"
+                )
                 AuditLogger.log_tool_call(
                     tool_name=f"{skill_name}.{script_name}",
                     parameters={"args": args},
                     duration_ms=duration_ms,
                     success=False,
                     error=error_msg,
-                    user_id=user_id
+                    user_id=user_id,
                 )
                 return {"success": False, "error": error_msg}
             except (ValueError, FileNotFoundError) as e:
@@ -251,7 +273,7 @@ class SkillExecutor:
                     duration_ms=duration_ms,
                     success=False,
                     error=str(e),
-                    user_id=user_id
+                    user_id=user_id,
                 )
                 return {"success": False, "error": str(e)}
             except Exception as e:
@@ -263,6 +285,6 @@ class SkillExecutor:
                     duration_ms=duration_ms,
                     success=False,
                     error=error_msg,
-                    user_id=user_id
+                    user_id=user_id,
                 )
                 return {"success": False, "error": error_msg}

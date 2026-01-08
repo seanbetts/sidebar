@@ -70,16 +70,14 @@
 	<div class="panel main-panel">
 		{#if isChatFocused}
 			<ChatSidebar />
+		{:else if $sidebarSectionStore === 'things'}
+			<ThingsTasksView />
+		{:else if $ingestionViewerStore.active}
+			<UniversalViewer />
+		{:else if $websitesStore.active}
+			<WebsitesViewer />
 		{:else}
-			{#if $sidebarSectionStore === 'things'}
-				<ThingsTasksView />
-			{:else if $ingestionViewerStore.active}
-				<UniversalViewer />
-			{:else if $websitesStore.active}
-				<WebsitesViewer />
-			{:else}
-				<MarkdownEditor />
-			{/if}
+			<MarkdownEditor />
 		{/if}
 	</div>
 

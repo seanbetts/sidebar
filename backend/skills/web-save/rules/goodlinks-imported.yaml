@@ -1,0 +1,1121 @@
+- id: goodlinks-signature-92d66f9f
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '[data-widget_type="text-editor.default"]'
+      - '[data-widget_type="post-comments.theme_comments"]'
+      - '#adthrive-ccpa-modal'
+      - .raptive-content-terms-modal
+      - '#fbxt-wrap'
+      - .smart-track-player
+      - '[data-widget_type="theme-post-featured-image.default"]'
+      - '[data-widget_type="theme-post-content.default"] .elementor-widget-container'
+  selector_overrides: {}
+  remove:
+  - '[data-widget_type="text-editor.default"]'
+  - '[data-widget_type="post-comments.theme_comments"]'
+  - '#adthrive-ccpa-modal'
+  - .raptive-content-terms-modal
+  - '#fbxt-wrap'
+  - .smart-track-player
+  include: []
+  actions:
+  - op: move
+    selector: '[data-widget_type="theme-post-featured-image.default"]'
+    target: '[data-widget_type="theme-post-content.default"] .elementor-widget-container'
+    position: append
+  metadata: {}
+- id: goodlinks-substack-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: substack.com
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: move
+    selector: figure[data-testid="post-image"]
+    target: .post-paywall
+    position: append
+  - op: move
+    selector: '[data-testid="post-lead"]'
+    target: .post-paywall
+    position: append
+  metadata: {}
+- id: goodlinks-kottke-org
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: kottke.org
+  selector_overrides:
+    article: .post
+  remove:
+  - '#logo-container'
+  - '#extras-container'
+  - '#video-lightbox'
+  - '#comment-section'
+  - .post-tags
+  - .post-meta
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-f8eeeeb2
+  phase: pre
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .slotArticle
+  selector_overrides:
+    wrapper: .slotArticle
+  remove: []
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-e59ca058
+  phase: pre
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .slotArticle
+  selector_overrides:
+    wrapper: .slotArticle
+  remove: []
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-378c6ce9
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '[class*="AuthoringContainer"]'
+      - '[data-type="video"]'
+      - '[data-sub_type="charts"]'
+      - '[data-inset_type="newsletterinset"]'
+      - '[data-inset_type="richtext"]'
+      - '[data-type="media"]'
+      - '[data-inset_type="ai_summary_bullets"]'
+      - .media-layout
+      - .article-header h2
+      - .origami-item
+      - '[data-sub_type="origami"]'
+      - '#big-top-caption'
+      - '[data-block="big-top-media"]'
+  selector_overrides: {}
+  remove:
+  - '[class*="AuthoringContainer"]'
+  - '[data-type="video"]'
+  - '[data-sub_type="charts"]'
+  - '[data-inset_type="newsletterinset"]'
+  - '[data-inset_type="richtext"]'
+  - '[data-type="media"]'
+  - '[data-inset_type="ai_summary_bullets"]'
+  - footer
+  include: []
+  actions:
+  - op: remove_children
+    selector: .media-layout
+  - op: retag
+    selector: .article-header h2
+    tag: div
+  - op: move
+    selector: .article-header h2
+    target: section
+    position: append
+  - op: remove_parent
+    selector: .origami-item
+  - op: move
+    selector: .origami-item
+    target: '[data-sub_type="origami"]'
+  - op: move
+    selector: '#big-top-caption'
+    target: section
+    position: append
+  - op: retag
+    selector: '[data-block="big-top-media"]'
+    tag: figure
+  - op: move
+    selector: '[data-block="big-top-media"]'
+    target: section
+    position: append
+  metadata: {}
+- id: goodlinks-signature-1b433fe2
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .zoom-visual-trigger-holder
+      - .article-header
+      - .article-footer
+      - .related-articles
+  selector_overrides: {}
+  remove:
+  - .zoom-visual-trigger-holder
+  - .article-header
+  - .article-footer
+  - .related-articles
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-1977d22f
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '#article-bottom'
+      - .subscribe-links
+      - .field--name-field-subtitle
+      - .node__content
+      - .field--label-hidden
+      - .paragraph--type--pullquote
+  selector_overrides: {}
+  remove:
+  - '#article-bottom'
+  - .subscribe-links
+  include: []
+  actions:
+  - op: move
+    selector: .field--name-field-subtitle
+    target: .node__content
+    position: append
+  - op: remove_children
+    selector: .field--label-hidden
+  - op: retag
+    selector: .paragraph--type--pullquote
+    tag: blockquote
+  - op: set_attr
+    selector: .paragraph--type--pullquote
+    attr: class
+    value: pullquote
+  metadata: {}
+- id: goodlinks-polygon-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: polygon.com
+  selector_overrides: {}
+  remove:
+  - .article-header-author-img
+  - .article-meta
+  - '#login-button-article-sidebar'
+  - h1
+  - dialog
+  include: []
+  actions:
+  - op: remove_children
+    selector: .adsninja-injected-repeatable-ad-afterend, .adsninja-injected-repeatable-ad-beforebegin
+  metadata: {}
+- id: goodlinks-signature-344c699e
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '[data-testid="opened-full-img"]'
+  selector_overrides: {}
+  remove:
+  - '[data-testid="opened-full-img"]'
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-sixcolors-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: sixcolors.com
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions: []
+  metadata:
+    author:
+      selector: .article .column1 h3
+- id: goodlinks-signature-6122f13e
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .mntl-author-tooltip
+      - meta[name="sailthru.author"]
+      - .figure-media
+      - .primary-image__media
+  selector_overrides: {}
+  remove:
+  - .mntl-author-tooltip
+  include: []
+  actions:
+  - op: remove_children
+    selector: .figure-media, .primary-image__media
+  metadata:
+    author:
+      selector: meta[name="sailthru.author"]
+      attr: content
+- id: goodlinks-signature-a616f6fb
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .ArticleImageComponenta .mobileView
+      - '[id*="adContainer"]'
+      - .galleryCounterExpand
+  selector_overrides: {}
+  remove:
+  - .ArticleImageComponenta .mobileView
+  - '[id*="adContainer"]'
+  - .galleryCounterExpand
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-6b7b5239
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '#content__additions'
+  selector_overrides: {}
+  remove:
+  - aside
+  - '#content__additions'
+  - article header h2
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-hbr-org
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: hbr.org
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: remove_children
+    selector: '[class^="Subheader"]'
+  metadata: {}
+- id: goodlinks-signature-4ee05d56
+  phase: pre
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .update-v2-social-activity
+      - .aside-section-container
+      - .base-main-feed-card__entity-lockup
+      - .whitespace-pre-wrap
+  selector_overrides:
+    wrapper: main
+  remove:
+  - aside
+  - .update-v2-social-activity
+  - .aside-section-container
+  - .base-main-feed-card__entity-lockup
+  include: []
+  actions:
+  - op: remove_attrs
+    selector: main
+    attrs:
+    - aria-hidden
+  - op: set_attr
+    selector: .whitespace-pre-wrap
+    attr: class
+    value: pre-wrap
+  metadata: {}
+- id: goodlinks-signature-349d2dee
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .media-media-width > a img
+      - .media-media-width
+      - .media-full-width > a img
+      - .media-full-width
+      - .media-media-width
+      - .user-image-container
+      - .blog-section
+      - .quotes
+      - .quotes-small
+      - .quotes-author-small
+      - .quotes-medium
+      - .quotes-author-medium
+      - .quotes
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: remove_outer_parent
+    selector: .media-media-width > a img
+  - op: move
+    selector: .media-media-width > a img
+    target: .media-media-width
+  - op: remove_outer_parent
+    selector: .media-full-width > a img
+  - op: move
+    selector: .media-full-width > a img
+    target: .media-full-width
+  - op: remove_children
+    selector: .media-media-width
+  - op: remove_to_parent
+    selector: .user-image-container
+    parent: .blog-section
+  - op: move
+    selector: .user-image-container
+    target: .blog-section
+  - op: retag
+    selector: .quotes
+    tag: blockquote
+  - op: remove_outer_parent
+    selector: .quotes-small, .quotes-author-small, .quotes-medium, .quotes-author-medium
+  - op: move
+    selector: .quotes-small, .quotes-author-small, .quotes-medium, .quotes-author-medium
+    target: .quotes
+  metadata: {}
+- id: goodlinks-signature-f987b49f
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .about-author-container
+      - ul.slides img
+      - .post-slideshow
+  selector_overrides: {}
+  remove:
+  - .about-author-container
+  include: []
+  actions:
+  - op: remove_outer_parent
+    selector: ul.slides img
+  - op: move
+    selector: ul.slides img
+    target: .post-slideshow
+  metadata: {}
+- id: goodlinks-aafp-org
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: aafp.org
+  selector_overrides:
+    article: article
+  remove:
+  - aafp-journal-content-gate
+  - aafp-journal-article-information
+  - aafp-journal-article-title-and-kicker
+  - aafp-cme-quiz-card
+  - aafp-journal-article-author-info
+  - '#aafp-journal-article-references__heading'
+  - img[alt="brand logo"]
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-1381c2a2
+  phase: pre
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '#article-content'
+      - '#pubinfo'
+  selector_overrides:
+    article: '#article-content'
+  remove:
+  - h1
+  - '#pubinfo'
+  include: []
+  actions: []
+  metadata:
+    published:
+      selector: '@citation_publication_date'
+- id: goodlinks-signature-6bf57232
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .image-block img
+      - .image-block
+      - .gallery-block img
+      - .gallery-block
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: move
+    selector: .image-block img
+    target: .image-block
+  - op: move
+    selector: .gallery-block img
+    target: .gallery-block
+  metadata: {}
+- id: goodlinks-signature-8fa842e2
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '[class^="PostHeader_postHeader"]'
+      - '[class^="PostBanner_postBanner"]'
+      - '[class^="PostAuthor_wrapper"]'
+      - '[class^="CaseStudyBanner"]'
+      - '#other-posts'
+  selector_overrides: {}
+  remove:
+  - '[class^="PostHeader_postHeader"]'
+  - '[class^="PostBanner_postBanner"]'
+  - '[class^="PostAuthor_wrapper"]'
+  - '[class^="CaseStudyBanner"]'
+  - '#other-posts'
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-8b066935
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .collapse-indicator
+      - .clickable-icon
+      - .site-body-left-column
+      - .site-body-right-column
+      - p > .image-embed
+  selector_overrides: {}
+  remove:
+  - .collapse-indicator
+  - .clickable-icon
+  - .site-body-left-column
+  - .site-body-right-column
+  include: []
+  actions:
+  - op: remove_parent
+    selector: p > .image-embed
+  metadata: {}
+- id: goodlinks-intercom-help
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: intercom.help
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: remove_children
+    selector: .intercom-interblocks-unordered-nested-list, .intercom-interblocks-paragraph,
+      .intercom-interblocks-align-left
+  metadata: {}
+- id: goodlinks-signature-df882513
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .advertorial-container
+  selector_overrides: {}
+  remove:
+  - .advertorial-container
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-medium-com
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: medium.com
+  selector_overrides:
+    article: .public-DraftEditor-content
+  remove:
+  - '[style="display: none;"]'
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-a3d59e48
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .issue-content-post-header-author
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions: []
+  metadata:
+    author:
+      selector: .issue-content-post-header-author
+- id: goodlinks-thedriftmag-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: thedriftmag.com
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions: []
+  metadata:
+    author:
+      selector: a[href^="https://www.thedriftmag.com/article_author/"]
+- id: goodlinks-finance-yahoo-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: finance.yahoo.com
+  selector_overrides: {}
+  remove:
+  - '#ybar'
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-78a9c4dc
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .article-summary
+      - .article-end
+      - .article-suspended-panel
+      - .article-sidebar
+      - .comment-box-common
+      - .recommended-area
+      - .action-bar
+      - .meta-box > time
+  selector_overrides: {}
+  remove:
+  - .article-summary
+  - .article-end
+  - .article-suspended-panel
+  - .article-sidebar
+  - .comment-box-common
+  - .recommended-area
+  - .action-bar
+  include: []
+  actions: []
+  metadata:
+    published:
+      selector: .meta-box > time
+- id: goodlinks-signature-aaf418bb
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - aside > .label
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: set_attr
+    selector: aside > .label
+    attr: class
+    value: note-title
+  - op: retag
+    selector: aside
+    tag: div
+  - op: set_attr
+    selector: aside
+    attr: class
+    value: note
+  metadata: {}
+- id: goodlinks-signature-e4fd22f5
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .lightbox-button > img
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: remove_parent
+    selector: .lightbox-button > img
+  metadata: {}
+- id: goodlinks-signature-dc2244e6
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .networkContent
+      - .published
+      - .breadcrumb
+      - .featuredBlock h1
+      - .singleColLeft
+      - .reviewRatings
+      - .author > a:first-child
+      - .featuredBlock
+      - '#adDestination'
+      - .flex-media
+      - .flex-fullWidthImage
+  selector_overrides: {}
+  remove:
+  - .networkContent
+  - .tags
+  - .published
+  - .breadcrumb
+  - .featuredBlock h1
+  - .singleColLeft
+  - .reviewRatings
+  include: []
+  actions:
+  - op: move
+    selector: .featuredBlock
+    target: '#adDestination'
+    position: append
+  - op: remove_children
+    selector: .flex-media, .flex-fullWidthImage
+  metadata:
+    author:
+      selector: .author > a:first-child
+- id: goodlinks-signature-d8f05be6
+  phase: pre
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .entry-content
+      - '#jp-post-flair'
+      - .author-name
+  selector_overrides:
+    article: .entry-content
+  remove:
+  - '#jp-post-flair'
+  include: []
+  actions: []
+  metadata:
+    author:
+      selector: .author-name
+- id: goodlinks-signature-48074018
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '#header'
+      - '#comments'
+      - .post-title
+      - .post-header
+      - .post-footer
+      - '#sidebar-wrapper'
+      - '#footer-wrapper'
+      - '#blog-pager'
+      - .post-feeds
+      - .date-header
+      - span[itemprop="author"]
+  selector_overrides: {}
+  remove:
+  - '#header'
+  - '#comments'
+  - .post-title
+  - .post-header
+  - .post-footer
+  - '#sidebar-wrapper'
+  - '#footer-wrapper'
+  - '#blog-pager'
+  - .post-feeds
+  - .date-header
+  include: []
+  actions: []
+  metadata:
+    author:
+      selector: span[itemprop="author"]
+- id: goodlinks-forbes-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: forbes.com
+  selector_overrides: {}
+  remove:
+  - .vestpocket
+  - .recirc-module
+  - .newsletter-inline-flex
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-squarespace-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: squarespace.com
+  selector_overrides: {}
+  remove:
+  - .sqs-col-3
+  - .sqs-col-2
+  - .sqs-col-1
+  - .horizontalrule-block
+  - .spacer-block
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-8324f6bd
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - svg.icon--premium
+  selector_overrides: {}
+  remove:
+  - svg.icon--premium
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-26a7a3ee
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - svg.icon--premium
+  selector_overrides: {}
+  remove:
+  - svg.icon--premium
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-developers-google-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: developers.google.com
+  selector_overrides: {}
+  remove:
+  - .devsite-article-meta
+  - .devsite-page-title
+  - devsite-feature-tooltip
+  - devsite-toc
+  - devsite-content-footer
+  - devsite-thumb-rating
+  - devsite-notification
+  - devsite-footer-utility
+  - devsite-footer-linkboxes
+  - devsite-footer-promos
+  - devsite-progress
+  - devsite-cookie-notification-bar
+  - devsite-header
+  - .devsite-article-body .wd-authors
+  include: []
+  actions: []
+  metadata:
+    title:
+      selector: h1.devsite-page-title
+    author:
+      selector: .devsite-article-body .wd-author span
+- id: goodlinks-signature-a916a1fb
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .story-tool
+      - .story-community
+      - .article-kicker
+      - .article-title
+      - .article-byline
+      - .article-origins > .simple
+  selector_overrides: {}
+  remove:
+  - .story-tool
+  - .story-community
+  - .article-kicker
+  - .article-title
+  - .article-byline
+  include: []
+  actions: []
+  metadata:
+    author:
+      selector: .article-origins > .simple
+- id: goodlinks-signature-810594b8
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '[class^="FeaturedImage_"] > figure'
+      - '[class^="PostContent_content_"]'
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: move
+    selector: '[class^="FeaturedImage_"] > figure'
+    target: '[class^="PostContent_content_"]'
+    position: append
+  metadata: {}
+- id: goodlinks-signature-6ede3f0f
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .media-image-header
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: remove_children
+    selector: .media-image-header
+  metadata: {}
+- id: goodlinks-signature-4b18e60d
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .boxout
+      - '[class^="newsletter"]'
+      - '[class*=" newsletter"]'
+      - .paywall
+  selector_overrides: {}
+  remove:
+  - .boxout
+  - '[class^="newsletter"]'
+  - '[class*=" newsletter"]'
+  include: []
+  actions:
+  - op: remove_children
+    selector: .paywall
+  - op: remove_attrs
+    selector: .paywall
+    attrs:
+    - aria-hidden
+  metadata: {}
+- id: goodlinks-signature-a75844ce
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '[data-component="RecommendationBox"]'
+      - .article-image
+      - .article-content
+  selector_overrides: {}
+  remove:
+  - a-img img
+  - a-collapse
+  - a-gift-link
+  - a-gift
+  - .ad
+  - '[data-component="RecommendationBox"]'
+  include: []
+  actions:
+  - op: move
+    selector: .article-image
+    target: .article-content
+    position: append
+  - op: retag
+    selector: a-img
+    tag: img
+  - op: remove_parent
+    selector: a > img
+  - op: remove_parent
+    selector: a-lightbox > figure
+  metadata: {}
+- id: goodlinks-signature-3aa1b900
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .head-news .content_img
+      - .content-container
+  selector_overrides: {}
+  remove: []
+  include: []
+  actions:
+  - op: move
+    selector: .head-news .content_img
+    target: .content-container
+    position: append
+  metadata: {}
+- id: goodlinks-signature-5ca20108
+  phase: pre
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .pk-o-share
+      - .pk-c-related-channel-collection
+      - .pk-c-related-film
+      - .pk-c-related-article
+      - .related-films
+      - .editorial__comments
+      - .pk-footnote__container
+      - .pk-c-featured-article__header-text
+  selector_overrides:
+    article: article
+  remove:
+  - .pk-o-share
+  - .pk-c-related-channel-collection
+  - .pk-c-related-film
+  - .pk-c-related-article
+  - .related-films
+  - .editorial__comments
+  - .pk-footnote__container
+  - .pk-c-featured-article__header-text
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-lifehacker-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: lifehacker.com
+  selector_overrides: {}
+  remove:
+  - '[class^="zmgad-"]'
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-thoughtco-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: thoughtco.com
+  selector_overrides: {}
+  remove:
+  - figcaption .icon
+  include: []
+  actions:
+  - op: move
+    selector: .primary-image
+    target: .article-intro
+    position: append
+  - op: move
+    selector: figure img
+    target: figure
+  metadata: {}
+- id: goodlinks-signature-32c02da1
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - '#ajax-content'
+  selector_overrides: {}
+  remove:
+  - '#ajax-content'
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-88da64a2
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .fig-media--type-photo .fig-media__container
+  selector_overrides: {}
+  remove: []
+  include:
+  - .fig-media--type-photo .fig-media__container
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-45559056
+  phase: post
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .swiper-slide-duplicate
+  selector_overrides: {}
+  remove:
+  - .swiper-slide-duplicate
+  include: []
+  actions: []
+  metadata: {}
+- id: goodlinks-signature-3a884706
+  phase: pre
+  priority: 60
+  trigger:
+    dom:
+      any:
+      - .article-box
+      - .imagecaption
+      - .sym-rtf.w-richtext
+  selector_overrides:
+    article: .article-box
+  remove: []
+  include: []
+  actions:
+  - op: retag
+    selector: .imagecaption
+    tag: figcaption
+  - op: move
+    selector: '> figure'
+    target: .sym-rtf.w-richtext
+    position: prepend
+  metadata: {}
+- id: goodlinks-theguardian-com
+  phase: post
+  priority: 80
+  trigger:
+    host:
+      ends_with: theguardian.com
+  selector_overrides: {}
+  remove:
+  - '#the-caption'
+  - figcaption svg
+  include: []
+  actions:
+  - op: move
+    selector: article [data-gu-name=media]
+    target: '#maincontent > .article-body-viewer-selector'
+    position: append
+  - op: move
+    selector: article [data-gu-name=standfirst]
+    target: '#maincontent > .article-body-viewer-selector'
+    position: append
+  metadata: {}
+- id: goodlinks-edition-cnn-com
+  phase: pre
+  priority: 80
+  trigger:
+    host:
+      ends_with: edition.cnn.com
+  selector_overrides:
+    article: .article__main
+  remove:
+  - '[data-ad-type]'
+  - '[data-has-video-player="true"]'
+  - cite
+  include:
+  - '[data-component-name=image]'
+  - .image__metadata
+  - h2
+  - h3
+  - h4
+  - h5
+  - h6
+  actions:
+  - op: move
+    selector: .image__caption
+    target: figcaption
+    position: prepend
+  metadata: {}

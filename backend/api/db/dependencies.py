@@ -1,14 +1,15 @@
 """FastAPI dependencies for database and auth."""
+
+import os
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
+from sqlalchemy import text
 
 from api.auth import bearer_scheme
-import os
 from api.config import settings
-from sqlalchemy import text
 from api.models.user_settings import UserSettings
-from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
-
+from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
 _test_user_id = os.getenv("TEST_USER_ID") if os.getenv("TESTING") else None
 DEFAULT_USER_ID = _test_user_id or settings.default_user_id
@@ -35,6 +36,7 @@ async def get_current_user_id(
     token = credentials.credentials
     if token.startswith("sb_pat_"):
         from api.db.session import SessionLocal
+
         with SessionLocal() as db:
             db.execute(text("SET app.pat_token = :token"), {"token": token})
             record = (

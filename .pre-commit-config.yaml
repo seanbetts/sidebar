@@ -1,0 +1,88 @@
+repos:
+  # Python - Ruff (linting + formatting)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--config=backend/pyproject.toml, --fix]
+        files: ^backend/(api|workers)/.*\.py$
+      - id: ruff-format
+        args: [--config=backend/pyproject.toml]
+        files: ^backend/(api|workers)/.*\.py$
+
+  # Python - Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^backend/api/(?!alembic/).*\.py$
+        args: [--config-file=backend/pyproject.toml]
+        additional_dependencies:
+          - sqlalchemy[mypy]
+          - pydantic
+          - fastapi
+          - types-requests
+
+  # Python - Docstring coverage
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.7.0
+    hooks:
+      - id: interrogate
+        pass_filenames: false
+        args: [--fail-under=80, --verbose, --ignore-init-method, --exclude=backend/api/alembic, backend/api]
+        files: ^backend/api/
+
+  # Python - Docstring style
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        args: [--convention=google]
+        files: ^backend/api/(?!alembic/versions/).*\.py$
+
+  # Frontend - Prettier formatting
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: node frontend/node_modules/.bin/prettier --config frontend/.prettierrc --plugin ./frontend/node_modules/prettier-plugin-svelte/plugin.js --write
+        language: system
+        files: ^frontend/.*\.(ts|js|svelte|json|md|yml|yaml)$
+
+  # Frontend - ESLint (all files)
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.17.0
+    hooks:
+      - id: eslint
+        files: ^frontend/src/.*\.(ts|js|svelte)$
+        args: [--fix, --max-warnings=0]
+        additional_dependencies:
+          - eslint@9.39.2
+          - eslint-plugin-jsdoc@61.5.0
+          - eslint-plugin-svelte@2.46.1
+          - svelte-eslint-parser@1.4.1
+          - '@typescript-eslint/eslint-plugin@8.50.1'
+          - '@typescript-eslint/parser@8.50.1'
+
+  # General - File hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-json
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: no-commit-to-branch
+        args: [--branch, main]
+
+  # Custom - File size limits
+  - repo: local
+    hooks:
+      - id: check-file-size-limits
+        name: check-file-size-limits
+        entry: python scripts/check_file_sizes.py
+        language: system
+        files: ^(backend/api/services|backend/api/routers|frontend/src/lib/components|frontend/src/lib/stores)/.*\.(py|ts|svelte)$

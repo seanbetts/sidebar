@@ -1,265 +1,280 @@
 <script lang="ts">
-  import { FileTerminal, MoreHorizontal, Pin, PinOff, Pencil, Download, Archive, ArchiveRestore, Trash2, GripVertical } from 'lucide-svelte';
-  import type { WebsiteItem } from '$lib/stores/websites';
+	import {
+		FileTerminal,
+		MoreHorizontal,
+		Pin,
+		PinOff,
+		Pencil,
+		Download,
+		Archive,
+		ArchiveRestore,
+		Trash2,
+		GripVertical
+	} from 'lucide-svelte';
+	import type { WebsiteItem } from '$lib/stores/websites';
 
-  export let site: WebsiteItem;
-  export let isMenuOpen = false;
-  export let archived = false;
-  export let onOpen: (site: WebsiteItem) => void;
-  export let onOpenMenu: (event: MouseEvent, site: WebsiteItem) => void;
-  export let onPin: (site: WebsiteItem) => void;
-  export let onRename: (site: WebsiteItem) => void;
-  export let onDownload: (site: WebsiteItem) => void;
-  export let onArchive: (site: WebsiteItem) => void;
-  export let onDelete: (site: WebsiteItem) => void;
-  export let formatDomain: (domain: string) => string;
-  export let showGrabHandle: boolean = false;
-  export let isDragOver: boolean = false;
-  export let onGrabStart: ((event: DragEvent) => void) | undefined = undefined;
-  export let onGrabOver: ((event: DragEvent) => void) | undefined = undefined;
-  export let onGrabDrop: ((event: DragEvent) => void) | undefined = undefined;
-  export let onGrabEnd: (() => void) | undefined = undefined;
+	export let site: WebsiteItem;
+	export let isMenuOpen = false;
+	export let archived = false;
+	export let onOpen: (site: WebsiteItem) => void;
+	export let onOpenMenu: (event: MouseEvent, site: WebsiteItem) => void;
+	export let onPin: (site: WebsiteItem) => void;
+	export let onRename: (site: WebsiteItem) => void;
+	export let onDownload: (site: WebsiteItem) => void;
+	export let onArchive: (site: WebsiteItem) => void;
+	export let onDelete: (site: WebsiteItem) => void;
+	export let formatDomain: (domain: string) => string;
+	export let showGrabHandle: boolean = false;
+	export let isDragOver: boolean = false;
+	export let onGrabStart: ((event: DragEvent) => void) | undefined = undefined;
+	export let onGrabOver: ((event: DragEvent) => void) | undefined = undefined;
+	export let onGrabDrop: ((event: DragEvent) => void) | undefined = undefined;
+	export let onGrabEnd: (() => void) | undefined = undefined;
 
-  function handleDragOver(event: DragEvent) {
-    if (!onGrabOver) return;
-    onGrabOver(event);
-  }
+	function handleDragOver(event: DragEvent) {
+		if (!onGrabOver) return;
+		onGrabOver(event);
+	}
 
-  function handleDrop(event: DragEvent) {
-    if (!onGrabDrop) return;
-    onGrabDrop(event);
-  }
+	function handleDrop(event: DragEvent) {
+		if (!onGrabDrop) return;
+		onGrabDrop(event);
+	}
 </script>
 
 <div
-  class="website-item"
-  class:drag-over={isDragOver}
-  role="listitem"
-  aria-label={`Pinned website ${site.title}`}
-  ondragover={handleDragOver}
-  ondrop={handleDrop}
+	class="website-item"
+	class:drag-over={isDragOver}
+	role="listitem"
+	aria-label={`Pinned website ${site.title}`}
+	ondragover={handleDragOver}
+	ondrop={handleDrop}
 >
-  <button class="website-main" onclick={() => onOpen(site)}>
-    <span class="website-icon">
-      <FileTerminal />
-    </span>
-    <div class="website-text">
-      <span class="website-title">{site.title}</span>
-      <span class="website-domain">{formatDomain(site.domain)}</span>
-    </div>
-  </button>
-  {#if showGrabHandle}
-    <button
-      class="grab-handle"
-      draggable="true"
-      ondragstart={onGrabStart}
-      ondragend={onGrabEnd}
-      onclick={(event) => event.stopPropagation()}
-      aria-label="Reorder pinned website"
-    >
-      <GripVertical size={14} />
-    </button>
-  {/if}
-  <button class="website-menu-btn" onclick={(event) => onOpenMenu(event, site)} aria-label="More options">
-    <MoreHorizontal size={16} />
-  </button>
-  {#if isMenuOpen}
-    <div class="website-menu">
-      <button class="menu-item" onclick={() => onPin(site)}>
-        {#if site.pinned}
-          <PinOff size={16} />
-          <span>Unpin</span>
-        {:else}
-          <Pin size={16} />
-          <span>Pin</span>
-        {/if}
-      </button>
-      <button class="menu-item" onclick={() => onRename(site)}>
-        <Pencil size={16} />
-        <span>Rename</span>
-      </button>
-      <button class="menu-item" onclick={() => onDownload(site)}>
-        <Download size={16} />
-        <span>Download</span>
-      </button>
-      <button class="menu-item" onclick={() => onArchive(site)}>
-        {#if archived}
-          <ArchiveRestore size={16} />
-        {:else}
-          <Archive size={16} />
-        {/if}
-        <span>{archived ? 'Unarchive' : 'Archive'}</span>
-      </button>
-      <button class="menu-item" onclick={() => onDelete(site)}>
-        <Trash2 size={16} />
-        <span>Delete</span>
-      </button>
-    </div>
-  {/if}
+	<button class="website-main" onclick={() => onOpen(site)}>
+		<span class="website-icon">
+			<FileTerminal />
+		</span>
+		<div class="website-text">
+			<span class="website-title">{site.title}</span>
+			<span class="website-domain">{formatDomain(site.domain)}</span>
+		</div>
+	</button>
+	{#if showGrabHandle}
+		<button
+			class="grab-handle"
+			draggable="true"
+			ondragstart={onGrabStart}
+			ondragend={onGrabEnd}
+			onclick={(event) => event.stopPropagation()}
+			aria-label="Reorder pinned website"
+		>
+			<GripVertical size={14} />
+		</button>
+	{/if}
+	<button
+		class="website-menu-btn"
+		onclick={(event) => onOpenMenu(event, site)}
+		aria-label="More options"
+	>
+		<MoreHorizontal size={16} />
+	</button>
+	{#if isMenuOpen}
+		<div class="website-menu">
+			<button class="menu-item" onclick={() => onPin(site)}>
+				{#if site.pinned}
+					<PinOff size={16} />
+					<span>Unpin</span>
+				{:else}
+					<Pin size={16} />
+					<span>Pin</span>
+				{/if}
+			</button>
+			<button class="menu-item" onclick={() => onRename(site)}>
+				<Pencil size={16} />
+				<span>Rename</span>
+			</button>
+			<button class="menu-item" onclick={() => onDownload(site)}>
+				<Download size={16} />
+				<span>Download</span>
+			</button>
+			<button class="menu-item" onclick={() => onArchive(site)}>
+				{#if archived}
+					<ArchiveRestore size={16} />
+				{:else}
+					<Archive size={16} />
+				{/if}
+				<span>{archived ? 'Unarchive' : 'Archive'}</span>
+			</button>
+			<button class="menu-item" onclick={() => onDelete(site)}>
+				<Trash2 size={16} />
+				<span>Delete</span>
+			</button>
+		</div>
+	{/if}
 </div>
 
 <style>
-  .website-item {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.5rem;
-    border-radius: 0.5rem;
-    color: var(--color-sidebar-foreground);
-    background: transparent;
-    border: none;
-    width: 100%;
-    text-align: left;
-    transition: background-color 0.2s ease;
-  }
+	.website-item {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.4rem 0.5rem;
+		border-radius: 0.5rem;
+		color: var(--color-sidebar-foreground);
+		background: transparent;
+		border: none;
+		width: 100%;
+		text-align: left;
+		transition: background-color 0.2s ease;
+	}
 
-  .website-item.drag-over {
-    background: none;
-  }
+	.website-item.drag-over {
+		background: none;
+	}
 
-  .website-item.drag-over::before {
-    content: '';
-    position: absolute;
-    left: 0.5rem;
-    right: 0.5rem;
-    top: 0;
-    height: 2px;
-    border-radius: 999px;
-    background: var(--color-sidebar-border);
-  }
+	.website-item.drag-over::before {
+		content: '';
+		position: absolute;
+		left: 0.5rem;
+		right: 0.5rem;
+		top: 0;
+		height: 2px;
+		border-radius: 999px;
+		background: var(--color-sidebar-border);
+	}
 
-  .website-item:hover {
-    background-color: var(--color-sidebar-accent);
-  }
+	.website-item:hover {
+		background-color: var(--color-sidebar-accent);
+	}
 
-  .website-main {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    flex: 1;
-    min-width: 0;
-    text-align: left;
-    padding: 0;
-    color: inherit;
-  }
+	.website-main {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		flex: 1;
+		min-width: 0;
+		text-align: left;
+		padding: 0;
+		color: inherit;
+	}
 
-  .website-menu-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    border-radius: 0.25rem;
-    color: var(--color-muted-foreground);
-    opacity: 0;
-    transition: all 0.2s;
-  }
+	.website-menu-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.25rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		border-radius: 0.25rem;
+		color: var(--color-muted-foreground);
+		opacity: 0;
+		transition: all 0.2s;
+	}
 
-  .website-item:hover .website-menu-btn {
-    opacity: 1;
-  }
+	.website-item:hover .website-menu-btn {
+		opacity: 1;
+	}
 
-  .grab-handle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    border: none;
-    background: none;
-    color: var(--color-muted-foreground);
-    cursor: grab;
-    border-radius: 0.375rem;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
+	.grab-handle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.25rem;
+		border: none;
+		background: none;
+		color: var(--color-muted-foreground);
+		cursor: grab;
+		border-radius: 0.375rem;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.2s ease;
+	}
 
-  .grab-handle:active {
-    cursor: grabbing;
-  }
+	.grab-handle:active {
+		cursor: grabbing;
+	}
 
-  .website-item:hover .grab-handle {
-    opacity: 0.9;
-    pointer-events: auto;
-  }
+	.website-item:hover .grab-handle {
+		opacity: 0.9;
+		pointer-events: auto;
+	}
 
-  .website-menu-btn:hover {
-    background-color: var(--color-accent);
-  }
+	.website-menu-btn:hover {
+		background-color: var(--color-accent);
+	}
 
-  .website-menu {
-    position: absolute;
-    top: 100%;
-    right: 0.25rem;
-    margin-top: 0.25rem;
-    background-color: var(--color-popover);
-    border: 1px solid var(--color-border);
-    border-radius: 0.375rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    z-index: 9999;
-    min-width: 150px;
-  }
+	.website-menu {
+		position: absolute;
+		top: 100%;
+		right: 0.25rem;
+		margin-top: 0.25rem;
+		background-color: var(--color-popover);
+		border: 1px solid var(--color-border);
+		border-radius: 0.375rem;
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+		z-index: 9999;
+		min-width: 150px;
+	}
 
-  .menu-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 0.875rem;
-    text-align: left;
-    transition: background-color 0.2s;
-    color: var(--color-popover-foreground);
-  }
+	.menu-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-size: 0.875rem;
+		text-align: left;
+		transition: background-color 0.2s;
+		color: var(--color-popover-foreground);
+	}
 
-  .menu-item:hover {
-    background-color: var(--color-accent);
-  }
+	.menu-item:hover {
+		background-color: var(--color-accent);
+	}
 
-  .website-icon {
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
+	.website-icon {
+		flex-shrink: 0;
+		width: 16px;
+		height: 16px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
 
-  .website-icon :global(svg) {
-    width: 16px;
-    height: 16px;
-  }
+	.website-icon :global(svg) {
+		width: 16px;
+		height: 16px;
+	}
 
-  .website-text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    overflow: hidden;
-  }
+	.website-text {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		overflow: hidden;
+	}
 
-  .website-title {
-    font-size: 0.85rem;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
+	.website-title {
+		font-size: 0.85rem;
+		font-weight: 500;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 100%;
+	}
 
-  .website-domain {
-    font-size: 0.7rem;
-    color: var(--color-muted-foreground);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+	.website-domain {
+		font-size: 0.7rem;
+		color: var(--color-muted-foreground);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 </style>

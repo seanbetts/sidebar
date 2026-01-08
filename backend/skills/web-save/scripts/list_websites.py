@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-List Websites
+"""List Websites
 
 List websites with filters from the database.
 """
@@ -16,8 +15,8 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.websites_service import WebsitesService
     from api.schemas.filters import WebsiteFilters
+    from api.services.websites_service import WebsitesService
 except Exception:
     SessionLocal = None
     WebsitesService = None
@@ -65,19 +64,29 @@ def list_websites_database(args: argparse.Namespace) -> dict:
         items = []
         for site in websites:
             metadata = site.metadata_ or {}
-            items.append({
-                "id": str(site.id),
-                "title": site.title,
-                "url": site.url,
-                "domain": site.domain,
-                "pinned": bool(metadata.get("pinned")),
-                "archived": bool(metadata.get("archived")),
-                "saved_at": site.saved_at.isoformat() if site.saved_at else None,
-                "published_at": site.published_at.isoformat() if site.published_at else None,
-                "created_at": site.created_at.isoformat() if site.created_at else None,
-                "updated_at": site.updated_at.isoformat() if site.updated_at else None,
-                "last_opened_at": site.last_opened_at.isoformat() if site.last_opened_at else None,
-            })
+            items.append(
+                {
+                    "id": str(site.id),
+                    "title": site.title,
+                    "url": site.url,
+                    "domain": site.domain,
+                    "pinned": bool(metadata.get("pinned")),
+                    "archived": bool(metadata.get("archived")),
+                    "saved_at": site.saved_at.isoformat() if site.saved_at else None,
+                    "published_at": site.published_at.isoformat()
+                    if site.published_at
+                    else None,
+                    "created_at": site.created_at.isoformat()
+                    if site.created_at
+                    else None,
+                    "updated_at": site.updated_at.isoformat()
+                    if site.updated_at
+                    else None,
+                    "last_opened_at": site.last_opened_at.isoformat()
+                    if site.last_opened_at
+                    else None,
+                }
+            )
 
         return {"items": items, "count": len(items)}
     finally:

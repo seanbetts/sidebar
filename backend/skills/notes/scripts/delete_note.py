@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Delete Note
+"""Delete Note
 
 Soft delete a note in the database.
 """
@@ -41,15 +40,9 @@ def delete_note_database(user_id: str, note_id: str) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Delete a note")
     parser.add_argument("note_id", help="Note UUID")
+    parser.add_argument("--database", action="store_true", help="Delete from database")
     parser.add_argument(
-        "--database",
-        action="store_true",
-        help="Delete from database"
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results in JSON format"
+        "--json", action="store_true", help="Output results in JSON format"
     )
     parser.add_argument("--user-id", help="User id for database access")
 

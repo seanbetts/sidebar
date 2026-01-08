@@ -1,10 +1,11 @@
 """Models for file ingestion pipeline metadata."""
-from datetime import datetime, timezone
-from typing import Any
-import uuid
 
-from sqlalchemy import DateTime, Text, BigInteger, ForeignKey, Index, Boolean, Integer
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from api.db.base import Base
@@ -23,7 +24,9 @@ class IngestedFile(Base):
         Index("idx_ingested_files_path", "path"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id: Mapped[str] = mapped_column(Text, nullable=False)
     filename_original: Mapped[str] = mapped_column(Text, nullable=False)
     path: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -35,16 +38,14 @@ class IngestedFile(Base):
     pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     pinned_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
     last_opened_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        index=True
+        DateTime(timezone=True), nullable=True, index=True
     )
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
 
 class FileDerivative(Base):
@@ -56,11 +57,11 @@ class FileDerivative(Base):
         Index("idx_file_derivatives_kind", "kind"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     file_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("ingested_files.id"),
-        nullable=False
+        UUID(as_uuid=True), ForeignKey("ingested_files.id"), nullable=False
     )
     kind: Mapped[str] = mapped_column(Text, nullable=False)
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
@@ -68,9 +69,7 @@ class FileDerivative(Base):
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     sha256: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
 
 
@@ -84,23 +83,27 @@ class FileProcessingJob(Base):
         Index("idx_file_processing_jobs_lease_expires_at", "lease_expires_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     file_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("ingested_files.id"),
-        nullable=False
+        UUID(as_uuid=True), ForeignKey("ingested_files.id"), nullable=False
     )
     status: Mapped[str] = mapped_column(Text, nullable=False, default="queued")
     stage: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     attempts: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
     worker_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

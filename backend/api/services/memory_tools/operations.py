@@ -1,13 +1,17 @@
 """Operations for memory tool commands."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from api.models.user_memory import UserMemory
-from api.services.memory_tools.formatters import format_directory_listing, format_file_view
+from api.services.memory_tools.formatters import (
+    format_directory_listing,
+    format_file_view,
+)
 from api.services.memory_tools.path_utils import normalize_path
 
 
@@ -30,7 +34,9 @@ def handle_view(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str,
     if is_file(path, memories):
         memory = get_memory(db, user_id, path)
         if not memory:
-            return error(f"The path {path} does not exist. Please provide a valid path.")
+            return error(
+                f"The path {path} does not exist. Please provide a valid path."
+            )
         content = format_file_view(path, memory.content, view_range)
         return success({"content": content, "path": path})
 
@@ -64,7 +70,7 @@ def handle_create(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
     if is_file(path, memories) or is_directory(path, memories):
         return error(f"Error: File {path} already exists")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     memory = UserMemory(
         user_id=user_id,
         path=path,
@@ -78,7 +84,9 @@ def handle_create(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
     return success({"content": f"File created successfully at: {path}", "path": path})
 
 
-def handle_str_replace(db: Session, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+def handle_str_replace(
+    db: Session, user_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
     """Handle a memory string replacement command.
 
     Args:
@@ -115,7 +123,8 @@ def handle_str_replace(db: Session, user_id: str, payload: dict[str, Any]) -> di
         fuzzy_matches = find_fuzzy_block_occurrences(memory.content, old_str)
         if not fuzzy_matches:
             return error(
-                f"No replacement was performed, old_str `{old_str}` did not appear in {path}."
+                "No replacement was performed, old_str "
+                f"`{old_str}` did not appear in {path}."
             )
         if len(fuzzy_matches) > 1:
             line_list = ", ".join(str(line) for line in sorted(set(fuzzy_matches)))
@@ -132,12 +141,14 @@ def handle_str_replace(db: Session, user_id: str, payload: dict[str, Any]) -> di
             new_str = f"{new_str}\r\n"
         elif trailing.endswith("\n") and not new_str.endswith(("\n", "\r\n")):
             new_str = f"{new_str}\n"
-        updated_content = "".join(content_lines[:start_index]) + new_str + "".join(
-            content_lines[end_index:]
+        updated_content = (
+            "".join(content_lines[:start_index])
+            + new_str
+            + "".join(content_lines[end_index:])
         )
     validate_content(updated_content)
     memory.content = updated_content
-    memory.updated_at = datetime.now(timezone.utc)
+    memory.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(memory)
     snippet = format_file_view(path, memory.content, None)
@@ -186,7 +197,7 @@ def handle_insert(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
 
     validate_content(updated)
     memory.content = updated
-    memory.updated_at = datetime.now(timezone.utc)
+    memory.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(memory)
     return success({"content": f"The file {path} has been edited.", "path": path})
@@ -246,18 +257,20 @@ def handle_rename(db: Session, user_id: str, payload: dict[str, Any]) -> dict[st
     if new_path.startswith(f"{old_path}/"):
         return error("Error: The destination cannot be within the source")
 
-    updated_at = datetime.now(timezone.utc)
+    updated_at = datetime.now(UTC)
     targets = [
         memory
         for memory in memories
         if memory.path == old_path or memory.path.startswith(f"{old_path}/")
     ]
     for memory in targets:
-        suffix = memory.path[len(old_path):]
+        suffix = memory.path[len(old_path) :]
         memory.path = f"{new_path}{suffix}"
         memory.updated_at = updated_at
     db.commit()
-    return success({"content": f"Successfully renamed {old_path} to {new_path}", "path": new_path})
+    return success(
+        {"content": f"Successfully renamed {old_path} to {new_path}", "path": new_path}
+    )
 
 
 def validate_content(content: Any) -> None:

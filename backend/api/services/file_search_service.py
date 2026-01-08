@@ -1,11 +1,12 @@
 """Search service for ingested file metadata and content."""
+
 from __future__ import annotations
 
-from pathlib import Path
 import logging
-from typing import Pattern
+from pathlib import Path
+from re import Pattern
 
-from api.models.file_ingestion import IngestedFile, FileDerivative
+from api.models.file_ingestion import FileDerivative, IngestedFile
 from api.services.skill_file_ops_paths import (
     ensure_allowed_path,
     is_profile_images_path,
@@ -46,13 +47,10 @@ class FileSearchService:
             ensure_allowed_path(base_path)
 
         with session_for_user(user_id) as db:
-            query = (
-                db.query(IngestedFile)
-                .filter(
-                    IngestedFile.user_id == user_id,
-                    IngestedFile.deleted_at.is_(None),
-                    IngestedFile.path.is_not(None),
-                )
+            query = db.query(IngestedFile).filter(
+                IngestedFile.user_id == user_id,
+                IngestedFile.deleted_at.is_(None),
+                IngestedFile.path.is_not(None),
             )
             if base_path:
                 query = query.filter(IngestedFile.path.like(f"{base_path}/%"))
@@ -106,7 +104,9 @@ class FileSearchService:
                 continue
             try:
                 assert storage is not None
-                content = storage.get_object(derivative.storage_key).decode("utf-8", errors="ignore")
+                content = storage.get_object(derivative.storage_key).decode(
+                    "utf-8", errors="ignore"
+                )
             except Exception as exc:
                 logger.warning(
                     "Failed to load file content during search",
@@ -127,7 +127,7 @@ class FileSearchService:
             lines = content.split("\n")
             match_lines = []
             for match in matches[:5]:
-                line_num = content[:match.start()].count("\n") + 1
+                line_num = content[: match.start()].count("\n") + 1
                 if line_num <= len(lines):
                     line_content = lines[line_num - 1].strip()
                     match_lines.append(

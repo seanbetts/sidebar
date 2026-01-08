@@ -4,80 +4,80 @@ import { writable } from 'svelte/store';
 export type LayoutMode = 'default' | 'chat-focused';
 
 export interface LayoutState {
-  mode: LayoutMode;
-  sidebarRatio: number;
+	mode: LayoutMode;
+	sidebarRatio: number;
 }
 
 const DEFAULT_STATE: LayoutState = {
-  mode: 'default',
-  sidebarRatio: 0.38
+	mode: 'default',
+	sidebarRatio: 0.38
 };
 
 const STORAGE_KEY = 'sideBar.layout';
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+	return Math.min(Math.max(value, min), max);
 }
 
 function loadInitialState(): LayoutState {
-  if (!browser) return DEFAULT_STATE;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) return DEFAULT_STATE;
-  try {
-    const parsed = JSON.parse(stored) as Partial<LayoutState> & {
-      chatPanelRatio?: number;
-      chatSidebarRatio?: number;
-      workspaceSidebarRatio?: number;
-    };
-    if (typeof parsed.sidebarRatio === 'number') {
-      return { ...DEFAULT_STATE, ...parsed };
-    }
-    if (typeof parsed.chatPanelRatio === 'number') {
-      return {
-        ...DEFAULT_STATE,
-        sidebarRatio: parsed.chatPanelRatio
-      };
-    }
-    if (typeof parsed.chatSidebarRatio === 'number') {
-      return {
-        ...DEFAULT_STATE,
-        sidebarRatio: parsed.chatSidebarRatio
-      };
-    }
-    if (typeof parsed.workspaceSidebarRatio === 'number') {
-      return {
-        ...DEFAULT_STATE,
-        sidebarRatio: parsed.workspaceSidebarRatio
-      };
-    }
-    return DEFAULT_STATE;
-  } catch {
-    return DEFAULT_STATE;
-  }
+	if (!browser) return DEFAULT_STATE;
+	const stored = localStorage.getItem(STORAGE_KEY);
+	if (!stored) return DEFAULT_STATE;
+	try {
+		const parsed = JSON.parse(stored) as Partial<LayoutState> & {
+			chatPanelRatio?: number;
+			chatSidebarRatio?: number;
+			workspaceSidebarRatio?: number;
+		};
+		if (typeof parsed.sidebarRatio === 'number') {
+			return { ...DEFAULT_STATE, ...parsed };
+		}
+		if (typeof parsed.chatPanelRatio === 'number') {
+			return {
+				...DEFAULT_STATE,
+				sidebarRatio: parsed.chatPanelRatio
+			};
+		}
+		if (typeof parsed.chatSidebarRatio === 'number') {
+			return {
+				...DEFAULT_STATE,
+				sidebarRatio: parsed.chatSidebarRatio
+			};
+		}
+		if (typeof parsed.workspaceSidebarRatio === 'number') {
+			return {
+				...DEFAULT_STATE,
+				sidebarRatio: parsed.workspaceSidebarRatio
+			};
+		}
+		return DEFAULT_STATE;
+	} catch {
+		return DEFAULT_STATE;
+	}
 }
 
 function createLayoutStore() {
-  const { subscribe, update } = writable<LayoutState>(loadInitialState());
+	const { subscribe, update } = writable<LayoutState>(loadInitialState());
 
-  return {
-    subscribe,
-    toggleMode: () =>
-      update((state) => ({
-        ...state,
-        mode: state.mode === 'default' ? 'chat-focused' : 'default'
-      })),
-    setSidebarRatio: (ratio: number) =>
-      update((state) => ({
-        ...state,
-        sidebarRatio: clamp(ratio, 0.2, 0.5)
-      }))
-  };
+	return {
+		subscribe,
+		toggleMode: () =>
+			update((state) => ({
+				...state,
+				mode: state.mode === 'default' ? 'chat-focused' : 'default'
+			})),
+		setSidebarRatio: (ratio: number) =>
+			update((state) => ({
+				...state,
+				sidebarRatio: clamp(ratio, 0.2, 0.5)
+			}))
+	};
 }
 
 export const layoutStore = createLayoutStore();
 
 layoutStore.subscribe((value) => {
-  if (browser) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  }
+	if (browser) {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+	}
 });

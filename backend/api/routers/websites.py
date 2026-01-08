@@ -1,25 +1,32 @@
 """Websites router for archived web content in Postgres."""
+
+import logging
 import uuid
+
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
-from fastapi.responses import Response, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
+
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.exceptions import BadRequestError, NotFoundError, WebsiteNotFoundError
-from api.services.website_processing_service import WebsiteProcessingService
-from api.services.websites_service import WebsitesService
 from api.routers.websites_helpers import normalize_url, run_quick_save, website_summary
 from api.schemas.filters import WebsiteFilters
+from api.services.website_processing_service import WebsiteProcessingService
+from api.services.website_transcript_service import WebsiteTranscriptService
+from api.services.websites_service import WebsitesService
 from api.utils.validation import parse_uuid
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/websites", tags=["websites"])
+
 
 @router.get("")
 async def list_websites(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """List websites for the current user.
 
@@ -70,7 +77,7 @@ async def search_websites(
     limit: int = 50,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Search websites by title or content.
 
@@ -111,7 +118,9 @@ async def quick_save_website(
 
     job = WebsiteProcessingService.create_job(db, user_id, normalized_url)
     background_tasks.add_task(run_quick_save, job.id, user_id, normalized_url, title)
-    return JSONResponse(status_code=202, content={"success": True, "data": {"job_id": str(job.id)}})
+    return JSONResponse(
+        status_code=202, content={"success": True, "data": {"job_id": str(job.id)}}
+    )
 
 
 @router.get("/quick-save/{job_id}")
@@ -142,7 +151,7 @@ async def save_website(
     payload: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Save a website using the web-save skill.
 
@@ -164,11 +173,67 @@ async def save_website(
         raise BadRequestError("url required")
 
     executor = request.app.state.executor
-    result = await executor.execute("web-save", "save_url.py", [url, "--database", "--user-id", user_id])
+    result = await executor.execute(
+        "web-save", "save_url.py", [url, "--database", "--user-id", user_id]
+    )
     if not result.get("success"):
-        raise BadRequestError(result.get("error", "Failed to save website"))
+        logger.error(
+            "websites save failed url=%s error=%s",
+            url,
+            result.get("error"),
+        )
+        raise BadRequestError("Unable to save website")
 
     return result
+
+
+@router.post("/{website_id}/youtube-transcript")
+async def append_youtube_transcript(
+    website_id: uuid.UUID,
+    payload: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Queue a YouTube transcript job for a website."""
+    youtube_url = str(payload.get("url", "")).strip()
+    if not youtube_url:
+        raise BadRequestError("url required")
+
+    try:
+        result = WebsiteTranscriptService.enqueue_youtube_transcript(
+            db,
+            user_id,
+            website_id,
+            youtube_url,
+        )
+    except ValueError as exc:
+        raise BadRequestError(str(exc)) from exc
+
+    if result.status == "ready":
+        website = WebsitesService.get_website(
+            db, user_id, website_id, mark_opened=False
+        )
+        if not website:
+            raise NotFoundError("Website", str(website_id))
+
+        return {
+            **website_summary(website),
+            "content": result.content,
+            "source": website.source,
+            "url_full": website.url_full,
+        }
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "success": True,
+            "data": {
+                "status": result.status,
+                "file_id": str(result.file_id) if result.file_id else None,
+            },
+        },
+    )
 
 
 @router.get("/{website_id}")
@@ -176,7 +241,7 @@ async def get_website(
     website_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Fetch a website by ID.
 
@@ -196,11 +261,17 @@ async def get_website(
     if not website:
         raise NotFoundError("Website", str(website_id))
 
+    WebsiteTranscriptService.sync_transcripts_for_website(
+        db,
+        user_id=user_id,
+        website_id=website_id,
+    )
+
     return {
         **website_summary(website),
         "content": website.content,
         "source": website.source,
-        "url_full": website.url_full
+        "url_full": website.url_full,
     }
 
 
@@ -210,7 +281,7 @@ async def update_pin(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Pin or unpin a website.
 
@@ -230,12 +301,10 @@ async def update_pin(
     pinned = bool(request.get("pinned", False))
     try:
         website = WebsitesService.update_pinned(db, user_id, website_id, pinned)
-    except WebsiteNotFoundError:
-        raise NotFoundError("Website", str(website_id))
+    except WebsiteNotFoundError as exc:
+        raise NotFoundError("Website", str(website_id)) from exc
 
     return website_summary(website)
-
-
 
 
 @router.patch("/{website_id}/rename")
@@ -244,7 +313,7 @@ async def update_title(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Rename a website.
 
@@ -267,8 +336,8 @@ async def update_title(
         raise BadRequestError("title required")
     try:
         website = WebsitesService.update_website(db, user_id, website_id, title=title)
-    except WebsiteNotFoundError:
-        raise NotFoundError("Website", str(website_id))
+    except WebsiteNotFoundError as exc:
+        raise NotFoundError("Website", str(website_id)) from exc
 
     return website_summary(website)
 
@@ -279,7 +348,7 @@ async def update_archive(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Archive or unarchive a website.
 
@@ -299,8 +368,8 @@ async def update_archive(
     archived = bool(request.get("archived", False))
     try:
         website = WebsitesService.update_archived(db, user_id, website_id, archived)
-    except WebsiteNotFoundError:
-        raise NotFoundError("Website", str(website_id))
+    except WebsiteNotFoundError as exc:
+        raise NotFoundError("Website", str(website_id)) from exc
 
     return website_summary(website)
 
@@ -310,7 +379,7 @@ async def download_website(
     website_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Download a website as a markdown attachment.
 
@@ -340,7 +409,7 @@ async def delete_website(
     website_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Delete a website by ID.
 

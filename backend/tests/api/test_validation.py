@@ -1,7 +1,6 @@
 import uuid
 
 import pytest
-
 from api.exceptions import BadRequestError
 from api.utils.validation import parse_optional_uuid, parse_uuid
 

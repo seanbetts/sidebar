@@ -1,9 +1,10 @@
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 from api.config import settings
 from api.db.dependencies import DEFAULT_USER_ID
 from api.models.note import Note
+
 from tests.helpers import error_message
 
 
@@ -12,7 +13,9 @@ def _auth_headers() -> dict[str, str]:
 
 
 def test_notes_search_requires_query(test_client):
-    response = test_client.post("/api/notes/search", params={"query": ""}, headers=_auth_headers())
+    response = test_client.post(
+        "/api/notes/search", params={"query": ""}, headers=_auth_headers()
+    )
     assert response.status_code == 400
     assert error_message(response) == "query required"
 
@@ -39,8 +42,8 @@ def test_notes_get_success(test_client, test_db):
         title="Sample Note",
         content="# Sample Note\n\nBody",
         metadata_={"folder": "", "pinned": False},
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(note)
     test_db.commit()

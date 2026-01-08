@@ -1,7 +1,9 @@
 """Notes router for database-backed note operations."""
+
 from __future__ import annotations
 
 import uuid
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -9,7 +11,7 @@ from sqlalchemy.orm import Session
 from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
-from api.exceptions import BadRequestError, NotFoundError, NoteNotFoundError
+from api.exceptions import BadRequestError, NoteNotFoundError, NotFoundError
 from api.services.notes_service import NotesService
 from api.services.notes_workspace_service import NotesWorkspaceService
 from api.utils.validation import parse_uuid
@@ -237,8 +239,8 @@ async def get_note(
         return NotesWorkspaceService.get_note(db, user_id, str(note_id))
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
-    except NoteNotFoundError:
-        raise NotFoundError("Note", str(note_id))
+    except NoteNotFoundError as exc:
+        raise NotFoundError("Note", str(note_id)) from exc
 
 
 @router.post("")
@@ -271,12 +273,7 @@ async def create_note(
         raise BadRequestError("content required")
 
     return NotesWorkspaceService.create_note(
-        db,
-        user_id,
-        content,
-        title=title,
-        path=path,
-        folder=folder
+        db, user_id, content, title=title, path=path, folder=folder
     )
 
 
@@ -312,8 +309,8 @@ async def rename_note(
         return NotesWorkspaceService.rename_note(db, user_id, str(note_id), new_name)
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
-    except NoteNotFoundError:
-        raise NotFoundError("Note", str(note_id))
+    except NoteNotFoundError as exc:
+        raise NotFoundError("Note", str(note_id)) from exc
 
 
 @router.delete("/{note_id}")
@@ -373,8 +370,8 @@ async def download_note(
         result = NotesWorkspaceService.download_note(db, user_id, str(note_id))
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
-    except NoteNotFoundError:
-        raise NotFoundError("Note", str(note_id))
+    except NoteNotFoundError as exc:
+        raise NotFoundError("Note", str(note_id)) from exc
 
     headers = {"Content-Disposition": f'attachment; filename="{result["filename"]}"'}
     return Response(result["content"], media_type="text/markdown", headers=headers)
@@ -407,8 +404,8 @@ async def update_pin(
     pinned = bool(request.get("pinned", False))
     try:
         note = NotesService.update_pinned(db, user_id, note_id, pinned)
-    except NoteNotFoundError:
-        raise NotFoundError("Note", str(note_id))
+    except NoteNotFoundError as exc:
+        raise NotFoundError("Note", str(note_id)) from exc
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
@@ -444,8 +441,8 @@ async def update_note(
         return NotesWorkspaceService.update_note(db, user_id, str(note_id), content)
     except ValueError as exc:
         raise BadRequestError(str(exc)) from exc
-    except NoteNotFoundError:
-        raise NotFoundError("Note", str(note_id))
+    except NoteNotFoundError as exc:
+        raise NotFoundError("Note", str(note_id)) from exc
 
 
 @router.patch("/{note_id}/move")
@@ -475,8 +472,8 @@ async def update_folder(
     folder = request.get("folder", "") or ""
     try:
         note = NotesService.update_folder(db, user_id, note_id, folder)
-    except NoteNotFoundError:
-        raise NotFoundError("Note", str(note_id))
+    except NoteNotFoundError as exc:
+        raise NotFoundError("Note", str(note_id)) from exc
     return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
 
@@ -508,6 +505,6 @@ async def update_archive(
     folder = "Archive" if archived else ""
     try:
         note = NotesService.update_folder(db, user_id, note_id, folder)
-    except NoteNotFoundError:
-        raise NotFoundError("Note", str(note_id))
+    except NoteNotFoundError as exc:
+        raise NotFoundError("Note", str(note_id)) from exc
     return NotesWorkspaceService.build_note_payload(note, include_content=True)

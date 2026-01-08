@@ -49,8 +49,8 @@ python analyze_policies.py --domains DOMAIN1 DOMAIN2 ... [OPTIONS]
 **Analysis Options**:
 - `--timeout SECONDS`: HTTP request timeout (default: 10.0)
 - `--no-llms`: Skip checking for llms.txt files
-- `--save-robots`: Save robots.txt and llms.txt files to disk
-- `--output-dir DIR`: Output folder in R2 for saved files (default: Reports)
+- `--save-robots`: Save robots.txt and llms.txt files as derivatives
+- `--output-dir DIR`: Output path prefix for the ingested report (default: Reports)
 
 **Output Options**:
 - `--output FILE`: Export results to CSV
@@ -234,24 +234,17 @@ python analyze_policies.py example.com --report --llm-api-key "sk-..."
 
 ## Default Save Locations
 
-**Reports and Analysis** (R2):
-```
-Reports/{domain}/
-```
+**Ingestion Output**:
+- One ingested file per run.
+- Report path: `Reports/{domain}/crawler_policy_{timestamp}.md`
+- AI context: `{user_id}/files/{file_id}/ai/ai.md`
+- Derivatives: `{user_id}/files/{file_id}/derivatives/`
 
-**Saved robots.txt files** (with `--save-robots`, R2):
-```
-Reports/{domain}/robots_{subdomain}_{timestamp}.txt
-Reports/{domain}/llms_{subdomain}_{timestamp}.txt
-```
+**Saved robots.txt files** (with `--save-robots`):
+- Stored as derivatives (e.g., `robots_txt_{subdomain}`, `llms_txt_{subdomain}`).
 
-**Output files** (with `--all`, R2):
-```
-Reports/{domain}/crawler_analysis_{timestamp}.csv
-Reports/{domain}/scan_results_{timestamp}.json
-Reports/{domain}/analysis_report_{timestamp}.md
-Reports/{domain}/analysis_report_{timestamp}_analysis.json
-```
+**Output files** (with `--all`):
+- CSV, JSON, and report artifacts are stored as derivatives (e.g., `analysis_csv`, `analysis_json`, `report_md`).
 
 ## Workflow
 
@@ -264,7 +257,7 @@ Reports/{domain}/analysis_report_{timestamp}_analysis.json
 5. **Permission Analysis**: Analyze crawler permissions across domains
 6. **Report Generation**: Generate tables, CSV, JSON outputs
 7. **LLM Analysis** (optional): Generate marketing intelligence report
-8. **File Saving** (optional): Save robots.txt files and reports to disk
+8. **Ingestion Output**: Store a single ingested file + derivatives
 
 ### Integration with subdomain-discover
 
@@ -333,6 +326,24 @@ The script uses intelligent crawler detection:
 - Combine with `subdomain-discover` for maximum control over discovery
 - Use `--no-discover` to analyze specific domains without discovery overhead
 - Check llms.txt files to see if brands have AI-specific policies
+
+## Storage Output
+
+When `--json` is set, the tool returns the ingestion payload:
+
+```json
+{
+  "file_id": "<uuid>",
+  "ai_path": "{user_id}/files/{file_id}/ai/ai.md",
+  "derivatives": [
+    {
+      "kind": "analysis_json",
+      "path": "{user_id}/files/{file_id}/derivatives/analysis_json.json",
+      "content_type": "application/json"
+    }
+  ]
+}
+```
 
 ## Limitations
 

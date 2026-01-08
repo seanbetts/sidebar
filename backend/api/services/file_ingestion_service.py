@@ -1,14 +1,14 @@
 """Database helpers for file ingestion pipeline."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
 import uuid
+from datetime import UTC, datetime
 
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob
+from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.utils.pinned_order import lock_pinned_order
 
 
@@ -21,16 +21,16 @@ class FileIngestionService:
         user_id: str,
         *,
         filename_original: str,
-        path: Optional[str] = None,
+        path: str | None = None,
         mime_original: str,
         size_bytes: int,
-        sha256: Optional[str] = None,
-        source_url: Optional[str] = None,
-        source_metadata: Optional[dict] = None,
-        file_id: Optional[uuid.UUID] = None,
+        sha256: str | None = None,
+        source_url: str | None = None,
+        source_metadata: dict | None = None,
+        file_id: uuid.UUID | None = None,
     ) -> tuple[IngestedFile, FileProcessingJob]:
         """Create ingestion records for a new file upload."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if file_id is None:
             file_id = uuid.uuid4()
         path_value = path or filename_original
@@ -62,7 +62,7 @@ class FileIngestionService:
         return record, job
 
     @staticmethod
-    def get_file(db: Session, user_id: str, file_id: uuid.UUID) -> Optional[IngestedFile]:
+    def get_file(db: Session, user_id: str, file_id: uuid.UUID) -> IngestedFile | None:
         """Fetch an ingested file record for a user."""
         return (
             db.query(IngestedFile)
@@ -75,7 +75,7 @@ class FileIngestionService:
         )
 
     @staticmethod
-    def get_job(db: Session, file_id: uuid.UUID) -> Optional[FileProcessingJob]:
+    def get_job(db: Session, file_id: uuid.UUID) -> FileProcessingJob | None:
         """Fetch the job record for a file."""
         return (
             db.query(FileProcessingJob)
@@ -105,6 +105,11 @@ class FileIngestionService:
             .filter(
                 IngestedFile.user_id == user_id,
                 IngestedFile.deleted_at.is_(None),
+                func.coalesce(
+                    IngestedFile.source_metadata["website_transcript"].astext,
+                    "false",
+                )
+                != "true",
             )
             .order_by(IngestedFile.created_at.desc())
             .limit(limit)
@@ -132,7 +137,7 @@ class FileIngestionService:
         db: Session,
         file_id: uuid.UUID,
         kind: str,
-    ) -> Optional[FileDerivative]:
+    ) -> FileDerivative | None:
         """Fetch a derivative by kind."""
         return (
             db.query(FileDerivative)
@@ -149,12 +154,16 @@ class FileIngestionService:
         file_id: uuid.UUID,
         *,
         status: str,
-        stage: Optional[str] = None,
-        error_code: Optional[str] = None,
-        error_message: Optional[str] = None,
-    ) -> Optional[FileProcessingJob]:
+        stage: str | None = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
+    ) -> FileProcessingJob | None:
         """Update job status fields."""
-        job = db.query(FileProcessingJob).filter(FileProcessingJob.file_id == file_id).first()
+        job = (
+            db.query(FileProcessingJob)
+            .filter(FileProcessingJob.file_id == file_id)
+            .first()
+        )
         if not job:
             return None
         job.status = status
@@ -162,22 +171,24 @@ class FileIngestionService:
             job.stage = stage
         job.error_code = error_code
         job.error_message = error_message
-        job.updated_at = datetime.now(timezone.utc)
+        job.updated_at = datetime.now(UTC)
         db.commit()
         return job
 
     @staticmethod
-    def soft_delete_file(db: Session, file_id: uuid.UUID) -> Optional[IngestedFile]:
+    def soft_delete_file(db: Session, file_id: uuid.UUID) -> IngestedFile | None:
         """Mark an ingested file as deleted."""
         record = db.query(IngestedFile).filter(IngestedFile.id == file_id).first()
         if not record:
             return None
-        record.deleted_at = datetime.now(timezone.utc)
+        record.deleted_at = datetime.now(UTC)
         db.commit()
         return record
 
     @staticmethod
-    def update_pinned(db: Session, user_id: str, file_id: uuid.UUID, pinned: bool) -> None:
+    def update_pinned(
+        db: Session, user_id: str, file_id: uuid.UUID, pinned: bool
+    ) -> None:
         """Update pinned state for a file."""
         record = (
             db.query(IngestedFile)
@@ -234,7 +245,9 @@ class FileIngestionService:
         db.commit()
 
     @staticmethod
-    def update_filename(db: Session, user_id: str, file_id: uuid.UUID, filename: str) -> None:
+    def update_filename(
+        db: Session, user_id: str, file_id: uuid.UUID, filename: str
+    ) -> None:
         """Update filename for an ingested file."""
         record = (
             db.query(IngestedFile)

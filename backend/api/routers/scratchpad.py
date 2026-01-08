@@ -1,7 +1,9 @@
 """Scratchpad router for the fixed scratchpad note."""
+
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+
 from api.auth import bearer_scheme, verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
@@ -46,7 +48,9 @@ def strip_heading(content: str) -> str:
 
 def join_sections(sections: list[str]) -> str:
     """Join non-empty sections with the scratchpad divider."""
-    parts = [section.strip("\n") for section in sections if section and section.strip("\n")]
+    parts = [
+        section.strip("\n") for section in sections if section and section.strip("\n")
+    ]
     if not parts:
         return ""
     return SCRATCHPAD_DIVIDER.join(parts)
@@ -69,7 +73,7 @@ def merge_content(existing: str, incoming: str, mode: str) -> str:
 async def get_scratchpad(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Fetch or create the scratchpad note.
 
@@ -81,21 +85,23 @@ async def get_scratchpad(
     Returns:
         Scratchpad note payload.
     """
-    note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=True)
+    note = NotesService.get_note_by_title(
+        db, user_id, SCRATCHPAD_TITLE, mark_opened=True
+    )
     if not note:
         note = NotesService.create_note(
             db,
             user_id,
             content=f"# {SCRATCHPAD_TITLE}\n\n",
             title=SCRATCHPAD_TITLE,
-            folder=""
+            folder="",
         )
 
     return {
         "id": str(note.id),
         "title": note.title,
         "content": note.content,
-        "updated_at": note.updated_at.isoformat() if note.updated_at else None
+        "updated_at": note.updated_at.isoformat() if note.updated_at else None,
     }
 
 
@@ -105,7 +111,7 @@ async def update_scratchpad(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Update scratchpad content.
 
@@ -113,6 +119,7 @@ async def update_scratchpad(
         request: Request payload with content.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
+        credentials: Parsed authorization header details.
         db: Database session.
 
     Returns:
@@ -129,25 +136,23 @@ async def update_scratchpad(
     if not mode:
         mode = "prepend" if is_pat else "append"
 
-    note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=False)
+    note = NotesService.get_note_by_title(
+        db, user_id, SCRATCHPAD_TITLE, mark_opened=False
+    )
     if not note:
         note = NotesService.create_note(
             db,
             user_id,
             content=f"# {SCRATCHPAD_TITLE}\n\n",
             title=SCRATCHPAD_TITLE,
-            folder=""
+            folder="",
         )
 
     if mode_raw is None and not strip_heading(content):
         mode = "replace"
     merged_content = merge_content(note.content, content, mode)
     updated = NotesService.update_note(
-        db,
-        user_id,
-        note.id,
-        merged_content,
-        title=SCRATCHPAD_TITLE
+        db, user_id, note.id, merged_content, title=SCRATCHPAD_TITLE
     )
 
     return {"success": True, "id": str(updated.id)}
@@ -157,7 +162,7 @@ async def update_scratchpad(
 async def clear_scratchpad(
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Clear the scratchpad content.
 
@@ -169,22 +174,20 @@ async def clear_scratchpad(
     Returns:
         Clear result payload.
     """
-    note = NotesService.get_note_by_title(db, user_id, SCRATCHPAD_TITLE, mark_opened=False)
+    note = NotesService.get_note_by_title(
+        db, user_id, SCRATCHPAD_TITLE, mark_opened=False
+    )
     if not note:
         note = NotesService.create_note(
             db,
             user_id,
             content=f"# {SCRATCHPAD_TITLE}\n\n",
             title=SCRATCHPAD_TITLE,
-            folder=""
+            folder="",
         )
     else:
         NotesService.update_note(
-            db,
-            user_id,
-            note.id,
-            f"# {SCRATCHPAD_TITLE}\n\n",
-            title=SCRATCHPAD_TITLE
+            db, user_id, note.id, f"# {SCRATCHPAD_TITLE}\n\n", title=SCRATCHPAD_TITLE
         )
 
     return {"success": True, "id": str(note.id)}

@@ -1,4 +1,5 @@
 """Files router for browsing workspace files."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -12,6 +13,7 @@ from api.exceptions import BadRequestError
 from api.services.files_workspace_service import FilesWorkspaceService
 
 router = APIRouter(prefix="/files", tags=["files"])
+
 
 @router.get("/tree")
 async def get_file_tree(
@@ -61,7 +63,9 @@ async def search_files(
     """
     if not query:
         raise BadRequestError("query required")
-    return FilesWorkspaceService.search(db, user_id, query, base_path=basePath, limit=limit)
+    return FilesWorkspaceService.search(
+        db, user_id, query, base_path=basePath, limit=limit
+    )
 
 
 @router.post("/folder")

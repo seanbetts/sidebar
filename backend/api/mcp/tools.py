@@ -1,4 +1,5 @@
 """MCP tool definitions with semantic parameters (not CLI-style)."""
+
 from fastmcp import FastMCP
 
 from api.config import settings

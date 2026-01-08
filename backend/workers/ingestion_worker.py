@@ -1,43 +1,45 @@
 """Ingestion worker loop with leasing and stage updates."""
+
 from __future__ import annotations
 
 import csv
-import io
 import importlib.util
+import io
 import json
 import logging
 import os
 import re
-import time
-import subprocess
+import shutil
 import statistics
+import subprocess
+import sys
+import time
+import uuid
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
-import shutil
 from threading import Event, Thread
-from typing import Callable, Sequence
 from uuid import uuid4
 
-from sqlalchemy import and_, or_
-from sqlalchemy.orm.attributes import flag_modified
-
-from PIL import Image
 import pdfplumber
+from api.config import settings
+from api.db.session import SessionLocal, set_session_user_id
+from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
+from api.services.file_ingestion_service import FileIngestionService
+from api.services.storage.service import get_storage_backend
+from api.services.website_transcript_service import WebsiteTranscriptService
+from docx import Document
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LAParams, LTAnno, LTChar, LTTextContainer, LTTextLine
-from pypdf import PdfReader
+from PIL import Image
 from pptx import Presentation
-from docx import Document
-from python_calamine import CalamineWorkbook, CalamineError, ZipError, XmlError
+from pypdf import PdfReader
+from python_calamine import CalamineError, CalamineWorkbook, XmlError, ZipError
+from sqlalchemy import and_, or_
+from sqlalchemy.orm.attributes import flag_modified
 from tabulate import tabulate
-
-from api.db.session import SessionLocal, set_session_user_id
-from api.models.file_ingestion import FileProcessingJob, IngestedFile, FileDerivative
-from api.config import settings
-from api.services.storage.service import get_storage_backend
-
 
 LEASE_SECONDS = 180
 HEARTBEAT_SECONDS = 15
@@ -82,6 +84,10 @@ ALLOWED_OCTET_EXTENSIONS = {
     ".flac",
     ".ogg",
     ".opus",
+    ".mp4",
+    ".mov",
+    ".mkv",
+    ".webm",
     ".txt",
     ".md",
     ".markdown",
@@ -161,8 +167,25 @@ _audio_transcriber: Callable[..., dict] | None = None
 _youtube_transcriber: Callable[..., dict] | None = None
 
 
+def _ensure_stdio() -> None:
+    for fd in (0, 1, 2):
+        try:
+            os.fstat(fd)
+        except OSError:
+            mode = os.O_RDONLY if fd == 0 else os.O_WRONLY
+            devnull_fd = os.open(os.devnull, mode)
+            os.dup2(devnull_fd, fd)
+            os.close(devnull_fd)
+    if sys.stdin is None or sys.stdin.closed:
+        sys.stdin = open(0, closefd=False)
+    if sys.stdout is None or sys.stdout.closed:
+        sys.stdout = open(1, "w", closefd=False)
+    if sys.stderr is None or sys.stderr.closed:
+        sys.stderr = open(2, "w", closefd=False)
+
+
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass(frozen=True)
@@ -175,7 +198,9 @@ class DerivativePayload:
     content: bytes
 
 
-def _make_payload(kind: str, storage_key: str, mime: str, content: bytes) -> DerivativePayload:
+def _make_payload(
+    kind: str, storage_key: str, mime: str, content: bytes
+) -> DerivativePayload:
     return DerivativePayload(
         kind=kind,
         storage_key=storage_key,
@@ -186,7 +211,9 @@ def _make_payload(kind: str, storage_key: str, mime: str, content: bytes) -> Der
     )
 
 
-def _build_ai_md_payload(record: IngestedFile, viewer_kind: str, extraction_text: str) -> DerivativePayload:
+def _build_ai_md_payload(
+    record: IngestedFile, viewer_kind: str, extraction_text: str
+) -> DerivativePayload:
     user_prefix = f"{record.user_id}/files/{record.id}"
     ai_body = (
         "---\n"
@@ -260,7 +287,11 @@ def _start_heartbeat(job_id: str, user_id: str | None) -> Callable[[], None]:
             if user_id:
                 set_session_user_id(heartbeat_db, str(user_id))
             while not stop_event.is_set():
-                job = heartbeat_db.query(FileProcessingJob).filter(FileProcessingJob.id == job_id).first()
+                job = (
+                    heartbeat_db.query(FileProcessingJob)
+                    .filter(FileProcessingJob.id == job_id)
+                    .first()
+                )
                 if not job or job.status != "processing":
                     break
                 job.lease_expires_at = _now() + timedelta(seconds=LEASE_SECONDS)
@@ -313,7 +344,9 @@ def _retry_or_fail(db, job: FileProcessingJob, error: IngestionError) -> None:
     if error.retryable and job.attempts < MAX_ATTEMPTS:
         job.status = "queued"
         job.stage = "queued"
-        job.lease_expires_at = _now() + timedelta(seconds=_compute_backoff_seconds(job.attempts))
+        job.lease_expires_at = _now() + timedelta(
+            seconds=_compute_backoff_seconds(job.attempts)
+        )
         db.commit()
         logger.warning(
             "Retrying job file_id=%s attempt=%s code=%s",
@@ -363,14 +396,18 @@ def _requeue_stalled_jobs(db) -> None:
         _retry_or_fail(
             db,
             job,
-            IngestionError("WORKER_STALLED", "Worker heartbeat expired", retryable=True),
+            IngestionError(
+                "WORKER_STALLED", "Worker heartbeat expired", retryable=True
+            ),
         )
 
 
 def _get_file(db, job: FileProcessingJob) -> IngestedFile:
     record = db.query(IngestedFile).filter(IngestedFile.id == job.file_id).first()
     if not record:
-        raise IngestionError("FILE_NOT_FOUND", "Ingestion record missing", retryable=False)
+        raise IngestionError(
+            "FILE_NOT_FOUND", "Ingestion record missing", retryable=False
+        )
     return record
 
 
@@ -401,7 +438,9 @@ def _ensure_source_path(record: IngestedFile) -> Path:
     if source_path.exists():
         return source_path
     if not record.user_id:
-        raise IngestionError("SOURCE_MISSING", "Uploaded file not found", retryable=False)
+        raise IngestionError(
+            "SOURCE_MISSING", "Uploaded file not found", retryable=False
+        )
     storage = get_storage_backend()
     key = _staging_storage_key(record.user_id, str(record.id))
     if storage.object_exists(key):
@@ -422,7 +461,7 @@ def _storage_prefix(record: IngestedFile) -> str:
 def _relative_storage_key(record: IngestedFile, key: str) -> str:
     prefix = f"{_storage_prefix(record)}/"
     if key.startswith(prefix):
-        return key[len(prefix):]
+        return key[len(prefix) :]
     return key.lstrip("/")
 
 
@@ -466,7 +505,10 @@ def _load_audio_transcriber() -> Callable[..., dict]:
             skill_path = candidate
             break
     if skill_path is None:
-        attempted = ", ".join(str(root / "audio-transcribe" / "scripts" / "transcribe_audio.py") for root in candidate_roots)
+        attempted = ", ".join(
+            str(root / "audio-transcribe" / "scripts" / "transcribe_audio.py")
+            for root in candidate_roots
+        )
         raise IngestionError(
             "TRANSCRIPTION_UNAVAILABLE",
             f"Audio transcription skill not found. Checked: {attempted}",
@@ -474,20 +516,26 @@ def _load_audio_transcriber() -> Callable[..., dict]:
         )
     spec = importlib.util.spec_from_file_location("audio_transcribe_skill", skill_path)
     if not spec or not spec.loader:
-        raise IngestionError("TRANSCRIPTION_UNAVAILABLE", "Audio transcription skill could not be loaded", retryable=False)
+        raise IngestionError(
+            "TRANSCRIPTION_UNAVAILABLE",
+            "Audio transcription skill could not be loaded",
+            retryable=False,
+        )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     transcriber = getattr(module, "transcribe_audio", None)
     if not callable(transcriber):
-        raise IngestionError("TRANSCRIPTION_UNAVAILABLE", "Audio transcription entry point missing", retryable=False)
+        raise IngestionError(
+            "TRANSCRIPTION_UNAVAILABLE",
+            "Audio transcription entry point missing",
+            retryable=False,
+        )
     _audio_transcriber = transcriber
     return transcriber
 
 
 def _load_youtube_transcriber() -> Callable[..., dict]:
     global _youtube_transcriber
-    if _youtube_transcriber is not None:
-        return _youtube_transcriber
     candidate_roots = [
         Path(settings.skills_dir),
         Path(__file__).resolve().parents[2] / "skills",
@@ -499,27 +547,45 @@ def _load_youtube_transcriber() -> Callable[..., dict]:
             skill_path = candidate
             break
     if skill_path is None:
-        attempted = ", ".join(str(root / "youtube-transcribe" / "scripts" / "transcribe_youtube.py") for root in candidate_roots)
+        attempted = ", ".join(
+            str(root / "youtube-transcribe" / "scripts" / "transcribe_youtube.py")
+            for root in candidate_roots
+        )
         raise IngestionError(
             "VIDEO_TRANSCRIPTION_UNAVAILABLE",
             f"YouTube transcription skill not found. Checked: {attempted}",
             retryable=False,
         )
-    spec = importlib.util.spec_from_file_location("youtube_transcribe_skill", skill_path)
+    logger.info("Loading YouTube transcriber from %s", skill_path)
+    spec = importlib.util.spec_from_file_location(
+        "youtube_transcribe_skill", skill_path
+    )
     if not spec or not spec.loader:
-        raise IngestionError("VIDEO_TRANSCRIPTION_UNAVAILABLE", "YouTube transcription skill could not be loaded", retryable=False)
+        raise IngestionError(
+            "VIDEO_TRANSCRIPTION_UNAVAILABLE",
+            "YouTube transcription skill could not be loaded",
+            retryable=False,
+        )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     transcriber = getattr(module, "transcribe_youtube", None)
     if not callable(transcriber):
-        raise IngestionError("VIDEO_TRANSCRIPTION_UNAVAILABLE", "YouTube transcription entry point missing", retryable=False)
+        raise IngestionError(
+            "VIDEO_TRANSCRIPTION_UNAVAILABLE",
+            "YouTube transcription entry point missing",
+            retryable=False,
+        )
     _youtube_transcriber = transcriber
     return transcriber
 
 
-def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
+def _transcribe_youtube(
+    record: IngestedFile, *, upload_transcript: bool = True
+) -> tuple[str, dict]:
     if not record.source_url:
-        raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
+        raise IngestionError(
+            "INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False
+        )
     transcriber = _load_youtube_transcriber()
     temp_root = _derivative_dir(str(record.id))
     temp_root.mkdir(parents=True, exist_ok=True)
@@ -531,20 +597,49 @@ def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
             output_name="ai.md",
             audio_dir="files/videos",
             keep_audio=False,
+            upload_transcript=upload_transcript,
         )
     except ValueError as exc:
+        logger.warning(
+            "YouTube transcription rejected file_id=%s url=%s error=%s",
+            record.id,
+            record.source_url,
+            str(exc),
+        )
         raise IngestionError("INVALID_YOUTUBE_URL", str(exc), retryable=False) from exc
     except RuntimeError as exc:
         message = str(exc)
         retryable = "rate" in message.lower() or "timeout" in message.lower()
-        raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", message, retryable=retryable) from exc
+        logger.error(
+            "YouTube transcription runtime error file_id=%s url=%s retryable=%s error=%s",
+            record.id,
+            record.source_url,
+            retryable,
+            message,
+        )
+        raise IngestionError(
+            "VIDEO_TRANSCRIPTION_FAILED", message, retryable=retryable
+        ) from exc
     except Exception as exc:
-        raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", "Video transcription failed", retryable=True) from exc
+        logger.exception(
+            "YouTube transcription crashed file_id=%s url=%s",
+            record.id,
+            record.source_url,
+        )
+        raise IngestionError(
+            "VIDEO_TRANSCRIPTION_FAILED", "Video transcription failed", retryable=True
+        ) from exc
 
-    transcript_path = Path(result.get("transcript_local_path") or result.get("transcript_file") or "")
+    transcript_path = Path(
+        result.get("transcript_local_path") or result.get("transcript_file") or ""
+    )
     if not transcript_path.exists():
-        raise IngestionError("VIDEO_TRANSCRIPTION_FAILED", "Transcript output missing", retryable=False)
-    transcript_raw = transcript_path.read_text(encoding="utf-8", errors="ignore").strip()
+        raise IngestionError(
+            "VIDEO_TRANSCRIPTION_FAILED", "Transcript output missing", retryable=False
+        )
+    transcript_raw = transcript_path.read_text(
+        encoding="utf-8", errors="ignore"
+    ).strip()
     transcript, transcript_meta = _extract_transcript_metadata(transcript_raw)
     if not transcript:
         transcript = "No transcription available."
@@ -570,7 +665,7 @@ def _transcribe_youtube(record: IngestedFile) -> tuple[str, dict]:
 
 def _yaml_escape(value: str) -> str:
     if value == "":
-        return "\"\""
+        return '""'
     if re.search(r"[\\s:#\\[\\]{},&*?]|^-|^\\?|^@", value):
         return json.dumps(value)
     return value
@@ -582,9 +677,11 @@ def _extract_transcript_metadata(text: str) -> tuple[str, dict]:
     if trimmed.startswith("---"):
         match = re.match(r"^---\s*\n[\s\S]*?\n---\s*\n?", trimmed)
         if match:
-            trimmed = trimmed[match.end():]
+            trimmed = trimmed[match.end() :]
     lines = trimmed.split("\n")
-    separator_index = next((idx for idx, line in enumerate(lines) if line.strip() == "---"), -1)
+    separator_index = next(
+        (idx for idx, line in enumerate(lines) if line.strip() == "---"), -1
+    )
     if separator_index <= 0:
         return trimmed, {}
     metadata_lines = lines[:separator_index]
@@ -597,9 +694,13 @@ def _extract_transcript_metadata(text: str) -> tuple[str, dict]:
             continue
         content = line.lstrip("#").strip()
         if content.startswith("Transcript of"):
-            meta["transcription_source_file"] = content.replace("Transcript of", "").strip()
+            meta["transcription_source_file"] = content.replace(
+                "Transcript of", ""
+            ).strip()
         elif content.startswith("Generated:"):
-            meta["transcription_generated_at"] = content.replace("Generated:", "").strip()
+            meta["transcription_generated_at"] = content.replace(
+                "Generated:", ""
+            ).strip()
         elif content.startswith("Model:"):
             meta["transcription_model"] = content.replace("Model:", "").strip()
         elif content.startswith("File size:"):
@@ -611,7 +712,10 @@ def _extract_transcript_metadata(text: str) -> tuple[str, dict]:
                 multiplier = {"KB": 1 / 1024, "MB": 1.0, "GB": 1024.0}.get(unit, 1.0)
                 meta["transcription_file_size_mb"] = round(amount * multiplier, 3)
         elif content.startswith("Usage:"):
-            usage_match = re.search(r"(\\d+)\\s+total tokens\\s*\\((\\d+)\\s+input,\\s*(\\d+)\\s+output\\)", content)
+            usage_match = re.search(
+                r"(\\d+)\\s+total tokens\\s*\\((\\d+)\\s+input,\\s*(\\d+)\\s+output\\)",
+                content,
+            )
             if usage_match:
                 meta["transcription_usage_total_tokens"] = int(usage_match.group(1))
                 meta["transcription_usage_input_tokens"] = int(usage_match.group(2))
@@ -620,8 +724,23 @@ def _extract_transcript_metadata(text: str) -> tuple[str, dict]:
             tokens = re.search(r"(\\d+)", content)
             if tokens:
                 meta["transcription_usage_audio_tokens"] = int(tokens.group(1))
-    body = "\n".join(lines[separator_index + 1:]).lstrip()
+    body = "\n".join(lines[separator_index + 1 :]).lstrip()
     return body, meta
+
+
+def _get_transcript_target(record: IngestedFile) -> tuple[uuid.UUID, str] | None:
+    metadata = record.source_metadata or {}
+    website_id = metadata.get("website_id")
+    if not website_id:
+        return None
+    try:
+        website_uuid = uuid.UUID(str(website_id))
+    except (TypeError, ValueError):
+        return None
+    youtube_url = metadata.get("youtube_url") or record.source_url
+    if not youtube_url:
+        return None
+    return website_uuid, str(youtube_url)
 
 
 def _transcribe_audio(source_path: Path, record: IngestedFile) -> str:
@@ -630,7 +749,9 @@ def _transcribe_audio(source_path: Path, record: IngestedFile) -> str:
     temp_root.mkdir(parents=True, exist_ok=True)
     filename = Path(record.filename_original).name or "audio"
     if "." not in filename:
-        extension = _detect_extension(record.filename_original, record.mime_original or "")
+        extension = _detect_extension(
+            record.filename_original, record.mime_original or ""
+        )
         filename = f"{filename}{extension or ''}"
     temp_path = temp_root / filename
     shutil.copyfile(source_path, temp_path)
@@ -643,9 +764,13 @@ def _transcribe_audio(source_path: Path, record: IngestedFile) -> str:
             response_format="json",
         )
     except RuntimeError as exc:
-        raise IngestionError("TRANSCRIPTION_UNAVAILABLE", str(exc), retryable=False) from exc
+        raise IngestionError(
+            "TRANSCRIPTION_UNAVAILABLE", str(exc), retryable=False
+        ) from exc
     except Exception as exc:
-        raise IngestionError("TRANSCRIPTION_FAILED", "Audio transcription failed", retryable=True) from exc
+        raise IngestionError(
+            "TRANSCRIPTION_FAILED", "Audio transcription failed", retryable=True
+        ) from exc
     transcript = (result.get("transcript") or "").strip()
     return transcript or "No transcription available."
 
@@ -694,7 +819,7 @@ def _normalize_mime(mime_original: str | None, filename: str) -> str:
 
 
 def _is_allowed_file(mime: str, filename: str) -> bool:
-    if mime.startswith(("image/", "audio/", "text/")):
+    if mime.startswith(("image/", "audio/", "text/", "video/")):
         return True
     if mime in ALLOWED_MIME_EXACT:
         return True
@@ -715,17 +840,31 @@ def _run_libreoffice_convert(source_path: Path, output_dir: Path) -> Path:
         str(source_path),
     ]
     try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+        subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=120,
+        )
     except FileNotFoundError as exc:
-        raise IngestionError("CONVERSION_UNAVAILABLE", "LibreOffice not available", retryable=False) from exc
+        raise IngestionError(
+            "CONVERSION_UNAVAILABLE", "LibreOffice not available", retryable=False
+        ) from exc
     except subprocess.TimeoutExpired as exc:
-        raise IngestionError("CONVERSION_TIMEOUT", "Conversion timed out", retryable=True) from exc
+        raise IngestionError(
+            "CONVERSION_TIMEOUT", "Conversion timed out", retryable=True
+        ) from exc
     except subprocess.CalledProcessError as exc:
-        raise IngestionError("CONVERSION_FAILED", "Conversion failed", retryable=False) from exc
+        raise IngestionError(
+            "CONVERSION_FAILED", "Conversion failed", retryable=False
+        ) from exc
 
     pdf_path = output_dir / (source_path.stem + ".pdf")
     if not pdf_path.exists():
-        raise IngestionError("CONVERSION_FAILED", "Converted PDF missing", retryable=False)
+        raise IngestionError(
+            "CONVERSION_FAILED", "Converted PDF missing", retryable=False
+        )
     return pdf_path
 
 
@@ -757,8 +896,18 @@ def _generate_pdf_thumbnail(pdf_path: Path, output_dir: Path) -> bytes | None:
         str(output_base),
     ]
     try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
-    except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=60,
+        )
+    except (
+        FileNotFoundError,
+        subprocess.TimeoutExpired,
+        subprocess.CalledProcessError,
+    ):
         return None
     thumb_path = output_dir / "thumb.png"
     if not thumb_path.exists():
@@ -792,7 +941,9 @@ def _merge_split_words(line: str) -> str:
     return " ".join(merged)
 
 
-def _order_pdf_lines(lines: list[tuple[float, float, str]], page_width: float) -> list[str]:
+def _order_pdf_lines(
+    lines: list[tuple[float, float, str]], page_width: float
+) -> list[str]:
     if not lines:
         return []
     xs = sorted(x for x, _, _ in lines)
@@ -809,7 +960,9 @@ def _order_pdf_lines(lines: list[tuple[float, float, str]], page_width: float) -
             split_x = (xs[gap_index] + xs[gap_index + 1]) / 2
 
     def sort_lines(values: list[tuple[float, float, str]]) -> list[str]:
-        return [text for _, _, text in sorted(values, key=lambda item: (-item[1], item[0]))]
+        return [
+            text for _, _, text in sorted(values, key=lambda item: (-item[1], item[0]))
+        ]
 
     if split_x is None:
         return sort_lines(lines)
@@ -937,7 +1090,9 @@ def _table_to_markdown(rows: Sequence[Sequence[object | None]]) -> str | None:
     return tabulate(body, headers=header, tablefmt="github")
 
 
-def _extract_non_table_text(page: pdfplumber.page.Page, table_bboxes: list[tuple[float, float, float, float]]) -> str:
+def _extract_non_table_text(
+    page: pdfplumber.page.Page, table_bboxes: list[tuple[float, float, float, float]]
+) -> str:
     words = page.extract_words(x_tolerance=2, y_tolerance=2, keep_blank_chars=False)
     if not words:
         return ""
@@ -1034,7 +1189,9 @@ def _extract_pdf_text(pdf_path: Path) -> str:
             if index in tables_by_page:
                 table_text = "\n\n".join(tables_by_page[index])
                 non_table_text = table_text_by_page.get(index, "")
-                page_text = _clean_extracted_text(non_table_text) if non_table_text else ""
+                page_text = (
+                    _clean_extracted_text(non_table_text) if non_table_text else ""
+                )
                 if page_text:
                     page_text = f"{page_text}\n\n{table_text}"
                 else:
@@ -1216,13 +1373,17 @@ def _normalize_grid(rows: Sequence[Sequence[object]]) -> list[list[object]]:
     return normalized
 
 
-def _expand_merged_cells(rows: list[list[object]], merged_ranges: list[object]) -> list[list[object]]:
+def _expand_merged_cells(
+    rows: list[list[object]], merged_ranges: list[object]
+) -> list[list[object]]:
     if not rows or not merged_ranges:
         return rows
     max_columns = max(len(row) for row in rows) if rows else 0
     row_count = len(rows)
     for range_ref in merged_ranges:
-        start_row, start_col, end_row, end_col = _parse_range(range_ref, row_count, max_columns)
+        start_row, start_col, end_row, end_col = _parse_range(
+            range_ref, row_count, max_columns
+        )
         required_rows = end_row + 1
         required_cols = end_col + 1
         while len(rows) < required_rows:
@@ -1300,8 +1461,15 @@ def _extract_spreadsheet_data(source_path: Path, mime: str, filename: str) -> di
     return {"sheets": sheets}
 
 
-def _build_derivatives(record: IngestedFile, source_path: Path) -> list[DerivativePayload]:
-    mime = (record.mime_original or "application/octet-stream").split(";")[0].strip().lower()
+def _build_derivatives(
+    record: IngestedFile, source_path: Path
+) -> list[DerivativePayload]:
+    mime = (
+        (record.mime_original or "application/octet-stream")
+        .split(";")[0]
+        .strip()
+        .lower()
+    )
     if not mime:
         mime = "application/octet-stream"
     if mime == "application/octet-stream":
@@ -1350,6 +1518,17 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
             content=content,
         )
         extraction_text = _transcribe_audio(source_path, record)
+    elif mime.startswith("video/"):
+        extension = _detect_extension(record.filename_original, mime)
+        viewer_payload = DerivativePayload(
+            kind="video_original",
+            storage_key=f"{user_prefix}/derivatives/video{extension or ''}",
+            mime=mime,
+            size_bytes=len(content),
+            sha256=sha256(content).hexdigest(),
+            content=content,
+        )
+        extraction_text = "Video file. No text extraction available."
     elif mime in {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -1369,18 +1548,14 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         else:
             extraction_text = _extract_pptx_text(source_path)
         thumb_bytes = _generate_pdf_thumbnail(pdf_path, _derivative_dir(file_id))
-    elif (
-        mime
-        in {
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-excel",
-            "text/csv",
-            "application/csv",
-            "text/tab-separated-values",
-            "text/tsv",
-        }
-        or record.filename_original.lower().endswith((".csv", ".tsv"))
-    ):
+    elif mime in {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "text/csv",
+        "application/csv",
+        "text/tab-separated-values",
+        "text/tsv",
+    } or record.filename_original.lower().endswith((".csv", ".tsv")):
         data = _extract_spreadsheet_data(source_path, mime, record.filename_original)
         data_json = json.dumps(data, ensure_ascii=False)
         data_bytes = data_json.encode("utf-8")
@@ -1404,10 +1579,14 @@ def _build_derivatives(record: IngestedFile, source_path: Path) -> list[Derivati
         )
         extraction_text = content.decode("utf-8", errors="ignore").strip()
     else:
-        raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+        raise IngestionError(
+            "UNSUPPORTED_TYPE", "Unsupported file type", retryable=False
+        )
 
     if viewer_payload is None:
-        raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
+        raise IngestionError(
+            "DERIVATIVE_MISSING", "Viewer asset missing", retryable=False
+        )
 
     if thumb_bytes:
         thumb_payload = DerivativePayload(
@@ -1483,9 +1662,13 @@ def _process_simple_file(
 
         if stage == "validating":
             if record.size_bytes <= 0:
-                raise IngestionError("FILE_EMPTY", "Uploaded file is empty", retryable=False)
+                raise IngestionError(
+                    "FILE_EMPTY", "Uploaded file is empty", retryable=False
+                )
             if not _is_allowed_file(mime, record.filename_original):
-                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
+                raise IngestionError(
+                    "UNSUPPORTED_TYPE", "Unsupported file type", retryable=False
+                )
         elif stage == "extracting":
             source_bytes = source_path.read_bytes()
             extraction_text = source_bytes.decode("utf-8", errors="ignore").strip()
@@ -1497,16 +1680,26 @@ def _process_simple_file(
             )
         elif stage == "ai_md":
             if viewer_payload is None:
-                raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
-            ai_payload = _build_ai_md_payload(record, viewer_payload.kind, extraction_text)
+                raise IngestionError(
+                    "DERIVATIVE_MISSING", "Viewer asset missing", retryable=False
+                )
+            ai_payload = _build_ai_md_payload(
+                record, viewer_payload.kind, extraction_text
+            )
         elif stage == "finalizing":
             storage = get_storage_backend()
             if viewer_payload is None or ai_payload is None:
-                raise IngestionError("DERIVATIVE_MISSING", "Required derivatives missing", retryable=False)
+                raise IngestionError(
+                    "DERIVATIVE_MISSING",
+                    "Required derivatives missing",
+                    retryable=False,
+                )
             derivatives = [viewer_payload, ai_payload]
             _write_derivatives_atomically(storage, record, derivatives)
 
-            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
+            db.query(FileDerivative).filter(
+                FileDerivative.file_id == record.id
+            ).delete()
             now = _now()
             for item in derivatives:
                 db.add(
@@ -1539,21 +1732,37 @@ def _build_youtube_derivatives(
         f"created_at: {_yaml_escape(record.created_at.isoformat())}",
     ]
     if metadata.get("transcription_generated_at"):
-        lines.append(f"transcription_generated_at: {_yaml_escape(str(metadata['transcription_generated_at']))}")
+        lines.append(
+            f"transcription_generated_at: {_yaml_escape(str(metadata['transcription_generated_at']))}"
+        )
     if metadata.get("transcription_model"):
-        lines.append(f"transcription_model: {_yaml_escape(str(metadata['transcription_model']))}")
+        lines.append(
+            f"transcription_model: {_yaml_escape(str(metadata['transcription_model']))}"
+        )
     if metadata.get("transcription_source_file"):
-        lines.append(f"transcription_source_file: {_yaml_escape(str(metadata['transcription_source_file']))}")
+        lines.append(
+            f"transcription_source_file: {_yaml_escape(str(metadata['transcription_source_file']))}"
+        )
     if metadata.get("transcription_file_size_mb") is not None:
-        lines.append(f"transcription_file_size_mb: {metadata['transcription_file_size_mb']}")
+        lines.append(
+            f"transcription_file_size_mb: {metadata['transcription_file_size_mb']}"
+        )
     if metadata.get("transcription_usage_total_tokens") is not None:
-        lines.append(f"transcription_usage_total_tokens: {metadata['transcription_usage_total_tokens']}")
+        lines.append(
+            f"transcription_usage_total_tokens: {metadata['transcription_usage_total_tokens']}"
+        )
     if metadata.get("transcription_usage_input_tokens") is not None:
-        lines.append(f"transcription_usage_input_tokens: {metadata['transcription_usage_input_tokens']}")
+        lines.append(
+            f"transcription_usage_input_tokens: {metadata['transcription_usage_input_tokens']}"
+        )
     if metadata.get("transcription_usage_output_tokens") is not None:
-        lines.append(f"transcription_usage_output_tokens: {metadata['transcription_usage_output_tokens']}")
+        lines.append(
+            f"transcription_usage_output_tokens: {metadata['transcription_usage_output_tokens']}"
+        )
     if metadata.get("transcription_usage_audio_tokens") is not None:
-        lines.append(f"transcription_usage_audio_tokens: {metadata['transcription_usage_audio_tokens']}")
+        lines.append(
+            f"transcription_usage_audio_tokens: {metadata['transcription_usage_audio_tokens']}"
+        )
     lines.extend(
         [
             "derivatives:",
@@ -1581,58 +1790,137 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
     transcript = ""
     metadata: dict = {}
     derivatives: list[DerivativePayload] | None = None
-    for stage in PIPELINE_STAGES:
-        db.refresh(job)
-        if job.status in {"paused", "canceled"}:
-            raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
-        _set_stage(db, job, stage)
-        logger.info("Stage %s file_id=%s", stage, record.id)
-        _refresh_lease(db, job)
-
-        if stage == "validating":
-            if not record.source_url:
-                raise IngestionError("INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False)
-        elif stage == "extracting":
-            transcript, metadata = _transcribe_youtube(record)
-        elif stage == "ai_md":
-            derivatives = _build_youtube_derivatives(record, transcript, metadata)
-        elif stage == "finalizing":
-            if derivatives is None:
-                raise IngestionError("DERIVATIVE_MISSING", "AI derivative missing", retryable=False)
-            existing_meta = record.source_metadata or {}
-            metadata = {**existing_meta, **metadata}
-            metadata.setdefault("provider", "youtube")
-            metadata.setdefault("youtube_url", record.source_url)
-            title = metadata.get("title")
-            if title:
-                record.filename_original = title
-            record.source_metadata = metadata
-            flag_modified(record, "source_metadata")
-            db.commit()
-
-            storage = get_storage_backend()
-            _write_derivatives_atomically(storage, record, derivatives)
-
-            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
-            now = _now()
-            for item in derivatives:
-                db.add(
-                    FileDerivative(
-                        file_id=record.id,
-                        kind=item.kind,
-                        storage_key=item.storage_key,
-                        mime=item.mime,
-                        size_bytes=item.size_bytes,
-                        sha256=item.sha256,
-                        created_at=now,
-                    )
+    transcript_target = _get_transcript_target(record)
+    is_website_transcript = transcript_target is not None
+    if transcript_target:
+        WebsiteTranscriptService.update_transcript_status(
+            db,
+            user_id=str(record.user_id),
+            website_id=transcript_target[0],
+            youtube_url=transcript_target[1],
+            status="processing",
+        )
+    try:
+        for stage in PIPELINE_STAGES:
+            db.refresh(job)
+            if job.status in {"paused", "canceled"}:
+                raise IngestionError(
+                    "JOB_HALTED", "Job halted by user", retryable=False
                 )
-            db.commit()
+            _set_stage(db, job, stage)
+            logger.info("Stage %s file_id=%s", stage, record.id)
+            _refresh_lease(db, job)
+
+            if stage == "validating":
+                if not record.source_url:
+                    raise IngestionError(
+                        "INVALID_YOUTUBE_URL", "Missing YouTube URL", retryable=False
+                    )
+            elif stage == "extracting":
+                transcript, metadata = _transcribe_youtube(
+                    record, upload_transcript=not is_website_transcript
+                )
+            elif stage == "ai_md":
+                if not is_website_transcript:
+                    derivatives = _build_youtube_derivatives(
+                        record, transcript, metadata
+                    )
+            elif stage == "finalizing":
+                existing_meta = record.source_metadata or {}
+                metadata = {**existing_meta, **metadata}
+                metadata.setdefault("provider", "youtube")
+                metadata.setdefault("youtube_url", record.source_url)
+                title = metadata.get("title")
+                if title:
+                    record.filename_original = title
+                record.source_metadata = metadata
+                flag_modified(record, "source_metadata")
+                db.commit()
+
+                if not is_website_transcript:
+                    if derivatives is None:
+                        raise IngestionError(
+                            "DERIVATIVE_MISSING",
+                            "AI derivative missing",
+                            retryable=False,
+                        )
+                    storage = get_storage_backend()
+                    _write_derivatives_atomically(storage, record, derivatives)
+
+                    db.query(FileDerivative).filter(
+                        FileDerivative.file_id == record.id
+                    ).delete()
+                    now = _now()
+                    for item in derivatives:
+                        db.add(
+                            FileDerivative(
+                                file_id=record.id,
+                                kind=item.kind,
+                                storage_key=item.storage_key,
+                                mime=item.mime,
+                                size_bytes=item.size_bytes,
+                                sha256=item.sha256,
+                                created_at=now,
+                            )
+                        )
+                    db.commit()
+
+                if transcript_target:
+                    WebsiteTranscriptService.append_transcript_from_text(
+                        db,
+                        user_id=str(record.user_id),
+                        website_id=transcript_target[0],
+                        youtube_url=transcript_target[1],
+                        transcript_text=transcript,
+                        video_title=metadata.get("title")
+                        if isinstance(metadata, dict)
+                        else None,
+                    )
+                    FileIngestionService.soft_delete_file(db, record.id)
+        return
+    except IngestionError as exc:
+        logger.warning(
+            "YouTube job failed file_id=%s url=%s code=%s retryable=%s",
+            record.id,
+            record.source_url,
+            exc.code,
+            exc.retryable,
+        )
+        if transcript_target:
+            WebsiteTranscriptService.update_transcript_status(
+                db,
+                user_id=str(record.user_id),
+                website_id=transcript_target[0],
+                youtube_url=transcript_target[1],
+                status="retrying" if exc.retryable else "failed",
+                error=str(exc),
+            )
+            if not exc.retryable:
+                FileIngestionService.soft_delete_file(db, record.id)
+        raise
+    except Exception as exc:
+        logger.exception(
+            "YouTube job crashed file_id=%s url=%s",
+            record.id,
+            record.source_url,
+        )
+        if transcript_target:
+            WebsiteTranscriptService.update_transcript_status(
+                db,
+                user_id=str(record.user_id),
+                website_id=transcript_target[0],
+                youtube_url=transcript_target[1],
+                status="failed",
+                error=str(exc),
+            )
+            FileIngestionService.soft_delete_file(db, record.id)
+        raise
 
 
 def worker_loop() -> None:
     worker_id = os.getenv("INGESTION_WORKER_ID") or f"worker-{uuid4()}"
     worker_user_id = os.getenv("INGESTION_WORKER_USER_ID") or settings.default_user_id
+    _ensure_stdio()
     if shutil.which("soffice") is None:
         logger.warning(
             "LibreOffice (soffice) not found. DOCX/XLSX/PPTX conversion will fail."
@@ -1648,216 +1936,294 @@ def worker_loop() -> None:
         logger.info("Ingestion DB URL: %s", safe_url)
     while True:
         with SessionLocal() as db:
-            if worker_user_id:
-                set_session_user_id(db, worker_user_id)
-            _requeue_stalled_jobs(db)
-            job = _claim_job(db, worker_id)
-            if not job:
-                time.sleep(SLEEP_SECONDS)
-                continue
-
-            record: IngestedFile | None = None
             try:
-                record = _get_file(db, job)
-                if record.user_id:
-                    set_session_user_id(db, str(record.user_id))
-                stop_heartbeat = _start_heartbeat(str(job.id), str(record.user_id) if record.user_id else None)
+                if worker_user_id:
+                    set_session_user_id(db, worker_user_id)
+                _requeue_stalled_jobs(db)
+                job = _claim_job(db, worker_id)
+                if not job:
+                    db.rollback()
+                    time.sleep(SLEEP_SECONDS)
+                    continue
+
+                record: IngestedFile | None = None
                 try:
-                    if record.source_url:
-                        _process_youtube_job(db, job, record)
-                        db.refresh(job)
-                        if job.status not in {"paused", "canceled"}:
-                            _mark_ready(db, job)
-                        continue
+                    record = _get_file(db, job)
+                    if record.user_id:
+                        set_session_user_id(db, str(record.user_id))
+                    stop_heartbeat = _start_heartbeat(
+                        str(job.id), str(record.user_id) if record.user_id else None
+                    )
+                    try:
+                        if record.source_url:
+                            _process_youtube_job(db, job, record)
+                            db.refresh(job)
+                            if job.status not in {"paused", "canceled"}:
+                                _mark_ready(db, job)
+                            continue
 
-                    source_path = _ensure_source_path(record)
+                        source_path = _ensure_source_path(record)
 
-                    logger.info("Processing file_id=%s name=%s", record.id, record.filename_original)
-                    mime = _normalize_mime(record.mime_original, record.filename_original)
-                    is_spreadsheet = (
-                        mime
-                        in {
+                        logger.info(
+                            "Processing file_id=%s name=%s",
+                            record.id,
+                            record.filename_original,
+                        )
+                        mime = _normalize_mime(
+                            record.mime_original, record.filename_original
+                        )
+                        is_spreadsheet = mime in {
                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             "application/vnd.ms-excel",
                             "text/csv",
                             "application/csv",
                             "text/tab-separated-values",
                             "text/tsv",
-                        }
-                        or record.filename_original.lower().endswith((".csv", ".tsv"))
-                    )
-                    if _should_fast_track(mime, record.filename_original):
-                        _process_simple_file(db, job, record, source_path, mime)
+                        } or record.filename_original.lower().endswith((".csv", ".tsv"))
+                        if _should_fast_track(mime, record.filename_original):
+                            _process_simple_file(db, job, record, source_path, mime)
+                            db.refresh(job)
+                            if job.status not in {"paused", "canceled"}:
+                                _mark_ready(db, job)
+                                _cleanup_staging(str(record.id), str(record.user_id))
+                            continue
+                        source_bytes: bytes | None = None
+                        viewer_payload: DerivativePayload | None = None
+                        viewer_source_path: Path | None = None
+                        extraction_text = ""
+                        ai_payload: DerivativePayload | None = None
+                        thumb_payload: DerivativePayload | None = None
+
+                        for stage in PIPELINE_STAGES:
+                            db.refresh(job)
+                            if job.status in {"paused", "canceled"}:
+                                raise IngestionError(
+                                    "JOB_HALTED", "Job halted by user", retryable=False
+                                )
+                            _set_stage(db, job, stage)
+                            logger.info("Stage %s file_id=%s", stage, record.id)
+                            _refresh_lease(db, job)
+
+                            if stage == "validating":
+                                if record.size_bytes <= 0:
+                                    raise IngestionError(
+                                        "FILE_EMPTY",
+                                        "Uploaded file is empty",
+                                        retryable=False,
+                                    )
+                                if not _is_allowed_file(mime, record.filename_original):
+                                    raise IngestionError(
+                                        "UNSUPPORTED_TYPE",
+                                        "Unsupported file type",
+                                        retryable=False,
+                                    )
+                            elif stage == "converting":
+                                if mime == "application/pdf":
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    viewer_payload = _make_payload(
+                                        kind="viewer_pdf",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
+                                        mime="application/pdf",
+                                        content=source_bytes,
+                                    )
+                                    viewer_source_path = source_path
+                                elif mime.startswith("image/"):
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    extension = _detect_extension(
+                                        record.filename_original, mime
+                                    )
+                                    viewer_payload = _make_payload(
+                                        kind="image_original",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/image{extension or ''}",
+                                        mime=mime,
+                                        content=source_bytes,
+                                    )
+                                    viewer_source_path = source_path
+                                elif mime.startswith("audio/"):
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    extension = _detect_extension(
+                                        record.filename_original, mime
+                                    )
+                                    viewer_payload = _make_payload(
+                                        kind="audio_original",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/audio{extension or ''}",
+                                        mime=mime,
+                                        content=source_bytes,
+                                    )
+                                elif mime in {
+                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                                }:
+                                    pdf_path = _run_libreoffice_convert(
+                                        source_path, _derivative_dir(str(record.id))
+                                    )
+                                    pdf_bytes = pdf_path.read_bytes()
+                                    viewer_payload = _make_payload(
+                                        kind="viewer_pdf",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
+                                        mime="application/pdf",
+                                        content=pdf_bytes,
+                                    )
+                                    viewer_source_path = pdf_path
+                                elif (
+                                    mime.startswith("text/")
+                                    or mime == "application/json"
+                                ):
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    viewer_payload = _make_payload(
+                                        kind="text_original",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/source.txt",
+                                        mime=mime,
+                                        content=source_bytes,
+                                    )
+                                elif not is_spreadsheet:
+                                    raise IngestionError(
+                                        "UNSUPPORTED_TYPE",
+                                        "Unsupported file type",
+                                        retryable=False,
+                                    )
+                            elif stage == "extracting":
+                                if mime == "application/pdf":
+                                    extraction_text = _extract_pdf_text(source_path)
+                                elif mime.startswith("image/"):
+                                    extraction_text = (
+                                        "Image file. No text extraction available."
+                                    )
+                                elif mime.startswith("audio/"):
+                                    extraction_text = _transcribe_audio(
+                                        source_path, record
+                                    )
+                                elif mime.endswith("wordprocessingml.document"):
+                                    extraction_text = _extract_docx_text(source_path)
+                                elif mime.endswith("presentationml.presentation"):
+                                    extraction_text = _extract_pptx_text(source_path)
+                                elif is_spreadsheet:
+                                    data = _extract_spreadsheet_data(
+                                        source_path, mime, record.filename_original
+                                    )
+                                    data_json = json.dumps(data, ensure_ascii=False)
+                                    extraction_text = data_json
+                                    data_bytes = data_json.encode("utf-8")
+                                    viewer_payload = _make_payload(
+                                        kind="viewer_json",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/data.json",
+                                        mime="application/json",
+                                        content=data_bytes,
+                                    )
+                                elif (
+                                    mime.startswith("text/")
+                                    or mime == "application/json"
+                                ):
+                                    if source_bytes is None:
+                                        source_bytes = source_path.read_bytes()
+                                    extraction_text = source_bytes.decode(
+                                        "utf-8", errors="ignore"
+                                    ).strip()
+                                else:
+                                    raise IngestionError(
+                                        "UNSUPPORTED_TYPE",
+                                        "Unsupported file type",
+                                        retryable=False,
+                                    )
+                            elif stage == "ai_md":
+                                if viewer_payload is None:
+                                    raise IngestionError(
+                                        "DERIVATIVE_MISSING",
+                                        "Viewer asset missing",
+                                        retryable=False,
+                                    )
+                                ai_payload = _build_ai_md_payload(
+                                    record, viewer_payload.kind, extraction_text
+                                )
+                            elif stage == "thumb":
+                                thumb_bytes: bytes | None = None
+                                if (
+                                    viewer_payload
+                                    and viewer_payload.kind == "viewer_pdf"
+                                    and viewer_source_path
+                                ):
+                                    thumb_bytes = _generate_pdf_thumbnail(
+                                        viewer_source_path,
+                                        _derivative_dir(str(record.id)),
+                                    )
+                                elif (
+                                    viewer_payload
+                                    and viewer_payload.kind == "image_original"
+                                ):
+                                    thumb_bytes = _generate_image_thumbnail(source_path)
+                                if thumb_bytes:
+                                    thumb_payload = _make_payload(
+                                        kind="thumb_png",
+                                        storage_key=f"{record.user_id}/files/{record.id}/derivatives/thumb.png",
+                                        mime="image/png",
+                                        content=thumb_bytes,
+                                    )
+                            elif stage == "finalizing":
+                                if viewer_payload is None or ai_payload is None:
+                                    raise IngestionError(
+                                        "DERIVATIVE_MISSING",
+                                        "Required derivatives missing",
+                                        retryable=False,
+                                    )
+                                derivatives = [viewer_payload, ai_payload]
+                                if thumb_payload:
+                                    derivatives.append(thumb_payload)
+                                storage = get_storage_backend()
+                                _write_derivatives_atomically(
+                                    storage, record, derivatives
+                                )
+
+                                db.query(FileDerivative).filter(
+                                    FileDerivative.file_id == record.id
+                                ).delete()
+                                now = _now()
+                                for item in derivatives:
+                                    db.add(
+                                        FileDerivative(
+                                            file_id=record.id,
+                                            kind=item.kind,
+                                            storage_key=item.storage_key,
+                                            mime=item.mime,
+                                            size_bytes=item.size_bytes,
+                                            sha256=item.sha256,
+                                            created_at=now,
+                                        )
+                                    )
+                                db.commit()
+
                         db.refresh(job)
                         if job.status not in {"paused", "canceled"}:
                             _mark_ready(db, job)
                             _cleanup_staging(str(record.id), str(record.user_id))
+                    finally:
+                        stop_heartbeat()
+                except IngestionError as error:
+                    if error.code == "JOB_HALTED":
                         continue
-                    source_bytes: bytes | None = None
-                    viewer_payload: DerivativePayload | None = None
-                    viewer_source_path: Path | None = None
-                    extraction_text = ""
-                    ai_payload: DerivativePayload | None = None
-                    thumb_payload: DerivativePayload | None = None
-
-                    for stage in PIPELINE_STAGES:
-                        db.refresh(job)
-                        if job.status in {"paused", "canceled"}:
-                            raise IngestionError("JOB_HALTED", "Job halted by user", retryable=False)
-                        _set_stage(db, job, stage)
-                        logger.info("Stage %s file_id=%s", stage, record.id)
-                        _refresh_lease(db, job)
-
-                        if stage == "validating":
-                            if record.size_bytes <= 0:
-                                raise IngestionError("FILE_EMPTY", "Uploaded file is empty", retryable=False)
-                            if not _is_allowed_file(mime, record.filename_original):
-                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
-                        elif stage == "converting":
-                            if mime == "application/pdf":
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                viewer_payload = _make_payload(
-                                    kind="viewer_pdf",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
-                                    mime="application/pdf",
-                                    content=source_bytes,
-                                )
-                                viewer_source_path = source_path
-                            elif mime.startswith("image/"):
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                extension = _detect_extension(record.filename_original, mime)
-                                viewer_payload = _make_payload(
-                                    kind="image_original",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/image{extension or ''}",
-                                    mime=mime,
-                                    content=source_bytes,
-                                )
-                                viewer_source_path = source_path
-                            elif mime.startswith("audio/"):
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                extension = _detect_extension(record.filename_original, mime)
-                                viewer_payload = _make_payload(
-                                    kind="audio_original",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/audio{extension or ''}",
-                                    mime=mime,
-                                    content=source_bytes,
-                                )
-                            elif mime in {
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                            }:
-                                pdf_path = _run_libreoffice_convert(source_path, _derivative_dir(str(record.id)))
-                                pdf_bytes = pdf_path.read_bytes()
-                                viewer_payload = _make_payload(
-                                    kind="viewer_pdf",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/viewer.pdf",
-                                    mime="application/pdf",
-                                    content=pdf_bytes,
-                                )
-                                viewer_source_path = pdf_path
-                            elif mime.startswith("text/") or mime == "application/json":
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                viewer_payload = _make_payload(
-                                    kind="text_original",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/source.txt",
-                                    mime=mime,
-                                    content=source_bytes,
-                                )
-                            elif not is_spreadsheet:
-                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
-                        elif stage == "extracting":
-                            if mime == "application/pdf":
-                                extraction_text = _extract_pdf_text(source_path)
-                            elif mime.startswith("image/"):
-                                extraction_text = "Image file. No text extraction available."
-                            elif mime.startswith("audio/"):
-                                extraction_text = _transcribe_audio(source_path, record)
-                            elif mime.endswith("wordprocessingml.document"):
-                                extraction_text = _extract_docx_text(source_path)
-                            elif mime.endswith("presentationml.presentation"):
-                                extraction_text = _extract_pptx_text(source_path)
-                            elif is_spreadsheet:
-                                data = _extract_spreadsheet_data(source_path, mime, record.filename_original)
-                                data_json = json.dumps(data, ensure_ascii=False)
-                                extraction_text = data_json
-                                data_bytes = data_json.encode("utf-8")
-                                viewer_payload = _make_payload(
-                                    kind="viewer_json",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/data.json",
-                                    mime="application/json",
-                                    content=data_bytes,
-                                )
-                            elif mime.startswith("text/") or mime == "application/json":
-                                if source_bytes is None:
-                                    source_bytes = source_path.read_bytes()
-                                extraction_text = source_bytes.decode("utf-8", errors="ignore").strip()
-                            else:
-                                raise IngestionError("UNSUPPORTED_TYPE", "Unsupported file type", retryable=False)
-                        elif stage == "ai_md":
-                            if viewer_payload is None:
-                                raise IngestionError("DERIVATIVE_MISSING", "Viewer asset missing", retryable=False)
-                            ai_payload = _build_ai_md_payload(record, viewer_payload.kind, extraction_text)
-                        elif stage == "thumb":
-                            thumb_bytes: bytes | None = None
-                            if viewer_payload and viewer_payload.kind == "viewer_pdf" and viewer_source_path:
-                                thumb_bytes = _generate_pdf_thumbnail(viewer_source_path, _derivative_dir(str(record.id)))
-                            elif viewer_payload and viewer_payload.kind == "image_original":
-                                thumb_bytes = _generate_image_thumbnail(source_path)
-                            if thumb_bytes:
-                                thumb_payload = _make_payload(
-                                    kind="thumb_png",
-                                    storage_key=f"{record.user_id}/files/{record.id}/derivatives/thumb.png",
-                                    mime="image/png",
-                                    content=thumb_bytes,
-                                )
-                        elif stage == "finalizing":
-                            if viewer_payload is None or ai_payload is None:
-                                raise IngestionError("DERIVATIVE_MISSING", "Required derivatives missing", retryable=False)
-                            derivatives = [viewer_payload, ai_payload]
-                            if thumb_payload:
-                                derivatives.append(thumb_payload)
-                            storage = get_storage_backend()
-                            _write_derivatives_atomically(storage, record, derivatives)
-
-                            db.query(FileDerivative).filter(FileDerivative.file_id == record.id).delete()
-                            now = _now()
-                            for item in derivatives:
-                                db.add(
-                                    FileDerivative(
-                                        file_id=record.id,
-                                        kind=item.kind,
-                                        storage_key=item.storage_key,
-                                        mime=item.mime,
-                                        size_bytes=item.size_bytes,
-                                        sha256=item.sha256,
-                                        created_at=now,
-                                    )
-                                )
-                            db.commit()
-
-                    db.refresh(job)
-                    if job.status not in {"paused", "canceled"}:
-                        _mark_ready(db, job)
-                        _cleanup_staging(str(record.id), str(record.user_id))
-                finally:
-                    stop_heartbeat()
-            except IngestionError as error:
-                if error.code == "JOB_HALTED":
-                    continue
+                    db.rollback()
+                    _retry_or_fail(db, job, error)
+                    if job.status == "failed" and _should_cleanup_after_failure(error):
+                        _cleanup_staging(
+                            str(job.file_id), str(record.user_id) if record else None
+                        )
+                except Exception as error:
+                    unknown_error = IngestionError(
+                        "UNKNOWN_ERROR", str(error), retryable=True
+                    )
+                    db.rollback()
+                    _retry_or_fail(db, job, unknown_error)
+                    if job.status == "failed" and _should_cleanup_after_failure(
+                        unknown_error
+                    ):
+                        _cleanup_staging(
+                            str(job.file_id), str(record.user_id) if record else None
+                        )
+            finally:
                 db.rollback()
-                _retry_or_fail(db, job, error)
-                if job.status == "failed" and _should_cleanup_after_failure(error):
-                    _cleanup_staging(str(job.file_id), str(record.user_id) if record else None)
-            except Exception as error:
-                unknown_error = IngestionError("UNKNOWN_ERROR", str(error), retryable=True)
-                db.rollback()
-                _retry_or_fail(db, job, unknown_error)
-                if job.status == "failed" and _should_cleanup_after_failure(unknown_error):
-                    _cleanup_staging(str(job.file_id), str(record.user_id) if record else None)
         time.sleep(SLEEP_SECONDS)
 
 

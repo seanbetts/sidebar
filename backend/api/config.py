@@ -1,4 +1,5 @@
 """Configuration settings for sideBar Skills API."""
+
 import os
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse, urlunparse
@@ -39,7 +40,12 @@ def _build_database_url() -> str:
     db_name = os.getenv("SUPABASE_DB_NAME", "postgres")
     port: str = os.getenv("SUPABASE_DB_PORT", "5432")
     sslmode = os.getenv("SUPABASE_SSLMODE", "require")
-    use_pooler = os.getenv("SUPABASE_USE_POOLER", "true").lower() in {"1", "true", "yes", "on"}
+    use_pooler = os.getenv("SUPABASE_USE_POOLER", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     pooler_mode = os.getenv("SUPABASE_POOLER_MODE", "transaction").lower()
     if use_pooler and app_env not in {"prod", "production"}:
         pooler_mode = "transaction"
@@ -111,6 +117,7 @@ class Settings(BaseSettings):
 
     # Jina reader API
     jina_api_key: str = ""
+    web_save_mode: str = os.getenv("WEB_SAVE_MODE", "local")
 
     # Google Places API
     google_places_api_key: str | None = None
@@ -122,7 +129,7 @@ class Settings(BaseSettings):
     ]
 
     # Resource limits
-    skill_timeout_seconds: int = 30
+    skill_timeout_seconds: int = int(os.getenv("SKILL_TIMEOUT_SECONDS", "60"))
     skill_max_output_bytes: int = 10 * 1024 * 1024  # 10MB
     skill_max_concurrent: int = 5
 
@@ -135,15 +142,25 @@ class Settings(BaseSettings):
     r2_secret_access_key: str = ""
 
     # Things bridge
-    things_bridge_stale_seconds: int = int(os.getenv("THINGS_BRIDGE_STALE_SECONDS", "120"))
-    things_bridge_timeout_seconds: int = int(os.getenv("THINGS_BRIDGE_TIMEOUT_SECONDS", "10"))
-    things_bridge_backend_url: str = os.getenv("THINGS_BRIDGE_BACKEND_URL", "http://localhost:8001")
+    things_bridge_stale_seconds: int = int(
+        os.getenv("THINGS_BRIDGE_STALE_SECONDS", "120")
+    )
+    things_bridge_timeout_seconds: int = int(
+        os.getenv("THINGS_BRIDGE_TIMEOUT_SECONDS", "10")
+    )
+    things_bridge_backend_url: str = os.getenv(
+        "THINGS_BRIDGE_BACKEND_URL", "http://localhost:8001"
+    )
     things_bridge_device_id: str | None = os.getenv("THINGS_BRIDGE_DEVICE_ID") or None
 
     # Observability
     sentry_dsn: str | None = os.getenv("SENTRY_DSN") or None
-    sentry_traces_sample_rate: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
-    sentry_profiles_sample_rate: float = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1"))
+    sentry_traces_sample_rate: float = float(
+        os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")
+    )
+    sentry_profiles_sample_rate: float = float(
+        os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")
+    )
 
     # Future JWT config (Phase 2)
     # jwt_secret: str = None
@@ -155,10 +172,11 @@ class Settings(BaseSettings):
         case_sensitive=False,
         env_file=".env.test" if os.getenv("TESTING") else ".env",
         env_file_encoding="utf-8",
-        extra="ignore"  # Ignore extra environment variables (like DOPPLER_TOKEN)
+        extra="ignore",  # Ignore extra environment variables (like DOPPLER_TOKEN)
     )
 
     def __init__(self, **kwargs):
+        """Initialize settings and validate production-only constraints."""
         super().__init__(**kwargs)
         if self.app_env in {"prod", "production"} and self.disable_ssl_verify:
             raise ValueError(

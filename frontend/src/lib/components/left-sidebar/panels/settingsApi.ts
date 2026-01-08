@@ -5,11 +5,11 @@
  * @throws Error when the request fails.
  */
 export async function fetchSettings() {
-  const response = await fetch('/api/v1/settings');
-  if (!response.ok) {
-    throw new Error('Failed to load settings');
-  }
-  return response.json();
+	const response = await fetch('/api/v1/settings');
+	if (!response.ok) {
+		throw new Error('Failed to load settings');
+	}
+	return response.json();
 }
 
 /**
@@ -20,17 +20,17 @@ export async function fetchSettings() {
  * @throws Error when the request fails.
  */
 export async function saveSettings(payload: Record<string, unknown>) {
-  const response = await fetch('/api/v1/settings', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+	const response = await fetch('/api/v1/settings', {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload)
+	});
 
-  if (!response.ok) {
-    throw new Error('Failed to save settings');
-  }
+	if (!response.ok) {
+		throw new Error('Failed to save settings');
+	}
 
-  return response.json();
+	return response.json();
 }
 
 /**
@@ -40,12 +40,12 @@ export async function saveSettings(payload: Record<string, unknown>) {
  * @throws Error when the request fails.
  */
 export async function fetchSkills() {
-  const response = await fetch('/api/v1/skills');
-  if (!response.ok) {
-    throw new Error('Failed to load skills');
-  }
-  const data = await response.json();
-  return Array.isArray(data?.skills) ? data.skills : [];
+	const response = await fetch('/api/v1/skills');
+	if (!response.ok) {
+		throw new Error('Failed to load skills');
+	}
+	const data = await response.json();
+	return Array.isArray(data?.skills) ? data.skills : [];
 }
 
 /**
@@ -56,12 +56,12 @@ export async function fetchSkills() {
  * @throws Error when the request fails.
  */
 export async function fetchLocationSuggestions(query: string) {
-  const response = await fetch(`/api/v1/places/autocomplete?input=${encodeURIComponent(query)}`);
-  if (!response.ok) {
-    throw new Error('Failed to load locations');
-  }
-  const data = await response.json();
-  return Array.isArray(data?.predictions) ? data.predictions : [];
+	const response = await fetch(`/api/v1/places/autocomplete?input=${encodeURIComponent(query)}`);
+	if (!response.ok) {
+		throw new Error('Failed to load locations');
+	}
+	const data = await response.json();
+	return Array.isArray(data?.predictions) ? data.predictions : [];
 }
 
 /**
@@ -72,18 +72,18 @@ export async function fetchLocationSuggestions(query: string) {
  * @throws Error when the request fails.
  */
 export async function uploadProfileImage(file: File) {
-  const response = await fetch('/api/v1/settings/profile-image', {
-    method: 'POST',
-    headers: {
-      'Content-Type': file.type || 'application/octet-stream',
-      'X-Filename': file.name
-    },
-    body: file
-  });
-  if (!response.ok) {
-    throw new Error('Failed to upload profile image');
-  }
-  return response.json();
+	const response = await fetch('/api/v1/settings/profile-image', {
+		method: 'POST',
+		headers: {
+			'Content-Type': file.type || 'application/octet-stream',
+			'X-Filename': file.name
+		},
+		body: file
+	});
+	if (!response.ok) {
+		throw new Error('Failed to upload profile image');
+	}
+	return response.json();
 }
 
 /**
@@ -92,36 +92,36 @@ export async function uploadProfileImage(file: File) {
  * @throws Error when the request fails.
  */
 export async function deleteProfileImage() {
-  const response = await fetch('/api/v1/settings/profile-image', {
-    method: 'DELETE'
-  });
-  if (!response.ok) {
-    throw new Error('Failed to delete profile image');
-  }
+	const response = await fetch('/api/v1/settings/profile-image', {
+		method: 'DELETE'
+	});
+	if (!response.ok) {
+		throw new Error('Failed to delete profile image');
+	}
 }
 
 /**
  * Fetch the Shortcuts PAT token.
  */
 export async function fetchShortcutsPat() {
-  const response = await fetch('/api/v1/settings/shortcuts/pat');
-  if (!response.ok) {
-    throw new Error('Failed to load shortcuts token');
-  }
-  const data = await response.json();
-  return data?.token || '';
+	const response = await fetch('/api/v1/settings/shortcuts/pat');
+	if (!response.ok) {
+		throw new Error('Failed to load shortcuts token');
+	}
+	const data = await response.json();
+	return data?.token || '';
 }
 
 /**
  * Rotate the Shortcuts PAT token.
  */
 export async function rotateShortcutsPat() {
-  const response = await fetch('/api/v1/settings/shortcuts/pat/rotate', {
-    method: 'POST'
-  });
-  if (!response.ok) {
-    throw new Error('Failed to rotate shortcuts token');
-  }
-  const data = await response.json();
-  return data?.token || '';
+	const response = await fetch('/api/v1/settings/shortcuts/pat/rotate', {
+		method: 'POST'
+	});
+	if (!response.ok) {
+		throw new Error('Failed to rotate shortcuts token');
+	}
+	const data = await response.json();
+	return data?.token || '';
 }

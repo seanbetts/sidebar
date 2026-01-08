@@ -1,6 +1,19 @@
 """Shared file operations for skills backed by storage + metadata."""
+
 from __future__ import annotations
 
+from api.services.file_search_service import FileSearchService
+from api.services.skill_file_ops_ingestion import (
+    copy_path,
+    delete_path,
+    download_file,
+    info,
+    list_entries,
+    move_path,
+    read_text,
+    upload_file,
+    write_text,
+)
 from api.services.skill_file_ops_paths import (
     PROFILE_IMAGES_PREFIX,
     bucket_key,
@@ -9,18 +22,6 @@ from api.services.skill_file_ops_paths import (
     normalize_path,
     relative_path,
     session_for_user,
-)
-from api.services.file_search_service import FileSearchService
-from api.services.skill_file_ops_ingestion import (
-    delete_path,
-    download_file,
-    info,
-    list_entries,
-    copy_path,
-    move_path,
-    read_text,
-    upload_file,
-    write_text,
 )
 
 __all__ = [

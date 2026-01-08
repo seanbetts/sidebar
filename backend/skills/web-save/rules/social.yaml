@@ -1,0 +1,49 @@
+- id: twitter-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "x.com"
+  remove:
+    - "header"
+    - "nav"
+    - "aside"
+
+- id: reddit-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "reddit.com"
+  remove:
+    - "aside"
+    - ".promotedlink"
+    - ".ListingLayout-outerContainer"
+
+- id: linkedin-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "linkedin.com"
+  remove:
+    - ".global-nav"
+    - ".right-rail"
+    - ".share-box"
+
+- id: producthunt-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "producthunt.com"
+  remove:
+    - "aside"
+    - ".header"
+    - ".comments"
+
+- id: youtube-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "youtube.com"
+  remove:
+    - "#related"
+    - "#comments"
+    - "#secondary"

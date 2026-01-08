@@ -1,5 +1,4 @@
 import pytest
-
 from api.services import tool_mapper as tool_mapper_module
 from api.services.tool_mapper import ToolMapper
 
@@ -106,7 +105,9 @@ async def test_execute_tool_ui_theme_handler(monkeypatch):
         return {"success": True, "data": {"theme": params.get("theme")}}
 
     monkeypatch.setattr(tool_mapper_module, "handle_ui_theme", fake_handle_ui_theme)
-    monkeypatch.setattr(tool_mapper_module.AuditLogger, "log_tool_call", lambda **_: None)
+    monkeypatch.setattr(
+        tool_mapper_module.AuditLogger, "log_tool_call", lambda **_: None
+    )
 
     result = await mapper.execute_tool("Set UI Theme", {"theme": "dark"})
     assert result["success"] is True

@@ -1,11 +1,11 @@
 """Skills catalog API router."""
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from api.auth import verify_bearer_token
 from api.config import settings
 from api.services.skill_catalog_service import SkillCatalogService
-
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 

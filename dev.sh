@@ -15,6 +15,7 @@ THINGS_BRIDGE_PLIST="$HOME/Library/LaunchAgents/com.sidebar.things-bridge.plist"
 THINGS_BRIDGE_LABEL="com.sidebar.things-bridge"
 REPO_ROOT="$(pwd)"
 use_doppler=0
+RESTART_LOCK="/tmp/sidebar-dev-restart.lock"
 
 load_env() {
   if [[ -f ".env" ]]; then
@@ -112,6 +113,11 @@ is_things_bridge_process() {
   [[ "${command}" == *"things_bridge.py"* ]]
 }
 
+is_ingestion_process() {
+  local command="$1"
+  [[ "${command}" == *"workers/ingestion_worker.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
+}
+
 stop_pid() {
   local pid="$1"
   if kill -0 "${pid}" >/dev/null 2>&1; then
@@ -121,6 +127,37 @@ stop_pid() {
   if kill -0 "${pid}" >/dev/null 2>&1; then
     kill -9 "${pid}" || true
   fi
+}
+
+cleanup_restart_processes() {
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return
+  fi
+  while read -r pid; do
+    [[ -z "${pid}" ]] && continue
+    [[ "${pid}" == "$$" ]] && continue
+    command=$(pid_command "${pid}")
+    if [[ "${command}" == *"./dev.sh restart"* ]]; then
+      echo "Cleaning stale restart process (PID ${pid})..."
+      stop_pid "${pid}"
+    fi
+  done < <(pgrep -f "./dev.sh restart" || true)
+}
+
+ensure_restart_lock() {
+  if [[ "${command}" != "restart" ]]; then
+    return
+  fi
+  if [[ -f "${RESTART_LOCK}" ]]; then
+    local pid
+    pid=$(cat "${RESTART_LOCK}")
+    if [[ -n "${pid}" ]] && kill -0 "${pid}" >/dev/null 2>&1; then
+      echo "Restart already running (PID ${pid})."
+      exit 1
+    fi
+  fi
+  echo "$$" >"${RESTART_LOCK}"
+  trap 'rm -f "${RESTART_LOCK}"' EXIT
 }
 
 ensure_port_available() {
@@ -204,7 +241,7 @@ start_backend() {
     else
       "${REPO_ROOT}/backend/.venv/bin/python" -m uvicorn api.main:app --reload --port 8001 --host 0.0.0.0
     fi
-  }) >"${BACKEND_LOG}" 2>&1 &
+  }) >"${BACKEND_LOG}" 2>&1 </dev/null &
   echo $! >"${BACKEND_PID}"
 }
 
@@ -212,9 +249,9 @@ start_frontend() {
   ensure_port_available 3000 frontend
   echo "Starting frontend..."
   if [[ ${use_doppler} -eq 1 ]]; then
-    (cd frontend && doppler run --preserve-env="SUPABASE_URL" -- npm run dev) >"${FRONTEND_LOG}" 2>&1 &
+    (cd frontend && doppler run --preserve-env="SUPABASE_URL" -- npm run dev) >"${FRONTEND_LOG}" 2>&1 </dev/null &
   else
-    (cd frontend && npm run dev) >"${FRONTEND_LOG}" 2>&1 &
+    (cd frontend && npm run dev) >"${FRONTEND_LOG}" 2>&1 </dev/null &
   fi
   echo $! >"${FRONTEND_PID}"
 }
@@ -236,7 +273,7 @@ start_ingestion_worker() {
     else
       env PYTHONPATH=. PYTHONUNBUFFERED=1 "${REPO_ROOT}/backend/.venv/bin/python" workers/ingestion_worker.py
     fi
-  }) >"${INGESTION_LOG}" 2>&1 &
+  }) >"${INGESTION_LOG}" 2>&1 </dev/null &
   echo $! >"${INGESTION_PID}"
 }
 
@@ -249,7 +286,7 @@ start_things_bridge() {
     return
   fi
   echo "Starting Things bridge..."
-  (env THINGS_BACKEND_URL="${THINGS_BACKEND_URL:-http://localhost:8001}" python3 bridge/things_bridge.py) >"${THINGS_BRIDGE_LOG}" 2>&1 &
+  (env THINGS_BACKEND_URL="${THINGS_BACKEND_URL:-http://localhost:8001}" python3 bridge/things_bridge.py) >"${THINGS_BRIDGE_LOG}" 2>&1 </dev/null &
   echo $! >"${THINGS_BRIDGE_PID}"
 }
 
@@ -378,10 +415,25 @@ status_service() {
   local name="$2"
   local url="$3"
   local log_file="$4"
+  local role="${5:-}"
   if [[ -f "${pid_file}" ]]; then
     local pid
     pid=$(cat "${pid_file}")
     if kill -0 "${pid}" >/dev/null 2>&1; then
+      local command
+      command=$(pid_command "${pid}")
+      if [[ "${role}" == "backend" ]] && ! is_backend_process "${command}"; then
+        echo "✗ ${name} not running (stale PID: ${pid})"
+        return
+      fi
+      if [[ "${role}" == "frontend" ]] && ! is_frontend_process "${command}"; then
+        echo "✗ ${name} not running (stale PID: ${pid})"
+        return
+      fi
+      if [[ "${role}" == "ingestion" ]] && ! is_ingestion_process "${command}"; then
+        echo "✗ ${name} not running (stale PID: ${pid})"
+        return
+      fi
       echo "✓ ${name} running (PID: ${pid})"
       echo "  URL: ${url}"
       echo "  Logs: ${log_file}"
@@ -446,6 +498,8 @@ command="${1:-start}"
 
 load_env
 detect_doppler
+cleanup_restart_processes
+ensure_restart_lock
 
 case "${command}" in
   start)
@@ -461,6 +515,7 @@ case "${command}" in
     stop_things_bridge
     ;;
   restart)
+    cleanup_restart_processes
     stop_service "${BACKEND_PID}" "backend"
     stop_service "${FRONTEND_PID}" "frontend"
     stop_service "${INGESTION_PID}" "ingestion worker"
@@ -474,9 +529,9 @@ case "${command}" in
     cleanup_services
     ;;
   status)
-    status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}"
-    status_service "${FRONTEND_PID}" "Frontend" "http://localhost:3000" "${FRONTEND_LOG}"
-    status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}"
+    status_service "${BACKEND_PID}" "Backend" "http://localhost:8001" "${BACKEND_LOG}" "backend"
+    status_service "${FRONTEND_PID}" "Frontend" "http://localhost:3000" "${FRONTEND_LOG}" "frontend"
+    status_service "${INGESTION_PID}" "Ingestion worker" "n/a" "${INGESTION_LOG}" "ingestion"
     status_things_bridge
     ;;
   logs)

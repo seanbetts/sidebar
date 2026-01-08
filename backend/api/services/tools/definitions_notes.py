@@ -1,4 +1,5 @@
 """Notes tool definitions."""
+
 from __future__ import annotations
 
 from api.services.tools import parameter_mapper as pm
@@ -8,13 +9,19 @@ def get_notes_definitions() -> dict:
     """Return notes tool definitions."""
     return {
         "Create Note": {
-            "description": "Create a searchable, persistent markdown note in the database with metadata. Notes are visible in the UI and fully searchable. Preferred for remembering information across sessions.",
+            "description": (
+                "Create a searchable, persistent markdown note in the database "
+                "with metadata. Notes are visible in the UI and fully searchable. "
+                "Preferred for remembering information across sessions."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {
                     "title": {
                         "type": "string",
-                        "description": "Optional note title (defaults to first line of content)",
+                        "description": (
+                            "Optional note title (defaults to first line of content)"
+                        ),
                     },
                     "content": {"type": "string", "description": "Markdown content"},
                     "folder": {"type": "string", "description": "Optional folder path"},
@@ -74,7 +81,10 @@ def get_notes_definitions() -> dict:
                 "type": "object",
                 "properties": {
                     "note_id": {"type": "string", "description": "Note UUID"},
-                    "folder": {"type": "string", "description": "Destination folder path"},
+                    "folder": {
+                        "type": "string",
+                        "description": "Destination folder path",
+                    },
                 },
                 "required": ["note_id", "folder"],
             },

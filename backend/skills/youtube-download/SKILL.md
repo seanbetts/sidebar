@@ -98,6 +98,26 @@ Video-Title-Here.mp4
 Audio-Title-Here.mp3
 ```
 
+## Storage Output
+
+When upload is enabled, the JSON payload includes ingestion metadata:
+
+```json
+{
+  "file_id": "<uuid>",
+  "ai_path": "{user_id}/files/{file_id}/ai/ai.md",
+  "derivatives": [
+    {
+      "kind": "video_original",
+      "path": "{user_id}/files/{file_id}/derivatives/video.mp4",
+      "content_type": "video/mp4"
+    }
+  ]
+}
+```
+
+Use `audio_original` when `--audio` is set.
+
 ## Error Handling
 
 The skill handles common issues:

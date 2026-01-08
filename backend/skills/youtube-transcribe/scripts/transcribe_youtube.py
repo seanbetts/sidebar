@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""
-Transcribe YouTube Video
+"""Transcribe YouTube Video
 
 Download YouTube audio and transcribe it using OpenAI's transcription API.
 Combines youtube-download and audio-transcribe skills.
 """
 
-import sys
-import json
 import argparse
-import subprocess
-import time
+import contextlib
+import importlib.util
+import io
+import json
+import os
+import sys
 import tempfile
+import time
 import urllib.parse
+from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 # Add backend to sys.path for database mode.
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
@@ -33,17 +36,34 @@ except Exception:
 # Default directories (R2)
 DEFAULT_TRANSCRIPT_DIR = "files/videos/{video_id}/ai"
 
+
+def _ensure_stdio() -> None:
+    for fd in (0, 1, 2):
+        try:
+            os.fstat(fd)
+        except OSError:
+            mode = os.O_RDONLY if fd == 0 else os.O_WRONLY
+            devnull_fd = os.open(os.devnull, mode)
+            os.dup2(devnull_fd, fd)
+            os.close(devnull_fd)
+
+
 # Script paths - dynamically locate based on this script's location
 SCRIPT_DIR = Path(__file__).parent.parent.parent  # Go up to skills/
 PROJECT_ROOT = SCRIPT_DIR.parent  # Go up to project root
 
-YOUTUBE_DOWNLOAD_SCRIPT = SCRIPT_DIR / "youtube-download" / "scripts" / "download_video.py"
-AUDIO_TRANSCRIBE_SCRIPT = SCRIPT_DIR / "audio-transcribe" / "scripts" / "transcribe_audio.py"
+YOUTUBE_DOWNLOAD_SCRIPT = (
+    SCRIPT_DIR / "youtube-download" / "scripts" / "download_video.py"
+)
+AUDIO_TRANSCRIBE_SCRIPT = (
+    SCRIPT_DIR / "audio-transcribe" / "scripts" / "transcribe_audio.py"
+)
 
 
-def update_transcript_metadata(transcript_path: str, youtube_url: str, title: str) -> None:
-    """
-    Update transcript metadata to include YouTube URL instead of audio filename.
+def update_transcript_metadata(
+    transcript_path: str, youtube_url: str, title: str
+) -> None:
+    """Update transcript metadata to include YouTube URL instead of audio filename.
 
     Args:
         transcript_path: Path to the transcript file
@@ -51,29 +71,58 @@ def update_transcript_metadata(transcript_path: str, youtube_url: str, title: st
         title: Video title
     """
     try:
-        with open(transcript_path, 'r', encoding='utf-8') as f:
+        with open(transcript_path, encoding="utf-8") as f:
             content = f.read()
 
         # Replace the "Original file:" line with YouTube URL
-        lines = content.split('\n')
+        lines = content.split("\n")
         updated_lines = []
         for line in lines:
-            if line.startswith('# Original file:'):
-                updated_lines.append(f'# YouTube URL: {youtube_url}')
-                updated_lines.append(f'# Video title: {title}')
+            if line.startswith("# Original file:"):
+                updated_lines.append(f"# YouTube URL: {youtube_url}")
+                updated_lines.append(f"# Video title: {title}")
             else:
                 updated_lines.append(line)
 
         # Write back
-        with open(transcript_path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(updated_lines))
+        with open(transcript_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(updated_lines))
 
     except Exception as e:
         # Don't fail the whole operation if metadata update fails
         print(f"Warning: Could not update transcript metadata: {e}")
 
 
-def extract_video_id(url: str) -> Optional[str]:
+def _build_storage_payload(
+    user_id: str | None,
+    record: Any,
+    fallback: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    file_id = None
+    if record is not None:
+        file_id = str(record.id)
+    elif fallback:
+        file_id = fallback.get("file_id")
+    if not user_id or not file_id:
+        return {
+            "file_id": None,
+            "ai_path": None,
+            "derivatives": [],
+        }
+    return {
+        "file_id": file_id,
+        "ai_path": f"{user_id}/files/{file_id}/ai/ai.md",
+        "derivatives": [
+            {
+                "kind": "text_original",
+                "path": f"{user_id}/files/{file_id}/derivatives/source.txt",
+                "content_type": "text/plain",
+            }
+        ],
+    }
+
+
+def extract_video_id(url: str) -> str | None:
     """Extract a YouTube video id from a URL."""
     try:
         parsed = urllib.parse.urlparse(url)
@@ -88,64 +137,38 @@ def extract_video_id(url: str) -> Optional[str]:
         return None
     return None
 
-def run_command(cmd: list, stage: str) -> Dict[str, Any]:
-    """
-    Run a command and return parsed JSON output.
 
-    Args:
-        cmd: Command to run as list of arguments
-        stage: Stage name for error reporting ("download" or "transcription")
-
-    Returns:
-        Parsed JSON output from command
-
-    Raises:
-        RuntimeError: If command fails
-    """
+def _load_skill_function(
+    path: Path, module_name: str, func_name: str
+) -> Callable[..., dict[str, Any]]:
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if not spec or not spec.loader:
+        raise RuntimeError(f"Failed to load skill module at {path}")
+    module = importlib.util.module_from_spec(spec)
     try:
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False
-        )
-
-        if result.returncode != 0:
-            # Try to parse error JSON from stderr
-            try:
-                error_data = json.loads(result.stderr)
-                raise RuntimeError(
-                    f"{stage.capitalize()} failed: {error_data.get('error', {}).get('message', 'Unknown error')}"
-                )
-            except json.JSONDecodeError:
-                # If not JSON, use raw stderr
-                raise RuntimeError(f"{stage.capitalize()} failed: {result.stderr}")
-
-        # Parse successful JSON output
-        try:
-            return json.loads(result.stdout)
-        except json.JSONDecodeError:
-            raise RuntimeError(f"Failed to parse {stage} output as JSON")
-
-    except subprocess.SubprocessError as e:
-        raise RuntimeError(f"{stage.capitalize()} command failed: {e}") from e
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load skill module at {path}: {exc}") from exc
+    func = getattr(module, func_name, None)
+    if not callable(func):
+        raise RuntimeError(f"Skill function {func_name} not found in {path}")
+    return func
 
 
 def transcribe_youtube(
     url: str,
     language: str = "en",
     model: str = "gpt-4o-transcribe",
-    output_dir: Optional[str] = None,
-    output_name: Optional[str] = None,
-    audio_dir: Optional[str] = None,
+    output_dir: str | None = None,
+    output_name: str | None = None,
+    audio_dir: str | None = None,
     keep_audio: bool = False,
+    upload_transcript: bool = True,
     database: bool = False,
-    folder: Optional[str] = None,
-    user_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    """
-    Download YouTube audio and transcribe it.
+    folder: str | None = None,
+    user_id: str | None = None,
+) -> dict[str, Any]:
+    """Download YouTube audio and transcribe it.
 
     Args:
         url: YouTube video URL
@@ -154,6 +177,7 @@ def transcribe_youtube(
         output_dir: R2 folder for transcripts (default: Transcripts)
         audio_dir: R2 folder for audio files (default: Videos)
         keep_audio: Keep audio file after transcription
+        upload_transcript: Upload transcript to storage
 
     Returns:
         Dictionary with combined results from both stages
@@ -161,6 +185,7 @@ def transcribe_youtube(
     Raises:
         RuntimeError: If download or transcription fails
     """
+    _ensure_stdio()
     start_time = time.time()
 
     if not user_id:
@@ -181,26 +206,25 @@ def transcribe_youtube(
     print("Downloading YouTube Audio...")
     print("=" * 80)
 
-    download_cmd = [
-        "python3",
-        str(YOUTUBE_DOWNLOAD_SCRIPT),
-        url,
-        "--audio",
-        "--json",
-        "--output", audio_dir or "files/videos",
-        "--user-id", user_id,
-        "--temp-dir", str(target_audio_dir),
-        "--keep-local",
-        "--no-upload",
-    ]
-
-    download_result = run_command(download_cmd, "download")
-
-    if not download_result.get('success'):
-        raise RuntimeError(f"Download failed: {download_result.get('error', {}).get('message', 'Unknown error')}")
-
-    download_data = download_result['data']
-    audio_file_path = Path(download_data.get("local_path") or (Path(download_data['output_dir']) / download_data['filename']))
+    download_youtube = _load_skill_function(
+        YOUTUBE_DOWNLOAD_SCRIPT,
+        "youtube_download_skill",
+        "download_youtube",
+    )
+    download_data = download_youtube(
+        url=url,
+        audio_only=True,
+        output_dir=audio_dir or "files/videos",
+        quiet=True,
+        user_id=user_id,
+        temp_dir=str(target_audio_dir),
+        keep_local=True,
+        upload=False,
+    )
+    audio_file_path = Path(
+        download_data.get("local_path")
+        or (Path(download_data["output_dir"]) / download_data["filename"])
+    )
 
     print(f"Title: {download_data['title']}")
     print(f"Saved to: {download_data.get('r2_path') or download_data['output_dir']}")
@@ -212,44 +236,55 @@ def transcribe_youtube(
     print("Transcribing Audio...")
     print("=" * 80)
 
-    transcribe_cmd = [
-        "python3",
-        str(AUDIO_TRANSCRIBE_SCRIPT),
-        str(audio_file_path),
-        "--language", language,
-        "--model", model,
-        "--json",
-        "--user-id", user_id,
-        "--output-dir", transcript_dir,
-        "--output-name", transcript_name,
-        "--temp-dir", str(temp_root / "transcripts"),
-        "--keep-local",
-    ]
+    transcribe_audio = _load_skill_function(
+        AUDIO_TRANSCRIBE_SCRIPT,
+        "audio_transcribe_skill",
+        "transcribe_audio",
+    )
 
     try:
-        transcribe_result = run_command(transcribe_cmd, "transcription")
+        transcribe_data = transcribe_audio(
+            str(audio_file_path),
+            language=language,
+            model=model,
+            output_dir=transcript_dir,
+            output_name=transcript_name,
+            temp_dir=str(temp_root / "transcripts"),
+            keep_local=True,
+            user_id=user_id if upload_transcript else None,
+            upload_result=upload_transcript,
+        )
 
-        if not transcribe_result.get('success'):
-            raise RuntimeError(f"Transcription failed: {transcribe_result.get('error', {}).get('message', 'Unknown error')}")
-
-        transcribe_data = transcribe_result['data']
-
-        transcript_path = Path(transcribe_data.get("local_path") or transcribe_data['output_path'])
+        transcript_path = Path(
+            transcribe_data.get("local_path") or transcribe_data["output_path"]
+        )
 
         print(f"File: {audio_file_path.name}")
         print(f"Transcript: {transcript_path}")
 
         # Update transcript metadata with YouTube URL
-        update_transcript_metadata(
-            str(transcript_path),
-            url,
-            download_data['title']
+        update_transcript_metadata(str(transcript_path), url, download_data["title"])
+        uploaded_record = None
+        if (
+            upload_transcript
+            and upload_file is not None
+            and user_id
+            and transcribe_data.get("output_path")
+        ):
+            uploaded_record = upload_file(
+                user_id,
+                transcribe_data["output_path"],
+                transcript_path,
+                content_type="text/plain",
+            )
+        storage_payload = _build_storage_payload(
+            user_id, uploaded_record, transcribe_data
         )
-        if upload_file is not None and transcribe_data.get("output_path"):
-            upload_file(user_id, transcribe_data["output_path"], transcript_path, content_type="text/plain")
 
         # Calculate transcription duration
-        transcription_duration = int(time.time() - start_time) - download_data['duration_seconds']
+        transcription_duration = (
+            int(time.time() - start_time) - download_data["duration_seconds"]
+        )
 
         # Stage 3: Cleanup (if not keeping audio)
         audio_kept = keep_audio
@@ -290,27 +325,31 @@ def transcribe_youtube(
 
         usage = transcribe_data.get("usage") or {}
         usage_details = usage.get("input_token_details") or {}
+        transcript_r2_path = transcribe_data.get("output_path")
+        if uploaded_record is not None:
+            transcript_r2_path = uploaded_record.path
         result = {
-            'youtube_url': url,
-            'title': download_data['title'],
-            'audio_file': download_data.get('r2_path') or str(audio_file_path),
-            'audio_kept': audio_kept,
-            'transcript_file': str(transcript_path),
-            'transcript_local_path': str(transcript_path),
-            'transcript_r2_path': transcribe_data.get('output_path'),
-            'transcription_usage_total_tokens': usage.get('total_tokens'),
-            'transcription_usage_input_tokens': usage.get('input_tokens'),
-            'transcription_usage_output_tokens': usage.get('output_tokens'),
-            'transcription_usage_audio_tokens': usage_details.get('audio_tokens'),
-            'language': language,
-            'model': model,
-            'download_duration_seconds': download_data['duration_seconds'],
-            'transcription_duration_seconds': transcription_duration,
-            'file_size': transcribe_data.get('file_size', 'Unknown'),
-            'audio_duration': transcribe_data.get('duration', 'Unknown')
+            "youtube_url": url,
+            "title": download_data["title"],
+            "audio_file": download_data.get("r2_path") or str(audio_file_path),
+            "audio_kept": audio_kept,
+            "transcript_file": str(transcript_path),
+            "transcript_local_path": str(transcript_path),
+            "transcript_r2_path": transcript_r2_path,
+            "transcription_usage_total_tokens": usage.get("total_tokens"),
+            "transcription_usage_input_tokens": usage.get("input_tokens"),
+            "transcription_usage_output_tokens": usage.get("output_tokens"),
+            "transcription_usage_audio_tokens": usage_details.get("audio_tokens"),
+            "language": language,
+            "model": model,
+            "download_duration_seconds": download_data["duration_seconds"],
+            "transcription_duration_seconds": transcription_duration,
+            "file_size": transcribe_data.get("file_size", "Unknown"),
+            "audio_duration": transcribe_data.get("duration", "Unknown"),
         }
+        result.update(storage_payload)
         if note_data:
-            result['note'] = note_data
+            result["note"] = note_data
         return result
 
     except Exception:
@@ -324,9 +363,8 @@ def transcribe_youtube(
         raise
 
 
-def format_human_readable(result: Dict[str, Any]) -> str:
-    """
-    Format result in human-readable format.
+def format_human_readable(result: dict[str, Any]) -> str:
+    """Format result in human-readable format.
 
     Args:
         result: Result dictionary from transcribe_youtube
@@ -350,7 +388,7 @@ def format_human_readable(result: Dict[str, Any]) -> str:
     lines.append(f"Transcript: {result['transcript_file']}")
     lines.append(f"Audio file: {result['audio_file']}")
 
-    if result['audio_kept']:
+    if result["audio_kept"]:
         lines.append("  Status: Kept")
     else:
         lines.append("  Status: Removed (use --keep-audio to keep)")
@@ -359,23 +397,23 @@ def format_human_readable(result: Dict[str, Any]) -> str:
     lines.append(f"File size: {result['file_size']}")
     lines.append(f"Audio duration: {result['audio_duration']}")
 
-    download_min = result['download_duration_seconds'] // 60
-    download_sec = result['download_duration_seconds'] % 60
-    transcribe_min = result['transcription_duration_seconds'] // 60
-    transcribe_sec = result['transcription_duration_seconds'] % 60
+    download_min = result["download_duration_seconds"] // 60
+    download_sec = result["download_duration_seconds"] % 60
+    transcribe_min = result["transcription_duration_seconds"] // 60
+    transcribe_sec = result["transcription_duration_seconds"] % 60
 
     lines.append(f"Download time: {download_min}m {download_sec}s")
     lines.append(f"Transcription time: {transcribe_min}m {transcribe_sec}s")
 
     lines.append("=" * 80)
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def main():
     """Main entry point for transcribe_youtube script."""
     parser = argparse.ArgumentParser(
-        description='Download YouTube audio and transcribe it',
+        description="Download YouTube audio and transcribe it",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"""
 Default Transcript Directory (R2): {DEFAULT_TRANSCRIPT_DIR}
@@ -405,87 +443,80 @@ Examples:
 Requirements:
   - ffmpeg must be installed (brew install ffmpeg on macOS)
   - OPENAI_API_KEY must be set (stored in Doppler secrets)
-        """
+        """,
     )
 
     # Required argument
-    parser.add_argument(
-        'url',
-        help='YouTube video URL'
-    )
+    parser.add_argument("url", help="YouTube video URL")
 
     # Optional arguments
     parser.add_argument(
-        '--language',
-        default='en',
-        help='Language code for transcription (default: en)'
+        "--language", default="en", help="Language code for transcription (default: en)"
     )
     parser.add_argument(
-        '--model',
-        default='gpt-4o-transcribe',
-        choices=['gpt-4o-transcribe', 'gpt-4o-mini-transcribe', 'whisper-1'],
-        help='Transcription model (default: gpt-4o-transcribe)'
+        "--model",
+        default="gpt-4o-transcribe",
+        choices=["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"],
+        help="Transcription model (default: gpt-4o-transcribe)",
     )
     parser.add_argument(
-        '--output-dir',
-        help=f'R2 folder for transcripts (default: {DEFAULT_TRANSCRIPT_DIR})'
+        "--output-dir",
+        help=f"R2 folder for transcripts (default: {DEFAULT_TRANSCRIPT_DIR})",
+    )
+    parser.add_argument("--output-name", help="Transcript filename (default: ai.md)")
+    parser.add_argument("--audio-dir", help="R2 folder for audio (default: Videos)")
+    parser.add_argument(
+        "--keep-audio",
+        action="store_true",
+        help="Keep audio file after transcription (default: remove)",
     )
     parser.add_argument(
-        '--output-name',
-        help='Transcript filename (default: ai.md)'
+        "--database", action="store_true", help="Save transcript to the database"
+    )
+    parser.add_argument("--user-id", required=True, help="User id for storage access")
+    parser.add_argument(
+        "--folder",
+        help="Database folder for transcript note (default: Transcripts/YouTube)",
     )
     parser.add_argument(
-        '--audio-dir',
-        help='R2 folder for audio (default: Videos)'
-    )
-    parser.add_argument(
-        '--keep-audio',
-        action='store_true',
-        help='Keep audio file after transcription (default: remove)'
-    )
-    parser.add_argument(
-        '--database',
-        action='store_true',
-        help='Save transcript to the database'
-    )
-    parser.add_argument(
-        '--user-id',
-        required=True,
-        help='User id for storage access'
-    )
-    parser.add_argument(
-        '--folder',
-        help='Database folder for transcript note (default: Transcripts/YouTube)'
-    )
-    parser.add_argument(
-        '--json',
-        action='store_true',
-        help='Output results in JSON format'
+        "--json", action="store_true", help="Output results in JSON format"
     )
 
     args = parser.parse_args()
 
     try:
         # Transcribe the YouTube video
-        result = transcribe_youtube(
-            url=args.url,
-            language=args.language,
-            model=args.model,
-            output_dir=args.output_dir,
-            output_name=args.output_name,
-            audio_dir=args.audio_dir,
-            keep_audio=args.keep_audio,
-            database=args.database,
-            folder=args.folder,
-            user_id=args.user_id,
-        )
+        if args.json:
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = transcribe_youtube(
+                    url=args.url,
+                    language=args.language,
+                    model=args.model,
+                    output_dir=args.output_dir,
+                    output_name=args.output_name,
+                    audio_dir=args.audio_dir,
+                    keep_audio=args.keep_audio,
+                    database=args.database,
+                    folder=args.folder,
+                    user_id=args.user_id,
+                )
+        else:
+            result = transcribe_youtube(
+                url=args.url,
+                language=args.language,
+                model=args.model,
+                output_dir=args.output_dir,
+                output_name=args.output_name,
+                audio_dir=args.audio_dir,
+                keep_audio=args.keep_audio,
+                database=args.database,
+                folder=args.folder,
+                user_id=args.user_id,
+            )
 
         # Output results
         if args.json:
-            output = {
-                'success': True,
-                'data': result
-            }
+            output = {"success": True, "data": result}
             print(json.dumps(output, indent=2))
         else:
             print("\n" + format_human_readable(result))
@@ -497,18 +528,26 @@ Requirements:
         stage = "download" if "download" in error_message.lower() else "transcription"
 
         error_output = {
-            'success': False,
-            'error': {
-                'stage': stage,
-                'type': f'{stage.capitalize()}Error',
-                'message': error_message,
-                'suggestions': [
-                    'Check your internet connection' if stage == 'download' else 'Verify OPENAI_API_KEY is set',
-                    'Ensure ffmpeg is installed' if stage == 'download' else 'Check OpenAI API credits',
-                    'Verify the YouTube URL is correct' if stage == 'download' else 'Try with a different model',
-                    'Check if video is accessible (not private/restricted)' if stage == 'download' else 'Ensure audio file is valid'
-                ]
-            }
+            "success": False,
+            "error": {
+                "stage": stage,
+                "type": f"{stage.capitalize()}Error",
+                "message": error_message,
+                "suggestions": [
+                    "Check your internet connection"
+                    if stage == "download"
+                    else "Verify OPENAI_API_KEY is set",
+                    "Ensure ffmpeg is installed"
+                    if stage == "download"
+                    else "Check OpenAI API credits",
+                    "Verify the YouTube URL is correct"
+                    if stage == "download"
+                    else "Try with a different model",
+                    "Check if video is accessible (not private/restricted)"
+                    if stage == "download"
+                    else "Ensure audio file is valid",
+                ],
+            },
         }
 
         if args.json:
@@ -516,24 +555,25 @@ Requirements:
         else:
             print(f"\nError: {error_message}", file=sys.stderr)
             print("\nSuggestions:", file=sys.stderr)
-            for suggestion in error_output['error']['suggestions']:
+            for suggestion in error_output["error"]["suggestions"]:
                 print(f"  - {suggestion}", file=sys.stderr)
+        sys.exit(1)
 
         sys.exit(1)
 
     except Exception as e:
         error_output = {
-            'success': False,
-            'error': {
-                'stage': 'unknown',
-                'type': 'UnexpectedError',
-                'message': str(e),
-                'suggestions': [
-                    'Check that youtube-download and audio-transcribe skills are properly installed',
-                    'Verify all required dependencies are installed',
-                    'Check system logs for more details'
-                ]
-            }
+            "success": False,
+            "error": {
+                "stage": "unknown",
+                "type": "UnexpectedError",
+                "message": str(e),
+                "suggestions": [
+                    "Check that youtube-download and audio-transcribe skills are properly installed",
+                    "Verify all required dependencies are installed",
+                    "Check system logs for more details",
+                ],
+            },
         }
 
         if args.json:
@@ -541,11 +581,11 @@ Requirements:
         else:
             print(f"\nUnexpected error: {e}", file=sys.stderr)
             print("\nSuggestions:", file=sys.stderr)
-            for suggestion in error_output['error']['suggestions']:
+            for suggestion in error_output["error"]["suggestions"]:
                 print(f"  - {suggestion}", file=sys.stderr)
 
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

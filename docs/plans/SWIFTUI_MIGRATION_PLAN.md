@@ -4,10 +4,574 @@
 
 Based on comprehensive analysis of the SvelteKit frontend, this document outlines a detailed roadmap for building a universal macOS/iOS/iPadOS app with full feature parity. This plan assumes an architect/director role working with an AI coding agent.
 
-**Total Estimated Effort**: 36-51 planned sessions + buffer (40-70 total sessions accounting for complexity)
-**Total Hours**: 157-280 hours depending on markdown editor complexity and iteration needs
-**Timeline**: 12-18 weeks at 3-4 sessions per week (14 weeks realistic for MVP)
-**Complexity**: High (primarily due to native markdown editor and real-time streaming)
+### Delivery Strategy: MVP-First Approach
+
+**This plan uses a two-phase delivery strategy:**
+
+**Phase I - Read-Only MVP** (Recommended First)
+- Focus on viewing capabilities across all content types
+- Defer editing features (markdown editor, chat input, content creation)
+- Deliver a functional, useful app in 7-11 weeks
+- Validate architecture and foundations before tackling complex editing
+
+**Phase II - Editing Capabilities** (Post-MVP)
+- Add chat input and message sending
+- Build full markdown editor with formatting toolbar
+- Enable note creation and editing
+- Complete feature parity with web app
+
+### Effort Estimates
+
+**Read-Only MVP:**
+- **Sessions**: 22-33 (vs 36-51 for full app)
+- **Hours**: 88-132 hours (vs 157-280 for full app)
+- **Timeline**: 7-11 weeks at 3-4 sessions per week
+- **Complexity**: Medium (defers hardest 40% of work)
+
+**Full App (MVP + Editing):**
+- **Sessions**: 36-51 total
+- **Hours**: 157-280 hours total
+- **Timeline**: 12-18 weeks total
+- **Complexity**: High (native markdown editor and streaming)
+
+---
+
+## Progress Tracker
+
+### Overall Progress
+
+**Current Target**: Read-Only MVP
+**Status**: Not Started
+**Sessions Completed**: 0 / 22-33 (MVP) or 0 / 36-51 (Full App)
+**Hours Logged**: 0 / 88-132 (MVP) or 0 / 157-280 (Full App)
+**Weeks Elapsed**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
+
+```
+MVP Progress:      [░░░░░░░░░░░░░░░░░░░░] 0%
+Full App Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
+
+Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░░] 0%
+(Phases 1 → 2 → 3-Modified → 4-Reduced → 5 → 6-Modified → 7-Modified → 8 → 9)
+```
+
+### Phase Completion Status
+
+#### Read-Only MVP Phases
+
+| Phase | Status | Sessions (MVP) | Sessions (Full) | Complete | MVP Scope |
+|-------|--------|----------------|-----------------|----------|-----------|
+| **1. Foundation & Architecture** | ⬜ Not Started | 0 / 3-4 | 0 / 3-4 | 0% | Full |
+| **2. Navigation & Layout** | ⬜ Not Started | 0 / 3-4 | 0 / 3-4 | 0% | Full |
+| **3. Chat Viewer** | ⬜ Not Started | 0 / 4-5 | 0 / 5-7 | 0% | Modified (no input) |
+| **4. Note Viewer** | ⬜ Not Started | 0 / 2-3 | 0 / 7-10 | 0% | Heavily Reduced (read-only) |
+| **5. File Viewing** | ⬜ Not Started | 0 / 4-6 | 0 / 4-6 | 0% | Full (already read-only) |
+| **6. Website Viewer** | ⬜ Not Started | 0 / 1-2 | 0 / 2-3 | 0% | Modified (no saving) |
+| **7. Additional Features** | ⬜ Not Started | 0 / 2-3 | 0 / 3-4 | 0% | Modified (view-only) |
+| **8. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
+| **9. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
+| **MVP TOTAL** | | **22-33** | | | |
+
+#### Post-MVP: Editing Capabilities (Phase 10)
+
+| Phase | Status | Sessions | Complete | Full App Required |
+|-------|--------|----------|----------|-------------------|
+| **10.1 Chat Input** | ⬜ Not Started | 0 / 2-3 | 0% | ✅ Yes |
+| **10.2 Markdown Editor** | ⬜ Not Started | 0 / 6-9 | 0% | ✅ Yes |
+| **10.3 Note Operations** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
+| **10.4 Content Creation** | ⬜ Not Started | 0 / 1 | 0% | ✅ Yes |
+| **10.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
+| **POST-MVP TOTAL** | | **11-17** | | |
+
+**FULL APP TOTAL: 36-51 sessions (MVP 22-33 + Post-MVP 11-17)**
+
+**Legend**: ⬜ Not Started | 🟨 In Progress | ✅ Complete
+
+### Detailed Phase Checklist
+
+#### Phase 1: Foundation & Architecture (3-4 sessions)
+- [ ] 1.1 Xcode Project Setup
+- [ ] 1.2 Core Data Models
+- [ ] 1.3 Supabase Integration
+- [ ] 1.4 API Service Layer
+- [ ] 1.5 Cache Layer
+- [ ] 1.6 Theme System
+
+#### Phase 2: Navigation & Layout (3-4 sessions)
+- [ ] 2.1 Main App Structure
+- [ ] 2.2 Sidebar Rail
+- [ ] 2.3 Resizable Sidebar Panels
+- [ ] 2.4 Panel Content Views
+- [ ] 2.5 Site Header Bar
+- [ ] 2.6 Settings Sheet
+
+#### Phase 3: Chat Viewer (4-5 sessions MVP, 5-7 full)
+**MVP Scope: Read-Only Chat Viewer**
+- [ ] 3.1 Conversation List
+- [ ] 3.2 Chat Window Layout
+- [ ] 3.3 SSE Streaming Implementation (for viewing web updates)
+- [ ] 3.4 Message List
+- [ ] 3.5 Message Rendering (MarkdownUI)
+- [ ] 3.6 Tool Call Visualization
+- [ ] 3.8 Real-time Conversation Sync
+
+**Post-MVP (Phase 10.1): Chat Input**
+- [ ] 3.7 Chat Input (text editor, send button, attachments)
+
+#### Phase 4: Note Viewer (2-3 sessions MVP, 7-10 full)
+**MVP Scope: Read-Only Note Viewer**
+- [ ] 4.1 File Tree Browser (expand/collapse, search, navigation)
+- [ ] 4.2 Read-Only Note Viewer (MarkdownUI rendering)
+- [ ] 4.6 Search Notes
+- [ ] 4.7 Real-time Sync (see updates from web)
+
+**Post-MVP (Phases 10.2-10.3): Editing Capabilities**
+- [ ] 4.2 Native Markdown Editor (RichTextKit or custom)
+- [ ] 4.3 Editor Toolbar (15+ formatting options)
+- [ ] 4.4 Save/Dirty State (auto-save, dirty indicator)
+- [ ] 4.5 Note Operations (create, rename, move, delete, pin)
+
+#### Phase 5: File Viewing (4-6 sessions)
+**MVP Scope: Full (already read-only)**
+- [ ] 5.1 File Tree View
+- [ ] 5.4 Universal File Viewer
+- [ ] 5.5 PDF Viewer (PDFKit)
+- [ ] 5.6 Image Viewer (pinch-zoom, pan)
+- [ ] 5.7 Audio/Video Player (AVFoundation)
+- [ ] 5.8 Spreadsheet Viewer
+- [ ] 5.9 Markdown Extraction Display
+- [ ] 5.10 File Operations (view only - download, pin/unpin)
+
+**Note**: File upload and ingestion deferred to post-launch (not part of MVP or Phase 10)
+
+#### Phase 6: Website Viewer (1-2 sessions MVP, 2-3 full)
+**MVP Scope: Read-Only Website Viewer**
+- [ ] 6.1 Website List (grouped by domain, search, pinned)
+- [ ] 6.2 Website Viewer (WKWebView or MarkdownUI)
+- [ ] 6.4 Website Operations (view only - pin/unpin, open in Safari)
+- [ ] 6.5 Real-time Sync
+
+**Post-MVP (Phase 10.4): Content Creation**
+- [ ] 6.3 Save Website (URL input, validation, loading state)
+
+#### Phase 7: Additional Features (2-3 sessions MVP, 3-4 full)
+**MVP Scope: View-Only**
+- [ ] 7.1 Memory Management (view memories, search)
+- [ ] 7.3 Settings Panel (view profile, settings - read-only)
+- [ ] 7.4 Weather Integration
+- [ ] 7.5 Keyboard Shortcuts (macOS)
+
+**Post-MVP (Phase 10.4): Editing**
+- [ ] 7.1 Memory Management (add, edit, delete memories)
+- [ ] 7.2 Scratchpad (editable with auto-save)
+
+#### Phase 8: Platform Optimization (5-7 sessions)
+**MVP Scope: Full**
+- [ ] 8.1 iPhone-Specific Layout (read-only optimized)
+- [ ] 8.2 iPad-Specific Layout
+- [ ] 8.3 macOS-Specific Features
+- [ ] 8.4 Animations & Transitions
+- [ ] 8.5 Performance Optimization
+- [ ] 8.6 Accessibility (VoiceOver, Dynamic Type)
+- [ ] 8.7 Error Handling
+- [ ] 8.8 Loading States
+- [ ] 8.9 Offline Behavior (cached reading)
+
+#### Phase 9: MVP Testing & Refinement (3-4 sessions MVP, 4-6 full)
+**MVP Scope: Read-Only Testing**
+- [ ] 9.1 Integration Testing (all view features)
+- [ ] 9.2 Real-World Usage (daily use as reference app)
+- [ ] 9.3 Bug Fixes
+- [ ] 9.4 Edge Cases (very long content, slow network, empty states)
+- [ ] 9.5 Polish
+
+**Post-MVP (Phase 10.5): Full App Testing**
+- [ ] Test editing features
+- [ ] Test creation workflows
+- [ ] End-to-end feature parity validation
+
+---
+
+### Phase 10: Editing Capabilities (POST-MVP)
+**Sessions: 11-17 | Added after MVP delivery**
+
+#### Phase 10.1: Chat Input (2-3 sessions)
+- [ ] Text input with auto-expanding height
+- [ ] Send button (disabled when empty)
+- [ ] SSE streaming for sending messages
+- [ ] File attachment picker (optional)
+- [ ] Keyboard shortcuts (Cmd+Enter on Mac)
+
+#### Phase 10.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
+- [ ] **Critical Decision**: RichTextKit vs Custom UITextView/NSTextView
+- [ ] Basic markdown editing with RichTextKit integration
+- [ ] Editor toolbar (bold, italic, headings, lists, etc.)
+- [ ] Advanced formatting (tables, links, code blocks)
+- [ ] Syntax highlighting for code blocks
+- [ ] Live preview option (optional)
+- [ ] Performance optimization for long documents
+
+**Decision Gate (After Session 3-5 of 10.2):**
+Evaluate RichTextKit capabilities. Choose:
+- Option A: Continue with RichTextKit + workarounds
+- Option B: Build custom UITextView wrapper (adds 3-5 sessions)
+- Option C: Reduce scope (defer tables/advanced features)
+
+#### Phase 10.3: Note Operations (1-2 sessions)
+- [ ] Create new note (modal dialog for name/folder)
+- [ ] Rename note (alert with text input)
+- [ ] Move to folder (picker sheet)
+- [ ] Delete note (confirmation alert)
+- [ ] Pin/unpin toggle
+- [ ] Archive/unarchive
+- [ ] Save with dirty state tracking
+- [ ] Auto-save with 2-second debounce
+
+#### Phase 10.4: Content Creation (1 session)
+- [ ] Save websites (URL input sheet with validation)
+- [ ] Add/edit/delete memories
+- [ ] Editable scratchpad with auto-save
+
+#### Phase 10.5: Full App Testing (1-2 sessions)
+- [ ] Test all editing workflows
+- [ ] Test creation and deletion
+- [ ] Verify feature parity with web app
+- [ ] Final polish and bug fixes
+
+### Critical Milestones
+
+#### MVP Milestones (Read-Only App)
+
+- [ ] **Milestone 1**: Authentication & API calls working (End of Phase 1)
+- [ ] **Milestone 2**: Can view conversations with real-time updates (End of Phase 3)
+- [ ] **Milestone 3**: Can read notes in file tree (End of Phase 4)
+- [ ] **Milestone 4**: Can view all file types (End of Phase 5)
+- [ ] **Milestone 5**: All view features implemented (End of Phase 7)
+- [ ] **Milestone 6**: App feels polished on all platforms (End of Phase 8)
+- [ ] **MVP COMPLETE**: Read-only app ready for daily reference use (End of Phase 9)
+
+**MVP Decision Gate**: Evaluate whether to:
+1. Ship MVP and take break before Phase 10
+2. Continue immediately to editing capabilities
+3. Iterate on MVP based on real-world usage
+
+#### Post-MVP Milestones (Full App)
+
+- [ ] **Milestone 7**: Can send chat messages (End of Phase 10.1)
+- [ ] **Milestone 8**: Can create and edit notes (End of Phase 10.2-10.3)
+- [ ] **Milestone 9**: Can create content everywhere (End of Phase 10.4)
+- [ ] **FULL APP COMPLETE**: Feature parity with web app (End of Phase 10.5)
+
+### Session Log
+
+| Date | Phase | Sessions | Hours | Notes |
+|------|-------|----------|-------|-------|
+| - | - | 0 | 0.0 | Awaiting start |
+
+---
+
+## MVP-First Delivery Strategy
+
+### Why Read-Only MVP First?
+
+This plan takes a **two-phase delivery approach**: ship a read-only viewer app first (MVP), then add editing capabilities (Post-MVP). This strategy provides significant benefits for solo development with context switching.
+
+### Benefits of MVP-First Approach
+
+**1. Faster Time to Value (7-11 weeks vs 12-18 weeks)**
+- Get a functional, useful app in ~40% less time
+- Can use app daily for reference/viewing while continuing web editing
+- Natural break point for context switching to other features
+
+**2. De-Risks Hardest Technical Challenges**
+- Validates architecture before investing in markdown editor (7-10 sessions)
+- Proves SSE streaming, real-time sync, and multi-platform layouts work
+- Markdown editor is explicitly called out as "highest complexity" in original plan
+- Can make informed decision on RichTextKit vs custom solution after MVP
+
+**3. Natural Architecture Validation**
+- MVVM architecture proven in production use
+- Service layer design validated
+- Cache strategy performance tested
+- Navigation patterns refined through real-world usage
+
+**4. Perfect for Context Switching**
+```
+Weeks 1-7:   Build read-only iOS app (MVP)
+Weeks 8-10:  Ship MVP, switch to backend/web features
+Weeks 11-15: Return to iOS, add editing (Phase 10)
+```
+
+**5. Immediate Daily Use Value**
+Even read-only, the app provides genuine utility:
+- ✅ Reference notes away from desk
+- ✅ Read conversations on iPad/iPhone
+- ✅ View PDFs and files on the go
+- ✅ Check memories quickly
+- ✅ Browse archived websites
+- ✅ Real-time sync (see updates from web instantly)
+
+### What's Included in MVP
+
+**✅ Full Viewing Capabilities:**
+- View all conversations with real-time updates
+- Browse and read all notes (file tree, search, syntax highlighting)
+- View all file types (PDF, images, videos, audio, spreadsheets)
+- Browse archived websites
+- View memories
+- Full navigation (sidebar, panels, settings)
+- Multi-platform optimization (iPhone, iPad, macOS)
+- Real-time sync across devices
+- Offline cached reading
+
+**✅ Technical Foundations:**
+- Complete authentication (Supabase)
+- API service layer
+- Cache management
+- Theme system
+- SSE streaming (for watching updates)
+- Real-time subscriptions
+
+### What's Deferred to Post-MVP
+
+**❌ Editing Features (Phase 10):**
+- Chat input and sending messages
+- Markdown editor with toolbar
+- Note creation/editing/deletion
+- Website saving
+- Memory editing
+- Scratchpad editing
+
+**Why Defer These:**
+- Markdown editor alone: 6-9 sessions (most complex component)
+- Chat input: 2-3 sessions
+- Combined: ~40% of total development time
+- Can be added as cohesive Phase 10 after architecture is validated
+
+### MVP Decision Gate
+
+At the end of Phase 9 (MVP Testing), evaluate:
+
+**Option 1: Ship MVP & Take Break** (Recommended)
+- Use read-only app daily for 2-4 weeks
+- Identify UX improvements through real usage
+- Switch to backend/web development
+- Return to Phase 10 when ready for editing features
+
+**Option 2: Continue to Phase 10 Immediately**
+- Momentum is high, keep building
+- Complete full app in one continuous push
+- Good if iOS momentum is strong and motivation high
+
+**Option 3: Iterate on MVP**
+- Real-world usage reveals UX issues
+- Fix performance bottlenecks
+- Polish before adding editing complexity
+
+### MVP Delivery Contents
+
+**What You Can Do With MVP:**
+```
+✅ Open app on iPhone/iPad/Mac
+✅ Log in with Supabase auth
+✅ View all conversations
+✅ Read all messages with markdown rendering
+✅ See tool calls and streaming updates from web
+✅ Browse note file tree
+✅ Read notes with syntax highlighting
+✅ Search across all notes
+✅ View PDFs with zoom/scroll
+✅ Play videos and audio
+✅ Browse spreadsheet data
+✅ Read archived websites
+✅ Check your memories
+✅ See real-time updates from web app
+✅ Use offline (cached content)
+```
+
+**What You Can't Do (Yet):**
+```
+❌ Send chat messages
+❌ Create/edit notes
+❌ Save new websites
+❌ Add/edit memories
+❌ Edit scratchpad
+```
+
+### Post-MVP Phase 10 Breakdown
+
+When ready to resume (estimated 11-17 additional sessions):
+
+| Component | Sessions | Complexity | Notes |
+|-----------|----------|------------|-------|
+| Chat Input | 2-3 | Medium | Text editor, send button, SSE for sending |
+| Markdown Editor | 6-9 | **Very High** | RichTextKit or custom solution, critical decision point |
+| Note Operations | 1-2 | Low | Create, rename, move, delete with API calls |
+| Content Creation | 1 | Low | Save websites, edit memories, scratchpad |
+| Full Testing | 1-2 | Medium | End-to-end feature parity validation |
+
+**Critical Decision in Phase 10.2:**
+After 3-5 sessions evaluating RichTextKit for markdown editing:
+- Continue with RichTextKit + workarounds
+- Build custom UITextView/NSTextView wrapper (+3-5 sessions)
+- Reduce scope (defer tables/advanced formatting)
+
+### Why This Works for Your Project
+
+**Solo Development Reality:**
+- You'll want breaks from iOS during 12-18 week timeline
+- Backend features and improvements will come up
+- MVP provides a natural stopping point that's still valuable
+- Editing features can wait until you're ready to focus again
+
+**Risk Mitigation:**
+- Markdown editor is largest unknown (originally flagged as "highest complexity")
+- Validate everything else works before investing 6-9 sessions in editor
+- If editing proves too complex, MVP is still a useful app
+
+**User Value:**
+- A read-only reference app has genuine daily utility
+- You can use it immediately while web app handles editing
+- Real-world usage informs editing UX decisions
+
+---
+
+## Repository Structure & Development Workflow
+
+### Monorepo Approach (Recommended)
+
+The iOS app will be developed within the existing repository as a monorepo, rather than as a separate repository or long-lived branch. This approach provides several critical benefits:
+
+**Benefits:**
+- Backend API changes are immediately visible to iOS development
+- Shared database migrations affect both frontends simultaneously
+- Single source of truth for API contracts and documentation
+- Easy context switching between backend/web/iOS work
+- Git history shows complete evolution across all platforms
+- No complicated merge conflicts from long-running branches
+
+**Repository Structure:**
+```
+sideBar/
+├── backend/          # Existing FastAPI backend
+│   ├── api/
+│   ├── alembic/
+│   └── ...
+├── frontend/         # Existing SvelteKit web app
+│   ├── src/
+│   └── ...
+├── ios/              # New SwiftUI universal app
+│   ├── sideBar.xcodeproj
+│   ├── sideBar/
+│   │   ├── Views/
+│   │   ├── ViewModels/
+│   │   ├── Services/
+│   │   ├── Models/
+│   │   └── Utilities/
+│   └── ...
+└── docs/             # Shared documentation and plans
+    └── plans/
+```
+
+### Development Workflow
+
+**Recommended: Direct commits to `main`**
+
+Since the iOS app lives in its own `ios/` directory and doesn't conflict with existing code, you can work directly on `main`:
+
+```bash
+# Work on iOS feature
+git checkout main
+cd ios/
+# make iOS changes
+git add ios/
+git commit -m "feat(ios): implement chat streaming"
+
+# Switch to backend work
+cd ../backend/
+# make backend changes
+git add backend/
+git commit -m "feat(api): add new endpoint for iOS"
+
+# iOS automatically sees backend changes
+```
+
+**Alternative: `ios-app` branch with periodic syncs**
+
+If you prefer more isolation during initial development:
+
+```bash
+# iOS development
+git checkout -b ios-app
+# work on iOS features
+git commit -m "feat(ios): implement foundation"
+
+# Periodically sync backend changes
+git checkout ios-app
+git merge main  # Pull in backend/API changes
+
+# When iOS feature is stable
+git checkout main
+git merge ios-app
+```
+
+### Git Ignore Updates
+
+Add iOS-specific entries to `.gitignore`:
+
+```gitignore
+# Xcode
+ios/**/*.xcodeproj/*
+!ios/**/*.xcodeproj/project.pbxproj
+!ios/**/*.xcodeproj/xcshareddata/
+ios/**/*.xcworkspace/*
+!ios/**/*.xcworkspace/contents.xcworkspacedata
+ios/**/xcuserdata/
+ios/**/*.xcscmblueprint
+ios/**/*.xccheckout
+
+# Swift Package Manager
+ios/**/.build/
+ios/**/Packages/
+ios/**/*.swiftpm
+
+# CocoaPods (if used)
+ios/**/Pods/
+ios/**/*.podspec
+
+# Build artifacts
+ios/**/DerivedData/
+ios/**/build/
+
+# macOS
+.DS_Store
+```
+
+### Continuous Integration
+
+Update CI/CD to handle both frontends:
+
+```yaml
+# .github/workflows/ios.yml
+name: iOS Build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build iOS
+        run: |
+          cd ios
+          xcodebuild -project sideBar.xcodeproj -scheme sideBar build
+```
+
+### Key Advantages for This Project
+
+1. **API contract visibility**: If you modify `/api/chat` endpoint, you'll immediately know to update iOS
+2. **Migration sync**: Database migrations in `backend/alembic/` are visible when building iOS features
+3. **Documentation coherence**: API docs, plans, and implementation stay together
+4. **No merge debt**: Unlike long-lived branches, you don't accumulate painful merge conflicts
+5. **Natural breaks**: Commit iOS work, switch to backend for a session, return to iOS later
 
 ---
 

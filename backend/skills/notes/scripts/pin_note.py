@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Pin Note
+"""Pin Note
 
 Set pinned state for a note in the database.
 """

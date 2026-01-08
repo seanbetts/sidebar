@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { scratchpadStore } from '$lib/stores/scratchpad';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
-	import { Image } from '@tiptap/extension-image';
+	import { ImageGallery } from '$lib/components/editor/ImageGallery';
+	import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
 	import { TaskList, TaskItem } from '@tiptap/extension-list';
 	import { TableKit } from '@tiptap/extension-table';
 	import { Markdown } from 'tiptap-markdown';
@@ -11,13 +12,11 @@
 	import { SquarePen } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import ScratchpadHeader from '$lib/components/scratchpad/ScratchpadHeader.svelte';
-	import {
-		removeEmptyTaskItems,
-		stripHeading,
-		withHeading
-	} from '$lib/utils/scratchpad';
+	import { removeEmptyTaskItems, stripHeading, withHeading } from '$lib/utils/scratchpad';
 	import { logError } from '$lib/utils/errorHandling';
+	import { canShowTooltips } from '$lib/utils/tooltip';
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
@@ -26,6 +25,7 @@
 	let isSaving = false;
 	let saveError: string | null = null;
 	let lastSavedContent = '';
+	let tooltipsEnabled = false;
 
 	// Flag to prevent infinite loops:
 	// When we programmatically update the editor (e.g., loading scratchpad),
@@ -39,6 +39,10 @@
 	};
 	const getMarkdown = (editor: Editor) =>
 		(editor as Editor & { storage: MarkdownStorage }).storage.markdown.getMarkdown();
+
+	onMount(() => {
+		tooltipsEnabled = canShowTooltips();
+	});
 
 	function applyScratchpadContent(content: string) {
 		lastSavedContent = content;
@@ -71,7 +75,6 @@
 			isUpdatingContent = false;
 		}
 	}
-
 
 	async function ensureScratchpadExists() {
 		const response = await fetch('/api/v1/scratchpad');
@@ -149,7 +152,8 @@
 			element: editorElement,
 			extensions: [
 				StarterKit,
-				Image.configure({ inline: false, allowBase64: true }),
+				ImageGallery,
+				ImageWithCaption.configure({ inline: false, allowBase64: true }),
 				TaskList,
 				TaskItem.configure({ nested: true }),
 				TableKit,
@@ -176,13 +180,15 @@
 		}
 	});
 
+	$: tooltipsEnabled = canShowTooltips();
+
 	onDestroy(() => {
 		// Cleanup all timers and subscriptions
 		if (saveTimeout) clearTimeout(saveTimeout);
 		unsubscribeScratchpad();
 		if (editor) {
 			editor.destroy();
-			editor = null;  // Set to null to prevent double destruction
+			editor = null; // Set to null to prevent double destruction
 		}
 	});
 
@@ -210,9 +216,20 @@
 </script>
 
 <Popover.Root bind:open={isOpen}>
-	<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'icon' })} aria-label="Open scratchpad">
-		<SquarePen size={18} />
-	</Popover.Trigger>
+	<Tooltip disabled={!tooltipsEnabled}>
+		<TooltipTrigger>
+			{#snippet child({ props })}
+				<Popover.Trigger
+					class={buttonVariants({ variant: 'outline', size: 'icon' })}
+					aria-label="Open scratchpad"
+					{...props}
+				>
+					<SquarePen size={18} />
+				</Popover.Trigger>
+			{/snippet}
+		</TooltipTrigger>
+		<TooltipContent side="bottom">Quick scratchpad</TooltipContent>
+	</Tooltip>
 	<Popover.Content class="w-[95vw] max-w-[840px] p-0" align="end" sideOffset={8}>
 		<div class="scratchpad-popover">
 			<ScratchpadHeader {isSaving} {saveError} />
@@ -239,7 +256,6 @@
 		overflow: hidden;
 		padding: 1rem 0.5rem 1rem 1rem;
 	}
-
 
 	.scratchpad-body {
 		flex: 1;

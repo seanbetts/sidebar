@@ -5,10 +5,9 @@ Revises: 024_add_things_bridges
 Create Date: 2026-01-10 15:30:00
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "025_add_things_bridge_install_tokens"
 down_revision = "024_add_things_bridges"

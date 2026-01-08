@@ -1,9 +1,8 @@
 from types import SimpleNamespace
 
 import pytest
-
-from api.services.memory_tools import formatters, operations, path_utils
 from api.models.user_memory import UserMemory
+from api.services.memory_tools import formatters, operations, path_utils
 
 
 def test_normalize_path_accepts_memories_root():

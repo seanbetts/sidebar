@@ -1,10 +1,11 @@
 """Weather API proxy endpoints."""
+
 from __future__ import annotations
 
 import json
 import logging
-import time
 import ssl
+import time
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -13,9 +14,8 @@ from fastapi import APIRouter, Depends
 from fastapi.concurrency import run_in_threadpool
 
 from api.auth import verify_bearer_token
-from api.exceptions import ExternalServiceError
 from api.config import settings
-
+from api.exceptions import ExternalServiceError
 
 router = APIRouter(prefix="/weather", tags=["weather"])
 logger = logging.getLogger(__name__)
@@ -83,7 +83,9 @@ def _fetch_weather(lat: float, lon: float) -> dict:
                     "lon": lon,
                 },
             )
-            raise ExternalServiceError("Open-Meteo", "Weather service returned invalid data") from exc
+            raise ExternalServiceError(
+                "Open-Meteo", "Weather service returned invalid data"
+            ) from exc
 
 
 def _cache_key(lat: float, lon: float) -> str:

@@ -1,0 +1,64 @@
+- id: remove-common-ads
+  phase: post
+  trigger:
+    dom:
+      any: [".ad", ".ads", ".advertisement", "#ad", "[data-ad]", "[data-testid='ad']"]
+  remove:
+    - ".ad"
+    - ".ads"
+    - ".advertisement"
+    - "#ad"
+    - "[data-ad]"
+    - "[data-testid='ad']"
+
+- id: remove-common-footers
+  phase: post
+  trigger:
+    dom:
+      any: ["footer", ".footer", ".site-footer"]
+  remove:
+    - "footer"
+    - ".footer"
+    - ".site-footer"
+
+- id: medium-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "medium.com"
+  remove:
+    - ".metabar"
+    - "aside"
+    - ".pw-responses"
+    - "[data-test='post-sidebar']"
+
+- id: devto-cleanup
+  phase: post
+  trigger:
+    host:
+      equals: "dev.to"
+  remove:
+    - ".crayons-article__aside"
+    - "#comments-container"
+
+- id: guardian-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "theguardian.com"
+  remove:
+    - "aside"
+    - ".submeta"
+    - "[data-component='nav3']"
+    - ".content__meta-container"
+
+- id: nytimes-cleanup
+  phase: post
+  trigger:
+    host:
+      ends_with: "nytimes.com"
+  remove:
+    - ".ad"
+    - "#story-footer"
+    - ".supplemental"
+    - "[data-testid='photoviewer-wrapper']"

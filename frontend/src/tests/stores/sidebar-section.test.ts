@@ -3,7 +3,7 @@ import { get } from 'svelte/store';
 import { sidebarSectionStore } from '$lib/stores/sidebar-section';
 
 describe('sidebarSectionStore', () => {
-  it('defaults to notes section', () => {
-    expect(get(sidebarSectionStore)).toBe('notes');
-  });
+	it('defaults to notes section', () => {
+		expect(get(sidebarSectionStore)).toBe('notes');
+	});
 });

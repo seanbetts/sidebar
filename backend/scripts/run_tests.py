@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Test runner for sidebar project.
+"""Test runner for sidebar project.
 
 Usage:
     # Run all tests
@@ -19,8 +18,8 @@ Usage:
     python scripts/run_tests.py -m "not slow"
 """
 
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 

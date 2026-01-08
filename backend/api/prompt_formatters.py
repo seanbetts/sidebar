@@ -1,4 +1,5 @@
 """Formatting helpers for prompt templates."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -28,7 +29,10 @@ def calculate_age(date_of_birth: date | None, today: date) -> int | None:
     if not date_of_birth:
         return None
     years = today.year - date_of_birth.year
-    birthday_passed = (today.month, today.day) >= (date_of_birth.month, date_of_birth.day)
+    birthday_passed = (today.month, today.day) >= (
+        date_of_birth.month,
+        date_of_birth.day,
+    )
     return years if birthday_passed else years - 1
 
 
@@ -148,8 +152,14 @@ def format_weather(weather: dict[str, Any] | str | None) -> str:
     feels_like_text = f"{round(feels_like)}°C" if feels_like is not None else None
     wind_text = None
     if wind_speed is not None:
-        wind_dir_label = _wind_direction_label(float(wind_direction)) if wind_direction is not None else None
-        wind_text = f"{round(wind_speed)} km/h" + (f" {wind_dir_label}" if wind_dir_label else "")
+        wind_dir_label = (
+            _wind_direction_label(float(wind_direction))
+            if wind_direction is not None
+            else None
+        )
+        wind_text = f"{round(wind_speed)} km/h" + (
+            f" {wind_dir_label}" if wind_dir_label else ""
+        )
     precip_text = f"{precipitation} mm" if precipitation is not None else None
     cloud_text = f"{cloud_cover}%" if cloud_cover is not None else None
 
@@ -176,7 +186,9 @@ def format_weather(weather: dict[str, Any] | str | None) -> str:
                 continue
             desc = _weather_description(code)
             label = "Today" if index == 0 else "Tomorrow" if index == 1 else "Next day"
-            precip_text = f"{precip}% chance of precipitation" if precip is not None else None
+            precip_text = (
+                f"{precip}% chance of precipitation" if precip is not None else None
+            )
             forecast_bits = [f"{label}: {round(min_c)}–{round(max_c)}°C, {desc}"]
             if precip_text:
                 forecast_bits.append(precip_text)

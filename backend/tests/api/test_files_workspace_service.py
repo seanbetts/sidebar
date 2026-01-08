@@ -1,19 +1,20 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
-
 from api.db.base import Base
 from api.models.file_ingestion import FileDerivative, IngestedFile
-from api.services.files_workspace_service import FilesWorkspaceService
 from api.services import files_workspace_service as files_workspace_module
+from api.services.files_workspace_service import FilesWorkspaceService
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
 def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    connection = test_db_engine.connect().execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
     schema = f"test_{uuid.uuid4().hex}"
 
     connection.execute(text(f'CREATE SCHEMA "{schema}"'))
@@ -31,7 +32,13 @@ def db_session(test_db_engine):
         connection.close()
 
 
-def _create_file(db_session, user_id: str, path: str) -> IngestedFile:
+def _create_file(
+    db_session,
+    user_id: str,
+    path: str,
+    *,
+    source_metadata: dict | None = None,
+) -> IngestedFile:
     record = IngestedFile(
         id=uuid.uuid4(),
         user_id=user_id,
@@ -39,14 +46,17 @@ def _create_file(db_session, user_id: str, path: str) -> IngestedFile:
         path=path,
         mime_original="text/plain",
         size_bytes=10,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        source_metadata=source_metadata,
     )
     db_session.add(record)
     db_session.commit()
     return record
 
 
-def _create_derivative(db_session, file_id: uuid.UUID, storage_key: str) -> FileDerivative:
+def _create_derivative(
+    db_session, file_id: uuid.UUID, storage_key: str
+) -> FileDerivative:
     derivative = FileDerivative(
         id=uuid.uuid4(),
         file_id=file_id,
@@ -54,7 +64,7 @@ def _create_derivative(db_session, file_id: uuid.UUID, storage_key: str) -> File
         storage_key=storage_key,
         mime="text/plain",
         size_bytes=10,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(derivative)
     db_session.commit()
@@ -74,12 +84,14 @@ def test_delete_marks_file_deleted_when_storage_fails(db_session, monkeypatch):
     FilesWorkspaceService.delete(db_session, "user-1", "", "docs/file.txt")
 
     refreshed = (
-        db_session.query(IngestedFile)
-        .filter(IngestedFile.id == record.id)
-        .first()
+        db_session.query(IngestedFile).filter(IngestedFile.id == record.id).first()
     )
     assert refreshed.deleted_at is not None
-    remaining = db_session.query(FileDerivative).filter(FileDerivative.file_id == record.id).all()
+    remaining = (
+        db_session.query(FileDerivative)
+        .filter(FileDerivative.file_id == record.id)
+        .all()
+    )
     assert len(remaining) == 1
 
 
@@ -95,5 +107,25 @@ def test_delete_removes_derivatives_when_storage_succeeds(db_session, monkeypatc
 
     FilesWorkspaceService.delete(db_session, "user-1", "", "docs/ok.txt")
 
-    remaining = db_session.query(FileDerivative).filter(FileDerivative.file_id == record.id).all()
+    remaining = (
+        db_session.query(FileDerivative)
+        .filter(FileDerivative.file_id == record.id)
+        .all()
+    )
     assert remaining == []
+
+
+def test_get_tree_hides_website_transcript_files(db_session):
+    _create_file(
+        db_session,
+        "user-1",
+        "hidden.md",
+        source_metadata={"website_transcript": True},
+    )
+    _create_file(db_session, "user-1", "visible.md")
+
+    tree = FilesWorkspaceService.get_tree(db_session, "user-1", "")
+    children = tree.get("children", [])
+
+    assert any(node.get("name") == "visible.md" for node in children)
+    assert not any(node.get("name") == "hidden.md" for node in children)

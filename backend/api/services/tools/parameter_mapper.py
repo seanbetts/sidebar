@@ -1,16 +1,14 @@
 """Build CLI arguments for tool execution."""
+
 from __future__ import annotations
 
 from api.services.tools.parameter_builders import (
-    DocxParameterBuilder,
     FsParameterBuilder,
     NotesParameterBuilder,
-    PptxParameterBuilder,
     SkillsParameterBuilder,
     TranscriptionParameterBuilder,
     WebParameterBuilder,
     WebsiteParameterBuilder,
-    XlsxParameterBuilder,
 )
 
 
@@ -142,36 +140,6 @@ def build_subdomain_discover_args(params: dict) -> list:
 def build_crawler_policy_args(params: dict) -> list:
     """Build CLI arguments for crawler policy analysis."""
     return WebParameterBuilder.build_crawler_policy_args(params)
-
-
-def build_docx_unpack_args(params: dict) -> list:
-    """Build CLI arguments for docx unpack."""
-    return DocxParameterBuilder.build_unpack_args(params)
-
-
-def build_docx_pack_args(params: dict) -> list:
-    """Build CLI arguments for docx pack."""
-    return DocxParameterBuilder.build_pack_args(params)
-
-
-def build_docx_validate_args(params: dict) -> list:
-    """Build CLI arguments for docx validation."""
-    return DocxParameterBuilder.build_validate_args(params)
-
-
-def build_pptx_inventory_args(params: dict) -> list:
-    """Build CLI arguments for pptx inventory."""
-    return PptxParameterBuilder.build_inventory_args(params)
-
-
-def build_pptx_thumbnail_args(params: dict) -> list:
-    """Build CLI arguments for pptx thumbnail generation."""
-    return PptxParameterBuilder.build_thumbnail_args(params)
-
-
-def build_xlsx_recalc_args(params: dict) -> list:
-    """Build CLI arguments for xlsx recalc."""
-    return XlsxParameterBuilder.build_recalc_args(params)
 
 
 def build_skill_package_args(params: dict) -> list:

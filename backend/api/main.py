@@ -1,48 +1,68 @@
 """sideBar Skills API - FastAPI + MCP integration."""
+
+import logging
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from types import ModuleType
-from typing import Awaitable, Callable, cast
-from fastapi import FastAPI, Request, HTTPException
+from typing import cast
+
+import sentry_sdk
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
-from api.routers import health, chat, conversations, files, ingestion, websites, scratchpad, notes, settings as user_settings, places, skills, weather, memories, things, metrics
-from api.mcp.tools import register_mcp_tools
-from api.config import settings
-from api.supabase_jwt import SupabaseJWTValidator, JWTValidationError
-from api.models.user_settings import UserSettings
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sqlalchemy import text
+
+from api.config import settings
+from api.exceptions import APIError
 from api.executors.skill_executor import SkillExecutor
-from api.security.path_validator import PathValidator
+from api.mcp.tools import register_mcp_tools
+from api.middleware.deprecation import DeprecationMiddleware
 from api.middleware.error_handler import (
     api_error_handler,
     http_exception_handler,
     unhandled_exception_handler,
 )
-from api.middleware.deprecation import DeprecationMiddleware
 from api.middleware.metrics import MetricsMiddleware
-from api.exceptions import APIError
-import logging
-import sentry_sdk
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from api.models.user_settings import UserSettings
+from api.routers import (
+    chat,
+    conversations,
+    files,
+    health,
+    ingestion,
+    memories,
+    metrics,
+    notes,
+    places,
+    scratchpad,
+    skills,
+    things,
+    weather,
+    websites,
+)
+from api.routers import settings as user_settings
+from api.security.path_validator import PathValidator
+from api.supabase_jwt import JWTValidationError, SupabaseJWTValidator
 
-sentry_fastapi: ModuleType | None
+sentry_fastapi_module: ModuleType | None
 try:  # pragma: no cover - depends on sentry_sdk version
     from sentry_sdk.integrations import fastapi as sentry_fastapi
 except Exception:  # pragma: no cover - optional integration
-    sentry_fastapi = None
+    sentry_fastapi_module = None
+else:
+    sentry_fastapi_module = sentry_fastapi
 
-if sentry_fastapi is not None:
-    _FastAPIIntegration = (
-        getattr(sentry_fastapi, "FastAPIIntegration", None)
-        or getattr(sentry_fastapi, "FastApiIntegration", None)
-    )
+if sentry_fastapi_module is not None:
+    _FastAPIIntegration = getattr(
+        sentry_fastapi_module, "FastAPIIntegration", None
+    ) or getattr(sentry_fastapi_module, "FastApiIntegration", None)
 else:
     _FastAPIIntegration = None
 
 # Configure audit logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -59,12 +79,15 @@ if settings.sentry_dsn:
     )
 
 
-def _auth_error(status_code: int, code: str, message: str, headers: dict | None = None) -> JSONResponse:
+def _auth_error(
+    status_code: int, code: str, message: str, headers: dict | None = None
+) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content={"error": {"code": code, "message": message, "details": {}}},
         headers=headers,
     )
+
 
 # Create FastMCP server and get its HTTP app
 mcp = FastMCP("sidebar-skills")
@@ -80,12 +103,11 @@ async def lifespan(app: FastAPI):
     async with mcp_app.lifespan(app):
         # Initialize our app state
         app.state.executor = SkillExecutor(
-            skills_dir=settings.skills_dir,
-            workspace_base=settings.workspace_base
+            skills_dir=settings.skills_dir, workspace_base=settings.workspace_base
         )
         app.state.path_validator = PathValidator(
             workspace_base=settings.workspace_base,
-            writable_paths=settings.writable_paths
+            writable_paths=settings.writable_paths,
         )
         yield
         # Cleanup happens here if needed
@@ -96,21 +118,26 @@ app = FastAPI(
     title="sideBar Skills API",
     description="Skills API with FastAPI REST + MCP Streamable HTTP",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Register error handlers
 app.add_exception_handler(
     APIError,
-    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], api_error_handler)
+    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], api_error_handler),
 )
 app.add_exception_handler(
     HTTPException,
-    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], http_exception_handler)
+    cast(
+        Callable[[Request, Exception], Awaitable[JSONResponse]], http_exception_handler
+    ),
 )
 app.add_exception_handler(
     Exception,
-    cast(Callable[[Request, Exception], Awaitable[JSONResponse]], unhandled_exception_handler)
+    cast(
+        Callable[[Request, Exception], Awaitable[JSONResponse]],
+        unhandled_exception_handler,
+    ),
 )
 app.add_middleware(DeprecationMiddleware)
 app.add_middleware(MetricsMiddleware)
@@ -128,17 +155,23 @@ async def auth_middleware(request: Request, call_next):
     if settings.auth_dev_mode:
         if not settings.allow_auth_dev_mode:
             logger.warning("AUTH_DEV_MODE is enabled outside local/test environment.")
-            return _auth_error(403, "AUTH_DEV_MODE_FORBIDDEN", "AUTH_DEV_MODE requires APP_ENV=local")
+            return _auth_error(
+                403, "AUTH_DEV_MODE_FORBIDDEN", "AUTH_DEV_MODE requires APP_ENV=local"
+            )
         response = await call_next(request)
         return response
 
     # Allow Things bridge heartbeat or install with bridge token headers.
-    if request.url.path in {"/api/things/bridges/heartbeat", "/api/things/bridges/install"}:
+    if request.url.path in {
+        "/api/things/bridges/heartbeat",
+        "/api/things/bridges/install",
+    }:
         bridge_id = request.headers.get("X-Bridge-Id")
         bridge_token = request.headers.get("X-Bridge-Token")
         if bridge_id and bridge_token:
             from api.db.session import SessionLocal
             from api.models.things_bridge import ThingsBridge
+
             with SessionLocal() as db:
                 record = (
                     db.query(ThingsBridge)
@@ -153,7 +186,9 @@ async def auth_middleware(request: Request, call_next):
                 response = await call_next(request)
                 return response
             return _auth_error(401, "INVALID_BRIDGE_TOKEN", "Invalid bridge token")
-        if request.url.path == "/api/things/bridges/install" and request.headers.get("X-Install-Token"):
+        if request.url.path == "/api/things/bridges/install" and request.headers.get(
+            "X-Install-Token"
+        ):
             response = await call_next(request)
             return response
 
@@ -174,6 +209,7 @@ async def auth_middleware(request: Request, call_next):
             raise ValueError("Invalid scheme")
         if token.startswith("sb_pat_"):
             from api.db.session import SessionLocal
+
             with SessionLocal() as db:
                 db.execute(text("SET app.pat_token = :token"), {"token": token})
                 settings_record = (
@@ -225,20 +261,42 @@ app.include_router(weather.router, prefix="/api/v1", tags=["weather"])
 app.include_router(things.router, prefix="/api/v1", tags=["things"])
 
 # Legacy routes (deprecated)
-app.include_router(health.router, prefix="/api", tags=["health-legacy"], deprecated=True)
+app.include_router(
+    health.router, prefix="/api", tags=["health-legacy"], deprecated=True
+)
 app.include_router(chat.router, prefix="/api", tags=["chat-legacy"], deprecated=True)
-app.include_router(conversations.router, prefix="/api", tags=["conversations-legacy"], deprecated=True)
+app.include_router(
+    conversations.router, prefix="/api", tags=["conversations-legacy"], deprecated=True
+)
 app.include_router(files.router, prefix="/api", tags=["files-legacy"], deprecated=True)
-app.include_router(ingestion.router, prefix="/api", tags=["ingestion-legacy"], deprecated=True)
+app.include_router(
+    ingestion.router, prefix="/api", tags=["ingestion-legacy"], deprecated=True
+)
 app.include_router(notes.router, prefix="/api", tags=["notes-legacy"], deprecated=True)
-app.include_router(websites.router, prefix="/api", tags=["websites-legacy"], deprecated=True)
-app.include_router(scratchpad.router, prefix="/api", tags=["scratchpad-legacy"], deprecated=True)
-app.include_router(user_settings.router, prefix="/api", tags=["settings-legacy"], deprecated=True)
-app.include_router(memories.router, prefix="/api", tags=["memories-legacy"], deprecated=True)
-app.include_router(places.router, prefix="/api", tags=["places-legacy"], deprecated=True)
-app.include_router(skills.router, prefix="/api", tags=["skills-legacy"], deprecated=True)
-app.include_router(weather.router, prefix="/api", tags=["weather-legacy"], deprecated=True)
-app.include_router(things.router, prefix="/api", tags=["things-legacy"], deprecated=True)
+app.include_router(
+    websites.router, prefix="/api", tags=["websites-legacy"], deprecated=True
+)
+app.include_router(
+    scratchpad.router, prefix="/api", tags=["scratchpad-legacy"], deprecated=True
+)
+app.include_router(
+    user_settings.router, prefix="/api", tags=["settings-legacy"], deprecated=True
+)
+app.include_router(
+    memories.router, prefix="/api", tags=["memories-legacy"], deprecated=True
+)
+app.include_router(
+    places.router, prefix="/api", tags=["places-legacy"], deprecated=True
+)
+app.include_router(
+    skills.router, prefix="/api", tags=["skills-legacy"], deprecated=True
+)
+app.include_router(
+    weather.router, prefix="/api", tags=["weather-legacy"], deprecated=True
+)
+app.include_router(
+    things.router, prefix="/api", tags=["things-legacy"], deprecated=True
+)
 
 # Mount MCP endpoint (auth handled by middleware)
 # FastMCP creates its own /mcp route, so we mount at root
@@ -256,11 +314,11 @@ async def root():
             "mcp": "/mcp (Bearer token)",
             "chat": "/api/chat/stream (Bearer token, SSE)",
             "conversations": "/api/conversations (Bearer token)",
-            "health": "/api/health (no auth)"
+            "health": "/api/health (no auth)",
         },
         "security": {
             "auth": "Unified bearer token for all endpoints",
             "path_jailing": "All paths restricted to the configured storage root",
-            "write_allowlist": settings.writable_paths
-        }
+            "write_allowlist": settings.writable_paths,
+        },
     }

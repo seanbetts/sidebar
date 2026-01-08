@@ -1,12 +1,11 @@
-"""
-Tests for skills/skill-creator/scripts/quick_validate.py
+"""Tests for skills/skill-creator/scripts/quick_validate.py
 
 Tests YAML frontmatter validation, name/description rules,
 and error message generation.
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Add project root and skill script to path
 project_root = Path(__file__).parent.parent.parent.parent

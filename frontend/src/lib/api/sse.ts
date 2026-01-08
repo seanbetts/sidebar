@@ -9,6 +9,9 @@ export interface SSECallbacks {
 	onToolResult?: (event: any) => void;
 	onComplete?: () => void;
 	onError?: (error: string) => void;
+	onConnected?: (data: { elapsedMs: number }) => void;
+	onFirstEvent?: (data: { elapsedMs: number }) => void;
+	onStreamClosed?: () => void;
 	onNoteCreated?: (data: { id?: string; title?: string; folder?: string }) => void;
 	onNoteUpdated?: (data: { id?: string; title?: string }) => void;
 	onWebsiteSaved?: (data: { id?: string; title?: string; url?: string }) => void;
@@ -62,6 +65,8 @@ export class SSEClient {
 	): Promise<void> {
 		// Create abort controller for this connection
 		this.abortController = new AbortController();
+		const connectStartedAt = Date.now();
+		let firstEventSeen = false;
 		try {
 			// Send message to backend via fetch POST to get SSE stream
 			const response = await fetch('/api/v1/chat/stream', {
@@ -90,6 +95,7 @@ export class SSEClient {
 			if (!response.body) {
 				throw new Error('No response body');
 			}
+			callbacks.onConnected?.({ elapsedMs: Math.max(0, Date.now() - connectStartedAt) });
 
 			// Parse SSE stream manually
 			this.reader = response.body.getReader();
@@ -125,6 +131,13 @@ export class SSEClient {
 
 					if (!eventData) continue;
 
+					if (!firstEventSeen) {
+						firstEventSeen = true;
+						callbacks.onFirstEvent?.({
+							elapsedMs: Math.max(0, Date.now() - connectStartedAt)
+						});
+					}
+
 					try {
 						const data = JSON.parse(eventData);
 						this.handleEvent(eventType, data, callbacks);
@@ -144,6 +157,7 @@ export class SSEClient {
 			// Clean up references
 			this.reader = null;
 			this.abortController = null;
+			callbacks.onStreamClosed?.();
 		}
 	}
 
