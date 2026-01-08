@@ -1,7 +1,8 @@
 """Prometheus metrics for monitoring."""
+
 from __future__ import annotations
 
-from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 # Request metrics
 http_requests_total = Counter(

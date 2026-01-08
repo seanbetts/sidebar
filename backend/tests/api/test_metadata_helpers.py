@@ -1,19 +1,20 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
-
 from api.db.base import Base
 from api.models.note import Note
 from api.models.website import Website
 from api.utils.metadata_helpers import get_max_pinned_order
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture
 def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    connection = test_db_engine.connect().execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
     schema = f"test_{uuid.uuid4().hex}"
 
     connection.execute(text(f'CREATE SCHEMA "{schema}"'))
@@ -32,7 +33,7 @@ def db_session(test_db_engine):
 
 
 def _create_note(db_session, user_id: str, metadata: dict) -> Note:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     note = Note(
         user_id=user_id,
         title="Note",
@@ -48,7 +49,7 @@ def _create_note(db_session, user_id: str, metadata: dict) -> Note:
 
 
 def _create_website(db_session, user_id: str, metadata: dict) -> Website:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     website = Website(
         user_id=user_id,
         url=f"https://example.com/{uuid.uuid4().hex}",

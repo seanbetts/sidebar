@@ -7,7 +7,6 @@ Create Date: 2026-01-05 12:00:00.000000
 
 from alembic import op
 
-
 revision = "027_add_recent_activity_indexes"
 down_revision = "026_add_user_settings_things_snapshot"
 branch_labels = None

@@ -13,12 +13,7 @@
 				? 'destructive'
 				: 'secondary';
 
-	$: statusIcon =
-		toolCall.status === 'success'
-			? '✓'
-			: toolCall.status === 'error'
-				? '✗'
-				: '⋯';
+	$: statusIcon = toolCall.status === 'success' ? '✓' : toolCall.status === 'error' ? '✗' : '⋯';
 
 	function formatJSON(obj: any): string {
 		try {

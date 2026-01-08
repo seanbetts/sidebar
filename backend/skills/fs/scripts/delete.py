@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""
-Delete File/Directory from Workspace
+"""Delete File/Directory from Workspace
 
 Delete a file or directory from workspace.
 """
 
-import sys
-import json
 import argparse
+import json
+import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if sys.path and sys.path[0] == str(SCRIPT_DIR):
@@ -27,7 +26,7 @@ def delete_entry(
     user_id: str,
     path: str,
     recursive: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Delete a file or directory."""
     if not recursive and path.endswith("/"):
         raise ValueError("Directory delete requires --recursive")
@@ -45,22 +44,15 @@ def delete_entry(
 def main():
     """Main entry point for delete script."""
     parser = argparse.ArgumentParser(
-        description='Delete file or directory from workspace'
+        description="Delete file or directory from workspace"
     )
 
+    parser.add_argument("path", help="Path to delete (relative to workspace)")
     parser.add_argument(
-        'path',
-        help='Path to delete (relative to workspace)'
+        "--recursive", action="store_true", help="Delete directories recursively"
     )
     parser.add_argument(
-        '--recursive',
-        action='store_true',
-        help='Delete directories recursively'
-    )
-    parser.add_argument(
-        '--json',
-        action='store_true',
-        help='Output results in JSON format'
+        "--json", action="store_true", help="Output results in JSON format"
     )
     parser.add_argument(
         "--user-id",
@@ -73,29 +65,20 @@ def main():
     try:
         result = delete_entry(args.user_id, args.path, args.recursive)
 
-        output = {
-            'success': True,
-            'data': result
-        }
+        output = {"success": True, "data": result}
         print(json.dumps(output, indent=2))
         sys.exit(0)
 
     except (ValueError, FileNotFoundError, OSError) as e:
-        error_output = {
-            'success': False,
-            'error': str(e)
-        }
+        error_output = {"success": False, "error": str(e)}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:
-        error_output = {
-            'success': False,
-            'error': f'Unexpected error: {str(e)}'
-        }
+        error_output = {"success": False, "error": f"Unexpected error: {str(e)}"}
         print(json.dumps(error_output, indent=2), file=sys.stderr)
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

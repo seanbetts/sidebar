@@ -5,9 +5,8 @@ Revises: 019_add_ingested_files_pinned_order
 Create Date: 2026-01-10 13:00:00
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "020_add_user_settings_shortcuts_pat"
 down_revision = "019_add_ingested_files_pinned_order"

@@ -1,4 +1,5 @@
 """Notes MCP tool registration."""
+
 from __future__ import annotations
 
 import json
@@ -15,6 +16,7 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         executor: Skill executor used to run scripts.
         default_user_id: Default user ID for tool execution.
     """
+
     @mcp.tool()
     async def notes_create(
         title: str,
@@ -25,7 +27,16 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         """Create a new markdown note with metadata."""
         start_time = time.time()
 
-        args = [title, "--content", content, "--mode", "create", "--database", "--user-id", default_user_id]
+        args = [
+            title,
+            "--content",
+            content,
+            "--mode",
+            "create",
+            "--database",
+            "--user-id",
+            default_user_id,
+        ]
         if folder:
             args.extend(["--folder", folder])
         if tags:
@@ -52,7 +63,16 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         """Update existing note (replace content)."""
         start_time = time.time()
 
-        args = [title, "--content", content, "--mode", "update", "--database", "--user-id", default_user_id]
+        args = [
+            title,
+            "--content",
+            content,
+            "--mode",
+            "update",
+            "--database",
+            "--user-id",
+            default_user_id,
+        ]
         if folder:
             args.extend(["--folder", folder])
         if note_id:
@@ -79,7 +99,16 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         """Append content to existing note."""
         start_time = time.time()
 
-        args = [title, "--content", content, "--mode", "append", "--database", "--user-id", default_user_id]
+        args = [
+            title,
+            "--content",
+            content,
+            "--mode",
+            "append",
+            "--database",
+            "--user-id",
+            default_user_id,
+        ]
         if folder:
             args.extend(["--folder", folder])
         if note_id:

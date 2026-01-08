@@ -1,10 +1,11 @@
 """Special-case tool execution handlers."""
+
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
-def handle_ui_theme(parameters: dict) -> Dict[str, Any]:
+def handle_ui_theme(parameters: dict) -> dict[str, Any]:
     """Handle UI theme tool execution.
 
     Args:
@@ -19,7 +20,7 @@ def handle_ui_theme(parameters: dict) -> Dict[str, Any]:
     return {"success": True, "data": {"theme": theme}}
 
 
-def handle_prompt_preview(context: Dict[str, Any] | None) -> Dict[str, Any]:
+def handle_prompt_preview(context: dict[str, Any] | None) -> dict[str, Any]:
     """Handle prompt preview tool execution.
 
     Args:
@@ -56,7 +57,9 @@ def handle_prompt_preview(context: Dict[str, Any] | None) -> Dict[str, Any]:
     }
 
 
-def handle_memory_tool(context: Dict[str, Any] | None, parameters: dict) -> Dict[str, Any]:
+def handle_memory_tool(
+    context: dict[str, Any] | None, parameters: dict
+) -> dict[str, Any]:
     """Handle memory tool execution.
 
     Args:

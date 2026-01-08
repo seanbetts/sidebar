@@ -1,17 +1,18 @@
 """Workspace-specific note operations for the notes API."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy.orm import Session, load_only
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.orm.exc import ObjectDeletedError
 
-from api.models.note import Note
 from api.exceptions import NoteNotFoundError
+from api.models.note import Note
 from api.services.notes_service import NotesService
 from api.services.workspace_service import WorkspaceService
-from sqlalchemy.orm.exc import ObjectDeletedError
 from api.utils.search import build_text_search_filter
 
 
@@ -40,7 +41,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         include_deleted: bool = False,
         **kwargs: object,
     ) -> list[Note]:
-        query = db.query(Note).options(load_only(Note.id, Note.title, Note.metadata_, Note.updated_at))
+        query = db.query(Note).options(
+            load_only(Note.id, Note.title, Note.metadata_, Note.updated_at)
+        )
         query = query.filter(Note.user_id == user_id)
         if not include_deleted:
             query = query.filter(Note.deleted_at.is_(None))
@@ -101,13 +104,17 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         Returns:
             Folder creation result.
         """
-        notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
+        notes = (
+            db.query(Note)
+            .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
+            .all()
+        )
         for note in notes:
             note_folder = (note.metadata_ or {}).get("folder") or ""
             if note_folder == path or note_folder.startswith(f"{path}/"):
                 return {"success": True, "exists": True}
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         note = Note(
             user_id=user_id,
             title="__folder__",
@@ -138,7 +145,11 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         parent = "/".join(old_path.split("/")[:-1])
         new_folder = f"{parent}/{new_name}".strip("/") if parent else new_name
 
-        notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
+        notes = (
+            db.query(Note)
+            .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
+            .all()
+        )
         for note in notes:
             folder = (note.metadata_ or {}).get("folder") or ""
             if folder == old_path or folder.startswith(f"{old_path}/"):
@@ -146,7 +157,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
                 if hasattr(note, "_sa_instance_state"):
                     flag_modified(note, "metadata_")
-                note.updated_at = datetime.now(timezone.utc)
+                note.updated_at = datetime.now(UTC)
         db.commit()
         return {"success": True, "newPath": f"folder:{new_folder}"}
 
@@ -166,13 +177,19 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         Raises:
             ValueError: If destination is within the source.
         """
-        if new_parent and (new_parent == old_path or new_parent.startswith(f"{old_path}/")):
+        if new_parent and (
+            new_parent == old_path or new_parent.startswith(f"{old_path}/")
+        ):
             raise ValueError("Invalid destination folder")
 
         basename = old_path.split("/")[-1]
         new_folder = f"{new_parent}/{basename}".strip("/") if new_parent else basename
 
-        notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
+        notes = (
+            db.query(Note)
+            .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
+            .all()
+        )
         for note in notes:
             folder = (note.metadata_ or {}).get("folder") or ""
             if folder == old_path or folder.startswith(f"{old_path}/"):
@@ -180,7 +197,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
                 note.metadata_ = {**(note.metadata_ or {}), "folder": updated_folder}
                 if hasattr(note, "_sa_instance_state"):
                     flag_modified(note, "metadata_")
-                note.updated_at = datetime.now(timezone.utc)
+                note.updated_at = datetime.now(UTC)
         db.commit()
         return {"success": True, "newPath": f"folder:{new_folder}"}
 
@@ -196,8 +213,12 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         Returns:
             Folder deletion result.
         """
-        notes = db.query(Note).filter(Note.user_id == user_id, Note.deleted_at.is_(None)).all()
-        now = datetime.now(timezone.utc)
+        notes = (
+            db.query(Note)
+            .filter(Note.user_id == user_id, Note.deleted_at.is_(None))
+            .all()
+        )
+        now = datetime.now(UTC)
         for note in notes:
             note_folder = (note.metadata_ or {}).get("folder") or ""
             if note_folder == path or note_folder.startswith(f"{path}/"):
@@ -248,6 +269,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             db: Database session.
             user_id: Current user ID.
             content: Markdown content.
+            title: Optional note title.
             path: Optional file path hint.
             folder: Optional folder override.
 
@@ -260,18 +282,18 @@ class NotesWorkspaceService(WorkspaceService[Note]):
             resolved_folder = "" if folder_path == "." else folder_path
 
         created = NotesService.create_note(
-            db,
-            user_id,
-            content,
-            title=title,
-            folder=resolved_folder
+            db, user_id, content, title=title, folder=resolved_folder
         )
         try:
-            return NotesWorkspaceService.build_note_payload(created, include_content=True)
+            return NotesWorkspaceService.build_note_payload(
+                created, include_content=True
+            )
         except ObjectDeletedError:
             note_id = getattr(created, "_snapshot_id", None)
             updated_at = getattr(created, "_snapshot_updated_at", None)
-            fallback_title = title or NotesService.extract_title(content, "Untitled Note")
+            fallback_title = title or NotesService.extract_title(
+                content, "Untitled Note"
+            )
             return {
                 "id": str(note_id),
                 "name": f"{fallback_title}.md",
@@ -323,7 +345,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
         note = (
             db.query(Note)
-            .filter(Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None))
+            .filter(
+                Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None)
+            )
             .first()
         )
         if not note:
@@ -332,7 +356,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
         title = Path(new_name).stem
         note.title = title
         note.content = NotesService.update_content_title(note.content, title)
-        note.updated_at = datetime.now(timezone.utc)
+        note.updated_at = datetime.now(UTC)
         db.commit()
         return NotesWorkspaceService.build_note_payload(note, include_content=True)
 
@@ -358,7 +382,9 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
         note = (
             db.query(Note)
-            .filter(Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None))
+            .filter(
+                Note.user_id == user_id, Note.id == note_uuid, Note.deleted_at.is_(None)
+            )
             .first()
         )
         if not note:

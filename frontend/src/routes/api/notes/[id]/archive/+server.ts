@@ -1,7 +1,7 @@
 import { createProxyHandler } from '$lib/server/apiProxy';
 
 export const PATCH = createProxyHandler({
-  method: 'PATCH',
-  pathBuilder: (params) => `/api/v1/notes/${params.id}/archive`,
-  bodyFromRequest: true
+	method: 'PATCH',
+	pathBuilder: (params) => `/api/v1/notes/${params.id}/archive`,
+	bodyFromRequest: true
 });

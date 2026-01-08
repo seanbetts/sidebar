@@ -1,4 +1,5 @@
 """Miscellaneous tool definitions."""
+
 from __future__ import annotations
 
 
@@ -29,13 +30,23 @@ def get_misc_definitions() -> dict:
             "build_args": None,
         },
         "Memory Tool": {
-            "description": "Create, update, and manage persistent memory files. Paths should start with /memories.",
+            "description": (
+                "Create, update, and manage persistent memory files. "
+                "Paths should start with /memories."
+            ),
             "input_schema": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
-                        "enum": ["view", "create", "str_replace", "insert", "delete", "rename"],
+                        "enum": [
+                            "view",
+                            "create",
+                            "str_replace",
+                            "insert",
+                            "delete",
+                            "rename",
+                        ],
                     },
                     "path": {"type": "string"},
                     "view_range": {

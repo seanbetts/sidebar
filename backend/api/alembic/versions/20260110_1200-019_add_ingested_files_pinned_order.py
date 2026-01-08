@@ -1,6 +1,6 @@
 """Add pinned_order to ingested files."""
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "019_add_ingested_files_pinned_order"
 down_revision = "018_add_ingested_files_path"

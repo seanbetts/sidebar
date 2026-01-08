@@ -1,8 +1,7 @@
 """Add path column to ingested_files."""
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # Revision identifiers, used by Alembic.
 revision = "018_add_ingested_files_path"

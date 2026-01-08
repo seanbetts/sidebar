@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 from api.config import settings
 from api.db.dependencies import DEFAULT_USER_ID
@@ -35,8 +35,8 @@ def test_conversation_update_and_search(test_client, test_db):
         messages=[{"role": "user", "content": "hello"}],
         message_count=1,
         first_message="hello",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(conversation)
     test_db.commit()
@@ -65,8 +65,8 @@ def test_conversation_messages_and_delete(test_client, test_db):
         title="Chat",
         messages=[],
         message_count=0,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(conversation)
     test_db.commit()
@@ -76,7 +76,7 @@ def test_conversation_messages_and_delete(test_client, test_db):
         "role": "user",
         "content": "Hello",
         "status": None,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "toolCalls": None,
         "error": None,
     }

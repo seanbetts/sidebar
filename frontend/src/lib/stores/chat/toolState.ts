@@ -34,7 +34,11 @@ export function createToolStateHandlers(update: UpdateFn, getState: GetStateFn) 
 		return state.activeTool.startedAt;
 	};
 
-	const setActiveTool = (messageId: string, name: string, status: 'running' | 'success' | 'error') => {
+	const setActiveTool = (
+		messageId: string,
+		name: string,
+		status: 'running' | 'success' | 'error'
+	) => {
 		clearToolTimers();
 		const startedAt = Date.now();
 		markToolStart(messageId, name);

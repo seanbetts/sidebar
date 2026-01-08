@@ -1,9 +1,10 @@
 """Shared helpers for JSONB metadata operations."""
+
 from __future__ import annotations
 
 from typing import Any, Protocol
 
-from sqlalchemy import Integer, cast, case, func
+from sqlalchemy import Integer, case, cast, func
 from sqlalchemy.orm import Session
 
 
@@ -13,7 +14,9 @@ class _HasMetadata(Protocol):
     deleted_at: Any
 
 
-def get_max_pinned_order(db: Session, model_class: type[_HasMetadata], user_id: str) -> int:
+def get_max_pinned_order(
+    db: Session, model_class: type[_HasMetadata], user_id: str
+) -> int:
     """Return the current max pinned_order for a user.
 
     Args:

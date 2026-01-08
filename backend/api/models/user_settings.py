@@ -1,5 +1,6 @@
 """User settings model for per-user prompts and preferences."""
-from datetime import datetime, timezone, date
+
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Date, DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -31,12 +32,12 @@ class UserSettings(Base):
     things_ai_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
 

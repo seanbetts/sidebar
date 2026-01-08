@@ -5,9 +5,8 @@ Revises: 021_update_user_settings_rls_for_pat
 Create Date: 2026-01-10 13:20:00
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "022_add_website_processing_jobs"
 down_revision = "021_update_user_settings_rls_for_pat"

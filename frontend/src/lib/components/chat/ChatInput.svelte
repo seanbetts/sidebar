@@ -106,26 +106,26 @@
 					class="attachment-input"
 					multiple
 				/>
-			<Tooltip disabled={!tooltipsEnabled}>
-				<TooltipTrigger>
-					{#snippet child({ props })}
-						<Button
-							size="icon"
-							variant="ghost"
-							{...props}
-							onclick={(event) => {
-								props.onclick?.(event);
-								handleAttachClick(event);
-							}}
-							aria-label="Attach file"
-							disabled={disabled}
-						>
-							<Paperclip size={16} />
-						</Button>
-					{/snippet}
-				</TooltipTrigger>
-				<TooltipContent side="top">{TOOLTIP_COPY.attach}</TooltipContent>
-			</Tooltip>
+				<Tooltip disabled={!tooltipsEnabled}>
+					<TooltipTrigger>
+						{#snippet child({ props })}
+							<Button
+								size="icon"
+								variant="ghost"
+								{...props}
+								onclick={(event) => {
+									props.onclick?.(event);
+									handleAttachClick(event);
+								}}
+								aria-label="Attach file"
+								{disabled}
+							>
+								<Paperclip size={16} />
+							</Button>
+						{/snippet}
+					</TooltipTrigger>
+					<TooltipContent side="top">{TOOLTIP_COPY.attach}</TooltipContent>
+				</Tooltip>
 				{#if readyattachments.length > 0}
 					<div class="chat-attachment-pill-group">
 						{#each readyattachments as attachment (attachment.id)}

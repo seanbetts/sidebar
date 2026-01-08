@@ -5,6 +5,7 @@
 Hard limit: 600 LOC
 
 **When approaching limit:**
+
 - Extract sub-components
 - Move logic to custom hooks/utils
 - Split into container + presentational components
@@ -12,28 +13,32 @@ Hard limit: 600 LOC
 ## State Management
 
 ### Stores
+
 Located in `src/lib/stores/`
 
 **Pattern:**
+
 ```typescript
 export const myStore = createMyStore();
 
 function createMyStore() {
-  const { subscribe, update, set } = writable<T>(initial);
+	const { subscribe, update, set } = writable<T>(initial);
 
-  return {
-    subscribe,
-    // Methods that update state
-  };
+	return {
+		subscribe
+		// Methods that update state
+	};
 }
 ```
 
 ### Store Subscriptions in Components
+
 Use `$` prefix for auto-subscription:
+
 ```svelte
 <script>
-  import { myStore } from '$lib/stores/myStore';
-  $: data = $myStore.data;  // Auto-subscribes
+	import { myStore } from '$lib/stores/myStore';
+	$: data = $myStore.data; // Auto-subscribes
 </script>
 ```
 
@@ -42,6 +47,7 @@ Use `$` prefix for auto-subscription:
 Always through stores or centralized services, never directly in components.
 
 **Pattern:**
+
 ```typescript
 // In store
 async loadData() {
@@ -55,14 +61,15 @@ async loadData() {
 ## SSE (Server-Sent Events)
 
 Handle SSE events in `ChatWindow.svelte` callbacks:
+
 ```typescript
 await sseClient.connect(message, {
-  onNoteCreated: async (data) => {
-    await filesStore.load('notes');
-  },
-  onNoteUpdated: async (data) => {
-    await filesStore.load('notes');
-  }
+	onNoteCreated: async (data) => {
+		await filesStore.load('notes');
+	},
+	onNoteUpdated: async (data) => {
+		await filesStore.load('notes');
+	}
 });
 ```
 
@@ -82,12 +89,14 @@ await sseClient.connect(message, {
 ## Common Mistakes
 
 **DON'T:**
+
 - Make API calls directly in components
 - Forget to unsubscribe from stores (use `$` prefix)
 - Leave console.log statements
 - Create giant components (> 600 LOC)
 
 **DO:**
+
 - Extract logic to custom hooks/utils
 - Use TypeScript types for all data
 - Handle loading and error states

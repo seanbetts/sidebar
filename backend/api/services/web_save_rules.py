@@ -1,12 +1,13 @@
 """Rule engine helpers for the web-save parser."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
-from lxml import html as lxml_html
 import yaml
+from lxml import html as lxml_html
 
 
 @dataclass(frozen=True)
@@ -60,10 +61,12 @@ class RuleEngine:
     """Minimal rule engine for web-save parsing."""
 
     def __init__(self, rules: list[Rule]):
+        """Initialize the rule engine with parsed rules."""
         self._rules = rules
 
     @classmethod
-    def from_rules_dir(cls, rules_dir: Path) -> "RuleEngine":
+    def from_rules_dir(cls, rules_dir: Path) -> RuleEngine:
+        """Load and parse rule definitions from a directory."""
         rules: list[Rule] = []
         for path in sorted(rules_dir.glob("*.yaml")):
             if path.name == "playwright_allowlist.yaml":
@@ -89,6 +92,7 @@ class RuleEngine:
         return cls(rules)
 
     def match_rules(self, url: str, html: str, phase: str) -> list[Rule]:
+        """Return rules that match the URL and HTML for a phase."""
         host_info = _host_variants(urlparse(url).netloc)
         tree = _safe_html_tree(html)
         matches: list[Rule] = []
@@ -101,6 +105,7 @@ class RuleEngine:
         return matches
 
     def apply_rules(self, html: str, rules: list[Rule]) -> str:
+        """Apply rules to raw HTML and return rendered HTML."""
         tree = _safe_html_tree(html)
         tree = self.apply_rules_tree(tree, rules)
         return lxml_html.tostring(tree, encoding="unicode")
@@ -108,6 +113,7 @@ class RuleEngine:
     def apply_rules_tree(
         self, tree: lxml_html.HtmlElement, rules: list[Rule]
     ) -> lxml_html.HtmlElement:
+        """Apply rules to a parsed HTML tree and return the tree."""
         for rule in rules:
             overrides = rule.selector_overrides or {}
             selector = overrides.get("article") or overrides.get("wrapper")
@@ -144,15 +150,28 @@ class RuleEngine:
 
         host_match = False
         if host_rule:
-            if "equals" in host_rule and _normalize_host(host_rule["equals"]) == host_info["host_nw"]:
+            if (
+                "equals" in host_rule
+                and _normalize_host(host_rule["equals"]) == host_info["host_nw"]
+            ):
                 host_match = True
-            if "equals_www" in host_rule and _normalize_host(host_rule["equals_www"]) == host_info["host_with_www"]:
+            if (
+                "equals_www" in host_rule
+                and _normalize_host(host_rule["equals_www"])
+                == host_info["host_with_www"]
+            ):
                 host_match = True
             if "ends_with" in host_rule:
                 target = _normalize_host(host_rule["ends_with"])
-                if host_info["host_nw"].endswith(target) or host_info["etld_plus_one"].endswith(target):
+                if host_info["host_nw"].endswith(target) or host_info[
+                    "etld_plus_one"
+                ].endswith(target):
                     host_match = True
-            if "etld_plus_one" in host_rule and _normalize_host(host_rule["etld_plus_one"]) == host_info["etld_plus_one"]:
+            if (
+                "etld_plus_one" in host_rule
+                and _normalize_host(host_rule["etld_plus_one"])
+                == host_info["etld_plus_one"]
+            ):
                 host_match = True
 
         dom_match = False
@@ -342,7 +361,9 @@ class RuleEngine:
             if not wrapper_tag:
                 return
             wrapper_class = action.get("class")
-            for parent in {node.getparent() for node in nodes if node.getparent() is not None}:
+            for parent in {
+                node.getparent() for node in nodes if node.getparent() is not None
+            }:
                 children = list(parent)
                 index = 0
                 while index < len(children):

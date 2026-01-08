@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""
-Copy File or Directory in Workspace
+"""Copy File or Directory in Workspace
 
 Copy files or directories within workspace with optional dry-run support.
 """
 
-import sys
-import json
 import argparse
+import json
+import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if sys.path and sys.path[0] == str(SCRIPT_DIR):
@@ -28,7 +27,7 @@ def copy_entry(
     source: str,
     destination: str,
     dry_run: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Copy a file or directory to a new location."""
     if dry_run:
         return {
@@ -54,15 +53,9 @@ def main():
     parser.add_argument("source", help="Source path (relative to workspace)")
     parser.add_argument("destination", help="Destination path (relative to workspace)")
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Validate but don't actually copy"
+        "--dry-run", action="store_true", help="Validate but don't actually copy"
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output result as JSON"
-    )
+    parser.add_argument("--json", action="store_true", help="Output result as JSON")
     parser.add_argument(
         "--user-id",
         required=True,

@@ -1,4 +1,5 @@
 """Path utilities for memory tool handling."""
+
 from __future__ import annotations
 
 import urllib.parse
@@ -47,7 +48,7 @@ def normalize_path(path: Any) -> str:
             raise ValueError("Invalid path")
     if path == "/memories":
         return path
-    parts = path[len("/memories/"):].split("/")
+    parts = path[len("/memories/") :].split("/")
     for part in parts:
         if part in {"", ".", ".."}:
             raise ValueError("Invalid path")
@@ -58,7 +59,7 @@ def is_visible_path(path: str) -> bool:
     """Return True if the path should be visible in listings."""
     if not path.startswith("/memories"):
         return False
-    parts = path[len("/memories"):].split("/")
+    parts = path[len("/memories") :].split("/")
     for part in parts:
         if part in {"", "."}:
             continue

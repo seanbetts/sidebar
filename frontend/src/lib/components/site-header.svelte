@@ -1,50 +1,52 @@
 <script lang="ts">
-	import { onDestroy, onMount } from "svelte";
-	import { toast } from "svelte-sonner";
-	import { useSiteHeaderData } from "$lib/hooks/useSiteHeaderData";
-	import { useThingsBridgeStatus } from "$lib/hooks/useThingsBridgeStatus";
-	import { get } from "svelte/store";
-	import { websitesStore, type WebsiteTranscriptEntry } from "$lib/stores/websites";
-	import { transcriptStatusStore } from "$lib/stores/transcript-status";
-	import ModeToggle from "$lib/components/mode-toggle.svelte";
-	import ScratchpadPopover from "$lib/components/scratchpad-popover.svelte";
-	import { Button } from "$lib/components/ui/button";
-	import { Tooltip, TooltipContent, TooltipTrigger } from "$lib/components/ui/tooltip";
-	import { layoutStore } from "$lib/stores/layout";
-	import { canShowTooltips } from "$lib/utils/tooltip";
-	import { resolveWeatherIcon } from "$lib/utils/weatherIcons";
-	import { ArrowLeftRight } from "lucide-svelte";
+	import { onDestroy, onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { useSiteHeaderData } from '$lib/hooks/useSiteHeaderData';
+	import { useThingsBridgeStatus } from '$lib/hooks/useThingsBridgeStatus';
+	import { get } from 'svelte/store';
+	import { websitesStore, type WebsiteTranscriptEntry } from '$lib/stores/websites';
+	import { transcriptStatusStore } from '$lib/stores/transcript-status';
+	import ModeToggle from '$lib/components/mode-toggle.svelte';
+	import ScratchpadPopover from '$lib/components/scratchpad-popover.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	import { layoutStore } from '$lib/stores/layout';
+	import { canShowTooltips } from '$lib/utils/tooltip';
+	import { resolveWeatherIcon } from '$lib/utils/weatherIcons';
+	import { ArrowLeftRight } from 'lucide-svelte';
 
 	const siteHeaderData = useSiteHeaderData();
-	let currentDate = "";
-	let currentTime = "";
-	let liveLocation = "";
-	let weatherTemp = "";
+	let currentDate = '';
+	let currentTime = '';
+	let liveLocation = '';
+	let weatherTemp = '';
 	let weatherCode: number | null = null;
 	let weatherIsDay: number | null = null;
 	const thingsStatus = useThingsBridgeStatus();
-	let bridgeStatus: "loading" | "online" | "offline" = "loading";
+	let bridgeStatus: 'loading' | 'online' | 'offline' = 'loading';
 	let bridgeSeenAt: string | null = null;
-	let transcriptStatus: "processing" | null = null;
-	let transcriptLabel = "";
+	let transcriptStatus: 'processing' | null = null;
+	let transcriptLabel = '';
 	let transcriptPollingId: ReturnType<typeof setInterval> | null = null;
 	let transcriptPollingKey: string | null = null;
 	let transcriptPollingInFlight = false;
-	let pendingTranscript:
-		| { websiteId: string; videoId: string; entry: WebsiteTranscriptEntry }
-		| null = null;
+	let pendingTranscript: {
+		websiteId: string;
+		videoId: string;
+		entry: WebsiteTranscriptEntry;
+	} | null = null;
 	let tooltipsEnabled = false;
 
-	$: ({ currentDate, currentTime, liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
+	$: ({ currentDate, currentTime, liveLocation, weatherTemp, weatherCode, weatherIsDay } =
+		$siteHeaderData);
 	$: ({ status: bridgeStatus, lastSeenAt: bridgeSeenAt } = $thingsStatus);
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
 	});
 	const isTranscriptPending = (status?: string) =>
-		status === "queued" || status === "processing" || status === "retrying";
+		status === 'queued' || status === 'processing' || status === 'retrying';
 
-	const isTranscriptFailed = (status?: string) =>
-		status === "failed" || status === "canceled";
+	const isTranscriptFailed = (status?: string) => status === 'failed' || status === 'canceled';
 
 	const getTranscriptCandidates = () => {
 		const active = $websitesStore.active;
@@ -77,24 +79,24 @@
 	$: {
 		const currentJob = $transcriptStatusStore;
 		if (currentJob) {
-			transcriptStatus = "processing";
-			transcriptLabel = "Transcribing";
+			transcriptStatus = 'processing';
+			transcriptLabel = 'Transcribing';
 			pendingTranscript = {
 				websiteId: currentJob.websiteId,
 				videoId: currentJob.videoId,
-				entry: { file_id: currentJob.fileId, status: "processing" }
+				entry: { file_id: currentJob.fileId, status: 'processing' }
 			};
 		} else {
 			const candidates = getTranscriptCandidates();
 			const pending = candidates.filter((item) => isTranscriptPending(item.entry.status));
 			if (pending.length > 0) {
 				const latest = pickLatest(pending);
-				transcriptStatus = "processing";
-				transcriptLabel = "Transcribing";
+				transcriptStatus = 'processing';
+				transcriptLabel = 'Transcribing';
 				pendingTranscript = latest;
 			} else {
 				transcriptStatus = null;
-				transcriptLabel = "";
+				transcriptLabel = '';
 				pendingTranscript = null;
 			}
 		}
@@ -109,15 +111,10 @@
 		transcriptPollingInFlight = false;
 	}
 
-	function getTranscriptEntry(
-		websiteId: string,
-		videoId: string
-	): WebsiteTranscriptEntry | null {
+	function getTranscriptEntry(websiteId: string, videoId: string): WebsiteTranscriptEntry | null {
 		const state = get(websitesStore);
 		const activeEntry =
-			state.active?.id === websiteId
-				? state.active?.youtube_transcripts?.[videoId]
-				: null;
+			state.active?.id === websiteId ? state.active?.youtube_transcripts?.[videoId] : null;
 		if (activeEntry) return activeEntry;
 		const item = state.items.find((entry) => entry.id === websiteId);
 		return item?.youtube_transcripts?.[videoId] ?? null;
@@ -144,41 +141,41 @@
 				const entry = getTranscriptEntry(websiteId, videoId);
 				const status = entry?.status;
 				if (!status) return;
-				if (status !== "ready" && status !== "failed" && status !== "canceled") {
+				if (status !== 'ready' && status !== 'failed' && status !== 'canceled') {
 					websitesStore.setTranscriptEntryLocal(websiteId, videoId, {
-						status: "processing",
+						status: 'processing',
 						file_id: fileId,
 						updated_at: new Date().toISOString()
 					});
 				}
-				if (status === "ready") {
+				if (status === 'ready') {
 					stopTranscriptPolling();
 					websitesStore.setTranscriptEntryLocal(websiteId, videoId, {
-						status: "ready",
+						status: 'ready',
 						file_id: fileId,
 						updated_at: new Date().toISOString()
 					});
 					if ($websitesStore.active?.id === websiteId) {
 						await websitesStore.loadById(websiteId);
 					}
-					toast.success("Transcript ready", {
-						description: "Transcript appended to the website."
+					toast.success('Transcript ready', {
+						description: 'Transcript appended to the website.'
 					});
 					transcriptStatus = null;
-					transcriptLabel = "";
+					transcriptLabel = '';
 					transcriptStatusStore.set(null);
 					return;
 				}
-				if (status === "failed" || status === "canceled") {
+				if (status === 'failed' || status === 'canceled') {
 					stopTranscriptPolling();
 					websitesStore.setTranscriptEntryLocal(websiteId, videoId, {
-						status: "failed",
+						status: 'failed',
 						file_id: fileId,
 						updated_at: new Date().toISOString()
 					});
-					toast.error("Transcript failed", { description: "Please try again." });
+					toast.error('Transcript failed', { description: 'Please try again.' });
 					transcriptStatus = null;
-					transcriptLabel = "";
+					transcriptLabel = '';
 					transcriptStatusStore.set(null);
 				}
 			} catch (error) {
@@ -220,14 +217,14 @@
 			<div
 				class="things-status"
 				aria-live="polite"
-				title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ""}
+				title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ''}
 			>
 				<span class="label">Bridge</span>
 				<span
 					class="dot"
-					class:online={bridgeStatus === "online"}
-					class:offline={bridgeStatus === "offline"}
-					class:loading={bridgeStatus === "loading"}
+					class:online={bridgeStatus === 'online'}
+					class:offline={bridgeStatus === 'offline'}
+					class:loading={bridgeStatus === 'loading'}
 				></span>
 			</div>
 			{#if transcriptStatus}
@@ -327,7 +324,7 @@
 		flex-direction: column;
 	}
 
-	.transcript-status[data-status="processing"] .dot {
+	.transcript-status[data-status='processing'] .dot {
 		background: #d99a2b;
 		animation: transcript-pulse 1.4s ease-in-out infinite;
 	}
@@ -464,8 +461,6 @@
 			display: none;
 		}
 	}
-
-
 
 	.date {
 		font-size: 0.75rem;
