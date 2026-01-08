@@ -184,7 +184,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 1.0j Native navigation matrix + cache TTL notes + realtime mapping notes
 - [x] 1.0k Native API inventory + dependency plan + Info.plist permissions
 - [x] 1.1 Xcode Project Setup
-- [ ] 1.2 Core Data Models
+- [x] 1.2 Core Data Models (cache entry + persistence controller)
 - [ ] 1.3 Supabase Integration
 - [ ] 1.4 API Service Layer
 - [ ] 1.5 Cache Layer
@@ -405,6 +405,7 @@ Evaluate RichTextKit capabilities. Choose:
 | Date | Phase | Sessions | Hours | Notes |
 |------|-------|----------|-------|-------|
 | 2026-01-08 | 1.1 | 1 | TBD | Created `ios/sideBar/sideBar.xcodeproj`, moved existing Swift sources into target, fixed build errors, verified iPhone/iPad/macOS builds |
+| 2026-01-08 | 1.2 | 1 | TBD | Added `SideBarCache.xcdatamodeld` + `PersistenceController` + `CoreDataCacheClient` scaffolding |
 
 ---
 
