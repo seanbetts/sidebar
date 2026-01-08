@@ -165,6 +165,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 1.0g Auth adapter + navigation state + realtime mappers
 - [x] 1.0h Error mapping + cache strategy + theme stub
 - [x] 1.0i Permissions + realtime handling + telemetry notes
+- [x] 1.0j Native navigation matrix + cache TTL notes + realtime mapping notes
 - [ ] 1.1 Xcode Project Setup
 - [ ] 1.2 Core Data Models
 - [ ] 1.3 Supabase Integration
