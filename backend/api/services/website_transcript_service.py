@@ -1,18 +1,17 @@
 """Service helpers for appending YouTube transcripts to website content."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import re
 import uuid
-from typing import Optional
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.websites_service import WebsitesService
-
 
 _YOUTUBE_ID_PATTERN = re.compile(
     r"(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([A-Za-z0-9_-]+)"
@@ -32,11 +31,11 @@ class TranscriptEnqueueResult:
     """Result for enqueuing transcript jobs."""
 
     status: str
-    content: Optional[str]
-    file_id: Optional[uuid.UUID]
+    content: str | None
+    file_id: uuid.UUID | None
 
 
-def extract_youtube_id(url: str) -> Optional[str]:
+def extract_youtube_id(url: str) -> str | None:
     """Extract a YouTube video ID from a URL."""
     if not url:
         return None
@@ -104,7 +103,9 @@ def append_transcript_to_markdown(
             header_lines = [
                 line for line in transcript_lines[:separator_index] if line.strip()
             ]
-            if header_lines and all(line.lstrip().startswith("#") for line in header_lines):
+            if header_lines and all(
+                line.lstrip().startswith("#") for line in header_lines
+            ):
                 transcript_body = "\n".join(
                     transcript_lines[separator_index + 1 :]
                 ).strip()
@@ -123,10 +124,7 @@ def append_transcript_to_markdown(
     ]
     block_text = "\n".join(transcript_block).rstrip()
     existing_body = "\n".join(body_lines).rstrip()
-    if existing_body:
-        updated_body = f"{existing_body}\n\n{block_text}"
-    else:
-        updated_body = block_text
+    updated_body = f"{existing_body}\n\n{block_text}" if existing_body else block_text
     return TranscriptAppendResult(
         content=f"{frontmatter}{updated_body}\n",
         changed=True,
@@ -144,7 +142,9 @@ class WebsiteTranscriptService:
         youtube_url: str,
     ) -> TranscriptEnqueueResult:
         """Queue a YouTube transcript job and return its status."""
-        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        website = WebsitesService.get_website(
+            db, user_id, website_id, mark_opened=False
+        )
         if not website:
             raise ValueError("Website not found")
 
@@ -156,7 +156,9 @@ class WebsiteTranscriptService:
 
         marker = f"<!-- YOUTUBE_TRANSCRIPT:{video_id} -->"
         if marker in content:
-            return TranscriptEnqueueResult(status="ready", content=content, file_id=None)
+            return TranscriptEnqueueResult(
+                status="ready", content=content, file_id=None
+            )
 
         record, _job = FileIngestionService.create_ingestion(
             db,
@@ -200,7 +202,9 @@ class WebsiteTranscriptService:
         video_title: str | None = None,
     ) -> str:
         """Append transcript text to a website and return updated content."""
-        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        website = WebsitesService.get_website(
+            db, user_id, website_id, mark_opened=False
+        )
         if not website:
             raise ValueError("Website not found")
 
@@ -240,11 +244,13 @@ class WebsiteTranscriptService:
         website_id: uuid.UUID,
         youtube_url: str,
         status: str,
-        file_id: Optional[str] = None,
-        error: Optional[str] = None,
+        file_id: str | None = None,
+        error: str | None = None,
     ) -> None:
         """Update transcript job metadata on a website."""
-        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        website = WebsitesService.get_website(
+            db, user_id, website_id, mark_opened=False
+        )
         if not website:
             return
         try:
@@ -271,11 +277,13 @@ class WebsiteTranscriptService:
         website_id: uuid.UUID,
         youtube_url: str,
         status: str,
-        file_id: Optional[str] = None,
-        error: Optional[str] = None,
+        file_id: str | None = None,
+        error: str | None = None,
     ) -> bool:
         """Sync transcript status from ingestion jobs when metadata is stale."""
-        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        website = WebsitesService.get_website(
+            db, user_id, website_id, mark_opened=False
+        )
         if not website:
             return False
         try:
@@ -320,7 +328,9 @@ class WebsiteTranscriptService:
         website_id: uuid.UUID,
     ) -> bool:
         """Sync transcript statuses for a website from ingestion jobs."""
-        website = WebsitesService.get_website(db, user_id, website_id, mark_opened=False)
+        website = WebsitesService.get_website(
+            db, user_id, website_id, mark_opened=False
+        )
         if not website:
             return False
         metadata = website.metadata_ or {}
@@ -356,7 +366,9 @@ class WebsiteTranscriptService:
             error = job.error_message
             current_status = entry.get("status")
             current_error = entry.get("error")
-            if mapped_status == current_status and (not error or error == current_error):
+            if mapped_status == current_status and (
+                not error or error == current_error
+            ):
                 continue
             WebsiteTranscriptService._update_transcript_metadata(
                 db,
@@ -376,8 +388,8 @@ class WebsiteTranscriptService:
         video_id: str,
         *,
         status: str,
-        file_id: Optional[str] = None,
-        error: Optional[str] = None,
+        file_id: str | None = None,
+        error: str | None = None,
     ) -> None:
         metadata = website.metadata_ or {}
         transcripts = metadata.get("youtube_transcripts")
@@ -385,7 +397,7 @@ class WebsiteTranscriptService:
             transcripts = {}
         entry = dict(transcripts.get(video_id, {}))
         entry["status"] = status
-        entry["updated_at"] = datetime.now(timezone.utc).isoformat()
+        entry["updated_at"] = datetime.now(UTC).isoformat()
         if file_id:
             entry["file_id"] = file_id
         if error:
@@ -396,5 +408,5 @@ class WebsiteTranscriptService:
         metadata["youtube_transcripts"] = transcripts
         website.metadata_ = metadata
         flag_modified(website, "metadata_")
-        website.updated_at = datetime.now(timezone.utc)
+        website.updated_at = datetime.now(UTC)
         db.commit()

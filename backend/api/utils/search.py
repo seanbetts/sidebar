@@ -1,7 +1,9 @@
 """Search helpers for building common filter expressions."""
+
 from __future__ import annotations
 
-from typing import Iterable, Any
+from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import or_
 

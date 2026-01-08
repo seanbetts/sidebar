@@ -4,32 +4,32 @@ import { captureError } from '$lib/config/sentry';
  * Structured error payload for API responses.
  */
 export interface StructuredError {
-  message: string;
-  status: number;
-  code?: string;
-  context?: Record<string, unknown>;
+	message: string;
+	status: number;
+	code?: string;
+	context?: Record<string, unknown>;
 }
 
 /**
  * Error wrapper that includes API metadata.
  */
 export class APIError extends Error {
-  status: number;
-  code?: string;
-  context?: Record<string, unknown>;
+	status: number;
+	code?: string;
+	context?: Record<string, unknown>;
 
-  /**
-   * Create a new API error from a structured payload.
-   *
-   * @param error Structured error payload.
-   */
-  constructor(error: StructuredError) {
-    super(error.message);
-    this.name = 'APIError';
-    this.status = error.status;
-    this.code = error.code;
-    this.context = error.context;
-  }
+	/**
+	 * Create a new API error from a structured payload.
+	 *
+	 * @param error Structured error payload.
+	 */
+	constructor(error: StructuredError) {
+		super(error.message);
+		this.name = 'APIError';
+		this.status = error.status;
+		this.code = error.code;
+		this.context = error.context;
+	}
 }
 
 /**
@@ -39,19 +39,16 @@ export class APIError extends Error {
  * @param error Error instance or payload.
  * @param context Extra context data.
  */
-export function logError(
-  message: string,
-  error: unknown,
-  context?: Record<string, unknown>
-): void {
-  console.error(message, {
-    error: error instanceof Error
-      ? { name: error.name, message: error.message, stack: error.stack }
-      : error,
-    context,
-    timestamp: new Date().toISOString()
-  });
-  captureError(error, { message, ...context });
+export function logError(message: string, error: unknown, context?: Record<string, unknown>): void {
+	console.error(message, {
+		error:
+			error instanceof Error
+				? { name: error.name, message: error.message, stack: error.stack }
+				: error,
+		context,
+		timestamp: new Date().toISOString()
+	});
+	captureError(error, { message, ...context });
 }
 
 /**
@@ -61,26 +58,26 @@ export function logError(
  * @returns Normalized structured error.
  */
 export function parseError(error: unknown): StructuredError {
-  if (error instanceof APIError) {
-    return {
-      message: error.message,
-      status: error.status,
-      code: error.code,
-      context: error.context
-    };
-  }
+	if (error instanceof APIError) {
+		return {
+			message: error.message,
+			status: error.status,
+			code: error.code,
+			context: error.context
+		};
+	}
 
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      status: 500
-    };
-  }
+	if (error instanceof Error) {
+		return {
+			message: error.message,
+			status: 500
+		};
+	}
 
-  return {
-    message: 'An unexpected error occurred',
-    status: 500
-  };
+	return {
+		message: 'An unexpected error occurred',
+		status: 500
+	};
 }
 
 /**
@@ -90,14 +87,14 @@ export function parseError(error: unknown): StructuredError {
  * @returns Never returns; always throws.
  */
 export async function handleFetchError(response: Response): Promise<never> {
-  const errorData = await response.json().catch(() => ({
-    error: response.statusText
-  }));
+	const errorData = await response.json().catch(() => ({
+		error: response.statusText
+	}));
 
-  throw new APIError({
-    message: errorData.error || errorData.message || 'Request failed',
-    status: response.status,
-    code: errorData.code,
-    context: errorData.context
-  });
+	throw new APIError({
+		message: errorData.error || errorData.message || 'Request failed',
+		status: response.status,
+		code: errorData.code,
+		context: errorData.context
+	});
 }

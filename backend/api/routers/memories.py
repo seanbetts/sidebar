@@ -1,7 +1,7 @@
 """Memories API router."""
+
 from __future__ import annotations
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -12,7 +12,6 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import get_db
 from api.services.memory_service import MemoryService
-
 
 router = APIRouter(prefix="/memories", tags=["memories"])
 
@@ -37,8 +36,8 @@ class MemoryCreate(BaseModel):
 class MemoryUpdate(BaseModel):
     """Request payload for updating a memory record."""
 
-    path: Optional[str] = None
-    content: Optional[str] = None
+    path: str | None = None
+    content: str | None = None
 
 
 @router.get("", response_model=list[MemoryResponse])

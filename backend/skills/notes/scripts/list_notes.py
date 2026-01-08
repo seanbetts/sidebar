@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-List Notes
+"""List Notes
 
 List notes with filters from the database.
 """
@@ -16,8 +15,8 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 try:
     from api.db.session import SessionLocal, set_session_user_id
-    from api.services.notes_service import NotesService
     from api.schemas.filters import NoteFilters
+    from api.services.notes_service import NotesService
 except Exception:
     SessionLocal = None
     NotesService = None
@@ -65,16 +64,24 @@ def list_notes_database(args: argparse.Namespace) -> dict:
             metadata = note.metadata_ or {}
             folder = metadata.get("folder", "")
             archived = folder == "Archive" or folder.startswith("Archive/")
-            items.append({
-                "id": str(note.id),
-                "title": note.title,
-                "folder": folder,
-                "pinned": bool(metadata.get("pinned")),
-                "archived": archived,
-                "created_at": note.created_at.isoformat() if note.created_at else None,
-                "updated_at": note.updated_at.isoformat() if note.updated_at else None,
-                "last_opened_at": note.last_opened_at.isoformat() if note.last_opened_at else None,
-            })
+            items.append(
+                {
+                    "id": str(note.id),
+                    "title": note.title,
+                    "folder": folder,
+                    "pinned": bool(metadata.get("pinned")),
+                    "archived": archived,
+                    "created_at": note.created_at.isoformat()
+                    if note.created_at
+                    else None,
+                    "updated_at": note.updated_at.isoformat()
+                    if note.updated_at
+                    else None,
+                    "last_opened_at": note.last_opened_at.isoformat()
+                    if note.last_opened_at
+                    else None,
+                }
+            )
 
         return {"items": items, "count": len(items)}
     finally:

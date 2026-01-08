@@ -29,7 +29,6 @@ TABLES_WITH_DUAL_POLICIES = [
 
 def upgrade() -> None:
     """Replace FOR ALL policies with separate INSERT/UPDATE/DELETE policies."""
-
     for table in TABLES_WITH_DUAL_POLICIES:
         # Drop the FOR ALL policy
         op.execute(f"DROP POLICY IF EXISTS {table}_backend_operations ON {table}")
@@ -107,7 +106,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Revert to FOR ALL policy."""
-
     for table in TABLES_WITH_DUAL_POLICIES:
         # Drop separate operation policies
         for operation in ["insert", "update", "delete"]:

@@ -1,12 +1,12 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from api.prompts import (
-    resolve_template,
-    build_system_prompt,
-    build_first_message_prompt,
-    build_recent_activity_block,
-    build_open_context_block,
     CONTEXT_GUIDANCE_TEMPLATE,
+    build_first_message_prompt,
+    build_open_context_block,
+    build_recent_activity_block,
+    build_system_prompt,
+    resolve_template,
 )
 
 
@@ -48,7 +48,7 @@ def test_resolve_template_blanks_unknown_tokens() -> None:
 
 def test_build_system_prompt_renders_variables() -> None:
     settings = DummySettings(name="Sam")
-    now = datetime(2025, 1, 2, 13, 45, tzinfo=timezone.utc)
+    now = datetime(2025, 1, 2, 13, 45, tzinfo=UTC)
     prompt = build_system_prompt(settings, "London", None, None, now)
     assert "Sam's personal AI assistant" in prompt
     assert "Current date: 2025-01-02" in prompt
@@ -67,7 +67,7 @@ def test_build_first_message_prompt_includes_profile() -> None:
         employer="Acme",
         date_of_birth=date(2000, 1, 2),
     )
-    now = datetime(2025, 1, 2, 9, 0, tzinfo=timezone.utc)
+    now = datetime(2025, 1, 2, 9, 0, tzinfo=UTC)
     prompt = build_first_message_prompt(settings, "macOS", now)
     assert "I am Sam." in prompt
     assert "I am male." in prompt

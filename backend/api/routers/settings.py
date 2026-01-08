@@ -1,8 +1,8 @@
 """User settings API router."""
-from datetime import date
-from typing import Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile, Request
+from datetime import date
+
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -13,7 +13,6 @@ from api.db.session import get_db
 from api.exceptions import BadRequestError
 from api.services.settings_service import SettingsService
 
-
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
@@ -21,32 +20,32 @@ class SettingsResponse(BaseModel):
     """Response payload for user settings."""
 
     user_id: str
-    communication_style: Optional[str] = None
-    working_relationship: Optional[str] = None
-    name: Optional[str] = None
-    job_title: Optional[str] = None
-    employer: Optional[str] = None
-    date_of_birth: Optional[date] = None
-    gender: Optional[str] = None
-    pronouns: Optional[str] = None
-    location: Optional[str] = None
-    profile_image_url: Optional[str] = None
+    communication_style: str | None = None
+    working_relationship: str | None = None
+    name: str | None = None
+    job_title: str | None = None
+    employer: str | None = None
+    date_of_birth: date | None = None
+    gender: str | None = None
+    pronouns: str | None = None
+    location: str | None = None
+    profile_image_url: str | None = None
     enabled_skills: list[str] = []
 
 
 class SettingsUpdate(BaseModel):
     """Request payload for updating user settings."""
 
-    communication_style: Optional[str] = None
-    working_relationship: Optional[str] = None
-    name: Optional[str] = None
-    job_title: Optional[str] = None
-    employer: Optional[str] = None
-    date_of_birth: Optional[date] = None
-    gender: Optional[str] = None
-    pronouns: Optional[str] = None
-    location: Optional[str] = None
-    enabled_skills: Optional[list[str]] = None
+    communication_style: str | None = None
+    working_relationship: str | None = None
+    name: str | None = None
+    job_title: str | None = None
+    employer: str | None = None
+    date_of_birth: date | None = None
+    gender: str | None = None
+    pronouns: str | None = None
+    location: str | None = None
+    enabled_skills: list[str] | None = None
 
 
 class ShortcutsPatResponse(BaseModel):

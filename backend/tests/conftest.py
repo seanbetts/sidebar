@@ -1,17 +1,18 @@
-"""
-Shared pytest fixtures for sidebar tests.
+"""Shared pytest fixtures for sidebar tests.
 """
 
-import os
 import json
+import os
+import subprocess
 import tempfile
 from pathlib import Path
+
 import pytest
-import subprocess
 
 # CRITICAL: Set TESTING=1 before any application imports
 # This ensures Settings loads from .env.test instead of .env
 os.environ["TESTING"] = "1"
+
 
 # Load TEST_USER_ID from .env.test if not already set.
 def _load_env_file(path: Path, allowed_prefixes: tuple[str, ...] | None = None) -> None:
@@ -110,7 +111,9 @@ if "localhost" in database_url or "127.0.0.1" in database_url or not database_ur
             except Exception:
                 continue
 
-    if os.getenv("SUPABASE_POOLER_USER", "").startswith("sidebar_app") and not os.getenv("SUPABASE_APP_PSWD"):
+    if os.getenv("SUPABASE_POOLER_USER", "").startswith(
+        "sidebar_app"
+    ) and not os.getenv("SUPABASE_APP_PSWD"):
         try:
             password = subprocess.check_output(
                 ["doppler", "secrets", "get", "SUPABASE_APP_PSWD", "--plain"],
@@ -138,12 +141,16 @@ if not os.getenv("SUPABASE_PROJECT_ID"):
 
 # Ensure all SQLAlchemy models are registered before metadata operations.
 from api.models.conversation import Conversation  # noqa: F401, E402
+from api.models.file_ingestion import (  # noqa: F401, E402
+    FileDerivative,
+    FileProcessingJob,
+    IngestedFile,
+)
 from api.models.note import Note  # noqa: F401, E402
+from api.models.user_memory import UserMemory  # noqa: F401, E402
+from api.models.user_settings import UserSettings  # noqa: F401, E402
 from api.models.website import Website  # noqa: F401, E402
 from api.models.website_processing_job import WebsiteProcessingJob  # noqa: F401, E402
-from api.models.user_settings import UserSettings  # noqa: F401, E402
-from api.models.user_memory import UserMemory  # noqa: F401, E402
-from api.models.file_ingestion import IngestedFile, FileDerivative, FileProcessingJob  # noqa: F401, E402
 
 
 @pytest.fixture
@@ -245,32 +252,35 @@ import numpy as np
 def create_json_stream(data: dict):
     """Helper to create a JSON stream from data (for PDF tests)."""
     import io
+
     return io.StringIO(json.dumps(data))
 
 
 # Google Drive test fixtures
 
+
 @pytest.fixture
 def mock_service_account_json():
     """Return a mock service account JSON for testing Google Drive authentication."""
-    return json.dumps({
-        "type": "service_account",
-        "project_id": "test-project-12345",
-        "private_key_id": "test-key-id-123",
-        "private_key": "-----BEGIN PRIVATE KEY-----\nMOCK_PRIVATE_KEY_DATA\n-----END PRIVATE KEY-----\n",
-        "client_email": "test-service-account@test-project.iam.gserviceaccount.com",
-        "client_id": "123456789012345678901",
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/test-service-account%40test-project.iam.gserviceaccount.com"
-    })
+    return json.dumps(
+        {
+            "type": "service_account",
+            "project_id": "test-project-12345",
+            "private_key_id": "test-key-id-123",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMOCK_PRIVATE_KEY_DATA\n-----END PRIVATE KEY-----\n",
+            "client_email": "test-service-account@test-project.iam.gserviceaccount.com",
+            "client_id": "123456789012345678901",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/test-service-account%40test-project.iam.gserviceaccount.com",
+        }
+    )
 
 
 @pytest.fixture
 def mock_drive_service():
-    """
-    Create a mock Google Drive service for testing.
+    """Create a mock Google Drive service for testing.
 
     Returns a MagicMock that simulates the Google Drive API client with common operations.
     """
@@ -280,63 +290,67 @@ def mock_drive_service():
 
     # Mock files().list() response
     list_response = {
-        'files': [
+        "files": [
             {
-                'id': '1abc123def456',
-                'name': 'test-document.pdf',
-                'mimeType': 'application/pdf',
-                'size': '123456',
-                'modifiedTime': '2025-01-15T10:30:00.000Z',
-                'createdTime': '2025-01-01T12:00:00.000Z',
-                'owners': [{'emailAddress': 'owner@example.com', 'displayName': 'Test Owner'}],
-                'parents': ['0BxRootFolder']
+                "id": "1abc123def456",
+                "name": "test-document.pdf",
+                "mimeType": "application/pdf",
+                "size": "123456",
+                "modifiedTime": "2025-01-15T10:30:00.000Z",
+                "createdTime": "2025-01-01T12:00:00.000Z",
+                "owners": [
+                    {"emailAddress": "owner@example.com", "displayName": "Test Owner"}
+                ],
+                "parents": ["0BxRootFolder"],
             },
             {
-                'id': '2xyz789ghi012',
-                'name': 'spreadsheet.xlsx',
-                'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'size': '45678',
-                'modifiedTime': '2025-01-14T09:15:00.000Z',
-                'createdTime': '2025-01-10T08:00:00.000Z',
-                'owners': [{'emailAddress': 'owner@example.com', 'displayName': 'Test Owner'}],
-                'parents': ['0BxRootFolder']
-            }
+                "id": "2xyz789ghi012",
+                "name": "spreadsheet.xlsx",
+                "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "size": "45678",
+                "modifiedTime": "2025-01-14T09:15:00.000Z",
+                "createdTime": "2025-01-10T08:00:00.000Z",
+                "owners": [
+                    {"emailAddress": "owner@example.com", "displayName": "Test Owner"}
+                ],
+                "parents": ["0BxRootFolder"],
+            },
         ],
-        'nextPageToken': None
+        "nextPageToken": None,
     }
     service.files().list().execute.return_value = list_response
 
     # Mock files().get() response (metadata)
     get_response = {
-        'id': '1abc123def456',
-        'name': 'test-document.pdf',
-        'mimeType': 'application/pdf',
-        'size': '123456',
-        'modifiedTime': '2025-01-15T10:30:00.000Z',
-        'createdTime': '2025-01-01T12:00:00.000Z',
-        'owners': [{'emailAddress': 'owner@example.com', 'displayName': 'Test Owner'}],
-        'parents': ['0BxRootFolder'],
-        'webViewLink': 'https://drive.google.com/file/d/1abc123def456/view',
-        'permissions': [
-            {'type': 'user', 'role': 'owner', 'emailAddress': 'owner@example.com'}
-        ]
+        "id": "1abc123def456",
+        "name": "test-document.pdf",
+        "mimeType": "application/pdf",
+        "size": "123456",
+        "modifiedTime": "2025-01-15T10:30:00.000Z",
+        "createdTime": "2025-01-01T12:00:00.000Z",
+        "owners": [{"emailAddress": "owner@example.com", "displayName": "Test Owner"}],
+        "parents": ["0BxRootFolder"],
+        "webViewLink": "https://drive.google.com/file/d/1abc123def456/view",
+        "permissions": [
+            {"type": "user", "role": "owner", "emailAddress": "owner@example.com"}
+        ],
     }
     service.files().get().execute.return_value = get_response
 
     # Mock files().create() response (upload)
     create_response = {
-        'id': '3new456file789',
-        'name': 'uploaded-file.txt',
-        'mimeType': 'text/plain',
-        'webViewLink': 'https://drive.google.com/file/d/3new456file789/view'
+        "id": "3new456file789",
+        "name": "uploaded-file.txt",
+        "mimeType": "text/plain",
+        "webViewLink": "https://drive.google.com/file/d/3new456file789/view",
     }
     service.files().create().execute.return_value = create_response
 
     # Mock about().get() response (used for auth testing)
     about_response = {
-        'user': {
-            'emailAddress': 'test-service-account@test-project.iam.gserviceaccount.com',
-            'displayName': 'Test Service Account'
+        "user": {
+            "emailAddress": "test-service-account@test-project.iam.gserviceaccount.com",
+            "displayName": "Test Service Account",
         }
     }
     service.about().get().execute.return_value = about_response
@@ -347,24 +361,26 @@ def mock_drive_service():
 @pytest.fixture
 def mock_env_vars(monkeypatch, mock_service_account_json):
     """Set up mock environment variables for Google Drive testing."""
-    monkeypatch.setenv('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON', mock_service_account_json)
+    monkeypatch.setenv("GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON", mock_service_account_json)
 
 
 # Database test fixtures
 
+
 @pytest.fixture(scope="session")
 def test_db_engine():
-    """
-    Create a test database engine for PostgreSQL.
+    """Create a test database engine for PostgreSQL.
 
     This is a session-scoped fixture that creates the test database schema once
     and tears it down after all tests complete.
     """
-    from sqlalchemy import create_engine, text
     from api.db.base import Base
+    from sqlalchemy import create_engine, text
 
     # Use the test database URL
-    test_db_url = os.getenv("DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test")
+    test_db_url = os.getenv(
+        "DATABASE_URL", "postgresql://sidebar:sidebar_dev@localhost:5433/sidebar_test"
+    )
 
     # Create engine
     engine = create_engine(test_db_url, pool_pre_ping=True)
@@ -392,18 +408,19 @@ def test_db_engine():
 
 @pytest.fixture
 def test_db(test_db_engine):
-    """
-    Create a clean database session for each test.
+    """Create a clean database session for each test.
 
     This fixture provides a database session and ensures that all changes
     are rolled back after each test, maintaining test isolation.
     """
-    from sqlalchemy.orm import sessionmaker
-    from sqlalchemy import text
     from api.db.base import Base
+    from sqlalchemy import text
+    from sqlalchemy.orm import sessionmaker
 
     # Create session
-    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
+    TestSessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=test_db_engine
+    )
     db = TestSessionLocal()
     db.execute(text("SET search_path TO public"))
     Base.metadata.create_all(bind=db.connection())
@@ -425,15 +442,14 @@ def test_db(test_db_engine):
 
 @pytest.fixture(scope="session")
 def test_client(test_db_engine):
-    """
-    Create a FastAPI test client.
+    """Create a FastAPI test client.
 
     This fixture provides a test client for making requests to API endpoints.
     The client automatically handles authentication and database sessions.
     """
-    from fastapi.testclient import TestClient
-    from api.main import app
     from api.db import session as db_session
+    from api.main import app
+    from fastapi.testclient import TestClient
 
     db_session.engine = test_db_engine
     db_session.SessionLocal.configure(bind=test_db_engine)

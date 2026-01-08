@@ -1,11 +1,12 @@
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 from api.config import settings
-from tests.helpers import error_message
 from api.db.dependencies import DEFAULT_USER_ID
 from api.models.file_ingestion import FileProcessingJob, IngestedFile
 from api.models.website import Website
+
+from tests.helpers import error_message
 
 
 def _auth_headers() -> dict[str, str]:
@@ -13,7 +14,9 @@ def _auth_headers() -> dict[str, str]:
 
 
 def test_websites_search_requires_query(test_client):
-    response = test_client.post("/api/websites/search", params={"query": ""}, headers=_auth_headers())
+    response = test_client.post(
+        "/api/websites/search", params={"query": ""}, headers=_auth_headers()
+    )
     assert response.status_code == 400
     assert error_message(response) == "query required"
 
@@ -35,8 +38,8 @@ def test_websites_get_success(test_client, test_db):
         title="Example",
         content="Example content",
         metadata_={"pinned": False, "archived": False},
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(website)
     test_db.commit()
@@ -59,8 +62,8 @@ def test_websites_pin_rename_archive(test_client, test_db):
         title="Example Org",
         content="Example content",
         metadata_={"pinned": False, "archived": False},
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(website)
     test_db.commit()
@@ -98,8 +101,8 @@ def test_websites_youtube_transcript_enqueues_job(test_client, test_db):
         title="Video Test",
         content="[YouTube](https://www.youtube.com/watch?v=pmktCumtzk4)",
         metadata_={"pinned": False, "archived": False},
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     test_db.add(website)
     test_db.commit()
@@ -114,11 +117,19 @@ def test_websites_youtube_transcript_enqueues_job(test_client, test_db):
     file_id = payload["data"]["file_id"]
     assert payload["data"]["status"] == "queued"
 
-    record = test_db.query(IngestedFile).filter(IngestedFile.id == uuid.UUID(file_id)).first()
+    record = (
+        test_db.query(IngestedFile)
+        .filter(IngestedFile.id == uuid.UUID(file_id))
+        .first()
+    )
     assert record is not None
     assert record.source_url == "https://www.youtube.com/watch?v=pmktCumtzk4"
     assert record.source_metadata["website_id"] == str(website_id)
     assert record.source_metadata["video_id"] == "pmktCumtzk4"
 
-    job = test_db.query(FileProcessingJob).filter(FileProcessingJob.file_id == record.id).first()
+    job = (
+        test_db.query(FileProcessingJob)
+        .filter(FileProcessingJob.file_id == record.id)
+        .first()
+    )
     assert job is not None

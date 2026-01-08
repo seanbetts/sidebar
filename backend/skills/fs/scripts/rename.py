@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""
-Rename File or Directory in Workspace
+"""Rename File or Directory in Workspace
 
 Rename files or directories within workspace (in same directory).
 """
 
-import sys
-import json
 import argparse
+import json
+import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
@@ -22,7 +21,7 @@ def rename_path(
     path: str,
     new_name: str,
     dry_run: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Rename a file or directory (stays in same directory)."""
     if "/" in new_name or "\\" in new_name:
         raise ValueError("new_name must be a simple name, not a path")
@@ -59,15 +58,9 @@ def main():
     parser.add_argument("path", help="Path to rename (relative to workspace)")
     parser.add_argument("new_name", help="New name (just the name, not a path)")
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Validate but don't actually rename"
+        "--dry-run", action="store_true", help="Validate but don't actually rename"
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output result as JSON"
-    )
+    parser.add_argument("--json", action="store_true", help="Output result as JSON")
     parser.add_argument(
         "--user-id",
         required=True,

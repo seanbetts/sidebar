@@ -1,4 +1,5 @@
 """Prompt configuration loader and constants."""
+
 from __future__ import annotations
 
 from pathlib import Path

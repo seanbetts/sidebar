@@ -1,18 +1,19 @@
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from api.db.base import Base
+from api.schemas.filters import WebsiteFilters
+from api.services.websites_service import WebsitesService
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
-
-from api.db.base import Base
-from api.services.websites_service import WebsitesService
-from api.schemas.filters import WebsiteFilters
 
 
 @pytest.fixture
 def db_session(test_db_engine):
-    connection = test_db_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    connection = test_db_engine.connect().execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
     schema = f"test_{uuid.uuid4().hex}"
 
     connection.execute(text(f'CREATE SCHEMA "{schema}"'))
@@ -43,7 +44,9 @@ def test_save_and_read_website(db_session):
     assert website.url == "https://example.com/path"
     assert website.domain == "example.com"
 
-    fetched = WebsitesService.get_website(db_session, "test_user", website.id, mark_opened=True)
+    fetched = WebsitesService.get_website(
+        db_session, "test_user", website.id, mark_opened=True
+    )
     assert fetched is not None
     assert fetched.title == "Example"
     assert fetched.last_opened_at is not None
@@ -59,7 +62,9 @@ def test_update_pinned_and_archived(db_session):
         source="https://example.com/a",
     )
 
-    archived = WebsitesService.update_archived(db_session, "test_user", website.id, True)
+    archived = WebsitesService.update_archived(
+        db_session, "test_user", website.id, True
+    )
     assert (archived.metadata_ or {}).get("archived") is True
 
     pinned = WebsitesService.update_pinned(db_session, "test_user", website.id, True)
@@ -94,7 +99,7 @@ def test_update_pinned_assigns_next_order(db_session):
 
 
 def test_list_websites_filters(db_session):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     earlier = now - timedelta(days=3)
 
     site_a = WebsitesService.save_website(
@@ -119,7 +124,9 @@ def test_list_websites_filters(db_session):
     WebsitesService.update_pinned(db_session, "test_user", site_a.id, True)
     WebsitesService.update_archived(db_session, "test_user", site_b.id, True)
 
-    pinned = WebsitesService.list_websites(db_session, "test_user", WebsiteFilters(pinned=True))
+    pinned = WebsitesService.list_websites(
+        db_session, "test_user", WebsiteFilters(pinned=True)
+    )
     assert any(site.id == site_a.id for site in pinned)
 
     archived = WebsitesService.list_websites(

@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""
-Search Files in Workspace
+"""Search Files in Workspace
 
 Search for files by name pattern or content within workspace.
 """
 
-import sys
-import json
 import argparse
+import json
 import re
+import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
@@ -25,9 +24,8 @@ def search_files(
     content_pattern: str = None,
     case_sensitive: bool = False,
     max_results: int = 100,
-) -> Dict[str, Any]:
-    """
-    Search for files by name or content.
+) -> dict[str, Any]:
+    """Search for files by name or content.
 
     Args:
         directory: Directory to search in (relative to workspace)
@@ -84,45 +82,31 @@ def search_files(
             "case_sensitive": case_sensitive,
             "results": results,
             "count": len(results),
-            "truncated": len(results) >= max_results
-        }
+            "truncated": len(results) >= max_results,
+        },
     }
 
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Search for files by name or content"
-    )
+    parser = argparse.ArgumentParser(description="Search for files by name or content")
     parser.add_argument(
         "--directory",
         default=".",
-        help="Directory to search in (default: workspace root)"
+        help="Directory to search in (default: workspace root)",
     )
+    parser.add_argument("--name", help="Filename pattern (supports * and ? wildcards)")
+    parser.add_argument("--content", help="Content pattern to search for (regex)")
     parser.add_argument(
-        "--name",
-        help="Filename pattern (supports * and ? wildcards)"
-    )
-    parser.add_argument(
-        "--content",
-        help="Content pattern to search for (regex)"
-    )
-    parser.add_argument(
-        "--case-sensitive",
-        action="store_true",
-        help="Make search case-sensitive"
+        "--case-sensitive", action="store_true", help="Make search case-sensitive"
     )
     parser.add_argument(
         "--max-results",
         type=int,
         default=100,
-        help="Maximum number of results (default: 100)"
+        help="Maximum number of results (default: 100)",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output result as JSON"
-    )
+    parser.add_argument("--json", action="store_true", help="Output result as JSON")
     parser.add_argument(
         "--user-id",
         required=True,
@@ -144,18 +128,18 @@ def main():
         if args.json:
             print(json.dumps(result, indent=2))
         else:
-            data = result['data']
+            data = result["data"]
             print(f"Found {data['count']} results")
-            if data['truncated']:
+            if data["truncated"]:
                 print(f"(truncated to {args.max_results} results)")
             print()
 
-            for item in data['results']:
-                if item['match_type'] == 'name':
+            for item in data["results"]:
+                if item["match_type"] == "name":
                     print(f"  {item['path']}")
                 else:
                     print(f"  {item['path']} ({item['match_count']} matches)")
-                    for match in item.get('matches', []):
+                    for match in item.get("matches", []):
                         print(f"    Line {match['line']}: {match['content']}")
 
         sys.exit(0)

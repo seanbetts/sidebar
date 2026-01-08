@@ -1,13 +1,14 @@
 """Helpers for web search tool payloads and status."""
+
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
 def build_web_search_location(
     current_location_levels: Any,
     timezone: str | None,
-) -> Dict[str, str] | None:
+) -> dict[str, str] | None:
     """Build a web search location payload from location levels.
 
     Args:
@@ -19,11 +20,12 @@ def build_web_search_location(
     """
     if not isinstance(current_location_levels, dict):
         return None
-    city = current_location_levels.get("locality") or current_location_levels.get("postal_town")
-    region = (
-        current_location_levels.get("administrative_area_level_1")
-        or current_location_levels.get("administrative_area_level_2")
+    city = current_location_levels.get("locality") or current_location_levels.get(
+        "postal_town"
     )
+    region = current_location_levels.get(
+        "administrative_area_level_1"
+    ) or current_location_levels.get("administrative_area_level_2")
     country = current_location_levels.get("country")
     country_code = None
     if isinstance(country, str):
@@ -48,7 +50,7 @@ def build_web_search_location(
                 country_code = mapped
     if not (city or region or country):
         return None
-    location: Dict[str, str] = {"type": "approximate"}
+    location: dict[str, str] = {"type": "approximate"}
     if city:
         location["city"] = city
     if region:
@@ -60,7 +62,7 @@ def build_web_search_location(
     return location if len(location) > 1 else None
 
 
-def serialize_web_search_result(content_block: Any) -> Dict[str, Any]:
+def serialize_web_search_result(content_block: Any) -> dict[str, Any]:
     """Serialize a web search tool result block into a dict.
 
     Args:
@@ -82,11 +84,17 @@ def serialize_web_search_result(content_block: Any) -> Dict[str, Any]:
 def web_search_error(content_block: Any) -> str | None:
     """Extract error code from a web search result block, if any."""
     content = getattr(content_block, "content", None)
-    if isinstance(content, dict) and content.get("type") == "web_search_tool_result_error":
+    if (
+        isinstance(content, dict)
+        and content.get("type") == "web_search_tool_result_error"
+    ):
         return content.get("error_code")
     if isinstance(content, list):
         for item in content:
-            if isinstance(item, dict) and item.get("type") == "web_search_tool_result_error":
+            if (
+                isinstance(item, dict)
+                and item.get("type") == "web_search_tool_result_error"
+            ):
                 return item.get("error_code")
     return None
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Shared environment setup for database-backed scripts."""
+
 from __future__ import annotations
 
 import getpass
@@ -8,7 +9,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from urllib.parse import urlparse, urlencode
+from urllib.parse import urlencode, urlparse
 
 
 def _load_env_file(path: Path) -> None:
@@ -63,14 +64,18 @@ def _load_doppler_env() -> None:
 
 def _normalize_supabase_passwords() -> None:
     pooler_user = os.environ.get("SUPABASE_POOLER_USER", "")
-    if pooler_user.startswith("sidebar_app") and os.environ.get("SUPABASE_POSTGRES_PSWD"):
+    if pooler_user.startswith("sidebar_app") and os.environ.get(
+        "SUPABASE_POSTGRES_PSWD"
+    ):
         os.environ.setdefault("SUPABASE_APP_PSWD", os.environ["SUPABASE_POSTGRES_PSWD"])
 
 
 def _build_pooler_database_url() -> str | None:
     pooler_url = os.environ.get("SUPABASE_POOLER_URL")
     pooler_host = os.environ.get("SUPABASE_POOLER_HOST")
-    password = os.environ.get("SUPABASE_APP_PSWD") or os.environ.get("SUPABASE_POSTGRES_PSWD")
+    password = os.environ.get("SUPABASE_APP_PSWD") or os.environ.get(
+        "SUPABASE_POSTGRES_PSWD"
+    )
     username = os.environ.get("SUPABASE_POOLER_USER")
     db_name = os.environ.get("SUPABASE_DB_NAME", "postgres")
     sslmode = os.environ.get("SUPABASE_SSLMODE", "require")

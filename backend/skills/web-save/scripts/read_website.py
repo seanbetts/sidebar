@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Read Website
+"""Read Website
 
 Fetch a website from the database.
 """
@@ -30,7 +29,9 @@ def read_website_database(user_id: str, website_id: str) -> dict:
 
     set_session_user_id(db, user_id)
     try:
-        website = WebsitesService.get_website(db, user_id, uuid.UUID(website_id), mark_opened=True)
+        website = WebsitesService.get_website(
+            db, user_id, uuid.UUID(website_id), mark_opened=True
+        )
         if not website:
             raise ValueError("Website not found")
         metadata = website.metadata_ or {}
@@ -43,12 +44,20 @@ def read_website_database(user_id: str, website_id: str) -> dict:
             "domain": website.domain,
             "source": website.source,
             "saved_at": website.saved_at.isoformat() if website.saved_at else None,
-            "published_at": website.published_at.isoformat() if website.published_at else None,
+            "published_at": website.published_at.isoformat()
+            if website.published_at
+            else None,
             "pinned": bool(metadata.get("pinned")),
             "archived": bool(metadata.get("archived")),
-            "created_at": website.created_at.isoformat() if website.created_at else None,
-            "updated_at": website.updated_at.isoformat() if website.updated_at else None,
-            "last_opened_at": website.last_opened_at.isoformat() if website.last_opened_at else None,
+            "created_at": website.created_at.isoformat()
+            if website.created_at
+            else None,
+            "updated_at": website.updated_at.isoformat()
+            if website.updated_at
+            else None,
+            "last_opened_at": website.last_opened_at.isoformat()
+            if website.last_opened_at
+            else None,
         }
     finally:
         db.close()

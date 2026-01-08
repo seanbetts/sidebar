@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Move Note
+"""Move Note
 
 Update note folder metadata in the database.
 """
@@ -30,7 +29,9 @@ def move_note_database(user_id: str, note_id: str, folder: str) -> dict:
 
     set_session_user_id(db, user_id)
     try:
-        note = NotesService.update_folder(db, user_id, uuid.UUID(note_id), folder.strip("/"))
+        note = NotesService.update_folder(
+            db, user_id, uuid.UUID(note_id), folder.strip("/")
+        )
         return {"id": str(note.id), "folder": (note.metadata_ or {}).get("folder", "")}
     finally:
         db.close()

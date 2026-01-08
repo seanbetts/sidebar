@@ -1,9 +1,10 @@
 """Structured audit logging for all tool calls."""
+
 import json
 import logging
 from datetime import datetime
-from typing import Any, Optional
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger("sidebar.audit")
 
@@ -15,11 +16,11 @@ class AuditLogger:
     def log_tool_call(
         tool_name: str,
         parameters: dict[str, Any],
-        resolved_path: Optional[Path] = None,
-        duration_ms: Optional[float] = None,
+        resolved_path: Path | None = None,
+        duration_ms: float | None = None,
         success: bool = True,
-        error: Optional[str] = None,
-        user_id: Optional[str] = None
+        error: str | None = None,
+        user_id: str | None = None,
     ):
         """Log a tool call with all relevant metadata."""
         # Redact secrets from parameters
@@ -33,7 +34,7 @@ class AuditLogger:
             "duration_ms": duration_ms,
             "success": success,
             "error": error,
-            "user_id": user_id
+            "user_id": user_id,
         }
 
         if success:

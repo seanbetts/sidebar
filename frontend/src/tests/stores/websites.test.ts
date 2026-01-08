@@ -5,179 +5,205 @@ import { websitesStore } from '$lib/stores/websites';
 const cacheState = new Map<string, unknown>();
 
 const { websitesAPI } = vi.hoisted(() => ({
-  websitesAPI: {
-    list: vi.fn(),
-    get: vi.fn(),
-    search: vi.fn()
-  }
+	websitesAPI: {
+		list: vi.fn(),
+		get: vi.fn(),
+		search: vi.fn()
+	}
 }));
 
 vi.mock('$lib/services/api', () => ({ websitesAPI }));
 vi.mock('$lib/utils/cache', () => ({
-  getCachedData: vi.fn((key: string) => cacheState.get(key) ?? null),
-  setCachedData: vi.fn((key: string, value: unknown) => cacheState.set(key, value)),
-  invalidateCache: vi.fn()
+	getCachedData: vi.fn((key: string) => cacheState.get(key) ?? null),
+	setCachedData: vi.fn((key: string, value: unknown) => cacheState.set(key, value)),
+	invalidateCache: vi.fn()
 }));
 
 describe('websitesStore', () => {
-  beforeEach(() => {
-    cacheState.clear();
-    vi.clearAllMocks();
-    websitesStore.reset();
-  });
+	beforeEach(() => {
+		cacheState.clear();
+		vi.clearAllMocks();
+		websitesStore.reset();
+	});
 
-  it('uses cached data when available', async () => {
-    const cachedItems = [{ id: '1', title: 'Cached', url: '', domain: '', saved_at: null, published_at: null, pinned: false, updated_at: null, last_opened_at: null }];
-    websitesAPI.list.mockResolvedValue({ items: cachedItems });
-    cacheState.set('websites.list', cachedItems);
+	it('uses cached data when available', async () => {
+		const cachedItems = [
+			{
+				id: '1',
+				title: 'Cached',
+				url: '',
+				domain: '',
+				saved_at: null,
+				published_at: null,
+				pinned: false,
+				updated_at: null,
+				last_opened_at: null
+			}
+		];
+		websitesAPI.list.mockResolvedValue({ items: cachedItems });
+		cacheState.set('websites.list', cachedItems);
 
-    await websitesStore.load();
+		await websitesStore.load();
 
-    expect(websitesAPI.list).toHaveBeenCalledTimes(1);
-    expect(get(websitesStore).items).toHaveLength(1);
-  });
+		expect(websitesAPI.list).toHaveBeenCalledTimes(1);
+		expect(get(websitesStore).items).toHaveLength(1);
+	});
 
-  it('loads from API when cache is empty', async () => {
-    websitesAPI.list.mockResolvedValue({ items: [{ id: '2', title: 'Live', url: '', domain: '', saved_at: null, published_at: null, pinned: false, updated_at: null, last_opened_at: null }] });
+	it('loads from API when cache is empty', async () => {
+		websitesAPI.list.mockResolvedValue({
+			items: [
+				{
+					id: '2',
+					title: 'Live',
+					url: '',
+					domain: '',
+					saved_at: null,
+					published_at: null,
+					pinned: false,
+					updated_at: null,
+					last_opened_at: null
+				}
+			]
+		});
 
-    await websitesStore.load();
+		await websitesStore.load();
 
-    expect(websitesAPI.list).toHaveBeenCalled();
-    expect(get(websitesStore).items[0].id).toBe('2');
-  });
+		expect(websitesAPI.list).toHaveBeenCalled();
+		expect(get(websitesStore).items[0].id).toBe('2');
+	});
 
-  it('ignores realtime updates older than current item', () => {
-    websitesStore.reset();
-    websitesStore.upsertFromRealtime({
-      id: '1',
-      title: 'New',
-      url: '',
-      domain: '',
-      saved_at: null,
-      published_at: null,
-      pinned: false,
-      updated_at: '2026-01-01T10:00:00Z',
-      last_opened_at: null
-    });
+	it('ignores realtime updates older than current item', () => {
+		websitesStore.reset();
+		websitesStore.upsertFromRealtime({
+			id: '1',
+			title: 'New',
+			url: '',
+			domain: '',
+			saved_at: null,
+			published_at: null,
+			pinned: false,
+			updated_at: '2026-01-01T10:00:00Z',
+			last_opened_at: null
+		});
 
-    websitesStore.upsertFromRealtime({
-      id: '1',
-      title: 'Old',
-      url: '',
-      domain: '',
-      saved_at: null,
-      published_at: null,
-      pinned: false,
-      updated_at: '2025-01-01T10:00:00Z',
-      last_opened_at: null
-    });
+		websitesStore.upsertFromRealtime({
+			id: '1',
+			title: 'Old',
+			url: '',
+			domain: '',
+			saved_at: null,
+			published_at: null,
+			pinned: false,
+			updated_at: '2025-01-01T10:00:00Z',
+			last_opened_at: null
+		});
 
-    expect(get(websitesStore).items[0].title).toBe('New');
-  });
+		expect(get(websitesStore).items[0].title).toBe('New');
+	});
 
-  it('updates pinned state locally', () => {
-    websitesStore.upsertFromRealtime({
-      id: '3',
-      title: 'Pin',
-      url: '',
-      domain: '',
-      saved_at: null,
-      published_at: null,
-      pinned: false,
-      archived: true,
-      updated_at: null,
-      last_opened_at: null
-    });
+	it('updates pinned state locally', () => {
+		websitesStore.upsertFromRealtime({
+			id: '3',
+			title: 'Pin',
+			url: '',
+			domain: '',
+			saved_at: null,
+			published_at: null,
+			pinned: false,
+			archived: true,
+			updated_at: null,
+			last_opened_at: null
+		});
 
-    websitesStore.setPinnedLocal('3', true);
+		websitesStore.setPinnedLocal('3', true);
 
-    expect(get(websitesStore).items[0].pinned).toBe(true);
-    expect(get(websitesStore).items[0].archived).toBe(false);
-  });
+		expect(get(websitesStore).items[0].pinned).toBe(true);
+		expect(get(websitesStore).items[0].archived).toBe(false);
+	});
 
-  it('loads website details by id and updates active', async () => {
-    websitesAPI.get.mockResolvedValue({
-      id: '4',
-      title: 'Detail',
-      url: 'https://example.com',
-      domain: 'example.com',
-      content: 'Body',
-      saved_at: null,
-      published_at: null,
-      pinned: false,
-      archived: false,
-      youtube_transcripts: {},
-      updated_at: null,
-      last_opened_at: null
-    });
+	it('loads website details by id and updates active', async () => {
+		websitesAPI.get.mockResolvedValue({
+			id: '4',
+			title: 'Detail',
+			url: 'https://example.com',
+			domain: 'example.com',
+			content: 'Body',
+			saved_at: null,
+			published_at: null,
+			pinned: false,
+			archived: false,
+			youtube_transcripts: {},
+			updated_at: null,
+			last_opened_at: null
+		});
 
-    await websitesStore.loadById('4');
+		await websitesStore.loadById('4');
 
-    const state = get(websitesStore);
-    expect(state.active?.id).toBe('4');
-    expect(state.items[0].id).toBe('4');
-  });
+		const state = get(websitesStore);
+		expect(state.active?.id).toBe('4');
+		expect(state.items[0].id).toBe('4');
+	});
 
-  it('updates transcript metadata locally', () => {
-    websitesStore.upsertFromRealtime({
-      id: '7',
-      title: 'Video',
-      url: '',
-      domain: '',
-      saved_at: null,
-      published_at: null,
-      pinned: false,
-      archived: false,
-      updated_at: null,
-      last_opened_at: null
-    });
+	it('updates transcript metadata locally', () => {
+		websitesStore.upsertFromRealtime({
+			id: '7',
+			title: 'Video',
+			url: '',
+			domain: '',
+			saved_at: null,
+			published_at: null,
+			pinned: false,
+			archived: false,
+			updated_at: null,
+			last_opened_at: null
+		});
 
-    websitesStore.setTranscriptEntryLocal('7', 'vid123', {
-      status: 'queued',
-      file_id: 'file-1',
-      updated_at: '2026-01-06T20:00:00Z'
-    });
+		websitesStore.setTranscriptEntryLocal('7', 'vid123', {
+			status: 'queued',
+			file_id: 'file-1',
+			updated_at: '2026-01-06T20:00:00Z'
+		});
 
-    expect(get(websitesStore).items[0].youtube_transcripts?.vid123?.status).toBe('queued');
-  });
+		expect(get(websitesStore).items[0].youtube_transcripts?.vid123?.status).toBe('queued');
+	});
 
-  it('searches via API and updates items', async () => {
-    websitesAPI.search.mockResolvedValue({
-      items: [
-        {
-          id: '5',
-          title: 'Search',
-          url: '',
-          domain: '',
-          saved_at: null,
-          published_at: null,
-          pinned: false,
-          updated_at: null,
-          last_opened_at: null
-        }
-      ]
-    });
+	it('searches via API and updates items', async () => {
+		websitesAPI.search.mockResolvedValue({
+			items: [
+				{
+					id: '5',
+					title: 'Search',
+					url: '',
+					domain: '',
+					saved_at: null,
+					published_at: null,
+					pinned: false,
+					updated_at: null,
+					last_opened_at: null
+				}
+			]
+		});
 
-    await websitesStore.search('query');
+		await websitesStore.search('query');
 
-    expect(get(websitesStore).items[0].id).toBe('5');
-  });
+		expect(get(websitesStore).items[0].id).toBe('5');
+	});
 
-  it('removes items locally', () => {
-    websitesStore.upsertFromRealtime({
-      id: '6',
-      title: 'Remove',
-      url: '',
-      domain: '',
-      saved_at: null,
-      published_at: null,
-      pinned: false,
-      updated_at: null,
-      last_opened_at: null
-    });
+	it('removes items locally', () => {
+		websitesStore.upsertFromRealtime({
+			id: '6',
+			title: 'Remove',
+			url: '',
+			domain: '',
+			saved_at: null,
+			published_at: null,
+			pinned: false,
+			updated_at: null,
+			last_opened_at: null
+		});
 
-    websitesStore.removeLocal('6');
+		websitesStore.removeLocal('6');
 
-    expect(get(websitesStore).items).toHaveLength(0);
-  });
+		expect(get(websitesStore).items).toHaveLength(0);
+	});
 });

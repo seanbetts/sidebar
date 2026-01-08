@@ -1,4 +1,5 @@
 """Filter dataclasses for list endpoints."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

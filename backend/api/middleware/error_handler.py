@@ -1,19 +1,21 @@
 """Error handling middleware."""
+
 from __future__ import annotations
 
 import logging
 from typing import Any
 
+from api.exceptions import APIError
+from fastapi import HTTPException as FastAPIHTTPException
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from fastapi import HTTPException as FastAPIHTTPException
-
-from api.exceptions import APIError
 
 logger = logging.getLogger(__name__)
 
 
-def _error_payload(code: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:
+def _error_payload(
+    code: str, message: str, details: dict[str, Any] | None = None
+) -> dict[str, Any]:
     return {
         "error": {
             "code": code,

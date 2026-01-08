@@ -1,9 +1,8 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-from botocore.exceptions import ClientError
-
 from api.services.storage.r2 import R2Storage
+from botocore.exceptions import ClientError
 
 
 class FakeS3Client:
@@ -59,7 +58,7 @@ def test_list_objects_strips_leading_slash(fake_client):
                     "Key": "docs/file.txt",
                     "Size": 12,
                     "ETag": '"abc"',
-                    "LastModified": datetime(2024, 1, 1, tzinfo=timezone.utc),
+                    "LastModified": datetime(2024, 1, 1, tzinfo=UTC),
                 }
             ],
             "IsTruncated": False,

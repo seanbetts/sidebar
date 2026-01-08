@@ -1,7 +1,8 @@
 """Build Things AI snapshot content."""
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
@@ -17,6 +18,7 @@ class ThingsSnapshotService:
         areas: list[dict[str, Any]],
         projects: list[dict[str, Any]],
     ) -> str:
+        """Build the Things snapshot markdown from task payloads."""
         area_map = {area.get("id"): area.get("title") for area in areas}
         project_map = {project.get("id"): project.get("title") for project in projects}
 
@@ -61,8 +63,11 @@ class ThingsSnapshotService:
         return "\n".join(blocks).strip()
 
     @staticmethod
-    def filter_tomorrow(tasks: list[dict[str, Any]], now: datetime | None = None) -> list[dict[str, Any]]:
-        timestamp = now or datetime.now(timezone.utc)
+    def filter_tomorrow(
+        tasks: list[dict[str, Any]], now: datetime | None = None
+    ) -> list[dict[str, Any]]:
+        """Filter tasks with a deadline date matching tomorrow."""
+        timestamp = now or datetime.now(UTC)
         tomorrow = (timestamp + timedelta(days=1)).date()
 
         def task_date(task: dict[str, Any]) -> datetime | None:

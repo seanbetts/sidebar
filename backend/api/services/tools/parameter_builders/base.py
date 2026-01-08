@@ -1,4 +1,5 @@
 """Shared helpers for parameter builders."""
+
 from __future__ import annotations
 
 

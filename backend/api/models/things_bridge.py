@@ -1,9 +1,10 @@
 """Things bridge registration model."""
-from datetime import datetime, timezone
-from typing import Any
-import uuid
 
-from sqlalchemy import DateTime, Text, Index, UniqueConstraint
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import DateTime, Index, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,21 +21,21 @@ class ThingsBridge(Base):
         Index("idx_things_bridges_last_seen", "last_seen_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id: Mapped[str] = mapped_column(Text, nullable=False)
     device_id: Mapped[str] = mapped_column(Text, nullable=False)
     device_name: Mapped[str] = mapped_column(Text, nullable=False)
     base_url: Mapped[str] = mapped_column(Text, nullable=False)
     bridge_token: Mapped[str] = mapped_column(Text, nullable=False)
     capabilities: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )

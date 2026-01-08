@@ -1,5 +1,4 @@
-"""
-Tests for scripts/add_skill_dependencies.py
+"""Tests for scripts/add_skill_dependencies.py
 
 Tests AST-based import detection, standard library filtering,
 and pyproject.toml modification logic.
@@ -7,22 +6,23 @@ and pyproject.toml modification logic.
 This is a KEY test file for the dependency management workflow.
 """
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 # Add project root to path so we can import the script
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from scripts.add_skill_dependencies import (  # noqa: E402
-    get_imports_from_file,
-    filter_stdlib_and_local,
-    normalize_package_name,
-    get_current_dependencies,
     add_dependencies_to_pyproject,
-    scan_skill_scripts,
+    filter_stdlib_and_local,
+    get_current_dependencies,
+    get_imports_from_file,
     get_skill_directory,
+    normalize_package_name,
+    scan_skill_scripts,
 )
 
 

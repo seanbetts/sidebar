@@ -1,4 +1,5 @@
 """Filesystem MCP tool registration."""
+
 from __future__ import annotations
 
 import json
@@ -16,6 +17,7 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
         path_validator: Validator for read/write paths.
         default_user_id: Default user ID for tool execution.
     """
+
     @mcp.tool()
     async def fs_list(
         path: str = ".",
@@ -110,13 +112,23 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
                 duration_ms=(time.time() - start_time) * 1000,
                 success=True,
             )
-            return json.dumps({
-                "success": True,
-                "dry_run": True,
-                "message": f"Would write {len(content)} bytes to {path}",
-            })
+            return json.dumps(
+                {
+                    "success": True,
+                    "dry_run": True,
+                    "message": f"Would write {len(content)} bytes to {path}",
+                }
+            )
 
-        args = [path, "--content", content, "--mode", "replace", "--user-id", default_user_id]
+        args = [
+            path,
+            "--content",
+            content,
+            "--mode",
+            "replace",
+            "--user-id",
+            default_user_id,
+        ]
         result = await executor.execute("fs", "write.py", args)
 
         AuditLogger.log_tool_call(
@@ -152,11 +164,13 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
                 duration_ms=(time.time() - start_time) * 1000,
                 success=True,
             )
-            return json.dumps({
-                "success": True,
-                "dry_run": True,
-                "message": f"Would delete {path}",
-            })
+            return json.dumps(
+                {
+                    "success": True,
+                    "dry_run": True,
+                    "message": f"Would delete {path}",
+                }
+            )
 
         args = [path, "--user-id", default_user_id]
         result = await executor.execute("fs", "delete.py", args)
@@ -186,16 +200,22 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
         if dry_run:
             AuditLogger.log_tool_call(
                 tool_name="fs_move",
-                parameters={"source": source, "destination": destination, "dry_run": True},
+                parameters={
+                    "source": source,
+                    "destination": destination,
+                    "dry_run": True,
+                },
                 resolved_path=source_path,
                 duration_ms=(time.time() - start_time) * 1000,
                 success=True,
             )
-            return json.dumps({
-                "success": True,
-                "dry_run": True,
-                "message": f"Would move {source} to {destination}",
-            })
+            return json.dumps(
+                {
+                    "success": True,
+                    "dry_run": True,
+                    "message": f"Would move {source} to {destination}",
+                }
+            )
 
         args = [source, destination, "--user-id", default_user_id]
         result = await executor.execute("fs", "move.py", args)
@@ -229,11 +249,13 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
                 duration_ms=(time.time() - start_time) * 1000,
                 success=True,
             )
-            return json.dumps({
-                "success": True,
-                "dry_run": True,
-                "message": f"Would rename to {new_name}",
-            })
+            return json.dumps(
+                {
+                    "success": True,
+                    "dry_run": True,
+                    "message": f"Would rename to {new_name}",
+                }
+            )
 
         args = [path, new_name, "--user-id", default_user_id]
         result = await executor.execute("fs", "rename.py", args)
@@ -263,16 +285,22 @@ def register_fs_tools(mcp, executor, path_validator, default_user_id: str) -> No
         if dry_run:
             AuditLogger.log_tool_call(
                 tool_name="fs_copy",
-                parameters={"source": source, "destination": destination, "dry_run": True},
+                parameters={
+                    "source": source,
+                    "destination": destination,
+                    "dry_run": True,
+                },
                 resolved_path=source_path,
                 duration_ms=(time.time() - start_time) * 1000,
                 success=True,
             )
-            return json.dumps({
-                "success": True,
-                "dry_run": True,
-                "message": f"Would copy {source} to {destination}",
-            })
+            return json.dumps(
+                {
+                    "success": True,
+                    "dry_run": True,
+                    "message": f"Would copy {source} to {destination}",
+                }
+            )
 
         args = [source, destination, "--user-id", default_user_id]
         result = await executor.execute("fs", "copy.py", args)

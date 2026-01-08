@@ -1,11 +1,12 @@
 """Local filesystem storage backend."""
+
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional
 
-from api.services.storage.base import StorageBackend, StorageObject
 from api.metrics import storage_operations_total
+from api.services.storage.base import StorageBackend, StorageObject
 
 
 class LocalStorage(StorageBackend):
@@ -24,7 +25,9 @@ class LocalStorage(StorageBackend):
         normalized = key.lstrip("/")
         return self.base_path / normalized
 
-    def list_objects(self, prefix: str, recursive: bool = True) -> Iterable[StorageObject]:
+    def list_objects(
+        self, prefix: str, recursive: bool = True
+    ) -> Iterable[StorageObject]:
         """List local objects under a prefix.
 
         Args:
@@ -93,7 +96,9 @@ class LocalStorage(StorageBackend):
             storage_operations_total.labels("get_range", "error").inc()
             raise
 
-    def put_object(self, key: str, data: bytes, content_type: Optional[str] = None) -> StorageObject:
+    def put_object(
+        self, key: str, data: bytes, content_type: str | None = None
+    ) -> StorageObject:
         """Write object bytes to local storage."""
         path = self._resolve_key(key)
         try:

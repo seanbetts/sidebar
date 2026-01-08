@@ -1,19 +1,19 @@
 """R2-aware file transfer helpers for skills."""
+
 from __future__ import annotations
 
 import mimetypes
 import tempfile
 from pathlib import Path
-from typing import Tuple
 
 from api.config import settings
-from api.models.file_ingestion import IngestedFile, FileDerivative
+from api.models.file_ingestion import FileDerivative, IngestedFile
 from api.services.skill_file_ops import (
     download_file,
-    upload_file,
-    normalize_path,
     ensure_allowed_path,
+    normalize_path,
     session_for_user,
+    upload_file,
 )
 from api.services.storage.service import get_storage_backend
 
@@ -51,7 +51,7 @@ def prepare_input_path(user_id: str, path: str, root: Path) -> Path:
     return local_path
 
 
-def prepare_output_path(user_id: str, path: str, root: Path) -> Tuple[Path, str]:
+def prepare_output_path(user_id: str, path: str, root: Path) -> tuple[Path, str]:
     """Return local output path and R2 target path.
 
     Args:
@@ -76,7 +76,9 @@ def prepare_output_path(user_id: str, path: str, root: Path) -> Tuple[Path, str]
 
 def upload_output_path(user_id: str, r2_path: str, local_path: Path) -> str:
     """Upload a local file to R2 and return its stored path."""
-    content_type = mimetypes.guess_type(local_path.name)[0] or "application/octet-stream"
+    content_type = (
+        mimetypes.guess_type(local_path.name)[0] or "application/octet-stream"
+    )
     record = upload_file(user_id, r2_path, local_path, content_type=content_type)
     if record.path is None:
         raise ValueError("Uploaded file missing path")

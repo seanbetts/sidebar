@@ -51,7 +51,6 @@ THINGS_BRIDGE_POLICIES = [
 
 def upgrade() -> None:
     """Optimize RLS policies for better performance."""
-
     # 1. Fix tables with both policies - consolidate into single optimized policy
     for table in TABLES_WITH_DUAL_POLICIES:
         # Drop old policies
@@ -179,7 +178,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Revert to original policies."""
-
     # Revert dual policy tables
     for table in TABLES_WITH_DUAL_POLICIES:
         op.execute(f"DROP POLICY IF EXISTS {table}_select_optimized ON {table}")

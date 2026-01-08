@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""
-Migrate existing websites to the new parsing pipeline.
+"""Migrate existing websites to the new parsing pipeline.
 
 Usage:
     uv run backend/scripts/migrate_existing_websites.py --user-id USER_ID
     uv run backend/scripts/migrate_existing_websites.py --user-id USER_ID --pinned true --limit 6
 """
+
 from __future__ import annotations
 
 import argparse
 import logging
 import sys
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = Path(__file__).resolve().parent
@@ -41,9 +42,9 @@ def iter_websites(
     user_id: str,
     *,
     include_deleted: bool,
-    limit: Optional[int],
+    limit: int | None,
     pinned: bool | None,
-) -> list["Website"]:
+) -> list[Website]:
     from api.schemas.filters import WebsiteFilters
     from api.services.websites_service import WebsitesService
 
@@ -67,7 +68,7 @@ def migrate_websites(
     user_id: str,
     *,
     include_deleted: bool,
-    limit: Optional[int],
+    limit: int | None,
     dry_run: bool,
     stop_on_error: bool,
     pinned: bool | None,
@@ -125,14 +126,20 @@ def migrate_websites(
     finally:
         db.close()
 
-    logger.info("Migration complete. Migrated=%s Failed=%s Total=%s", migrated, failed, total)
+    logger.info(
+        "Migration complete. Migrated=%s Failed=%s Total=%s", migrated, failed, total
+    )
     if error_types:
-        summary = ", ".join(f"{name}={count}" for name, count in error_types.most_common(5))
+        summary = ", ".join(
+            f"{name}={count}" for name, count in error_types.most_common(5)
+        )
         logger.info("Top error types: %s", summary)
 
 
-def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Migrate existing websites to new parser.")
+def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Migrate existing websites to new parser."
+    )
     parser.add_argument("--user-id", required=True, help="User ID to migrate.")
     parser.add_argument(
         "--supabase",
@@ -143,10 +150,18 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         "--database-url",
         help="Explicit DATABASE_URL to use for this run.",
     )
-    parser.add_argument("--limit", type=int, default=None, help="Limit number of websites.")
-    parser.add_argument("--include-deleted", action="store_true", help="Include soft-deleted records.")
-    parser.add_argument("--pinned", default=None, help="true or false to filter pinned.")
-    parser.add_argument("--dry-run", action="store_true", help="Log actions without updating.")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Limit number of websites."
+    )
+    parser.add_argument(
+        "--include-deleted", action="store_true", help="Include soft-deleted records."
+    )
+    parser.add_argument(
+        "--pinned", default=None, help="true or false to filter pinned."
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Log actions without updating."
+    )
     parser.add_argument(
         "--stop-on-error",
         action="store_true",
@@ -155,7 +170,7 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[Iterable[str]] = None) -> None:
+def main(argv: Iterable[str] | None = None) -> None:
     args = parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     setup_environment(database_url=args.database_url, supabase=args.supabase)

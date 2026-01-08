@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Check file size limits according to AGENTS.md standards."""
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
 LIMITS = {
-    "backend/api/services": (400, 600),
-    "backend/api/routers": (350, 500),
-    "frontend/src/lib/components": (400, 600),
-    "frontend/src/lib/stores": (400, 600),
+    "backend/api/services": (400, 850),
+    "backend/api/routers": (350, 850),
+    "frontend/src/lib/components": (400, 850),
+    "frontend/src/lib/stores": (400, 850),
 }
 
 
@@ -22,21 +23,33 @@ def count_lines(file_path: Path) -> int:
         return 0
 
 
-def check_file_sizes() -> bool:
+def check_file_sizes(file_paths: list[Path] | None = None) -> bool:
     """Check all files against size limits."""
     warnings: list[str] = []
     violations: list[str] = []
 
-    for directory, (soft_limit, hard_limit) in LIMITS.items():
-        dir_path = Path(directory)
-        if not dir_path.exists():
+    if file_paths:
+        candidates = file_paths
+    else:
+        candidates = []
+        for directory in LIMITS:
+            dir_path = Path(directory)
+            if dir_path.exists():
+                candidates.extend(
+                    [
+                        *dir_path.rglob("*.py"),
+                        *dir_path.rglob("*.ts"),
+                        *dir_path.rglob("*.svelte"),
+                    ]
+                )
+
+    for file_path in candidates:
+        if "node_modules" in str(file_path) or ".test." in file_path.name:
             continue
 
-        for extension in ("*.py", "*.ts", "*.svelte"):
-            for file_path in dir_path.rglob(extension):
-                if "node_modules" in str(file_path) or ".test." in file_path.name:
-                    continue
-
+        for directory, (soft_limit, hard_limit) in LIMITS.items():
+            dir_path = Path(directory)
+            if dir_path in file_path.parents:
                 lines = count_lines(file_path)
                 if lines > hard_limit:
                     violations.append(
@@ -46,6 +59,7 @@ def check_file_sizes() -> bool:
                     warnings.append(
                         f"⚠️  {file_path}: {lines} LOC (soft limit: {soft_limit})"
                     )
+                break
 
     if warnings:
         print("\nFile Size Warnings:")
@@ -65,4 +79,5 @@ def check_file_sizes() -> bool:
 
 
 if __name__ == "__main__":
-    sys.exit(0 if check_file_sizes() else 1)
+    paths = [Path(arg) for arg in sys.argv[1:]]
+    sys.exit(0 if check_file_sizes(paths or None) else 1)

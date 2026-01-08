@@ -5,9 +5,8 @@ Revises: 025_add_things_bridge_install_tokens
 Create Date: 2026-01-10 17:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "026_add_user_settings_things_snapshot"
 down_revision = "025_add_things_bridge_install_tokens"

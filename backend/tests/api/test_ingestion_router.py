@@ -24,7 +24,13 @@ def test_ingestion_upload_and_meta(test_client):
     assert meta.status_code == 200
     payload = meta.json()
     assert payload["file"]["id"] == file_id
-    assert payload["job"]["status"] in {"queued", "processing", "ready", "failed", "canceled"}
+    assert payload["job"]["status"] in {
+        "queued",
+        "processing",
+        "ready",
+        "failed",
+        "canceled",
+    }
 
 
 def test_ingestion_pause_resume_cancel(test_client):
@@ -39,10 +45,14 @@ def test_ingestion_pause_resume_cancel(test_client):
     pause = test_client.post(f"/api/ingestion/{file_id}/pause", headers=_auth_headers())
     assert pause.status_code == 200
 
-    resume = test_client.post(f"/api/ingestion/{file_id}/resume", headers=_auth_headers())
+    resume = test_client.post(
+        f"/api/ingestion/{file_id}/resume", headers=_auth_headers()
+    )
     assert resume.status_code == 200
 
-    cancel = test_client.post(f"/api/ingestion/{file_id}/cancel", headers=_auth_headers())
+    cancel = test_client.post(
+        f"/api/ingestion/{file_id}/cancel", headers=_auth_headers()
+    )
     assert cancel.status_code == 200
 
 
@@ -98,7 +108,9 @@ def test_ingestion_meta_syncs_failed_transcript_status(test_client, test_db):
     test_db.add(job)
     test_db.commit()
 
-    response = test_client.get(f"/api/ingestion/{file_id}/meta", headers=_auth_headers())
+    response = test_client.get(
+        f"/api/ingestion/{file_id}/meta", headers=_auth_headers()
+    )
     assert response.status_code == 200
 
     test_db.refresh(website)

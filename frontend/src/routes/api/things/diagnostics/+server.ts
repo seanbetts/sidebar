@@ -1,5 +1,5 @@
 import { createProxyHandler } from '$lib/server/apiProxy';
 
 export const GET = createProxyHandler({
-  pathBuilder: () => '/api/v1/things/diagnostics'
+	pathBuilder: () => '/api/v1/things/diagnostics'
 });

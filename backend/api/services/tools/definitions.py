@@ -1,4 +1,5 @@
 """Central tool definitions for ToolMapper."""
+
 from __future__ import annotations
 
 from api.services.tools.definitions_fs import get_fs_definitions

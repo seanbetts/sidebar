@@ -1,7 +1,6 @@
 """Rendering helpers for web-save parsing."""
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from api.services.web_save_constants import USER_AGENT
 from api.services.web_save_rules import Rule
@@ -19,6 +18,7 @@ def requires_js_rendering(html: str) -> bool:
 
 
 def has_unrendered_youtube_embed(html: str) -> bool:
+    """Return True when a YouTube embed likely needs JS rendering."""
     return "youtube.com/embed" in html and "<iframe" not in html
 
 
@@ -26,12 +26,13 @@ def render_html_with_playwright(
     url: str,
     *,
     timeout: int = 30000,
-    wait_for: Optional[str] = None,
+    wait_for: str | None = None,
     wait_until: str = "networkidle",
 ) -> tuple[str, str]:
     """Render HTML using Playwright for JS-heavy pages."""
     try:
-        from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+        from playwright.sync_api import sync_playwright
     except ImportError as exc:  # pragma: no cover - depends on optional dependency
         raise RuntimeError("Playwright is not installed") from exc
 
@@ -57,7 +58,7 @@ def render_html_with_playwright(
     return html, final_url
 
 
-def resolve_rendering_settings(rules: list[Rule]) -> tuple[str, Optional[str], int]:
+def resolve_rendering_settings(rules: list[Rule]) -> tuple[str, str | None, int]:
     """Resolve rendering settings from matched rules."""
     mode = "auto"
     wait_for = None

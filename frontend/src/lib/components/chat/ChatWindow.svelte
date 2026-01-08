@@ -61,7 +61,7 @@
 		const { conversationId } = get(chatStore);
 		const attachmentsForMessage = attachments
 			.filter(
-				(item): item is (typeof item & { fileId: string }) =>
+				(item): item is typeof item & { fileId: string } =>
 					item.status === 'ready' && Boolean(item.fileId)
 			)
 			.map((item) => ({
@@ -109,18 +109,21 @@
 				};
 			}
 
-			const currentLocation = getCachedData<string>('location.live', {
-				ttl: 30 * 60 * 1000,
-				version: '1.0'
-			}) || '';
-			const currentLocationLevels = getCachedData<Record<string, string>>('location.levels', {
-				ttl: 30 * 60 * 1000,
-				version: '1.0'
-			}) ?? undefined;
-			const currentWeather = getCachedData<Record<string, unknown>>('weather.snapshot', {
-				ttl: 30 * 60 * 1000,
-				version: '1.0'
-			}) ?? undefined;
+			const currentLocation =
+				getCachedData<string>('location.live', {
+					ttl: 30 * 60 * 1000,
+					version: '1.0'
+				}) || '';
+			const currentLocationLevels =
+				getCachedData<Record<string, string>>('location.levels', {
+					ttl: 30 * 60 * 1000,
+					version: '1.0'
+				}) ?? undefined;
+			const currentWeather =
+				getCachedData<Record<string, unknown>>('weather.snapshot', {
+					ttl: 30 * 60 * 1000,
+					version: '1.0'
+				}) ?? undefined;
 			const currentTimezone =
 				typeof window !== 'undefined'
 					? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -189,7 +192,9 @@
 			try {
 				const data = await ingestionAPI.upload(file);
 				attachments = attachments.map((item) =>
-					item.id === id ? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' } : item
+					item.id === id
+						? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' }
+						: item
 				);
 				startAttachmentPolling(id, data.file_id);
 			} catch (error) {
@@ -216,7 +221,9 @@
 		try {
 			const data = await ingestionAPI.upload(attachment.file);
 			attachments = attachments.map((item) =>
-				item.id === attachmentId ? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' } : item
+				item.id === attachmentId
+					? { ...item, fileId: data.file_id, status: 'queued', stage: 'queued' }
+					: item
 			);
 			startAttachmentPolling(attachmentId, data.file_id);
 		} catch (error) {

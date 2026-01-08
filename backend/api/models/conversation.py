@@ -1,10 +1,11 @@
 """Conversation model with JSONB message storage."""
-from datetime import datetime, timezone
-from typing import Any
-import uuid
 
-from sqlalchemy import String, Boolean, Integer, DateTime, Text, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from api.db.base import Base
@@ -15,27 +16,30 @@ class Conversation(Base):
 
     __tablename__ = "conversations"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     title_generated: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
-    first_message: Mapped[str | None] = mapped_column(Text)  # Preview of first message (first 100 chars)
+    first_message: Mapped[str | None] = mapped_column(
+        Text
+    )  # Preview of first message (first 100 chars)
     message_count: Mapped[int] = mapped_column(Integer, default=0)
 
     # Messages stored as JSONB array
-    # Each message: {"id": "uuid", "role": "user|assistant", "content": "...", "status": "...", "timestamp": "...", "toolCalls": [...], "error": "..."}
-    messages: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    # Each message: {"id": "uuid", "role": "user|assistant", "content": "...",
+    # "status": "...", "timestamp": "...", "toolCalls": [...], "error": "..."}
+    messages: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
 
     # Indexes for search
     # Note: GIN index on JSONB allows fast searching within messages
@@ -47,4 +51,7 @@ class Conversation(Base):
 
     def __repr__(self):
         """Return a readable representation for debugging."""
-        return f"<Conversation(id={self.id}, title='{self.title}', message_count={self.message_count})>"
+        return (
+            f"<Conversation(id={self.id}, title='{self.title}', "
+            f"message_count={self.message_count})>"
+        )

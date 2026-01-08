@@ -1,9 +1,10 @@
 """Metrics endpoint."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Response
-from pydantic import BaseModel, Field
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from pydantic import BaseModel, Field
 
 from api.metrics import (
     chat_first_token_latency_seconds,
@@ -14,7 +15,6 @@ from api.metrics import (
     web_vitals_observations_total,
     web_vitals_value,
 )
-
 
 router = APIRouter(tags=["metrics"])
 

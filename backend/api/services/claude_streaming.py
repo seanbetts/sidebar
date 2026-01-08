@@ -1,9 +1,11 @@
 """Streaming handler for Claude tool-enabled conversations."""
+
 from __future__ import annotations
 
 import json
 import logging
-from typing import Any, AsyncIterator, Dict, List
+from collections.abc import AsyncIterator
+from typing import Any
 
 from api.constants import ChatConstants
 from api.schemas.tool_context import ToolExecutionContext
@@ -22,22 +24,27 @@ async def stream_with_tools(
     tool_mapper: Any,
     model: str,
     message: str,
-    conversation_history: List[Dict[str, Any]] | None = None,
+    conversation_history: list[dict[str, Any]] | None = None,
     system_prompt: str | None = None,
-    allowed_skills: List[str] | None = None,
-    tool_context: ToolExecutionContext | Dict[str, Any] | None = None,
-) -> AsyncIterator[Dict[str, Any]]:
+    allowed_skills: list[str] | None = None,
+    tool_context: ToolExecutionContext | dict[str, Any] | None = None,
+) -> AsyncIterator[dict[str, Any]]:
     """Stream chat with tool execution and multi-turn conversation.
 
     Args:
+        client: Claude client instance.
+        tool_mapper: Tool mapper for skill definitions.
+        model: Claude model identifier.
         message: User message.
         conversation_history: Previous messages (optional).
+        system_prompt: System prompt override (optional).
+        allowed_skills: Allowed skill names (optional).
         tool_context: Context passed to tool execution (optional).
 
     Yields:
         Events: token, tool_call, tool_result, error.
     """
-    context_dict: Dict[str, Any] | None = None
+    context_dict: dict[str, Any] | None = None
     if tool_context:
         if isinstance(tool_context, ToolExecutionContext):
             context_dict = tool_context.to_dict()
@@ -55,7 +62,7 @@ async def stream_with_tools(
                 context_dict.get("current_location_levels"),
                 context_dict.get("current_timezone"),
             )
-        web_search_tool: Dict[str, Any] = {
+        web_search_tool: dict[str, Any] = {
             "type": "web_search_20250305",
             "name": "web_search",
             "max_uses": 5,
@@ -71,7 +78,7 @@ async def stream_with_tools(
         while current_round < max_rounds:
             current_round += 1
 
-            stream_args: Dict[str, Any] = {
+            stream_args: dict[str, Any] = {
                 "model": model,
                 "max_tokens": 4096,
                 "messages": messages,
@@ -100,12 +107,14 @@ async def stream_with_tools(
                             if event.content_block.type == "text":
                                 current_text = ""
                             elif event.content_block.type == "tool_use":
-                                tool_uses.append({
-                                    "id": event.content_block.id,
-                                    "name": event.content_block.name,
-                                    "input": {},
-                                    "input_partial": "",
-                                })
+                                tool_uses.append(
+                                    {
+                                        "id": event.content_block.id,
+                                        "name": event.content_block.name,
+                                        "input": {},
+                                        "input_partial": "",
+                                    }
+                                )
                                 yield {
                                     "type": "tool_start",
                                     "data": {
@@ -133,7 +142,9 @@ async def stream_with_tools(
                                     suppress_web_search_preamble = True
                             elif event.content_block.type == "web_search_tool_result":
                                 web_search_pending_end = True
-                                web_search_pending_status = web_search_status(event.content_block)
+                                web_search_pending_status = web_search_status(
+                                    event.content_block
+                                )
                                 web_search_result_seen = True
                                 suppress_web_search_preamble = False
                                 content_blocks.append(
@@ -143,14 +154,18 @@ async def stream_with_tools(
                     elif event.type == "content_block_delta":
                         if hasattr(event.delta, "type"):
                             if event.delta.type == "text_delta":
-                                if suppress_web_search_preamble and not web_search_result_seen:
+                                if (
+                                    suppress_web_search_preamble
+                                    and not web_search_result_seen
+                                ):
                                     continue
                                 if web_search_pending_end:
                                     yield {
                                         "type": "tool_end",
                                         "data": {
                                             "name": "Web Search",
-                                            "status": web_search_pending_status or "success",
+                                            "status": web_search_pending_status
+                                            or "success",
                                         },
                                     }
                                     web_search_pending_end = False
@@ -159,16 +174,22 @@ async def stream_with_tools(
                                 yield {"type": "token", "content": event.delta.text}
                             elif event.delta.type == "input_json_delta":
                                 if tool_uses:
-                                    tool_uses[-1]["input_partial"] += event.delta.partial_json
+                                    tool_uses[-1]["input_partial"] += (
+                                        event.delta.partial_json
+                                    )
                                 elif current_server_tool:
-                                    current_server_tool["input_partial"] += event.delta.partial_json
+                                    current_server_tool["input_partial"] += (
+                                        event.delta.partial_json
+                                    )
 
                     elif event.type == "content_block_stop":
                         if current_text:
-                            content_blocks.append({
-                                "type": "text",
-                                "text": current_text,
-                            })
+                            content_blocks.append(
+                                {
+                                    "type": "text",
+                                    "text": current_text,
+                                }
+                            )
                             current_text = ""
                         elif current_server_tool:
                             try:
@@ -205,25 +226,33 @@ async def stream_with_tools(
                         for tool_use in tool_uses:
                             try:
                                 if tool_use["input_partial"]:
-                                    tool_use["input"] = json.loads(tool_use["input_partial"])
+                                    tool_use["input"] = json.loads(
+                                        tool_use["input_partial"]
+                                    )
                             except json.JSONDecodeError:
                                 tool_use["input"] = {}
 
-                            content_blocks.append({
-                                "type": "tool_use",
-                                "id": tool_use["id"],
-                                "name": tool_use["name"],
-                                "input": tool_use["input"],
-                            })
+                            content_blocks.append(
+                                {
+                                    "type": "tool_use",
+                                    "id": tool_use["id"],
+                                    "name": tool_use["name"],
+                                    "input": tool_use["input"],
+                                }
+                            )
 
-                        messages.append({
-                            "role": "assistant",
-                            "content": content_blocks,
-                        })
+                        messages.append(
+                            {
+                                "role": "assistant",
+                                "content": content_blocks,
+                            }
+                        )
 
                         tool_results = []
                         for tool_use in tool_uses:
-                            display_name = tool_mapper.get_tool_display_name(tool_use["name"])
+                            display_name = tool_mapper.get_tool_display_name(
+                                tool_use["name"]
+                            )
                             yield {
                                 "type": "tool_call",
                                 "id": tool_use["id"],
@@ -274,8 +303,11 @@ async def stream_with_tools(
                                             "title": result_data.get("title"),
                                         },
                                     }
-                                elif display_name in {"Transcribe Audio", "Transcribe YouTube"}:
-                                    note_data = (result_data.get("note") or {})
+                                elif display_name in {
+                                    "Transcribe Audio",
+                                    "Transcribe YouTube",
+                                }:
+                                    note_data = result_data.get("note") or {}
                                     if note_data.get("id"):
                                         yield {
                                             "type": "note_created",
@@ -323,7 +355,9 @@ async def stream_with_tools(
                                     yield {
                                         "type": "prompt_preview",
                                         "data": {
-                                            "system_prompt": result_data.get("system_prompt"),
+                                            "system_prompt": result_data.get(
+                                                "system_prompt"
+                                            ),
                                             "first_message_prompt": result_data.get(
                                                 "first_message_prompt"
                                             ),
@@ -351,17 +385,23 @@ async def stream_with_tools(
                                     result_data = result.get("data") or {}
                                     content_value = result_data.get("content") or ""
                                 else:
-                                    content_value = result.get("error") or "Unknown error"
-                            tool_results.append({
-                                "type": "tool_result",
-                                "tool_use_id": tool_use["id"],
-                                "content": content_value,
-                            })
+                                    content_value = (
+                                        result.get("error") or "Unknown error"
+                                    )
+                            tool_results.append(
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_use["id"],
+                                    "content": content_value,
+                                }
+                            )
 
-                        messages.append({
-                            "role": "user",
-                            "content": tool_results,
-                        })
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": tool_results,
+                            }
+                        )
                         break
 
         if current_round >= max_rounds:

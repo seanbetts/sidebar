@@ -8,11 +8,11 @@ import { logError } from '$lib/utils/errorHandling';
 export type ProxyResponseType = 'json' | 'text' | 'stream';
 
 export interface ProxyOptions {
-  method?: string;
-  pathBuilder: (params: Record<string, string>) => string;
-  bodyFromRequest?: boolean;
-  queryParamsFromUrl?: boolean;
-  responseType?: ProxyResponseType;
+	method?: string;
+	pathBuilder: (params: Record<string, string>) => string;
+	bodyFromRequest?: boolean;
+	queryParamsFromUrl?: boolean;
+	responseType?: ProxyResponseType;
 }
 
 /**
@@ -22,80 +22,80 @@ export interface ProxyOptions {
  * @returns SvelteKit request handler.
  */
 export function createProxyHandler(options: ProxyOptions): RequestHandler {
-  const {
-    method = 'GET',
-    pathBuilder,
-    bodyFromRequest = false,
-    queryParamsFromUrl = false,
-    responseType = 'json'
-  } = options;
+	const {
+		method = 'GET',
+		pathBuilder,
+		bodyFromRequest = false,
+		queryParamsFromUrl = false,
+		responseType = 'json'
+	} = options;
 
-  return async ({ locals, fetch, params, request, url }) => {
-    try {
-      const path = pathBuilder(params);
-      let backendUrl = `${getApiUrl()}${path}`;
+	return async ({ locals, fetch, params, request, url }) => {
+		try {
+			const path = pathBuilder(params);
+			let backendUrl = `${getApiUrl()}${path}`;
 
-      if (queryParamsFromUrl && url.search) {
-        backendUrl += url.search;
-      }
+			if (queryParamsFromUrl && url.search) {
+				backendUrl += url.search;
+			}
 
-      const headers = buildAuthHeaders(locals);
-      const requestOptions: RequestInit = {
-        method,
-        headers
-      };
+			const headers = buildAuthHeaders(locals);
+			const requestOptions: RequestInit = {
+				method,
+				headers
+			};
 
-      if (bodyFromRequest && method !== 'GET' && method !== 'HEAD') {
-        const contentType = request.headers.get('Content-Type');
-        requestOptions.body = await request.text();
-        requestOptions.headers = {
-          ...headers,
-          ...(contentType ? { 'Content-Type': contentType } : {})
-        };
-      }
+			if (bodyFromRequest && method !== 'GET' && method !== 'HEAD') {
+				const contentType = request.headers.get('Content-Type');
+				requestOptions.body = await request.text();
+				requestOptions.headers = {
+					...headers,
+					...(contentType ? { 'Content-Type': contentType } : {})
+				};
+			}
 
-      const response = await fetch(backendUrl, requestOptions);
+			const response = await fetch(backendUrl, requestOptions);
 
-      const responseHeaders = new Headers(response.headers);
-      responseHeaders.delete('content-encoding');
-      responseHeaders.delete('content-length');
-      responseHeaders.delete('transfer-encoding');
+			const responseHeaders = new Headers(response.headers);
+			responseHeaders.delete('content-encoding');
+			responseHeaders.delete('content-length');
+			responseHeaders.delete('transfer-encoding');
 
-      if (responseType === 'stream') {
-        return new Response(response.body, {
-          status: response.status,
-          headers: responseHeaders
-        });
-      }
+			if (responseType === 'stream') {
+				return new Response(response.body, {
+					status: response.status,
+					headers: responseHeaders
+				});
+			}
 
-      if (responseType === 'text') {
-        const text = await response.text();
-        return new Response(text, {
-          status: response.status,
-          headers: responseHeaders
-        });
-      }
+			if (responseType === 'text') {
+				const text = await response.text();
+				return new Response(text, {
+					status: response.status,
+					headers: responseHeaders
+				});
+			}
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          error: response.statusText
-        }));
-        return json(errorData, { status: response.status });
-      }
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({
+					error: response.statusText
+				}));
+				return json(errorData, { status: response.status });
+			}
 
-      const data = await response.json();
-      return json(data, { status: response.status });
-    } catch (err) {
-      logError('API proxy error', err, {
-        path: pathBuilder(params),
-        method
-      });
+			const data = await response.json();
+			return json(data, { status: response.status });
+		} catch (err) {
+			logError('API proxy error', err, {
+				path: pathBuilder(params),
+				method
+			});
 
-      const message = err instanceof Error ? err.message : 'Internal server error';
-      if (responseType !== 'json') {
-        return new Response(message, { status: 500 });
-      }
-      return json({ error: message }, { status: 500 });
-    }
-  };
+			const message = err instanceof Error ? err.message : 'Internal server error';
+			if (responseType !== 'json') {
+				return new Response(message, { status: 500 });
+			}
+			return json({ error: message }, { status: 500 });
+		}
+	};
 }
