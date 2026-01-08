@@ -174,10 +174,10 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 #### Phase 2: Navigation & Layout (3-4 sessions)
 - [ ] 2.1 Main App Structure
-- [ ] 2.2 Sidebar Rail
-- [ ] 2.3 Resizable Sidebar Panels
-- [ ] 2.4 Panel Content Views
-- [ ] 2.5 Site Header Bar
+- [ ] 2.2 Sidebar + Section List
+- [ ] 2.3 Resizable Sidebar (macOS/iPadOS)
+- [ ] 2.4 Detail Views (native layouts)
+- [ ] 2.5 Toolbar + Commands (platform-specific)
 - [ ] 2.6 Settings Sheet
 
 **Native UX Requirements (Phase 2)**
@@ -232,7 +232,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [ ] 5.1 Workspace File Tree View
 - [ ] 5.2 Workspace File Operations (rename, move, delete)
 - [ ] 5.3 Ingestion File List + Status (jobs, pinned order, processed content)
-- [ ] 5.4 Universal File Viewer
+- [ ] 5.4 File Viewer (Quick Look first, native viewers as needed)
 - [ ] 5.5 PDF Viewer (PDFKit)
 - [ ] 5.6 Image Viewer (pinch-zoom, pan)
 - [ ] 5.7 Audio/Video Player (AVFoundation)
@@ -255,7 +255,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 **Native UX Requirements (Phase 6)**
 - Use `SFSafariViewController` on iOS for external viewing.
-- Use `WKWebView` in-app only when needed; prefer markdown/native text for speed.
+- Use `WKWebView` in-app only when needed; prefer markdown/native text for speed and accessibility.
 
 **Post-MVP (Phase 10.4): Content Creation**
 - [ ] 6.3 Save Website (URL input, validation, loading state)
@@ -435,7 +435,7 @@ Even read-only, the app provides genuine utility:
 - View all file types (PDF, images, videos, audio, spreadsheets)
 - Browse archived websites
 - View memories
-- Full navigation (sidebar, panels, settings)
+- Native navigation per platform (NavigationSplitView/NavigationStack/tabbed)
 - Multi-platform optimization (iPhone, iPad, macOS)
 - Real-time sync across devices
 - Offline cached reading
@@ -808,8 +808,8 @@ jobs:
 ### Objectives
 - Build main app shell
 - Implement sidebar navigation
-- Create resizable panel system
-- Set up header bar
+- Create resizable split view layout (macOS/iPadOS)
+- Set up native toolbar commands
 
 ### Key Deliverables
 
@@ -841,7 +841,7 @@ jobs:
   - Persist width to UserDefaults
 - **iOS/iPad**: Custom drag gesture on divider
   - Same constraints and snap logic
-  - Disable on iPhone (full-screen panels instead)
+  - Disable on iPhone (full-screen views instead)
 
 **2.4 Panel Content Views**
 - Create placeholder views for:
@@ -1175,7 +1175,7 @@ Evaluate RichTextKit capabilities. If major feature gaps exist (especially for t
 
 ### Objectives
 - Build file tree browser for existing workspace files
-- Implement universal file viewer for all supported formats
+- Implement native file viewing (Quick Look first, native viewers as needed)
 - **Note**: File uploads and ingestion processing are intentionally deferred to Phase 10 (post-MVP)
 
 ### Key Deliverables
@@ -1432,7 +1432,7 @@ Same pattern as notes/conversations.
 **7.4 Weather Integration**
 - Replicate weather API calls
 - Location autocomplete (use existing places endpoint)
-- Display in header bar
+- Display in toolbar area (platform-appropriate)
 - Update every 30 minutes
 
 **7.5 Keyboard Shortcuts (macOS)**
@@ -1471,7 +1471,7 @@ Same pattern as notes/conversations.
 **8.1 iPhone-Specific Layout (Narrow Scope)**
 - Full-screen navigation (no split view)
 - Focus on **Chat + Notes editing**
-- Limit panels and advanced controls
+- Limit panes and advanced controls
 - Compact chat input
 - Gesture-based navigation (swipe to go back)
 
@@ -1663,8 +1663,8 @@ Same pattern as notes/conversations.
 - **Milestone**: Can authenticate and make API calls
 
 ### Week 3-4: Navigation & Chat (Phases 2-3)
-- Day 1-2: Main navigation, sidebar rail
-- Day 3-4: Resizable panels, header
+- Day 1-2: Main navigation, sidebar
+- Day 3-4: Split view layout, toolbars
 - Day 5-8: Chat interface, SSE streaming, message rendering
 - **Milestone**: Can send/receive messages with streaming
 
