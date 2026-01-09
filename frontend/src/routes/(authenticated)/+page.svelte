@@ -122,12 +122,13 @@
 	}
 
 	.panel {
-		overflow: hidden;
+		overflow: auto;
 		min-height: 0;
 		position: relative;
 		z-index: 1;
 		display: flex;
 		flex-direction: column;
+		-webkit-overflow-scrolling: touch;
 	}
 
 	:global(.panel > *) {
