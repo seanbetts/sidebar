@@ -1,5 +1,12 @@
 import Foundation
 
+public protocol ConversationsProviding {
+    func list() async throws -> [Conversation]
+    func get(id: String) async throws -> ConversationWithMessages
+    func search(query: String, limit: Int) async throws -> [Conversation]
+    func delete(conversationId: String) async throws -> Conversation
+}
+
 public struct ConversationsAPI {
     private let client: APIClient
 
@@ -37,6 +44,8 @@ public struct ConversationsAPI {
         return try await client.request(path, method: "POST")
     }
 }
+
+extension ConversationsAPI: ConversationsProviding {}
 
 public struct ConversationCreateRequest: Codable {
     public let title: String
