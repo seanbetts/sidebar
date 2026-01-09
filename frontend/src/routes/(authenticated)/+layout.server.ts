@@ -3,7 +3,8 @@ import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	if (!locals.session) {
-		throw redirect(303, `/auth/login?redirectTo=${url.pathname}`);
+		const redirectTo = encodeURIComponent(`${url.pathname}${url.search}`);
+		throw redirect(303, `/auth/login?redirectTo=${redirectTo}`);
 	}
 
 	return {

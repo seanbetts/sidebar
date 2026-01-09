@@ -11,7 +11,15 @@
 	let loading = false;
 	let error = '';
 	$: loggedOut = $page.url.searchParams.get('loggedOut') === '1';
-	$: redirectTo = $page.url.searchParams.get('redirectTo') ?? '/';
+	$: redirectTo = (() => {
+		const raw = $page.url.searchParams.get('redirectTo');
+		if (!raw) return '/';
+		try {
+			return decodeURIComponent(raw);
+		} catch {
+			return raw;
+		}
+	})();
 
 	async function handleLogin(event: SubmitEvent) {
 		event.preventDefault();
