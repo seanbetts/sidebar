@@ -6,14 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
-		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
-		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
-		14DFA3322F110406001DAF5B /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3312F110406001DAF5B /* PostgREST */; };
-		14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
-		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
-/* End PBXBuildFile section */
+	/* Begin PBXBuildFile section */
+			14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
+			14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
+			14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
+			14DFA3322F110406001DAF5B /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3312F110406001DAF5B /* PostgREST */; };
+			14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
+			14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
+			14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+	/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		14C84A562F10562500FE0C16 /* PBXContainerItemProxy */ = {
@@ -58,19 +59,20 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		14C84A452F10562300FE0C16 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				14DFA3322F110406001DAF5B /* PostgREST in Frameworks */,
-				14DFA3302F110406001DAF5B /* Functions in Frameworks */,
-				14DFA32E2F110406001DAF5B /* Auth in Frameworks */,
-				14DFA3362F110406001DAF5B /* Storage in Frameworks */,
-				14DFA3342F110406001DAF5B /* Realtime in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+	/* Begin PBXFrameworksBuildPhase section */
+			14C84A452F10562300FE0C16 /* Frameworks */ = {
+				isa = PBXFrameworksBuildPhase;
+				buildActionMask = 2147483647;
+				files = (
+					14DFA3322F110406001DAF5B /* PostgREST in Frameworks */,
+					14DFA3302F110406001DAF5B /* Functions in Frameworks */,
+					14DFA32E2F110406001DAF5B /* Auth in Frameworks */,
+					14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */,
+					14DFA3362F110406001DAF5B /* Storage in Frameworks */,
+					14DFA3342F110406001DAF5B /* Realtime in Frameworks */,
+				);
+				runOnlyForDeploymentPostprocessing = 0;
+			};
 		14C84A522F10562500FE0C16 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -113,9 +115,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		14C84A472F10562300FE0C16 /* sideBar */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 14C84A692F10562500FE0C16 /* Build configuration list for PBXNativeTarget "sideBar" */;
+			14C84A472F10562300FE0C16 /* sideBar */ = {
+				isa = PBXNativeTarget;
+				buildConfigurationList = 14C84A692F10562500FE0C16 /* Build configuration list for PBXNativeTarget "sideBar" */;
 			buildPhases = (
 				14C84A442F10562300FE0C16 /* Sources */,
 				14C84A452F10562300FE0C16 /* Frameworks */,
@@ -129,17 +131,18 @@
 				14C84A4A2F10562300FE0C16 /* sideBar */,
 			);
 			name = sideBar;
-			packageProductDependencies = (
-				14DFA32D2F110406001DAF5B /* Auth */,
-				14DFA32F2F110406001DAF5B /* Functions */,
-				14DFA3312F110406001DAF5B /* PostgREST */,
-				14DFA3332F110406001DAF5B /* Realtime */,
-				14DFA3352F110406001DAF5B /* Storage */,
-			);
-			productName = sideBar;
-			productReference = 14C84A482F10562300FE0C16 /* sideBar.app */;
-			productType = "com.apple.product-type.application";
-		};
+				packageProductDependencies = (
+					14DFA32D2F110406001DAF5B /* Auth */,
+					14DFA32F2F110406001DAF5B /* Functions */,
+					14DFA3312F110406001DAF5B /* PostgREST */,
+					14DFA3332F110406001DAF5B /* Realtime */,
+					14DFA3352F110406001DAF5B /* Storage */,
+					14DFA3382F116F2C001DAF5B /* Supabase */,
+				);
+				productName = sideBar;
+				productReference = 14C84A482F10562300FE0C16 /* sideBar.app */;
+				productType = "com.apple.product-type.application";
+			};
 		14C84A542F10562500FE0C16 /* sideBarTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 14C84A6C2F10562500FE0C16 /* Build configuration list for PBXNativeTarget "sideBarTests" */;
@@ -646,12 +649,12 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		14DFA32D2F110406001DAF5B /* Auth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Auth;
-		};
+	/* Begin XCSwiftPackageProductDependency section */
+			14DFA32D2F110406001DAF5B /* Auth */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
+				productName = Auth;
+			};
 		14DFA32F2F110406001DAF5B /* Functions */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
@@ -667,12 +670,17 @@
 			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Realtime;
 		};
-		14DFA3352F110406001DAF5B /* Storage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Storage;
-		};
-/* End XCSwiftPackageProductDependency section */
+			14DFA3352F110406001DAF5B /* Storage */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
+				productName = Storage;
+			};
+			14DFA3382F116F2C001DAF5B /* Supabase */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
+				productName = Supabase;
+			};
+	/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCVersionGroup section */
 		14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */ = {

@@ -1,4 +1,6 @@
 import Foundation
+import Supabase
+import Combine
 
 public protocol AuthStateStore {
     func saveAccessToken(_ token: String?)
@@ -37,24 +39,55 @@ public final class InMemoryAuthStateStore: AuthStateStore {
     }
 }
 
-public final class SupabaseAuthAdapter: AuthSession {
-    public private(set) var accessToken: String?
-    public private(set) var userId: String?
+@MainActor
+public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
+    @Published public private(set) var accessToken: String?
+    @Published public private(set) var userId: String?
 
     private let stateStore: AuthStateStore
+    private let supabase: SupabaseClient
+    private var authStateTask: Task<Void, Never>?
 
-    public init(stateStore: AuthStateStore) {
+    public init(config: EnvironmentConfig, stateStore: AuthStateStore) {
         self.stateStore = stateStore
-        self.accessToken = stateStore.loadAccessToken()
-        self.userId = stateStore.loadUserId()
+
+        supabase = SupabaseClient(
+            supabaseURL: config.supabaseUrl,
+            supabaseKey: config.supabaseAnonKey
+        )
+
+        if let session = supabase.auth.currentSession {
+            restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
+        } else {
+            self.accessToken = stateStore.loadAccessToken()
+            self.userId = stateStore.loadUserId()
+        }
+
+        authStateTask = Task { [supabase, weak self] in
+            for await (_, session) in supabase.auth.authStateChanges {
+                guard let self else { return }
+                await self.applySession(session)
+            }
+        }
+    }
+
+    deinit {
+        authStateTask?.cancel()
     }
 
     public func signIn(email: String, password: String) async throws {
-        _ = email
-        _ = password
+        try await supabase.auth.signIn(email: email, password: password)
+        if let session = supabase.auth.currentSession {
+            restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
+        }
     }
 
     public func signOut() async {
+        do {
+            try await supabase.auth.signOut()
+        } catch {
+            // Best effort: clear local auth even if server sign-out fails.
+        }
         accessToken = nil
         userId = nil
         stateStore.clear()
@@ -65,5 +98,13 @@ public final class SupabaseAuthAdapter: AuthSession {
         self.userId = userId
         stateStore.saveAccessToken(accessToken)
         stateStore.saveUserId(userId)
+    }
+
+    private func applySession(_ session: Session?) {
+        if let session {
+            restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
+        } else {
+            restoreSession(accessToken: nil, userId: nil)
+        }
     }
 }
