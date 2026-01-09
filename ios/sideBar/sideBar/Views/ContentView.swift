@@ -47,6 +47,18 @@ public struct ContentView: View {
                     }
                 }
             }
+            .preferredColorScheme(preferredScheme)
+        }
+    }
+
+    private var preferredScheme: ColorScheme? {
+        switch environment.themeManager.mode {
+        case .system:
+            return nil
+        case .light:
+            return .light
+        case .dark:
+            return .dark
         }
     }
 }
