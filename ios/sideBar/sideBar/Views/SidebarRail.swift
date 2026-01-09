@@ -41,12 +41,21 @@ public struct SidebarRail: View {
 
             Spacer()
 
+            #if os(macOS)
+            SettingsLink {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 22, weight: .regular))
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            #else
             Button(action: { onShowSettings?() }) {
                 Image(systemName: "person.crop.circle")
                     .font(.system(size: 22, weight: .regular))
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
+            #endif
         }
         .frame(width: 56)
         .padding(.vertical, 12)

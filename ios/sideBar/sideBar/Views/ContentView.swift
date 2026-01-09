@@ -63,10 +63,12 @@ public struct ContentView: View {
             .task {
                 applyInitialSelectionIfNeeded()
             }
+            #if !os(macOS)
             .sheet(isPresented: $isSettingsPresented) {
                 SettingsView()
                     .environmentObject(environment)
             }
+            #endif
         }
     }
 

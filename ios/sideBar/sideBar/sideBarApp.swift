@@ -42,5 +42,11 @@ struct sideBarApp: App {
             ContentView()
                 .environmentObject(environment)
         }
+#if os(macOS)
+        Settings {
+            SettingsView()
+                .environmentObject(environment)
+        }
+#endif
     }
 }
