@@ -26,6 +26,8 @@ public struct ContentView: View {
     @State private var secondarySection: AppSection = .chat
     @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
     @State private var isSettingsPresented = false
+    @State private var phoneColumnVisibility: NavigationSplitViewVisibility = .detailOnly
+    @State private var phoneSelection: AppSection = .notes
 
     public init() {
     }
@@ -98,18 +100,38 @@ public struct ContentView: View {
     }
 
     private var compactView: some View {
-        NavigationStack {
+        NavigationSplitView(columnVisibility: $phoneColumnVisibility) {
             VStack(spacing: 0) {
-                SiteHeaderBar(onSwapContent: swapPrimaryAndSecondary)
+                SiteHeaderBar()
                 Divider()
-                List(AppSection.allCases) { section in
-                    NavigationLink(section.title, value: section)
+                List {
+                    ForEach(phoneSections, id: \.id) { section in
+                        Button {
+                            phoneSelection = section
+                            selection = section
+                            primarySection = section
+                            phoneColumnVisibility = .detailOnly
+                        } label: {
+                            Label(section.title, systemImage: phoneIconName(for: section))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .navigationDestination(for: AppSection.self) { section in
-                    detailView(for: section)
-                }
-                .navigationTitle("sideBar")
+                .navigationTitle("")
             }
+        } detail: {
+            VStack(spacing: 0) {
+                SiteHeaderBar(onToggleSidebar: { phoneColumnVisibility = .all })
+                Divider()
+                detailView(for: phoneSelection)
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
+        }
+        .navigationSplitViewStyle(.balanced)
+        .onAppear {
+            phoneColumnVisibility = .detailOnly
         }
     }
 
@@ -122,6 +144,27 @@ public struct ContentView: View {
         primarySection = secondarySection
         secondarySection = temp
         selection = primarySection
+    }
+
+    private var phoneSections: [AppSection] {
+        [.notes, .tasks, .websites, .files, .chat]
+    }
+
+    private func phoneIconName(for section: AppSection) -> String {
+        switch section {
+        case .notes:
+            return "text.document"
+        case .tasks:
+            return "checkmark.square"
+        case .websites:
+            return "globe"
+        case .files:
+            return "folder"
+        case .chat:
+            return "bubble"
+        default:
+            return "square.grid.2x2"
+        }
     }
 
     private var topSafeAreaBackground: Color {
