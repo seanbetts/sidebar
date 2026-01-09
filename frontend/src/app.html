@@ -12,6 +12,95 @@
 					document.documentElement.style.setProperty('--app-height', `${Math.round(height)}px`);
 				};
 
+				const isDebugLayout = () => {
+					try {
+						const url = new URL(window.location.href);
+						return url.searchParams.has('debugLayout');
+					} catch {
+						return false;
+					}
+				};
+
+				const startLayoutDebugOverlay = () => {
+					const overlay = document.createElement('div');
+					overlay.style.position = 'fixed';
+					overlay.style.left = '12px';
+					overlay.style.right = '12px';
+					overlay.style.bottom = '12px';
+					overlay.style.zIndex = '999999';
+					overlay.style.fontFamily =
+						'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+					overlay.style.fontSize = '12px';
+					overlay.style.lineHeight = '1.3';
+					overlay.style.padding = '10px 12px';
+					overlay.style.borderRadius = '10px';
+					overlay.style.background = 'rgba(0,0,0,0.8)';
+					overlay.style.color = 'white';
+					overlay.style.backdropFilter = 'blur(8px)';
+					overlay.style.pointerEvents = 'none';
+					document.body.appendChild(overlay);
+
+					const selectors = [
+						'html',
+						'body',
+						'#svelte',
+						'.app',
+						'.main-content',
+						'.page-content',
+						'.page-container',
+						'.panel'
+					];
+
+					const fmt = (el) => {
+						if (!el) return 'missing';
+						const cs = getComputedStyle(el);
+						const rect = el.getBoundingClientRect();
+						const clientH = el.clientHeight;
+						const scrollH = el.scrollHeight;
+						const overflowY = cs.overflowY;
+						const position = cs.position;
+						return `h=${Math.round(rect.height)} client=${clientH} scroll=${scrollH} ovY=${overflowY} pos=${position}`;
+					};
+
+					const update = () => {
+						const appHeightVar =
+							getComputedStyle(document.documentElement).getPropertyValue('--app-height')?.trim() ?? '';
+						const vvHeight = window.visualViewport?.height;
+						const vvOffsetTop = window.visualViewport?.offsetTop;
+						const vvScale = window.visualViewport?.scale;
+
+						const lines = [];
+						lines.push(
+							`innerHeight=${window.innerHeight} clientHeight=${document.documentElement.clientHeight} visualViewport.height=${
+								vvHeight ?? 'n/a'
+							} offsetTop=${vvOffsetTop ?? 'n/a'} scale=${vvScale ?? 'n/a'}`
+						);
+						lines.push(`--app-height=${appHeightVar || 'unset'}`);
+						for (const selector of selectors) {
+							const el =
+								selector === 'html'
+									? document.documentElement
+									: selector === 'body'
+										? document.body
+										: document.querySelector(selector);
+							lines.push(`${selector}: ${fmt(el)}`);
+						}
+						overlay.textContent = lines.join('\n');
+					};
+
+					update();
+					const interval = window.setInterval(update, 500);
+					window.addEventListener('resize', update);
+					window.visualViewport?.addEventListener('resize', update);
+
+					return () => {
+						window.clearInterval(interval);
+						window.removeEventListener('resize', update);
+						window.visualViewport?.removeEventListener('resize', update);
+						overlay.remove();
+					};
+				};
+
 				try {
 					const root = document.documentElement;
 					const storedTheme = localStorage.getItem('theme');
@@ -35,6 +124,10 @@
 				}
 
 				try {
+					if (isDebugLayout()) {
+						startLayoutDebugOverlay();
+					}
+
 					const stored = localStorage.getItem('sideBar.layout');
 					if (!stored) return;
 					const parsed = JSON.parse(stored);
