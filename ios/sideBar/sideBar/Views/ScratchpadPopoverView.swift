@@ -13,6 +13,7 @@ public struct ScratchpadPopoverView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Scratchpad")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
                     .font(.caption)
@@ -24,6 +25,8 @@ public struct ScratchpadPopoverView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(Color.secondary.opacity(0.2))
                 )
+                .accessibilityLabel("Scratchpad text")
+                .accessibilityHint("Enter notes for your scratchpad.")
 
             HStack {
                 Spacer()
