@@ -161,7 +161,6 @@ public struct ContentView: View {
         let temp = primarySection
         primarySection = secondarySection
         secondarySection = temp
-        selection = primarySection
     }
 
     private func phoneTabView(for section: AppSection) -> some View {
