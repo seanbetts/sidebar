@@ -196,7 +196,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 2.3 Resizable Sidebar (macOS/iPadOS)
 - [x] 2.4 Detail Views (native layouts)
 - [x] 2.5 Site Header Bar
-- [ ] 2.6 Settings Sheet
+- [x] 2.6 Settings Sheet
 
 **Native UX Requirements (Phase 2)**
 - Use `NavigationSplitView` for macOS/iPad, `NavigationStack` or tabbed layout for iPhone.
