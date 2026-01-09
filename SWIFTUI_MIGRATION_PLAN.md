@@ -408,6 +408,7 @@ Evaluate RichTextKit capabilities. Choose:
 | 2026-01-08 | 1.2 | 1 | TBD | Added `SideBarCache.xcdatamodeld` via Xcode Data Model editor (hand-authored XML triggered an Xcode indexing crash) |
 | 2026-01-09 | 1.3 | 1 | TBD | Added Supabase Swift SDK (SPM), `SideBar.xcconfig` wiring (+ local `SideBar.local.xcconfig` include), and `SupabaseAuthAdapter` sign-in/out with a basic login gate |
 | 2026-01-09 | 1.3 | 1 | TBD | Added Keychain-backed auth state store and wired it into app startup |
+| 2026-01-09 | 1.3 | 1 | TBD | Added config plist generation + runtime error screen to avoid hard crashes when config is missing |
 
 ---
 
