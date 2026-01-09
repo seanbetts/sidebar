@@ -26,7 +26,6 @@ public struct ContentView: View {
     @State private var secondarySection: AppSection = .chat
     @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
     @State private var isSettingsPresented = false
-    @State private var phoneColumnVisibility: NavigationSplitViewVisibility = .detailOnly
     @State private var phoneSelection: AppSection = .chat
 
     public init() {
@@ -59,10 +58,14 @@ public struct ContentView: View {
                     }
                 }
             }
-            .onChange(of: selection) {
-                if let newValue = selection {
+            .onChange(of: selection) { _, newValue in
+                if let newValue {
                     primarySection = newValue
                 }
+            }
+            .onChange(of: phoneSelection) { _, newValue in
+                selection = newValue
+                primarySection = newValue
             }
             .sheet(isPresented: $isSettingsPresented) {
                 SettingsView()
@@ -100,34 +103,14 @@ public struct ContentView: View {
     }
 
     private var compactView: some View {
-        NavigationSplitView(columnVisibility: $phoneColumnVisibility) {
-            VStack(spacing: 0) {
-                SiteHeaderBar()
-                Divider()
-                List(phoneSections, id: \.id) { section in
-                    NavigationLink {
-                        phoneDetailView(for: section)
-                            .onAppear {
-                                phoneSelection = section
-                                selection = section
-                                primarySection = section
-                                phoneColumnVisibility = .detailOnly
-                            }
-                    } label: {
+        TabView(selection: $phoneSelection) {
+            ForEach(phoneSections, id: \.self) { section in
+                phoneTabView(for: section)
+                    .tag(section)
+                    .tabItem {
                         Label(section.title, systemImage: phoneIconName(for: section))
                     }
-                }
-                .navigationTitle("")
             }
-        } detail: {
-            phoneDetailView(for: phoneSelection)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar(.hidden, for: .navigationBar)
-        }
-        .navigationSplitViewStyle(.automatic)
-        .task {
-            phoneColumnVisibility = .detailOnly
         }
     }
 
@@ -142,12 +125,15 @@ public struct ContentView: View {
         selection = primarySection
     }
 
-    private func phoneDetailView(for section: AppSection) -> some View {
-        VStack(spacing: 0) {
-            SiteHeaderBar(onToggleSidebar: { phoneColumnVisibility = .all })
-            Divider()
-            detailView(for: section)
-        }
+    private func phoneTabView(for section: AppSection) -> some View {
+        detailView(for: section)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                    SiteHeaderBar()
+                    Divider()
+                }
+            }
     }
 
     private var phoneSections: [AppSection] {
