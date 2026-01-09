@@ -20,6 +20,7 @@ public struct ContentView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
     #endif
     @State private var selection: AppSection? = .chat
     @State private var primarySection: AppSection = .chat
@@ -27,6 +28,7 @@ public struct ContentView: View {
     @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
     @State private var isSettingsPresented = false
     @State private var phoneSelection: AppSection = .chat
+    @State private var isPhoneScratchpadPresented = false
 
     public init() {
     }
@@ -93,7 +95,10 @@ public struct ContentView: View {
             isLeftPanelExpanded: $isLeftPanelExpanded,
             onShowSettings: { isSettingsPresented = true },
             header: {
-                SiteHeaderBar(onSwapContent: swapPrimaryAndSecondary)
+                SiteHeaderBar(
+                    onSwapContent: swapPrimaryAndSecondary,
+                    onShowSettings: { isSettingsPresented = true }
+                )
             }
         ) {
             detailView(for: primarySection)
@@ -108,9 +113,49 @@ public struct ContentView: View {
                 phoneTabView(for: section)
                     .tag(section)
                     .tabItem {
-                        Label(section.title, systemImage: phoneIconName(for: section))
+                        Label {
+                            Text(section.title)
+                        } icon: {
+                            Image(systemName: phoneIconName(for: section))
+                                .symbolVariant(.none)
+                        }
                     }
             }
+        }
+        .tint(tabBarTint)
+        .overlay(alignment: .bottomTrailing) {
+            GeometryReader { proxy in
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            isPhoneScratchpadPresented = true
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 18, weight: .semibold))
+                                .frame(width: 48, height: 48)
+                        }
+                        .buttonStyle(.plain)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color(uiColor: .separator), lineWidth: 1)
+                        )
+                        .accessibilityLabel("Scratchpad")
+                        .padding(.trailing, 16)
+                        .padding(.bottom, proxy.safeAreaInsets.bottom + 32)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
+        .sheet(isPresented: $isPhoneScratchpadPresented) {
+            ScratchpadPopoverView(
+                api: environment.container.scratchpadAPI,
+                cache: environment.container.cacheClient
+            )
         }
     }
 
@@ -129,10 +174,7 @@ public struct ContentView: View {
         detailView(for: section)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .safeAreaInset(edge: .top, spacing: 0) {
-                VStack(spacing: 0) {
-                    SiteHeaderBar()
-                    Divider()
-                }
+                SiteHeaderBar(onShowSettings: { isSettingsPresented = true })
             }
     }
 
@@ -162,6 +204,30 @@ public struct ContentView: View {
         return Color(nsColor: .windowBackgroundColor)
         #else
         return Color(uiColor: .systemBackground)
+        #endif
+    }
+
+    private var tabBarTint: Color {
+        #if os(macOS)
+        return Color.accentColor
+        #else
+        return colorScheme == .dark ? Color.white : Color.black
+        #endif
+    }
+
+    private var tabAccessoryBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var tabAccessoryBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
         #endif
     }
 
@@ -237,5 +303,6 @@ public struct PlaceholderView: View {
             Text(title)
                 .font(.title2)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
