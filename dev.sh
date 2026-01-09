@@ -118,6 +118,62 @@ is_ingestion_process() {
   [[ "${command}" == *"workers/ingestion_worker.py"* ]] && [[ "${command}" == *"${REPO_ROOT}"* ]]
 }
 
+role_matches_command() {
+  local role="$1"
+  local command="$2"
+  case "${role}" in
+    backend)
+      is_backend_process "${command}"
+      ;;
+    frontend)
+      is_frontend_process "${command}"
+      ;;
+    ingestion)
+      is_ingestion_process "${command}"
+      ;;
+    things_bridge)
+      is_things_bridge_process "${command}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+resolve_pid_for_port() {
+  local port="$1"
+  local role="$2"
+  local pid
+  local command
+  pid=$(port_pid "${port}")
+  if [[ -z "${pid}" ]]; then
+    return 1
+  fi
+  command=$(pid_command "${pid}")
+  if role_matches_command "${role}" "${command}"; then
+    echo "${pid}"
+    return 0
+  fi
+  return 1
+}
+
+resolve_ingestion_pid() {
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return 1
+  fi
+  local pid
+  local command
+  while read -r pid; do
+    [[ -z "${pid}" ]] && continue
+    command=$(pid_command "${pid}")
+    if is_ingestion_process "${command}"; then
+      echo "${pid}"
+      return 0
+    fi
+  done < <(pgrep -f "workers/ingestion_worker.py" || true)
+  return 1
+}
+
 stop_pid() {
   local pid="$1"
   if kill -0 "${pid}" >/dev/null 2>&1; then
@@ -148,6 +204,7 @@ ensure_restart_lock() {
   if [[ "${command}" != "restart" ]]; then
     return
   fi
+  cleanup_restart_processes
   if [[ -f "${RESTART_LOCK}" ]]; then
     local pid
     pid=$(cat "${RESTART_LOCK}")
@@ -225,6 +282,15 @@ ensure_port_available() {
 }
 
 start_backend() {
+  if [[ "${command}" == "start" ]]; then
+    local existing_pid
+    existing_pid=$(resolve_pid_for_port 8001 backend || true)
+    if [[ -n "${existing_pid}" ]]; then
+      echo "Backend already running (PID ${existing_pid})."
+      echo "${existing_pid}" >"${BACKEND_PID}"
+      return
+    fi
+  fi
   ensure_port_available 8001 backend
   echo "Starting backend..."
   (cd backend && {
@@ -243,9 +309,27 @@ start_backend() {
     fi
   }) >"${BACKEND_LOG}" 2>&1 </dev/null &
   echo $! >"${BACKEND_PID}"
+  for _ in {1..10}; do
+    local pid
+    pid=$(resolve_pid_for_port 8001 backend || true)
+    if [[ -n "${pid}" ]]; then
+      echo "${pid}" >"${BACKEND_PID}"
+      break
+    fi
+    sleep 0.5
+  done
 }
 
 start_frontend() {
+  if [[ "${command}" == "start" ]]; then
+    local existing_pid
+    existing_pid=$(resolve_pid_for_port 3000 frontend || true)
+    if [[ -n "${existing_pid}" ]]; then
+      echo "Frontend already running (PID ${existing_pid})."
+      echo "${existing_pid}" >"${FRONTEND_PID}"
+      return
+    fi
+  fi
   ensure_port_available 3000 frontend
   echo "Starting frontend..."
   if [[ ${use_doppler} -eq 1 ]]; then
@@ -254,9 +338,27 @@ start_frontend() {
     (cd frontend && npm run dev) >"${FRONTEND_LOG}" 2>&1 </dev/null &
   fi
   echo $! >"${FRONTEND_PID}"
+  for _ in {1..10}; do
+    local pid
+    pid=$(resolve_pid_for_port 3000 frontend || true)
+    if [[ -n "${pid}" ]]; then
+      echo "${pid}" >"${FRONTEND_PID}"
+      break
+    fi
+    sleep 0.5
+  done
 }
 
 start_ingestion_worker() {
+  if [[ "${command}" == "start" ]]; then
+    local existing_pid
+    existing_pid=$(resolve_ingestion_pid || true)
+    if [[ -n "${existing_pid}" ]]; then
+      echo "Ingestion worker already running (PID ${existing_pid})."
+      echo "${existing_pid}" >"${INGESTION_PID}"
+      return
+    fi
+  fi
   cleanup_ingestion_workers
   echo "Starting ingestion worker..."
   (cd backend && {
@@ -275,9 +377,22 @@ start_ingestion_worker() {
     fi
   }) >"${INGESTION_LOG}" 2>&1 </dev/null &
   echo $! >"${INGESTION_PID}"
+  for _ in {1..10}; do
+    local pid
+    pid=$(resolve_ingestion_pid || true)
+    if [[ -n "${pid}" ]]; then
+      echo "${pid}" >"${INGESTION_PID}"
+      break
+    fi
+    sleep 0.5
+  done
 }
 
 start_things_bridge() {
+  if things_bridge_launchctl_running; then
+    echo "Things bridge already running (launchctl)."
+    return
+  fi
   ensure_port_available 8787 things_bridge
   if [[ -f "${THINGS_BRIDGE_PLIST}" ]]; then
     echo "Starting Things bridge via launchctl..."
@@ -309,31 +424,69 @@ cleanup_ingestion_workers() {
 stop_service() {
   local pid_file="$1"
   local name="$2"
+  local role="${3:-}"
+  local port="${4:-}"
+  local pid=""
+
   if [[ -f "${pid_file}" ]]; then
-    local pid
     pid=$(cat "${pid_file}")
     if kill -0 "${pid}" >/dev/null 2>&1; then
       echo "Stopping ${name} (PID ${pid})..."
       stop_pid "${pid}"
+      rm -f "${pid_file}"
+      return
     fi
-    rm -f "${pid_file}"
-  else
-    echo "${name} is not running."
   fi
+
+  if [[ -n "${role}" ]]; then
+    if [[ "${role}" == "ingestion" ]]; then
+      pid=$(resolve_ingestion_pid || true)
+    elif [[ -n "${port}" ]]; then
+      pid=$(resolve_pid_for_port "${port}" "${role}" || true)
+    fi
+  fi
+
+  if [[ -n "${pid}" ]]; then
+    echo "Stopping ${name} (PID ${pid})..."
+    stop_pid "${pid}"
+    rm -f "${pid_file}"
+    return
+  fi
+
+  echo "${name} is not running."
+  rm -f "${pid_file}"
 }
 
 stop_service_quiet() {
   local pid_file="$1"
   local name="$2"
+  local role="${3:-}"
+  local port="${4:-}"
+  local pid=""
+
   if [[ -f "${pid_file}" ]]; then
-    local pid
     pid=$(cat "${pid_file}")
     if kill -0 "${pid}" >/dev/null 2>&1; then
       echo "Stopping ${name} (PID ${pid})..."
       stop_pid "${pid}"
+      rm -f "${pid_file}"
+      return
     fi
-    rm -f "${pid_file}"
   fi
+
+  if [[ -n "${role}" ]]; then
+    if [[ "${role}" == "ingestion" ]]; then
+      pid=$(resolve_ingestion_pid || true)
+    elif [[ -n "${port}" ]]; then
+      pid=$(resolve_pid_for_port "${port}" "${role}" || true)
+    fi
+  fi
+
+  if [[ -n "${pid}" ]]; then
+    echo "Stopping ${name} (PID ${pid})..."
+    stop_pid "${pid}"
+  fi
+  rm -f "${pid_file}"
 }
 
 things_bridge_launchctl_running() {
@@ -348,10 +501,10 @@ stop_things_bridge() {
   if [[ -f "${THINGS_BRIDGE_PLIST}" ]]; then
     echo "Stopping Things bridge (launchctl)..."
     launchctl bootout "gui/$UID/${THINGS_BRIDGE_LABEL}" >/dev/null 2>&1 || true
-    stop_service_quiet "${THINGS_BRIDGE_PID}" "Things bridge"
+    stop_service_quiet "${THINGS_BRIDGE_PID}" "Things bridge" "things_bridge" "8787"
     return
   fi
-  stop_service "${THINGS_BRIDGE_PID}" "Things bridge"
+  stop_service "${THINGS_BRIDGE_PID}" "Things bridge" "things_bridge" "8787"
   if port_in_use 8787; then
     local pid
     local command
@@ -416,30 +569,42 @@ status_service() {
   local url="$3"
   local log_file="$4"
   local role="${5:-}"
+  local pid=""
   if [[ -f "${pid_file}" ]]; then
-    local pid
     pid=$(cat "${pid_file}")
     if kill -0 "${pid}" >/dev/null 2>&1; then
       local command
       command=$(pid_command "${pid}")
-      if [[ "${role}" == "backend" ]] && ! is_backend_process "${command}"; then
-        echo "✗ ${name} not running (stale PID: ${pid})"
-        return
+      if [[ -n "${role}" ]] && ! role_matches_command "${role}" "${command}"; then
+        pid=""
       fi
-      if [[ "${role}" == "frontend" ]] && ! is_frontend_process "${command}"; then
-        echo "✗ ${name} not running (stale PID: ${pid})"
-        return
-      fi
-      if [[ "${role}" == "ingestion" ]] && ! is_ingestion_process "${command}"; then
-        echo "✗ ${name} not running (stale PID: ${pid})"
-        return
-      fi
-      echo "✓ ${name} running (PID: ${pid})"
-      echo "  URL: ${url}"
-      echo "  Logs: ${log_file}"
-      return
+    else
+      pid=""
     fi
   fi
+
+  if [[ -z "${pid}" && -n "${role}" ]]; then
+    if [[ "${role}" == "backend" ]]; then
+      pid=$(resolve_pid_for_port 8001 backend || true)
+    elif [[ "${role}" == "frontend" ]]; then
+      pid=$(resolve_pid_for_port 3000 frontend || true)
+    elif [[ "${role}" == "ingestion" ]]; then
+      pid=$(resolve_ingestion_pid || true)
+    elif [[ "${role}" == "things_bridge" ]]; then
+      pid=$(resolve_pid_for_port 8787 things_bridge || true)
+    fi
+    if [[ -n "${pid}" ]]; then
+      echo "${pid}" >"${pid_file}"
+    fi
+  fi
+
+  if [[ -n "${pid}" ]]; then
+    echo "✓ ${name} running (PID: ${pid})"
+    echo "  URL: ${url}"
+    echo "  Logs: ${log_file}"
+    return
+  fi
+
   echo "✗ ${name} not running"
 }
 
@@ -451,7 +616,7 @@ status_things_bridge() {
     echo "  Err Logs: ${THINGS_BRIDGE_LAUNCHCTL_ERR_LOG}"
     return
   fi
-  status_service "${THINGS_BRIDGE_PID}" "Things bridge" "http://localhost:8787" "${THINGS_BRIDGE_LOG}"
+  status_service "${THINGS_BRIDGE_PID}" "Things bridge" "http://localhost:8787" "${THINGS_BRIDGE_LOG}" "things_bridge"
 }
 
 show_logs() {
@@ -498,7 +663,6 @@ command="${1:-start}"
 
 load_env
 detect_doppler
-cleanup_restart_processes
 ensure_restart_lock
 
 case "${command}" in
@@ -509,16 +673,16 @@ case "${command}" in
     start_things_bridge
     ;;
   stop)
-    stop_service "${BACKEND_PID}" "backend"
-    stop_service "${FRONTEND_PID}" "frontend"
-    stop_service "${INGESTION_PID}" "ingestion worker"
+    stop_service "${BACKEND_PID}" "backend" "backend" "8001"
+    stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
+    stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
     stop_things_bridge
     ;;
   restart)
     cleanup_restart_processes
-    stop_service "${BACKEND_PID}" "backend"
-    stop_service "${FRONTEND_PID}" "frontend"
-    stop_service "${INGESTION_PID}" "ingestion worker"
+    stop_service "${BACKEND_PID}" "backend" "backend" "8001"
+    stop_service "${FRONTEND_PID}" "frontend" "frontend" "3000"
+    stop_service "${INGESTION_PID}" "ingestion worker" "ingestion"
     stop_things_bridge
     start_backend
     start_frontend
