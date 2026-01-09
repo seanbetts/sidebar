@@ -133,9 +133,9 @@
 <style>
 	.app {
 		display: flex;
-		height: 100vh;
-		height: 100dvh; /* Dynamic viewport height for mobile browsers */
-		width: 100vw;
+		height: var(--app-height, 100vh);
+		height: var(--app-height, 100dvh); /* Prefer dvh when available */
+		width: 100%;
 		overflow: hidden;
 	}
 
