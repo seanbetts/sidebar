@@ -34,12 +34,16 @@ public struct SiteHeaderBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(barBackground)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var brandView: some View {
         HStack(spacing: 8) {
-            Image(systemName: "square.grid.2x2.fill")
-                .font(.system(size: 16, weight: .semibold))
+            Image("AppLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
             Text("sideBar")
                 .font(.headline)
         }
@@ -47,8 +51,6 @@ public struct SiteHeaderBar: View {
 
     private var infoRow: some View {
         HStack(spacing: 12) {
-            ClockView()
-            Divider()
             HeaderInfoItem(icon: "mappin.and.ellipse", text: "Location")
             HeaderInfoItem(icon: "cloud.sun", text: "Weather")
         }
@@ -79,15 +81,6 @@ public struct SiteHeaderBar: View {
                 .frame(minWidth: 360, minHeight: 280)
             }
 
-            Menu {
-                Picker("Theme", selection: $environment.themeManager.mode) {
-                    ForEach(ThemeMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-            } label: {
-                Image(systemName: "circle.lefthalf.filled")
-            }
         }
     }
 
@@ -105,14 +98,6 @@ public struct SiteHeaderBar: View {
         #else
         return horizontalSizeClass == .compact
         #endif
-    }
-}
-
-private struct ClockView: View {
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { context in
-            Text(context.date, format: .dateTime.weekday(.abbreviated).hour().minute())
-        }
     }
 }
 
