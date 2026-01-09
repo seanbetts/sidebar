@@ -13,13 +13,17 @@ struct sideBarApp: App {
 
     init() {
         let config: EnvironmentConfig
+        let configError: EnvironmentConfigLoadError?
         do {
             config = try EnvironmentConfig.load()
+            configError = nil
         } catch {
             if EnvironmentConfig.isRunningTestsOrPreviews() {
                 config = EnvironmentConfig.fallbackForTesting()
+                configError = nil
             } else {
-                preconditionFailure("Failed to load app configuration: \(error)")
+                config = EnvironmentConfig.fallbackForTesting()
+                configError = error as? EnvironmentConfigLoadError
             }
         }
 
@@ -30,7 +34,7 @@ struct sideBarApp: App {
 
         let cacheClient = CoreDataCacheClient(container: PersistenceController.shared.container)
         let container = ServiceContainer(config: config, authSession: authSession, cacheClient: cacheClient)
-        _environment = StateObject(wrappedValue: AppEnvironment(container: container))
+        _environment = StateObject(wrappedValue: AppEnvironment(container: container, configError: configError))
     }
 
     var body: some Scene {

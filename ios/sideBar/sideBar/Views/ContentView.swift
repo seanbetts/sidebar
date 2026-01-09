@@ -24,7 +24,9 @@ public struct ContentView: View {
     }
 
     public var body: some View {
-        if !environment.isAuthenticated {
+        if let configError = environment.configError {
+            ConfigErrorView(error: configError)
+        } else if !environment.isAuthenticated {
             LoginView()
         } else {
         // TODO: Replace with platform-specific navigation (tab on iPhone, split on iPad/macOS).
@@ -46,6 +48,28 @@ public struct ContentView: View {
                 }
             }
         }
+    }
+}
+
+public struct ConfigErrorView: View {
+    public let error: EnvironmentConfigLoadError
+
+    public init(error: EnvironmentConfigLoadError) {
+        self.error = error
+    }
+
+    public var body: some View {
+        VStack(spacing: 16) {
+            Text("Configuration Error")
+                .font(.title2)
+            Text(error.localizedDescription)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Text("Check your SideBar.local.xcconfig values and rebuild.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+        }
+        .padding(24)
     }
 }
 
