@@ -38,13 +38,23 @@ public struct SiteHeaderBar: View {
     }
 
     private var brandView: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image("AppLogo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 24, height: 24)
-            Text("sideBar")
-                .font(.headline)
+                .frame(width: 32, height: 32)
+            Rectangle()
+                .fill(Color.primary)
+                .frame(width: 4, height: 35)
+                .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+                .opacity(0.9)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("sideBar")
+                    .font(.headline.weight(.bold))
+                Text("WORKSPACE")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
