@@ -1,5 +1,10 @@
 import Foundation
 
+public protocol FilesProviding {
+    func listTree(basePath: String) async throws -> FileTree
+    func getContent(basePath: String, path: String) async throws -> FileContent
+}
+
 public struct FilesAPI {
     private let client: APIClient
 
@@ -60,3 +65,5 @@ public struct FilesAPI {
         return try await client.requestData(requestPath)
     }
 }
+
+extension FilesAPI: FilesProviding {}

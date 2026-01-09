@@ -1,5 +1,9 @@
 import Foundation
 
+public protocol SettingsProviding {
+    func getSettings() async throws -> UserSettings
+}
+
 public struct SettingsAPI {
     private let client: APIClient
     private let session: URLSession
@@ -58,3 +62,5 @@ public struct SettingsAPI {
         try await client.requestVoid("settings/profile-image", method: "DELETE")
     }
 }
+
+extension SettingsAPI: SettingsProviding {}

@@ -1,5 +1,10 @@
 import Foundation
 
+public protocol ScratchpadProviding {
+    func get() async throws -> ScratchpadResponse
+    func update(content: String, mode: ScratchpadMode?) async throws -> ScratchpadResponse
+}
+
 public struct ScratchpadAPI {
     private let client: APIClient
 
@@ -25,3 +30,5 @@ public struct ScratchpadAPI {
         try await client.requestVoid("scratchpad", method: "DELETE")
     }
 }
+
+extension ScratchpadAPI: ScratchpadProviding {}

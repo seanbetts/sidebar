@@ -1,5 +1,9 @@
 import Foundation
 
+public protocol SkillsProviding {
+    func list() async throws -> SkillsResponse
+}
+
 public struct SkillsAPI {
     private let client: APIClient
 
@@ -11,3 +15,5 @@ public struct SkillsAPI {
         try await client.request("skills")
     }
 }
+
+extension SkillsAPI: SkillsProviding {}
