@@ -600,7 +600,8 @@
 <style>
 	.sidebar-shell {
 		display: flex;
-		height: 100vh;
+		height: 100%;
+		min-height: 0;
 		background-color: var(--color-sidebar);
 		border-right: 1px solid var(--color-sidebar-border);
 	}

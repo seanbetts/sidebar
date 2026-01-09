@@ -300,7 +300,7 @@
 	}
 </script>
 
-<div class="flex flex-col h-full min-h-0 w-full bg-background">
+<div class="chat-window">
 	<div class="chat-header">
 		<div class="header-left">
 			<MessageSquare size={20} />
@@ -419,12 +419,23 @@
 </div>
 
 <style>
+	.chat-window {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		min-height: 0;
+		width: 100%;
+		background-color: var(--color-background);
+		overflow: hidden;
+	}
+
 	.chat-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		padding: 0.5rem 1.5rem;
 		min-height: 57px;
+		flex-shrink: 0;
 		border-bottom: 1px solid var(--color-border);
 		background-color: var(--color-card);
 	}
@@ -456,6 +467,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
+		flex-shrink: 0;
 	}
 
 	.chat-attachment {
