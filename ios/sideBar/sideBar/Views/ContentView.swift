@@ -223,6 +223,9 @@ public struct ContentView: View {
             selection = .notes
             primarySection = .notes
         }
+#else
+        selection = .notes
+        primarySection = .notes
 #endif
     }
 
