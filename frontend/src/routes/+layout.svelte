@@ -165,5 +165,6 @@
 	:global(.page-content > *) {
 		flex: 1;
 		min-height: 0;
+		height: 100%;
 	}
 </style>

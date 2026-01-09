@@ -126,6 +126,13 @@
 		min-height: 0;
 		position: relative;
 		z-index: 1;
+		display: flex;
+		flex-direction: column;
+	}
+
+	:global(.panel > *) {
+		flex: 1;
+		min-height: 0;
 	}
 
 	.main-panel {
