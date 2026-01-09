@@ -21,13 +21,13 @@ public struct ContentView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @State private var selection: AppSection? = .notes
-    @State private var primarySection: AppSection = .notes
+    @State private var selection: AppSection? = .chat
+    @State private var primarySection: AppSection = .chat
     @State private var secondarySection: AppSection = .chat
     @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
     @State private var isSettingsPresented = false
     @State private var phoneColumnVisibility: NavigationSplitViewVisibility = .detailOnly
-    @State private var phoneSelection: AppSection = .notes
+    @State private var phoneSelection: AppSection = .chat
 
     public init() {
     }
@@ -104,33 +104,29 @@ public struct ContentView: View {
             VStack(spacing: 0) {
                 SiteHeaderBar()
                 Divider()
-                List {
-                    ForEach(phoneSections, id: \.id) { section in
-                        Button {
-                            phoneSelection = section
-                            selection = section
-                            primarySection = section
-                            phoneColumnVisibility = .detailOnly
-                        } label: {
-                            Label(section.title, systemImage: phoneIconName(for: section))
-                        }
-                        .buttonStyle(.plain)
+                List(phoneSections, id: \.id) { section in
+                    NavigationLink {
+                        phoneDetailView(for: section)
+                            .onAppear {
+                                phoneSelection = section
+                                selection = section
+                                primarySection = section
+                                phoneColumnVisibility = .detailOnly
+                            }
+                    } label: {
+                        Label(section.title, systemImage: phoneIconName(for: section))
                     }
                 }
                 .navigationTitle("")
             }
         } detail: {
-            VStack(spacing: 0) {
-                SiteHeaderBar(onToggleSidebar: { phoneColumnVisibility = .all })
-                Divider()
-                detailView(for: phoneSelection)
-            }
+            phoneDetailView(for: phoneSelection)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
         }
-        .navigationSplitViewStyle(.balanced)
-        .onAppear {
+        .navigationSplitViewStyle(.automatic)
+        .task {
             phoneColumnVisibility = .detailOnly
         }
     }
@@ -144,6 +140,14 @@ public struct ContentView: View {
         primarySection = secondarySection
         secondarySection = temp
         selection = primarySection
+    }
+
+    private func phoneDetailView(for section: AppSection) -> some View {
+        VStack(spacing: 0) {
+            SiteHeaderBar(onToggleSidebar: { phoneColumnVisibility = .all })
+            Divider()
+            detailView(for: section)
+        }
     }
 
     private var phoneSections: [AppSection] {
