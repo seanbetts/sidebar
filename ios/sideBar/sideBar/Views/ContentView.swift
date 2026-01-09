@@ -62,7 +62,7 @@ public struct ContentView: View {
 
     private var splitView: some View {
         SidebarSplitView(selection: $selection) {
-            SectionDetailView(section: selection)
+            detailView(for: selection)
         }
     }
 
@@ -72,9 +72,17 @@ public struct ContentView: View {
                 NavigationLink(section.title, value: section)
             }
             .navigationDestination(for: AppSection.self) { section in
-                SectionDetailView(section: section)
+                detailView(for: section)
             }
             .navigationTitle("sideBar")
+        }
+    }
+
+    private func detailView(for section: AppSection?) -> some View {
+        VStack(spacing: 0) {
+            SiteHeaderBar()
+            Divider()
+            SectionDetailView(section: section)
         }
     }
 
