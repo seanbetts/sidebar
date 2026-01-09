@@ -10,4 +10,12 @@ public struct EnvironmentConfig {
         self.supabaseUrl = supabaseUrl
         self.supabaseAnonKey = supabaseAnonKey
     }
+
+    public static func fallbackForTesting() -> EnvironmentConfig {
+        EnvironmentConfig(
+            apiBaseUrl: URL(string: "http://localhost:8001")!,
+            supabaseUrl: URL(string: "http://localhost")!,
+            supabaseAnonKey: "test"
+        )
+    }
 }

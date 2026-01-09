@@ -6,15 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
-	/* Begin PBXBuildFile section */
-			14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
-			14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
-			14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
-			14DFA3322F110406001DAF5B /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3312F110406001DAF5B /* PostgREST */; };
-			14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
-			14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
-			14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
-	/* End PBXBuildFile section */
+/* Begin PBXBuildFile section */
+		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
+		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
+		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
+		14DFA3322F110406001DAF5B /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3312F110406001DAF5B /* PostgREST */; };
+		14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
+		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
+		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		14C84A562F10562500FE0C16 /* PBXContainerItemProxy */ = {
@@ -59,20 +59,20 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
-	/* Begin PBXFrameworksBuildPhase section */
-			14C84A452F10562300FE0C16 /* Frameworks */ = {
-				isa = PBXFrameworksBuildPhase;
-				buildActionMask = 2147483647;
-				files = (
-					14DFA3322F110406001DAF5B /* PostgREST in Frameworks */,
-					14DFA3302F110406001DAF5B /* Functions in Frameworks */,
-					14DFA32E2F110406001DAF5B /* Auth in Frameworks */,
-					14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */,
-					14DFA3362F110406001DAF5B /* Storage in Frameworks */,
-					14DFA3342F110406001DAF5B /* Realtime in Frameworks */,
-				);
-				runOnlyForDeploymentPostprocessing = 0;
-			};
+/* Begin PBXFrameworksBuildPhase section */
+		14C84A452F10562300FE0C16 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				14DFA3322F110406001DAF5B /* PostgREST in Frameworks */,
+				14DFA3302F110406001DAF5B /* Functions in Frameworks */,
+				14DFA32E2F110406001DAF5B /* Auth in Frameworks */,
+				14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */,
+				14DFA3362F110406001DAF5B /* Storage in Frameworks */,
+				14DFA3342F110406001DAF5B /* Realtime in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		14C84A522F10562500FE0C16 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,11 +115,12 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-			14C84A472F10562300FE0C16 /* sideBar */ = {
-				isa = PBXNativeTarget;
-				buildConfigurationList = 14C84A692F10562500FE0C16 /* Build configuration list for PBXNativeTarget "sideBar" */;
+		14C84A472F10562300FE0C16 /* sideBar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 14C84A692F10562500FE0C16 /* Build configuration list for PBXNativeTarget "sideBar" */;
 			buildPhases = (
 				14C84A442F10562300FE0C16 /* Sources */,
+				14E0AB1A2F20000000BEEF01 /* Generate SideBarConfig.plist */,
 				14C84A452F10562300FE0C16 /* Frameworks */,
 				14C84A462F10562300FE0C16 /* Resources */,
 			);
@@ -131,18 +132,18 @@
 				14C84A4A2F10562300FE0C16 /* sideBar */,
 			);
 			name = sideBar;
-				packageProductDependencies = (
-					14DFA32D2F110406001DAF5B /* Auth */,
-					14DFA32F2F110406001DAF5B /* Functions */,
-					14DFA3312F110406001DAF5B /* PostgREST */,
-					14DFA3332F110406001DAF5B /* Realtime */,
-					14DFA3352F110406001DAF5B /* Storage */,
-					14DFA3382F116F2C001DAF5B /* Supabase */,
-				);
-				productName = sideBar;
-				productReference = 14C84A482F10562300FE0C16 /* sideBar.app */;
-				productType = "com.apple.product-type.application";
-			};
+			packageProductDependencies = (
+				14DFA32D2F110406001DAF5B /* Auth */,
+				14DFA32F2F110406001DAF5B /* Functions */,
+				14DFA3312F110406001DAF5B /* PostgREST */,
+				14DFA3332F110406001DAF5B /* Realtime */,
+				14DFA3352F110406001DAF5B /* Storage */,
+				14DFA3382F116F2C001DAF5B /* Supabase */,
+			);
+			productName = sideBar;
+			productReference = 14C84A482F10562300FE0C16 /* sideBar.app */;
+			productType = "com.apple.product-type.application";
+		};
 		14C84A542F10562500FE0C16 /* sideBarTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 14C84A6C2F10562500FE0C16 /* Build configuration list for PBXNativeTarget "sideBarTests" */;
@@ -260,6 +261,24 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		14E0AB1A2F20000000BEEF01 /* Generate SideBarConfig.plist */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Generate SideBarConfig.plist";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/SideBarConfig.plist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nCONFIG_PLIST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/SideBarConfig.plist\"\nexport CONFIG_PLIST\n/usr/bin/python3 - <<'PY'\nimport os\nimport pathlib\nimport plistlib\n\ndef read_value(key: str) -> str:\n    value = os.environ.get(key, \"\")\n    return value.replace(\"\\\\/\", \"/\").strip()\n\npayload = {\n    \"API_BASE_URL\": read_value(\"API_BASE_URL\"),\n    \"SUPABASE_URL\": read_value(\"SUPABASE_URL\"),\n    \"SUPABASE_ANON_KEY\": read_value(\"SUPABASE_ANON_KEY\"),\n}\n\npath = pathlib.Path(os.environ[\"CONFIG_PLIST\"])\npath.parent.mkdir(parents=True, exist_ok=True)\nwith path.open(\"wb\") as handle:\n    plistlib.dump(payload, handle)\nPY\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		14C84A442F10562300FE0C16 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -301,6 +320,7 @@
 /* Begin XCBuildConfiguration section */
 		14C84A672F10562500FE0C16 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -362,6 +382,7 @@
 		};
 		14C84A682F10562500FE0C16 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -425,6 +446,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
+				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
+				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -468,6 +492,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
+				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
+				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -649,12 +676,12 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
-	/* Begin XCSwiftPackageProductDependency section */
-			14DFA32D2F110406001DAF5B /* Auth */ = {
-				isa = XCSwiftPackageProductDependency;
-				package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-				productName = Auth;
-			};
+/* Begin XCSwiftPackageProductDependency section */
+		14DFA32D2F110406001DAF5B /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
 		14DFA32F2F110406001DAF5B /* Functions */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
@@ -670,17 +697,17 @@
 			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Realtime;
 		};
-			14DFA3352F110406001DAF5B /* Storage */ = {
-				isa = XCSwiftPackageProductDependency;
-				package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-				productName = Storage;
-			};
-			14DFA3382F116F2C001DAF5B /* Supabase */ = {
-				isa = XCSwiftPackageProductDependency;
-				package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
-				productName = Supabase;
-			};
-	/* End XCSwiftPackageProductDependency section */
+		14DFA3352F110406001DAF5B /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		14DFA3382F116F2C001DAF5B /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCVersionGroup section */
 		14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */ = {

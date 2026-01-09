@@ -5,9 +5,10 @@
 //   "Base Configuration" at it in Xcode.
 
 // Local overrides (not committed)
-#include? "SideBar.local.xcconfig"
+#include? "$(SRCROOT)/Config/SideBar.local.xcconfig"
 
-API_BASE_URL = http://localhost:8001
+// Note: escape // in URLs so .xcconfig doesn't treat it as a comment.
+API_BASE_URL = http:\/\/localhost:8001
 
 // Supabase project configuration
 // (anon key is "public", but keep it out of git anyway)
