@@ -6,6 +6,12 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<script>
 			(() => {
+				const setAppHeight = () => {
+					const height =
+						window.visualViewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight;
+					document.documentElement.style.setProperty('--app-height', `${Math.round(height)}px`);
+				};
+
 				try {
 					const root = document.documentElement;
 					const storedTheme = localStorage.getItem('theme');
@@ -16,7 +22,19 @@
 					} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
 						root.classList.add('dark');
 					}
+				} catch {
+					// Ignore theme storage errors.
+				}
 
+				try {
+					setAppHeight();
+					window.addEventListener('resize', setAppHeight);
+					window.visualViewport?.addEventListener('resize', setAppHeight);
+				} catch {
+					// Ignore viewport errors.
+				}
+
+				try {
 					const stored = localStorage.getItem('sideBar.layout');
 					if (!stored) return;
 					const parsed = JSON.parse(stored);
@@ -37,15 +55,6 @@
 							`${(clamped * 100).toFixed(2)}%`
 						);
 					}
-
-					const setAppHeight = () => {
-						const height =
-							window.visualViewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight;
-						document.documentElement.style.setProperty('--app-height', `${Math.round(height)}px`);
-					};
-					setAppHeight();
-					window.addEventListener('resize', setAppHeight);
-					window.visualViewport?.addEventListener('resize', setAppHeight);
 				} catch {
 					// Ignore storage errors.
 				}
