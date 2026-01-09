@@ -27,6 +27,12 @@ class TestAuthenticationMiddleware:
         assert response.status_code == 200
         assert response.json() == {"status": "healthy"}
 
+    def test_v1_health_endpoint_no_auth_required(self, test_client):
+        """v1 health endpoint should not require authentication."""
+        response = test_client.get("/api/v1/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "healthy"}
+
     def test_protected_endpoint_requires_auth(self, test_client):
         """Protected endpoints should require authentication."""
         response = test_client.get("/docs")

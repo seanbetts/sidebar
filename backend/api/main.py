@@ -146,9 +146,9 @@ app.add_middleware(MetricsMiddleware)
 # Unified authentication middleware
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    """Apply JWT auth to all endpoints except /api/health."""
-    # Skip auth for health check
-    if request.url.path in {"/api/health", "/metrics"}:
+    """Apply JWT auth to all endpoints except health/metrics."""
+    # Skip auth for health check + metrics
+    if request.url.path in {"/api/health", "/api/v1/health", "/metrics"}:
         response = await call_next(request)
         return response
 
