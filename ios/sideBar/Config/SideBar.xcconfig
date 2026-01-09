@@ -1,0 +1,17 @@
+// sideBar iOS/macOS build configuration
+//
+// - Keep secrets out of git.
+// - For local dev, set real values in Xcode Build Settings, or create a local-only xcconfig and point
+//   "Base Configuration" at it in Xcode.
+
+API_BASE_URL = http://localhost:8001
+
+// Supabase project configuration
+// (anon key is "public", but keep it out of git anyway)
+SUPABASE_URL =
+SUPABASE_ANON_KEY =
+
+// Expose config via generated Info.plist keys for runtime access (Bundle.main)
+INFOPLIST_KEY_API_BASE_URL = $(API_BASE_URL)
+INFOPLIST_KEY_SUPABASE_URL = $(SUPABASE_URL)
+INFOPLIST_KEY_SUPABASE_ANON_KEY = $(SUPABASE_ANON_KEY)
