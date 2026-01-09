@@ -6,10 +6,11 @@ public struct SidebarRail: View {
     private let onTogglePanel: (() -> Void)?
 
     private let sections: [AppSection] = [
-        .chat,
         .notes,
+        .tasks,
+        .websites,
         .files,
-        .websites
+        .chat
     ]
 
     public init(selection: Binding<AppSection?>, onTogglePanel: (() -> Void)? = nil) {
@@ -73,13 +74,15 @@ public struct SidebarRail: View {
     private func iconName(for section: AppSection) -> String {
         switch section {
         case .chat:
-            return "bubble.left.and.bubble.right"
+            return "bubble"
         case .notes:
-            return "note.text"
+            return "text.document"
         case .files:
             return "folder"
         case .websites:
             return "globe"
+        case .tasks:
+            return "checkmark.square"
         default:
             return "square.grid.2x2"
         }

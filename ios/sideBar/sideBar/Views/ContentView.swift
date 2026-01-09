@@ -35,30 +35,23 @@ public struct ContentView: View {
         } else if !environment.isAuthenticated {
             LoginView()
         } else {
-            VStack(spacing: 0) {
-                SiteHeaderBar(
-                    onTogglePanel: { isLeftPanelExpanded.toggle() },
-                    onSwapContent: swapPrimaryAndSecondary
-                )
-                Divider()
-                mainView
-            }
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button("Sign Out") {
-                        Task {
-                            await environment.container.authSession.signOut()
-                            environment.refreshAuthState()
+            mainView
+                .toolbar {
+                    ToolbarItem(placement: .automatic) {
+                        Button("Sign Out") {
+                            Task {
+                                await environment.container.authSession.signOut()
+                                environment.refreshAuthState()
+                            }
                         }
                     }
                 }
-            }
-            .preferredColorScheme(preferredScheme)
-            .onChange(of: selection) { newValue in
-                if let newValue {
-                    primarySection = newValue
+                .preferredColorScheme(preferredScheme)
+                .onChange(of: selection) { newValue in
+                    if let newValue {
+                        primarySection = newValue
+                    }
                 }
-            }
         }
     }
 
@@ -78,7 +71,10 @@ public struct ContentView: View {
     private var splitView: some View {
         WorkspaceLayout(
             selection: $selection,
-            isLeftPanelExpanded: $isLeftPanelExpanded
+            isLeftPanelExpanded: $isLeftPanelExpanded,
+            header: {
+                SiteHeaderBar(onSwapContent: swapPrimaryAndSecondary)
+            }
         ) {
             detailView(for: primarySection)
         } rightSidebar: {
@@ -88,13 +84,17 @@ public struct ContentView: View {
 
     private var compactView: some View {
         NavigationStack {
-            List(AppSection.allCases) { section in
-                NavigationLink(section.title, value: section)
+            VStack(spacing: 0) {
+                SiteHeaderBar(onSwapContent: swapPrimaryAndSecondary)
+                Divider()
+                List(AppSection.allCases) { section in
+                    NavigationLink(section.title, value: section)
+                }
+                .navigationDestination(for: AppSection.self) { section in
+                    detailView(for: section)
+                }
+                .navigationTitle("sideBar")
             }
-            .navigationDestination(for: AppSection.self) { section in
-                detailView(for: section)
-            }
-            .navigationTitle("sideBar")
         }
     }
 

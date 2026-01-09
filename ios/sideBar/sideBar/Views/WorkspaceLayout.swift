@@ -1,32 +1,32 @@
 import SwiftUI
 
-public struct WorkspaceLayout<Main: View, Sidebar: View>: View {
+public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     @Binding private var selection: AppSection?
     @Binding private var isLeftPanelExpanded: Bool
-    @AppStorage(AppStorageKeys.sidebarWidth) private var leftPanelWidth: Double = 280
     @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
-    @State private var draggingLeftWidth: Double?
     @State private var draggingRightWidth: Double?
 
     private let railWidth: Double = 56
     private let dividerWidth: Double = 8
-    private let minLeftPanelWidth: Double = 200
-    private let maxLeftPanelWidth: Double = 500
+    private let leftPanelWidth: Double = 280
     private let minRightSidebarWidth: Double = 280
     private let maxRightSidebarWidth: Double = 520
     private let minMainWidth: Double = 320
 
+    private let header: () -> Header
     private let mainContent: () -> Main
     private let rightSidebar: () -> Sidebar
 
     public init(
         selection: Binding<AppSection?>,
         isLeftPanelExpanded: Binding<Bool>,
+        @ViewBuilder header: @escaping () -> Header,
         @ViewBuilder mainContent: @escaping () -> Main,
         @ViewBuilder rightSidebar: @escaping () -> Sidebar
     ) {
         self._selection = selection
         self._isLeftPanelExpanded = isLeftPanelExpanded
+        self.header = header
         self.mainContent = mainContent
         self.rightSidebar = rightSidebar
     }
@@ -38,63 +38,53 @@ public struct WorkspaceLayout<Main: View, Sidebar: View>: View {
                 SidebarRail(selection: $selection, onTogglePanel: toggleLeftPanel)
                     .frame(width: railWidth)
 
+                Divider()
+
                 if isLeftPanelExpanded {
                     panelView(for: selection)
                         .frame(width: widths.leftPanel)
                         .background(panelBackground)
-
-                    resizeHandle(
-                        width: dividerWidth,
-                        onChanged: { delta in
-                            let proposed = (draggingLeftWidth ?? leftPanelWidth) + delta
-                            draggingLeftWidth = clampedLeftWidth(proposed, proxy: proxy)
-                        },
-                        onEnded: {
-                            let proposed = draggingLeftWidth ?? leftPanelWidth
-                            leftPanelWidth = clampedLeftWidth(proposed, proxy: proxy)
-                            draggingLeftWidth = nil
-                        }
-                    )
                 }
 
-                mainContent()
-                    .frame(width: widths.main)
-                    .frame(maxHeight: .infinity)
+                VStack(spacing: 0) {
+                    header()
+                    Divider()
+                    HStack(spacing: 0) {
+                        mainContent()
+                            .frame(width: widths.main)
+                            .frame(maxHeight: .infinity)
 
-                resizeHandle(
-                    width: dividerWidth,
-                    onChanged: { delta in
-                        let proposed = (draggingRightWidth ?? rightSidebarWidth) - delta
-                        draggingRightWidth = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
-                    },
-                    onEnded: {
-                        let proposed = draggingRightWidth ?? rightSidebarWidth
-                        rightSidebarWidth = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
-                        draggingRightWidth = nil
+                        resizeHandle(
+                            width: dividerWidth,
+                            onChanged: { delta in
+                                let proposed = (draggingRightWidth ?? rightSidebarWidth) - delta
+                                draggingRightWidth = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
+                            },
+                            onEnded: {
+                                let proposed = draggingRightWidth ?? rightSidebarWidth
+                                rightSidebarWidth = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
+                                draggingRightWidth = nil
+                            }
+                        )
+
+                        rightSidebar()
+                            .frame(width: widths.right)
+                            .frame(maxHeight: .infinity)
                     }
-                )
-
-                rightSidebar()
-                    .frame(width: widths.right)
-                    .frame(maxHeight: .infinity)
+                }
             }
         }
     }
 
     private func layoutWidths(for proxy: GeometryProxy) -> (leftPanel: Double, main: Double, right: Double) {
         let total = proxy.size.width
-        let leftPanel = isLeftPanelExpanded ? clampedLeftWidth(draggingLeftWidth ?? leftPanelWidth, proxy: proxy) : 0
+        let leftPanel = isLeftPanelExpanded ? leftPanelWidth : 0
         let right = clampedRightWidth(draggingRightWidth ?? rightSidebarWidth, proxy: proxy, leftPanelWidth: leftPanel)
         let main = max(
             minMainWidth,
-            total - railWidth - leftPanel - right - dividerWidth * (isLeftPanelExpanded ? 2 : 1)
+            total - railWidth - leftPanel - right - dividerWidth
         )
         return (leftPanel, main, right)
-    }
-
-    private func clampedLeftWidth(_ value: Double, proxy: GeometryProxy) -> Double {
-        let maxAllowed = min(maxLeftPanelWidth, availableWidth(proxy: proxy) - minRightSidebarWidth - minMainWidth)
-        return min(max(value, minLeftPanelWidth), maxAllowed)
     }
 
     private func clampedRightWidth(_ value: Double, proxy: GeometryProxy, leftPanelWidth: Double) -> Double {
@@ -103,7 +93,7 @@ public struct WorkspaceLayout<Main: View, Sidebar: View>: View {
     }
 
     private func availableWidth(proxy: GeometryProxy) -> Double {
-        proxy.size.width - railWidth - dividerWidth * (isLeftPanelExpanded ? 2 : 1)
+        proxy.size.width - railWidth - dividerWidth
     }
 
     private func resizeHandle(width: Double, onChanged: @escaping (Double) -> Void, onEnded: @escaping () -> Void) -> some View {
