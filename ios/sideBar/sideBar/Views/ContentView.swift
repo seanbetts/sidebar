@@ -62,9 +62,7 @@ public struct ContentView: View {
 
     private var splitView: some View {
         NavigationSplitView {
-            List(AppSection.allCases, selection: $selection) { section in
-                Text(section.title)
-            }
+            SidebarRail(selection: $selection)
         } detail: {
             SectionDetailView(section: selection)
         }
