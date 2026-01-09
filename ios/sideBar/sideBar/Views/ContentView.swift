@@ -32,18 +32,22 @@ public struct ContentView: View {
         } else if !environment.isAuthenticated {
             LoginView()
         } else {
-            mainView
-                .toolbar {
-                    ToolbarItem(placement: .automatic) {
-                        Button("Sign Out") {
-                            Task {
-                                await environment.container.authSession.signOut()
-                                environment.refreshAuthState()
-                            }
+            VStack(spacing: 0) {
+                SiteHeaderBar()
+                Divider()
+                mainView
+            }
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button("Sign Out") {
+                        Task {
+                            await environment.container.authSession.signOut()
+                            environment.refreshAuthState()
                         }
                     }
                 }
-                .preferredColorScheme(preferredScheme)
+            }
+            .preferredColorScheme(preferredScheme)
         }
     }
 
@@ -79,11 +83,7 @@ public struct ContentView: View {
     }
 
     private func detailView(for section: AppSection?) -> some View {
-        VStack(spacing: 0) {
-            SiteHeaderBar()
-            Divider()
-            SectionDetailView(section: section)
-        }
+        SectionDetailView(section: section)
     }
 
     private var preferredScheme: ColorScheme? {
