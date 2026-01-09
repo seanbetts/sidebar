@@ -3,6 +3,7 @@ import SwiftUI
 public struct SidebarRail: View {
     @Binding private var selection: AppSection?
     @State private var hoveredSection: AppSection?
+    private let onTogglePanel: (() -> Void)?
 
     private let sections: [AppSection] = [
         .chat,
@@ -11,13 +12,14 @@ public struct SidebarRail: View {
         .websites
     ]
 
-    public init(selection: Binding<AppSection?>) {
+    public init(selection: Binding<AppSection?>, onTogglePanel: (() -> Void)? = nil) {
         self._selection = selection
+        self.onTogglePanel = onTogglePanel
     }
 
     public var body: some View {
         VStack(spacing: 16) {
-            Button(action: {}) {
+            Button(action: { onTogglePanel?() }) {
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 18, weight: .semibold))
                     .frame(width: 32, height: 32)

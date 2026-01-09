@@ -6,8 +6,12 @@ public struct SiteHeaderBar: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
     @State private var isScratchpadPresented = false
+    private let onTogglePanel: (() -> Void)?
+    private let onSwapContent: (() -> Void)?
 
-    public init() {
+    public init(onTogglePanel: (() -> Void)? = nil, onSwapContent: (() -> Void)? = nil) {
+        self.onTogglePanel = onTogglePanel
+        self.onSwapContent = onSwapContent
     }
 
     public var body: some View {
@@ -60,12 +64,17 @@ public struct SiteHeaderBar: View {
 
     private var controlRow: some View {
         HStack(spacing: 12) {
-            if !isCompact {
-                Button(action: {}) {
-                    Image(systemName: "rectangle.split.3x1")
-                }
-                .buttonStyle(.plain)
+            Button(action: { onTogglePanel?() }) {
+                Image(systemName: "sidebar.left")
             }
+            .buttonStyle(.plain)
+            .disabled(onTogglePanel == nil)
+
+            Button(action: { onSwapContent?() }) {
+                Image(systemName: "arrow.left.arrow.right")
+            }
+            .buttonStyle(.plain)
+            .disabled(onSwapContent == nil)
 
             Button {
                 isScratchpadPresented.toggle()
@@ -80,7 +89,6 @@ public struct SiteHeaderBar: View {
                 )
                 .frame(minWidth: 360, minHeight: 280)
             }
-
         }
     }
 

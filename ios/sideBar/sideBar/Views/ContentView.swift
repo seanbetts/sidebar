@@ -21,7 +21,10 @@ public struct ContentView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @State private var selection: AppSection? = .chat
+    @State private var selection: AppSection? = .notes
+    @State private var primarySection: AppSection = .notes
+    @State private var secondarySection: AppSection = .chat
+    @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
 
     public init() {
     }
@@ -33,7 +36,10 @@ public struct ContentView: View {
             LoginView()
         } else {
             VStack(spacing: 0) {
-                SiteHeaderBar()
+                SiteHeaderBar(
+                    onTogglePanel: { isLeftPanelExpanded.toggle() },
+                    onSwapContent: swapPrimaryAndSecondary
+                )
                 Divider()
                 mainView
             }
@@ -48,6 +54,11 @@ public struct ContentView: View {
                 }
             }
             .preferredColorScheme(preferredScheme)
+            .onChange(of: selection) { newValue in
+                if let newValue {
+                    primarySection = newValue
+                }
+            }
         }
     }
 
@@ -65,8 +76,13 @@ public struct ContentView: View {
     }
 
     private var splitView: some View {
-        SidebarSplitView(selection: $selection) {
-            detailView(for: selection)
+        WorkspaceLayout(
+            selection: $selection,
+            isLeftPanelExpanded: $isLeftPanelExpanded
+        ) {
+            detailView(for: primarySection)
+        } rightSidebar: {
+            detailView(for: secondarySection)
         }
     }
 
@@ -84,6 +100,13 @@ public struct ContentView: View {
 
     private func detailView(for section: AppSection?) -> some View {
         SectionDetailView(section: section)
+    }
+
+    private func swapPrimaryAndSecondary() {
+        let temp = primarySection
+        primarySection = secondarySection
+        secondarySection = temp
+        selection = primarySection
     }
 
     private var preferredScheme: ColorScheme? {
