@@ -4,6 +4,9 @@
 // - For local dev, set real values in Xcode Build Settings, or create a local-only xcconfig and point
 //   "Base Configuration" at it in Xcode.
 
+// Local overrides (not committed)
+#include? "SideBar.local.xcconfig"
+
 API_BASE_URL = http://localhost:8001
 
 // Supabase project configuration
