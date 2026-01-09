@@ -73,4 +73,16 @@ public final class CoreDataCacheClient: CacheClient {
             try? context.save()
         }
     }
+
+    public func clear() {
+        let context = container.viewContext
+        context.performAndWait {
+            let request = CacheEntry.fetchRequest()
+            let items = (try? context.fetch(request)) ?? []
+            for item in items {
+                context.delete(item)
+            }
+            try? context.save()
+        }
+    }
 }

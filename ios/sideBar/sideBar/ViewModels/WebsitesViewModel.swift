@@ -9,28 +9,46 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var active: WebsiteDetail? = nil
     @Published public private(set) var errorMessage: String? = nil
 
-    private let api: WebsitesAPI
+    private let api: any WebsitesProviding
+    private let cache: CacheClient
 
-    public init(api: WebsitesAPI) {
+    public init(api: any WebsitesProviding, cache: CacheClient) {
         self.api = api
+        self.cache = cache
     }
 
     public func load() async {
         errorMessage = nil
+        let cached: WebsitesResponse? = cache.get(key: CacheKeys.websitesList)
+        if let cached {
+            items = cached.items
+        }
         do {
             let response = try await api.list()
             items = response.items
+            cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: CachePolicy.websitesList)
         } catch {
-            errorMessage = error.localizedDescription
+            if cached == nil {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     public func loadById(id: String) async {
         errorMessage = nil
+        let cacheKey = CacheKeys.websiteDetail(id: id)
+        let cached: WebsiteDetail? = cache.get(key: cacheKey)
+        if let cached {
+            active = cached
+        }
         do {
-            active = try await api.get(id: id)
+            let response = try await api.get(id: id)
+            active = response
+            cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.websiteDetail)
         } catch {
-            errorMessage = error.localizedDescription
+            if cached == nil {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 }

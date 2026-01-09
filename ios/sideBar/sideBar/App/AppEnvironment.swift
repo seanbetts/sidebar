@@ -24,6 +24,10 @@ public final class AppEnvironment: ObservableObject {
     }
 
     public func refreshAuthState() {
+        let wasAuthenticated = isAuthenticated
         isAuthenticated = container.authSession.accessToken != nil
+        if wasAuthenticated && !isAuthenticated {
+            container.cacheClient.clear()
+        }
     }
 }
