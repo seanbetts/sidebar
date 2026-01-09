@@ -6,11 +6,9 @@ public struct SiteHeaderBar: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
     @State private var isScratchpadPresented = false
-    private let onTogglePanel: (() -> Void)?
     private let onSwapContent: (() -> Void)?
 
-    public init(onTogglePanel: (() -> Void)? = nil, onSwapContent: (() -> Void)? = nil) {
-        self.onTogglePanel = onTogglePanel
+    public init(onSwapContent: (() -> Void)? = nil) {
         self.onSwapContent = onSwapContent
     }
 
@@ -64,24 +62,42 @@ public struct SiteHeaderBar: View {
 
     private var controlRow: some View {
         HStack(spacing: 12) {
-            Button(action: { onTogglePanel?() }) {
-                Image(systemName: "sidebar.left")
-            }
-            .buttonStyle(.plain)
-            .disabled(onTogglePanel == nil)
-
             Button(action: { onSwapContent?() }) {
                 Image(systemName: "arrow.left.arrow.right")
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
             .disabled(onSwapContent == nil)
+            .font(.system(size: 16, weight: .semibold))
+            .imageScale(.medium)
+            .padding(6)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(buttonBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(buttonBorder, lineWidth: 1)
+            )
 
             Button {
                 isScratchpadPresented.toggle()
             } label: {
                 Image(systemName: "square.and.pencil")
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
+            .font(.system(size: 16, weight: .semibold))
+            .imageScale(.medium)
+            .padding(6)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(buttonBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(buttonBorder, lineWidth: 1)
+            )
             .popover(isPresented: $isScratchpadPresented) {
                 ScratchpadPopoverView(
                     api: environment.container.scratchpadAPI,
@@ -97,6 +113,22 @@ public struct SiteHeaderBar: View {
         return Color(nsColor: .windowBackgroundColor)
         #else
         return Color(uiColor: .systemBackground)
+        #endif
+    }
+
+    private var buttonBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var buttonBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
         #endif
     }
 
