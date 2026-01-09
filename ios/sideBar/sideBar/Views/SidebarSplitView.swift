@@ -23,7 +23,7 @@ public struct SidebarSplitView<Detail: View>: View {
                 SidebarRail(selection: $selection)
                     .frame(width: railWidth)
 
-                SidebarPanelPlaceholder(title: selection?.title ?? "Select a section")
+                panelView(for: selection)
                     .frame(width: currentPanelWidth(for: proxy))
                     .background(panelBackground)
 
@@ -97,6 +97,24 @@ public struct SidebarSplitView<Detail: View>: View {
         #else
         return Color(uiColor: .secondarySystemBackground)
         #endif
+    }
+
+    @ViewBuilder
+    private func panelView(for selection: AppSection?) -> some View {
+        switch selection {
+        case .chat:
+            ConversationsPanel()
+        case .notes:
+            NotesPanel()
+        case .files:
+            FilesPanel()
+        case .websites:
+            WebsitesPanel()
+        case .none:
+            SidebarPanelPlaceholder(title: "Select a section")
+        default:
+            SidebarPanelPlaceholder(title: selection?.title ?? "Select a section")
+        }
     }
 
     private var handleBackground: Color {
