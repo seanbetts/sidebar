@@ -36,26 +36,36 @@ public struct ContentView: View {
         } else if !environment.isAuthenticated {
             LoginView()
         } else {
-            mainView
-                .toolbar {
-                    ToolbarItem(placement: .automatic) {
-                        Button("Sign Out") {
-                            Task {
-                                await environment.container.authSession.signOut()
-                                environment.refreshAuthState()
-                            }
+            GeometryReader { proxy in
+                mainView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .overlay(alignment: .top) {
+                        Rectangle()
+                            .fill(topSafeAreaBackground)
+                            .frame(height: proxy.safeAreaInsets.top)
+                            .ignoresSafeArea(edges: .top)
+                            .allowsHitTesting(false)
+                    }
+            }
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button("Sign Out") {
+                        Task {
+                            await environment.container.authSession.signOut()
+                            environment.refreshAuthState()
                         }
                     }
                 }
-                .onChange(of: selection) {
-                    if let newValue = selection {
-                        primarySection = newValue
-                    }
+            }
+            .onChange(of: selection) {
+                if let newValue = selection {
+                    primarySection = newValue
                 }
-                .sheet(isPresented: $isSettingsPresented) {
-                    SettingsView()
-                        .environmentObject(environment)
-                }
+            }
+            .sheet(isPresented: $isSettingsPresented) {
+                SettingsView()
+                    .environmentObject(environment)
+            }
         }
     }
 
@@ -112,6 +122,14 @@ public struct ContentView: View {
         primarySection = secondarySection
         secondarySection = temp
         selection = primarySection
+    }
+
+    private var topSafeAreaBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .windowBackgroundColor)
+        #else
+        return Color(uiColor: .systemBackground)
+        #endif
     }
 
 }
