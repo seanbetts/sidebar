@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		14C84A562F10562500FE0C16 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		14C84A482F10562300FE0C16 /* sideBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sideBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A552F10562500FE0C16 /* sideBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = SideBarCache.xcdatamodel; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +80,7 @@
 		14C84A3F2F10562300FE0C16 = {
 			isa = PBXGroup;
 			children = (
+				14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */,
 				14C84A4A2F10562300FE0C16 /* sideBar */,
 				14C84A582F10562500FE0C16 /* sideBarTests */,
 				14C84A622F10562500FE0C16 /* sideBarUITests */,
@@ -236,6 +242,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -605,6 +612,19 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */,
+			);
+			currentVersion = 14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */;
+			path = SideBarCache.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 14C84A402F10562300FE0C16 /* Project object */;
 }
