@@ -52,4 +52,11 @@ public struct FilesAPI {
         struct UpdateRequest: Codable { let basePath: String; let path: String; let content: String }
         try await client.requestVoid("files/content", method: "POST", body: UpdateRequest(basePath: basePath, path: path, content: content))
     }
+
+    public func download(basePath: String = "documents", path: String) async throws -> Data {
+        let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let baseEncoded = basePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? basePath
+        let requestPath = "files/download?basePath=\(baseEncoded)&path=\(encoded)"
+        return try await client.requestData(requestPath)
+    }
 }

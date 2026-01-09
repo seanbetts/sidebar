@@ -50,6 +50,10 @@ public struct WebsitesAPI {
         try await client.requestVoid("websites/pinned-order", method: "PATCH", body: PinnedOrderRequest(order: ids))
     }
 
+    public func download(id: String) async throws -> Data {
+        try await client.requestData("websites/\(id)/download")
+    }
+
     public func delete(id: String) async throws {
         try await client.requestVoid("websites/\(id)", method: "DELETE")
     }

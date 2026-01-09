@@ -35,24 +35,23 @@ public struct SettingsAPI {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         request.httpBody = data
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw APIClientError.requestFailed((response as? HTTPURLResponse)?.statusCode ?? 0)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIClientError.unknown
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let errorDecoder = JSONDecoder()
+            errorDecoder.keyDecodingStrategy = .convertFromSnakeCase
+            let message = APIClient.decodeErrorMessage(data: data, decoder: errorDecoder)
+            if let message {
+                throw APIClientError.apiError(message)
+            }
+            throw APIClientError.requestFailed(http.statusCode)
         }
     }
 
     public func getProfileImage() async throws -> Data {
-        let url = client.config.baseUrl.appendingPathComponent("settings/profile-image")
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        if let token = client.config.accessTokenProvider() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw APIClientError.requestFailed((response as? HTTPURLResponse)?.statusCode ?? 0)
-        }
-        return data
+        try await client.requestData("settings/profile-image")
     }
 
     public func deleteProfileImage() async throws {

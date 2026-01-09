@@ -186,7 +186,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 1.1 Xcode Project Setup
 - [x] 1.2 Core Data Models (cache entry + persistence controller)
 - [x] 1.3 Supabase Integration (SPM + config wiring + email/password auth + keychain persistence)
-- [ ] 1.4 API Service Layer
+- [x] 1.4 API Service Layer
 - [ ] 1.5 Cache Layer
 - [ ] 1.6 Theme System
 
