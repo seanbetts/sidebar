@@ -188,7 +188,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 1.3 Supabase Integration (SPM + config wiring + email/password auth + keychain persistence)
 - [x] 1.4 API Service Layer
 - [x] 1.5 Cache Layer
-- [ ] 1.6 Theme System
+- [x] 1.6 Theme System
 
 #### Phase 2: Navigation & Layout (3-4 sessions)
 - [ ] 2.1 Main App Structure

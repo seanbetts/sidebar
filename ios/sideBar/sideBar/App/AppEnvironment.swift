@@ -4,6 +4,7 @@ import Combine
 @MainActor
 public final class AppEnvironment: ObservableObject {
     public let container: ServiceContainer
+    public var themeManager: ThemeManager
     public let configError: EnvironmentConfigLoadError?
 
     @Published public private(set) var isAuthenticated: Bool = false
@@ -11,6 +12,7 @@ public final class AppEnvironment: ObservableObject {
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
         self.container = container
+        self.themeManager = ThemeManager()
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
 
