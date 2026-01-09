@@ -17,6 +17,16 @@ public struct IngestionAPI {
         try await client.request("ingestion/\(fileId)/meta")
     }
 
+    public func getContent(fileId: String, kind: String, range: String? = nil) async throws -> Data {
+        let encodedKind = kind.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? kind
+        let requestPath = "ingestion/\(fileId)/content?kind=\(encodedKind)"
+        var headers: [String: String] = [:]
+        if let range {
+            headers["Range"] = range
+        }
+        return try await client.requestData(requestPath, headers: headers)
+    }
+
     public func pin(fileId: String, pinned: Bool) async throws {
         struct PinRequest: Codable { let pinned: Bool }
         try await client.requestVoid("ingestion/\(fileId)/pin", method: "PATCH", body: PinRequest(pinned: pinned))
