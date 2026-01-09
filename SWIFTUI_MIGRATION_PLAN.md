@@ -193,7 +193,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 #### Phase 2: Navigation & Layout (3-4 sessions)
 - [x] 2.1 Main App Structure
 - [x] 2.2 Sidebar + Section List
-- [ ] 2.3 Resizable Sidebar (macOS/iPadOS)
+- [x] 2.3 Resizable Sidebar (macOS/iPadOS)
 - [ ] 2.4 Detail Views (native layouts)
 - [ ] 2.5 Toolbar + Commands (platform-specific)
 - [ ] 2.6 Settings Sheet
