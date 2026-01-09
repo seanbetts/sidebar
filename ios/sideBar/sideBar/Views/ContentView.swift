@@ -18,6 +18,9 @@ public enum AppSection: String, CaseIterable, Identifiable {
 
 public struct ContentView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @State private var selection: AppSection? = .chat
 
     public init() {
@@ -29,25 +32,53 @@ public struct ContentView: View {
         } else if !environment.isAuthenticated {
             LoginView()
         } else {
-        // TODO: Replace with platform-specific navigation (tab on iPhone, split on iPad/macOS).
-            NavigationSplitView {
-                List(AppSection.allCases, selection: $selection) { section in
-                    Text(section.title)
-                }
-            } detail: {
-                SectionDetailView(section: selection)
-            }
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button("Sign Out") {
-                        Task {
-                            await environment.container.authSession.signOut()
-                            environment.refreshAuthState()
+            mainView
+                .toolbar {
+                    ToolbarItem(placement: .automatic) {
+                        Button("Sign Out") {
+                            Task {
+                                await environment.container.authSession.signOut()
+                                environment.refreshAuthState()
+                            }
                         }
                     }
                 }
+                .preferredColorScheme(preferredScheme)
+        }
+    }
+
+    @ViewBuilder
+    private var mainView: some View {
+        #if os(macOS)
+        splitView
+        #else
+        if horizontalSizeClass == .compact {
+            compactView
+        } else {
+            splitView
+        }
+        #endif
+    }
+
+    private var splitView: some View {
+        NavigationSplitView {
+            List(AppSection.allCases, selection: $selection) { section in
+                Text(section.title)
             }
-            .preferredColorScheme(preferredScheme)
+        } detail: {
+            SectionDetailView(section: selection)
+        }
+    }
+
+    private var compactView: some View {
+        NavigationStack {
+            List(AppSection.allCases) { section in
+                NavigationLink(section.title, value: section)
+            }
+            .navigationDestination(for: AppSection.self) { section in
+                SectionDetailView(section: section)
+            }
+            .navigationTitle("sideBar")
         }
     }
 
