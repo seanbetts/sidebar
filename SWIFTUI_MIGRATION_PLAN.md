@@ -142,9 +142,9 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 | Phase | Status | Sessions (MVP) | Sessions (Full) | Complete | MVP Scope |
 |-------|--------|----------------|-----------------|----------|-----------|
-| **1. Foundation & Architecture** | 🟨 In Progress | 1 / 3-4 | 1 / 3-4 | 25% | Full |
-| **2. Navigation & Layout** | ⬜ Not Started | 0 / 3-4 | 0 / 3-4 | 0% | Full |
-| **3. Chat Viewer** | ⬜ Not Started | 0 / 4-5 | 0 / 5-7 | 0% | Modified (no input) |
+| **1. Foundation & Architecture** | ✅ Complete | 4 / 3-4 | 4 / 3-4 | 100% | Full |
+| **2. Navigation & Layout** | ✅ Complete | 3 / 3-4 | 3 / 3-4 | 100% | Full |
+| **3. Chat Viewer** | 🟨 In Progress | 1 / 4-5 | 1 / 5-7 | 20% | Modified (no input) |
 | **4. Note Viewer** | ⬜ Not Started | 0 / 2-3 | 0 / 7-10 | 0% | Heavily Reduced (read-only) |
 | **5. File Viewing** | ⬜ Not Started | 0 / 4-6 | 0 / 4-6 | 0% | Full (already read-only) |
 | **6. Website Viewer** | ⬜ Not Started | 0 / 1-2 | 0 / 2-3 | 0% | Modified (no saving) |
@@ -212,13 +212,13 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 
 #### Phase 3: Chat Viewer (4-5 sessions MVP, 5-7 full)
 **MVP Scope: Read-Only Chat Viewer**
-- [ ] 3.1 Conversation List
-- [ ] 3.2 Chat Window Layout
+- [x] 3.1 Conversation List
+- [x] 3.2 Chat Window Layout
 - [ ] 3.3 SSE Streaming Implementation (for cross-device updates)
-- [ ] 3.4 Message List
-- [ ] 3.5 Message Rendering (MarkdownUI)
-- [ ] 3.6 Tool Call Visualization
-- [ ] 3.6a SSE UI Event Handling (note/website/theme/scratchpad/prompt/tool_start/tool_end)
+- [x] 3.4 Message List
+- [x] 3.5 Message Rendering (AttributedString for now)
+- [x] 3.6 Tool Call Visualization
+- [x] 3.6a SSE UI Event Handling (note/website/theme/scratchpad/prompt/tool_start/tool_end)
 - [ ] 3.8 Real-time Conversation Sync
 - [ ] 3.9 State reconciliation rules (cache vs SSE, ordering/pinning, soft-delete tombstones)
 
