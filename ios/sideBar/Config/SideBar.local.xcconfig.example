@@ -6,7 +6,7 @@
 //    - (Optional) Release: set to `Config/SideBar.xcconfig`
 
 // Note: escape // in URLs so .xcconfig doesn't treat it as a comment.
-API_BASE_URL = http:\/\/localhost:8001
+API_BASE_URL = http:\/\/127.0.0.1:8001\/api\/v1
 
 SUPABASE_URL = https:\/\/YOUR_PROJECT.supabase.co
 SUPABASE_ANON_KEY = YOUR_SUPABASE_ANON_KEY

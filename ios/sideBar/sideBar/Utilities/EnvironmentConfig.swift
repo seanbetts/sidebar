@@ -13,7 +13,7 @@ public struct EnvironmentConfig {
 
     public static func fallbackForTesting() -> EnvironmentConfig {
         EnvironmentConfig(
-            apiBaseUrl: URL(string: "http://localhost:8001")!,
+            apiBaseUrl: URL(string: "http://127.0.0.1:8001/api/v1")!,
             supabaseUrl: URL(string: "http://localhost")!,
             supabaseAnonKey: "test"
         )
