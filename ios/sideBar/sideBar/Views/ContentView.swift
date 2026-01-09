@@ -29,6 +29,7 @@ public struct ContentView: View {
     @State private var isSettingsPresented = false
     @State private var phoneSelection: AppSection = .chat
     @State private var isPhoneScratchpadPresented = false
+    @State private var didSetInitialSelection = false
 
     public init() {
     }
@@ -68,6 +69,9 @@ public struct ContentView: View {
             .onChange(of: phoneSelection) { _, newValue in
                 selection = newValue
                 primarySection = newValue
+            }
+            .task {
+                applyInitialSelectionIfNeeded()
             }
             .sheet(isPresented: $isSettingsPresented) {
                 SettingsView()
@@ -205,6 +209,21 @@ public struct ContentView: View {
         #else
         return Color(uiColor: .systemBackground)
         #endif
+    }
+
+    private func applyInitialSelectionIfNeeded() {
+        guard !didSetInitialSelection else { return }
+        didSetInitialSelection = true
+#if os(iOS)
+        if horizontalSizeClass == .compact {
+            phoneSelection = .chat
+            selection = .chat
+            primarySection = .chat
+        } else {
+            selection = .notes
+            primarySection = .notes
+        }
+#endif
     }
 
     private var tabBarTint: Color {
