@@ -51,13 +51,17 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     public init(config: EnvironmentConfig, stateStore: AuthStateStore) {
         self.stateStore = stateStore
 
+        let authOptions = SupabaseClientOptions.AuthOptions(
+            emitLocalSessionAsInitialSession: true
+        )
         supabase = SupabaseClient(
             supabaseURL: config.supabaseUrl,
-            supabaseKey: config.supabaseAnonKey
+            supabaseKey: config.supabaseAnonKey,
+            options: SupabaseClientOptions(auth: authOptions)
         )
 
         if let session = supabase.auth.currentSession {
-            restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
+            applySession(session)
         } else {
             self.accessToken = stateStore.loadAccessToken()
             self.userId = stateStore.loadUserId()
@@ -78,7 +82,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     public func signIn(email: String, password: String) async throws {
         try await supabase.auth.signIn(email: email, password: password)
         if let session = supabase.auth.currentSession {
-            restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
+            applySession(session)
         }
     }
 
@@ -101,10 +105,10 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     private func applySession(_ session: Session?) {
-        if let session {
-            restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
-        } else {
+        guard let session, !session.isExpired else {
             restoreSession(accessToken: nil, userId: nil)
+            return
         }
+        restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
     }
 }
