@@ -26,8 +26,36 @@
 	let healthChecked = false;
 	let stopStorageListener: (() => void) | null = null;
 	let stopRealtimeListener: (() => void) | null = null;
+	let stopDebugListener: (() => void) | null = null;
+
+	let debugLayout = false;
+	let viewportDebug = '';
 
 	onMount(() => {
+		debugLayout =
+			typeof window !== 'undefined' &&
+			new URL(window.location.href).searchParams.has('debugLayout');
+		if (debugLayout) {
+			const update = () => {
+				const appHeightVar =
+					getComputedStyle(document.documentElement).getPropertyValue('--app-height')?.trim() ?? '';
+				const vvHeight = window.visualViewport?.height;
+				viewportDebug = [
+					`innerHeight=${window.innerHeight}`,
+					`clientHeight=${document.documentElement.clientHeight}`,
+					`visualViewport.height=${vvHeight ?? 'n/a'}`,
+					`--app-height=${appHeightVar || 'unset'}`
+				].join(' | ');
+			};
+			update();
+			window.addEventListener('resize', update);
+			window.visualViewport?.addEventListener('resize', update);
+			stopDebugListener = () => {
+				window.removeEventListener('resize', update);
+				window.visualViewport?.removeEventListener('resize', update);
+			};
+		}
+
 		const storedTheme = getStoredTheme();
 		const prefersDark =
 			typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -69,6 +97,7 @@
 	onDestroy(() => {
 		stopStorageListener?.();
 		stopRealtimeListener?.();
+		stopDebugListener?.();
 		stopRealtime();
 		chatStore.cleanup?.();
 	});
@@ -130,6 +159,10 @@
 	</TooltipProvider>
 {/if}
 
+{#if debugLayout}
+	<div class="debug-layout">{viewportDebug}</div>
+{/if}
+
 <style>
 	.app {
 		display: flex;
@@ -167,5 +200,24 @@
 		flex: 1;
 		min-height: 0;
 		height: 100%;
+	}
+
+	.debug-layout {
+		position: fixed;
+		left: 12px;
+		right: 12px;
+		bottom: 12px;
+		z-index: 99999;
+		font-family:
+			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+			monospace;
+		font-size: 12px;
+		line-height: 1.3;
+		padding: 10px 12px;
+		border-radius: 10px;
+		background: rgba(0, 0, 0, 0.75);
+		color: white;
+		backdrop-filter: blur(8px);
+		pointer-events: none;
 	}
 </style>
