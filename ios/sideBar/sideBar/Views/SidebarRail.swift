@@ -4,6 +4,7 @@ public struct SidebarRail: View {
     @Binding private var selection: AppSection?
     @State private var hoveredSection: AppSection?
     private let onTogglePanel: (() -> Void)?
+    private let onShowSettings: (() -> Void)?
 
     private let sections: [AppSection] = [
         .notes,
@@ -13,9 +14,14 @@ public struct SidebarRail: View {
         .chat
     ]
 
-    public init(selection: Binding<AppSection?>, onTogglePanel: (() -> Void)? = nil) {
+    public init(
+        selection: Binding<AppSection?>,
+        onTogglePanel: (() -> Void)? = nil,
+        onShowSettings: (() -> Void)? = nil
+    ) {
         self._selection = selection
         self.onTogglePanel = onTogglePanel
+        self.onShowSettings = onShowSettings
     }
 
     public var body: some View {
@@ -35,7 +41,7 @@ public struct SidebarRail: View {
 
             Spacer()
 
-            Button(action: {}) {
+            Button(action: { onShowSettings?() }) {
                 Image(systemName: "person.crop.circle")
                     .font(.system(size: 22, weight: .regular))
                     .frame(width: 32, height: 32)

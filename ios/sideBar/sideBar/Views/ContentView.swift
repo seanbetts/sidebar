@@ -25,6 +25,7 @@ public struct ContentView: View {
     @State private var primarySection: AppSection = .notes
     @State private var secondarySection: AppSection = .chat
     @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
+    @State private var isSettingsPresented = false
 
     public init() {
     }
@@ -46,11 +47,14 @@ public struct ContentView: View {
                         }
                     }
                 }
-                .preferredColorScheme(preferredScheme)
-                .onChange(of: selection) { newValue in
-                    if let newValue {
+                .onChange(of: selection) {
+                    if let newValue = selection {
                         primarySection = newValue
                     }
+                }
+                .sheet(isPresented: $isSettingsPresented) {
+                    SettingsView()
+                        .environmentObject(environment)
                 }
         }
     }
@@ -72,6 +76,7 @@ public struct ContentView: View {
         WorkspaceLayout(
             selection: $selection,
             isLeftPanelExpanded: $isLeftPanelExpanded,
+            onShowSettings: { isSettingsPresented = true },
             header: {
                 SiteHeaderBar(onSwapContent: swapPrimaryAndSecondary)
             }
@@ -109,16 +114,6 @@ public struct ContentView: View {
         selection = primarySection
     }
 
-    private var preferredScheme: ColorScheme? {
-        switch environment.themeManager.mode {
-        case .system:
-            return nil
-        case .light:
-            return .light
-        case .dark:
-            return .dark
-        }
-    }
 }
 
 public struct ConfigErrorView: View {

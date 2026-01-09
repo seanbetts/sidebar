@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct SiteHeaderBar: View {
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -39,7 +40,7 @@ public struct SiteHeaderBar: View {
 
     private var brandView: some View {
         HStack(spacing: 8) {
-            Image("AppLogo")
+            Image(colorScheme == .dark ? "AppLogoDark" : "AppLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 24, height: 24)
@@ -112,6 +113,7 @@ public struct SiteHeaderBar: View {
         return Color(uiColor: .systemBackground)
         #endif
     }
+
 
     private var buttonBackground: Color {
         #if os(macOS)
