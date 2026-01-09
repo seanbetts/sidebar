@@ -39,6 +39,7 @@
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = SideBarCache.xcdatamodel; sourceTree = "<group>"; };
 		14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/SideBar.xcconfig; sourceTree = "<group>"; };
+		4F1D2A6D2FF2A6A100A0B2C3 /* sideBar/sideBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = sideBar/sideBar.entitlements; sourceTree = "<group>"; };
 		87939F14DC374DD684951468 /* sideBar/Base.lproj/SideBarLaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = sideBar/Base.lproj/SideBarLaunchScreen.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -95,6 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */,
+				4F1D2A6D2FF2A6A100A0B2C3 /* sideBar/sideBar.entitlements */,
 				14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */,
 				87939F14DC374DD684951468 /* sideBar/Base.lproj/SideBarLaunchScreen.storyboard */,
 				14C84A4A2F10562300FE0C16 /* sideBar */,
@@ -444,11 +446,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = sideBar/sideBar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = SideBarLaunchScreen.storyboard;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a profile photo for your sideBar account.";
@@ -493,11 +497,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = sideBar/sideBar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*]" = SideBarLaunchScreen.storyboard;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_API_BASE_URL = "$(API_BASE_URL)";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose a profile photo for your sideBar account.";

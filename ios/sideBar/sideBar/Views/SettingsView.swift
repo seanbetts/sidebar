@@ -1,6 +1,8 @@
 import SwiftUI
 
 public struct SettingsView: View {
+    @EnvironmentObject private var environment: AppEnvironment
+
     public init() {
     }
 
@@ -28,6 +30,7 @@ public struct SettingsView: View {
 }
 
 private struct ProfileSettingsView: View {
+    @EnvironmentObject private var environment: AppEnvironment
     @State private var isImagePickerPresented = false
     @State private var profileImage: Image?
 
@@ -69,6 +72,17 @@ private struct ProfileSettingsView: View {
             Section("Appearance") {
                 Text("Theme follows your system setting.")
                     .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    Task {
+                        await environment.container.authSession.signOut()
+                        environment.refreshAuthState()
+                    }
+                } label: {
+                    Text("Sign Out")
+                }
             }
         }
     }

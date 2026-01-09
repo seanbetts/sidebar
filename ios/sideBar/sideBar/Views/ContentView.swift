@@ -51,16 +51,6 @@ public struct ContentView: View {
                             .allowsHitTesting(false)
                     }
             }
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button("Sign Out") {
-                        Task {
-                            await environment.container.authSession.signOut()
-                            environment.refreshAuthState()
-                        }
-                    }
-                }
-            }
             .onChange(of: selection) { _, newValue in
                 if let newValue {
                     primarySection = newValue
@@ -144,7 +134,7 @@ public struct ContentView: View {
                         .background(.ultraThinMaterial, in: Circle())
                         .overlay(
                             Circle()
-                                .stroke(Color(uiColor: .separator), lineWidth: 1)
+                                .stroke(separatorColor, lineWidth: 1)
                         )
                         .accessibilityLabel("Scratchpad")
                         .padding(.trailing, 16)
@@ -246,6 +236,14 @@ public struct ContentView: View {
     }
 
     private var tabAccessoryBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
+    }
+
+    private var separatorColor: Color {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
