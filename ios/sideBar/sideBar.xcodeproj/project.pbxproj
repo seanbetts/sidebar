@@ -39,6 +39,7 @@
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = SideBarCache.xcdatamodel; sourceTree = "<group>"; };
 		14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/SideBar.xcconfig; sourceTree = "<group>"; };
+		87939F14DC374DD684951468 /* sideBar/Base.lproj/SideBarLaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = sideBar/Base.lproj/SideBarLaunchScreen.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -95,6 +96,7 @@
 			children = (
 				14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */,
 				14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */,
+				87939F14DC374DD684951468 /* sideBar/Base.lproj/SideBarLaunchScreen.storyboard */,
 				14C84A4A2F10562300FE0C16 /* sideBar */,
 				14C84A582F10562500FE0C16 /* sideBarTests */,
 				14C84A622F10562500FE0C16 /* sideBarUITests */,
@@ -455,8 +457,10 @@
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
+				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphoneos*]" = SideBarLaunchScreen;
+				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphonesimulator*]" = SideBarLaunchScreen;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -501,8 +505,10 @@
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
+				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphoneos*]" = SideBarLaunchScreen;
+				"INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphonesimulator*]" = SideBarLaunchScreen;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
