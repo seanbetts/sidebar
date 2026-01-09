@@ -67,7 +67,7 @@ ios/**/*.xcworkspace/*
 ios/**/xcuserdata/
 ios/**/*.xcscmblueprint
 ios/**/*.xccheckout
-ios/**/Config/*.local.xcconfig
+ios/**/*.local.xcconfig
 
 # Swift Package Manager
 ios/**/.build/
