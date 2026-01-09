@@ -51,11 +51,7 @@
 	}
 </script>
 
-<div
-	bind:this={containerElement}
-	onscroll={handleScroll}
-	class="flex-1 overflow-y-auto p-4 space-y-4"
->
+<div bind:this={containerElement} onscroll={handleScroll} class="message-list">
 	{#if messages.length === 0}
 		<div class="h-full"></div>
 	{:else}
@@ -64,3 +60,17 @@
 		{/each}
 	{/if}
 </div>
+
+<style>
+	.message-list {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+	}
+</style>

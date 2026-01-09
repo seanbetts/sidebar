@@ -171,6 +171,7 @@
 	.chat-input-bar {
 		padding: 1rem;
 		background-color: var(--color-background);
+		flex-shrink: 0;
 	}
 
 	.chat-input-shell {
