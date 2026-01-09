@@ -16,12 +16,16 @@ struct sideBarApp: App {
         do {
             config = try EnvironmentConfig.load()
         } catch {
-            preconditionFailure("Failed to load app configuration: \(error)")
+            if EnvironmentConfig.isRunningTestsOrPreviews() {
+                config = EnvironmentConfig.fallbackForTesting()
+            } else {
+                preconditionFailure("Failed to load app configuration: \(error)")
+            }
         }
 
         let authSession = SupabaseAuthAdapter(
             config: config,
-            stateStore: InMemoryAuthStateStore()
+            stateStore: KeychainAuthStateStore()
         )
 
         let cacheClient = CoreDataCacheClient(container: PersistenceController.shared.container)

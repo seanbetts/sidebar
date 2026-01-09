@@ -34,6 +34,16 @@ public extension EnvironmentConfig {
             supabaseAnonKey: supabaseAnonKey
         )
     }
+
+    static func isRunningTestsOrPreviews() -> Bool {
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return true
+        }
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+            return true
+        }
+        return false
+    }
 }
 
 private func loadString(key: String) throws -> String {
@@ -44,6 +54,10 @@ private func loadString(key: String) throws -> String {
     if let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
         !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
         return value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    if let value = EnvironmentConfigFileReader.loadString(forKey: key) {
+        return value
     }
 
     throw EnvironmentConfigLoadError.missingValue(key: key)

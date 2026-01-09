@@ -2,12 +2,13 @@
 //
 // 1) Copy this file to `SideBar.local.xcconfig` (not committed)
 // 2) In Xcode: sideBar target → Build Settings → "Base Configuration"
-//    - Debug: set to `Config/SideBar.local.xcconfig`
-//    - (Optional) Release: set to `Config/SideBar.local.xcconfig`
+//    - Debug: set to `Config/SideBar.xcconfig` (which includes the local file)
+//    - (Optional) Release: set to `Config/SideBar.xcconfig`
 
-API_BASE_URL = http://localhost:8001
+// Note: escape // in URLs so .xcconfig doesn't treat it as a comment.
+API_BASE_URL = http:\/\/localhost:8001
 
-SUPABASE_URL = https://YOUR_PROJECT.supabase.co
+SUPABASE_URL = https:\/\/YOUR_PROJECT.supabase.co
 SUPABASE_ANON_KEY = YOUR_SUPABASE_ANON_KEY
 
 INFOPLIST_KEY_API_BASE_URL = $(API_BASE_URL)

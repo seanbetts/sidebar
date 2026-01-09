@@ -66,7 +66,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         authStateTask = Task { [supabase, weak self] in
             for await (_, session) in supabase.auth.authStateChanges {
                 guard let self else { return }
-                await self.applySession(session)
+                self.applySession(session)
             }
         }
     }

@@ -185,7 +185,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 1.0k Native API inventory + dependency plan + Info.plist permissions
 - [x] 1.1 Xcode Project Setup
 - [x] 1.2 Core Data Models (cache entry + persistence controller)
-- [x] 1.3 Supabase Integration (SPM + config wiring + email/password auth; **Keychain persistence still TODO**)
+- [x] 1.3 Supabase Integration (SPM + config wiring + email/password auth + keychain persistence)
 - [ ] 1.4 API Service Layer
 - [ ] 1.5 Cache Layer
 - [ ] 1.6 Theme System
@@ -407,6 +407,7 @@ Evaluate RichTextKit capabilities. Choose:
 | 2026-01-08 | 1.1 | 1 | TBD | Created `ios/sideBar/sideBar.xcodeproj`, moved existing Swift sources into target, fixed build errors, verified iPhone/iPad/macOS builds |
 | 2026-01-08 | 1.2 | 1 | TBD | Added `SideBarCache.xcdatamodeld` via Xcode Data Model editor (hand-authored XML triggered an Xcode indexing crash) |
 | 2026-01-09 | 1.3 | 1 | TBD | Added Supabase Swift SDK (SPM), `SideBar.xcconfig` wiring (+ local `SideBar.local.xcconfig` include), and `SupabaseAuthAdapter` sign-in/out with a basic login gate |
+| 2026-01-09 | 1.3 | 1 | TBD | Added Keychain-backed auth state store and wired it into app startup |
 
 ---
 
