@@ -19,17 +19,14 @@ public struct SiteHeaderBar: View {
                     HStack {
                         brandView
                         Spacer()
-                        controlRow
+                        trailingControls
                     }
-                    infoRow
                 }
             } else {
                 HStack(spacing: 16) {
                     brandView
                     Spacer()
-                    infoRow
-                    Spacer()
-                    controlRow
+                    trailingControls
                 }
             }
         }
@@ -51,17 +48,17 @@ public struct SiteHeaderBar: View {
         }
     }
 
-    private var infoRow: some View {
-        HStack(spacing: 12) {
-            HeaderInfoItem(icon: "mappin.and.ellipse", text: "Location")
-            HeaderInfoItem(icon: "cloud.sun", text: "Weather")
-        }
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
-    }
+    private var trailingControls: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .trailing, spacing: 4) {
+                HeaderInfoItem(icon: "cloud.sun", text: "Weather")
+                    .fontWeight(.semibold)
+                HeaderInfoItem(icon: "mappin.and.ellipse", text: "Location")
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .padding(.trailing, 14)
 
-    private var controlRow: some View {
-        HStack(spacing: 12) {
             Button(action: { onSwapContent?() }) {
                 Image(systemName: "arrow.left.arrow.right")
                     .frame(width: 28, height: 28)
