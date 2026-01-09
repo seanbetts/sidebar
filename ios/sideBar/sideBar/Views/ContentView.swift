@@ -23,8 +23,9 @@ public struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     #endif
     @State private var selection: AppSection? = .chat
-    @State private var primarySection: AppSection = .chat
+    @State private var primarySection: AppSection = .notes
     @State private var secondarySection: AppSection = .chat
+    @State private var lastNonChatSection: AppSection = .notes
     @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
     @State private var isSettingsPresented = false
     @State private var phoneSelection: AppSection = .chat
@@ -52,9 +53,7 @@ public struct ContentView: View {
                     }
             }
             .onChange(of: selection) { _, newValue in
-                if let newValue {
-                    primarySection = newValue
-                }
+                applySelectionUpdate(newValue)
             }
             .onChange(of: phoneSelection) { _, newValue in
                 selection = newValue
@@ -163,6 +162,9 @@ public struct ContentView: View {
         let temp = primarySection
         primarySection = secondarySection
         secondarySection = temp
+        if primarySection != .chat {
+            lastNonChatSection = primarySection
+        }
     }
 
     private func phoneTabView(for section: AppSection) -> some View {
@@ -213,11 +215,32 @@ public struct ContentView: View {
         } else {
             selection = .notes
             primarySection = .notes
+            lastNonChatSection = .notes
         }
 #else
         selection = .notes
         primarySection = .notes
+        lastNonChatSection = .notes
 #endif
+    }
+
+    private func applySelectionUpdate(_ newValue: AppSection?) {
+        guard let newValue else { return }
+#if os(iOS)
+        if horizontalSizeClass == .compact {
+            primarySection = newValue
+            return
+        }
+#endif
+        if newValue == .chat {
+            secondarySection = .chat
+            if primarySection == .chat {
+                primarySection = lastNonChatSection
+            }
+        } else {
+            primarySection = newValue
+            lastNonChatSection = newValue
+        }
     }
 
     private var tabBarTint: Color {
