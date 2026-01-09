@@ -1,9 +1,11 @@
 import SwiftUI
 
 public struct SiteHeaderBar: View {
+    @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @State private var isScratchpadPresented = false
     private let onSwapContent: (() -> Void)?
     private let onToggleSidebar: (() -> Void)?
     private let onShowSettings: (() -> Void)?
@@ -102,24 +104,52 @@ public struct SiteHeaderBar: View {
                 )
             }
 
-            Button {
-                onShowSettings?()
-            } label: {
-                Image(systemName: "person.crop.circle")
-                    .font(.system(size: 20, weight: .regular))
-                    .frame(width: 28, height: 28)
+            if isCompact {
+                Button {
+                    onShowSettings?()
+                } label: {
+                    Image(systemName: "person.crop.circle")
+                        .font(.system(size: 20, weight: .regular))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .imageScale(.medium)
+                .padding(6)
+                .background(
+                    Circle()
+                        .fill(buttonBackground)
+                )
+                .overlay(
+                    Circle()
+                        .stroke(buttonBorder, lineWidth: 1)
+                )
+            } else {
+                Button {
+                    isScratchpadPresented.toggle()
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 16, weight: .semibold))
+                .imageScale(.medium)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(buttonBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(buttonBorder, lineWidth: 1)
+                )
+                .popover(isPresented: $isScratchpadPresented) {
+                    ScratchpadPopoverView(
+                        api: environment.container.scratchpadAPI,
+                        cache: environment.container.cacheClient
+                    )
+                    .frame(minWidth: 360, minHeight: 280)
+                }
             }
-            .buttonStyle(.plain)
-            .imageScale(.medium)
-            .padding(6)
-            .background(
-                Circle()
-                    .fill(buttonBackground)
-            )
-            .overlay(
-                Circle()
-                    .stroke(buttonBorder, lineWidth: 1)
-            )
         }
     }
 
