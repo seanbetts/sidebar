@@ -61,9 +61,7 @@ public struct ContentView: View {
     }
 
     private var splitView: some View {
-        NavigationSplitView {
-            SidebarRail(selection: $selection)
-        } detail: {
+        SidebarSplitView(selection: $selection) {
             SectionDetailView(section: selection)
         }
     }
