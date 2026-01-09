@@ -15,6 +15,10 @@ public enum CacheKeys {
         "notes.note.\(id)"
     }
 
+    public static func conversation(id: String) -> String {
+        "conversations.detail.\(id)"
+    }
+
     public static func websiteDetail(id: String) -> String {
         "websites.detail.\(id)"
     }

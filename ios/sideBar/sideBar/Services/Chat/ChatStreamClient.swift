@@ -1,6 +1,7 @@
 import Foundation
 
-public protocol ChatStreamClient {
+public protocol ChatStreamClient: AnyObject {
+    var handler: ChatStreamEventHandler? { get set }
     func connect(request: ChatStreamRequest) async throws
     func disconnect()
 }
