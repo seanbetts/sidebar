@@ -7,7 +7,9 @@ const API_URL = getApiUrl();
 
 export const GET: RequestHandler = async ({ fetch }) => {
 	try {
-		const response = await fetch(`${API_URL}/api/v1/health`);
+		// Use legacy `/api/health` because backend auth middleware allows it without a JWT.
+		// `/api/v1/health` is currently protected and will return 401.
+		const response = await fetch(`${API_URL}/api/health`);
 		const data = await response.json().catch(() => ({}));
 
 		if (!response.ok) {
