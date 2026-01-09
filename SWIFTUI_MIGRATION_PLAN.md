@@ -195,7 +195,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 2.2 Sidebar + Section List
 - [x] 2.3 Resizable Sidebar (macOS/iPadOS)
 - [x] 2.4 Detail Views (native layouts)
-- [ ] 2.5 Toolbar + Commands (platform-specific)
+- [x] 2.5 Site Header Bar
 - [ ] 2.6 Settings Sheet
 
 **Native UX Requirements (Phase 2)**
