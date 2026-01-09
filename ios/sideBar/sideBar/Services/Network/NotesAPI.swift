@@ -1,5 +1,10 @@
 import Foundation
 
+public protocol NotesProviding {
+    func listTree() async throws -> FileTree
+    func getNote(id: String) async throws -> NotePayload
+}
+
 public struct NotesAPI {
     private let client: APIClient
 
@@ -78,6 +83,8 @@ public struct NotesAPI {
         try await client.requestVoid("notes/folders", method: "DELETE", body: FolderRequest(path: path))
     }
 }
+
+extension NotesAPI: NotesProviding {}
 
 public struct NotePayload: Codable {
     public let id: String

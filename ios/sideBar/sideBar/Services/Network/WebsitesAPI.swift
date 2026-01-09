@@ -1,5 +1,10 @@
 import Foundation
 
+public protocol WebsitesProviding {
+    func list() async throws -> WebsitesResponse
+    func get(id: String) async throws -> WebsiteDetail
+}
+
 public struct WebsitesAPI {
     private let client: APIClient
 
@@ -58,3 +63,5 @@ public struct WebsitesAPI {
         try await client.requestVoid("websites/\(id)", method: "DELETE")
     }
 }
+
+extension WebsitesAPI: WebsitesProviding {}

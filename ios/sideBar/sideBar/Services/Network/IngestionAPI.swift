@@ -1,5 +1,10 @@
 import Foundation
 
+public protocol IngestionProviding {
+    func list() async throws -> IngestionListResponse
+    func getMeta(fileId: String) async throws -> IngestionMetaResponse
+}
+
 public struct IngestionAPI {
     private let client: APIClient
     private let session: URLSession
@@ -98,3 +103,5 @@ public struct IngestionAPI {
         return responsePayload.fileId
     }
 }
+
+extension IngestionAPI: IngestionProviding {}

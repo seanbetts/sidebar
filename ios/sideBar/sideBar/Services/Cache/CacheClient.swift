@@ -4,6 +4,7 @@ public protocol CacheClient {
     func get<T: Codable>(key: String) -> T?
     func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval)
     func remove(key: String)
+    func clear()
 }
 
 public final class InMemoryCacheClient: CacheClient {
@@ -40,5 +41,9 @@ public final class InMemoryCacheClient: CacheClient {
 
     public func remove(key: String) {
         storage.removeValue(forKey: key)
+    }
+
+    public func clear() {
+        storage.removeAll()
     }
 }
