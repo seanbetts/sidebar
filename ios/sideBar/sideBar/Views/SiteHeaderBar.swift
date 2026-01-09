@@ -54,10 +54,11 @@ public struct SiteHeaderBar: View {
             VStack(alignment: .trailing, spacing: 4) {
                 HeaderInfoItem(icon: "cloud.sun", text: "Weather")
                     .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
                 HeaderInfoItem(icon: "mappin.and.ellipse", text: "Location")
+                    .foregroundStyle(.secondary)
             }
             .font(.subheadline)
-            .foregroundStyle(.secondary)
             .padding(.trailing, 14)
 
             Button(action: { onSwapContent?() }) {
