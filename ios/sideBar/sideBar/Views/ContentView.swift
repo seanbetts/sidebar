@@ -17,19 +17,34 @@ public enum AppSection: String, CaseIterable, Identifiable {
 }
 
 public struct ContentView: View {
+    @EnvironmentObject private var environment: AppEnvironment
     @State private var selection: AppSection? = .chat
 
     public init() {
     }
 
     public var body: some View {
+        if !environment.isAuthenticated {
+            LoginView()
+        } else {
         // TODO: Replace with platform-specific navigation (tab on iPhone, split on iPad/macOS).
-        NavigationSplitView {
-            List(AppSection.allCases, selection: $selection) { section in
-                Text(section.title)
+            NavigationSplitView {
+                List(AppSection.allCases, selection: $selection) { section in
+                    Text(section.title)
+                }
+            } detail: {
+                SectionDetailView(section: selection)
             }
-        } detail: {
-            SectionDetailView(section: selection)
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button("Sign Out") {
+                        Task {
+                            await environment.container.authSession.signOut()
+                            environment.refreshAuthState()
+                        }
+                    }
+                }
+            }
         }
     }
 }
