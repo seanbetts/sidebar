@@ -197,6 +197,8 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 2.4 Detail Views (native layouts)
 - [x] 2.5 Site Header Bar
 - [x] 2.6 Settings Sheet
+- [x] 2.7 macOS Settings Window (SettingsLink + menu support)
+- [x] 2.8 Login Screen Branding + Styling (logo/title + native fields)
 
 **Native UX Requirements (Phase 2)**
 - Use `NavigationSplitView` for macOS/iPad, `NavigationStack` or tabbed layout for iPhone.
