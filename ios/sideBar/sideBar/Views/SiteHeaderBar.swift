@@ -7,9 +7,11 @@ public struct SiteHeaderBar: View {
     #endif
     @State private var isScratchpadPresented = false
     private let onSwapContent: (() -> Void)?
+    private let onToggleSidebar: (() -> Void)?
 
-    public init(onSwapContent: (() -> Void)? = nil) {
+    public init(onSwapContent: (() -> Void)? = nil, onToggleSidebar: (() -> Void)? = nil) {
         self.onSwapContent = onSwapContent
+        self.onToggleSidebar = onToggleSidebar
     }
 
     public var body: some View {
@@ -56,37 +58,45 @@ public struct SiteHeaderBar: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isCompact {
+                onToggleSidebar?()
+            }
+        }
     }
 
     private var trailingControls: some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .trailing, spacing: 4) {
-                HeaderInfoItem(icon: "cloud.sun", text: "Weather")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
-                HeaderInfoItem(icon: "mappin.and.ellipse", text: "Location")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.subheadline)
-            .padding(.trailing, 14)
+            if !isCompact {
+                VStack(alignment: .trailing, spacing: 4) {
+                    HeaderInfoItem(icon: "cloud.sun", text: "Weather")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    HeaderInfoItem(icon: "mappin.and.ellipse", text: "Location")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.subheadline)
+                .padding(.trailing, 14)
 
-            Button(action: { onSwapContent?() }) {
-                Image(systemName: "arrow.left.arrow.right")
-                    .frame(width: 28, height: 28)
+                Button(action: { onSwapContent?() }) {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .disabled(onSwapContent == nil)
+                .font(.system(size: 16, weight: .semibold))
+                .imageScale(.medium)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(buttonBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(buttonBorder, lineWidth: 1)
+                )
             }
-            .buttonStyle(.plain)
-            .disabled(onSwapContent == nil)
-            .font(.system(size: 16, weight: .semibold))
-            .imageScale(.medium)
-            .padding(6)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(buttonBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(buttonBorder, lineWidth: 1)
-            )
 
             Button {
                 isScratchpadPresented.toggle()
