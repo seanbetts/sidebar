@@ -21,15 +21,16 @@ public struct SettingsView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 32, height: 32)
-                        Text("AppLogo")
+                        Text("AppLogo (system)")
                             .font(.caption)
                     }
                     VStack(spacing: 8) {
-                        Image("AppLogoDark")
+                        Image("AppLogo")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 32, height: 32)
-                        Text("AppLogoDark")
+                            .environment(\.colorScheme, .dark)
+                        Text("AppLogo (forced dark)")
                             .font(.caption)
                     }
                 }
