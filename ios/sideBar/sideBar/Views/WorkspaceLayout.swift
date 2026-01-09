@@ -3,6 +3,7 @@ import SwiftUI
 public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     @Binding private var selection: AppSection?
     @Binding private var isLeftPanelExpanded: Bool
+    private let onShowSettings: (() -> Void)?
     @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
     @State private var draggingRightWidth: Double?
 
@@ -20,12 +21,14 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     public init(
         selection: Binding<AppSection?>,
         isLeftPanelExpanded: Binding<Bool>,
+        onShowSettings: (() -> Void)? = nil,
         @ViewBuilder header: @escaping () -> Header,
         @ViewBuilder mainContent: @escaping () -> Main,
         @ViewBuilder rightSidebar: @escaping () -> Sidebar
     ) {
         self._selection = selection
         self._isLeftPanelExpanded = isLeftPanelExpanded
+        self.onShowSettings = onShowSettings
         self.header = header
         self.mainContent = mainContent
         self.rightSidebar = rightSidebar
@@ -35,7 +38,11 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         GeometryReader { proxy in
             let widths = layoutWidths(for: proxy)
             HStack(spacing: 0) {
-                SidebarRail(selection: $selection, onTogglePanel: toggleLeftPanel)
+                SidebarRail(
+                    selection: $selection,
+                    onTogglePanel: toggleLeftPanel,
+                    onShowSettings: onShowSettings
+                )
                     .frame(width: railWidth)
 
                 Divider()
