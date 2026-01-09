@@ -129,10 +129,12 @@
     height: 100dvh; /* Dynamic viewport height for mobile browsers */
     /* Prevent elastic scrolling on iOS */
     overflow: hidden;
-    position: fixed;
-    inset: 0;
-    width: 100%;
+    margin: 0;
     box-sizing: border-box;
+  }
+
+  #svelte {
+    height: 100%;
   }
 
   /* Safari-specific fix for mobile viewport */
@@ -142,6 +144,10 @@
     }
 
     body {
+      height: -webkit-fill-available;
+    }
+
+    #svelte {
       height: -webkit-fill-available;
     }
   }

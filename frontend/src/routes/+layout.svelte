@@ -159,7 +159,8 @@
 		flex: 1;
 		display: flex;
 		min-height: 0;
-		overflow: hidden;
+		overflow: auto;
+		-webkit-overflow-scrolling: touch;
 	}
 
 	:global(.page-content > *) {
