@@ -51,6 +51,6 @@ public final class ServiceContainer {
     }
 
     public func makeRealtimeClient(handler: RealtimeEventHandler?) -> RealtimeClient {
-        SupabaseRealtimeAdapter(handler: handler)
+        SupabaseRealtimeAdapter(config: config, handler: handler)
     }
 }

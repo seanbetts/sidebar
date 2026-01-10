@@ -7,6 +7,7 @@ public final class AppEnvironment: ObservableObject {
     public var themeManager: ThemeManager
     public let chatViewModel: ChatViewModel
     public let notesViewModel: NotesViewModel
+    private let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
 
     @Published public private(set) var isAuthenticated: Bool = false
@@ -23,6 +24,7 @@ public final class AppEnvironment: ObservableObject {
             streamClient: container.makeChatStreamClient(handler: nil)
         )
         self.notesViewModel = NotesViewModel(api: container.notesAPI, cache: container.cacheClient)
+        self.realtimeClient = container.makeRealtimeClient(handler: nil)
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
 
@@ -33,6 +35,11 @@ public final class AppEnvironment: ObservableObject {
                 }
                 .store(in: &cancellables)
         }
+
+        if let realtimeClient = realtimeClient as? SupabaseRealtimeAdapter {
+            realtimeClient.handler = self
+        }
+        realtimeClientStopStart()
     }
 
     public func refreshAuthState() {
@@ -41,5 +48,37 @@ public final class AppEnvironment: ObservableObject {
         if wasAuthenticated && !isAuthenticated {
             container.cacheClient.clear()
         }
+        realtimeClientStopStart()
+    }
+
+    private func realtimeClientStopStart() {
+        guard let userId = container.authSession.userId, isAuthenticated else {
+            realtimeClient.stop()
+            return
+        }
+        let token = container.authSession.accessToken
+        Task {
+            await realtimeClient.start(userId: userId, accessToken: token)
+        }
+    }
+}
+
+extension AppEnvironment: RealtimeEventHandler {
+    public func handleNoteEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) {
+        Task {
+            await notesViewModel.applyRealtimeEvent(payload)
+        }
+    }
+
+    public func handleWebsiteEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) {
+        _ = payload
+    }
+
+    public func handleIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) {
+        _ = payload
+    }
+
+    public func handleFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) {
+        _ = payload
     }
 }
