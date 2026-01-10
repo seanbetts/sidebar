@@ -105,7 +105,8 @@ public enum MarkdownRendering {
 
         if let caption, !caption.isEmpty {
             lines.append("")
-            lines.append("_\(caption)_")
+            lines.append("<p align=\"center\"><em>\(caption)</em></p>")
+            lines.append("")
         }
 
         return lines.joined(separator: "\n")
