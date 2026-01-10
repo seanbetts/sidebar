@@ -75,7 +75,8 @@ public final class FilesViewModel: ObservableObject {
                     kind: kind == .spreadsheet ? .text : kind,
                     text: response.content,
                     fileURL: fileURL,
-                    spreadsheet: nil
+                    spreadsheet: nil,
+                    youtubeEmbedURL: nil
                 )
             default:
                 let data = try await api.download(basePath: basePath, path: path)
@@ -85,7 +86,8 @@ public final class FilesViewModel: ObservableObject {
                     kind: kind,
                     text: nil,
                     fileURL: fileURL,
-                    spreadsheet: nil
+                    spreadsheet: nil,
+                    youtubeEmbedURL: nil
                 )
             }
         } catch {

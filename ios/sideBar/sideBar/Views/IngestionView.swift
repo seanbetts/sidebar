@@ -116,7 +116,7 @@ private struct IngestionRow: View {
             Image(systemName: iconName)
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.file.filenameOriginal)
+                Text(stripFileExtension(item.file.filenameOriginal))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 Text(statusText)

@@ -92,18 +92,21 @@ public struct FileViewerState {
     public let text: String?
     public let fileURL: URL?
     public let spreadsheet: SpreadsheetPayload?
+    public let youtubeEmbedURL: URL?
 
     public init(
         title: String,
         kind: FileViewerKind,
         text: String?,
         fileURL: URL?,
-        spreadsheet: SpreadsheetPayload?
+        spreadsheet: SpreadsheetPayload?,
+        youtubeEmbedURL: URL?
     ) {
         self.title = title
         self.kind = kind
         self.text = text
         self.fileURL = fileURL
         self.spreadsheet = spreadsheet
+        self.youtubeEmbedURL = youtubeEmbedURL
     }
 }
