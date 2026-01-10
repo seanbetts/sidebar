@@ -145,7 +145,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 | **1. Foundation & Architecture** | ✅ Complete | 4 / 3-4 | 4 / 3-4 | 100% | Full |
 | **2. Navigation & Layout** | ✅ Complete | 3 / 3-4 | 3 / 3-4 | 100% | Full |
 | **3. Chat Viewer** | ✅ Complete | 2 / 4-5 | 2 / 5-7 | 100% | Modified (no input) |
-| **4. Note Viewer** | 🟨 In Progress | 1 / 2-3 | 1 / 7-10 | 50% | Heavily Reduced (read-only) |
+| **4. Note Viewer** | 🟨 In Progress | 2 / 2-3 | 2 / 7-10 | 67% | Heavily Reduced (read-only) |
 | **5. File Viewing** | ⬜ Not Started | 0 / 4-6 | 0 / 4-6 | 0% | Full (already read-only) |
 | **6. Website Viewer** | ⬜ Not Started | 0 / 1-2 | 0 / 2-3 | 0% | Modified (no saving) |
 | **7. Additional Features** | ⬜ Not Started | 0 / 2-3 | 0 / 3-4 | 0% | Modified (view-only) |
@@ -235,7 +235,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 **MVP Scope: Read-Only Note Viewer**
 - [x] 4.1 File Tree Browser (expand/collapse, search, navigation)
 - [x] 4.2 Read-Only Note Viewer (MarkdownUI rendering)
-- [ ] 4.2a Scratchpad Note Mapping (special title + realtime updates)
+- [x] 4.2a Scratchpad Note Mapping (special title + realtime updates)
 - [ ] 4.6 Search Notes
 - [ ] 4.7 Real-time Sync (see updates from other devices)
 
