@@ -565,6 +565,7 @@ public struct FilesPanel: View {
 
 private struct FilesPanelView: View {
     @ObservedObject var viewModel: IngestionViewModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var selection: String? = nil
     @State private var expandedCategories: Set<String> = []
@@ -688,6 +689,7 @@ private struct FilesPanelView: View {
                                         .onTapGesture { open(item: item) }
                                 }
                             }
+                            .listRowBackground(unselectedRowBackground)
                         }
                     }
                 }
@@ -860,6 +862,10 @@ private struct FilesPanelView: View {
         #else
         return Color(uiColor: .secondarySystemBackground)
         #endif
+    }
+
+    private var unselectedRowBackground: Color {
+        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
     }
 
 }
