@@ -134,7 +134,7 @@ private extension DateFormatter {
     static let chatList: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        formatter.timeStyle = .short
+        formatter.timeStyle = .none
         return formatter
     }()
 }
