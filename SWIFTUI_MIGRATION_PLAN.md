@@ -124,15 +124,15 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 
 **Current Target**: Read-Only MVP
 **Status**: Phase 7 complete (Additional Features)
-**Sessions Completed (Implementation)**: 14 / 22-33 (MVP) or 14 / 36-51 (Full App)
+**Sessions Completed (Implementation)**: 15 / 22-33 (MVP) or 15 / 36-51 (Full App)
 **Hours Logged (Implementation)**: TBD / 88-132 (MVP) or TBD / 157-280 (Full App)
 **Weeks Elapsed (Implementation)**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
 
 ```
-MVP Progress:      [████████████░░░░░░░░] 60%
-Full App Progress: [█████████░░░░░░░░░░░] 42%
+MVP Progress:      [█████████████░░░░░░░] 64%
+Full App Progress: [██████████░░░░░░░░░░] 44%
 
-Critical Path (MVP): [██████████░░░░░░░░░░] 50%
+Critical Path (MVP): [███████████░░░░░░░░░] 55%
 (Phases 1 → 2 → 3-Modified → 4-Reduced → 5 → 6-Modified → 7-Modified → 8 → 9)
 ```
 
@@ -295,7 +295,7 @@ Critical Path (MVP): [██████████░░░░░░░░░�
 - [x] 7.4 Weather Integration
 - [x] 7.5 Keyboard Shortcuts (macOS)
 - [x] 7.6 Remove deprecated standalone views (Memories/Weather/Places/Ingestion)
-- [ ] 7.7 Biometric unlock (Face ID/Touch ID)
+- [x] 7.7 Biometric unlock (Face ID/Touch ID)
 
 **Native UX Requirements (Phase 7)**
 - Use native Settings layouts (Form + sections) and platform conventions.
