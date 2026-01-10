@@ -56,17 +56,17 @@ public struct ContentView: View {
                 sidebarSelection = newValue
                 primarySection = newValue
             }
-            .onChange(of: environment.notesViewModel.selectedNoteId) { _, newValue in
+            .onReceive(environment.notesViewModel.$selectedNoteId) { newValue in
                 guard newValue != nil else { return }
                 primarySection = .notes
                 lastNonChatSection = .notes
             }
-            .onChange(of: environment.ingestionViewModel.selectedFileId) { _, newValue in
+            .onReceive(environment.ingestionViewModel.$selectedFileId) { newValue in
                 guard newValue != nil else { return }
                 primarySection = .files
                 lastNonChatSection = .files
             }
-            .onChange(of: environment.websitesViewModel.active?.id) { _, newValue in
+            .onReceive(environment.websitesViewModel.$active) { newValue in
                 guard newValue != nil else { return }
                 primarySection = .websites
                 lastNonChatSection = .websites
