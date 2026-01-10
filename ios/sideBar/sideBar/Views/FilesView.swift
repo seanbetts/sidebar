@@ -48,7 +48,10 @@ private struct FilesHeaderView: View {
     }
 
     private var activeTitle: String {
-        viewModel.activeMeta?.file.filenameOriginal ?? "Files"
+        if let name = viewModel.activeMeta?.file.filenameOriginal {
+            return stripFileExtension(name)
+        }
+        return "Files"
     }
 }
 

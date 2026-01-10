@@ -20,24 +20,38 @@ public struct FileViewerView: View {
 
     public var body: some View {
         Group {
-            switch state.kind {
-            case .markdown:
-                markdownView
-            case .text, .json:
-                textView
-            case .spreadsheet:
-                spreadsheetView
-            case .pdf:
-                pdfView
-            case .image:
-                imageView
-            case .audio, .video:
-                mediaView
-            case .quickLook:
-                quickLookView
+            if let embedURL = state.youtubeEmbedURL {
+                VStack(spacing: 0) {
+                    YouTubePlayerView(url: embedURL)
+                        .frame(height: 240)
+                    Divider()
+                    contentView
+                }
+            } else {
+                contentView
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var contentView: some View {
+        switch state.kind {
+        case .markdown:
+            markdownView
+        case .text, .json:
+            textView
+        case .spreadsheet:
+            spreadsheetView
+        case .pdf:
+            pdfView
+        case .image:
+            imageView
+        case .audio, .video:
+            mediaView
+        case .quickLook:
+            quickLookView
+        }
     }
 
     private var markdownView: some View {
@@ -79,8 +93,9 @@ public struct FileViewerView: View {
     @ViewBuilder
     private var imageView: some View {
         if let url = state.fileURL {
-            ScrollView([.vertical, .horizontal]) {
-                PlatformImageView(url: url)
+            GeometryReader { proxy in
+                PlatformImageView(url: url, size: proxy.size)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         } else {
             PlaceholderView(title: "Image preview unavailable")
@@ -90,15 +105,14 @@ public struct FileViewerView: View {
     @ViewBuilder
     private var mediaView: some View {
         if let url = state.fileURL {
-            VStack(spacing: 12) {
+            if state.kind == .audio {
+                AudioPlayerView(url: url)
+                    .padding(20)
+            } else {
                 VideoPlayer(player: AVPlayer(url: url))
-                    .frame(height: state.kind == .audio ? 72 : 360)
-                if state.kind == .audio {
-                    Text("Audio playback")
-                        .foregroundStyle(.secondary)
-                }
+                    .frame(height: 360)
+                    .padding(20)
             }
-            .padding(20)
         } else {
             PlaceholderView(title: "Media preview unavailable")
         }
@@ -144,13 +158,15 @@ private struct PDFKitView: NSViewRepresentable {
 
 private struct PlatformImageView: View {
     let url: URL
+    let size: CGSize
 
     var body: some View {
         if let image = NSImage(contentsOf: url) {
             Image(nsImage: image)
                 .resizable()
                 .scaledToFit()
-                .padding(20)
+                .frame(maxWidth: size.width, maxHeight: size.height)
+                .padding(12)
         } else {
             PlaceholderView(title: "Unable to load image")
         }
@@ -189,13 +205,15 @@ private struct PDFKitView: UIViewRepresentable {
 
 private struct PlatformImageView: View {
     let url: URL
+    let size: CGSize
 
     var body: some View {
         if let image = UIImage(contentsOfFile: url.path) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
-                .padding(20)
+                .frame(maxWidth: size.width, maxHeight: size.height)
+                .padding(12)
         } else {
             PlaceholderView(title: "Unable to load image")
         }

@@ -334,6 +334,7 @@ private struct FilesPanelView: View {
     @ObservedObject var viewModel: IngestionViewModel
     @State private var hasLoaded = false
     @State private var selection: String? = nil
+    @State private var expandedCategories: Set<String> = []
 
     var body: some View {
         Group {
@@ -356,6 +357,10 @@ private struct FilesPanelView: View {
             if selection == nil {
                 selection = viewModel.selectedFileId
             }
+            initializeExpandedCategoriesIfNeeded()
+        }
+        .onChange(of: categoriesWithItems) { _, _ in
+            initializeExpandedCategoriesIfNeeded()
         }
         .onChange(of: selection) { _, newValue in
             guard let fileId = newValue else { return }
@@ -379,12 +384,20 @@ private struct FilesPanelView: View {
             if !categorizedItems.isEmpty {
                 ForEach(categoryOrder, id: \.self) { category in
                     if let items = categorizedItems[category], !items.isEmpty {
-                        Section(categoryLabels[category] ?? "Files") {
-                            ForEach(items, id: \.file.id) { item in
-                                FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                                    .tag(item.file.id)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { open(item: item) }
+                        Section {
+                            CategoryToggleRow(
+                                title: categoryLabels[category] ?? "Files",
+                                isExpanded: expandedCategories.contains(category)
+                            ) {
+                                toggleCategory(category)
+                            }
+                            if expandedCategories.contains(category) {
+                                ForEach(items, id: \.file.id) { item in
+                                    FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                                        .tag(item.file.id)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture { open(item: item) }
+                                }
                             }
                         }
                     }
@@ -421,6 +434,20 @@ private struct FilesPanelView: View {
 
     private func open(fileId: String) {
         Task { await viewModel.selectFile(fileId: fileId) }
+    }
+
+    private func toggleCategory(_ category: String) {
+        if expandedCategories.contains(category) {
+            expandedCategories.remove(category)
+        } else {
+            expandedCategories.insert(category)
+        }
+    }
+
+    private func initializeExpandedCategoriesIfNeeded() {
+        if expandedCategories.isEmpty {
+            expandedCategories = []
+        }
     }
 
     private var processingItems: [IngestionListItem] {
@@ -470,6 +497,10 @@ private struct FilesPanelView: View {
         }
     }
 
+    private var categoriesWithItems: [String] {
+        categoryOrder.filter { categorizedItems[$0]?.isEmpty == false }
+    }
+
     private var categoryLabels: [String: String] {
         [
             "documents": "Documents",
@@ -497,7 +528,7 @@ private struct FilesIngestionRow: View {
             Image(systemName: iconName)
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.file.filenameOriginal)
+                Text(stripFileExtension(item.file.filenameOriginal))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 Text(statusText)
@@ -561,14 +592,26 @@ private struct FilesIngestionRow: View {
     }
 }
 
-private struct CategoryHeader: View {
+private struct CategoryToggleRow: View {
     let title: String
+    let isExpanded: Bool
+    let onToggle: () -> Void
 
     var body: some View {
-        Text(title)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .padding(.top, 6)
+        Button(action: onToggle) {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .foregroundStyle(.secondary)
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

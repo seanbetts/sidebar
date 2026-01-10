@@ -92,7 +92,13 @@ public final class IngestionViewModel: ObservableObject {
     }
 
     private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
+        let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }
+        let nonAI = candidates.filter { $0.kind != "ai_md" }
+
         if let recommended = meta.recommendedViewer {
+            if recommended == "ai_md" {
+                return nonAI.first?.kind ?? "ai_md"
+            }
             if recommended == "viewer_video",
                meta.derivatives.contains(where: { $0.kind == "video_original" }) {
                 return "video_original"
@@ -101,7 +107,7 @@ public final class IngestionViewModel: ObservableObject {
                 return recommended
             }
         }
-        return meta.derivatives.first(where: { $0.kind != "thumb_png" })?.kind
+        return nonAI.first?.kind ?? candidates.first?.kind
     }
 
     private func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {
@@ -111,16 +117,19 @@ public final class IngestionViewModel: ObservableObject {
             let data = try await api.getContent(fileId: meta.file.id, kind: derivative.kind, range: nil)
             let kind = FileViewerKind.infer(path: nil, mimeType: derivative.mime, derivativeKind: derivative.kind)
             let filename = makeFilename(base: meta.file.filenameOriginal, mimeType: derivative.mime, fallback: derivative.kind)
+            let youtubeEmbedURL = buildYouTubeEmbedURL(from: meta.file)
             switch kind {
             case .markdown, .text, .json:
-                let text = String(decoding: data, as: UTF8.self)
+                let rawText = String(decoding: data, as: UTF8.self)
+                let text = derivative.kind == "ai_md" ? stripFrontmatter(rawText) : rawText
                 let fileURL = try temporaryStore.store(data: data, filename: filename)
                 viewerState = FileViewerState(
                     title: meta.file.filenameOriginal,
                     kind: kind,
                     text: text,
                     fileURL: fileURL,
-                    spreadsheet: nil
+                    spreadsheet: nil,
+                    youtubeEmbedURL: youtubeEmbedURL
                 )
             case .spreadsheet:
                 let spreadsheet = try? JSONDecoder().decode(SpreadsheetPayload.self, from: data)
@@ -130,7 +139,8 @@ public final class IngestionViewModel: ObservableObject {
                     kind: .spreadsheet,
                     text: nil,
                     fileURL: fileURL,
-                    spreadsheet: spreadsheet
+                    spreadsheet: spreadsheet,
+                    youtubeEmbedURL: youtubeEmbedURL
                 )
             default:
                 let fileURL = try temporaryStore.store(data: data, filename: filename)
@@ -139,7 +149,8 @@ public final class IngestionViewModel: ObservableObject {
                     kind: kind,
                     text: nil,
                     fileURL: fileURL,
-                    spreadsheet: nil
+                    spreadsheet: nil,
+                    youtubeEmbedURL: youtubeEmbedURL
                 )
             }
         } catch {
@@ -185,5 +196,82 @@ public final class IngestionViewModel: ObservableObject {
             }
             return nil
         }
+    }
+
+    private func stripFrontmatter(_ content: String) -> String {
+        let marker = "---"
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix(marker) else { return content }
+        let parts = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
+        guard let first = parts.first, first.trimmingCharacters(in: .whitespacesAndNewlines) == marker else {
+            return content
+        }
+        var endIndex: Int? = nil
+        for (index, line) in parts.enumerated().dropFirst() {
+            if line.trimmingCharacters(in: .whitespacesAndNewlines) == marker {
+                endIndex = index
+                break
+            }
+        }
+        guard let endIndex else { return content }
+        let body = parts.dropFirst(endIndex + 1).joined(separator: "\n")
+        return body.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func buildYouTubeEmbedURL(from file: IngestedFileMeta) -> URL? {
+        if let metadata = file.sourceMetadata {
+            if let value = metadata["video_id"]?.value as? String {
+                return makeYouTubeEmbedURL(videoId: value)
+            }
+            if let value = metadata["youtube_url"]?.value as? String,
+               let videoId = extractYouTubeVideoId(from: value) {
+                return makeYouTubeEmbedURL(videoId: videoId)
+            }
+        }
+        if let raw = file.sourceUrl,
+           let videoId = extractYouTubeVideoId(from: raw) {
+            return makeYouTubeEmbedURL(videoId: videoId)
+        }
+        return nil
+    }
+
+    private func makeYouTubeEmbedURL(videoId: String) -> URL? {
+        let trimmed = videoId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let url = "https://www.youtube-nocookie.com/embed/\(trimmed)?playsinline=1&rel=0&modestbranding=1"
+        return URL(string: url)
+    }
+
+    private func extractYouTubeVideoId(from raw: String) -> String? {
+        guard let components = URLComponents(string: raw) else { return nil }
+        if let host = components.host {
+            if host.contains("youtu.be") {
+                let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                return path.isEmpty ? nil : path
+            }
+            if host.contains("youtube.com") || host.contains("youtube-nocookie.com") {
+                if components.path.hasPrefix("/watch") {
+                    if let queryItem = components.queryItems?.first(where: { $0.name == "v" }) {
+                        return queryItem.value
+                    }
+                }
+                if components.path.hasPrefix("/embed/") {
+                    let path = components.path.replacingOccurrences(of: "/embed/", with: "")
+                    return path.isEmpty ? nil : path
+                }
+                if components.path.hasPrefix("/shorts/") {
+                    let path = components.path.replacingOccurrences(of: "/shorts/", with: "")
+                    return path.isEmpty ? nil : path
+                }
+            }
+        }
+        if raw.contains("youtu.be/") {
+            if let range = raw.range(of: "youtu.be/") {
+                let tail = raw[range.upperBound...]
+                let id = tail.split(separator: "?").first.map(String.init)
+                return id?.isEmpty == true ? nil : id
+            }
+        }
+        return nil
     }
 }
