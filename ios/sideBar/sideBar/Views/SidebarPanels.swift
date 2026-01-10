@@ -123,36 +123,70 @@ public struct NotesPanel: View {
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
     @State private var hasLoaded = false
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
-        Group {
-            if viewModel.tree == nil {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List {
-                    OutlineGroup(buildItems(from: viewModel.tree?.children ?? []), children: \.children) { item in
-                        NotesTreeRow(
-                            item: item,
-                            isSelected: viewModel.selectedNoteId == item.id
-                        ) {
-                            if item.isFile {
-                                Task { await viewModel.selectNote(id: item.id) }
-                            }
-                        }
-                    }
-                }
-                .listStyle(.sidebar)
-                .refreshable {
-                    await viewModel.loadTree()
+        VStack(spacing: 0) {
+            if showInlineSearch {
+                searchBar
+            }
+            Group {
+                if viewModel.tree == nil {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    searchResultsView
+                } else {
+                    notesTreeView
                 }
             }
         }
+        #if !os(macOS)
+        .searchable(
+            text: $viewModel.searchQuery,
+            placement: .navigationBarDrawer(displayMode: .always)
+        )
+        #endif
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
                 Task { await viewModel.loadTree() }
             }
+        }
+    }
+
+    private var searchResultsView: some View {
+        List {
+            if viewModel.isSearching {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text("Searching…")
+                        .foregroundStyle(.secondary)
+                }
+            } else if viewModel.searchResults.isEmpty {
+                Text("No matching notes.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(viewModel.searchResults, id: \.path) { node in
+                    NotesTreeRow(
+                        item: FileNodeItem(
+                            id: node.path,
+                            name: node.name,
+                            type: node.type,
+                            children: []
+                        ),
+                        isSelected: viewModel.selectedNoteId == node.path
+                    ) {
+                        Task { await viewModel.selectNote(id: node.path) }
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .onChange(of: viewModel.searchQuery) { _, newValue in
+            viewModel.updateSearch(query: newValue)
         }
     }
 
@@ -165,6 +199,56 @@ private struct NotesPanelView: View {
                 children: buildItems(from: node.children ?? [])
             )
         }
+    }
+
+    private var notesTreeView: some View {
+        List {
+            OutlineGroup(buildItems(from: viewModel.tree?.children ?? []), children: \.children) { item in
+                NotesTreeRow(
+                    item: item,
+                    isSelected: viewModel.selectedNoteId == item.id
+                ) {
+                    if item.isFile {
+                        Task { await viewModel.selectNote(id: item.id) }
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .onChange(of: viewModel.searchQuery) { _, newValue in
+            viewModel.updateSearch(query: newValue)
+        }
+        .refreshable {
+            await viewModel.loadTree()
+        }
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Search notes", text: $viewModel.searchQuery)
+                .textFieldStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(searchBackground)
+    }
+
+    private var searchBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var showInlineSearch: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return horizontalSizeClass != .compact
+        #endif
     }
 }
 
