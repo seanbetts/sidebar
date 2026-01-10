@@ -18,16 +18,19 @@ public struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var colorScheme
     #endif
+    @Environment(\.scenePhase) private var scenePhase
     @State private var sidebarSelection: AppSection? = nil
     @State private var primarySection: AppSection? = nil
     @State private var secondarySection: AppSection? = .chat
     @State private var lastNonChatSection: AppSection? = nil
     @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
+    @AppStorage(AppStorageKeys.biometricUnlockEnabled) private var biometricUnlockEnabled: Bool = false
     @State private var isSettingsPresented = false
     @State private var phoneSelection: AppSection = .chat
     @State private var isPhoneScratchpadPresented = false
     @State private var didSetInitialSelection = false
     @State private var didLoadSettings = false
+    @State private var isBiometricUnlocked = false
 
     public init() {
     }
@@ -38,16 +41,30 @@ public struct ContentView: View {
         } else if !environment.isAuthenticated {
             LoginView()
         } else {
-            GeometryReader { proxy in
-                mainView
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .overlay(alignment: .top) {
-                        Rectangle()
-                            .fill(topSafeAreaBackground)
-                            .frame(height: proxy.safeAreaInsets.top)
-                            .ignoresSafeArea(edges: .top)
-                            .allowsHitTesting(false)
+            Group {
+                if biometricUnlockEnabled && !isBiometricUnlocked {
+                    BiometricLockView(
+                        onUnlock: { isBiometricUnlocked = true },
+                        onSignOut: {
+                            Task {
+                                await environment.container.authSession.signOut()
+                                environment.refreshAuthState()
+                            }
+                        }
+                    )
+                } else {
+                    GeometryReader { proxy in
+                        mainView
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .overlay(alignment: .top) {
+                                Rectangle()
+                                    .fill(topSafeAreaBackground)
+                                    .frame(height: proxy.safeAreaInsets.top)
+                                    .ignoresSafeArea(edges: .top)
+                                    .allowsHitTesting(false)
+                            }
                     }
+                }
             }
             #if os(iOS)
             .background(
@@ -56,6 +73,11 @@ public struct ContentView: View {
                     .frame(width: 0, height: 0)
             )
             #endif
+            .onChange(of: scenePhase) { _, newValue in
+                if newValue != .active && biometricUnlockEnabled {
+                    isBiometricUnlocked = false
+                }
+            }
             .onChange(of: phoneSelection) { _, newValue in
                 sidebarSelection = newValue
                 primarySection = newValue
@@ -96,6 +118,11 @@ public struct ContentView: View {
             }
             .onChange(of: environment.isAuthenticated) { _, isAuthenticated in
                 if isAuthenticated {
+                    if biometricUnlockEnabled {
+                        isBiometricUnlocked = false
+                    } else {
+                        isBiometricUnlocked = true
+                    }
                     if !didLoadSettings {
                         didLoadSettings = true
                         Task {
@@ -106,7 +133,11 @@ public struct ContentView: View {
                     }
                 } else {
                     didLoadSettings = false
+                    isBiometricUnlocked = false
                 }
+            }
+            .onChange(of: biometricUnlockEnabled) { _, isEnabled in
+                isBiometricUnlocked = !isEnabled
             }
             .onChange(of: environment.settingsViewModel.settings?.location) { _, _ in
                 Task {
@@ -117,6 +148,7 @@ public struct ContentView: View {
                 applyInitialSelectionIfNeeded()
                 if environment.isAuthenticated && !didLoadSettings {
                     didLoadSettings = true
+                    isBiometricUnlocked = !biometricUnlockEnabled
                     Task {
                         await environment.settingsViewModel.load()
                         await environment.settingsViewModel.loadProfileImage()

@@ -5,6 +5,7 @@ public struct SiteHeaderBar: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @AppStorage(AppStorageKeys.weatherUsesFahrenheit) private var weatherUsesFahrenheit = false
     @State private var isScratchpadPresented = false
     private let onSwapContent: (() -> Void)?
     private let onToggleSidebar: (() -> Void)?
@@ -203,6 +204,10 @@ public struct SiteHeaderBar: View {
     }
 
     private func temperatureText(_ celsius: Double) -> String {
+        if weatherUsesFahrenheit {
+            let f = Int(round(celsius * 9 / 5 + 32))
+            return "\(f)°F"
+        }
         let c = Int(round(celsius))
         return "\(c)°C"
     }
