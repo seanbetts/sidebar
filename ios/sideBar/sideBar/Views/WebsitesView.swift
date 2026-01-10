@@ -16,6 +16,9 @@ private struct WebsitesDetailView: View {
     @ObservedObject var viewModel: WebsitesViewModel
     @Environment(\.openURL) private var openURL
     @State private var safariURL: URL? = nil
+    @State private var scrollWidth: CGFloat = 0
+    private let contentMaxWidth: CGFloat = 800
+    private let contentHorizontalPadding: CGFloat = 20
 
     var body: some View {
         VStack(spacing: 0) {
@@ -77,13 +80,28 @@ private struct WebsitesDetailView: View {
                             SideBarMarkdown(text: text)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         case .gallery(let gallery):
-                            WebsiteGalleryView(gallery: gallery)
+                            WebsiteGalleryView(
+                                gallery: gallery,
+                                availableWidth: galleryWidth
+                            )
                                 .frame(maxWidth: .infinity)
                         }
                     }
                 }
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: contentMaxWidth, alignment: .leading)
+                .padding(contentHorizontalPadding)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .background(
+                GeometryReader { proxy in
+                    Color.clear
+                        .preference(key: ContentWidthPreferenceKey.self, value: proxy.size.width)
+                }
+            )
+            .onPreferenceChange(ContentWidthPreferenceKey.self) { width in
+                if width > 0, scrollWidth != width {
+                    scrollWidth = width
+                }
             }
         } else if viewModel.isLoadingDetail {
             ProgressView()
@@ -176,22 +194,35 @@ private struct WebsitesDetailView: View {
         formatter.timeStyle = .none
         return formatter
     }()
+
+    private var galleryWidth: CGFloat {
+        let available = scrollWidth - (contentHorizontalPadding * 2)
+        if available > 0 {
+            return min(contentMaxWidth, available)
+        }
+        return contentMaxWidth
+    }
 }
 
 private struct WebsiteGalleryView: View {
     let gallery: MarkdownRendering.WebsiteGallery
+    let availableWidth: CGFloat
     private let gridSpacing: CGFloat = 12
     private let minImageWidth: CGFloat = 150
+    private let maxImageSize = CGSize(width: 450, height: 450)
 
     var body: some View {
         VStack(alignment: .center, spacing: gridSpacing) {
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: minImageWidth), spacing: gridSpacing)],
-                spacing: gridSpacing
-            ) {
-                ForEach(gallery.imageUrls, id: \.self) { urlString in
-                    GalleryImageView(urlString: urlString)
+            ForEach(rows.indices, id: \.self) { rowIndex in
+                HStack(spacing: gridSpacing) {
+                    ForEach(rows[rowIndex], id: \.self) { urlString in
+                        GalleryImageView(
+                            urlString: urlString,
+                            maxSize: CGSize(width: imageWidth, height: maxImageSize.height)
+                        )
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
             if let caption = gallery.caption, !caption.isEmpty {
                 Text(caption)
@@ -202,11 +233,40 @@ private struct WebsiteGalleryView: View {
         }
         .frame(maxWidth: .infinity)
     }
+
+    private var columns: Int {
+        let effectiveWidth = max(availableWidth, minImageWidth)
+        let count = Int((effectiveWidth + gridSpacing) / (minImageWidth + gridSpacing))
+        return max(1, count)
+    }
+
+    private var imageWidth: CGFloat {
+        let effectiveWidth = max(availableWidth, minImageWidth)
+        let totalSpacing = gridSpacing * CGFloat(max(columns - 1, 0))
+        let columnWidth = (effectiveWidth - totalSpacing) / CGFloat(columns)
+        return min(columnWidth, maxImageSize.width)
+    }
+
+    private var rows: [[String]] {
+        chunked(gallery.imageUrls, size: columns)
+    }
+
+    private func chunked(_ items: [String], size: Int) -> [[String]] {
+        guard size > 0 else { return [items] }
+        var chunks: [[String]] = []
+        var index = 0
+        while index < items.count {
+            let end = min(index + size, items.count)
+            chunks.append(Array(items[index..<end]))
+            index = end
+        }
+        return chunks
+    }
 }
 
 private struct GalleryImageView: View {
     let urlString: String
-    private let maxImageSize = CGSize(width: 450, height: 450)
+    let maxSize: CGSize
 
     var body: some View {
         if let url = URL(string: urlString) {
@@ -216,7 +276,7 @@ private struct GalleryImageView: View {
                     image
                         .resizable()
                         .scaledToFit()
-                        .frame(maxWidth: maxImageSize.width, maxHeight: maxImageSize.height)
+                        .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
                 case .failure:
                     Image(systemName: "photo")
                         .font(.system(size: 32, weight: .regular))
@@ -229,5 +289,13 @@ private struct GalleryImageView: View {
             }
             .frame(maxWidth: .infinity)
         }
+    }
+}
+
+private struct ContentWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
