@@ -535,6 +535,7 @@ private struct ChatInputBar: View {
     @State private var textHeight: CGFloat = 0
     private let minHeight: CGFloat = 46
     private let maxHeight: CGFloat = 140
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         PlatformChatInputView(
@@ -549,19 +550,24 @@ private struct ChatInputBar: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(borderColor, lineWidth: 1)
         )
-        .shadow(color: shadowColor, radius: 10, x: 0, y: 6)
+        .shadow(color: shadowColor, radius: shadowRadius, x: 0, y: shadowRadius * 0.6)
     }
 
     private var shadowColor: Color {
-        Color.black.opacity(0.12)
+        colorScheme == .dark ? Color.black.opacity(0.35) : Color.black.opacity(0.12)
     }
 
     private var borderColor: Color {
         #if os(macOS)
-        return Color(nsColor: .separatorColor).opacity(0.4)
+        let color = Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator).opacity(0.4)
+        let color = Color(uiColor: .separator)
         #endif
+        return colorScheme == .dark ? color.opacity(0.7) : color.opacity(0.4)
+    }
+
+    private var shadowRadius: CGFloat {
+        colorScheme == .dark ? 6 : 10
     }
 
     private var computedHeight: CGFloat {
@@ -607,13 +613,14 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     let maxHeight: CGFloat
 
     func makeUIView(context: Context) -> UIVisualEffectView {
-        let effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
+        let effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
         effectView.clipsToBounds = true
         effectView.layer.cornerRadius = 16
 
         let textView = UITextView()
         textView.font = UIFont.preferredFont(forTextStyle: .body)
         textView.backgroundColor = .clear
+        textView.textColor = UIColor.label
         textView.textContainerInset = UIEdgeInsets(top: 12, left: 44, bottom: 4, right: 48)
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false
@@ -691,15 +698,10 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         let canSend = isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         button.isEnabled = canSend
         button.alpha = canSend ? 1.0 : 0.45
-        let tintColor: UIColor
-        if uiView.traitCollection.userInterfaceStyle == .dark {
-            tintColor = .white
-        } else {
-            tintColor = .black
-        }
+        let tintColor: UIColor = .label
         button.backgroundColor = .clear
-        button.tintColor = canSend ? tintColor : UIColor.systemGray3
-        attachButton.tintColor = tintColor
+        button.tintColor = canSend ? tintColor : UIColor.secondaryLabel
+        attachButton.tintColor = UIColor.secondaryLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         recalculateHeight(for: textView)
     }
@@ -761,7 +763,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSVisualEffectView {
         let effectView = NSVisualEffectView()
-        effectView.material = .hudWindow
+        effectView.material = .contentBackground
         effectView.state = .active
         effectView.blendingMode = .withinWindow
         effectView.wantsLayer = true
@@ -777,6 +779,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.heightTracksTextView = false
         textView.delegate = context.coordinator
+        textView.textColor = .labelColor
         textView.string = text
 
         let placeholderLabel = NSTextField(labelWithString: "Ask Anything...")
@@ -854,15 +857,10 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         let canSend = isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         button.isEnabled = canSend
         button.alphaValue = canSend ? 1.0 : 0.45
-        let tintColor: NSColor
-        if nsView.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua {
-            tintColor = .white
-        } else {
-            tintColor = .black
-        }
+        let tintColor: NSColor = .labelColor
         button.layer?.backgroundColor = NSColor.clear.cgColor
-        button.contentTintColor = canSend ? tintColor : NSColor.systemGray
-        attachButton.contentTintColor = tintColor
+        button.contentTintColor = canSend ? tintColor : NSColor.secondaryLabelColor
+        attachButton.contentTintColor = NSColor.secondaryLabelColor
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         recalculateHeight(for: textView)
     }
