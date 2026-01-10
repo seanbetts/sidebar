@@ -249,27 +249,22 @@ private struct ChatMessageListView: View {
 
 private struct ChatMessageRow: View {
     let message: Message
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            if message.role == .assistant {
-                bubble
-                Spacer()
-            } else {
-                Spacer()
-                bubble
-            }
-        }
+        bubble
     }
 
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Text(message.role == .assistant ? "Assistant" : "You")
+                Text(message.role == .assistant ? "sideBar" : "You")
                     .font(.caption.weight(.semibold))
-                Text(formattedTimestamp)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(rolePillBackground)
+                    .foregroundStyle(rolePillText)
+                    .clipShape(Capsule())
             }
 
             SideBarMarkdown(text: message.content)
@@ -281,8 +276,11 @@ private struct ChatMessageRow: View {
                     .foregroundStyle(.red)
             }
 
-            if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
-                ToolCallListView(toolCalls: toolCalls)
+            HStack {
+                Spacer()
+                Text(formattedTimestamp)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(12)
@@ -292,7 +290,7 @@ private struct ChatMessageRow: View {
                 .stroke(bubbleBorder, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .frame(maxWidth: 520, alignment: message.role == .assistant ? .leading : .trailing)
+        .frame(maxWidth: 520, alignment: .leading)
     }
 
     private var formattedTimestamp: String {
@@ -320,6 +318,20 @@ private struct ChatMessageRow: View {
         #else
         return Color(uiColor: .separator)
         #endif
+    }
+
+    private var rolePillBackground: Color {
+        if colorScheme == .dark {
+            return message.role == .assistant ? Color.black : Color.white
+        }
+        return message.role == .assistant ? Color.white : Color.black
+    }
+
+    private var rolePillText: Color {
+        if colorScheme == .dark {
+            return message.role == .assistant ? Color.white : Color.black
+        }
+        return message.role == .assistant ? Color.black : Color.white
     }
 }
 
