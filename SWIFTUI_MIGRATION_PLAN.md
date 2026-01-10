@@ -144,7 +144,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 |-------|--------|----------------|-----------------|----------|-----------|
 | **1. Foundation & Architecture** | ✅ Complete | 4 / 3-4 | 4 / 3-4 | 100% | Full |
 | **2. Navigation & Layout** | ✅ Complete | 3 / 3-4 | 3 / 3-4 | 100% | Full |
-| **3. Chat Viewer** | 🟨 In Progress | 1 / 4-5 | 1 / 5-7 | 20% | Modified (no input) |
+| **3. Chat Viewer** | ✅ Complete | 2 / 4-5 | 2 / 5-7 | 100% | Modified (no input) |
 | **4. Note Viewer** | ⬜ Not Started | 0 / 2-3 | 0 / 7-10 | 0% | Heavily Reduced (read-only) |
 | **5. File Viewing** | ⬜ Not Started | 0 / 4-6 | 0 / 4-6 | 0% | Full (already read-only) |
 | **6. Website Viewer** | ⬜ Not Started | 0 / 1-2 | 0 / 2-3 | 0% | Modified (no saving) |
@@ -228,7 +228,8 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - macOS: command-click selection, keyboard navigation, and copy/select behaviors.
 
 **Post-MVP (Phase 10.1): Chat Input**
-- [ ] 3.7 Chat Input (text editor, send button, attachments)
+- [x] 3.7a Chat input UI shell (native growing text view + send button, not wired)
+- [ ] 3.7b Chat input wiring (send action, attachments, keyboard shortcuts)
 
 #### Phase 4: Note Viewer (2-3 sessions MVP, 7-10 full)
 **MVP Scope: Read-Only Note Viewer**
