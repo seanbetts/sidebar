@@ -123,16 +123,16 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 ### Overall Progress
 
 **Current Target**: Read-Only MVP
-**Status**: Phase 1.1 complete (Xcode project setup), implementation in progress
-**Sessions Completed (Implementation)**: 1 / 22-33 (MVP) or 1 / 36-51 (Full App)
+**Status**: Phase 4 in progress (Note Viewer)
+**Sessions Completed (Implementation)**: 11 / 22-33 (MVP) or 11 / 36-51 (Full App)
 **Hours Logged (Implementation)**: TBD / 88-132 (MVP) or TBD / 157-280 (Full App)
 **Weeks Elapsed (Implementation)**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
 
 ```
-MVP Progress:      [░░░░░░░░░░░░░░░░░░░░] 0%
-Full App Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
+MVP Progress:      [████████░░░░░░░░░░░░] 40%
+Full App Progress: [██████░░░░░░░░░░░░░░] 30%
 
-Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░░] 0%
+Critical Path (MVP): [███████░░░░░░░░░░░░░] 35%
 (Phases 1 → 2 → 3-Modified → 4-Reduced → 5 → 6-Modified → 7-Modified → 8 → 9)
 ```
 
@@ -145,7 +145,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 | **1. Foundation & Architecture** | ✅ Complete | 4 / 3-4 | 4 / 3-4 | 100% | Full |
 | **2. Navigation & Layout** | ✅ Complete | 3 / 3-4 | 3 / 3-4 | 100% | Full |
 | **3. Chat Viewer** | ✅ Complete | 2 / 4-5 | 2 / 5-7 | 100% | Modified (no input) |
-| **4. Note Viewer** | 🟨 In Progress | 2 / 2-3 | 2 / 7-10 | 67% | Heavily Reduced (read-only) |
+| **4. Note Viewer** | 🟨 In Progress | 2 / 2-3 | 2 / 7-10 | 80% | Heavily Reduced (read-only) |
 | **5. File Viewing** | ⬜ Not Started | 0 / 4-6 | 0 / 4-6 | 0% | Full (already read-only) |
 | **6. Website Viewer** | ⬜ Not Started | 0 / 1-2 | 0 / 2-3 | 0% | Modified (no saving) |
 | **7. Additional Features** | ⬜ Not Started | 0 / 2-3 | 0 / 3-4 | 0% | Modified (view-only) |
@@ -236,7 +236,7 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 - [x] 4.1 File Tree Browser (expand/collapse, search, navigation)
 - [x] 4.2 Read-Only Note Viewer (MarkdownUI rendering)
 - [x] 4.2a Scratchpad Note Mapping (special title + realtime updates)
-- [ ] 4.6 Search Notes
+- [x] 4.6 Search Notes
 - [ ] 4.7 Real-time Sync (see updates from other devices)
 
 **Native UX Requirements (Phase 4)**
@@ -412,6 +412,7 @@ Evaluate RichTextKit capabilities. Choose:
 | 2026-01-09 | 1.3 | 1 | TBD | Added Supabase Swift SDK (SPM), `SideBar.xcconfig` wiring (+ local `SideBar.local.xcconfig` include), and `SupabaseAuthAdapter` sign-in/out with a basic login gate |
 | 2026-01-09 | 1.3 | 1 | TBD | Added Keychain-backed auth state store and wired it into app startup |
 | 2026-01-09 | 1.3 | 1 | TBD | Added config plist generation + runtime error screen to avoid hard crashes when config is missing |
+| 2026-01-10 | 3-4 | 1 | TBD | Chat viewer refinements + notes viewer updates (search wiring, scratchpad hidden in list, note header tweaks) |
 
 ---
 
