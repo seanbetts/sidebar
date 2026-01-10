@@ -5,6 +5,7 @@ public protocol SettingsProviding {
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings
     func getShortcutsToken() async throws -> ShortcutsTokenResponse
     func rotateShortcutsToken() async throws -> ShortcutsTokenResponse
+    func getProfileImage() async throws -> Data
 }
 
 public struct SettingsAPI {

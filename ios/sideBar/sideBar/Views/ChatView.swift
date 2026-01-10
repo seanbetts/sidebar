@@ -160,11 +160,6 @@ private struct ChatHeaderView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(selectedTitle)
                         .font(.headline)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
                 }
                 Spacer()
                 if viewModel.isStreaming {
@@ -199,21 +194,6 @@ private struct ChatHeaderView: View {
             return "Chat"
         }
         return conversation.title
-    }
-
-    private var subtitle: String? {
-        guard let selectedId = viewModel.selectedConversationId,
-              let conversation = viewModel.conversations.first(where: { $0.id == selectedId }) else {
-            return nil
-        }
-        return "Updated \(formattedDate(conversation.updatedAt))"
-    }
-
-    private func formattedDate(_ raw: String) -> String {
-        guard let date = DateParsing.parseISO8601(raw) else {
-            return raw
-        }
-        return DateFormatter.chatHeader.string(from: date)
     }
 
     private var headerBackground: Color {

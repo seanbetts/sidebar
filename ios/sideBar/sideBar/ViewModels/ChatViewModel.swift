@@ -86,7 +86,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         self.userDefaults = userDefaults
         self.clock = clock
         self.streamClient.handler = self
-        self.selectedConversationId = userDefaults.string(forKey: AppStorageKeys.lastConversationId)
+        self.selectedConversationId = nil
     }
 
     public var groupedConversations: [ConversationGroup] {
@@ -298,17 +298,10 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
            items.contains(where: { $0.id == selectedId }) {
             return
         }
-        if let storedId = userDefaults.string(forKey: AppStorageKeys.lastConversationId),
-           items.contains(where: { $0.id == storedId }) {
-            selectedConversationId = storedId
-        } else {
-            selectedConversationId = items.first?.id
-        }
-        if let selectedConversationId {
-            Task { [weak self] in
-                await self?.loadConversation(id: selectedConversationId)
-            }
-        }
+        selectedConversationId = nil
+        messages = []
+        promptPreview = nil
+        activeTool = nil
     }
 
     private func reconcileMessages(_ incoming: [Message], for conversationId: String) -> [Message] {

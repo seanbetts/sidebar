@@ -124,6 +124,7 @@ private struct SettingsSplitView: View {
         await viewModel.load()
         await viewModel.loadSkills()
         await viewModel.loadShortcutsToken()
+        await viewModel.loadProfileImage()
     }
 }
 #endif
@@ -190,6 +191,7 @@ private struct SettingsTabsView: View {
         await viewModel.load()
         await viewModel.loadSkills()
         await viewModel.loadShortcutsToken()
+        await viewModel.loadProfileImage()
     }
 }
 
@@ -265,26 +267,13 @@ private struct ProfileSettingsView: View {
                 profileImage
                     .resizable()
                     .scaledToFill()
-            } else if let urlString = viewModel.settings?.profileImageUrl,
-                      let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    case .failure:
-                        Image(systemName: "person.crop.circle.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .foregroundStyle(.secondary)
-                    case .empty:
-                        ProgressView()
-                    @unknown default:
-                        Image(systemName: "person.crop.circle.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
+            } else if let data = viewModel.profileImageData,
+                      let image = loadProfileImage(from: data) {
+                image
+                    .resizable()
+                    .scaledToFill()
+            } else if viewModel.isLoadingProfileImage {
+                ProgressView()
             } else {
                 Image(systemName: "person.crop.circle.fill")
                     .resizable()
@@ -301,6 +290,16 @@ private struct ProfileSettingsView: View {
     private func displayValue(_ value: String?) -> String {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? "Not set" : trimmed
+    }
+
+    private func loadProfileImage(from data: Data) -> Image? {
+        #if os(macOS)
+        guard let image = NSImage(data: data) else { return nil }
+        return Image(nsImage: image)
+        #else
+        guard let image = UIImage(data: data) else { return nil }
+        return Image(uiImage: image)
+        #endif
     }
 }
 
