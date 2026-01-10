@@ -537,14 +537,17 @@ private struct ChatInputBar: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        PlatformChatInputView(
-            text: $text,
-            measuredHeight: $textHeight,
-            isEnabled: isEnabled,
-            minHeight: minHeight,
-            maxHeight: maxHeight
-        )
-        .frame(height: computedHeight)
+        ChatInputContainer {
+            PlatformChatInputView(
+                text: $text,
+                measuredHeight: $textHeight,
+                isEnabled: isEnabled,
+                minHeight: minHeight,
+                maxHeight: maxHeight
+            )
+            .frame(height: computedHeight)
+            .modifier(GlassEffectModifier())
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(borderColor, lineWidth: 1)
@@ -572,6 +575,30 @@ private struct ChatInputBar: View {
     private var computedHeight: CGFloat {
         let clamped = min(max(textHeight, minHeight), maxHeight)
         return clamped
+    }
+}
+
+private struct GlassEffectModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, macOS 15.0, *) {
+            content.glassEffect(.regular)
+        } else {
+            content
+        }
+    }
+}
+
+private struct ChatInputContainer<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if #available(iOS 18.0, macOS 15.0, *) {
+            GlassEffectContainer {
+                content()
+            }
+        } else {
+            content()
+        }
     }
 }
 
@@ -612,7 +639,12 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     let maxHeight: CGFloat
 
     func makeUIView(context: Context) -> UIVisualEffectView {
-        let effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        let effectView: UIVisualEffectView
+        if #available(iOS 18.0, *) {
+            effectView = UIVisualEffectView(effect: nil)
+        } else {
+            effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        }
         effectView.clipsToBounds = true
         effectView.layer.cornerRadius = 16
         effectView.backgroundColor = .clear
@@ -764,7 +796,11 @@ private struct ChatInputAppKitView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSVisualEffectView {
         let effectView = NSVisualEffectView()
-        effectView.material = .contentBackground
+        if #available(macOS 15.0, *) {
+            effectView.material = .underWindowBackground
+        } else {
+            effectView.material = .hudWindow
+        }
         effectView.state = .active
         effectView.blendingMode = .behindWindow
         effectView.wantsLayer = true
