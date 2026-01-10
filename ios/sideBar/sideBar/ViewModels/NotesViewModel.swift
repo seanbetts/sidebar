@@ -63,6 +63,11 @@ public final class NotesViewModel: ObservableObject {
         await loadNote(id: id)
     }
 
+    public func clearSelection() {
+        selectedNoteId = nil
+        activeNote = nil
+    }
+
     public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
         let noteId = payload.record?.id ?? payload.oldRecord?.id
         cache.remove(key: CacheKeys.notesTree)

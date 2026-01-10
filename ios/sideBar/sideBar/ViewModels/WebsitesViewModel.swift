@@ -64,6 +64,11 @@ public final class WebsitesViewModel: ObservableObject {
         await loadById(id: id)
     }
 
+    public func clearSelection() {
+        selectedWebsiteId = nil
+        active = nil
+    }
+
     public func setPinned(id: String, pinned: Bool) async {
         errorMessage = nil
         do {
