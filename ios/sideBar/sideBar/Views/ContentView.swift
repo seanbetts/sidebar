@@ -83,6 +83,19 @@ public struct ContentView: View {
                 #endif
                 environment.commandSelection = nil
             }
+            .onChange(of: environment.isAuthenticated) { _, isAuthenticated in
+                if isAuthenticated {
+                    if !didLoadSettings {
+                        didLoadSettings = true
+                        Task {
+                            await environment.settingsViewModel.load()
+                            await environment.settingsViewModel.loadProfileImage()
+                        }
+                    }
+                } else {
+                    didLoadSettings = false
+                }
+            }
             .task {
                 applyInitialSelectionIfNeeded()
                 if environment.isAuthenticated && !didLoadSettings {

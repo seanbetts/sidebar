@@ -203,39 +203,30 @@ private struct ProfileSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Profile") {
+            Section {
                 HStack(spacing: 16) {
                     profileAvatar
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Profile photo")
                             .font(.headline)
-                        Text("Choose an image for your profile.")
+                        Text("Tap to change.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
-
 #if os(iOS)
-                Button("Change Photo") {
+                .contentShape(Rectangle())
+                .onTapGesture {
                     isImagePickerPresented = true
                 }
                 .sheet(isPresented: $isImagePickerPresented) {
                     ImagePicker(selectedImage: $profileImage)
                 }
-#else
-                Text("Photo selection is available on iOS.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 #endif
             }
 
-            Section("Appearance") {
-                Text("Theme follows your system setting.")
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Details") {
+            Section {
                 LabeledContent("Name", value: displayValue(viewModel.settings?.name))
                 LabeledContent("Job Title", value: displayValue(viewModel.settings?.jobTitle))
                 LabeledContent("Employer", value: displayValue(viewModel.settings?.employer))

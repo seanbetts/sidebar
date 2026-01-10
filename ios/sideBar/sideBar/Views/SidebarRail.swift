@@ -60,6 +60,16 @@ public struct SidebarRail: View {
         .frame(width: 56)
         .padding(.vertical, 12)
         .background(railBackground)
+        .onAppear {
+            guard environment.isAuthenticated,
+                  environment.settingsViewModel.profileImageData == nil else { return }
+            Task {
+                if environment.settingsViewModel.settings == nil {
+                    await environment.settingsViewModel.load()
+                }
+                await environment.settingsViewModel.loadProfileImage()
+            }
+        }
     }
 
     private func sectionButton(for section: AppSection) -> some View {
