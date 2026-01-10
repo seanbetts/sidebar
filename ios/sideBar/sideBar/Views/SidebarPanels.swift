@@ -320,11 +320,255 @@ private struct FileNodeItem: Identifiable {
 }
 
 public struct FilesPanel: View {
+    @EnvironmentObject private var environment: AppEnvironment
+
     public init() {
     }
 
     public var body: some View {
-        SidebarPanelPlaceholder(title: "Files")
+        FilesPanelView(viewModel: environment.ingestionViewModel)
+    }
+}
+
+private struct FilesPanelView: View {
+    @ObservedObject var viewModel: IngestionViewModel
+    @State private var hasLoaded = false
+    @State private var selection: String? = nil
+
+    var body: some View {
+        Group {
+            if viewModel.isLoading && viewModel.items.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let message = viewModel.errorMessage {
+                SidebarPanelPlaceholder(title: message)
+            } else if readyItems.isEmpty && processingItems.isEmpty && failedItems.isEmpty {
+                SidebarPanelPlaceholder(title: "No files yet.")
+            } else {
+                filesListView
+            }
+        }
+        .onAppear {
+            if !hasLoaded {
+                hasLoaded = true
+                Task { await viewModel.load() }
+            }
+            if selection == nil {
+                selection = viewModel.selectedFileId
+            }
+        }
+        .onChange(of: selection) { _, newValue in
+            guard let fileId = newValue else { return }
+            open(fileId: fileId)
+        }
+    }
+
+    private var filesListView: some View {
+        List(selection: $selection) {
+            if !pinnedItems.isEmpty {
+                Section("Pinned") {
+                    ForEach(pinnedItems, id: \.file.id) { item in
+                        FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                            .tag(item.file.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(item: item) }
+                    }
+                }
+            }
+
+            if !categorizedItems.isEmpty {
+                ForEach(categoryOrder, id: \.self) { category in
+                    if let items = categorizedItems[category], !items.isEmpty {
+                        Section(categoryLabels[category] ?? "Files") {
+                            ForEach(items, id: \.file.id) { item in
+                                FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                                    .tag(item.file.id)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { open(item: item) }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !processingItems.isEmpty || !failedItems.isEmpty {
+                Section("Uploads") {
+                    ForEach(processingItems, id: \.file.id) { item in
+                        FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                            .tag(item.file.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(item: item) }
+                    }
+                    ForEach(failedItems, id: \.file.id) { item in
+                        FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                            .tag(item.file.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(item: item) }
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .refreshable {
+            await viewModel.load()
+        }
+    }
+
+    private func open(item: IngestionListItem) {
+        selection = item.file.id
+        open(fileId: item.file.id)
+    }
+
+    private func open(fileId: String) {
+        Task { await viewModel.selectFile(fileId: fileId) }
+    }
+
+    private var processingItems: [IngestionListItem] {
+        viewModel.items.filter { item in
+            let status = item.job.status ?? ""
+            return !["ready", "failed", "canceled"].contains(status)
+        }
+    }
+
+    private var failedItems: [IngestionListItem] {
+        viewModel.items.filter { ($0.job.status ?? "") == "failed" }
+    }
+
+    private var readyItems: [IngestionListItem] {
+        viewModel.items.filter { item in
+            (item.job.status ?? "") == "ready" && item.recommendedViewer != nil
+        }
+    }
+
+    private var pinnedItems: [IngestionListItem] {
+        readyItems
+            .filter { $0.file.pinned ?? false }
+            .sorted { lhs, rhs in
+                let left = lhs.file.pinnedOrder ?? Int.max
+                let right = rhs.file.pinnedOrder ?? Int.max
+                if left != right {
+                    return left < right
+                }
+                let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
+                let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
+                return leftDate > rightDate
+            }
+    }
+
+    private var categorizedItems: [String: [IngestionListItem]] {
+        let unpinned = readyItems.filter { !($0.file.pinned ?? false) }
+        let grouped = unpinned.reduce(into: [String: [IngestionListItem]]()) { result, item in
+            let category = item.file.category ?? "other"
+            result[category, default: []].append(item)
+        }
+        return grouped.mapValues { items in
+            items.sorted { lhs, rhs in
+                let left = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
+                let right = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
+                return left > right
+            }
+        }
+    }
+
+    private var categoryLabels: [String: String] {
+        [
+            "documents": "Documents",
+            "images": "Images",
+            "audio": "Audio",
+            "video": "Video",
+            "spreadsheets": "Spreadsheets",
+            "reports": "Reports",
+            "presentations": "Presentations",
+            "other": "Other"
+        ]
+    }
+
+    private var categoryOrder: [String] {
+        ["documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"]
+    }
+}
+
+private struct FilesIngestionRow: View {
+    let item: IngestionListItem
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: iconName)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.file.filenameOriginal)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if item.file.pinned == true {
+                Image(systemName: "pin.fill")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowBackground(isSelected ? selectionBackground : rowBackground)
+    }
+
+    private var statusText: String {
+        if let message = item.job.userMessage, !message.isEmpty {
+            return message
+        }
+        if let status = item.job.status {
+            return status.capitalized
+        }
+        return "Processing"
+    }
+
+    private var iconName: String {
+        switch item.recommendedViewer {
+        case "viewer_pdf":
+            return "doc.richtext"
+        case "viewer_json":
+            return "tablecells"
+        case "viewer_video":
+            return "video"
+        case "image_original":
+            return "photo"
+        case "audio_original":
+            return "waveform"
+        case "text_original", "ai_md":
+            return "doc.text"
+        default:
+            return "doc"
+        }
+    }
+
+    private var selectionBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .selectedContentBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var rowBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .textBackgroundColor)
+        #else
+        return Color(uiColor: .systemBackground)
+        #endif
+    }
+}
+
+private struct CategoryHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.top, 6)
     }
 }
 

@@ -7,6 +7,8 @@ public final class AppEnvironment: ObservableObject {
     public var themeManager: ThemeManager
     public let chatViewModel: ChatViewModel
     public let notesViewModel: NotesViewModel
+    public let filesViewModel: FilesViewModel
+    public let ingestionViewModel: IngestionViewModel
     private let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
 
@@ -23,7 +25,18 @@ public final class AppEnvironment: ObservableObject {
             themeManager: themeManager,
             streamClient: container.makeChatStreamClient(handler: nil)
         )
+        let temporaryStore = TemporaryFileStore.shared
         self.notesViewModel = NotesViewModel(api: container.notesAPI, cache: container.cacheClient)
+        self.filesViewModel = FilesViewModel(
+            api: container.filesAPI,
+            cache: container.cacheClient,
+            temporaryStore: temporaryStore
+        )
+        self.ingestionViewModel = IngestionViewModel(
+            api: container.ingestionAPI,
+            cache: container.cacheClient,
+            temporaryStore: temporaryStore
+        )
         self.realtimeClient = container.makeRealtimeClient(handler: nil)
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
@@ -76,9 +89,15 @@ extension AppEnvironment: RealtimeEventHandler {
 
     public func handleIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) {
         _ = payload
+        Task {
+            await ingestionViewModel.applyRealtimeEvent()
+        }
     }
 
     public func handleFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) {
         _ = payload
+        Task {
+            await ingestionViewModel.applyRealtimeEvent()
+        }
     }
 }
