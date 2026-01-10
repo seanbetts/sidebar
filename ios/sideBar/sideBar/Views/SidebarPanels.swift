@@ -60,11 +60,7 @@ private struct ConversationsPanelView: View {
         guard isSelected else {
             return Color.clear
         }
-        #if os(macOS)
-        return Color(nsColor: .selectedContentBackgroundColor)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        return Color.black
     }
 }
 
@@ -76,17 +72,17 @@ private struct ConversationRow: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(conversation.title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isSelected ? .primary : .primary)
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .lineLimit(1)
             if let preview = conversation.firstMessage, !preview.isEmpty {
                 Text(preview)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
                     .lineLimit(2)
             }
             Text(formattedDate)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSelected ? Color.white.opacity(0.6) : Color.secondary)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
@@ -427,9 +423,10 @@ private struct NotesTreeRow: View {
         Button(action: onSelect) {
             HStack(spacing: 8) {
                 Image(systemName: item.isFile ? "doc.text" : "folder")
-                    .foregroundStyle(item.isFile ? .secondary : .primary)
+                    .foregroundStyle(isSelected ? Color.white : (item.isFile ? .secondary : .primary))
                 Text(item.displayName)
                     .lineLimit(1)
+                    .foregroundStyle(isSelected ? Color.white : Color.primary)
             }
             .padding(.vertical, 2)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -439,11 +436,7 @@ private struct NotesTreeRow: View {
     }
 
     private var selectionBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .selectedContentBackgroundColor)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        Color.black
     }
 
     private var rowBackground: Color {
@@ -779,19 +772,20 @@ private struct FilesIngestionRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: iconName)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isSelected ? Color.white : Color.secondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(stripFileExtension(item.file.filenameOriginal))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
+                    .foregroundStyle(isSelected ? Color.white : Color.primary)
                 Text(statusText)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
             }
             Spacer()
             if item.file.pinned == true {
                 Image(systemName: "pin.fill")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
             }
         }
         .padding(.vertical, 2)
@@ -829,11 +823,7 @@ private struct FilesIngestionRow: View {
     }
 
     private var selectionBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .selectedContentBackgroundColor)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        Color.black
     }
 
     private var rowBackground: Color {
@@ -1104,10 +1094,11 @@ private struct WebsiteRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title.isEmpty ? item.url : item.title)
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(isSelected ? Color.white : Color.primary)
                     .lineLimit(1)
                 Text(formatDomain(item.domain))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1127,11 +1118,7 @@ private struct WebsiteRow: View {
     }
 
     private var selectionBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .selectedContentBackgroundColor)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        Color.black
     }
 }
 
