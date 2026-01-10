@@ -590,9 +590,9 @@ private struct FilesPanelView: View {
             }
 
             if !categorizedItems.isEmpty {
-                ForEach(categoryOrder, id: \.self) { category in
-                    if let items = categorizedItems[category], !items.isEmpty {
-                        Section {
+                Section("Files") {
+                    ForEach(categoryOrder, id: \.self) { category in
+                        if let items = categorizedItems[category], !items.isEmpty {
                             DisclosureGroup(
                                 categoryLabels[category] ?? "Files",
                                 isExpanded: bindingForCategory(category)
