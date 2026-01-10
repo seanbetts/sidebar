@@ -884,29 +884,12 @@ private struct FilesIngestionRow: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                Text(statusText)
-                    .font(.caption)
-                    .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
             }
             Spacer()
-            if item.file.pinned == true {
-                Image(systemName: "pin.fill")
-                    .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
-            }
         }
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .listRowBackground(isSelected ? selectionBackground : rowBackground)
-    }
-
-    private var statusText: String {
-        if let message = item.job.userMessage, !message.isEmpty {
-            return message
-        }
-        if let status = item.job.status {
-            return status.capitalized
-        }
-        return "Processing"
     }
 
     private var iconName: String {
