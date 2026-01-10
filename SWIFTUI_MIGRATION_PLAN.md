@@ -295,10 +295,17 @@ Critical Path (MVP): [██████████░░░░░░░░░�
 - [x] 7.4 Weather Integration
 - [x] 7.5 Keyboard Shortcuts (macOS)
 - [x] 7.6 Remove deprecated standalone views (Memories/Weather/Places/Ingestion)
+- [ ] 7.7 Biometric unlock (Face ID/Touch ID)
 
 **Native UX Requirements (Phase 7)**
 - Use native Settings layouts (Form + sections) and platform conventions.
 - macOS: use menu bar commands and keyboard shortcuts for key actions.
+
+**Biometric Unlock Scope (Phase 7.7)**
+- Gate app access with LocalAuthentication when a valid session token exists in Keychain.
+- Add Settings toggle to enable/disable biometric unlock.
+- Handle no-biometric enrollment, lockout, and passcode fallback with clear UX.
+- Keep sign-in flow unchanged; biometrics only unlock an existing session.
 
 **Post-MVP (Future Transition)**
 - [ ] 7.T1 Task System Migration (replace Things dependency with in-app todo management)
