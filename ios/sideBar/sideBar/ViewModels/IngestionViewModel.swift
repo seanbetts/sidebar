@@ -12,6 +12,7 @@ public final class IngestionViewModel: ObservableObject {
     @Published public private(set) var viewerState: FileViewerState? = nil
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingContent: Bool = false
+    @Published public private(set) var isSelecting: Bool = false
     @Published public private(set) var errorMessage: String? = nil
 
     private let api: any IngestionProviding
@@ -57,6 +58,8 @@ public final class IngestionViewModel: ObservableObject {
     }
 
     public func selectFile(fileId: String) async {
+        isSelecting = true
+        defer { isSelecting = false }
         selectedFileId = fileId
         viewerState = nil
         selectedDerivativeKind = nil
@@ -115,13 +118,19 @@ public final class IngestionViewModel: ObservableObject {
         errorMessage = nil
         do {
             let data = try await api.getContent(fileId: meta.file.id, kind: derivative.kind, range: nil)
-            let kind = FileViewerKind.infer(path: nil, mimeType: derivative.mime, derivativeKind: derivative.kind)
+            let inferredKind = FileViewerKind.infer(path: nil, mimeType: derivative.mime, derivativeKind: derivative.kind)
+            let kind = overrideKindIfMarkdown(
+                inferredKind: inferredKind,
+                filename: meta.file.filenameOriginal,
+                mimeType: derivative.mime
+            )
             let filename = makeFilename(base: meta.file.filenameOriginal, mimeType: derivative.mime, fallback: derivative.kind)
             let youtubeEmbedURL = buildYouTubeEmbedURL(from: meta.file)
             switch kind {
             case .markdown, .text, .json:
                 let rawText = String(decoding: data, as: UTF8.self)
-                let text = derivative.kind == "ai_md" ? stripFrontmatter(rawText) : rawText
+                let shouldStrip = derivative.kind == "ai_md" || kind == .markdown
+                let text = shouldStrip ? stripFrontmatter(rawText) : rawText
                 let fileURL = try temporaryStore.store(data: data, filename: filename)
                 viewerState = FileViewerState(
                     title: meta.file.filenameOriginal,
@@ -216,6 +225,23 @@ public final class IngestionViewModel: ObservableObject {
         guard let endIndex else { return content }
         let body = parts.dropFirst(endIndex + 1).joined(separator: "\n")
         return body.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func overrideKindIfMarkdown(
+        inferredKind: FileViewerKind,
+        filename: String,
+        mimeType: String
+    ) -> FileViewerKind {
+        if inferredKind == .text {
+            let lower = filename.lowercased()
+            if lower.hasSuffix(".md") || lower.hasSuffix(".markdown") {
+                return .markdown
+            }
+            if mimeType.lowercased() == "text/markdown" {
+                return .markdown
+            }
+        }
+        return inferredKind
     }
 
     private func buildYouTubeEmbedURL(from file: IngestedFileMeta) -> URL? {
