@@ -34,11 +34,11 @@ private struct WebsitesDetailView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "safari")
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Image(systemName: "globe")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 4) {
+                .foregroundStyle(.primary)
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(displayTitle)
                     .font(.headline)
                     .lineLimit(1)
@@ -50,51 +50,19 @@ private struct WebsitesDetailView: View {
                 }
             }
             Spacer()
-            if let active = viewModel.active {
-                HStack(spacing: 8) {
-                    Button {
-                        Task {
-                            await viewModel.setPinned(id: active.id, pinned: !active.pinned)
-                        }
-                    } label: {
-                        Image(systemName: active.pinned ? "pin.slash" : "pin")
-                            .frame(width: 28, height: 28)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 16, weight: .semibold))
-                    .padding(6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(buttonBackground)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(buttonBorder, lineWidth: 1)
-                    )
-                    .accessibilityLabel(active.pinned ? "Unpin website" : "Pin website")
-
-                    Button {
-                        openSource()
-                    } label: {
-                        Image(systemName: "arrow.up.right.square")
-                            .frame(width: 28, height: 28)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 16, weight: .semibold))
-                    .padding(6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(buttonBackground)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(buttonBorder, lineWidth: 1)
-                    )
-                    .accessibilityLabel("Open in Safari")
-                }
+            Button {
+            } label: {
+                Image(systemName: "line.3.horizontal")
+                    .frame(width: 28, height: 28)
             }
+            .buttonStyle(.plain)
+            .font(.system(size: 16, weight: .semibold))
+            .imageScale(.medium)
+            .accessibilityLabel("Website options")
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
     }
 
     @ViewBuilder
@@ -136,7 +104,7 @@ private struct WebsitesDetailView: View {
            let date = DateParsing.parseISO8601(publishedAt) {
             parts.append(Self.publishedDateFormatter.string(from: date))
         }
-        return parts.isEmpty ? nil : parts.joined(separator: " • ")
+        return parts.isEmpty ? nil : parts.joined(separator: " | ")
     }
 
     private func openSource() {
@@ -177,22 +145,6 @@ private struct WebsitesDetailView: View {
 
     private func formatDomain(_ domain: String) -> String {
         domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
-    }
-
-    private var buttonBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
-    }
-
-    private var buttonBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color(uiColor: .separator)
-        #endif
     }
 
     private var safariBinding: Binding<Bool> {

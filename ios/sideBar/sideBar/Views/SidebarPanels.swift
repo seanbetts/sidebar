@@ -960,6 +960,7 @@ public struct WebsitesPanel: View {
 
 private struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
@@ -998,14 +999,6 @@ private struct WebsitesPanelView: View {
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(actionBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(actionBorder, lineWidth: 1)
-                )
                 .accessibilityLabel("Add website")
             }
 
@@ -1102,7 +1095,9 @@ private struct WebsitesPanelView: View {
                 }
 
                 Section {
-                    DisclosureGroup("Archive", isExpanded: $isArchiveExpanded) {
+                    DisclosureGroup(
+                        isExpanded: $isArchiveExpanded,
+                        content: {
                         if archivedItems.isEmpty {
                             Text("No archived websites")
                                 .font(.caption)
@@ -1118,7 +1113,12 @@ private struct WebsitesPanelView: View {
                                 .onTapGesture { open(item: item) }
                             }
                         }
-                    }
+                    },
+                        label: {
+                            Label("Archive", systemImage: "archivebox")
+                        }
+                    )
+                    .listRowBackground(unselectedRowBackground)
                 }
             }
             .listStyle(.sidebar)
@@ -1205,6 +1205,10 @@ private struct WebsitesPanelView: View {
         #else
         return Color(uiColor: .secondarySystemBackground)
         #endif
+    }
+
+    private var unselectedRowBackground: Color {
+        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
     }
 }
 
