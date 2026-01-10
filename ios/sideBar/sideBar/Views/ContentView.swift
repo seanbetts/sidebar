@@ -4,12 +4,8 @@ public enum AppSection: String, CaseIterable, Identifiable {
     case chat
     case notes
     case files
-    case ingestion
     case websites
-    case memories
     case settings
-    case weather
-    case places
     case tasks
 
     public var id: String { rawValue }
@@ -358,18 +354,10 @@ public struct SectionDetailView: View {
             NotesView()
         case .files:
             FilesView()
-        case .ingestion:
-            IngestionView()
         case .websites:
             WebsitesView()
-        case .memories:
-            MemoriesView()
         case .settings:
             SettingsView()
-        case .weather:
-            WeatherView()
-        case .places:
-            PlacesView()
         case .tasks:
             TasksView()
         case .none:

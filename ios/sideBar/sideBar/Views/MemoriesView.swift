@@ -1,17 +1,6 @@
 import SwiftUI
 import MarkdownUI
 
-public struct MemoriesView: View {
-    @EnvironmentObject private var environment: AppEnvironment
-
-    public init() {
-    }
-
-    public var body: some View {
-        MemoriesDetailView(viewModel: environment.memoriesViewModel)
-    }
-}
-
 struct MemoriesDetailView: View {
     @ObservedObject var viewModel: MemoriesViewModel
     @State private var searchQuery: String = ""

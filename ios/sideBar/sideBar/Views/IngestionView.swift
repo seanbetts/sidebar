@@ -1,16 +1,5 @@
 import SwiftUI
 
-public struct IngestionView: View {
-    @EnvironmentObject private var environment: AppEnvironment
-
-    public init() {
-    }
-
-    public var body: some View {
-        IngestionSplitView(viewModel: environment.ingestionViewModel)
-    }
-}
-
 public struct IngestionSplitView: View {
     @ObservedObject var viewModel: IngestionViewModel
     @State private var selection: String? = nil

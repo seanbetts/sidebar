@@ -294,6 +294,7 @@ Critical Path (MVP): [██████████░░░░░░░░░�
 - [x] 7.3b Things Integration (native macOS/iOS; bridge is web-only legacy)
 - [x] 7.4 Weather Integration
 - [x] 7.5 Keyboard Shortcuts (macOS)
+- [x] 7.6 Remove deprecated standalone views (Memories/Weather/Places/Ingestion)
 
 **Native UX Requirements (Phase 7)**
 - Use native Settings layouts (Form + sections) and platform conventions.
