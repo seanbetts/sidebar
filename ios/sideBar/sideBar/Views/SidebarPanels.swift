@@ -110,11 +110,106 @@ private extension DateFormatter {
 }
 
 public struct NotesPanel: View {
+    @EnvironmentObject private var environment: AppEnvironment
+
     public init() {
     }
 
     public var body: some View {
-        SidebarPanelPlaceholder(title: "Notes")
+        NotesPanelView(viewModel: environment.notesViewModel)
+    }
+}
+
+private struct NotesPanelView: View {
+    @ObservedObject var viewModel: NotesViewModel
+    @State private var hasLoaded = false
+
+    var body: some View {
+        Group {
+            if viewModel.tree == nil {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    OutlineGroup(buildItems(from: viewModel.tree?.children ?? []), children: \.children) { item in
+                        NotesTreeRow(
+                            item: item,
+                            isSelected: viewModel.selectedNoteId == item.id
+                        ) {
+                            if item.isFile {
+                                Task { await viewModel.selectNote(id: item.id) }
+                            }
+                        }
+                    }
+                }
+                .listStyle(.sidebar)
+                .refreshable {
+                    await viewModel.loadTree()
+                }
+            }
+        }
+        .onAppear {
+            if !hasLoaded {
+                hasLoaded = true
+                Task { await viewModel.loadTree() }
+            }
+        }
+    }
+
+    private func buildItems(from nodes: [FileNode]) -> [FileNodeItem] {
+        nodes.map { node in
+            FileNodeItem(
+                id: node.path,
+                name: node.name,
+                type: node.type,
+                children: buildItems(from: node.children ?? [])
+            )
+        }
+    }
+}
+
+private struct NotesTreeRow: View {
+    let item: FileNodeItem
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 8) {
+                Image(systemName: item.isFile ? "doc.text" : "folder")
+                    .foregroundStyle(item.isFile ? .secondary : .primary)
+                Text(item.displayName)
+                    .lineLimit(1)
+            }
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .listRowBackground(isSelected ? selectionBackground : Color.clear)
+    }
+
+    private var selectionBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .selectedContentBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+}
+
+private struct FileNodeItem: Identifiable {
+    let id: String
+    let name: String
+    let type: FileNodeType
+    let children: [FileNodeItem]?
+
+    var isFile: Bool { type == .file }
+
+    var displayName: String {
+        if isFile, name.hasSuffix(".md") {
+            return String(name.dropLast(3))
+        }
+        return name
     }
 }
 
