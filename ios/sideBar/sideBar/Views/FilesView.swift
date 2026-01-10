@@ -45,9 +45,17 @@ private struct FilesHeaderView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer()
+            Button {
+            } label: {
+                Image(systemName: "line.3.horizontal")
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 16, weight: .semibold))
+            .imageScale(.medium)
+            .accessibilityLabel("File options")
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 17)
+        .padding(.vertical, 16)
     }
 
     private var activeTitle: String {
