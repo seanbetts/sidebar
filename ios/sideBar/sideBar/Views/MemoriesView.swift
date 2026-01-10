@@ -105,7 +105,7 @@ struct MemoriesDetailView: View {
                 detailHeader(memory: memory)
                 Divider()
                 ScrollView {
-                    Markdown(memory.content)
+                    SideBarMarkdown(text: memory.content)
                         .padding(20)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

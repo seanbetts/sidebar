@@ -37,7 +37,7 @@ public struct ScratchpadPopoverView: View {
                             .accessibilityHint("Enter notes for your scratchpad.")
                     } else {
                         ScrollView {
-                            Markdown(draft.isEmpty ? "_Start typing to capture thoughts._" : draft)
+                            SideBarMarkdown(text: draft.isEmpty ? "_Start typing to capture thoughts._" : draft)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .textSelection(.enabled)
                         }
