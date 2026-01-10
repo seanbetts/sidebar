@@ -22,7 +22,7 @@ public struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var colorScheme
     #endif
-    @State private var selection: AppSection? = .chat
+    @State private var sidebarSelection: AppSection? = nil
     @State private var primarySection: AppSection? = nil
     @State private var secondarySection: AppSection? = .chat
     @State private var lastNonChatSection: AppSection? = nil
@@ -52,17 +52,31 @@ public struct ContentView: View {
                             .allowsHitTesting(false)
                     }
             }
-            .onChange(of: selection) { _, newValue in
-                applySelectionUpdate(newValue)
-            }
             .onChange(of: phoneSelection) { _, newValue in
-                selection = newValue
+                sidebarSelection = newValue
                 primarySection = newValue
+            }
+            .onChange(of: environment.notesViewModel.selectedNoteId) { _, newValue in
+                guard newValue != nil else { return }
+                primarySection = .notes
+                lastNonChatSection = .notes
+            }
+            .onChange(of: environment.ingestionViewModel.selectedFileId) { _, newValue in
+                guard newValue != nil else { return }
+                primarySection = .files
+                lastNonChatSection = .files
+            }
+            .onChange(of: environment.websitesViewModel.active?.id) { _, newValue in
+                guard newValue != nil else { return }
+                primarySection = .websites
+                lastNonChatSection = .websites
             }
             .onChange(of: environment.commandSelection) { _, newValue in
                 guard let newValue else { return }
-                selection = newValue
-                primarySection = newValue
+                sidebarSelection = newValue
+                if !isLeftPanelExpanded {
+                    isLeftPanelExpanded = true
+                }
                 #if !os(macOS)
                 phoneSelection = newValue
                 #endif
@@ -95,7 +109,7 @@ public struct ContentView: View {
 
     private var splitView: some View {
         WorkspaceLayout(
-            selection: $selection,
+            selection: $sidebarSelection,
             isLeftPanelExpanded: $isLeftPanelExpanded,
             onShowSettings: { isSettingsPresented = true },
             header: {
@@ -219,40 +233,22 @@ public struct ContentView: View {
 #if os(iOS)
         if horizontalSizeClass == .compact {
             phoneSelection = .chat
-            selection = .chat
+            sidebarSelection = .chat
             primarySection = .chat
         } else {
-            selection = .chat
             primarySection = nil
             secondarySection = .chat
             lastNonChatSection = nil
+            isLeftPanelExpanded = false
         }
 #else
-        selection = .chat
         primarySection = nil
         secondarySection = .chat
         lastNonChatSection = nil
+        isLeftPanelExpanded = false
 #endif
     }
 
-    private func applySelectionUpdate(_ newValue: AppSection?) {
-        guard let newValue else { return }
-#if os(iOS)
-        if horizontalSizeClass == .compact {
-            primarySection = newValue
-            return
-        }
-#endif
-        if newValue == .chat {
-            secondarySection = .chat
-            if primarySection == .chat {
-                primarySection = lastNonChatSection
-            }
-        } else {
-            primarySection = newValue
-            lastNonChatSection = newValue
-        }
-    }
 
     private var tabBarTint: Color {
         #if os(macOS)
