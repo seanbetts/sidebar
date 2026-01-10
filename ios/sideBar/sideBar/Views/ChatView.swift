@@ -272,7 +272,8 @@ private struct ChatMessageRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            MarkdownText(content: message.content)
+            SideBarMarkdown(text: message.content)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             if message.status == .error, let error = message.error {
                 Text(error)
@@ -322,23 +323,6 @@ private struct ChatMessageRow: View {
     }
 }
 
-private struct MarkdownText: View {
-    let content: String
-
-    var body: some View {
-        Text(attributedContent)
-            .textSelection(.enabled)
-            .font(.body)
-            .foregroundStyle(.primary)
-    }
-
-    private var attributedContent: AttributedString {
-        if let attributed = try? AttributedString(markdown: content, options: .init(interpretedSyntax: .full)) {
-            return attributed
-        }
-        return AttributedString(content)
-    }
-}
 
 private struct ToolCallListView: View {
     let toolCalls: [ToolCall]
