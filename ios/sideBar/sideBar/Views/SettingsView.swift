@@ -13,9 +13,15 @@ public struct SettingsView: View {
 
     public var body: some View {
         #if os(macOS)
-        SettingsSplitView(viewModel: environment.settingsViewModel)
+        SettingsSplitView(
+            viewModel: environment.settingsViewModel,
+            memoriesViewModel: environment.memoriesViewModel
+        )
         #else
-        SettingsTabsView(viewModel: environment.settingsViewModel)
+        SettingsTabsView(
+            viewModel: environment.settingsViewModel,
+            memoriesViewModel: environment.memoriesViewModel
+        )
         #endif
     }
 }
@@ -25,10 +31,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case profile
     case system
     case skills
-    case shortcuts
-    case things
     case memories
-    case api
 
     var id: String { rawValue }
 
@@ -42,12 +45,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
             return "Skills"
         case .memories:
             return "Memories"
-        case .shortcuts:
-            return "Shortcuts"
-        case .things:
-            return "Things"
-        case .api:
-            return "API"
         }
     }
 
@@ -58,21 +55,16 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .system:
             return "slider.horizontal.3"
         case .skills:
-            return "sparkles"
+            return "hammer.circle"
         case .memories:
-            return "brain"
-        case .shortcuts:
-            return "bolt.horizontal.circle"
-        case .things:
-            return "checkmark.circle"
-        case .api:
-            return "link"
+            return "bookmark"
         }
     }
 }
 
 private struct SettingsSplitView: View {
     @ObservedObject var viewModel: SettingsViewModel
+    @ObservedObject var memoriesViewModel: MemoriesViewModel
     @State private var selection: SettingsSection? = .profile
     @State private var hasLoaded = false
 
@@ -109,14 +101,8 @@ private struct SettingsSplitView: View {
             SystemSettingsView(viewModel: viewModel)
         case .skills:
             SkillsSettingsView(viewModel: viewModel)
-        case .shortcuts:
-            ShortcutsSettingsView(viewModel: viewModel)
-        case .things:
-            ThingsSettingsView()
         case .memories:
-            MemoriesSettingsView()
-        case .api:
-            APISettingsView(settings: viewModel.settings)
+            MemoriesSettingsView(viewModel: memoriesViewModel)
         }
     }
 
@@ -143,6 +129,7 @@ private struct SidebarToggleHider: ViewModifier {
 
 private struct SettingsTabsView: View {
     @ObservedObject var viewModel: SettingsViewModel
+    @ObservedObject var memoriesViewModel: MemoriesViewModel
     @State private var hasLoaded = false
 
     var body: some View {
@@ -157,23 +144,11 @@ private struct SettingsTabsView: View {
                 }
             SkillsSettingsView(viewModel: viewModel)
                 .tabItem {
-                    Label("Skills", systemImage: "sparkles")
+                    Label("Skills", systemImage: "hammer.circle")
                 }
-            ShortcutsSettingsView(viewModel: viewModel)
+            MemoriesSettingsView(viewModel: memoriesViewModel)
                 .tabItem {
-                    Label("Shortcuts", systemImage: "bolt.horizontal.circle")
-                }
-            ThingsSettingsView()
-                .tabItem {
-                    Label("Things", systemImage: "checkmark.circle")
-                }
-            MemoriesSettingsView()
-                .tabItem {
-                    Label("Memories", systemImage: "brain")
-                }
-            APISettingsView(settings: viewModel.settings)
-                .tabItem {
-                    Label("API", systemImage: "link")
+                    Label("Memories", systemImage: "bookmark")
                 }
         }
         .padding(16)
@@ -417,13 +392,10 @@ private struct SkillsSettingsView: View {
 }
 
 private struct MemoriesSettingsView: View {
+    @ObservedObject var viewModel: MemoriesViewModel
+
     var body: some View {
-        Form {
-            Section("Memories") {
-                Text("Manage memories in the Memories section.")
-                    .foregroundStyle(.secondary)
-            }
-        }
+        MemoriesDetailView(viewModel: viewModel)
     }
 }
 
