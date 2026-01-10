@@ -41,6 +41,7 @@ public struct SiteHeaderBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .frame(minHeight: LayoutMetrics.appHeaderMinHeight)
         .background(barBackground)
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)

@@ -26,7 +26,7 @@ private struct NotesDetailView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: "note.text")
+            Image(systemName: "text.document")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.secondary)
             Text(displayTitle)
@@ -35,23 +35,14 @@ private struct NotesDetailView: View {
             Button {
             } label: {
                 Image(systemName: "line.3.horizontal")
-                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
             .font(.system(size: 16, weight: .semibold))
             .imageScale(.medium)
-            .padding(6)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(buttonBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(buttonBorder, lineWidth: 1)
-            )
             .accessibilityLabel("Note options")
         }
         .padding(16)
+        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
     }
 
     @ViewBuilder
@@ -96,19 +87,4 @@ private struct NotesDetailView: View {
         return note.content
     }
 
-    private var buttonBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
-    }
-
-    private var buttonBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color(uiColor: .separator)
-        #endif
-    }
 }

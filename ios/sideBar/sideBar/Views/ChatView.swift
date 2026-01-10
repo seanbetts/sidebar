@@ -157,6 +157,9 @@ private struct ChatHeaderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
+                Image(systemName: "bubble")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(selectedTitle)
                         .font(.headline)
@@ -185,13 +188,14 @@ private struct ChatHeaderView: View {
             }
         }
         .padding(16)
+        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
         .background(headerBackground)
     }
 
     private var selectedTitle: String {
         guard let selectedId = viewModel.selectedConversationId,
               let conversation = viewModel.conversations.first(where: { $0.id == selectedId }) else {
-            return "Chat"
+            return "New Chat"
         }
         return conversation.title
     }
@@ -203,6 +207,7 @@ private struct ChatHeaderView: View {
         return Color(uiColor: .systemBackground)
         #endif
     }
+
 }
 
 private struct ChatMessageListView: View {

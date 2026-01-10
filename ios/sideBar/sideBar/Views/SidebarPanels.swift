@@ -128,6 +128,7 @@ private struct NotesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            Divider()
             Group {
                 if viewModel.tree == nil {
                     ProgressView()
@@ -203,6 +204,7 @@ private struct NotesPanelView: View {
             )
         }
         .padding(16)
+        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
     }
 
     private var searchResultsView: some View {
@@ -574,6 +576,7 @@ private struct FilesPanelView: View {
             )
         }
         .padding(16)
+        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
     }
 
     private var filesListView: some View {
@@ -923,6 +926,7 @@ private struct WebsitesPanelView: View {
             )
         }
         .padding(16)
+        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
     }
 
     @ViewBuilder
