@@ -1,5 +1,10 @@
 import Foundation
 
+public protocol MemoriesProviding {
+    func list() async throws -> [MemoryItem]
+    func get(id: String) async throws -> MemoryItem
+}
+
 public struct MemoriesAPI {
     private let client: APIClient
 
@@ -27,3 +32,5 @@ public struct MemoriesAPI {
         try await client.requestVoid("memories/\(id)", method: "DELETE")
     }
 }
+
+extension MemoriesAPI: MemoriesProviding {}

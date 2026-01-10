@@ -49,6 +49,51 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(cached?.skills.first?.id, "s1")
         XCTAssertEqual(viewModel.skills.first?.id, "s1")
     }
+
+    func testSetSkillEnabledUpdatesSettings() async {
+        let settings = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "User",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: []
+        )
+        let updated = UserSettings(
+            userId: "user-1",
+            communicationStyle: nil,
+            workingRelationship: nil,
+            name: "User",
+            jobTitle: nil,
+            employer: nil,
+            dateOfBirth: nil,
+            gender: nil,
+            pronouns: nil,
+            location: nil,
+            profileImageUrl: nil,
+            enabledSkills: ["s1"]
+        )
+        let cache = TestCacheClient()
+        let viewModel = SettingsViewModel(
+            settingsAPI: MockSettingsAPI(
+                result: .success(settings),
+                updateResult: .success(updated)
+            ),
+            skillsAPI: MockSkillsAPI(result: .success(SkillsResponse(skills: []))),
+            cache: cache
+        )
+
+        await viewModel.load()
+        await viewModel.setSkillEnabled(id: "s1", enabled: true)
+
+        XCTAssertEqual(viewModel.settings?.enabledSkills, ["s1"])
+    }
 }
 
 private enum MockError: Error {
@@ -57,9 +102,34 @@ private enum MockError: Error {
 
 private struct MockSettingsAPI: SettingsProviding {
     let result: Result<UserSettings, Error>
+    let tokenResult: Result<ShortcutsTokenResponse, Error>
+    let updateResult: Result<UserSettings, Error>
+
+    init(
+        result: Result<UserSettings, Error>,
+        tokenResult: Result<ShortcutsTokenResponse, Error> = .failure(MockError.forced),
+        updateResult: Result<UserSettings, Error> = .failure(MockError.forced)
+    ) {
+        self.result = result
+        self.tokenResult = tokenResult
+        self.updateResult = updateResult
+    }
 
     func getSettings() async throws -> UserSettings {
         try result.get()
+    }
+
+    func getShortcutsToken() async throws -> ShortcutsTokenResponse {
+        try tokenResult.get()
+    }
+
+    func rotateShortcutsToken() async throws -> ShortcutsTokenResponse {
+        try tokenResult.get()
+    }
+
+    func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings {
+        _ = update
+        return try updateResult.get()
     }
 }
 
