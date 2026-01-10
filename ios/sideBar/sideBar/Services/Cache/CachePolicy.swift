@@ -14,4 +14,5 @@ public enum CachePolicy {
     public static let fileContent: TimeInterval = 2 * 60 * 60
     public static let userSettings: TimeInterval = 30 * 60
     public static let skillsList: TimeInterval = 30 * 60
+    public static let profileImage: TimeInterval = 6 * 60 * 60
 }

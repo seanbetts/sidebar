@@ -31,6 +31,7 @@ public struct ContentView: View {
     @State private var phoneSelection: AppSection = .chat
     @State private var isPhoneScratchpadPresented = false
     @State private var didSetInitialSelection = false
+    @State private var didLoadSettings = false
 
     public init() {
     }
@@ -84,6 +85,13 @@ public struct ContentView: View {
             }
             .task {
                 applyInitialSelectionIfNeeded()
+                if environment.isAuthenticated && !didLoadSettings {
+                    didLoadSettings = true
+                    Task {
+                        await environment.settingsViewModel.load()
+                        await environment.settingsViewModel.loadProfileImage()
+                    }
+                }
             }
             #if !os(macOS)
             .sheet(isPresented: $isSettingsPresented) {
