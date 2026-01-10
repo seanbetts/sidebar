@@ -630,6 +630,7 @@ private struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
+    @State private var isArchiveExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -692,29 +693,148 @@ private struct WebsitesPanelView: View {
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.items.isEmpty {
+        if viewModel.isLoading && viewModel.items.isEmpty {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let error = viewModel.errorMessage {
+            SidebarPanelPlaceholder(title: error)
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
             SidebarPanelPlaceholder(title: "No websites yet.")
-        } else {
-            List(filteredItems, id: \.id) { item in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.title.isEmpty ? item.url : item.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                    Text(item.domain)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+        } else if !searchQuery.trimmed.isEmpty {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    sectionTitle("Results")
+                    if filteredItems.isEmpty {
+                        SidebarPanelPlaceholder(title: "No results.")
+                    } else {
+                        ForEach(filteredItems, id: \.id) { item in
+                            WebsiteRow(item: item)
+                        }
+                    }
                 }
-                .padding(.vertical, 4)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .listStyle(.sidebar)
+        } else {
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        websitesSection
+                        Spacer(minLength: 12)
+                        archiveSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .frame(minHeight: proxy.size.height)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+            }
         }
     }
 
+    private var websitesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Pinned")
+            if pinnedItemsSorted.isEmpty {
+                Text("No pinned websites")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(pinnedItemsSorted, id: \.id) { item in
+                        WebsiteRow(item: item)
+                    }
+                }
+            }
+
+            sectionTitle("Websites")
+            if mainItems.isEmpty {
+                Text("No websites saved")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(mainItems, id: \.id) { item in
+                        WebsiteRow(item: item)
+                    }
+                }
+            }
+        }
+    }
+
+    private var archiveSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Archive")
+                    .font(.caption.weight(.semibold))
+                    .textCase(.uppercase)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    isArchiveExpanded.toggle()
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .rotationEffect(.degrees(isArchiveExpanded ? 90 : 0))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 6)
+
+            if isArchiveExpanded {
+                if archivedItems.isEmpty {
+                    Text("No archived websites")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 6)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(archivedItems, id: \.id) { item in
+                            WebsiteRow(item: item)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+    }
+
+    private var pinnedItemsSorted: [WebsiteItem] {
+        pinnedItems.sorted { lhs, rhs in
+            let leftOrder = lhs.pinnedOrder ?? Int.max
+            let rightOrder = rhs.pinnedOrder ?? Int.max
+            if leftOrder != rightOrder {
+                return leftOrder < rightOrder
+            }
+            let leftDate = DateParsing.parseISO8601(lhs.updatedAt) ?? .distantPast
+            let rightDate = DateParsing.parseISO8601(rhs.updatedAt) ?? .distantPast
+            return leftDate > rightDate
+        }
+    }
+
+    private var pinnedItems: [WebsiteItem] {
+        viewModel.items.filter { $0.pinned && !$0.archived }
+    }
+
+    private var mainItems: [WebsiteItem] {
+        viewModel.items.filter { !$0.pinned && !$0.archived }
+    }
+
+    private var archivedItems: [WebsiteItem] {
+        viewModel.items.filter { $0.archived }
+    }
+
     private var filteredItems: [WebsiteItem] {
-        let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return viewModel.items }
-        let needle = trimmed.lowercased()
+        let needle = searchQuery.trimmed.lowercased()
+        guard !needle.isEmpty else { return viewModel.items }
         return viewModel.items.filter { item in
             item.title.lowercased().contains(needle) ||
             item.domain.lowercased().contains(needle) ||
@@ -752,5 +872,32 @@ private struct WebsitesPanelView: View {
         #else
         return Color(uiColor: .separator)
         #endif
+    }
+}
+
+private struct WebsiteRow: View {
+    let item: WebsiteItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(item.title.isEmpty ? item.url : item.title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+            Text(formatDomain(item.domain))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func formatDomain(_ domain: String) -> String {
+        domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+    }
+}
+
+private extension String {
+    var trimmed: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
