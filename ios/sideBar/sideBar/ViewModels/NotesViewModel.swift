@@ -63,6 +63,22 @@ public final class NotesViewModel: ObservableObject {
         await loadNote(id: id)
     }
 
+    public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
+        let noteId = payload.record?.id ?? payload.oldRecord?.id
+        cache.remove(key: CacheKeys.notesTree)
+        if let noteId {
+            cache.remove(key: CacheKeys.note(id: noteId))
+        }
+        if payload.eventType == .delete, selectedNoteId == noteId {
+            selectedNoteId = nil
+            activeNote = nil
+        }
+        await loadTree()
+        if let noteId, payload.eventType != .delete, selectedNoteId == noteId {
+            await loadNote(id: noteId)
+        }
+    }
+
     public func updateSearch(query: String) {
         searchQuery = query
         searchTask?.cancel()
