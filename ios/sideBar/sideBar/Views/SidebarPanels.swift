@@ -765,6 +765,7 @@ private struct WebsitesPanelView: View {
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
+    @State private var selection: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -777,6 +778,12 @@ private struct WebsitesPanelView: View {
                 hasLoaded = true
                 Task { await viewModel.load() }
             }
+            if selection == nil {
+                selection = viewModel.active?.id
+            }
+        }
+        .onChange(of: viewModel.active?.id) { _, newValue in
+            selection = newValue
         }
     }
 
@@ -842,7 +849,12 @@ private struct WebsitesPanelView: View {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
                         ForEach(filteredItems, id: \.id) { item in
-                            WebsiteRow(item: item)
+                            WebsiteRow(
+                                item: item,
+                                isSelected: selection == item.id
+                            ) {
+                                open(item: item)
+                            }
                         }
                     }
                 }
@@ -876,7 +888,12 @@ private struct WebsitesPanelView: View {
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(pinnedItemsSorted, id: \.id) { item in
-                        WebsiteRow(item: item)
+                        WebsiteRow(
+                            item: item,
+                            isSelected: selection == item.id
+                        ) {
+                            open(item: item)
+                        }
                     }
                 }
             }
@@ -889,7 +906,12 @@ private struct WebsitesPanelView: View {
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(mainItems, id: \.id) { item in
-                        WebsiteRow(item: item)
+                        WebsiteRow(
+                            item: item,
+                            isSelected: selection == item.id
+                        ) {
+                            open(item: item)
+                        }
                     }
                 }
             }
@@ -925,13 +947,23 @@ private struct WebsitesPanelView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(archivedItems, id: \.id) { item in
-                            WebsiteRow(item: item)
+                            WebsiteRow(
+                                item: item,
+                                isSelected: selection == item.id
+                            ) {
+                                open(item: item)
+                            }
                         }
                     }
                 }
             }
         }
         .padding(.top, 8)
+    }
+
+    private func open(item: WebsiteItem) {
+        selection = item.id
+        Task { await viewModel.selectWebsite(id: item.id) }
     }
 
     private func sectionTitle(_ title: String) -> some View {
@@ -1011,22 +1043,42 @@ private struct WebsitesPanelView: View {
 
 private struct WebsiteRow: View {
     let item: WebsiteItem
+    let isSelected: Bool
+    let onSelect: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(item.title.isEmpty ? item.url : item.title)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-            Text(formatDomain(item.domain))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title.isEmpty ? item.url : item.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(formatDomain(item.domain))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? selectionBackground : Color.clear)
+        )
+        .contentShape(Rectangle())
     }
 
     private func formatDomain(_ domain: String) -> String {
         domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+    }
+
+    private var selectionBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .selectedContentBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
     }
 }
 

@@ -3,6 +3,7 @@ import Foundation
 public protocol WebsitesProviding {
     func list() async throws -> WebsitesResponse
     func get(id: String) async throws -> WebsiteDetail
+    func pin(id: String, pinned: Bool) async throws -> WebsiteItem
 }
 
 public struct WebsitesAPI {

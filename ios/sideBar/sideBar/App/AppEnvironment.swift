@@ -86,7 +86,9 @@ extension AppEnvironment: RealtimeEventHandler {
     }
 
     public func handleWebsiteEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) {
-        _ = payload
+        Task {
+            await websitesViewModel.applyRealtimeEvent(payload)
+        }
     }
 
     public func handleIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) {

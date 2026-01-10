@@ -16,7 +16,9 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
     private let decoder: JSONDecoder
     private var currentUserId: String?
     private var notesChannel: RealtimeChannelV2?
-    private var subscriptions: [ObservationToken] = []
+    private var websitesChannel: RealtimeChannelV2?
+    private var notesSubscriptions: [ObservationToken] = []
+    private var websitesSubscriptions: [ObservationToken] = []
 
     public init(config: EnvironmentConfig, handler: RealtimeEventHandler? = nil) {
         self.handler = handler
@@ -38,17 +40,24 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
     public func start(userId: String, accessToken: String?) async {
         await tokenStore.set(accessToken)
         await client.realtimeV2.setAuth(accessToken)
-        let shouldResubscribe = currentUserId != userId || notesChannel == nil
+        let shouldResubscribeNotes = currentUserId != userId || notesChannel == nil
+        let shouldResubscribeWebsites = currentUserId != userId || websitesChannel == nil
         currentUserId = userId
-        if shouldResubscribe {
+        if shouldResubscribeNotes {
             await subscribeToNotes(userId: userId)
+        }
+        if shouldResubscribeWebsites {
+            await subscribeToWebsites(userId: userId)
         }
     }
 
     public func stop() {
-        subscriptions.removeAll()
+        notesSubscriptions.removeAll()
+        websitesSubscriptions.removeAll()
         let channel = notesChannel
+        let websitesChannel = websitesChannel
         notesChannel = nil
+        self.websitesChannel = nil
         Task {
             await tokenStore.set(nil)
         }
@@ -58,16 +67,21 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 await client.realtimeV2.removeChannel(channel)
             }
         }
+        if let websitesChannel {
+            Task {
+                await client.realtimeV2.removeChannel(websitesChannel)
+            }
+        }
     }
 
     private func subscribeToNotes(userId: String) async {
         if let existingChannel = notesChannel {
             await client.realtimeV2.removeChannel(existingChannel)
         }
-        subscriptions.removeAll()
+        notesSubscriptions.removeAll()
         let channel = client.realtimeV2.channel("public:\(RealtimeTable.notes)")
         let filter = "user_id=eq.\(userId)"
-        subscriptions.append(
+        notesSubscriptions.append(
             channel.onPostgresChange(
                 InsertAction.self,
                 schema: "public",
@@ -79,7 +93,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 }
             }
         )
-        subscriptions.append(
+        notesSubscriptions.append(
             channel.onPostgresChange(
                 UpdateAction.self,
                 schema: "public",
@@ -91,7 +105,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 }
             }
         )
-        subscriptions.append(
+        notesSubscriptions.append(
             channel.onPostgresChange(
                 DeleteAction.self,
                 schema: "public",
@@ -104,6 +118,56 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             }
         )
         notesChannel = channel
+        do {
+            try await channel.subscribeWithError()
+        } catch {
+        }
+    }
+
+    private func subscribeToWebsites(userId: String) async {
+        if let existingChannel = websitesChannel {
+            await client.realtimeV2.removeChannel(existingChannel)
+        }
+        websitesSubscriptions.removeAll()
+        let channel = client.realtimeV2.channel("public:\(RealtimeTable.websites)")
+        let filter = "user_id=eq.\(userId)"
+        websitesSubscriptions.append(
+            channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: RealtimeTable.websites,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleWebsiteInsert(action)
+                }
+            }
+        )
+        websitesSubscriptions.append(
+            channel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: RealtimeTable.websites,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleWebsiteUpdate(action)
+                }
+            }
+        )
+        websitesSubscriptions.append(
+            channel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: RealtimeTable.websites,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleWebsiteDelete(action)
+                }
+            }
+        )
+        websitesChannel = channel
         do {
             try await channel.subscribeWithError()
         } catch {
@@ -149,6 +213,48 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         )
         Task { @MainActor [weak self] in
             self?.handler?.handleNoteEvent(payload)
+        }
+    }
+
+    private func handleWebsiteInsert(_ action: InsertAction) {
+        do {
+            let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
+            notifyWebsiteEvent(type: .insert, record: record, oldRecord: nil)
+        } catch {
+        }
+    }
+
+    private func handleWebsiteUpdate(_ action: UpdateAction) {
+        do {
+            let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
+            let oldRecord: WebsiteRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            notifyWebsiteEvent(type: .update, record: record, oldRecord: oldRecord)
+        } catch {
+        }
+    }
+
+    private func handleWebsiteDelete(_ action: DeleteAction) {
+        do {
+            let oldRecord: WebsiteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
+            notifyWebsiteEvent(type: .delete, record: nil, oldRecord: oldRecord)
+        } catch {
+        }
+    }
+
+    private func notifyWebsiteEvent(
+        type: RealtimeEventType,
+        record: WebsiteRealtimeRecord?,
+        oldRecord: WebsiteRealtimeRecord?
+    ) {
+        let payload = RealtimePayload(
+            eventType: type,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: record,
+            oldRecord: oldRecord
+        )
+        Task { @MainActor [weak self] in
+            self?.handler?.handleWebsiteEvent(payload)
         }
     }
 }
