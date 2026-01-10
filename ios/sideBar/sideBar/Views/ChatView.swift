@@ -266,6 +266,15 @@ private struct ChatMessageRow: View {
                     .foregroundStyle(rolePillText)
                     .overlay(rolePillBorder)
                     .clipShape(Capsule())
+                Spacer()
+                Button {
+                    copyMessage()
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
 
             SideBarMarkdown(text: message.content)
@@ -355,6 +364,15 @@ private struct ChatMessageRow: View {
         return Color(nsColor: .separatorColor)
         #else
         return Color(uiColor: .separator)
+        #endif
+    }
+
+    private func copyMessage() {
+        #if os(iOS)
+        UIPasteboard.general.string = message.content
+        #elseif os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(message.content, forType: .string)
         #endif
     }
 }
