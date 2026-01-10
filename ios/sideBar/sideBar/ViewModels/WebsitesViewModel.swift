@@ -7,6 +7,7 @@ import Combine
 public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var items: [WebsiteItem] = []
     @Published public private(set) var active: WebsiteDetail? = nil
+    @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var errorMessage: String? = nil
 
     private let api: any WebsitesProviding
@@ -18,6 +19,7 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func load() async {
+        isLoading = true
         errorMessage = nil
         let cached: WebsitesResponse? = cache.get(key: CacheKeys.websitesList)
         if let cached {
@@ -32,6 +34,7 @@ public final class WebsitesViewModel: ObservableObject {
                 errorMessage = error.localizedDescription
             }
         }
+        isLoading = false
     }
 
     public func loadById(id: String) async {
