@@ -1,40 +1,43 @@
 #if os(macOS)
 import SwiftUI
+import AppKit
 
 struct SidebarCommands: Commands {
     @EnvironmentObject private var environment: AppEnvironment
 
     var body: some Commands {
         CommandMenu("Navigate") {
-            Button("Chat") {
-                environment.commandSelection = .chat
-            }
-            .keyboardShortcut("1", modifiers: [.command])
-
             Button("Notes") {
                 environment.commandSelection = .notes
             }
-            .keyboardShortcut("2", modifiers: [.command])
+            .keyboardShortcut("1", modifiers: [.command])
 
-            Button("Files") {
-                environment.commandSelection = .files
+            Button("Tasks") {
+                environment.commandSelection = .tasks
             }
-            .keyboardShortcut("3", modifiers: [.command])
+            .keyboardShortcut("2", modifiers: [.command])
 
             Button("Websites") {
                 environment.commandSelection = .websites
             }
+            .keyboardShortcut("3", modifiers: [.command])
+
+            Button("Files") {
+                environment.commandSelection = .files
+            }
             .keyboardShortcut("4", modifiers: [.command])
 
-            Button("Memories") {
-                environment.commandSelection = .memories
+            Button("Chat") {
+                environment.commandSelection = .chat
             }
             .keyboardShortcut("5", modifiers: [.command])
+        }
 
-            Button("Weather") {
-                environment.commandSelection = .weather
+        CommandGroup(after: .appSettings) {
+            Button("Settings") {
+                NSApp.sendAction(#selector(NSApplication.showSettingsWindow(_:)), to: nil, from: nil)
             }
-            .keyboardShortcut("6", modifiers: [.command])
+            .keyboardShortcut(",", modifiers: [.command])
         }
     }
 }

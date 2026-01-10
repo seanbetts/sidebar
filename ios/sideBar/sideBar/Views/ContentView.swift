@@ -53,6 +53,13 @@ public struct ContentView: View {
                             .allowsHitTesting(false)
                     }
             }
+            #if os(iOS)
+            .background(
+                KeyboardShortcutHandler()
+                    .environmentObject(environment)
+                    .frame(width: 0, height: 0)
+            )
+            #endif
             .onChange(of: phoneSelection) { _, newValue in
                 sidebarSelection = newValue
                 primarySection = newValue
@@ -74,6 +81,14 @@ public struct ContentView: View {
             }
             .onChange(of: environment.commandSelection) { _, newValue in
                 guard let newValue else { return }
+                if newValue == .settings {
+                    #if os(macOS)
+                    #else
+                    isSettingsPresented = true
+                    #endif
+                    environment.commandSelection = nil
+                    return
+                }
                 sidebarSelection = newValue
                 if !isLeftPanelExpanded {
                     isLeftPanelExpanded = true
