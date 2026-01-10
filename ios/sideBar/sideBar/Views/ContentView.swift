@@ -23,9 +23,9 @@ public struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     #endif
     @State private var selection: AppSection? = .chat
-    @State private var primarySection: AppSection = .notes
-    @State private var secondarySection: AppSection = .chat
-    @State private var lastNonChatSection: AppSection = .notes
+    @State private var primarySection: AppSection? = nil
+    @State private var secondarySection: AppSection? = .chat
+    @State private var lastNonChatSection: AppSection? = nil
     @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
     @State private var isSettingsPresented = false
     @State private var phoneSelection: AppSection = .chat
@@ -171,7 +171,7 @@ public struct ContentView: View {
         let temp = primarySection
         primarySection = secondarySection
         secondarySection = temp
-        if primarySection != .chat {
+        if primarySection != .chat, let primarySection {
             lastNonChatSection = primarySection
         }
     }
@@ -222,14 +222,16 @@ public struct ContentView: View {
             selection = .chat
             primarySection = .chat
         } else {
-            selection = .notes
-            primarySection = .notes
-            lastNonChatSection = .notes
+            selection = .chat
+            primarySection = nil
+            secondarySection = .chat
+            lastNonChatSection = nil
         }
 #else
-        selection = .notes
-        primarySection = .notes
-        lastNonChatSection = .notes
+        selection = .chat
+        primarySection = nil
+        secondarySection = .chat
+        lastNonChatSection = nil
 #endif
     }
 
@@ -339,8 +341,30 @@ public struct SectionDetailView: View {
         case .tasks:
             TasksView()
         case .none:
-            PlaceholderView(title: "Select a section")
+            WelcomeEmptyView()
         }
+    }
+}
+
+public struct WelcomeEmptyView: View {
+    public init() {
+    }
+
+    public var body: some View {
+        VStack(spacing: 12) {
+            Image("AppLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 72, height: 72)
+                .opacity(0.7)
+            Text("Welcome to sideBar")
+                .font(.title3.weight(.semibold))
+            Text("Select a note, website, or file to get started.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
