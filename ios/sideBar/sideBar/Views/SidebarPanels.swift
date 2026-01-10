@@ -616,10 +616,141 @@ private struct CategoryToggleRow: View {
 }
 
 public struct WebsitesPanel: View {
+    @EnvironmentObject private var environment: AppEnvironment
+
     public init() {
     }
 
     public var body: some View {
-        SidebarPanelPlaceholder(title: "Websites")
+        WebsitesPanelView(viewModel: environment.websitesViewModel)
+    }
+}
+
+private struct WebsitesPanelView: View {
+    @ObservedObject var viewModel: WebsitesViewModel
+    @State private var searchQuery: String = ""
+    @State private var hasLoaded = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            content
+        }
+        .onAppear {
+            if !hasLoaded {
+                hasLoaded = true
+                Task { await viewModel.load() }
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text("Websites")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button {
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(actionBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(actionBorder, lineWidth: 1)
+                )
+                .accessibilityLabel("Add website")
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search websites...", text: $searchQuery)
+                    .textFieldStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .font(.subheadline)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(searchFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(searchBorder, lineWidth: 1)
+            )
+        }
+        .padding(16)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.items.isEmpty {
+            SidebarPanelPlaceholder(title: "No websites yet.")
+        } else {
+            List(filteredItems, id: \.id) { item in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.title.isEmpty ? item.url : item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Text(item.domain)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .padding(.vertical, 4)
+            }
+            .listStyle(.sidebar)
+        }
+    }
+
+    private var filteredItems: [WebsiteItem] {
+        let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return viewModel.items }
+        let needle = trimmed.lowercased()
+        return viewModel.items.filter { item in
+            item.title.lowercased().contains(needle) ||
+            item.domain.lowercased().contains(needle) ||
+            item.url.lowercased().contains(needle)
+        }
+    }
+
+    private var searchFill: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var searchBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
+    }
+
+    private var actionBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var actionBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
     }
 }

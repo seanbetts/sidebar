@@ -9,6 +9,7 @@ public final class AppEnvironment: ObservableObject {
     public let notesViewModel: NotesViewModel
     public let filesViewModel: FilesViewModel
     public let ingestionViewModel: IngestionViewModel
+    public let websitesViewModel: WebsitesViewModel
     private let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
 
@@ -37,6 +38,7 @@ public final class AppEnvironment: ObservableObject {
             cache: container.cacheClient,
             temporaryStore: temporaryStore
         )
+        self.websitesViewModel = WebsitesViewModel(api: container.websitesAPI, cache: container.cacheClient)
         self.realtimeClient = container.makeRealtimeClient(handler: nil)
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
