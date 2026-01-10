@@ -17,49 +17,120 @@ public struct ConversationsPanel: View {
 private struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
     @Environment(\.colorScheme) private var colorScheme
+    @State private var searchQuery: String = ""
 
     var body: some View {
-        Group {
-            if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Loading conversations…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.conversations.isEmpty {
-                SidebarPanelPlaceholder(title: "No conversations")
-            } else {
-                List {
-                    ForEach(viewModel.groupedConversations) { group in
-                        Section(group.title) {
-                            ForEach(group.conversations) { conversation in
-                                Button {
-                                    Task { await viewModel.selectConversation(id: conversation.id) }
-                                } label: {
-                                    ConversationRow(
-                                        conversation: conversation,
-                                        isSelected: viewModel.selectedConversationId == conversation.id
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .listRowBackground(
-                                    viewModel.selectedConversationId == conversation.id
-                                        ? selectionBackground
-                                        : unselectedRowBackground
-                                )
-                            }
-                        }
+        VStack(spacing: 0) {
+            header
+            Divider()
+            Group {
+                if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Loading conversations…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
-                }
-                .listStyle(.sidebar)
-                .scrollContentBackground(.hidden)
-                .background(panelBackground)
-                .refreshable {
-                    await viewModel.refreshConversations()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filteredGroups.isEmpty {
+                    SidebarPanelPlaceholder(title: searchQuery.isEmpty ? "No conversations" : "No matching conversations")
+                } else {
+                    conversationsList
                 }
             }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Text("Chat")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button {
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("New chat")
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search chats", text: $searchQuery)
+                    .textFieldStyle(.plain)
+                if !searchQuery.isEmpty {
+                    Button {
+                        searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .font(.subheadline)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(searchFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(searchBorder, lineWidth: 1)
+            )
+        }
+        .padding(16)
+        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+    }
+
+    private var conversationsList: some View {
+        List {
+            ForEach(filteredGroups) { group in
+                Section(group.title) {
+                    ForEach(group.conversations) { conversation in
+                        Button {
+                            Task { await viewModel.selectConversation(id: conversation.id) }
+                        } label: {
+                            ConversationRow(
+                                conversation: conversation,
+                                isSelected: viewModel.selectedConversationId == conversation.id
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(
+                            viewModel.selectedConversationId == conversation.id
+                                ? selectionBackground
+                                : unselectedRowBackground
+                        )
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(panelBackground)
+        .refreshable {
+            await viewModel.refreshConversations()
+        }
+    }
+
+    private var filteredGroups: [ConversationGroup] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            return viewModel.groupedConversations
+        }
+        return viewModel.groupedConversations.compactMap { group in
+            let filtered = group.conversations.filter { conversation in
+                conversation.title.localizedCaseInsensitiveContains(query)
+            }
+            guard !filtered.isEmpty else { return nil }
+            return ConversationGroup(id: group.id, title: group.title, conversations: filtered)
         }
     }
 
@@ -69,6 +140,22 @@ private struct ConversationsPanelView: View {
 
     private var unselectedRowBackground: Color {
         colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
+    }
+
+    private var searchFill: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var searchBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
     }
 
     private var panelBackground: Color {
