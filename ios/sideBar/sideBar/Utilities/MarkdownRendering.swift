@@ -1,6 +1,21 @@
 import Foundation
 
 public enum MarkdownRendering {
+    public struct WebsiteGallery {
+        public let imageUrls: [String]
+        public let caption: String?
+
+        public init(imageUrls: [String], caption: String?) {
+            self.imageUrls = imageUrls
+            self.caption = caption
+        }
+    }
+
+    public enum WebsiteContentBlock {
+        case markdown(String)
+        case gallery(WebsiteGallery)
+    }
+
     public nonisolated static func normalizeTaskLists(_ text: String) -> String {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         var updated: [String] = []
@@ -42,6 +57,38 @@ public enum MarkdownRendering {
     public nonisolated static func normalizeWebsiteMarkdown(_ text: String) -> String {
         let replaced = replaceGalleryBlocks(in: text)
         return normalizeTaskLists(replaced)
+    }
+
+    @MainActor
+    public static func splitWebsiteContent(_ text: String) -> [WebsiteContentBlock] {
+        let galleryRegex = makeGalleryRegex()
+        let matches = galleryRegex.matches(in: text, range: NSRange(location: 0, length: text.utf16.count))
+        guard !matches.isEmpty else {
+            return [.markdown(text)]
+        }
+
+        var blocks: [WebsiteContentBlock] = []
+        var currentIndex = text.startIndex
+
+        for match in matches {
+            guard let range = Range(match.range, in: text) else { continue }
+            let before = String(text[currentIndex..<range.lowerBound])
+            appendMarkdownIfNeeded(before, to: &blocks)
+
+            let block = String(text[range])
+            if let gallery = parseGalleryBlock(block) {
+                blocks.append(.gallery(gallery))
+            } else {
+                blocks.append(.markdown(block))
+            }
+
+            currentIndex = range.upperBound
+        }
+
+        let trailing = String(text[currentIndex...])
+        appendMarkdownIfNeeded(trailing, to: &blocks)
+
+        return blocks
     }
 
     private nonisolated static func makeTaskItemRegex() -> NSRegularExpression {
@@ -93,11 +140,7 @@ public enum MarkdownRendering {
         let captionRegex = makeGalleryCaptionRegex()
         let imageRegex = makeGalleryImageRegex()
         let caption = extractFirstMatch(in: block, regex: captionRegex)
-        let imageUrls = imageRegex.matches(in: block, range: NSRange(location: 0, length: block.utf16.count))
-            .compactMap { match -> String? in
-                guard let range = Range(match.range(at: 1), in: block) else { return nil }
-                return String(block[range])
-            }
+        let imageUrls = extractImageUrls(in: block, regex: imageRegex)
 
         var lines: [String] = imageUrls.map { url in
             "![](\(url))"
@@ -105,11 +148,21 @@ public enum MarkdownRendering {
 
         if let caption, !caption.isEmpty {
             lines.append("")
-            lines.append("<p align=\"center\"><em>\(caption)</em></p>")
+            lines.append("_\(caption)_")
             lines.append("")
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    @MainActor
+    private static func parseGalleryBlock(_ block: String) -> WebsiteGallery? {
+        let captionRegex = makeGalleryCaptionRegex()
+        let imageRegex = makeGalleryImageRegex()
+        let caption = extractFirstMatch(in: block, regex: captionRegex)
+        let imageUrls = extractImageUrls(in: block, regex: imageRegex)
+        guard !imageUrls.isEmpty else { return nil }
+        return WebsiteGallery(imageUrls: imageUrls, caption: caption)
     }
 
     private nonisolated static func extractFirstMatch(in text: String, regex: NSRegularExpression) -> String? {
@@ -119,5 +172,18 @@ public enum MarkdownRendering {
             return nil
         }
         return String(text[capture])
+    }
+
+    private nonisolated static func extractImageUrls(in text: String, regex: NSRegularExpression) -> [String] {
+        regex.matches(in: text, range: NSRange(location: 0, length: text.utf16.count))
+            .compactMap { match -> String? in
+                guard let range = Range(match.range(at: 1), in: text) else { return nil }
+                return String(text[range])
+            }
+    }
+
+    private nonisolated static func appendMarkdownIfNeeded(_ text: String, to blocks: inout [WebsiteContentBlock]) {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        blocks.append(.markdown(text))
     }
 }

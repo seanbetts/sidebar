@@ -69,12 +69,21 @@ private struct WebsitesDetailView: View {
     private var content: some View {
         if let website = viewModel.active {
             ScrollView {
-                SideBarMarkdown(
-                    text: stripFrontmatter(website.content),
-                    preprocessor: MarkdownRendering.normalizeWebsiteMarkdown
-                )
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                let blocks = MarkdownRendering.splitWebsiteContent(stripFrontmatter(website.content))
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                        switch block {
+                        case .markdown(let text):
+                            SideBarMarkdown(text: text)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        case .gallery(let gallery):
+                            WebsiteGalleryView(gallery: gallery)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         } else if viewModel.isLoadingDetail {
             ProgressView()
@@ -167,4 +176,49 @@ private struct WebsitesDetailView: View {
         formatter.timeStyle = .none
         return formatter
     }()
+}
+
+private struct WebsiteGalleryView: View {
+    let gallery: MarkdownRendering.WebsiteGallery
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 12) {
+            ForEach(gallery.imageUrls, id: \.self) { urlString in
+                GalleryImageView(urlString: urlString)
+            }
+            if let caption = gallery.caption, !caption.isEmpty {
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct GalleryImageView: View {
+    let urlString: String
+
+    var body: some View {
+        if let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                case .failure:
+                    Image(systemName: "photo")
+                        .font(.system(size: 32, weight: .regular))
+                        .foregroundStyle(.secondary)
+                case .empty:
+                    ProgressView()
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
 }
