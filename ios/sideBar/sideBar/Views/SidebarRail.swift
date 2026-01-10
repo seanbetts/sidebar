@@ -5,6 +5,7 @@ public struct SidebarRail: View {
     @State private var hoveredSection: AppSection?
     private let onTogglePanel: (() -> Void)?
     private let onShowSettings: (() -> Void)?
+    private let onSelectSection: ((AppSection) -> Void)?
 
     private let sections: [AppSection] = [
         .notes,
@@ -17,11 +18,13 @@ public struct SidebarRail: View {
     public init(
         selection: Binding<AppSection?>,
         onTogglePanel: (() -> Void)? = nil,
-        onShowSettings: (() -> Void)? = nil
+        onShowSettings: (() -> Void)? = nil,
+        onSelectSection: ((AppSection) -> Void)? = nil
     ) {
         self._selection = selection
         self.onTogglePanel = onTogglePanel
         self.onShowSettings = onShowSettings
+        self.onSelectSection = onSelectSection
     }
 
     public var body: some View {
@@ -67,7 +70,11 @@ public struct SidebarRail: View {
         let isHovered = hoveredSection == section
 
         return Button {
-            selection = section
+            if let onSelectSection {
+                onSelectSection(section)
+            } else {
+                selection = section
+            }
         } label: {
             Image(systemName: iconName(for: section))
                 .font(.system(size: 18, weight: .semibold))

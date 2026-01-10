@@ -41,7 +41,13 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                 SidebarRail(
                     selection: $selection,
                     onTogglePanel: toggleLeftPanel,
-                    onShowSettings: onShowSettings
+                    onShowSettings: onShowSettings,
+                    onSelectSection: { section in
+                        if !isLeftPanelExpanded {
+                            toggleLeftPanel()
+                        }
+                        selection = section
+                    }
                 )
                     .frame(width: railWidth)
 
