@@ -45,6 +45,7 @@ private struct WebsitesDetailView: View {
                 Text(displayTitle)
                     .font(.headline)
                     .lineLimit(1)
+                    .truncationMode(.tail)
                 if let subtitle = subtitleText {
                     Text(subtitle)
                         .font(.caption)

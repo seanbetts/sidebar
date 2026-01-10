@@ -159,10 +159,12 @@ private struct ChatHeaderView: View {
             HStack(spacing: 12) {
                 Image(systemName: "bubble")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(selectedTitle)
                         .font(.headline)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
                 Spacer()
                 if viewModel.isStreaming {
