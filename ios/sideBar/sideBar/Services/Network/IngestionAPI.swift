@@ -3,6 +3,8 @@ import Foundation
 public protocol IngestionProviding {
     func list() async throws -> IngestionListResponse
     func getMeta(fileId: String) async throws -> IngestionMetaResponse
+    func getContent(fileId: String, kind: String, range: String?) async throws -> Data
+    func pin(fileId: String, pinned: Bool) async throws
 }
 
 public struct IngestionAPI {

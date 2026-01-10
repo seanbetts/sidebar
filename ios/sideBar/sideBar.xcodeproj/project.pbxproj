@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0A12F21000000BEEF02 /* MarkdownUI */; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
 		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
@@ -66,6 +67,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */,
 				14DFA3322F110406001DAF5B /* PostgREST in Frameworks */,
 				14DFA3302F110406001DAF5B /* Functions in Frameworks */,
 				14DFA32E2F110406001DAF5B /* Auth in Frameworks */,

@@ -80,3 +80,19 @@ public struct IngestionDerivative: Codable {
     public let mime: String
     public let sizeBytes: Int
 }
+
+public struct SpreadsheetPayload: Codable {
+    public let sheets: [SpreadsheetSheet]
+}
+
+public struct SpreadsheetSheet: Codable {
+    public let name: String
+    public let rows: [[String]]
+    public let headerRow: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case rows
+        case headerRow = "header_row"
+    }
+}

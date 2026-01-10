@@ -3,6 +3,7 @@ import Foundation
 public protocol FilesProviding {
     func listTree(basePath: String) async throws -> FileTree
     func getContent(basePath: String, path: String) async throws -> FileContent
+    func download(basePath: String, path: String) async throws -> Data
 }
 
 public struct FilesAPI {
