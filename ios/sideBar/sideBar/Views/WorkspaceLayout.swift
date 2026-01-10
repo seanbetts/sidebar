@@ -7,11 +7,11 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
     @State private var draggingRightWidth: Double?
 
+    private let defaultRightSidebarWidth: Double = 360
     private let railWidth: Double = 56
     private let dividerWidth: Double = 8
     private let leftPanelWidth: Double = 280
     private let minRightSidebarWidth: Double = 280
-    private let maxRightSidebarWidth: Double = 520
     private let minMainWidth: Double = 320
 
     private let header: () -> Header
@@ -79,8 +79,16 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                             },
                             onEnded: {
                                 let proposed = draggingRightWidth ?? rightSidebarWidth
-                                rightSidebarWidth = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
+                                let clamped = clampedRightWidth(proposed, proxy: proxy, leftPanelWidth: widths.leftPanel)
+                                #if os(macOS)
+                                rightSidebarWidth = snappedRightWidth(clamped, proxy: proxy, leftPanelWidth: widths.leftPanel)
+                                #else
+                                rightSidebarWidth = clamped
+                                #endif
                                 draggingRightWidth = nil
+                            },
+                            onDoubleTap: {
+                                toggleRightSidebarWidth(proxy: proxy, leftPanelWidth: widths.leftPanel)
                             }
                         )
 
@@ -105,15 +113,63 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     }
 
     private func clampedRightWidth(_ value: Double, proxy: GeometryProxy, leftPanelWidth: Double) -> Double {
-        let maxAllowed = min(maxRightSidebarWidth, availableWidth(proxy: proxy) - leftPanelWidth - minMainWidth)
+        let maxAllowed = maxRightWidth(proxy: proxy, leftPanelWidth: leftPanelWidth)
         return min(max(value, minRightSidebarWidth), maxAllowed)
+    }
+
+    private func snappedRightWidth(_ value: Double, proxy: GeometryProxy, leftPanelWidth: Double) -> Double {
+        let half = halfWidth(proxy: proxy, leftPanelWidth: leftPanelWidth)
+        let maxAllowed = maxRightWidth(proxy: proxy, leftPanelWidth: leftPanelWidth)
+        let snapPoints = [
+            defaultRightSidebarWidth,
+            420,
+            480,
+            maxAllowed,
+            half
+        ]
+        let candidates = snapPoints
+            .filter { $0 >= minRightSidebarWidth && $0 <= maxAllowed }
+        let nearest = candidates.min(by: { abs($0 - value) < abs($1 - value) }) ?? value
+        return clampedRightWidth(nearest, proxy: proxy, leftPanelWidth: leftPanelWidth)
+    }
+
+    private func toggleRightSidebarWidth(proxy: GeometryProxy, leftPanelWidth: Double) {
+        let half = halfWidth(proxy: proxy, leftPanelWidth: leftPanelWidth)
+        let target: Double
+        if abs(rightSidebarWidth - half) <= 8 {
+            target = defaultRightSidebarWidth
+        } else {
+            target = half
+        }
+        rightSidebarWidth = clampedRightWidth(target, proxy: proxy, leftPanelWidth: leftPanelWidth)
+    }
+
+    private func halfWidth(proxy: GeometryProxy, leftPanelWidth: Double) -> Double {
+        let available = availableWidth(proxy: proxy) - leftPanelWidth
+        return max(minRightSidebarWidth, min(available * 0.5, maxRightWidth(proxy: proxy, leftPanelWidth: leftPanelWidth)))
+    }
+
+    private func maxRightWidth(proxy: GeometryProxy, leftPanelWidth: Double) -> Double {
+        let usableWidth = availableWidth(proxy: proxy) - leftPanelWidth
+        let half = usableWidth * 0.5
+        let maxAllowed = usableWidth - minMainWidth
+        #if os(macOS)
+        return min(520, min(half, maxAllowed))
+        #else
+        return min(half, maxAllowed)
+        #endif
     }
 
     private func availableWidth(proxy: GeometryProxy) -> Double {
         proxy.size.width - railWidth - dividerWidth
     }
 
-    private func resizeHandle(width: Double, onChanged: @escaping (Double) -> Void, onEnded: @escaping () -> Void) -> some View {
+    private func resizeHandle(
+        width: Double,
+        onChanged: @escaping (Double) -> Void,
+        onEnded: @escaping () -> Void,
+        onDoubleTap: (() -> Void)? = nil
+    ) -> some View {
         ZStack {
             Rectangle()
                 .fill(handleBackground)
@@ -136,6 +192,9 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                     onEnded()
                 }
         )
+        .onTapGesture(count: 2) {
+            onDoubleTap?()
+        }
     }
 
     private func toggleLeftPanel() {
