@@ -147,12 +147,29 @@ private struct PDFKitView: NSViewRepresentable {
     func makeNSView(context: Context) -> PDFView {
         let view = PDFView()
         view.autoScales = true
-        view.document = PDFDocument(url: url)
+        context.coordinator.loadDocument(into: view, url: url)
         return view
     }
 
     func updateNSView(_ nsView: PDFView, context: Context) {
-        nsView.document = PDFDocument(url: url)
+        context.coordinator.loadDocument(into: nsView, url: url)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        private var document: PDFDocument?
+        private var documentURL: URL?
+
+        func loadDocument(into view: PDFView, url: URL) {
+            guard documentURL != url else { return }
+            documentURL = url
+            let doc = PDFDocument(url: url)
+            document = doc
+            view.document = doc
+        }
     }
 }
 
@@ -194,12 +211,29 @@ private struct PDFKitView: UIViewRepresentable {
     func makeUIView(context: Context) -> PDFView {
         let view = PDFView()
         view.autoScales = true
-        view.document = PDFDocument(url: url)
+        context.coordinator.loadDocument(into: view, url: url)
         return view
     }
 
     func updateUIView(_ uiView: PDFView, context: Context) {
-        uiView.document = PDFDocument(url: url)
+        context.coordinator.loadDocument(into: uiView, url: url)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        private var document: PDFDocument?
+        private var documentURL: URL?
+
+        func loadDocument(into view: PDFView, url: URL) {
+            guard documentURL != url else { return }
+            documentURL = url
+            let doc = PDFDocument(url: url)
+            document = doc
+            view.document = doc
+        }
     }
 }
 
