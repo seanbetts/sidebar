@@ -96,13 +96,7 @@ private struct CompactConversationRow: View {
             Text(conversation.title)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
-            if let preview = conversation.firstMessage, !preview.isEmpty {
-                Text(preview)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-            Text(formattedDate)
+            Text(subtitleText)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -114,6 +108,12 @@ private struct CompactConversationRow: View {
             return conversation.updatedAt
         }
         return DateFormatter.chatListCompact.string(from: date)
+    }
+
+    private var subtitleText: String {
+        let count = conversation.messageCount
+        let label = count == 1 ? "1 message" : "\(count) messages"
+        return "\(formattedDate) | \(label)"
     }
 }
 
