@@ -32,6 +32,8 @@ private struct NotesDetailView: View {
                 .foregroundStyle(.primary)
             Text(displayTitle)
                 .font(.headline)
+                .lineLimit(1)
+                .truncationMode(.tail)
             Spacer()
             Button {
             } label: {

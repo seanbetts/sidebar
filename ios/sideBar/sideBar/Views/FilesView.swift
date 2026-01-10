@@ -42,6 +42,8 @@ private struct FilesHeaderView: View {
                 .foregroundStyle(.primary)
             Text(activeTitle)
                 .font(.headline)
+                .lineLimit(1)
+                .truncationMode(.tail)
             Spacer()
         }
         .padding(.horizontal, 16)
