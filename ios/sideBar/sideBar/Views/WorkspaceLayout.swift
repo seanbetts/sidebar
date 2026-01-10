@@ -149,6 +149,8 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
             ConversationsPanel()
         case .notes:
             NotesPanel()
+        case .tasks:
+            TasksPanel()
         case .files:
             FilesPanel()
         case .websites:

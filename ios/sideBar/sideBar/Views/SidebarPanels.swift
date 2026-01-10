@@ -14,6 +14,91 @@ public struct ConversationsPanel: View {
     }
 }
 
+public struct TasksPanel: View {
+    public init() {
+    }
+
+    public var body: some View {
+        TasksPanelView()
+    }
+}
+
+private struct TasksPanelView: View {
+    @State private var searchQuery: String = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            SidebarPanelPlaceholder(title: "Tasks")
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Text("Tasks")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button {
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add task")
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search tasks", text: $searchQuery)
+                    .textFieldStyle(.plain)
+                if !searchQuery.isEmpty {
+                    Button {
+                        searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .font(.subheadline)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(searchFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(searchBorder, lineWidth: 1)
+            )
+        }
+        .padding(16)
+        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+    }
+
+    private var searchFill: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var searchBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
+    }
+}
+
 private struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
     @Environment(\.colorScheme) private var colorScheme
