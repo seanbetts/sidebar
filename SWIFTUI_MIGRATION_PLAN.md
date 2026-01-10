@@ -123,7 +123,7 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 ### Overall Progress
 
 **Current Target**: Read-Only MVP
-**Status**: Phase 5 complete (File Viewing)
+**Status**: Phase 6 complete (Website Viewer)
 **Sessions Completed (Implementation)**: 12 / 22-33 (MVP) or 12 / 36-51 (Full App)
 **Hours Logged (Implementation)**: TBD / 88-132 (MVP) or TBD / 157-280 (Full App)
 **Weeks Elapsed (Implementation)**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
@@ -147,7 +147,7 @@ Critical Path (MVP): [████████░░░░░░░░░░░�
 | **3. Chat Viewer** | ✅ Complete | 2 / 4-5 | 2 / 5-7 | 100% | Modified (no input) |
 | **4. Note Viewer** | ✅ Complete | 3 / 2-3 | 3 / 7-10 | 100% | Heavily Reduced (read-only) |
 | **5. File Viewing** | ✅ Complete | 4 / 4-6 | 4 / 4-6 | 100% | Full (already read-only) |
-| **6. Website Viewer** | ⬜ Not Started | 0 / 1-2 | 0 / 2-3 | 0% | Modified (no saving) |
+| **6. Website Viewer** | ✅ Complete | 1 / 1-2 | 1 / 2-3 | 100% | Modified (no saving) |
 | **7. Additional Features** | ⬜ Not Started | 0 / 2-3 | 0 / 3-4 | 0% | Modified (view-only) |
 | **8. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
 | **9. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
@@ -274,10 +274,10 @@ Critical Path (MVP): [████████░░░░░░░░░░░�
 
 #### Phase 6: Website Viewer (1-2 sessions MVP, 2-3 full)
 **MVP Scope: Read-Only Website Viewer**
-- [ ] 6.1 Website List (search, pinned, archived)
-- [ ] 6.2 Website Viewer (WKWebView or MarkdownUI)
-- [ ] 6.4 Website Operations (view only - pin/unpin, open in Safari)
-- [ ] 6.5 Real-time Sync
+- [x] 6.1 Website List (search, pinned, archived)
+- [x] 6.2 Website Viewer (WKWebView or MarkdownUI)
+- [x] 6.4 Website Operations (view only - pin/unpin, open in Safari)
+- [x] 6.5 Real-time Sync
 
 **Native UX Requirements (Phase 6)**
 - Use `SFSafariViewController` on iOS for external viewing.
