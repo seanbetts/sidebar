@@ -180,11 +180,18 @@ private struct WebsitesDetailView: View {
 
 private struct WebsiteGalleryView: View {
     let gallery: MarkdownRendering.WebsiteGallery
+    private let gridSpacing: CGFloat = 12
+    private let minImageWidth: CGFloat = 150
 
     var body: some View {
-        VStack(alignment: .center, spacing: 12) {
-            ForEach(gallery.imageUrls, id: \.self) { urlString in
-                GalleryImageView(urlString: urlString)
+        VStack(alignment: .center, spacing: gridSpacing) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: minImageWidth), spacing: gridSpacing)],
+                spacing: gridSpacing
+            ) {
+                ForEach(gallery.imageUrls, id: \.self) { urlString in
+                    GalleryImageView(urlString: urlString)
+                }
             }
             if let caption = gallery.caption, !caption.isEmpty {
                 Text(caption)
@@ -199,6 +206,7 @@ private struct WebsiteGalleryView: View {
 
 private struct GalleryImageView: View {
     let urlString: String
+    private let maxImageSize = CGSize(width: 450, height: 450)
 
     var body: some View {
         if let url = URL(string: urlString) {
@@ -208,6 +216,7 @@ private struct GalleryImageView: View {
                     image
                         .resizable()
                         .scaledToFit()
+                        .frame(maxWidth: maxImageSize.width, maxHeight: maxImageSize.height)
                 case .failure:
                     Image(systemName: "photo")
                         .font(.system(size: 32, weight: .regular))
