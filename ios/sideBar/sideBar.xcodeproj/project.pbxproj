@@ -143,6 +143,7 @@
 				14DFA3332F110406001DAF5B /* Realtime */,
 				14DFA3352F110406001DAF5B /* Storage */,
 				14DFA3382F116F2C001DAF5B /* Supabase */,
+				14F1A0A12F21000000BEEF02 /* MarkdownUI */,
 			);
 			productName = sideBar;
 			productReference = 14C84A482F10562300FE0C16 /* sideBar.app */;
@@ -228,6 +229,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				14F1A0A02F21000000BEEF02 /* XCRemoteSwiftPackageReference "MarkdownUI" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 14C84A492F10562300FE0C16 /* Products */;
@@ -690,6 +692,14 @@
 				minimumVersion = 2.5.1;
 			};
 		};
+		14F1A0A02F21000000BEEF02 /* XCRemoteSwiftPackageReference "MarkdownUI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/MarkdownUI";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -722,6 +732,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		14F1A0A12F21000000BEEF02 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 14F1A0A02F21000000BEEF02 /* XCRemoteSwiftPackageReference "MarkdownUI" */;
+			productName = MarkdownUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 
