@@ -11,6 +11,7 @@ public enum CacheKeys {
     public static let fileContentPrefix = "files.content"
     public static let userSettings = "settings.user"
     public static let skillsList = "settings.skills"
+    public static let profileImage = "settings.profile-image"
 
     public static func note(id: String) -> String {
         "notes.note.\(id)"
