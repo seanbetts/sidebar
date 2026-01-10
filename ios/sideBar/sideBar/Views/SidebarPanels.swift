@@ -152,7 +152,7 @@ private struct NotesPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 Text("Notes")
                     .font(.subheadline.weight(.semibold))
@@ -524,7 +524,7 @@ private struct FilesPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 Text("Files")
                     .font(.subheadline.weight(.semibold))
@@ -884,7 +884,7 @@ private struct WebsitesPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 Text("Websites")
                     .font(.subheadline.weight(.semibold))
