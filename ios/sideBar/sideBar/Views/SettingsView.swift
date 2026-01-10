@@ -299,9 +299,17 @@ private struct SystemSettingsView: View {
 
     var body: some View {
         Form {
-            Section("System") {
-                LabeledContent("Communication Style", value: displayValue(viewModel.settings?.communicationStyle))
-                LabeledContent("Working Relationship", value: displayValue(viewModel.settings?.workingRelationship))
+            Section {
+                Text("Customize the prompts that guide sideBar")
+                    .foregroundStyle(.secondary)
+            }
+            Section("Communication Style") {
+                Text(displayValue(viewModel.settings?.communicationStyle))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Section("Working Relationship") {
+                Text(displayValue(viewModel.settings?.workingRelationship))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .overlay {
