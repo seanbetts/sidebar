@@ -1,4 +1,5 @@
 import SwiftUI
+import LocalAuthentication
 #if os(macOS)
 import AppKit
 #else
@@ -29,6 +30,7 @@ public struct SettingsView: View {
 #if os(macOS)
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case profile
+    case settings
     case system
     case skills
     case memories
@@ -39,6 +41,8 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .profile:
             return "Profile"
+        case .settings:
+            return "Settings"
         case .system:
             return "System"
         case .skills:
@@ -52,8 +56,10 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .profile:
             return "person.crop.circle"
+        case .settings:
+            return "gearshape"
         case .system:
-            return "slider.horizontal.3"
+            return "bubble"
         case .skills:
             return "hammer.circle"
         case .memories:
@@ -97,6 +103,8 @@ private struct SettingsSplitView: View {
         switch section {
         case .profile:
             ProfileSettingsView(viewModel: viewModel)
+        case .settings:
+            GeneralSettingsView()
         case .system:
             SystemSettingsView(viewModel: viewModel)
         case .skills:
@@ -138,9 +146,13 @@ private struct SettingsTabsView: View {
                 .tabItem {
                     Label("Profile", systemImage: "person.crop.circle")
                 }
+            GeneralSettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
             SystemSettingsView(viewModel: viewModel)
                 .tabItem {
-                    Label("System", systemImage: "slider.horizontal.3")
+                    Label("System", systemImage: "bubble")
                 }
             SkillsSettingsView(viewModel: viewModel)
                 .tabItem {
@@ -266,6 +278,59 @@ private struct ProfileSettingsView: View {
         guard let image = UIImage(data: data) else { return nil }
         return Image(uiImage: image)
         #endif
+    }
+}
+
+private struct GeneralSettingsView: View {
+    @AppStorage(AppStorageKeys.biometricUnlockEnabled) private var biometricUnlockEnabled = false
+    @AppStorage(AppStorageKeys.weatherUsesFahrenheit) private var weatherUsesFahrenheit = false
+    @State private var canUseDeviceAuth = false
+    @State private var biometryType: LABiometryType = .none
+
+    var body: some View {
+        Form {
+            Section("Security") {
+                Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
+                    .disabled(!canUseDeviceAuth)
+                if !canUseDeviceAuth {
+                    Text("Set a device passcode to enable biometric unlock.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if biometryType == .none {
+                    Text("Biometric unlock will fall back to device passcode.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Section("Weather") {
+                Picker("Temperature Units", selection: $weatherUsesFahrenheit) {
+                    Text("Celsius").tag(false)
+                    Text("Fahrenheit").tag(true)
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        .onAppear {
+            evaluateBiometricSupport()
+        }
+    }
+
+    private var biometricLabel: String {
+        switch biometryType {
+        case .faceID:
+            return "Require Face ID"
+        case .touchID:
+            return "Require Touch ID"
+        default:
+            return "Require Biometric Unlock"
+        }
+    }
+
+    private func evaluateBiometricSupport() {
+        let context = LAContext()
+        canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+        biometryType = context.biometryType
     }
 }
 
