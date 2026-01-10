@@ -43,6 +43,10 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                     onTogglePanel: toggleLeftPanel,
                     onShowSettings: onShowSettings,
                     onSelectSection: { section in
+                        if isLeftPanelExpanded && selection == section {
+                            toggleLeftPanel()
+                            return
+                        }
                         if !isLeftPanelExpanded {
                             toggleLeftPanel()
                         }
