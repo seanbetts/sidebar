@@ -7,6 +7,7 @@ import Combine
 public final class NotesViewModel: ObservableObject {
     @Published public private(set) var tree: FileTree? = nil
     @Published public private(set) var activeNote: NotePayload? = nil
+    @Published public private(set) var selectedNoteId: String? = nil
     @Published public private(set) var errorMessage: String? = nil
 
     private let api: any NotesProviding
@@ -36,6 +37,7 @@ public final class NotesViewModel: ObservableObject {
 
     public func loadNote(id: String) async {
         errorMessage = nil
+        selectedNoteId = id
         let cacheKey = CacheKeys.note(id: id)
         let cached: NotePayload? = cache.get(key: cacheKey)
         if let cached {
@@ -50,5 +52,9 @@ public final class NotesViewModel: ObservableObject {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    public func selectNote(id: String) async {
+        await loadNote(id: id)
     }
 }
