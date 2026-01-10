@@ -28,7 +28,7 @@ private struct NotesDetailView: View {
         HStack(spacing: 12) {
             Image(systemName: "text.document")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
             Text(displayTitle)
                 .font(.headline)
             Spacer()

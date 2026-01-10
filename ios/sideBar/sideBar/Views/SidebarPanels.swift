@@ -185,19 +185,19 @@ private struct NotesPanelView: View {
                 Spacer()
                 Button {
                 } label: {
+                    Image(systemName: "folder")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add folder")
+                Button {
+                } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 14, weight: .semibold))
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(searchFill)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(searchBorder, lineWidth: 1)
-                )
                 .accessibilityLabel("Add note")
             }
 
