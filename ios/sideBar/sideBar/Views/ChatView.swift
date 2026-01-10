@@ -14,6 +14,10 @@ public struct ChatView: View {
         ChatDetailView(viewModel: environment.chatViewModel)
             .task {
                 await environment.chatViewModel.loadConversations()
+                environment.chatViewModel.startAutoRefresh()
+            }
+            .onDisappear {
+                environment.chatViewModel.stopAutoRefresh()
             }
         #else
         if horizontalSizeClass == .compact {
@@ -22,6 +26,10 @@ public struct ChatView: View {
             ChatDetailView(viewModel: environment.chatViewModel)
                 .task {
                     await environment.chatViewModel.loadConversations()
+                    environment.chatViewModel.startAutoRefresh()
+                }
+                .onDisappear {
+                    environment.chatViewModel.stopAutoRefresh()
                 }
         }
         #endif
@@ -61,9 +69,13 @@ private struct ChatCompactView: View {
             .navigationTitle("Chat")
             .task {
                 await viewModel.loadConversations()
+                viewModel.startAutoRefresh()
                 if let selected = viewModel.selectedConversationId, path.isEmpty {
                     path = [selected]
                 }
+            }
+            .onDisappear {
+                viewModel.stopAutoRefresh()
             }
             .navigationDestination(for: String.self) { conversationId in
                 ChatDetailView(viewModel: viewModel)
@@ -107,23 +119,35 @@ private struct CompactConversationRow: View {
 
 private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
+    @State private var draftMessage: String = ""
+    private let inputBarHeight: CGFloat = 60
 
     var body: some View {
-        VStack(spacing: 0) {
-            ChatHeaderView(viewModel: viewModel)
-            Divider()
-            if viewModel.isLoadingMessages {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.selectedConversationId == nil {
-                ChatEmptyStateView(title: "Select a conversation", subtitle: "Choose a thread to view messages.")
-            } else if viewModel.messages.isEmpty {
-                ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
-            } else {
-                ChatMessageListView(viewModel: viewModel)
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                ChatHeaderView(viewModel: viewModel)
+                Divider()
+                if viewModel.isLoadingMessages {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.selectedConversationId == nil {
+                    ChatEmptyStateView(title: "Select a conversation", subtitle: "Choose a thread to view messages.")
+                } else if viewModel.messages.isEmpty {
+                    ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
+                } else {
+                    ChatMessageListView(viewModel: viewModel)
+                        .padding(.bottom, inputBarHeight)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            ChatInputBar(
+                text: $draftMessage,
+                isEnabled: viewModel.selectedConversationId != nil
+            )
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
@@ -228,6 +252,10 @@ private struct ChatMessageListView: View {
                     return
                 }
                 proxy.scrollTo(last.id, anchor: .bottom)
+            }
+            .refreshable {
+                await viewModel.refreshConversations()
+                await viewModel.refreshActiveConversation()
             }
         }
     }
@@ -512,6 +540,310 @@ private struct ChatEmptyStateView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+private struct ChatInputBar: View {
+    @Binding var text: String
+    let isEnabled: Bool
+
+    @State private var textHeight: CGFloat = 0
+    private let minHeight: CGFloat = 40
+    private let maxHeight: CGFloat = 140
+
+    var body: some View {
+        PlatformChatInputView(
+            text: $text,
+            measuredHeight: $textHeight,
+            isEnabled: isEnabled,
+            minHeight: minHeight,
+            maxHeight: maxHeight
+        )
+        .frame(height: computedHeight)
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.28), lineWidth: 1)
+        )
+        .shadow(color: shadowColor, radius: 16, x: 0, y: 10)
+    }
+
+    private var shadowColor: Color {
+        Color.black.opacity(0.12)
+    }
+
+    private var computedHeight: CGFloat {
+        let clamped = min(max(textHeight, minHeight), maxHeight)
+        return clamped
+    }
+}
+
+private struct PlatformChatInputView: View {
+    @Binding var text: String
+    @Binding var measuredHeight: CGFloat
+    let isEnabled: Bool
+    let minHeight: CGFloat
+    let maxHeight: CGFloat
+
+    var body: some View {
+        #if os(iOS)
+        ChatInputUIKitView(
+            text: $text,
+            measuredHeight: $measuredHeight,
+            isEnabled: isEnabled,
+            minHeight: minHeight,
+            maxHeight: maxHeight
+        )
+        #else
+        ChatInputAppKitView(
+            text: $text,
+            measuredHeight: $measuredHeight,
+            isEnabled: isEnabled,
+            minHeight: minHeight,
+            maxHeight: maxHeight
+        )
+        #endif
+    }
+}
+
+#if os(iOS)
+private struct ChatInputUIKitView: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var measuredHeight: CGFloat
+    let isEnabled: Bool
+    let minHeight: CGFloat
+    let maxHeight: CGFloat
+
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        effectView.clipsToBounds = true
+        effectView.layer.cornerRadius = 22
+
+        let textView = UITextView()
+        textView.font = UIFont.preferredFont(forTextStyle: .body)
+        textView.backgroundColor = .clear
+        textView.textContainerInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 44)
+        textView.textContainer.lineFragmentPadding = 0
+        textView.isScrollEnabled = false
+        textView.delegate = context.coordinator
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "paperplane.fill"), for: .normal)
+        button.tintColor = UIColor(Color.accentColor)
+        button.backgroundColor = UIColor(Color.accentColor)
+        button.layer.cornerRadius = 15
+        button.clipsToBounds = true
+        button.addTarget(context.coordinator, action: #selector(Coordinator.didTapSend), for: .touchUpInside)
+
+        effectView.contentView.addSubview(textView)
+        effectView.contentView.addSubview(button)
+
+        textView.translatesAutoresizingMaskIntoConstraints = false
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            textView.leadingAnchor.constraint(equalTo: effectView.contentView.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor),
+            textView.topAnchor.constraint(equalTo: effectView.contentView.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor),
+            button.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor, constant: -6),
+            button.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -6),
+            button.widthAnchor.constraint(equalToConstant: 30),
+            button.heightAnchor.constraint(equalToConstant: 30)
+        ])
+
+        context.coordinator.textView = textView
+        context.coordinator.sendButton = button
+        return effectView
+    }
+
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        guard let textView = context.coordinator.textView,
+              let button = context.coordinator.sendButton else {
+            return
+        }
+        if textView.text != text {
+            textView.text = text
+        }
+        textView.isEditable = isEnabled
+        let canSend = isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        button.isEnabled = canSend
+        button.alpha = canSend ? 1.0 : 0.45
+        button.backgroundColor = canSend ? UIColor(Color.accentColor) : UIColor.systemGray3
+        button.tintColor = UIColor.white
+        recalculateHeight(for: textView)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, measuredHeight: $measuredHeight, minHeight: minHeight, maxHeight: maxHeight)
+    }
+
+    private func recalculateHeight(for textView: UITextView) {
+        let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
+        let height = min(maxHeight, max(minHeight, size.height))
+        if measuredHeight != height {
+            DispatchQueue.main.async {
+                measuredHeight = height
+            }
+        }
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        private var text: Binding<String>
+        private var measuredHeight: Binding<CGFloat>
+        private let minHeight: CGFloat
+        private let maxHeight: CGFloat
+        weak var textView: UITextView?
+        weak var sendButton: UIButton?
+
+        init(text: Binding<String>, measuredHeight: Binding<CGFloat>, minHeight: CGFloat, maxHeight: CGFloat) {
+            self.text = text
+            self.measuredHeight = measuredHeight
+            self.minHeight = minHeight
+            self.maxHeight = maxHeight
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            text.wrappedValue = textView.text
+            let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
+            let height = min(maxHeight, max(minHeight, size.height))
+            if measuredHeight.wrappedValue != height {
+                measuredHeight.wrappedValue = height
+            }
+        }
+
+        @objc func didTapSend() {
+        }
+    }
+}
+#endif
+
+#if os(macOS)
+private struct ChatInputAppKitView: NSViewRepresentable {
+    @Binding var text: String
+    @Binding var measuredHeight: CGFloat
+    let isEnabled: Bool
+    let minHeight: CGFloat
+    let maxHeight: CGFloat
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let effectView = NSVisualEffectView()
+        effectView.material = .hudWindow
+        effectView.state = .active
+        effectView.blendingMode = .withinWindow
+        effectView.wantsLayer = true
+        effectView.layer?.cornerRadius = 22
+
+        let textView = NSTextView()
+        textView.font = NSFont.preferredFont(forTextStyle: .body)
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 12, height: 8)
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.heightTracksTextView = false
+        textView.delegate = context.coordinator
+
+        let button = NSButton()
+        button.bezelStyle = .regularSquare
+        button.isBordered = false
+        button.image = NSImage(systemSymbolName: "paperplane.fill", accessibilityDescription: nil)
+        button.contentTintColor = .white
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 15
+        button.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.didTapSend)
+
+        effectView.addSubview(textView)
+        effectView.addSubview(button)
+        textView.translatesAutoresizingMaskIntoConstraints = false
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            textView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
+            textView.topAnchor.constraint(equalTo: effectView.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
+            button.trailingAnchor.constraint(equalTo: effectView.trailingAnchor, constant: -6),
+            button.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -6),
+            button.widthAnchor.constraint(equalToConstant: 30),
+            button.heightAnchor.constraint(equalToConstant: 30)
+        ])
+
+        context.coordinator.textView = textView
+        context.coordinator.sendButton = button
+        return effectView
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        guard let textView = context.coordinator.textView,
+              let button = context.coordinator.sendButton else {
+            return
+        }
+        if textView.string != text {
+            textView.string = text
+        }
+        textView.isEditable = isEnabled
+        let canSend = isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        button.isEnabled = canSend
+        button.alphaValue = canSend ? 1.0 : 0.45
+        button.layer?.backgroundColor = (canSend ? NSColor.controlAccentColor : NSColor.systemGray).cgColor
+        recalculateHeight(for: textView)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, measuredHeight: $measuredHeight, minHeight: minHeight, maxHeight: maxHeight)
+    }
+
+    private func recalculateHeight(for textView: NSTextView) {
+        guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else {
+            return
+        }
+        layoutManager.ensureLayout(for: textContainer)
+        let usedRect = layoutManager.usedRect(for: textContainer)
+        let height = min(maxHeight, max(minHeight, usedRect.height + textView.textContainerInset.height * 2))
+        if measuredHeight != height {
+            DispatchQueue.main.async {
+                measuredHeight = height
+            }
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        private var text: Binding<String>
+        private var measuredHeight: Binding<CGFloat>
+        private let minHeight: CGFloat
+        private let maxHeight: CGFloat
+        weak var textView: NSTextView?
+        weak var sendButton: NSButton?
+
+        init(text: Binding<String>, measuredHeight: Binding<CGFloat>, minHeight: CGFloat, maxHeight: CGFloat) {
+            self.text = text
+            self.measuredHeight = measuredHeight
+            self.minHeight = minHeight
+            self.maxHeight = maxHeight
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text.wrappedValue = textView.string
+            guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else {
+                return
+            }
+            layoutManager.ensureLayout(for: textContainer)
+            let usedRect = layoutManager.usedRect(for: textContainer)
+            let height = min(maxHeight, max(minHeight, usedRect.height + textView.textContainerInset.height * 2))
+            if measuredHeight.wrappedValue != height {
+                measuredHeight.wrappedValue = height
+            }
+        }
+
+        @objc func didTapSend() {
+        }
+    }
+}
+#endif
 
 private extension DateFormatter {
     static let chatTimestamp: DateFormatter = {
