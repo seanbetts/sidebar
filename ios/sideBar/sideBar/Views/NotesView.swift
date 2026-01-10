@@ -14,6 +14,7 @@ public struct NotesView: View {
 
 private struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
+    private let contentMaxWidth: CGFloat = 800
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,8 +51,9 @@ private struct NotesDetailView: View {
         if let note = viewModel.activeNote {
             ScrollView {
                 SideBarMarkdown(text: strippedContent(note: note))
+                    .frame(maxWidth: contentMaxWidth, alignment: .leading)
                     .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         } else if viewModel.selectedNoteId != nil {
             ProgressView()
