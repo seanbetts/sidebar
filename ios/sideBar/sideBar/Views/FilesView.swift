@@ -37,9 +37,9 @@ private struct FilesHeaderView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "folder")
+            Image(systemName: iconName)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
             Text(activeTitle)
                 .font(.headline)
             Spacer()
@@ -53,6 +53,28 @@ private struct FilesHeaderView: View {
             return stripFileExtension(name)
         }
         return "Files"
+    }
+
+    private var iconName: String {
+        guard let viewer = viewModel.activeMeta?.recommendedViewer else {
+            return "folder"
+        }
+        switch viewer {
+        case "viewer_pdf":
+            return "doc.richtext"
+        case "viewer_json":
+            return "tablecells"
+        case "viewer_video":
+            return "video"
+        case "image_original":
+            return "photo"
+        case "audio_original":
+            return "waveform"
+        case "text_original", "ai_md":
+            return "doc.text"
+        default:
+            return "doc"
+        }
     }
 }
 
