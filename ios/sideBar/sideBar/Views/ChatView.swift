@@ -136,7 +136,6 @@ private struct ChatDetailView: View {
                     ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
                 } else {
                     ChatMessageListView(viewModel: viewModel)
-                        .padding(.bottom, inputBarHeight)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
