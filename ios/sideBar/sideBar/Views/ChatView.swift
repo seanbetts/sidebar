@@ -131,7 +131,7 @@ private struct ChatDetailView: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.selectedConversationId == nil {
-                    ChatEmptyStateView(title: "Select a conversation", subtitle: "Choose a thread to view messages.")
+                    EmptyView()
                 } else if viewModel.messages.isEmpty {
                     ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
                 } else {
