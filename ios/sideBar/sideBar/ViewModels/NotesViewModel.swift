@@ -12,10 +12,17 @@ public final class NotesViewModel: ObservableObject {
 
     private let api: any NotesProviding
     private let cache: CacheClient
+    private let scratchpadAPI: (any ScratchpadProviding)?
+    private var scratchpadId: String?
 
-    public init(api: any NotesProviding, cache: CacheClient) {
+    public init(
+        api: any NotesProviding,
+        cache: CacheClient,
+        scratchpadAPI: (any ScratchpadProviding)? = nil
+    ) {
         self.api = api
         self.cache = cache
+        self.scratchpadAPI = scratchpadAPI
     }
 
     public func loadTree() async {
@@ -26,8 +33,9 @@ public final class NotesViewModel: ObservableObject {
         }
         do {
             let response = try await api.listTree()
-            tree = response
-            cache.set(key: CacheKeys.notesTree, value: response, ttlSeconds: CachePolicy.notesTree)
+            let enriched = await injectScratchpad(into: response)
+            tree = enriched
+            cache.set(key: CacheKeys.notesTree, value: enriched, ttlSeconds: CachePolicy.notesTree)
         } catch {
             if cached == nil {
                 errorMessage = error.localizedDescription
@@ -56,5 +64,34 @@ public final class NotesViewModel: ObservableObject {
 
     public func selectNote(id: String) async {
         await loadNote(id: id)
+    }
+
+    private func injectScratchpad(into tree: FileTree) async -> FileTree {
+        guard let scratchpadAPI else {
+            return tree
+        }
+        do {
+            let scratchpad = try await scratchpadAPI.get()
+            scratchpadId = scratchpad.id
+            let node = FileNode(
+                name: "\(scratchpad.title).md",
+                path: scratchpad.id,
+                type: .file,
+                size: nil,
+                modified: DateParsing.parseISO8601(scratchpad.updatedAt)?.timeIntervalSince1970,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+            if tree.children.contains(where: { $0.path == scratchpad.id }) {
+                return tree
+            }
+            return FileTree(children: [node] + tree.children)
+        } catch {
+            return tree
+        }
     }
 }
