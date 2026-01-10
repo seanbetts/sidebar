@@ -3,6 +3,7 @@ import Foundation
 public protocol NotesProviding {
     func listTree() async throws -> FileTree
     func getNote(id: String) async throws -> NotePayload
+    func search(query: String, limit: Int) async throws -> [FileNode]
 }
 
 public struct NotesAPI {
@@ -17,12 +18,18 @@ public struct NotesAPI {
     }
 
     public func search(query: String, limit: Int = 50) async throws -> [FileNode] {
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let path = "notes/search?query=\(encoded)&limit=\(limit)"
+        struct NotesSearchRequest: Encodable {
+            let query: String
+            let limit: Int
+        }
         struct NotesSearchResponse: Codable {
             let items: [FileNode]
         }
-        let response: NotesSearchResponse = try await client.request(path, method: "POST")
+        let response: NotesSearchResponse = try await client.request(
+            "notes/search",
+            method: "POST",
+            body: NotesSearchRequest(query: query, limit: limit)
+        )
         return response.items
     }
 

@@ -67,6 +67,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     private var streamingConversationId: String?
     private var hasLoadedConversations = false
     private var clearActiveToolTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
 
     public init(
         conversationsAPI: ConversationsProviding,
@@ -165,6 +166,30 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         await loadConversations(force: true)
     }
 
+    public func refreshActiveConversation() async {
+        guard let id = selectedConversationId else {
+            return
+        }
+        await loadConversation(id: id)
+    }
+
+    public func startAutoRefresh(intervalSeconds: TimeInterval = 30) {
+        refreshTask?.cancel()
+        refreshTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(intervalSeconds * 1_000_000_000))
+                await self.refreshConversations()
+                await self.refreshActiveConversation()
+            }
+        }
+    }
+
+    public func stopAutoRefresh() {
+        refreshTask?.cancel()
+        refreshTask = nil
+    }
+
     public func selectConversation(id: String?) async {
         guard selectedConversationId != id else {
             return
@@ -188,11 +213,11 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         let cacheKey = CacheKeys.conversation(id: id)
         let cached: ConversationWithMessages? = cache.get(key: cacheKey)
         if let cached {
-            messages = reconcileMessages(cached.messages, for: id)
+            messages = normalizeMessages(reconcileMessages(cached.messages, for: id))
         }
         do {
             let response = try await conversationsAPI.get(id: id)
-            messages = reconcileMessages(response.messages, for: id)
+            messages = normalizeMessages(reconcileMessages(response.messages, for: id))
             cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
         } catch {
             if cached == nil {
@@ -294,6 +319,28 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             return incoming
         }
         return incoming + [streamingMessage]
+    }
+
+    private func normalizeMessages(_ incoming: [Message]) -> [Message] {
+        let indexed = incoming.enumerated().map { (offset: $0.offset, message: $0.element) }
+        let sorted = indexed.sorted { left, right in
+            let leftDate = DateParsing.parseISO8601(left.message.timestamp)
+            let rightDate = DateParsing.parseISO8601(right.message.timestamp)
+            switch (leftDate, rightDate) {
+            case let (lhs?, rhs?):
+                if lhs == rhs {
+                    return left.offset < right.offset
+                }
+                return lhs < rhs
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return left.offset < right.offset
+            }
+        }
+        return sorted.map { $0.message }
     }
 
     private func appendToken(from event: ChatStreamEvent) {

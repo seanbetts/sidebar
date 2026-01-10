@@ -155,6 +155,9 @@ private struct NotesPanelView: View {
                 Task { await viewModel.loadTree() }
             }
         }
+        .onChange(of: viewModel.searchQuery) { _, newValue in
+            viewModel.updateSearch(query: newValue)
+        }
     }
 
     private var searchResultsView: some View {
@@ -175,7 +178,7 @@ private struct NotesPanelView: View {
                             id: node.path,
                             name: node.name,
                             type: node.type,
-                            children: []
+                            children: nil
                         ),
                         isSelected: viewModel.selectedNoteId == node.path
                     ) {
@@ -185,18 +188,16 @@ private struct NotesPanelView: View {
             }
         }
         .listStyle(.sidebar)
-        .onChange(of: viewModel.searchQuery) { _, newValue in
-            viewModel.updateSearch(query: newValue)
-        }
     }
 
     private func buildItems(from nodes: [FileNode]) -> [FileNodeItem] {
         nodes.map { node in
-            FileNodeItem(
+            let children = node.type == .directory ? buildItems(from: node.children ?? []) : nil
+            return FileNodeItem(
                 id: node.path,
                 name: node.name,
                 type: node.type,
-                children: buildItems(from: node.children ?? [])
+                children: children
             )
         }
     }
@@ -215,9 +216,6 @@ private struct NotesPanelView: View {
             }
         }
         .listStyle(.sidebar)
-        .onChange(of: viewModel.searchQuery) { _, newValue in
-            viewModel.updateSearch(query: newValue)
-        }
         .refreshable {
             await viewModel.loadTree()
         }
@@ -231,15 +229,31 @@ private struct NotesPanelView: View {
                 .textFieldStyle(.plain)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(searchBackground)
+        .padding(.vertical, 8)
+        .font(.subheadline)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(searchFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(searchBorder, lineWidth: 1)
+        )
     }
 
-    private var searchBackground: Color {
+    private var searchFill: Color {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
         return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var searchBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
         #endif
     }
 
@@ -269,7 +283,7 @@ private struct NotesTreeRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
-        .listRowBackground(isSelected ? selectionBackground : Color.clear)
+        .listRowBackground(isSelected ? selectionBackground : rowBackground)
     }
 
     private var selectionBackground: Color {
@@ -277,6 +291,14 @@ private struct NotesTreeRow: View {
         return Color(nsColor: .selectedContentBackgroundColor)
         #else
         return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var rowBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .textBackgroundColor)
+        #else
+        return Color(uiColor: .systemBackground)
         #endif
     }
 }

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.auth import verify_bearer_token
@@ -17,6 +18,13 @@ from api.services.notes_workspace_service import NotesWorkspaceService
 from api.utils.validation import parse_uuid
 
 router = APIRouter(prefix="/notes", tags=["notes"])
+
+
+class NotesSearchRequest(BaseModel):
+    """Search request payload for notes."""
+
+    query: str
+    limit: int = 50
 
 
 @router.get("/tree")
@@ -40,8 +48,9 @@ async def list_notes_tree(
 
 @router.post("/search")
 async def search_notes(
-    query: str,
+    query: str | None = None,
     limit: int = 50,
+    request: NotesSearchRequest | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
@@ -51,6 +60,7 @@ async def search_notes(
     Args:
         query: Search query string.
         limit: Max results to return. Defaults to 50.
+        request: Optional request payload with query and limit.
         user_id: Current authenticated user ID.
         _: Authorization token (validated).
         db: Database session.
@@ -61,6 +71,9 @@ async def search_notes(
     Raises:
         BadRequestError: If query is missing.
     """
+    if request is not None:
+        query = request.query
+        limit = request.limit
     if not query:
         raise BadRequestError("query required")
 

@@ -22,11 +22,7 @@ public final class AppEnvironment: ObservableObject {
             themeManager: themeManager,
             streamClient: container.makeChatStreamClient(handler: nil)
         )
-        self.notesViewModel = NotesViewModel(
-            api: container.notesAPI,
-            cache: container.cacheClient,
-            scratchpadAPI: container.scratchpadAPI
-        )
+        self.notesViewModel = NotesViewModel(api: container.notesAPI, cache: container.cacheClient)
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
 

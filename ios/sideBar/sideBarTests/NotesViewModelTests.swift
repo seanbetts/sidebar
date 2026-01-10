@@ -56,38 +56,6 @@ final class NotesViewModelTests: XCTestCase {
         let cached: FileTree? = cache.get(key: CacheKeys.notesTree)
         XCTAssertEqual(cached?.children.first?.name, "Fresh")
     }
-
-    func testLoadTreeInjectsScratchpad() async {
-        let tree = FileTree(children: [
-            FileNode(
-                name: "Note",
-                path: "/note",
-                type: .file,
-                size: nil,
-                modified: nil,
-                children: nil,
-                expanded: nil,
-                pinned: nil,
-                pinnedOrder: nil,
-                archived: nil,
-                folderMarker: nil
-            )
-        ])
-        let cache = InMemoryCacheClient()
-        let api = MockNotesAPI(listTreeResult: .success(tree))
-        let scratchpad = ScratchpadResponse(
-            id: "scratch-id",
-            title: "✏️ Scratchpad",
-            content: "# ✏️ Scratchpad\n\n",
-            updatedAt: "2026-01-02T10:00:00Z"
-        )
-        let scratchpadAPI = MockScratchpadAPI(result: .success(scratchpad))
-        let viewModel = NotesViewModel(api: api, cache: cache, scratchpadAPI: scratchpadAPI)
-
-        await viewModel.loadTree()
-
-        XCTAssertEqual(viewModel.tree?.children.first?.path, "scratch-id")
-    }
 }
 
 private enum MockError: Error {
@@ -109,18 +77,10 @@ private struct MockNotesAPI: NotesProviding {
         _ = id
         throw MockError.forced
     }
-}
 
-private struct MockScratchpadAPI: ScratchpadProviding {
-    let result: Result<ScratchpadResponse, Error>
-
-    func get() async throws -> ScratchpadResponse {
-        try result.get()
-    }
-
-    func update(content: String, mode: ScratchpadMode?) async throws -> ScratchpadResponse {
-        _ = content
-        _ = mode
-        return try result.get()
+    func search(query: String, limit: Int) async throws -> [FileNode] {
+        _ = query
+        _ = limit
+        return []
     }
 }

@@ -81,7 +81,34 @@ public final class APIClient {
         body: Encodable?,
         headers: [String: String]
     ) throws -> URLRequest {
-        let url = config.baseUrl.appendingPathComponent(path)
+        let url: URL
+        if let queryIndex = path.firstIndex(of: "?") {
+            let pathPart = String(path[..<queryIndex])
+            let queryPart = String(path[path.index(after: queryIndex)...])
+            guard var components = URLComponents(url: config.baseUrl, resolvingAgainstBaseURL: false) else {
+                throw APIClientError.invalidUrl
+            }
+            let trimmedPath = pathPart.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            let basePath = components.path
+            if basePath.isEmpty {
+                components.path = "/\(trimmedPath)"
+            } else if basePath.hasSuffix("/") {
+                components.path = "\(basePath)\(trimmedPath)"
+            } else {
+                components.path = "\(basePath)/\(trimmedPath)"
+            }
+            if let existingQuery = components.query, !existingQuery.isEmpty {
+                components.query = "\(existingQuery)&\(queryPart)"
+            } else {
+                components.query = queryPart
+            }
+            guard let composedUrl = components.url else {
+                throw APIClientError.invalidUrl
+            }
+            url = composedUrl
+        } else {
+            url = config.baseUrl.appendingPathComponent(path)
+        }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
