@@ -264,6 +264,7 @@ private struct ChatMessageRow: View {
                     .padding(.vertical, 4)
                     .background(rolePillBackground)
                     .foregroundStyle(rolePillText)
+                    .overlay(rolePillBorder)
                     .clipShape(Capsule())
             }
 
@@ -290,7 +291,8 @@ private struct ChatMessageRow: View {
                 .stroke(bubbleBorder, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .frame(maxWidth: 520, alignment: .leading)
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var formattedTimestamp: String {
@@ -302,13 +304,19 @@ private struct ChatMessageRow: View {
 
     private var bubbleBackground: Color {
         #if os(macOS)
-        return message.role == .assistant
-            ? Color(nsColor: .controlBackgroundColor)
-            : Color(nsColor: .underPageBackgroundColor)
+        if colorScheme == .dark {
+            return message.role == .assistant
+                ? Color(nsColor: .controlBackgroundColor)
+                : Color(nsColor: .underPageBackgroundColor)
+        }
+        return Color.white
         #else
-        return message.role == .assistant
-            ? Color(uiColor: .secondarySystemBackground)
-            : Color(uiColor: .systemGray6)
+        if colorScheme == .dark {
+            return message.role == .assistant
+                ? Color(uiColor: .secondarySystemBackground)
+                : Color(uiColor: .systemGray6)
+        }
+        return Color.white
         #endif
     }
 
@@ -332,6 +340,22 @@ private struct ChatMessageRow: View {
             return message.role == .assistant ? Color.white : Color.black
         }
         return message.role == .assistant ? Color.black : Color.white
+    }
+
+    @ViewBuilder
+    private var rolePillBorder: some View {
+        if colorScheme == .light, message.role == .assistant {
+            Capsule()
+                .stroke(pillBorderColor, lineWidth: 1)
+        }
+    }
+
+    private var pillBorderColor: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
     }
 }
 
