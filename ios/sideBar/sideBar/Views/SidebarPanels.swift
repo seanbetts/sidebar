@@ -44,7 +44,11 @@ private struct ConversationsPanelView: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
-                                .listRowBackground(rowBackground(isSelected: viewModel.selectedConversationId == conversation.id))
+                                .listRowBackground(
+                                    viewModel.selectedConversationId == conversation.id
+                                        ? selectionBackground
+                                        : unselectedRowBackground
+                                )
                             }
                         }
                     }
@@ -59,11 +63,12 @@ private struct ConversationsPanelView: View {
         }
     }
 
-    private func rowBackground(isSelected: Bool) -> Color {
-        guard isSelected else {
-            return Color.clear
-        }
-        return colorScheme == .dark ? Color.white : Color.black
+    private var selectionBackground: Color {
+        colorScheme == .dark ? Color.white : Color.black
+    }
+
+    private var unselectedRowBackground: Color {
+        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
     }
 
     private var panelBackground: Color {
@@ -87,13 +92,7 @@ private struct ConversationRow: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                 .lineLimit(1)
-            if let preview = conversation.firstMessage, !preview.isEmpty {
-                Text(preview)
-                    .font(.caption)
-                    .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
-                    .lineLimit(2)
-            }
-            Text(formattedDate)
+            Text(subtitleText)
                 .font(.caption2)
                 .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
         }
@@ -122,6 +121,12 @@ private struct ConversationRow: View {
             return conversation.updatedAt
         }
         return DateFormatter.chatList.string(from: date)
+    }
+
+    private var subtitleText: String {
+        let count = conversation.messageCount
+        let label = count == 1 ? "1 message" : "\(count) messages"
+        return "\(formattedDate) | \(label)"
     }
 }
 
