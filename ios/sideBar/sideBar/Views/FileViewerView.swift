@@ -133,7 +133,7 @@ private struct MarkdownView: View {
 
     var body: some View {
         #if canImport(MarkdownUI)
-        Markdown(text)
+        SideBarMarkdown(text: text)
         #else
         Text(text)
         #endif

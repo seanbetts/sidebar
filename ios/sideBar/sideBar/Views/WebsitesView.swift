@@ -101,7 +101,7 @@ private struct WebsitesDetailView: View {
     private var content: some View {
         if let website = viewModel.active {
             ScrollView {
-                Markdown(stripFrontmatter(website.content))
+                SideBarMarkdown(text: stripFrontmatter(website.content))
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

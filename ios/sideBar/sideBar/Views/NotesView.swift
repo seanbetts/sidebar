@@ -49,7 +49,7 @@ private struct NotesDetailView: View {
     private var content: some View {
         if let note = viewModel.activeNote {
             ScrollView {
-                Markdown(strippedContent(note: note))
+                SideBarMarkdown(text: strippedContent(note: note))
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
