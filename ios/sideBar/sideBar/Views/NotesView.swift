@@ -25,17 +25,31 @@ private struct NotesDetailView: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(displayTitle)
-                    .font(.headline)
-                if let modified = viewModel.activeNote?.modified {
-                    Text(formattedDate(modified))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+        HStack(spacing: 12) {
+            Image(systemName: "note.text")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(displayTitle)
+                .font(.headline)
             Spacer()
+            Button {
+            } label: {
+                Image(systemName: "line.3.horizontal")
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 16, weight: .semibold))
+            .imageScale(.medium)
+            .padding(6)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(buttonBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(buttonBorder, lineWidth: 1)
+            )
+            .accessibilityLabel("Note options")
         }
         .padding(16)
     }
@@ -44,7 +58,7 @@ private struct NotesDetailView: View {
     private var content: some View {
         if let note = viewModel.activeNote {
             ScrollView {
-                Markdown(note.content)
+                Markdown(strippedContent(note: note))
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -66,17 +80,35 @@ private struct NotesDetailView: View {
         return name
     }
 
-    private func formattedDate(_ timestamp: Double) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        return DateFormatter.noteTimestamp.string(from: date)
+    private func strippedContent(note: NotePayload) -> String {
+        let title = displayTitle
+        let trimmed = note.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let heading = "# \(title)"
+        if trimmed.hasPrefix(heading) {
+            let lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
+            if lines.first?.trimmingCharacters(in: .whitespacesAndNewlines) == heading {
+                let remaining = lines.dropFirst()
+                let stripped = remaining.drop(while: { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+                    .joined(separator: "\n")
+                return stripped.isEmpty ? note.content : stripped
+            }
+        }
+        return note.content
     }
-}
 
-private extension DateFormatter {
-    static let noteTimestamp: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter
-    }()
+    private var buttonBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var buttonBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
+    }
 }

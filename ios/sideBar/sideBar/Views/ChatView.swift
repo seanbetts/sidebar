@@ -410,7 +410,7 @@ private struct ToolCallRow: View {
                     .textSelection(.enabled)
             }
         }
-        .padding(6)
+            .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(rowBackground)
@@ -645,8 +645,8 @@ private struct ChatInputUIKitView: UIViewRepresentable {
             textView.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor),
             textView.topAnchor.constraint(equalTo: effectView.contentView.topAnchor),
             textView.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor),
-            button.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor, constant: -6),
-            button.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -6),
+            button.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor, constant: -10),
+            button.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -10),
             button.widthAnchor.constraint(equalToConstant: 30),
             button.heightAnchor.constraint(equalToConstant: 30)
         ])
@@ -765,8 +765,8 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             textView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
             textView.topAnchor.constraint(equalTo: effectView.topAnchor),
             textView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
-            button.trailingAnchor.constraint(equalTo: effectView.trailingAnchor, constant: -6),
-            button.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -6),
+            button.trailingAnchor.constraint(equalTo: effectView.trailingAnchor, constant: -10),
+            button.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -10),
             button.widthAnchor.constraint(equalToConstant: 30),
             button.heightAnchor.constraint(equalToConstant: 30)
         ])

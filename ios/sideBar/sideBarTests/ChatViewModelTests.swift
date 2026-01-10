@@ -85,6 +85,50 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertNil(cachedTree)
     }
 
+    func testLoadConversationSortsMessagesByTimestamp() async {
+        let cache = TestCacheClient()
+        let messages = [
+            Message(
+                id: "msg-2",
+                role: .assistant,
+                content: "Second",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T10:00:00Z",
+                error: nil
+            ),
+            Message(
+                id: "msg-1",
+                role: .user,
+                content: "First",
+                status: .complete,
+                toolCalls: nil,
+                needsNewline: nil,
+                timestamp: "2026-01-02T09:00:00Z",
+                error: nil
+            )
+        ]
+        let conversation = ConversationWithMessages(
+            id: "conv-1",
+            title: "Chat",
+            titleGenerated: false,
+            createdAt: "2026-01-02T08:00:00Z",
+            updatedAt: "2026-01-02T10:00:00Z",
+            messageCount: messages.count,
+            firstMessage: nil,
+            isArchived: nil,
+            messages: messages
+        )
+        let api = MockConversationsAPI(listResult: .success([]), getResult: .success(conversation))
+        let viewModel = makeViewModel(api: api, cache: cache)
+
+        await viewModel.loadConversation(id: "conv-1")
+
+        XCTAssertEqual(viewModel.messages.first?.id, "msg-1")
+        XCTAssertEqual(viewModel.messages.last?.id, "msg-2")
+    }
+
     private func makeViewModel(api: MockConversationsAPI, cache: CacheClient) -> ChatViewModel {
         let config = APIClientConfig(baseUrl: URL(string: "https://example.com")!, accessTokenProvider: { nil })
         let chatAPI = ChatAPI(client: APIClient(config: config))
