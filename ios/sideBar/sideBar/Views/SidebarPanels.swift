@@ -280,24 +280,30 @@ private struct NotesPanelView: View {
             }
 
             Section {
-                DisclosureGroup("Archive", isExpanded: $isArchiveExpanded) {
-                    if archivedNodes.isEmpty {
-                        Text("No archived notes")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-                            NotesTreeRow(
-                                item: item,
-                                isSelected: viewModel.selectedNoteId == item.id
-                            ) {
-                                if item.isFile {
-                                    Task { await viewModel.selectNote(id: item.id) }
+                DisclosureGroup(
+                    isExpanded: $isArchiveExpanded,
+                    content: {
+                        if archivedNodes.isEmpty {
+                            Text("No archived notes")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                                NotesTreeRow(
+                                    item: item,
+                                    isSelected: viewModel.selectedNoteId == item.id
+                                ) {
+                                    if item.isFile {
+                                        Task { await viewModel.selectNote(id: item.id) }
+                                    }
                                 }
                             }
                         }
+                    },
+                    label: {
+                        Label("Archive", systemImage: "archivebox")
                     }
-                }
+                )
             }
         }
         .listStyle(.sidebar)
@@ -367,7 +373,17 @@ private struct NotesPanelView: View {
     }
 
     private var archivedNodes: [FileNode] {
-        filterNodes(viewModel.tree?.children ?? [], includeArchived: true)
+        let nodes = filterNodes(viewModel.tree?.children ?? [], includeArchived: true)
+        return normalizeArchivedNodes(nodes)
+    }
+
+    private func normalizeArchivedNodes(_ nodes: [FileNode]) -> [FileNode] {
+        nodes.flatMap { node in
+            if node.type == .directory, node.name.lowercased() == "archive" {
+                return node.children ?? []
+            }
+            return [node]
+        }
     }
 
     private func collectPinnedNodes(from nodes: [FileNode]) -> [FileNode] {
