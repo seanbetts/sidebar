@@ -12,7 +12,7 @@ public struct MemoriesView: View {
     }
 }
 
-private struct MemoriesDetailView: View {
+struct MemoriesDetailView: View {
     @ObservedObject var viewModel: MemoriesViewModel
     @State private var searchQuery: String = ""
     @State private var selection: String? = nil
