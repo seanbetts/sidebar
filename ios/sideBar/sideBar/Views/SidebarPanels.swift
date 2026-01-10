@@ -123,6 +123,7 @@ public struct NotesPanel: View {
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
     @State private var hasLoaded = false
+    @State private var isArchiveExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -206,27 +207,29 @@ private struct NotesPanelView: View {
 
     private var searchResultsView: some View {
         List {
-            if viewModel.isSearching {
-                HStack(spacing: 12) {
-                    ProgressView()
-                    Text("Searching…")
+            Section("Results") {
+                if viewModel.isSearching {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                        Text("Searching…")
+                            .foregroundStyle(.secondary)
+                    }
+                } else if viewModel.searchResults.isEmpty {
+                    Text("No matching notes.")
                         .foregroundStyle(.secondary)
-                }
-            } else if viewModel.searchResults.isEmpty {
-                Text("No matching notes.")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(viewModel.searchResults, id: \.path) { node in
-                    NotesTreeRow(
-                        item: FileNodeItem(
-                            id: node.path,
-                            name: node.name,
-                            type: node.type,
-                            children: nil
-                        ),
-                        isSelected: viewModel.selectedNoteId == node.path
-                    ) {
-                        Task { await viewModel.selectNote(id: node.path) }
+                } else {
+                    ForEach(viewModel.searchResults, id: \.path) { node in
+                        NotesTreeRow(
+                            item: FileNodeItem(
+                                id: node.path,
+                                name: node.name,
+                                type: node.type,
+                                children: nil
+                            ),
+                            isSelected: viewModel.selectedNoteId == node.path
+                        ) {
+                            Task { await viewModel.selectNote(id: node.path) }
+                        }
                     }
                 }
             }
@@ -248,13 +251,53 @@ private struct NotesPanelView: View {
 
     private var notesTreeView: some View {
         List {
-            OutlineGroup(buildItems(from: viewModel.tree?.children ?? []), children: \.children) { item in
-                NotesTreeRow(
-                    item: item,
-                    isSelected: viewModel.selectedNoteId == item.id
-                ) {
-                    if item.isFile {
-                        Task { await viewModel.selectNote(id: item.id) }
+            Section("Pinned") {
+                if pinnedItems.isEmpty {
+                    Text("No pinned notes")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(pinnedItems) { item in
+                        NotesTreeRow(
+                            item: item,
+                            isSelected: viewModel.selectedNoteId == item.id
+                        ) {
+                            Task { await viewModel.selectNote(id: item.id) }
+                        }
+                    }
+                }
+            }
+
+            Section("Notes") {
+                OutlineGroup(buildItems(from: mainNodes), children: \.children) { item in
+                    NotesTreeRow(
+                        item: item,
+                        isSelected: viewModel.selectedNoteId == item.id
+                    ) {
+                        if item.isFile {
+                            Task { await viewModel.selectNote(id: item.id) }
+                        }
+                    }
+                }
+            }
+
+            Section {
+                DisclosureGroup("Archive", isExpanded: $isArchiveExpanded) {
+                    if archivedNodes.isEmpty {
+                        Text("No archived notes")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                            NotesTreeRow(
+                                item: item,
+                                isSelected: viewModel.selectedNoteId == item.id
+                            ) {
+                                if item.isFile {
+                                    Task { await viewModel.selectNote(id: item.id) }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -299,6 +342,77 @@ private struct NotesPanelView: View {
         #else
         return Color(uiColor: .separator)
         #endif
+    }
+
+    private var pinnedItems: [FileNodeItem] {
+        let pinned = collectPinnedNodes(from: viewModel.tree?.children ?? [])
+        let sorted = pinned.sorted { lhs, rhs in
+            let leftOrder = lhs.pinnedOrder ?? Int.max
+            let rightOrder = rhs.pinnedOrder ?? Int.max
+            if leftOrder != rightOrder {
+                return leftOrder < rightOrder
+            }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+        return sorted.map { node in
+            FileNodeItem(
+                id: node.path,
+                name: node.name,
+                type: node.type,
+                children: nil
+            )
+        }
+    }
+
+    private var mainNodes: [FileNode] {
+        filterNodes(viewModel.tree?.children ?? [], includeArchived: false)
+    }
+
+    private var archivedNodes: [FileNode] {
+        filterNodes(viewModel.tree?.children ?? [], includeArchived: true)
+    }
+
+    private func collectPinnedNodes(from nodes: [FileNode]) -> [FileNode] {
+        var results: [FileNode] = []
+        for node in nodes {
+            if node.type == .file, node.pinned == true, node.archived != true {
+                results.append(node)
+            }
+            if let children = node.children, !children.isEmpty {
+                results.append(contentsOf: collectPinnedNodes(from: children))
+            }
+        }
+        return results
+    }
+
+    private func filterNodes(_ nodes: [FileNode], includeArchived: Bool) -> [FileNode] {
+        nodes.compactMap { node in
+            if node.type == .directory {
+                let children = filterNodes(node.children ?? [], includeArchived: includeArchived)
+                if children.isEmpty {
+                    return nil
+                }
+                return FileNode(
+                    name: node.name,
+                    path: node.path,
+                    type: node.type,
+                    size: node.size,
+                    modified: node.modified,
+                    children: children,
+                    expanded: node.expanded,
+                    pinned: node.pinned,
+                    pinnedOrder: node.pinnedOrder,
+                    archived: node.archived,
+                    folderMarker: node.folderMarker
+                )
+            }
+            let archived = node.archived == true
+            let pinned = node.pinned == true
+            if includeArchived {
+                return archived ? node : nil
+            }
+            return (!archived && !pinned) ? node : nil
+        }
     }
 }
 
@@ -479,13 +593,10 @@ private struct FilesPanelView: View {
                 ForEach(categoryOrder, id: \.self) { category in
                     if let items = categorizedItems[category], !items.isEmpty {
                         Section {
-                            CategoryToggleRow(
-                                title: categoryLabels[category] ?? "Files",
-                                isExpanded: expandedCategories.contains(category)
+                            DisclosureGroup(
+                                categoryLabels[category] ?? "Files",
+                                isExpanded: bindingForCategory(category)
                             ) {
-                                toggleCategory(category)
-                            }
-                            if expandedCategories.contains(category) {
                                 ForEach(items, id: \.file.id) { item in
                                     FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                                         .tag(item.file.id)
@@ -530,12 +641,17 @@ private struct FilesPanelView: View {
         Task { await viewModel.selectFile(fileId: fileId) }
     }
 
-    private func toggleCategory(_ category: String) {
-        if expandedCategories.contains(category) {
-            expandedCategories.remove(category)
-        } else {
-            expandedCategories.insert(category)
-        }
+    private func bindingForCategory(_ category: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedCategories.contains(category) },
+            set: { isExpanded in
+                if isExpanded {
+                    expandedCategories.insert(category)
+                } else {
+                    expandedCategories.remove(category)
+                }
+            }
+        )
     }
 
     private func initializeExpandedCategoriesIfNeeded() {
@@ -726,29 +842,6 @@ private struct FilesIngestionRow: View {
     }
 }
 
-private struct CategoryToggleRow: View {
-    let title: String
-    let isExpanded: Bool
-    let onToggle: () -> Void
-
-    var body: some View {
-        Button(action: onToggle) {
-            HStack(spacing: 8) {
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    .foregroundStyle(.secondary)
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 public struct WebsitesPanel: View {
     @EnvironmentObject private var environment: AppEnvironment
 
@@ -842,9 +935,8 @@ private struct WebsitesPanelView: View {
         } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    sectionTitle("Results")
+            List {
+                Section("Results") {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
@@ -855,122 +947,79 @@ private struct WebsitesPanelView: View {
                             ) {
                                 open(item: item)
                             }
+                            .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
             }
+            .listStyle(.sidebar)
         } else {
-            GeometryReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        websitesSection
-                        Spacer(minLength: 12)
-                        archiveSection
+            List {
+                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
+                    Section("Pinned") {
+                        if pinnedItemsSorted.isEmpty {
+                            Text("No pinned websites")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(pinnedItemsSorted, id: \.id) { item in
+                                WebsiteRow(
+                                    item: item,
+                                    isSelected: selection == item.id
+                                ) {
+                                    open(item: item)
+                                }
+                                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                            }
+                        }
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .frame(minHeight: proxy.size.height)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-            }
-        }
-    }
 
-    private var websitesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Pinned")
-            if pinnedItemsSorted.isEmpty {
-                Text("No pinned websites")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(pinnedItemsSorted, id: \.id) { item in
-                        WebsiteRow(
-                            item: item,
-                            isSelected: selection == item.id
-                        ) {
-                            open(item: item)
+                    Section("Websites") {
+                        if mainItems.isEmpty {
+                            Text("No websites saved")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(mainItems, id: \.id) { item in
+                                WebsiteRow(
+                                    item: item,
+                                    isSelected: selection == item.id
+                                ) {
+                                    open(item: item)
+                                }
+                                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                            }
                         }
                     }
                 }
-            }
 
-            sectionTitle("Websites")
-            if mainItems.isEmpty {
-                Text("No websites saved")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(mainItems, id: \.id) { item in
-                        WebsiteRow(
-                            item: item,
-                            isSelected: selection == item.id
-                        ) {
-                            open(item: item)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var archiveSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Archive")
-                    .font(.caption.weight(.semibold))
-                    .textCase(.uppercase)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button {
-                    isArchiveExpanded.toggle()
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .rotationEffect(.degrees(isArchiveExpanded ? 90 : 0))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.vertical, 6)
-
-            if isArchiveExpanded {
-                if archivedItems.isEmpty {
-                    Text("No archived websites")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, 6)
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(archivedItems, id: \.id) { item in
-                            WebsiteRow(
-                                item: item,
-                                isSelected: selection == item.id
-                            ) {
-                                open(item: item)
+                Section {
+                    DisclosureGroup("Archive", isExpanded: $isArchiveExpanded) {
+                        if archivedItems.isEmpty {
+                            Text("No archived websites")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(archivedItems, id: \.id) { item in
+                                WebsiteRow(
+                                    item: item,
+                                    isSelected: selection == item.id
+                                ) {
+                                    open(item: item)
+                                }
+                                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                             }
                         }
                     }
                 }
             }
+            .listStyle(.sidebar)
         }
-        .padding(.top, 8)
     }
 
     private func open(item: WebsiteItem) {
         selection = item.id
         Task { await viewModel.selectWebsite(id: item.id) }
-    }
-
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .font(.caption.weight(.semibold))
-            .textCase(.uppercase)
-            .foregroundStyle(.secondary)
     }
 
     private var pinnedItemsSorted: [WebsiteItem] {
