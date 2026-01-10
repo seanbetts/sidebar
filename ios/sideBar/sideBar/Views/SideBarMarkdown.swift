@@ -9,6 +9,10 @@ struct SideBarMarkdown: View {
     var body: some View {
         #if canImport(MarkdownUI)
         Markdown(MarkdownRendering.normalizeTaskLists(text))
+            .markdownTextStyle(\.strikethrough) {
+                StrikethroughStyle(.single)
+                ForegroundColor(.secondary)
+            }
         #else
         Text(text)
         #endif
