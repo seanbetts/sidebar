@@ -214,13 +214,13 @@ Critical Path (MVP): [░░░░░░░░░░░░░░░░░░░�
 **MVP Scope: Read-Only Chat Viewer**
 - [x] 3.1 Conversation List
 - [x] 3.2 Chat Window Layout
-- [ ] 3.3 SSE Streaming Implementation (for cross-device updates)
+- [x] 3.3 SSE Streaming Implementation (for cross-device updates)
 - [x] 3.4 Message List
 - [x] 3.5 Message Rendering (AttributedString for now)
 - [x] 3.6 Tool Call Visualization
 - [x] 3.6a SSE UI Event Handling (note/website/theme/scratchpad/prompt/tool_start/tool_end)
-- [ ] 3.8 Real-time Conversation Sync
-- [ ] 3.9 State reconciliation rules (cache vs SSE, ordering/pinning, soft-delete tombstones)
+- [x] 3.8 Real-time Conversation Sync
+- [x] 3.9 State reconciliation rules (cache vs SSE, ordering/pinning, soft-delete tombstones)
 
 **Native UX Requirements (Phase 3)**
 - Use native list/stack layouts with Dynamic Type and VoiceOver labels.
