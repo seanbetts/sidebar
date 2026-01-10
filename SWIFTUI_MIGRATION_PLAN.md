@@ -123,7 +123,7 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 ### Overall Progress
 
 **Current Target**: Read-Only MVP
-**Status**: Phase 4 complete (Note Viewer)
+**Status**: Phase 5 complete (File Viewing)
 **Sessions Completed (Implementation)**: 12 / 22-33 (MVP) or 12 / 36-51 (Full App)
 **Hours Logged (Implementation)**: TBD / 88-132 (MVP) or TBD / 157-280 (Full App)
 **Weeks Elapsed (Implementation)**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
@@ -146,7 +146,7 @@ Critical Path (MVP): [████████░░░░░░░░░░░�
 | **2. Navigation & Layout** | ✅ Complete | 3 / 3-4 | 3 / 3-4 | 100% | Full |
 | **3. Chat Viewer** | ✅ Complete | 2 / 4-5 | 2 / 5-7 | 100% | Modified (no input) |
 | **4. Note Viewer** | ✅ Complete | 3 / 2-3 | 3 / 7-10 | 100% | Heavily Reduced (read-only) |
-| **5. File Viewing** | ⬜ Not Started | 0 / 4-6 | 0 / 4-6 | 0% | Full (already read-only) |
+| **5. File Viewing** | ✅ Complete | 4 / 4-6 | 4 / 4-6 | 100% | Full (already read-only) |
 | **6. Website Viewer** | ⬜ Not Started | 0 / 1-2 | 0 / 2-3 | 0% | Modified (no saving) |
 | **7. Additional Features** | ⬜ Not Started | 0 / 2-3 | 0 / 3-4 | 0% | Modified (view-only) |
 | **8. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
@@ -251,29 +251,30 @@ Critical Path (MVP): [████████░░░░░░░░░░░�
 
 #### Phase 5: File Viewing (4-6 sessions)
 **MVP Scope: Full (already read-only)**
-- [ ] 5.1 Workspace File Tree View
-- [ ] 5.2 Workspace File Operations (view-only: browse, open, download, pin/unpin)
-- [ ] 5.3 Ingestion File List + Status (jobs, pinned order, processed content)
-- [ ] 5.4 File Viewer (Quick Look first, native viewers as needed)
-- [ ] 5.5 PDF Viewer (PDFKit)
-- [ ] 5.6 Image Viewer (pinch-zoom, pan)
-- [ ] 5.7 Audio/Video Player (AVFoundation)
-- [ ] 5.8 Spreadsheet Viewer
-- [ ] 5.9 Markdown Extraction Display
-- [ ] 5.10 Non-browsable ingestion records (e.g. website transcripts) must be filtered from Files UI
+- [x] 5.1 Workspace File Tree View (deprecated; ingestion-driven files list replaces workspace tree)
+- [x] 5.2 Workspace File Operations (view-only: browse, open, download, pin/unpin) (deprecated; ingestion-only UI)
+- [x] 5.3 Ingestion File List + Status (jobs, pinned order, processed content)
+- [x] 5.4 File Viewer (Quick Look first, native viewers as needed)
+- [x] 5.5 PDF Viewer (PDFKit)
+- [x] 5.6 Image Viewer (pinch-zoom, pan)
+- [x] 5.7 Audio/Video Player (AVFoundation)
+- [x] 5.8 Spreadsheet Viewer
+- [x] 5.9 Markdown Extraction Display
+- [x] 5.10 Non-browsable ingestion records (e.g. website transcripts) must be filtered from Files UI
 
 **Post-MVP (File Editing)**
-- [ ] 5.P1 Workspace File Operations (rename, move, delete)
+- [ ] 5.P1 Workspace File Operations (rename, move, delete) (deprecated unless workspace tree returns)
 
 **Native UX Requirements (Phase 5)**
 - Prefer Quick Look where it improves native affordances and share workflows.
 - Use native file pickers, share sheets, and drag-drop on macOS/iPadOS.
 
 **Note**: File upload and ingestion deferred to post-launch (not part of MVP or Phase 10)
+**Note**: Workspace tree is deprecated in favor of ingestion-driven files list.
 
 #### Phase 6: Website Viewer (1-2 sessions MVP, 2-3 full)
 **MVP Scope: Read-Only Website Viewer**
-- [ ] 6.1 Website List (grouped by domain, search, pinned)
+- [ ] 6.1 Website List (search, pinned, archived)
 - [ ] 6.2 Website Viewer (WKWebView or MarkdownUI)
 - [ ] 6.4 Website Operations (view only - pin/unpin, open in Safari)
 - [ ] 6.5 Real-time Sync
