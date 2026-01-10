@@ -20,6 +20,9 @@ struct SideBarMarkdown: View {
                 StrikethroughStyle(.single)
                 ForegroundColor(.secondary)
             }
+            .markdownTextStyle(\.link) {
+                UnderlineStyle(.single)
+            }
             .markdownImageProvider(CappedImageProvider(maxSize: maxImageSize))
         #else
         Text(text)
