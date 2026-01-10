@@ -78,6 +78,7 @@ public final class AppEnvironment: ObservableObject {
             realtimeClient.handler = self
         }
         realtimeClientStopStart()
+        observeSelectionChanges()
     }
 
     public func refreshAuthState() {
@@ -98,6 +99,47 @@ public final class AppEnvironment: ObservableObject {
         Task {
             await realtimeClient.start(userId: userId, accessToken: token)
         }
+    }
+
+    private func observeSelectionChanges() {
+        notesViewModel.$selectedNoteId
+            .compactMap { $0 }
+            .sink { [weak self] _ in
+                self?.clearNonNoteSelections()
+            }
+            .store(in: &cancellables)
+
+        websitesViewModel.$selectedWebsiteId
+            .compactMap { $0 }
+            .sink { [weak self] _ in
+                self?.clearNonWebsiteSelections()
+            }
+            .store(in: &cancellables)
+
+        ingestionViewModel.$selectedFileId
+            .compactMap { $0 }
+            .sink { [weak self] _ in
+                self?.clearNonFileSelections()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func clearNonNoteSelections() {
+        websitesViewModel.clearSelection()
+        ingestionViewModel.clearSelection()
+        // TODO: Clear tasks selection once TasksViewModel exists.
+    }
+
+    private func clearNonWebsiteSelections() {
+        notesViewModel.clearSelection()
+        ingestionViewModel.clearSelection()
+        // TODO: Clear tasks selection once TasksViewModel exists.
+    }
+
+    private func clearNonFileSelections() {
+        notesViewModel.clearSelection()
+        websitesViewModel.clearSelection()
+        // TODO: Clear tasks selection once TasksViewModel exists.
     }
 }
 

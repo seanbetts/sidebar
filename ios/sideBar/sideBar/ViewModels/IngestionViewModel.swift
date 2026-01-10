@@ -94,6 +94,14 @@ public final class IngestionViewModel: ObservableObject {
         }
     }
 
+    public func clearSelection() {
+        selectedFileId = nil
+        activeMeta = nil
+        selectedDerivativeKind = nil
+        viewerState = nil
+        errorMessage = nil
+    }
+
     private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
         let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }
         let nonAI = candidates.filter { $0.kind != "ai_md" }
