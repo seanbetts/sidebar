@@ -44,7 +44,8 @@ private struct FilesHeaderView: View {
                 .font(.headline)
             Spacer()
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 17)
     }
 
     private var activeTitle: String {
