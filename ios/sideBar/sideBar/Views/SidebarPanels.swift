@@ -123,15 +123,10 @@ public struct NotesPanel: View {
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
     @State private var hasLoaded = false
-    #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    #endif
 
     var body: some View {
         VStack(spacing: 0) {
-            if showInlineSearch {
-                searchBar
-            }
+            header
             Group {
                 if viewModel.tree == nil {
                     ProgressView()
@@ -143,12 +138,6 @@ private struct NotesPanelView: View {
                 }
             }
         }
-        #if !os(macOS)
-        .searchable(
-            text: $viewModel.searchQuery,
-            placement: .navigationBarDrawer(displayMode: .always)
-        )
-        #endif
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -158,6 +147,61 @@ private struct NotesPanelView: View {
         .onChange(of: viewModel.searchQuery) { _, newValue in
             viewModel.updateSearch(query: newValue)
         }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text("Notes")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button {
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(searchFill)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(searchBorder, lineWidth: 1)
+                )
+                .accessibilityLabel("Add note")
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search notes", text: $viewModel.searchQuery)
+                    .textFieldStyle(.plain)
+                if !viewModel.searchQuery.isEmpty {
+                    Button {
+                        viewModel.searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .font(.subheadline)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(searchFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(searchBorder, lineWidth: 1)
+            )
+        }
+        .padding(16)
     }
 
     private var searchResultsView: some View {
@@ -256,14 +300,6 @@ private struct NotesPanelView: View {
         return Color(uiColor: .separator)
         #endif
     }
-
-    private var showInlineSearch: Bool {
-        #if os(macOS)
-        return true
-        #else
-        return horizontalSizeClass != .compact
-        #endif
-    }
 }
 
 private struct NotesTreeRow: View {
@@ -335,15 +371,18 @@ private struct FilesPanelView: View {
     @State private var hasLoaded = false
     @State private var selection: String? = nil
     @State private var expandedCategories: Set<String> = []
+    @State private var searchQuery: String = ""
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            header
+            Divider()
             if viewModel.isLoading && viewModel.items.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let message = viewModel.errorMessage {
                 SidebarPanelPlaceholder(title: message)
-            } else if readyItems.isEmpty && processingItems.isEmpty && failedItems.isEmpty {
+            } else if filteredReadyItems.isEmpty && filteredProcessingItems.isEmpty && filteredFailedItems.isEmpty {
                 SidebarPanelPlaceholder(title: "No files yet.")
             } else {
                 filesListView
@@ -366,6 +405,61 @@ private struct FilesPanelView: View {
             guard let fileId = newValue else { return }
             open(fileId: fileId)
         }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Text("Files")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button {
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(searchFill)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(searchBorder, lineWidth: 1)
+                )
+                .accessibilityLabel("Add file")
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search files", text: $searchQuery)
+                    .textFieldStyle(.plain)
+                if !searchQuery.isEmpty {
+                    Button {
+                        searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .font(.subheadline)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(searchFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(searchBorder, lineWidth: 1)
+            )
+        }
+        .padding(16)
     }
 
     private var filesListView: some View {
@@ -404,15 +498,15 @@ private struct FilesPanelView: View {
                 }
             }
 
-            if !processingItems.isEmpty || !failedItems.isEmpty {
+            if !filteredProcessingItems.isEmpty || !filteredFailedItems.isEmpty {
                 Section("Uploads") {
-                    ForEach(processingItems, id: \.file.id) { item in
+                    ForEach(filteredProcessingItems, id: \.file.id) { item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                             .tag(item.file.id)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                     }
-                    ForEach(failedItems, id: \.file.id) { item in
+                    ForEach(filteredFailedItems, id: \.file.id) { item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                             .tag(item.file.id)
                             .contentShape(Rectangle())
@@ -467,8 +561,32 @@ private struct FilesPanelView: View {
         }
     }
 
+    private var filteredReadyItems: [IngestionListItem] {
+        let needle = searchQuery.trimmed.lowercased()
+        guard !needle.isEmpty else { return readyItems }
+        return readyItems.filter { item in
+            item.file.filenameOriginal.lowercased().contains(needle)
+        }
+    }
+
+    private var filteredProcessingItems: [IngestionListItem] {
+        let needle = searchQuery.trimmed.lowercased()
+        guard !needle.isEmpty else { return processingItems }
+        return processingItems.filter { item in
+            item.file.filenameOriginal.lowercased().contains(needle)
+        }
+    }
+
+    private var filteredFailedItems: [IngestionListItem] {
+        let needle = searchQuery.trimmed.lowercased()
+        guard !needle.isEmpty else { return failedItems }
+        return failedItems.filter { item in
+            item.file.filenameOriginal.lowercased().contains(needle)
+        }
+    }
+
     private var pinnedItems: [IngestionListItem] {
-        readyItems
+        filteredReadyItems
             .filter { $0.file.pinned ?? false }
             .sorted { lhs, rhs in
                 let left = lhs.file.pinnedOrder ?? Int.max
@@ -483,7 +601,7 @@ private struct FilesPanelView: View {
     }
 
     private var categorizedItems: [String: [IngestionListItem]] {
-        let unpinned = readyItems.filter { !($0.file.pinned ?? false) }
+        let unpinned = filteredReadyItems.filter { !($0.file.pinned ?? false) }
         let grouped = unpinned.reduce(into: [String: [IngestionListItem]]()) { result, item in
             let category = item.file.category ?? "other"
             result[category, default: []].append(item)
@@ -516,6 +634,22 @@ private struct FilesPanelView: View {
 
     private var categoryOrder: [String] {
         ["documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"]
+    }
+
+    private var searchFill: Color {
+        #if os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #else
+        return Color(uiColor: .secondarySystemBackground)
+        #endif
+    }
+
+    private var searchBorder: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
     }
 }
 
