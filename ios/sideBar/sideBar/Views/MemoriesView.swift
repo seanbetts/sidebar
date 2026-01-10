@@ -197,10 +197,11 @@ private struct MemoryRow: View {
             Text(displayName(item.path))
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
             if let updated = formattedDate(item.updatedAt) {
                 Text(updated)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
             }
         }
         .padding(.vertical, 6)
@@ -225,11 +226,7 @@ private struct MemoryRow: View {
     }
 
     private var selectionBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .selectedContentBackgroundColor)
-        #else
-        return Color(uiColor: .secondarySystemBackground)
-        #endif
+        Color.black
     }
 
     private var rowBackground: Color {
