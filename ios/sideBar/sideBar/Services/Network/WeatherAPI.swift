@@ -1,5 +1,9 @@
 import Foundation
 
+public protocol WeatherProviding {
+    func getWeather(lat: Double, lon: Double) async throws -> WeatherResponse
+}
+
 public struct WeatherAPI {
     private let client: APIClient
 
@@ -12,3 +16,5 @@ public struct WeatherAPI {
         return try await client.request(path)
     }
 }
+
+extension WeatherAPI: WeatherProviding {}

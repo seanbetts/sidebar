@@ -123,16 +123,16 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 ### Overall Progress
 
 **Current Target**: Read-Only MVP
-**Status**: Phase 6 complete (Website Viewer)
-**Sessions Completed (Implementation)**: 13 / 22-33 (MVP) or 13 / 36-51 (Full App)
+**Status**: Phase 7 complete (Additional Features)
+**Sessions Completed (Implementation)**: 14 / 22-33 (MVP) or 14 / 36-51 (Full App)
 **Hours Logged (Implementation)**: TBD / 88-132 (MVP) or TBD / 157-280 (Full App)
 **Weeks Elapsed (Implementation)**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
 
 ```
-MVP Progress:      [██████████░░░░░░░░░░] 50%
-Full App Progress: [████████░░░░░░░░░░░░] 36%
+MVP Progress:      [████████████░░░░░░░░] 60%
+Full App Progress: [█████████░░░░░░░░░░░] 42%
 
-Critical Path (MVP): [████████░░░░░░░░░░░░] 40%
+Critical Path (MVP): [██████████░░░░░░░░░░] 50%
 (Phases 1 → 2 → 3-Modified → 4-Reduced → 5 → 6-Modified → 7-Modified → 8 → 9)
 ```
 
@@ -148,7 +148,7 @@ Critical Path (MVP): [████████░░░░░░░░░░░�
 | **4. Note Viewer** | ✅ Complete | 3 / 2-3 | 3 / 7-10 | 100% | Heavily Reduced (read-only) |
 | **5. File Viewing** | ✅ Complete | 4 / 4-6 | 4 / 4-6 | 100% | Full (already read-only) |
 | **6. Website Viewer** | ✅ Complete | 1 / 1-2 | 1 / 2-3 | 100% | Modified (no saving) |
-| **7. Additional Features** | ⬜ Not Started | 0 / 2-3 | 0 / 3-4 | 0% | Modified (view-only) |
+| **7. Additional Features** | ✅ Complete | 1 / 2-3 | 1 / 3-4 | 100% | Modified (view-only) |
 | **8. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
 | **9. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
 | **MVP TOTAL** | | **22-33** | | | |
@@ -288,12 +288,12 @@ Critical Path (MVP): [████████░░░░░░░░░░░�
 
 #### Phase 7: Additional Features (2-3 sessions MVP, 3-4 full)
 **MVP Scope: View-Only**
-- [ ] 7.1 Memory Management (view memories, search)
-- [ ] 7.3 Settings Panel (view profile, settings - read-only)
-- [ ] 7.3a Skills Management (view skills, enable/disable)
-- [ ] 7.3b Things Integration (native macOS/iOS; bridge is web-only legacy)
-- [ ] 7.4 Weather Integration
-- [ ] 7.5 Keyboard Shortcuts (macOS)
+- [x] 7.1 Memory Management (view memories, search)
+- [x] 7.3 Settings Panel (view profile, settings - read-only)
+- [x] 7.3a Skills Management (view skills, enable/disable)
+- [x] 7.3b Things Integration (native macOS/iOS; bridge is web-only legacy)
+- [x] 7.4 Weather Integration
+- [x] 7.5 Keyboard Shortcuts (macOS)
 
 **Native UX Requirements (Phase 7)**
 - Use native Settings layouts (Form + sections) and platform conventions.

@@ -2,6 +2,9 @@ import Foundation
 
 public protocol SettingsProviding {
     func getSettings() async throws -> UserSettings
+    func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings
+    func getShortcutsToken() async throws -> ShortcutsTokenResponse
+    func rotateShortcutsToken() async throws -> ShortcutsTokenResponse
 }
 
 public struct SettingsAPI {

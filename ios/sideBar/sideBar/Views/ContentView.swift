@@ -59,6 +59,15 @@ public struct ContentView: View {
                 selection = newValue
                 primarySection = newValue
             }
+            .onChange(of: environment.commandSelection) { _, newValue in
+                guard let newValue else { return }
+                selection = newValue
+                primarySection = newValue
+                #if !os(macOS)
+                phoneSelection = newValue
+                #endif
+                environment.commandSelection = nil
+            }
             .task {
                 applyInitialSelectionIfNeeded()
             }

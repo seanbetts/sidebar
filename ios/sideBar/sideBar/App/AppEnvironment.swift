@@ -10,10 +10,14 @@ public final class AppEnvironment: ObservableObject {
     public let filesViewModel: FilesViewModel
     public let ingestionViewModel: IngestionViewModel
     public let websitesViewModel: WebsitesViewModel
+    public let memoriesViewModel: MemoriesViewModel
+    public let settingsViewModel: SettingsViewModel
+    public let weatherViewModel: WeatherViewModel
     private let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
 
     @Published public private(set) var isAuthenticated: Bool = false
+    @Published public var commandSelection: AppSection? = nil
     private var cancellables = Set<AnyCancellable>()
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
@@ -39,6 +43,13 @@ public final class AppEnvironment: ObservableObject {
             temporaryStore: temporaryStore
         )
         self.websitesViewModel = WebsitesViewModel(api: container.websitesAPI, cache: container.cacheClient)
+        self.memoriesViewModel = MemoriesViewModel(api: container.memoriesAPI, cache: container.cacheClient)
+        self.settingsViewModel = SettingsViewModel(
+            settingsAPI: container.settingsAPI,
+            skillsAPI: container.skillsAPI,
+            cache: container.cacheClient
+        )
+        self.weatherViewModel = WeatherViewModel(api: container.weatherAPI)
         self.realtimeClient = container.makeRealtimeClient(handler: nil)
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil

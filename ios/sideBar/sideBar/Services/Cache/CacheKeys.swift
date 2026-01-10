@@ -4,6 +4,7 @@ public enum CacheKeys {
     public static let conversationsList = "conversations.list"
     public static let notesTree = "notes.tree"
     public static let websitesList = "websites.list"
+    public static let memoriesList = "memories.list"
     public static let ingestionList = "ingestion.list"
     public static let scratchpad = "scratchpad.content"
     public static let filesTreePrefix = "files.tree"
