@@ -69,7 +69,10 @@ private struct WebsitesDetailView: View {
     private var content: some View {
         if let website = viewModel.active {
             ScrollView {
-                SideBarMarkdown(text: stripFrontmatter(website.content))
+                SideBarMarkdown(
+                    text: stripFrontmatter(website.content),
+                    preprocessor: MarkdownRendering.normalizeWebsiteMarkdown
+                )
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
