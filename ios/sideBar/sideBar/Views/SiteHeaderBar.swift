@@ -76,10 +76,11 @@ public struct SiteHeaderBar: View {
         HStack(alignment: .center, spacing: 12) {
             if !isCompact {
                 VStack(alignment: .trailing, spacing: 4) {
-                    HeaderInfoItem(icon: "cloud.sun", text: "Weather")
+                    HeaderInfoItem(icon: "cloud.sun", text: weatherText)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
-                    HeaderInfoItem(icon: "mappin.and.ellipse", text: "Location")
+                    Text(locationText)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 .font(.subheadline)
@@ -185,6 +186,38 @@ public struct SiteHeaderBar: View {
         return horizontalSizeClass == .compact
         #endif
     }
+
+    private var weatherText: String {
+        if environment.weatherViewModel.isLoading {
+            return "Loading..."
+        }
+        if let weather = environment.weatherViewModel.weather {
+            return temperatureText(weather.temperatureC)
+        }
+        return "Weather"
+    }
+
+    private var locationText: String {
+        let location = environment.settingsViewModel.settings?.location?.trimmed ?? ""
+        return location.isEmpty ? "Set location" : formattedLocation(location)
+    }
+
+    private func temperatureText(_ celsius: Double) -> String {
+        let c = Int(round(celsius))
+        return "\(c)°C"
+    }
+
+    private func formattedLocation(_ value: String) -> String {
+        let parts = value
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard let first = parts.first else { return value }
+        guard let last = parts.last, last != first else { return String(first) }
+        let locale = Locale.current
+        let city = first.uppercased(with: locale)
+        let country = last.uppercased(with: locale)
+        return "\(city), \(country)"
+    }
 }
 
 private struct HeaderInfoItem: View {
@@ -196,5 +229,11 @@ private struct HeaderInfoItem: View {
             Image(systemName: icon)
             Text(text)
         }
+    }
+}
+
+private extension String {
+    var trimmed: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

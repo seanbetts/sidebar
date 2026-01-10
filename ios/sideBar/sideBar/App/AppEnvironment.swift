@@ -68,6 +68,12 @@ public final class AppEnvironment: ObservableObject {
             }
             .store(in: &cancellables)
 
+        weatherViewModel.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
         if let realtimeClient = realtimeClient as? SupabaseRealtimeAdapter {
             realtimeClient.handler = self
         }

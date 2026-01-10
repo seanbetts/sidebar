@@ -101,10 +101,16 @@ public struct ContentView: View {
                         Task {
                             await environment.settingsViewModel.load()
                             await environment.settingsViewModel.loadProfileImage()
+                            await refreshWeatherIfPossible()
                         }
                     }
                 } else {
                     didLoadSettings = false
+                }
+            }
+            .onChange(of: environment.settingsViewModel.settings?.location) { _, _ in
+                Task {
+                    await refreshWeatherIfPossible()
                 }
             }
             .task {
@@ -114,6 +120,7 @@ public struct ContentView: View {
                     Task {
                         await environment.settingsViewModel.load()
                         await environment.settingsViewModel.loadProfileImage()
+                        await refreshWeatherIfPossible()
                     }
                 }
             }
@@ -251,6 +258,13 @@ public struct ContentView: View {
         }
     }
 
+    private func refreshWeatherIfPossible() async {
+        guard environment.isAuthenticated else { return }
+        let location = environment.settingsViewModel.settings?.location?.trimmed ?? ""
+        guard !location.isEmpty else { return }
+        await environment.weatherViewModel.load(location: location)
+    }
+
     private var topSafeAreaBackground: Color {
         #if os(macOS)
         return Color(nsColor: .windowBackgroundColor)
@@ -314,6 +328,12 @@ public struct ContentView: View {
         #endif
     }
 
+}
+
+private extension String {
+    var trimmed: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
 public struct ConfigErrorView: View {
