@@ -139,7 +139,11 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     }
 
     private func toggleLeftPanel() {
+        let willExpand = !isLeftPanelExpanded
         isLeftPanelExpanded.toggle()
+        if willExpand, selection == nil {
+            selection = .notes
+        }
     }
 
     @ViewBuilder
