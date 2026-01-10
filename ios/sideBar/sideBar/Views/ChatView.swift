@@ -562,7 +562,7 @@ private struct ChatInputBar: View {
         #else
         let color = Color(uiColor: .separator)
         #endif
-        return colorScheme == .dark ? color.opacity(0.7) : color.opacity(0.4)
+        return colorScheme == .dark ? color.opacity(0.95) : color.opacity(0.7)
     }
 
     private var shadowRadius: CGFloat {
@@ -612,9 +612,11 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     let maxHeight: CGFloat
 
     func makeUIView(context: Context) -> UIVisualEffectView {
-        let effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+        let effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
         effectView.clipsToBounds = true
         effectView.layer.cornerRadius = 16
+        effectView.backgroundColor = .clear
+        effectView.isOpaque = false
 
         let textView = UITextView()
         textView.font = UIFont.preferredFont(forTextStyle: .body)
@@ -764,7 +766,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         let effectView = NSVisualEffectView()
         effectView.material = .contentBackground
         effectView.state = .active
-        effectView.blendingMode = .withinWindow
+        effectView.blendingMode = .behindWindow
         effectView.wantsLayer = true
         effectView.layer?.cornerRadius = 16
 
