@@ -614,7 +614,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         let textView = UITextView()
         textView.font = UIFont.preferredFont(forTextStyle: .body)
         textView.backgroundColor = .clear
-        textView.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 4, right: 48)
+        textView.textContainerInset = UIEdgeInsets(top: 12, left: 44, bottom: 4, right: 48)
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false
         textView.delegate = context.coordinator
@@ -627,6 +627,10 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         placeholderLabel.textColor = UIColor.secondaryLabel
         placeholderLabel.numberOfLines = 1
 
+        let attachButton = UIButton(type: .system)
+        attachButton.setImage(UIImage(systemName: "paperclip.circle.fill"), for: .normal)
+        attachButton.clipsToBounds = true
+
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
         button.layer.cornerRadius = 14
@@ -635,10 +639,12 @@ private struct ChatInputUIKitView: UIViewRepresentable {
 
         effectView.contentView.addSubview(textView)
         effectView.contentView.addSubview(placeholderLabel)
+        effectView.contentView.addSubview(attachButton)
         effectView.contentView.addSubview(button)
 
         textView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        attachButton.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
 
         let placeholderCenter = placeholderLabel.centerYAnchor.constraint(equalTo: textView.centerYAnchor)
@@ -649,9 +655,13 @@ private struct ChatInputUIKitView: UIViewRepresentable {
             textView.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor),
             textView.topAnchor.constraint(equalTo: effectView.contentView.topAnchor),
             textView.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor),
-            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 12),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 44),
             placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -48),
             placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: 8),
+            attachButton.leadingAnchor.constraint(equalTo: effectView.contentView.leadingAnchor, constant: 10),
+            attachButton.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -10),
+            attachButton.widthAnchor.constraint(equalToConstant: 28),
+            attachButton.heightAnchor.constraint(equalToConstant: 28),
             button.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor, constant: -10),
             button.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -10),
             button.widthAnchor.constraint(equalToConstant: 28),
@@ -661,6 +671,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
 
         context.coordinator.textView = textView
         context.coordinator.sendButton = button
+        context.coordinator.attachButton = attachButton
         context.coordinator.placeholderLabel = placeholderLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return effectView
@@ -669,6 +680,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
         guard let textView = context.coordinator.textView,
               let button = context.coordinator.sendButton,
+              let attachButton = context.coordinator.attachButton,
               let placeholderLabel = context.coordinator.placeholderLabel else {
             return
         }
@@ -687,6 +699,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         }
         button.backgroundColor = .clear
         button.tintColor = canSend ? tintColor : UIColor.systemGray3
+        attachButton.tintColor = tintColor
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         recalculateHeight(for: textView)
     }
@@ -712,6 +725,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         private let maxHeight: CGFloat
         weak var textView: UITextView?
         weak var sendButton: UIButton?
+        weak var attachButton: UIButton?
         weak var placeholderLabel: UILabel?
 
         init(text: Binding<String>, measuredHeight: Binding<CGFloat>, minHeight: CGFloat, maxHeight: CGFloat) {
@@ -773,6 +787,11 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         placeholderLabel.isEditable = false
         placeholderLabel.lineBreakMode = .byTruncatingTail
 
+        let attachButton = NSButton()
+        attachButton.bezelStyle = .regularSquare
+        attachButton.isBordered = false
+        attachButton.image = NSImage(systemSymbolName: "paperclip.circle.fill", accessibilityDescription: nil)
+
         let button = NSButton()
         button.bezelStyle = .regularSquare
         button.isBordered = false
@@ -784,9 +803,11 @@ private struct ChatInputAppKitView: NSViewRepresentable {
 
         effectView.addSubview(textView)
         effectView.addSubview(placeholderLabel)
+        effectView.addSubview(attachButton)
         effectView.addSubview(button)
         textView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        attachButton.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
 
         let placeholderCenter = placeholderLabel.centerYAnchor.constraint(equalTo: textView.centerYAnchor)
@@ -797,9 +818,13 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             textView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
             textView.topAnchor.constraint(equalTo: effectView.topAnchor),
             textView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
-            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 12),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 44),
             placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -48),
             placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: 8),
+            attachButton.leadingAnchor.constraint(equalTo: effectView.leadingAnchor, constant: 10),
+            attachButton.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -10),
+            attachButton.widthAnchor.constraint(equalToConstant: 28),
+            attachButton.heightAnchor.constraint(equalToConstant: 28),
             button.trailingAnchor.constraint(equalTo: effectView.trailingAnchor, constant: -10),
             button.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -10),
             button.widthAnchor.constraint(equalToConstant: 28),
@@ -809,6 +834,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
 
         context.coordinator.textView = textView
         context.coordinator.sendButton = button
+        context.coordinator.attachButton = attachButton
         context.coordinator.placeholderLabel = placeholderLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return effectView
@@ -817,6 +843,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
         guard let textView = context.coordinator.textView,
               let button = context.coordinator.sendButton,
+              let attachButton = context.coordinator.attachButton,
               let placeholderLabel = context.coordinator.placeholderLabel else {
             return
         }
@@ -835,6 +862,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         }
         button.layer?.backgroundColor = NSColor.clear.cgColor
         button.contentTintColor = canSend ? tintColor : NSColor.systemGray
+        attachButton.contentTintColor = tintColor
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         recalculateHeight(for: textView)
     }
@@ -864,6 +892,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         private let maxHeight: CGFloat
         weak var textView: NSTextView?
         weak var sendButton: NSButton?
+        weak var attachButton: NSButton?
         weak var placeholderLabel: NSTextField?
 
         init(text: Binding<String>, measuredHeight: Binding<CGFloat>, minHeight: CGFloat, maxHeight: CGFloat) {
