@@ -929,7 +929,7 @@ private struct WebsitesPanelView: View {
         } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
-            List {
+            List(selection: $selection) {
                 Section("Results") {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
@@ -938,17 +938,17 @@ private struct WebsitesPanelView: View {
                             WebsiteRow(
                                 item: item,
                                 isSelected: selection == item.id
-                            ) {
-                                open(item: item)
-                            }
-                            .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                            )
+                            .tag(item.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(item: item) }
                         }
                     }
                 }
             }
             .listStyle(.sidebar)
         } else {
-            List {
+            List(selection: $selection) {
                 if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
                     Section("Pinned") {
                         if pinnedItemsSorted.isEmpty {
@@ -960,10 +960,10 @@ private struct WebsitesPanelView: View {
                                 WebsiteRow(
                                     item: item,
                                     isSelected: selection == item.id
-                                ) {
-                                    open(item: item)
-                                }
-                                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                                )
+                                .tag(item.id)
+                                .contentShape(Rectangle())
+                                .onTapGesture { open(item: item) }
                             }
                         }
                     }
@@ -978,10 +978,10 @@ private struct WebsitesPanelView: View {
                                 WebsiteRow(
                                     item: item,
                                     isSelected: selection == item.id
-                                ) {
-                                    open(item: item)
-                                }
-                                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                                )
+                                .tag(item.id)
+                                .contentShape(Rectangle())
+                                .onTapGesture { open(item: item) }
                             }
                         }
                     }
@@ -998,10 +998,10 @@ private struct WebsitesPanelView: View {
                                 WebsiteRow(
                                     item: item,
                                     isSelected: selection == item.id
-                                ) {
-                                    open(item: item)
-                                }
-                                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                                )
+                                .tag(item.id)
+                                .contentShape(Rectangle())
+                                .onTapGesture { open(item: item) }
                             }
                         }
                     }
@@ -1087,10 +1087,11 @@ private struct WebsitesPanelView: View {
 private struct WebsiteRow: View {
     let item: WebsiteItem
     let isSelected: Bool
-    let onSelect: () -> Void
 
     var body: some View {
-        Button(action: onSelect) {
+        HStack(spacing: 8) {
+            Image(systemName: "globe")
+                .foregroundStyle(isSelected ? Color.white : Color.secondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title.isEmpty ? item.url : item.title)
                     .font(.subheadline.weight(.semibold))
@@ -1101,16 +1102,11 @@ private struct WebsiteRow: View {
                     .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 8)
+            Spacer()
         }
-        .buttonStyle(.plain)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? selectionBackground : Color.clear)
-        )
-        .contentShape(Rectangle())
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowBackground(isSelected ? selectionBackground : rowBackground)
     }
 
     private func formatDomain(_ domain: String) -> String {
@@ -1119,6 +1115,14 @@ private struct WebsiteRow: View {
 
     private var selectionBackground: Color {
         Color.black
+    }
+
+    private var rowBackground: Color {
+        #if os(macOS)
+        return Color(nsColor: .textBackgroundColor)
+        #else
+        return Color(uiColor: .systemBackground)
+        #endif
     }
 }
 
