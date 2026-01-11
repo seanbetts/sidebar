@@ -384,8 +384,35 @@ public struct ContentView: View {
         #if os(macOS)
         return Color(nsColor: .windowBackgroundColor)
         #else
+        if isCompact && isPhonePanelListVisible {
+            return DesignTokens.Colors.surface
+        }
         return Color.platformSystemBackground
         #endif
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var isPhonePanelListVisible: Bool {
+        guard isCompact else { return false }
+        switch phoneSelection {
+        case .chat:
+            return environment.chatViewModel.selectedConversationId == nil
+        case .notes:
+            return environment.notesViewModel.selectedNoteId == nil
+        case .files:
+            return environment.ingestionViewModel.selectedFileId == nil
+        case .websites:
+            return environment.websitesViewModel.selectedWebsiteId == nil
+        case .tasks, .settings:
+            return true
+        }
     }
 
     private func applyInitialSelectionIfNeeded() {
