@@ -12,29 +12,36 @@ public final class NotesViewModel: ObservableObject {
     @Published public private(set) var errorMessage: String? = nil
 
     private let api: any NotesProviding
-    private let cache: CacheClient
+    private let store: NotesStore
     private var searchTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
 
     public init(
         api: any NotesProviding,
-        cache: CacheClient
+        store: NotesStore
     ) {
         self.api = api
-        self.cache = cache
+        self.store = store
+
+        store.$tree
+            .sink { [weak self] tree in
+                self?.tree = tree
+            }
+            .store(in: &cancellables)
+
+        store.$activeNote
+            .sink { [weak self] note in
+                self?.activeNote = note
+            }
+            .store(in: &cancellables)
     }
 
     public func loadTree() async {
         errorMessage = nil
-        let cached: FileTree? = cache.get(key: CacheKeys.notesTree)
-        if let cached {
-            tree = cached
-        }
         do {
-            let response = try await api.listTree()
-            tree = response
-            cache.set(key: CacheKeys.notesTree, value: response, ttlSeconds: CachePolicy.notesTree)
+            try await store.loadTree()
         } catch {
-            if cached == nil {
+            if tree == nil {
                 errorMessage = error.localizedDescription
             }
         }
@@ -43,17 +50,10 @@ public final class NotesViewModel: ObservableObject {
     public func loadNote(id: String) async {
         errorMessage = nil
         selectedNoteId = id
-        let cacheKey = CacheKeys.note(id: id)
-        let cached: NotePayload? = cache.get(key: cacheKey)
-        if let cached {
-            activeNote = cached
-        }
         do {
-            let response = try await api.getNote(id: id)
-            activeNote = response
-            cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.noteContent)
+            try await store.loadNote(id: id)
         } catch {
-            if cached == nil {
+            if activeNote == nil {
                 errorMessage = error.localizedDescription
             }
         }
@@ -65,18 +65,18 @@ public final class NotesViewModel: ObservableObject {
 
     public func clearSelection() {
         selectedNoteId = nil
-        activeNote = nil
+        store.clearActiveNote()
     }
 
     public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
         let noteId = payload.record?.id ?? payload.oldRecord?.id
-        cache.remove(key: CacheKeys.notesTree)
+        store.invalidateTree()
         if let noteId {
-            cache.remove(key: CacheKeys.note(id: noteId))
+            store.invalidateNote(id: noteId)
         }
         if payload.eventType == .delete, selectedNoteId == noteId {
             selectedNoteId = nil
-            activeNote = nil
+            store.clearActiveNote()
         }
         await loadTree()
         if let noteId, payload.eventType != .delete, selectedNoteId == noteId {

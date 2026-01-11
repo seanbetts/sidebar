@@ -23,7 +23,8 @@ final class NotesViewModelTests: XCTestCase {
         cache.set(key: CacheKeys.notesTree, value: cachedTree, ttlSeconds: 60)
 
         let api = MockNotesAPI(listTreeResult: .failure(MockError.forced))
-        let viewModel = NotesViewModel(api: api, cache: cache)
+        let store = NotesStore(api: api, cache: cache)
+        let viewModel = NotesViewModel(api: api, store: store)
 
         await viewModel.loadTree()
 
@@ -49,7 +50,8 @@ final class NotesViewModelTests: XCTestCase {
         ])
         let cache = InMemoryCacheClient()
         let api = MockNotesAPI(listTreeResult: .success(freshTree))
-        let viewModel = NotesViewModel(api: api, cache: cache)
+        let store = NotesStore(api: api, cache: cache)
+        let viewModel = NotesViewModel(api: api, store: store)
 
         await viewModel.loadTree()
 
@@ -85,7 +87,8 @@ final class NotesViewModelTests: XCTestCase {
             listTreeResult: .success(tree),
             getNoteResult: .success(note)
         )
-        let viewModel = NotesViewModel(api: api, cache: cache)
+        let store = NotesStore(api: api, cache: cache)
+        let viewModel = NotesViewModel(api: api, store: store)
 
         await viewModel.selectNote(id: "note-id")
         XCTAssertEqual(viewModel.selectedNoteId, "note-id")

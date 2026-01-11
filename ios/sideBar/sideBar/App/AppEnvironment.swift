@@ -5,6 +5,9 @@ import Combine
 public final class AppEnvironment: ObservableObject {
     public let container: ServiceContainer
     public var themeManager: ThemeManager
+    public let chatStore: ChatStore
+    public let notesStore: NotesStore
+    public let websitesStore: WebsitesStore
     public let chatViewModel: ChatViewModel
     public let notesViewModel: NotesViewModel
     public let filesViewModel: FilesViewModel
@@ -23,15 +26,21 @@ public final class AppEnvironment: ObservableObject {
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
         self.container = container
         self.themeManager = ThemeManager()
-        self.chatViewModel = ChatViewModel(
+        self.chatStore = ChatStore(
             conversationsAPI: container.conversationsAPI,
+            cache: container.cacheClient
+        )
+        self.notesStore = NotesStore(api: container.notesAPI, cache: container.cacheClient)
+        self.websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
+        self.chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
             cache: container.cacheClient,
             themeManager: themeManager,
-            streamClient: container.makeChatStreamClient(handler: nil)
+            streamClient: container.makeChatStreamClient(handler: nil),
+            chatStore: chatStore
         )
         let temporaryStore = TemporaryFileStore.shared
-        self.notesViewModel = NotesViewModel(api: container.notesAPI, cache: container.cacheClient)
+        self.notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore)
         self.filesViewModel = FilesViewModel(
             api: container.filesAPI,
             cache: container.cacheClient,
@@ -42,7 +51,7 @@ public final class AppEnvironment: ObservableObject {
             cache: container.cacheClient,
             temporaryStore: temporaryStore
         )
-        self.websitesViewModel = WebsitesViewModel(api: container.websitesAPI, cache: container.cacheClient)
+        self.websitesViewModel = WebsitesViewModel(api: container.websitesAPI, store: websitesStore)
         self.memoriesViewModel = MemoriesViewModel(api: container.memoriesAPI, cache: container.cacheClient)
         self.settingsViewModel = SettingsViewModel(
             settingsAPI: container.settingsAPI,
@@ -86,6 +95,11 @@ public final class AppEnvironment: ObservableObject {
         isAuthenticated = container.authSession.accessToken != nil
         if wasAuthenticated && !isAuthenticated {
             container.cacheClient.clear()
+            chatStore.reset()
+            notesStore.reset()
+            websitesStore.reset()
+            notesViewModel.clearSelection()
+            websitesViewModel.clearSelection()
         }
         realtimeClientStopStart()
     }

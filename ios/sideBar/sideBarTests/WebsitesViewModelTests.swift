@@ -8,7 +8,8 @@ final class WebsitesViewModelTests: XCTestCase {
         let cache = InMemoryCacheClient()
         cache.set(key: CacheKeys.websitesList, value: cached, ttlSeconds: 60)
         let api = MockWebsitesAPI(listResult: .failure(MockError.forced))
-        let viewModel = WebsitesViewModel(api: api, cache: cache)
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(api: api, store: store)
 
         await viewModel.load()
 
@@ -20,7 +21,8 @@ final class WebsitesViewModelTests: XCTestCase {
         let detail = makeDetail(id: "site-1")
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(getResult: .success(detail))
-        let viewModel = WebsitesViewModel(api: api, cache: cache)
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(api: api, store: store)
 
         await viewModel.selectWebsite(id: "site-1")
 
@@ -36,7 +38,8 @@ final class WebsitesViewModelTests: XCTestCase {
             listResult: .success(WebsitesResponse(items: [item])),
             getResult: .success(detail)
         )
-        let viewModel = WebsitesViewModel(api: api, cache: cache)
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(api: api, store: store)
 
         await viewModel.load()
         await viewModel.selectWebsite(id: "site-1")
