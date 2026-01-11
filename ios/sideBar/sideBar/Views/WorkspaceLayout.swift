@@ -154,7 +154,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         let half = usableWidth * 0.5
         let maxAllowed = usableWidth - minMainWidth
         #if os(macOS)
-        return min(520, min(half, maxAllowed))
+        return min(half, maxAllowed)
         #else
         return min(half, maxAllowed)
         #endif

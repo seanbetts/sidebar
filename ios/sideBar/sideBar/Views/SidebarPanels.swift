@@ -253,16 +253,11 @@ private struct NotesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Group {
-                if viewModel.tree == nil {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    searchResultsView
-                } else {
-                    notesTreeView
-                }
-            }
+            #if os(macOS)
+            notesPanelContentWithArchive
+            #else
+            notesPanelContent
+            #endif
         }
         .onAppear {
             if !hasLoaded {
@@ -350,6 +345,35 @@ private struct NotesPanelView: View {
         .background(panelBackground)
     }
 
+    private var notesPanelContent: some View {
+        Group {
+            if viewModel.tree == nil {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                searchResultsView
+            } else {
+                notesTreeView
+            }
+        }
+    }
+
+    private var notesPanelContentWithArchive: some View {
+        Group {
+            if viewModel.tree == nil {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                searchResultsView
+            } else {
+                VStack(spacing: 0) {
+                    notesTreeListView
+                    notesArchiveSection
+                }
+            }
+        }
+    }
+
     private func buildItems(from nodes: [FileNode]) -> [FileNodeItem] {
         nodes.map { node in
             let children = node.type == .directory ? buildItems(from: node.children ?? []) : nil
@@ -362,7 +386,7 @@ private struct NotesPanelView: View {
         }
     }
 
-    private var notesTreeView: some View {
+    private var notesTreeListView: some View {
         List {
             Section("Pinned") {
                 if pinnedItems.isEmpty {
@@ -418,14 +442,13 @@ private struct NotesPanelView: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(panelBackground)
-        #if os(macOS)
-        .safeAreaInset(edge: .bottom) {
-            notesArchiveSection
-        }
-        #endif
         .refreshable {
             await viewModel.loadTree()
         }
+    }
+
+    private var notesTreeView: some View {
+        notesTreeListView
     }
 
     private var panelBackground: Color {
@@ -463,17 +486,20 @@ private struct NotesPanelView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-                            NotesTreeRow(
-                                item: item,
-                                isSelected: viewModel.selectedNoteId == item.id,
-                                useListStyling: false
-                            ) {
-                                if item.isFile {
-                                    Task { await viewModel.selectNote(id: item.id) }
+                        ScrollView {
+                            OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                                NotesTreeRow(
+                                    item: item,
+                                    isSelected: viewModel.selectedNoteId == item.id,
+                                    useListStyling: false
+                                ) {
+                                    if item.isFile {
+                                        Task { await viewModel.selectNote(id: item.id) }
+                                    }
                                 }
                             }
                         }
+                        .frame(maxHeight: 650)
                     }
                 },
                 label: {
@@ -1002,7 +1028,11 @@ private struct WebsitesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            #if os(macOS)
+            websitesPanelContentWithArchive
+            #else
             content
+            #endif
         }
         .onAppear {
             if !hasLoaded {
@@ -1140,12 +1170,87 @@ private struct WebsitesPanelView: View {
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(panelBackground)
-            #if os(macOS)
-            .safeAreaInset(edge: .bottom) {
+        }
+    }
+
+    @ViewBuilder
+    private var websitesPanelContentWithArchive: some View {
+        if viewModel.isLoading && viewModel.items.isEmpty {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let error = viewModel.errorMessage {
+            SidebarPanelPlaceholder(title: error)
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
+            SidebarPanelPlaceholder(title: "No websites yet.")
+        } else if !searchQuery.trimmed.isEmpty {
+            List {
+                Section("Results") {
+                    if filteredItems.isEmpty {
+                        SidebarPanelPlaceholder(title: "No results.")
+                    } else {
+                        ForEach(filteredItems, id: \.id) { item in
+                            WebsiteRow(
+                                item: item,
+                                isSelected: selection == item.id
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(item: item) }
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(panelBackground)
+        } else {
+            VStack(spacing: 0) {
+                websitesListView
                 websitesArchiveSection
             }
-            #endif
         }
+    }
+
+    private var websitesListView: some View {
+        List {
+            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
+                Section("Pinned") {
+                    if pinnedItemsSorted.isEmpty {
+                        Text("No pinned websites")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(pinnedItemsSorted, id: \.id) { item in
+                            WebsiteRow(
+                                item: item,
+                                isSelected: selection == item.id
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(item: item) }
+                        }
+                    }
+                }
+
+                Section("Websites") {
+                    if mainItems.isEmpty {
+                        Text("No websites saved")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(mainItems, id: \.id) { item in
+                            WebsiteRow(
+                                item: item,
+                                isSelected: selection == item.id
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(item: item) }
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(panelBackground)
     }
 
     private func open(item: WebsiteItem) {
@@ -1209,15 +1314,20 @@ private struct WebsitesPanelView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(archivedItems, id: \.id) { item in
-                            WebsiteRow(
-                                item: item,
-                                isSelected: selection == item.id,
-                                useListStyling: false
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture { open(item: item) }
+                        ScrollView {
+                            LazyVStack(spacing: DesignTokens.Spacing.xs) {
+                                ForEach(archivedItems, id: \.id) { item in
+                                    WebsiteRow(
+                                        item: item,
+                                        isSelected: selection == item.id,
+                                        useListStyling: false
+                                    )
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { open(item: item) }
+                                }
+                            }
                         }
+                        .frame(maxHeight: 650)
                     }
                 },
                 label: {
