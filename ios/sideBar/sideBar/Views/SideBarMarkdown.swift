@@ -16,7 +16,7 @@ struct SideBarMarkdown: View {
     var body: some View {
         #if canImport(MarkdownUI)
         Markdown(preprocessor(text))
-            .markdownTheme(.gitHub)
+            .markdownTheme(markdownTheme)
             .markdownBlockStyle(\.codeBlock) { configuration in
                 CodeBlockTextView(text: configuration.content)
                     .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
@@ -24,10 +24,6 @@ struct SideBarMarkdown: View {
                     .background(codeBlockBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .markdownMargin(top: RelativeSize.em(0.25), bottom: RelativeSize.em(0.75))
-            }
-            .markdownTextStyle(\.strikethrough) {
-                StrikethroughStyle(.single)
-                ForegroundColor(.secondary)
             }
             .markdownTextStyle(\.link) {
                 UnderlineStyle(.single)
@@ -45,6 +41,21 @@ struct SideBarMarkdown: View {
         return Color.platformSecondarySystemBackground
         #endif
     }
+
+    #if canImport(MarkdownUI)
+    private var markdownTheme: Theme {
+        Theme.gitHub
+            .text {
+                ForegroundColor(.primary)
+                BackgroundColor(nil)
+                FontSize(16)
+            }
+            .strikethrough {
+                StrikethroughStyle(.single)
+                ForegroundColor(.secondary)
+            }
+    }
+    #endif
 
 }
 
