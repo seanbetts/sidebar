@@ -744,7 +744,6 @@ private struct FilesPanelView: View {
     @ObservedObject var viewModel: IngestionViewModel
     @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
-    @State private var selection: String? = nil
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
 
@@ -768,17 +767,10 @@ private struct FilesPanelView: View {
                 hasLoaded = true
                 Task { await viewModel.load() }
             }
-            if selection == nil {
-                selection = viewModel.selectedFileId
-            }
             initializeExpandedCategoriesIfNeeded()
         }
         .onChange(of: categoriesWithItems) { _, _ in
             initializeExpandedCategoriesIfNeeded()
-        }
-        .onChange(of: selection) { _, newValue in
-            guard let fileId = newValue else { return }
-            open(fileId: fileId)
         }
     }
 
@@ -839,14 +831,17 @@ private struct FilesPanelView: View {
     }
 
     private var filesListView: some View {
-        List(selection: $selection) {
+        List {
             if !pinnedItems.isEmpty {
                 Section("Pinned") {
                     ForEach(pinnedItems, id: \.file.id) { item in
-                        FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                            .tag(item.file.id)
-                            .contentShape(Rectangle())
-                            .onTapGesture { open(item: item) }
+                        let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                        if isFolder(item) {
+                            row
+                        } else {
+                            row.contentShape(Rectangle())
+                                .onTapGesture { open(item: item) }
+                        }
                     }
                 }
             }
@@ -860,10 +855,13 @@ private struct FilesPanelView: View {
                                 isExpanded: bindingForCategory(category)
                             ) {
                                 ForEach(items, id: \.file.id) { item in
-                                    FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                                        .tag(item.file.id)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { open(item: item) }
+                                    let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                                    if isFolder(item) {
+                                        row
+                                    } else {
+                                        row.contentShape(Rectangle())
+                                            .onTapGesture { open(item: item) }
+                                    }
                                 }
                             }
                             .listRowBackground(unselectedRowBackground)
@@ -876,13 +874,11 @@ private struct FilesPanelView: View {
                 Section("Uploads") {
                     ForEach(filteredProcessingItems, id: \.file.id) { item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                            .tag(item.file.id)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                     }
                     ForEach(filteredFailedItems, id: \.file.id) { item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                            .tag(item.file.id)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                     }
@@ -898,12 +894,15 @@ private struct FilesPanelView: View {
     }
 
     private func open(item: IngestionListItem) {
-        selection = item.file.id
         open(fileId: item.file.id)
     }
 
     private func open(fileId: String) {
         Task { await viewModel.selectFile(fileId: fileId) }
+    }
+
+    private func isFolder(_ item: IngestionListItem) -> Bool {
+        item.file.category == "folder"
     }
 
     private func bindingForCategory(_ category: String) -> Binding<Bool> {
