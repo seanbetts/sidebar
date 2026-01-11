@@ -1,6 +1,6 @@
 <script lang="ts">
 	import {
-		FileTerminal,
+		Globe,
 		Pin,
 		PinOff,
 		Pencil,
@@ -48,7 +48,7 @@
 	{#if website}
 		<div class="website-meta">
 			<div class="title-row">
-				<FileTerminal size={20} />
+				<Globe size={20} />
 				<span class="title-text">{website.title}</span>
 			</div>
 			<div class="website-meta-row">
