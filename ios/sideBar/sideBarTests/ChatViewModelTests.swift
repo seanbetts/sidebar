@@ -138,12 +138,13 @@ final class ChatViewModelTests: XCTestCase {
         let streamClient = MockChatStreamClient()
         let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
+        let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         return ChatViewModel(
-            conversationsAPI: api,
             chatAPI: chatAPI,
             cache: cache,
             themeManager: themeManager,
             streamClient: streamClient,
+            chatStore: chatStore,
             userDefaults: defaults,
             clock: { Date(timeIntervalSince1970: 0) }
         )

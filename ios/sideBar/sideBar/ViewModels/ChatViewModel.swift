@@ -55,38 +55,60 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public private(set) var activeTool: ChatActiveTool? = nil
     @Published public private(set) var promptPreview: ChatPromptPreview? = nil
 
-    private let conversationsAPI: ConversationsProviding
     private let chatAPI: ChatAPI
     private let cache: CacheClient
     private let themeManager: ThemeManager
     private let streamClient: ChatStreamClient
+    private let chatStore: ChatStore
     private let userDefaults: UserDefaults
     private let clock: () -> Date
 
     private var currentStreamMessageId: String?
     private var streamingConversationId: String?
-    private var hasLoadedConversations = false
     private var clearActiveToolTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
 
     public init(
-        conversationsAPI: ConversationsProviding,
         chatAPI: ChatAPI,
         cache: CacheClient,
         themeManager: ThemeManager,
         streamClient: ChatStreamClient,
+        chatStore: ChatStore,
         userDefaults: UserDefaults = .standard,
         clock: @escaping () -> Date = Date.init
     ) {
-        self.conversationsAPI = conversationsAPI
         self.chatAPI = chatAPI
         self.cache = cache
         self.themeManager = themeManager
         self.streamClient = streamClient
+        self.chatStore = chatStore
         self.userDefaults = userDefaults
         self.clock = clock
         self.streamClient.handler = self
         self.selectedConversationId = nil
+
+        chatStore.$conversations
+            .sink { [weak self] conversations in
+                self?.conversations = conversations
+                self?.applySelectionIfNeeded(using: conversations)
+            }
+            .store(in: &cancellables)
+
+        chatStore.$conversationDetails
+            .sink { [weak self] details in
+                guard let self, let id = self.selectedConversationId,
+                      let detail = details[id] else {
+                    return
+                }
+                let incoming = self.normalizeMessages(
+                    self.reconcileMessages(detail.messages, for: id)
+                )
+                if !self.isSameMessageSnapshot(current: self.messages, incoming: incoming) {
+                    self.messages = incoming
+                }
+            }
+            .store(in: &cancellables)
     }
 
     public var groupedConversations: [ConversationGroup] {
@@ -137,23 +159,9 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
 
     public func loadConversations(force: Bool = false) async {
         errorMessage = nil
-        if !force {
-            if let cached: [Conversation] = cache.get(key: CacheKeys.conversationsList) {
-                conversations = cached
-                applySelectionIfNeeded(using: cached)
-            }
-            if hasLoadedConversations {
-                return
-            }
-        }
         isLoadingConversations = true
         do {
-            let response = try await conversationsAPI.list()
-            let filtered = response.filter { $0.isArchived != true }
-            conversations = filtered
-            cache.set(key: CacheKeys.conversationsList, value: filtered, ttlSeconds: CachePolicy.conversationsList)
-            hasLoadedConversations = true
-            applySelectionIfNeeded(using: filtered)
+            try await chatStore.loadConversations(force: force)
         } catch {
             if conversations.isEmpty {
                 errorMessage = error.localizedDescription
@@ -212,21 +220,10 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             errorMessage = nil
             isLoadingMessages = true
         }
-        let cacheKey = CacheKeys.conversation(id: id)
-        let cached: ConversationWithMessages? = cache.get(key: cacheKey)
-        if let cached {
-            if !silent || !isSameMessageSnapshot(current: messages, cached: cached) {
-                messages = normalizeMessages(reconcileMessages(cached.messages, for: id))
-            }
-        }
         do {
-            let response = try await conversationsAPI.get(id: id)
-            if shouldApplyConversationUpdate(response, cached: cached) {
-                messages = normalizeMessages(reconcileMessages(response.messages, for: id))
-                cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
-            }
+            try await chatStore.loadConversation(id: id)
         } catch {
-            if cached == nil {
+            if chatStore.conversationDetails[id] == nil {
                 errorMessage = error.localizedDescription
             }
         }
@@ -322,24 +319,27 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         return incoming + [streamingMessage]
     }
 
-    private func shouldApplyConversationUpdate(
-        _ response: ConversationWithMessages,
-        cached: ConversationWithMessages?
-    ) -> Bool {
-        guard let cached else {
-            return true
-        }
-        if response.updatedAt == cached.updatedAt && response.messageCount == cached.messageCount {
+    private func isSameMessageSnapshot(current: [Message], incoming: [Message]) -> Bool {
+        guard current.count == incoming.count else {
             return false
         }
-        return true
+        guard let currentLast = current.last, let incomingLast = incoming.last else {
+            return current.isEmpty && incoming.isEmpty
+        }
+        return currentLast.id == incomingLast.id
+            && currentLast.content == incomingLast.content
+            && currentLast.status == incomingLast.status
     }
 
-    private func isSameMessageSnapshot(current: [Message], cached: ConversationWithMessages) -> Bool {
-        guard current.count == cached.messages.count else {
-            return false
+    private func syncMessagesToStore(conversationId: String?, persist: Bool = false) {
+        guard let conversationId else {
+            return
         }
-        return current.last?.id == cached.messages.last?.id
+        chatStore.updateConversationMessages(
+            id: conversationId,
+            messages: messages,
+            persist: persist
+        )
     }
 
     private func normalizeMessages(_ incoming: [Message]) -> [Message] {
@@ -456,6 +456,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
                 error: message.error
             )
         }
+        syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId, persist: true)
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil
@@ -564,6 +565,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             }
             return transform(message)
         }
+        syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId)
     }
 
     private func upsertToolCall(existing: [ToolCall]?, newValue: ToolCall) -> [ToolCall] {

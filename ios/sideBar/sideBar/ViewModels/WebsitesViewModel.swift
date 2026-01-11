@@ -13,26 +13,33 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var errorMessage: String? = nil
 
     private let api: any WebsitesProviding
-    private let cache: CacheClient
+    private let store: WebsitesStore
+    private var cancellables = Set<AnyCancellable>()
 
-    public init(api: any WebsitesProviding, cache: CacheClient) {
+    public init(api: any WebsitesProviding, store: WebsitesStore) {
         self.api = api
-        self.cache = cache
+        self.store = store
+
+        store.$items
+            .sink { [weak self] items in
+                self?.items = items
+            }
+            .store(in: &cancellables)
+
+        store.$active
+            .sink { [weak self] active in
+                self?.active = active
+            }
+            .store(in: &cancellables)
     }
 
     public func load() async {
         isLoading = true
         errorMessage = nil
-        let cached: WebsitesResponse? = cache.get(key: CacheKeys.websitesList)
-        if let cached {
-            items = cached.items
-        }
         do {
-            let response = try await api.list()
-            items = response.items
-            cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: CachePolicy.websitesList)
+            try await store.loadList()
         } catch {
-            if cached == nil {
+            if items.isEmpty {
                 errorMessage = error.localizedDescription
             }
         }
@@ -43,17 +50,10 @@ public final class WebsitesViewModel: ObservableObject {
         errorMessage = nil
         selectedWebsiteId = id
         isLoadingDetail = true
-        let cacheKey = CacheKeys.websiteDetail(id: id)
-        let cached: WebsiteDetail? = cache.get(key: cacheKey)
-        if let cached {
-            active = cached
-        }
         do {
-            let response = try await api.get(id: id)
-            active = response
-            cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.websiteDetail)
+            try await store.loadDetail(id: id)
         } catch {
-            if cached == nil {
+            if active == nil {
                 errorMessage = error.localizedDescription
             }
         }
@@ -66,16 +66,16 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func clearSelection() {
         selectedWebsiteId = nil
-        active = nil
+        store.clearActive()
     }
 
     public func setPinned(id: String, pinned: Bool) async {
         errorMessage = nil
         do {
             let updated = try await api.pin(id: id, pinned: pinned)
-            updateListItem(updated)
-            cache.remove(key: CacheKeys.websitesList)
-            cache.remove(key: CacheKeys.websiteDetail(id: id))
+            store.updateListItem(updated)
+            store.invalidateList()
+            store.invalidateDetail(id: id)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -83,23 +83,22 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func applyRealtimeEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) async {
         let websiteId = payload.record?.id ?? payload.oldRecord?.id
-        cache.remove(key: CacheKeys.websitesList)
+        store.invalidateList()
         if let websiteId {
-            cache.remove(key: CacheKeys.websiteDetail(id: websiteId))
+            store.invalidateDetail(id: websiteId)
         }
 
         switch payload.eventType {
         case .delete:
             if let websiteId {
-                items.removeAll { $0.id == websiteId }
+                store.removeItem(id: websiteId)
                 if selectedWebsiteId == websiteId {
                     selectedWebsiteId = nil
-                    active = nil
                 }
             }
         case .insert, .update:
             if let record = payload.record, let mapped = RealtimeMappers.mapWebsite(record) {
-                updateListItem(mapped)
+                store.updateListItem(mapped)
                 if selectedWebsiteId == mapped.id {
                     await loadById(id: mapped.id)
                 }
@@ -107,36 +106,5 @@ public final class WebsitesViewModel: ObservableObject {
                 await load()
             }
         }
-    }
-
-    private func updateListItem(_ item: WebsiteItem) {
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            items[index] = item
-        } else {
-            items.append(item)
-        }
-        if let active, active.id == item.id {
-            self.active = updateDetail(active, with: item)
-        }
-    }
-
-    private func updateDetail(_ detail: WebsiteDetail, with item: WebsiteItem) -> WebsiteDetail {
-        WebsiteDetail(
-            id: detail.id,
-            title: item.title,
-            url: item.url,
-            urlFull: detail.urlFull,
-            domain: item.domain,
-            content: detail.content,
-            source: detail.source,
-            savedAt: item.savedAt ?? detail.savedAt,
-            publishedAt: item.publishedAt ?? detail.publishedAt,
-            pinned: item.pinned,
-            pinnedOrder: item.pinnedOrder,
-            archived: item.archived,
-            youtubeTranscripts: detail.youtubeTranscripts ?? item.youtubeTranscripts,
-            updatedAt: item.updatedAt ?? detail.updatedAt,
-            lastOpenedAt: item.lastOpenedAt ?? detail.lastOpenedAt
-        )
     }
 }
