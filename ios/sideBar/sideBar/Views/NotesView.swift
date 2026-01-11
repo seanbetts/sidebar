@@ -3,23 +3,52 @@ import MarkdownUI
 
 public struct NotesView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     public init() {
     }
 
     public var body: some View {
         NotesDetailView(viewModel: environment.notesViewModel)
+            #if !os(macOS)
+            .navigationTitle(noteTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+    }
+
+    private var noteTitle: String {
+        #if os(macOS)
+        return "Notes"
+        #else
+        guard horizontalSizeClass == .compact else {
+            return "Notes"
+        }
+        guard let name = environment.notesViewModel.activeNote?.name else {
+            return "Notes"
+        }
+        if name.hasSuffix(".md") {
+            return String(name.dropLast(3))
+        }
+        return name
+        #endif
     }
 }
 
 private struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     private let contentMaxWidth: CGFloat = 800
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
+            if !isCompact {
+                header
+                Divider()
+            }
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -89,6 +118,14 @@ private struct NotesDetailView: View {
             }
         }
         return note.content
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
 }

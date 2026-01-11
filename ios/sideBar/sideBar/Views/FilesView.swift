@@ -2,22 +2,53 @@ import SwiftUI
 
 public struct FilesView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     public init() {
     }
 
     public var body: some View {
         VStack(spacing: 0) {
-            FilesHeaderView(viewModel: environment.ingestionViewModel)
-            Divider()
+            if !isCompact {
+                FilesHeaderView(viewModel: environment.ingestionViewModel)
+                Divider()
+            }
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        #if !os(macOS)
+        .navigationTitle(fileTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 
     @ViewBuilder
     private var content: some View {
         FilesDetailContainer(viewModel: environment.ingestionViewModel)
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var fileTitle: String {
+        #if os(macOS)
+        return "Files"
+        #else
+        guard horizontalSizeClass == .compact else {
+            return "Files"
+        }
+        guard let name = environment.ingestionViewModel.activeMeta?.file.filenameOriginal else {
+            return "Files"
+        }
+        return stripFileExtension(name)
+        #endif
     }
 }
 
