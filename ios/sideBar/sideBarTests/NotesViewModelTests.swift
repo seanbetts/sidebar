@@ -59,6 +59,56 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(cached?.children.first?.name, "Fresh")
     }
 
+    func testLoadTreeRefreshesInBackground() async {
+        let cachedTree = FileTree(children: [
+            FileNode(
+                name: "Cached",
+                path: "/cached",
+                type: .file,
+                size: nil,
+                modified: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+        let freshTree = FileTree(children: [
+            FileNode(
+                name: "Fresh",
+                path: "/fresh",
+                type: .file,
+                size: nil,
+                modified: nil,
+                children: nil,
+                expanded: nil,
+                pinned: nil,
+                pinnedOrder: nil,
+                archived: nil,
+                folderMarker: nil
+            )
+        ])
+        let cache = InMemoryCacheClient()
+        cache.set(key: CacheKeys.notesTree, value: cachedTree, ttlSeconds: 60)
+
+        let api = MockNotesAPI(listTreeResult: .success(freshTree))
+        let store = NotesStore(api: api, cache: cache)
+        let viewModel = NotesViewModel(api: api, store: store)
+
+        await viewModel.loadTree()
+
+        for _ in 0..<10 {
+            if viewModel.tree?.children.first?.name == "Fresh" {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        XCTAssertEqual(viewModel.tree?.children.first?.name, "Fresh")
+    }
+
     func testApplyRealtimeEventClearsSelectionOnDelete() async {
         let tree = FileTree(children: [
             FileNode(

@@ -182,16 +182,14 @@ extension AppEnvironment: RealtimeEventHandler {
     }
 
     public func handleIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) {
-        _ = payload
         Task {
-            await ingestionViewModel.applyRealtimeEvent()
+            await ingestionViewModel.applyIngestedFileEvent(payload)
         }
     }
 
     public func handleFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) {
-        _ = payload
         Task {
-            await ingestionViewModel.applyRealtimeEvent()
+            await ingestionViewModel.applyFileJobEvent(payload)
         }
     }
 }

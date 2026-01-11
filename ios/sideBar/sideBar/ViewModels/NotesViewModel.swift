@@ -70,18 +70,10 @@ public final class NotesViewModel: ObservableObject {
 
     public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
         let noteId = payload.record?.id ?? payload.oldRecord?.id
-        store.invalidateTree()
-        if let noteId {
-            store.invalidateNote(id: noteId)
-        }
         if payload.eventType == .delete, selectedNoteId == noteId {
             selectedNoteId = nil
-            store.clearActiveNote()
         }
-        await loadTree()
-        if let noteId, payload.eventType != .delete, selectedNoteId == noteId {
-            await loadNote(id: noteId)
-        }
+        await store.applyRealtimeEvent(payload)
     }
 
     public func updateSearch(query: String) {

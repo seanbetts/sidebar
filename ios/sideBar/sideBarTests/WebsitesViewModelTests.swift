@@ -69,6 +69,38 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.selectedWebsiteId)
         XCTAssertTrue(viewModel.items.isEmpty)
     }
+
+    func testApplyRealtimeUpdateCachesList() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(api: api, store: store)
+
+        let payload = RealtimePayload(
+            eventType: .update,
+            table: RealtimeTable.websites,
+            schema: "public",
+            record: WebsiteRealtimeRecord(
+                id: "site-1",
+                title: "Site",
+                url: "https://example.com",
+                domain: "example.com",
+                metadata: nil,
+                savedAt: nil,
+                publishedAt: nil,
+                updatedAt: "2026-01-10T10:00:00Z",
+                lastOpenedAt: nil,
+                deletedAt: nil
+            ),
+            oldRecord: nil
+        )
+
+        await viewModel.applyRealtimeEvent(payload)
+
+        XCTAssertEqual(viewModel.items.first?.id, "site-1")
+        let cached: WebsitesResponse? = cache.get(key: CacheKeys.websitesList)
+        XCTAssertEqual(cached?.items.first?.id, "site-1")
+    }
 }
 
 private enum MockError: Error {
