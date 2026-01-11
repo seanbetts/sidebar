@@ -2,12 +2,17 @@ import SwiftUI
 
 public struct LoginView: View {
     @EnvironmentObject private var environment: AppEnvironment
-    @Environment(\.colorScheme) private var colorScheme
 
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var errorMessage: String?
     @State private var isSigningIn: Bool = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case email
+        case password
+    }
 
     public init() {
     }
@@ -23,79 +28,61 @@ public struct LoginView: View {
                     .font(.title2.weight(.semibold))
             }
 
-            VStack(alignment: .leading, spacing: 12) {
-                TextField("Email", text: $email)
-                    .textContentType(.emailAddress)
+            GroupBox {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        TextField("Email", text: $email)
+                            .textContentType(.username)
 #if canImport(UIKit)
-                    .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
 #endif
-                    .autocorrectionDisabled()
-                    .textFieldStyle(.roundedBorder)
-                    .foregroundStyle(fieldTextColor)
-                    .background(fieldBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(fieldBorderColor, lineWidth: 1)
-                    )
+                            .autocorrectionDisabled()
+                            .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .email)
+                            .submitLabel(.next)
 
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
-                    .textFieldStyle(.roundedBorder)
-                    .foregroundStyle(fieldTextColor)
-                    .background(fieldBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(fieldBorderColor, lineWidth: 1)
-                    )
-
-                if let errorMessage {
-                    Text(errorMessage)
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                }
-
-                Button {
-                    Task { await signIn() }
-                } label: {
-                    if isSigningIn {
-                        ProgressView()
-                            .tint(signInLabelColor)
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Sign In")
-                            .foregroundStyle(signInLabelColor)
-                            .frame(maxWidth: .infinity)
+                        SecureField("Password", text: $password)
+                            .textContentType(.password)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .password)
+                            .submitLabel(.go)
                     }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
+                            .font(.callout)
+                    }
+
+                    Button {
+                        Task { await signIn() }
+                    } label: {
+                        if isSigningIn {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Sign In")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(.accentColor)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(isSigningIn || email.isEmpty || password.isEmpty)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .tint(signInTintColor)
-                .disabled(isSigningIn || email.isEmpty || password.isEmpty)
+                .onSubmit(handleSubmit)
             }
+            .groupBoxStyle(LoginGroupBoxStyle())
         }
         .frame(maxWidth: 420)
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-    }
-
-    private var fieldBorderColor: Color {
-        colorScheme == .dark ? .white : .black
-    }
-
-    private var fieldTextColor: Color {
-        colorScheme == .dark ? .white : .black
-    }
-
-    private var fieldBackground: Color {
-        colorScheme == .dark ? .black : .white
-    }
-
-    private var signInTintColor: Color {
-        colorScheme == .dark ? .white : .black
-    }
-
-    private var signInLabelColor: Color {
-        colorScheme == .dark ? .black : .white
+        .background(DesignTokens.Colors.background)
+        .onAppear {
+            focusedField = .email
+        }
     }
 
     private func signIn() async {
@@ -109,5 +96,26 @@ public struct LoginView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func handleSubmit() {
+        switch focusedField {
+        case .email:
+            focusedField = .password
+        case .password:
+            Task { await signIn() }
+        case .none:
+            break
+        }
+    }
+}
+
+private struct LoginGroupBoxStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            configuration.label
+            configuration.content
+        }
+        .cardStyle()
     }
 }
