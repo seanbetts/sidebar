@@ -322,7 +322,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - [x] 8.2 Cache-first load with stale-while-revalidate
 - [x] 8.3 SSE/Realtime events update caches directly
 - [x] 8.4 Background revalidation for list endpoints only
-- [ ] 8.5 Offline-first reading via persistent cache
+- [x] 8.5 Offline-first reading via persistent cache
 - [ ] 8.6 Design tokens defined (spacing, radius, sizes, colors, animations)
 - [ ] 8.7 Shared components (PanelHeader, SearchField, SelectableRow, EmptyState, Loading)
 - [ ] 8.8 Utilities/extensions centralized (DateFormatter, String, Image)
