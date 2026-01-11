@@ -213,32 +213,34 @@ public struct ContentView: View {
         }
         .tint(tabBarTint)
         .overlay(alignment: .bottomTrailing) {
-            GeometryReader { proxy in
-                VStack {
-                    Spacer()
-                    HStack {
+            if phoneSelection != .chat {
+                GeometryReader { proxy in
+                    VStack {
                         Spacer()
-                        Button {
-                            isPhoneScratchpadPresented = true
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 18, weight: .semibold))
-                                .frame(width: 48, height: 48)
+                        HStack {
+                            Spacer()
+                            Button {
+                                isPhoneScratchpadPresented = true
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .frame(width: 48, height: 48)
+                            }
+                            .buttonStyle(.plain)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(separatorColor, lineWidth: 1)
+                            )
+                            .accessibilityLabel("Scratchpad")
+                            .padding(.trailing, 16)
+                            .padding(.bottom, proxy.safeAreaInsets.bottom + 32)
                         }
-                        .buttonStyle(.plain)
-                        .background(.ultraThinMaterial, in: Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(separatorColor, lineWidth: 1)
-                        )
-                        .accessibilityLabel("Scratchpad")
-                        .padding(.trailing, 16)
-                        .padding(.bottom, proxy.safeAreaInsets.bottom + 32)
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .sheet(isPresented: $isPhoneScratchpadPresented) {
             ScratchpadPopoverView(
