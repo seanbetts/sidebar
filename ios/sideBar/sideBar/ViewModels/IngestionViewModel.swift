@@ -94,10 +94,16 @@ public final class IngestionViewModel: ObservableObject {
         }
     }
 
-    public func applyRealtimeEvent() async {
-        store.invalidateList()
-        await load()
-        if let selectedFileId {
+    public func applyIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) async {
+        store.applyIngestedFileEvent(payload)
+        if let selectedFileId, selectedFileId == payload.record?.id || selectedFileId == payload.oldRecord?.id {
+            await loadMeta(fileId: selectedFileId)
+        }
+    }
+
+    public func applyFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>) async {
+        store.applyFileJobEvent(payload)
+        if let selectedFileId, selectedFileId == payload.record?.fileId {
             await loadMeta(fileId: selectedFileId)
         }
     }

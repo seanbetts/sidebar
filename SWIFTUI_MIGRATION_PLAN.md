@@ -149,7 +149,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 | **5. File Viewing** | ✅ Complete | 4 / 4-6 | 4 / 4-6 | 100% | Full (already read-only) |
 | **6. Website Viewer** | ✅ Complete | 1 / 1-2 | 1 / 2-3 | 100% | Modified (no saving) |
 | **7. Additional Features** | ✅ Complete | 1 / 2-3 | 1 / 3-4 | 100% | Modified (view-only) |
-| **8. Cache-First Sync Architecture** | ⬜ Not Started | 0 / 2-3 | 0 / 2-3 | 0% | Full |
+| **8. Cache-First Sync Architecture** | 🟨 In Progress | 0 / 2-3 | 0 / 2-3 | 40% | Full |
 | **9. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
 | **10. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
 | **MVP TOTAL** | | **24-36** | | | |
@@ -318,10 +318,10 @@ Critical Path (MVP): [███████████░░░░░░░░�
 
 #### Phase 8: Cache-First Sync Architecture (2-3 sessions)
 **MVP Scope: Full**
-- [ ] 8.1 Store layer per domain (chat, notes, tasks, websites, files)
-- [ ] 8.2 Cache-first load with stale-while-revalidate
-- [ ] 8.3 SSE/Realtime events update caches directly
-- [ ] 8.4 Background revalidation for list endpoints only
+- [x] 8.1 Store layer per domain (chat, notes, tasks, websites, files)
+- [x] 8.2 Cache-first load with stale-while-revalidate
+- [x] 8.3 SSE/Realtime events update caches directly
+- [x] 8.4 Background revalidation for list endpoints only
 - [ ] 8.5 Offline-first reading via persistent cache
 - [ ] 8.6 Design tokens defined (spacing, radius, sizes, colors, animations)
 - [ ] 8.7 Shared components (PanelHeader, SearchField, SelectableRow, EmptyState, Loading)
@@ -350,6 +350,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 #### Phase 10: MVP Testing & Refinement (3-4 sessions MVP, 4-6 full)
 **MVP Scope: Read-Only Testing**
 - [ ] 10.1 Integration Testing (all view features)
+- [ ] 10.1a Re-run iOS simulator tests (prior run timed out at 120s; macOS suite passed)
 - [ ] 10.2 Real-World Usage (daily use as reference app)
 - [ ] 10.3 Bug Fixes
 - [ ] 10.4 Edge Cases (very long content, slow network, empty states)

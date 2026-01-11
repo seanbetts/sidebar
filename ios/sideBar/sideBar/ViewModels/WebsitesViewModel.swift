@@ -73,9 +73,7 @@ public final class WebsitesViewModel: ObservableObject {
         errorMessage = nil
         do {
             let updated = try await api.pin(id: id, pinned: pinned)
-            store.updateListItem(updated)
-            store.invalidateList()
-            store.invalidateDetail(id: id)
+            store.updateListItem(updated, persist: true)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -83,28 +81,9 @@ public final class WebsitesViewModel: ObservableObject {
 
     public func applyRealtimeEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) async {
         let websiteId = payload.record?.id ?? payload.oldRecord?.id
-        store.invalidateList()
-        if let websiteId {
-            store.invalidateDetail(id: websiteId)
+        if payload.eventType == .delete, selectedWebsiteId == websiteId {
+            selectedWebsiteId = nil
         }
-
-        switch payload.eventType {
-        case .delete:
-            if let websiteId {
-                store.removeItem(id: websiteId)
-                if selectedWebsiteId == websiteId {
-                    selectedWebsiteId = nil
-                }
-            }
-        case .insert, .update:
-            if let record = payload.record, let mapped = RealtimeMappers.mapWebsite(record) {
-                store.updateListItem(mapped)
-                if selectedWebsiteId == mapped.id {
-                    await loadById(id: mapped.id)
-                }
-            } else {
-                await load()
-            }
-        }
+        store.applyRealtimeEvent(payload)
     }
 }

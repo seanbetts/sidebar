@@ -8,6 +8,7 @@ public final class ChatStore: ObservableObject {
 
     private let conversationsAPI: ConversationsProviding
     private let cache: CacheClient
+    private var isRefreshingList = false
 
     public init(conversationsAPI: ConversationsProviding, cache: CacheClient) {
         self.conversationsAPI = conversationsAPI
@@ -15,15 +16,18 @@ public final class ChatStore: ObservableObject {
     }
 
     public func loadConversations(force: Bool = false) async throws {
-        if !force, let cached: [Conversation] = cache.get(key: CacheKeys.conversationsList) {
-            conversations = cached
+        let cached: [Conversation]? = force ? nil : cache.get(key: CacheKeys.conversationsList)
+        if let cached {
+            applyConversationListUpdate(cached, persist: false)
+            Task { [weak self] in
+                await self?.refreshConversationsList()
+            }
             return
         }
 
         let response = try await conversationsAPI.list()
         let filtered = response.filter { $0.isArchived != true }
-        conversations = filtered
-        cache.set(key: CacheKeys.conversationsList, value: filtered, ttlSeconds: CachePolicy.conversationsList)
+        applyConversationListUpdate(filtered, persist: true)
     }
 
     public func loadConversation(id: String, force: Bool = false) async throws {
@@ -82,5 +86,50 @@ public final class ChatStore: ObservableObject {
             return false
         }
         return true
+    }
+
+    private func refreshConversationsList() async {
+        guard !isRefreshingList else {
+            return
+        }
+        isRefreshingList = true
+        defer { isRefreshingList = false }
+        do {
+            let response = try await conversationsAPI.list()
+            let filtered = response.filter { $0.isArchived != true }
+            applyConversationListUpdate(filtered, persist: true)
+        } catch {
+            // Ignore background refresh failures; cache remains source of truth.
+        }
+    }
+
+    private func applyConversationListUpdate(_ incoming: [Conversation], persist: Bool) {
+        guard shouldUpdateConversationList(incoming) else {
+            return
+        }
+        conversations = incoming
+        if persist {
+            cache.set(key: CacheKeys.conversationsList, value: incoming, ttlSeconds: CachePolicy.conversationsList)
+        }
+    }
+
+    private func shouldUpdateConversationList(_ incoming: [Conversation]) -> Bool {
+        guard conversations.count == incoming.count else {
+            return true
+        }
+        let existing = Dictionary(uniqueKeysWithValues: conversations.map { ($0.id, $0) })
+        for item in incoming {
+            guard let current = existing[item.id] else {
+                return true
+            }
+            if current.updatedAt != item.updatedAt
+                || current.messageCount != item.messageCount
+                || current.title != item.title
+                || current.isArchived != item.isArchived
+                || current.firstMessage != item.firstMessage {
+                return true
+            }
+        }
+        return false
     }
 }
