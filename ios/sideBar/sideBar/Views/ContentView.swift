@@ -268,10 +268,14 @@ public struct ContentView: View {
         NavigationStack {
             phonePanelView(for: section)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                #if !os(macOS)
                 .toolbar(.hidden, for: .navigationBar)
+                #endif
                 .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
                     detailView(for: section)
+                    #if !os(macOS)
                         .navigationBarTitleDisplayMode(.inline)
+                    #endif
                 }
         }
     }

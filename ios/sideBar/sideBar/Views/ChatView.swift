@@ -37,7 +37,7 @@ public struct ChatView: View {
     }
 
     private var chatTitle: String {
-        guard horizontalSizeClass == .compact,
+        guard isCompact,
               let selectedId = environment.chatViewModel.selectedConversationId,
               let conversation = environment.chatViewModel.conversations.first(where: { $0.id == selectedId }) else {
             return "Chat"
