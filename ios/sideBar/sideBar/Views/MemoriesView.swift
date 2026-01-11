@@ -193,20 +193,19 @@ private struct MemoryRow: View {
     let isSelected: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(displayName(item.path))
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
-            if let updated = formattedDate(item.updatedAt) {
-                Text(updated)
-                    .font(.caption)
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
+        SelectableRow(isSelected: isSelected) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayName(item.path))
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .foregroundStyle(isSelected ? Color.white : Color.primary)
+                if let updated = formattedDate(item.updatedAt) {
+                    Text(updated)
+                        .font(.caption)
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
+                }
             }
         }
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .listRowBackground(isSelected ? selectionBackground : rowBackground)
     }
 
     private func displayName(_ path: String) -> String {
@@ -225,17 +224,6 @@ private struct MemoryRow: View {
         return MemoriesDetailView.dateFormatter.string(from: date)
     }
 
-    private var selectionBackground: Color {
-        Color.black
-    }
-
-    private var rowBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .textBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
-    }
 }
 
 private extension String {

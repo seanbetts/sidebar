@@ -41,23 +41,15 @@ public struct IngestionSplitView: View {
                 if !pinnedItems.isEmpty {
                     Section("Pinned") {
                         ForEach(pinnedItems, id: \.file.id) { item in
-                            Button {
-                                selection = item.file.id
-                            } label: {
-                                IngestionRow(item: item, isSelected: selection == item.file.id)
-                            }
-                            .buttonStyle(.plain)
+                            IngestionRow(item: item, isSelected: selection == item.file.id)
+                                .onTapGesture { selection = item.file.id }
                         }
                     }
                 }
                 Section("All Files") {
                     ForEach(unpinnedItems, id: \.file.id) { item in
-                        Button {
-                            selection = item.file.id
-                        } label: {
-                            IngestionRow(item: item, isSelected: selection == item.file.id)
-                        }
-                        .buttonStyle(.plain)
+                        IngestionRow(item: item, isSelected: selection == item.file.id)
+                            .onTapGesture { selection = item.file.id }
                     }
                 }
             }
@@ -101,31 +93,31 @@ private struct IngestionRow: View {
     let isSelected: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: iconName)
-                .foregroundStyle(isSelected ? Color.white : Color.secondary)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(stripFileExtension(item.file.filenameOriginal))
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .foregroundStyle(isSelected ? Color.white : Color.primary)
-                Text(statusText)
-                    .font(.caption)
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
-                if let created = formattedDate {
-                    Text(created)
-                        .font(.caption2)
-                        .foregroundStyle(isSelected ? Color.white.opacity(0.6) : Color.secondary)
+        SelectableRow(isSelected: isSelected) {
+            HStack(spacing: 10) {
+                Image(systemName: iconName)
+                    .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(stripFileExtension(item.file.filenameOriginal))
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                    Text(statusText)
+                        .font(.caption)
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
+                    if let created = formattedDate {
+                        Text(created)
+                            .font(.caption2)
+                            .foregroundStyle(isSelected ? Color.white.opacity(0.6) : Color.secondary)
+                    }
+                }
+                Spacer()
+                if item.file.pinned == true {
+                    Image(systemName: "pin.fill")
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
                 }
             }
-            Spacer()
-            if item.file.pinned == true {
-                Image(systemName: "pin.fill")
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
-            }
         }
-        .padding(.vertical, 4)
-        .listRowBackground(isSelected ? selectionBackground : rowBackground)
     }
 
     private var iconName: String {
@@ -162,17 +154,6 @@ private struct IngestionRow: View {
         return DateFormatter.ingestionRow.string(from: date)
     }
 
-    private var selectionBackground: Color {
-        Color.black
-    }
-
-    private var rowBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .textBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
-    }
 }
 
 private extension DateFormatter {
