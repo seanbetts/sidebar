@@ -429,6 +429,10 @@
 		background-color: var(--color-card);
 	}
 
+	:global(.dark) .chat-header {
+		background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0));
+	}
+
 	.header-left {
 		display: inline-flex;
 		align-items: center;
