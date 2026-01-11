@@ -166,11 +166,11 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         await loadConversations(force: true)
     }
 
-    public func refreshActiveConversation() async {
+    public func refreshActiveConversation(silent: Bool = false) async {
         guard let id = selectedConversationId else {
             return
         }
-        await loadConversation(id: id)
+        await loadConversation(id: id, silent: silent)
     }
 
     public func startAutoRefresh(intervalSeconds: TimeInterval = 30) {
@@ -180,7 +180,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(intervalSeconds * 1_000_000_000))
                 await self.refreshConversations()
-                await self.refreshActiveConversation()
+                await self.refreshActiveConversation(silent: true)
             }
         }
     }
@@ -207,24 +207,32 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         }
     }
 
-    public func loadConversation(id: String) async {
-        errorMessage = nil
-        isLoadingMessages = true
+    public func loadConversation(id: String, silent: Bool = false) async {
+        if !silent {
+            errorMessage = nil
+            isLoadingMessages = true
+        }
         let cacheKey = CacheKeys.conversation(id: id)
         let cached: ConversationWithMessages? = cache.get(key: cacheKey)
         if let cached {
-            messages = normalizeMessages(reconcileMessages(cached.messages, for: id))
+            if !silent || !isSameMessageSnapshot(current: messages, cached: cached) {
+                messages = normalizeMessages(reconcileMessages(cached.messages, for: id))
+            }
         }
         do {
             let response = try await conversationsAPI.get(id: id)
-            messages = normalizeMessages(reconcileMessages(response.messages, for: id))
-            cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
+            if shouldApplyConversationUpdate(response, cached: cached) {
+                messages = normalizeMessages(reconcileMessages(response.messages, for: id))
+                cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
+            }
         } catch {
             if cached == nil {
                 errorMessage = error.localizedDescription
             }
         }
-        isLoadingMessages = false
+        if !silent {
+            isLoadingMessages = false
+        }
     }
 
     public func startStream(request: ChatStreamRequest) async {
@@ -312,6 +320,26 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             return incoming
         }
         return incoming + [streamingMessage]
+    }
+
+    private func shouldApplyConversationUpdate(
+        _ response: ConversationWithMessages,
+        cached: ConversationWithMessages?
+    ) -> Bool {
+        guard let cached else {
+            return true
+        }
+        if response.updatedAt == cached.updatedAt && response.messageCount == cached.messageCount {
+            return false
+        }
+        return true
+    }
+
+    private func isSameMessageSnapshot(current: [Message], cached: ConversationWithMessages) -> Bool {
+        guard current.count == cached.messages.count else {
+            return false
+        }
+        return current.last?.id == cached.messages.last?.id
     }
 
     private func normalizeMessages(_ incoming: [Message]) -> [Message] {
