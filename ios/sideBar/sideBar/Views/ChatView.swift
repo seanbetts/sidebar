@@ -2,15 +2,11 @@ import SwiftUI
 
 public struct ChatView: View {
     @EnvironmentObject private var environment: AppEnvironment
-    #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    #endif
 
     public init() {
     }
 
     public var body: some View {
-        #if os(macOS)
         ChatDetailView(viewModel: environment.chatViewModel)
             .task {
                 await environment.chatViewModel.loadConversations()
@@ -19,105 +15,8 @@ public struct ChatView: View {
             .onDisappear {
                 environment.chatViewModel.stopAutoRefresh()
             }
-        #else
-        if horizontalSizeClass == .compact {
-            ChatCompactView(viewModel: environment.chatViewModel)
-        } else {
-            ChatDetailView(viewModel: environment.chatViewModel)
-                .task {
-                    await environment.chatViewModel.loadConversations()
-                    environment.chatViewModel.startAutoRefresh()
-                }
-                .onDisappear {
-                    environment.chatViewModel.stopAutoRefresh()
-                }
-        }
-        #endif
     }
 }
-
-#if !os(macOS)
-private struct ChatCompactView: View {
-    @ObservedObject var viewModel: ChatViewModel
-    @State private var path: [String] = []
-
-    var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.conversations.isEmpty {
-                    ChatEmptyStateView(title: "No conversations", subtitle: "Start a chat on another device.")
-                } else {
-                    List {
-                        ForEach(viewModel.groupedConversations) { group in
-                            Section(group.title) {
-                                ForEach(group.conversations) { conversation in
-                                    NavigationLink(value: conversation.id) {
-                                        CompactConversationRow(conversation: conversation)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                    .refreshable {
-                        await viewModel.refreshConversations()
-                    }
-                }
-            }
-            .navigationTitle("Chat")
-            .task {
-                await viewModel.loadConversations()
-                viewModel.startAutoRefresh()
-                if let selected = viewModel.selectedConversationId, path.isEmpty {
-                    path = [selected]
-                }
-            }
-            .onDisappear {
-                viewModel.stopAutoRefresh()
-            }
-            .navigationDestination(for: String.self) { conversationId in
-                ChatDetailView(viewModel: viewModel)
-                    .task {
-                        await viewModel.selectConversation(id: conversationId)
-                    }
-                    .navigationBarTitleDisplayMode(.inline)
-            }
-        }
-    }
-}
-
-private struct CompactConversationRow: View {
-    let conversation: Conversation
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(conversation.title)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-            Text(subtitleText)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-
-    private var formattedDate: String {
-        guard let date = DateParsing.parseISO8601(conversation.updatedAt) else {
-            return conversation.updatedAt
-        }
-        return DateFormatter.chatListCompact.string(from: date)
-    }
-
-    private var subtitleText: String {
-        let count = conversation.messageCount
-        let label = count == 1 ? "1 message" : "\(count) messages"
-        return "\(formattedDate) | \(label)"
-    }
-}
-#endif
 
 private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
