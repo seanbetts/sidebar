@@ -110,7 +110,9 @@ struct MemoriesDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .navigationTitle(displayName(memory.path))
+                #if !os(macOS)
                 .navigationBarTitleDisplayMode(.inline)
+                #endif
             } else {
                 VStack(spacing: 0) {
                     detailHeader(memory: memory)
