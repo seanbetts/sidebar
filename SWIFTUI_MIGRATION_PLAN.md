@@ -327,7 +327,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - [x] 8.7 Shared components (PanelHeader, SearchField, SelectableRow, EmptyState, Loading)
 - [x] 8.8 Utilities/extensions centralized (DateFormatter, String, Image)
 - [x] 8.9 Style modifiers (glass button, card, pill)
-- [ ] 8.10 Migrate duplicated panel headers and selection styling
+- [x] 8.10 Migrate duplicated panel headers and selection styling
 
 **Architecture Notes (Phase 8)**
 - Cache is the single observable source of truth for UI.
