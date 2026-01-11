@@ -357,7 +357,6 @@
 
 	.subtitle {
 		font-size: 0.75rem;
-		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--color-muted-foreground);
 	}
