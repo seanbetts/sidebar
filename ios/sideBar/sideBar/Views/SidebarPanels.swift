@@ -217,6 +217,7 @@ public struct NotesPanel: View {
 
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
 
@@ -360,6 +361,7 @@ private struct NotesPanelView: View {
                         Label("Archive", systemImage: "archivebox")
                     }
                 )
+                .listRowBackground(rowBackground)
             }
         }
         .listStyle(.sidebar)
@@ -378,6 +380,10 @@ private struct NotesPanelView: View {
         #endif
     }
 
+    private var rowBackground: Color {
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+    }
+
     private var mainOutlineGroup: some View {
         OutlineGroup(buildItems(from: mainNodes), children: \.children) { item in
             NotesTreeRow(
@@ -389,6 +395,7 @@ private struct NotesPanelView: View {
                 }
             }
         }
+        .listRowBackground(rowBackground)
     }
 
     private var archivedOutlineGroup: some View {
@@ -402,6 +409,7 @@ private struct NotesPanelView: View {
                 }
             }
         }
+        .listRowBackground(rowBackground)
     }
 
     private var pinnedItems: [FileNodeItem] {
@@ -508,6 +516,7 @@ private struct NotesTreeRow: View {
                 .onTapGesture { onSelect() }
         } else {
             row
+                .listRowBackground(rowBackground)
         }
     }
 
@@ -521,6 +530,10 @@ private struct NotesTreeRow: View {
 
     private var selectedTextColor: Color {
         colorScheme == .dark ? Color.black : Color.white
+    }
+
+    private var rowBackground: Color {
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 }
 
@@ -553,6 +566,7 @@ public struct FilesPanel: View {
 
 private struct FilesPanelView: View {
     @ObservedObject var viewModel: IngestionViewModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
@@ -637,6 +651,7 @@ private struct FilesPanelView: View {
                                     }
                                 }
                             }
+                            .listRowBackground(rowBackground)
                         }
                     }
                 }
@@ -796,6 +811,10 @@ private struct FilesPanelView: View {
         #endif
     }
 
+    private var rowBackground: Color {
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+    }
+
 }
 
 private struct FilesIngestionRow: View {
@@ -868,6 +887,7 @@ public struct WebsitesPanel: View {
 
 private struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
@@ -1006,6 +1026,7 @@ private struct WebsitesPanelView: View {
                             Label("Archive", systemImage: "archivebox")
                         }
                     )
+                    .listRowBackground(rowBackground)
                 }
             }
             .listStyle(.sidebar)
@@ -1076,6 +1097,10 @@ private struct WebsitesPanelView: View {
         #else
         return Color.platformSecondarySystemBackground
         #endif
+    }
+
+    private var rowBackground: Color {
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
 }
