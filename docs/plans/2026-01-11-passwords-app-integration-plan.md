@@ -9,7 +9,7 @@ Enable full iCloud Passwords/Passwords.app integration for sideBar sign-in acros
 
 ## Phase 1 — App configuration (iOS/iPadOS/macOS)
 - Add Associated Domains entitlement to `ios/sideBar/sideBar/sideBar.entitlements`:
-  - `webcredentials:<domain>`
+  - `webcredentials:sidebar.seanbetts.com`
   - `applinks:<domain>` (optional, if you want universal links later)
 - Ensure Xcode target has Associated Domains capability enabled.
 - Confirm the sign-in UI uses:
