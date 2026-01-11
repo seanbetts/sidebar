@@ -81,9 +81,12 @@ private struct SettingsSplitView: View {
                     .tag(section)
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(DesignTokens.Colors.sidebar)
         } detail: {
             settingsDetailView(for: selection ?? .profile)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(DesignTokens.Colors.background)
         }
         .navigationSplitViewStyle(.balanced)
         .modifier(SidebarToggleHider())
@@ -164,7 +167,7 @@ private struct SettingsTabsView: View {
                 }
         }
         .padding(16)
-        .background(Color.platformSecondarySystemBackground)
+        .background(DesignTokens.Colors.background)
         .ignoresSafeArea()
         .onAppear {
             if !hasLoaded {

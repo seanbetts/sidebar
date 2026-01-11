@@ -170,11 +170,7 @@ private struct ConversationsPanelView: View {
     }
 
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
 }
@@ -182,7 +178,6 @@ private struct ConversationsPanelView: View {
 private struct ConversationRow: View {
     let conversation: Conversation
     let isSelected: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -198,19 +193,19 @@ private struct ConversationRow: View {
     }
 
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        DesignTokens.Colors.textPrimary
     }
 
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary
+        DesignTokens.Colors.textSecondary
     }
 
     private var selectedTextColor: Color {
-        colorScheme == .dark ? Color.black : Color.white
+        DesignTokens.Colors.textPrimary
     }
 
     private var selectedSecondaryText: Color {
-        colorScheme == .dark ? Color.black.opacity(0.7) : Color.white.opacity(0.7)
+        DesignTokens.Colors.textSecondary
     }
 
     private var formattedDate: String {
@@ -252,7 +247,6 @@ private struct NotesPanelView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
 
@@ -419,15 +413,11 @@ private struct NotesPanelView: View {
     }
 
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        DesignTokens.Colors.sidebar
     }
 
     private var mainOutlineGroup: some View {
@@ -544,7 +534,6 @@ private struct NotesTreeRow: View {
     let item: FileNodeItem
     let isSelected: Bool
     let onSelect: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let row = SelectableRow(isSelected: isSelected) {
@@ -567,19 +556,19 @@ private struct NotesTreeRow: View {
     }
 
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        DesignTokens.Colors.textPrimary
     }
 
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary
+        DesignTokens.Colors.textSecondary
     }
 
     private var selectedTextColor: Color {
-        colorScheme == .dark ? Color.black : Color.white
+        DesignTokens.Colors.textPrimary
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        DesignTokens.Colors.sidebar
     }
 }
 
@@ -615,7 +604,6 @@ private struct FilesPanelView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
@@ -866,15 +854,11 @@ private struct FilesPanelView: View {
     }
 
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        DesignTokens.Colors.sidebar
     }
 
 }
@@ -882,7 +866,6 @@ private struct FilesPanelView: View {
 private struct FilesIngestionRow: View {
     let item: IngestionListItem
     let isSelected: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         SelectableRow(isSelected: isSelected) {
@@ -920,19 +903,15 @@ private struct FilesIngestionRow: View {
     }
 
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        DesignTokens.Colors.textPrimary
     }
 
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary
+        DesignTokens.Colors.textSecondary
     }
 
     private var selectedTextColor: Color {
-        colorScheme == .dark ? Color.black : Color.white
-    }
-
-    private var selectedSecondaryText: Color {
-        colorScheme == .dark ? Color.black.opacity(0.7) : Color.white.opacity(0.7)
+        DesignTokens.Colors.textPrimary
     }
 }
 
@@ -952,7 +931,6 @@ private struct WebsitesPanelView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-    @Environment(\.colorScheme) private var colorScheme
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
@@ -1145,32 +1123,12 @@ private struct WebsitesPanelView: View {
         }
     }
 
-    private var actionBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
-    }
-
-    private var actionBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
-    }
-
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        DesignTokens.Colors.sidebar
     }
 
     private var isCompact: Bool {
@@ -1186,7 +1144,6 @@ private struct WebsitesPanelView: View {
 private struct WebsiteRow: View {
     let item: WebsiteItem
     let isSelected: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         SelectableRow(isSelected: isSelected) {
@@ -1213,19 +1170,19 @@ private struct WebsiteRow: View {
     }
 
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        DesignTokens.Colors.textPrimary
     }
 
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary
+        DesignTokens.Colors.textSecondary
     }
 
     private var selectedTextColor: Color {
-        colorScheme == .dark ? Color.black : Color.white
+        DesignTokens.Colors.textPrimary
     }
 
     private var selectedSecondaryText: Color {
-        colorScheme == .dark ? Color.black.opacity(0.7) : Color.white.opacity(0.7)
+        DesignTokens.Colors.textSecondary
     }
 }
 

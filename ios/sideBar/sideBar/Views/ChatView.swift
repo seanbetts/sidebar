@@ -105,7 +105,7 @@ private struct ChatDetailView: View {
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay(
                     Circle()
-                        .stroke(Color.platformSeparator, lineWidth: 1)
+                        .stroke(DesignTokens.Colors.border, lineWidth: 1)
                 )
                 .accessibilityLabel("Scratchpad")
                 .padding(.trailing, 16)
@@ -198,11 +198,7 @@ private struct ChatHeaderView: View {
     }
 
     private var headerBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
+        DesignTokens.Colors.background
     }
 
     private var isCompact: Bool {
@@ -343,29 +339,11 @@ private struct ChatMessageRow: View {
     }
 
     private var bubbleBackground: Color {
-        #if os(macOS)
-        if colorScheme == .dark {
-            return message.role == .assistant
-                ? Color(nsColor: .controlBackgroundColor)
-                : Color(nsColor: .underPageBackgroundColor)
-        }
-        return Color.white
-        #else
-        if colorScheme == .dark {
-            return message.role == .assistant
-                ? Color.platformSecondarySystemBackground
-                : Color.platformSystemGray6
-        }
-        return Color.white
-        #endif
+        message.role == .assistant ? DesignTokens.Colors.surface : DesignTokens.Colors.muted
     }
 
     private var bubbleBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 
     private var rolePillBackground: Color {
@@ -391,11 +369,7 @@ private struct ChatMessageRow: View {
     }
 
     private var pillBorderColor: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 
     private func copyMessage() {
@@ -427,11 +401,7 @@ private struct ToolCallListView: View {
     }
 
     private var toolBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 }
 
@@ -484,11 +454,7 @@ private struct ToolCallRow: View {
     }
 
     private var rowBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 
     private func formatJSON(_ value: Any) -> String {
@@ -521,11 +487,7 @@ private struct ChatActiveToolBanner: View {
     }
 
     private var bannerBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 
     @ViewBuilder
@@ -572,11 +534,7 @@ private struct PromptPreviewView: View {
     }
 
     private var promptBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 }
 
@@ -629,11 +587,7 @@ private struct ChatInputBar: View {
     }
 
     private var borderColor: Color {
-        #if os(macOS)
-        let color = Color(nsColor: .separatorColor)
-        #else
-        let color = Color.platformSeparator
-        #endif
+        let color = DesignTokens.Colors.border
         return colorScheme == .dark ? color.opacity(0.95) : color.opacity(0.7)
     }
 

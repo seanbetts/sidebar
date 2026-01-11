@@ -36,13 +36,17 @@ enum DesignTokens {
     }
 
     enum Colors {
-        static let background = Color.platformSystemBackground
-        static let surface = Color.platformSecondarySystemBackground
-        static let border = Color.platformSeparator
+        static let background = Color.appBackground
+        static let surface = Color.appSurface
+        static let muted = Color.appMuted
+        static let sidebar = Color.appSidebar
+        static let sidebarAccent = Color.appSidebarAccent
+        static let border = Color.appBorder
+        static let input = Color.appInput
         static let textPrimary = Color.primary
         static let textSecondary = Color.secondary
         static let textTertiary = Color.platformTertiaryLabel
-        static let selection = Color.black.opacity(0.12)
+        static let selection = Color.appSelection
         static let warning = Color.yellow.opacity(0.2)
     }
 

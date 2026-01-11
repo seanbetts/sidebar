@@ -14,10 +14,10 @@ struct MemoriesDetailView: View {
                 header
                 listContent
             }
-            .background(Color.platformSecondarySystemBackground)
+            .background(DesignTokens.Colors.sidebar)
         } detail: {
             detailContent
-                .background(Color.platformSecondarySystemBackground)
+                .background(DesignTokens.Colors.background)
         }
         .navigationSplitViewStyle(.balanced)
         .onAppear {
@@ -94,9 +94,8 @@ struct MemoriesDetailView: View {
                 }
             }
             .listStyle(.sidebar)
-            #if os(iOS)
             .scrollContentBackground(.hidden)
-            #endif
+            .background(DesignTokens.Colors.sidebar)
         }
     }
 
@@ -174,19 +173,11 @@ struct MemoriesDetailView: View {
     }
 
     private var searchFill: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
+        DesignTokens.Colors.input
     }
 
     private var searchBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 
     fileprivate static let dateFormatter: DateFormatter = {
@@ -207,7 +198,7 @@ private struct MemoryRow: View {
                 Text(displayName(item.path))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                    .foregroundStyle(isSelected ? Color.white : Color.primary)
+                    .foregroundStyle(DesignTokens.Colors.textPrimary)
             }
         }
     }

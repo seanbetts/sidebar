@@ -3,7 +3,6 @@ import SwiftUI
 struct SelectableRow<Content: View>: View {
     let isSelected: Bool
     let content: Content
-    @Environment(\.colorScheme) private var colorScheme
 
     init(isSelected: Bool, @ViewBuilder content: () -> Content) {
         self.isSelected = isSelected
@@ -21,14 +20,6 @@ struct SelectableRow<Content: View>: View {
                 trailing: DesignTokens.Spacing.sm
             ))
             .contentShape(Rectangle())
-            .listRowBackground(isSelected ? selectionBackground : rowBackground)
-    }
-
-    private var selectionBackground: Color {
-        colorScheme == .dark ? Color.white : Color.black
-    }
-
-    private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+            .listRowBackground(isSelected ? DesignTokens.Colors.selection : DesignTokens.Colors.sidebar)
     }
 }

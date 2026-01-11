@@ -128,11 +128,7 @@ public struct SidebarRail: View {
     }
 
     private var railBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
 }
