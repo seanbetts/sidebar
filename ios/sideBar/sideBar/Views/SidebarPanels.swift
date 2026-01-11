@@ -104,17 +104,13 @@ private struct ConversationsPanelView: View {
             ForEach(filteredGroups) { group in
                 Section(group.title) {
                     ForEach(group.conversations) { conversation in
-                        Button {
-                            Task { await viewModel.selectConversation(id: conversation.id) }
-                        } label: {
-                            SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
-                                ConversationRow(
-                                    conversation: conversation,
-                                    isSelected: viewModel.selectedConversationId == conversation.id
-                                )
-                            }
+                        SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
+                            ConversationRow(
+                                conversation: conversation,
+                                isSelected: viewModel.selectedConversationId == conversation.id
+                            )
                         }
-                        .buttonStyle(.plain)
+                        .onTapGesture { Task { await viewModel.selectConversation(id: conversation.id) } }
                     }
                 }
             }
