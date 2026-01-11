@@ -164,6 +164,8 @@ private struct SettingsTabsView: View {
                 }
         }
         .padding(16)
+        .background(Color.platformSecondarySystemBackground)
+        .ignoresSafeArea()
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
