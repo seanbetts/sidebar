@@ -40,6 +40,8 @@ private struct ChatDetailView: View {
     private let inputBarHeight: CGFloat = 60
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @EnvironmentObject private var environment: AppEnvironment
+    @State private var isScratchpadPresented = false
     #endif
 
     var body: some View {
@@ -69,6 +71,34 @@ private struct ChatDetailView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
         }
+        #if !os(macOS)
+        .overlay(alignment: .bottomTrailing) {
+            if isCompact {
+                Button {
+                    isScratchpadPresented = true
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 48, height: 48)
+                }
+                .buttonStyle(.plain)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.platformSeparator, lineWidth: 1)
+                )
+                .accessibilityLabel("Scratchpad")
+                .padding(.trailing, 16)
+                .padding(.bottom, inputBarHeight + 24)
+            }
+        }
+        .sheet(isPresented: $isScratchpadPresented) {
+            ScratchpadPopoverView(
+                api: environment.container.scratchpadAPI,
+                cache: environment.container.cacheClient
+            )
+        }
+        #endif
     }
 
     private var isCompact: Bool {
