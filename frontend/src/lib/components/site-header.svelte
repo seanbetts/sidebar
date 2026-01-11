@@ -287,6 +287,10 @@
 		height: var(--site-header-height);
 		padding: 0.75rem 1.5rem;
 		border-bottom: 1px solid var(--color-border);
+		background: #fff;
+	}
+
+	:global(.dark) .site-header {
 		background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0));
 	}
 
