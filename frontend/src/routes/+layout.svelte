@@ -63,7 +63,7 @@
 			return;
 		}
 		checkHealth();
-		restoreLastConversation();
+		chatStore.reset();
 	});
 
 	onDestroy(() => {
@@ -89,19 +89,6 @@
 		} catch (error) {
 			logError('Health check failed', error, { scope: 'layout.checkHealth' });
 			toast.error('Some services are unavailable. Restart the backend via Doppler and refresh.');
-		}
-	}
-
-	async function restoreLastConversation() {
-		const state = get(chatStore);
-		if (state.conversationId) return;
-		const lastConversationId = chatStore.getLastConversationId();
-		if (!lastConversationId) return;
-		try {
-			await chatStore.loadConversation(lastConversationId);
-		} catch (error) {
-			console.warn('Failed to restore last conversation:', error);
-			chatStore.clearLastConversation();
 		}
 	}
 </script>
