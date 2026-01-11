@@ -25,6 +25,9 @@ public struct TasksPanel: View {
 
 private struct TasksPanelView: View {
     @State private var searchQuery: String = ""
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,14 +40,19 @@ private struct TasksPanelView: View {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Tasks") {
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Button {
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add task")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add task")
             }
             SearchField(text: $searchQuery, placeholder: "Search tasks")
                 .padding(.horizontal, DesignTokens.Spacing.md)
@@ -52,11 +60,22 @@ private struct TasksPanelView: View {
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
     }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
 }
 
 private struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var searchQuery: String = ""
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
@@ -83,20 +102,33 @@ private struct ConversationsPanelView: View {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Chat") {
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Button {
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("New chat")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("New chat")
             }
             SearchField(text: $searchQuery, placeholder: "Search chats")
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
     private var conversationsList: some View {
@@ -217,6 +249,9 @@ public struct NotesPanel: View {
 
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
@@ -267,6 +302,9 @@ private struct NotesPanelView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add note")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
             }
             SearchField(text: $viewModel.searchQuery, placeholder: "Search notes")
@@ -274,6 +312,14 @@ private struct NotesPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
     private var searchResultsView: some View {
@@ -566,6 +612,9 @@ public struct FilesPanel: View {
 
 private struct FilesPanelView: View {
     @ObservedObject var viewModel: IngestionViewModel
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var expandedCategories: Set<String> = []
@@ -601,20 +650,33 @@ private struct FilesPanelView: View {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Files") {
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Button {
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add file")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add file")
             }
             SearchField(text: $searchQuery, placeholder: "Search files")
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
     private var filesListView: some View {
@@ -887,6 +949,9 @@ public struct WebsitesPanel: View {
 
 private struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Environment(\.colorScheme) private var colorScheme
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
@@ -916,14 +981,19 @@ private struct WebsitesPanelView: View {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Websites") {
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Button {
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add website")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add website")
             }
             SearchField(text: $searchQuery, placeholder: "Search websites")
                 .padding(.horizontal, DesignTokens.Spacing.md)
@@ -1101,6 +1171,14 @@ private struct WebsitesPanelView: View {
 
     private var rowBackground: Color {
         colorScheme == .dark ? Color.black : Color.platformSystemBackground
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
 }

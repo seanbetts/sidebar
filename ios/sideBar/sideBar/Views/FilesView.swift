@@ -2,9 +2,6 @@ import SwiftUI
 
 public struct FilesView: View {
     @EnvironmentObject private var environment: AppEnvironment
-    #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    #endif
 
     public init() {
     }
@@ -20,15 +17,7 @@ public struct FilesView: View {
 
     @ViewBuilder
     private var content: some View {
-        #if os(macOS)
         FilesDetailContainer(viewModel: environment.ingestionViewModel)
-        #else
-        if horizontalSizeClass == .compact {
-            IngestionSplitView(viewModel: environment.ingestionViewModel)
-        } else {
-            FilesDetailContainer(viewModel: environment.ingestionViewModel)
-        }
-        #endif
     }
 }
 

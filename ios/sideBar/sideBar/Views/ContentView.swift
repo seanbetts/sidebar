@@ -262,11 +262,15 @@ public struct ContentView: View {
     }
 
     private func phoneTabView(for section: AppSection) -> some View {
-        detailView(for: section)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                SiteHeaderBar(onShowSettings: { isSettingsPresented = true })
-            }
+        NavigationStack {
+            phonePanelView(for: section)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(isPresented: phoneDetailBinding(for: section)) {
+                    detailView(for: section)
+                        .navigationBarTitleDisplayMode(.inline)
+                }
+        }
     }
 
     private var phoneSections: [AppSection] {
@@ -287,6 +291,63 @@ public struct ContentView: View {
             return "bubble"
         default:
             return "square.grid.2x2"
+        }
+    }
+
+    @ViewBuilder
+    private func phonePanelView(for section: AppSection) -> some View {
+        switch section {
+        case .chat:
+            ConversationsPanel()
+        case .notes:
+            NotesPanel()
+        case .tasks:
+            TasksPanel()
+        case .files:
+            FilesPanel()
+        case .websites:
+            WebsitesPanel()
+        case .settings:
+            SettingsView()
+        }
+    }
+
+    private func phoneDetailBinding(for section: AppSection) -> Binding<Bool> {
+        switch section {
+        case .chat:
+            return Binding(
+                get: { environment.chatViewModel.selectedConversationId != nil },
+                set: { isPresented in
+                    guard !isPresented else { return }
+                    Task { await environment.chatViewModel.selectConversation(id: nil) }
+                }
+            )
+        case .notes:
+            return Binding(
+                get: { environment.notesViewModel.selectedNoteId != nil },
+                set: { isPresented in
+                    guard !isPresented else { return }
+                    environment.notesViewModel.clearSelection()
+                }
+            )
+        case .files:
+            return Binding(
+                get: { environment.ingestionViewModel.selectedFileId != nil },
+                set: { isPresented in
+                    guard !isPresented else { return }
+                    environment.ingestionViewModel.clearSelection()
+                }
+            )
+        case .websites:
+            return Binding(
+                get: { environment.websitesViewModel.selectedWebsiteId != nil },
+                set: { isPresented in
+                    guard !isPresented else { return }
+                    environment.websitesViewModel.clearSelection()
+                }
+            )
+        case .tasks, .settings:
+            return Binding(get: { false }, set: { _ in })
         }
     }
 
