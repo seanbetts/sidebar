@@ -32,7 +32,6 @@ private struct TasksPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             SidebarPanelPlaceholder(title: "Tasks")
         }
     }
@@ -59,6 +58,7 @@ private struct TasksPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(DesignTokens.Colors.surface)
     }
 
     private var isCompact: Bool {
@@ -80,7 +80,6 @@ private struct ConversationsPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             Group {
                 if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
                     VStack(spacing: 12) {
@@ -121,6 +120,7 @@ private struct ConversationsPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(DesignTokens.Colors.surface)
     }
 
     private var isCompact: Bool {
@@ -259,7 +259,6 @@ private struct NotesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             Group {
                 if viewModel.tree == nil {
                     ProgressView()
@@ -312,6 +311,7 @@ private struct NotesPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(DesignTokens.Colors.surface)
     }
 
     private var isCompact: Bool {
@@ -623,7 +623,6 @@ private struct FilesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             if viewModel.isLoading && viewModel.items.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -669,6 +668,7 @@ private struct FilesPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(DesignTokens.Colors.surface)
     }
 
     private var isCompact: Bool {
@@ -961,7 +961,6 @@ private struct WebsitesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             content
         }
         .onAppear {
@@ -1000,6 +999,7 @@ private struct WebsitesPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(DesignTokens.Colors.surface)
     }
 
     @ViewBuilder
