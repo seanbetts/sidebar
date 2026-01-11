@@ -16,32 +16,39 @@ public final class IngestionViewModel: ObservableObject {
     @Published public private(set) var errorMessage: String? = nil
 
     private let api: any IngestionProviding
-    private let cache: CacheClient
     private let temporaryStore: TemporaryFileStore
+    private let store: IngestionStore
+    private var cancellables = Set<AnyCancellable>()
 
     public init(
         api: any IngestionProviding,
-        cache: CacheClient,
+        store: IngestionStore,
         temporaryStore: TemporaryFileStore
     ) {
         self.api = api
-        self.cache = cache
         self.temporaryStore = temporaryStore
+        self.store = store
+
+        store.$items
+            .sink { [weak self] items in
+                self?.items = items
+            }
+            .store(in: &cancellables)
+
+        store.$activeMeta
+            .sink { [weak self] meta in
+                self?.activeMeta = meta
+            }
+            .store(in: &cancellables)
     }
 
     public func load() async {
         isLoading = true
         errorMessage = nil
-        let cached: IngestionListResponse? = cache.get(key: CacheKeys.ingestionList)
-        if let cached {
-            items = cached.items
-        }
         do {
-            let response = try await api.list()
-            items = response.items
-            cache.set(key: CacheKeys.ingestionList, value: response, ttlSeconds: CachePolicy.ingestionList)
+            try await store.loadList()
         } catch {
-            if cached == nil {
+            if items.isEmpty {
                 errorMessage = error.localizedDescription
             }
         }
@@ -51,7 +58,7 @@ public final class IngestionViewModel: ObservableObject {
     public func loadMeta(fileId: String) async {
         errorMessage = nil
         do {
-            activeMeta = try await api.getMeta(fileId: fileId)
+            try await store.loadMeta(fileId: fileId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -88,6 +95,7 @@ public final class IngestionViewModel: ObservableObject {
     }
 
     public func applyRealtimeEvent() async {
+        store.invalidateList()
         await load()
         if let selectedFileId {
             await loadMeta(fileId: selectedFileId)
@@ -96,7 +104,7 @@ public final class IngestionViewModel: ObservableObject {
 
     public func clearSelection() {
         selectedFileId = nil
-        activeMeta = nil
+        store.clearActiveMeta()
         selectedDerivativeKind = nil
         viewerState = nil
         errorMessage = nil

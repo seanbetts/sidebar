@@ -26,7 +26,8 @@ final class FilesViewModelTests: XCTestCase {
             getContentResult: .failure(MockError.forced),
             downloadResult: .failure(MockError.forced)
         )
-        let viewModel = FilesViewModel(api: api, cache: cache, temporaryStore: .shared)
+        let store = FilesStore(api: api, cache: cache)
+        let viewModel = FilesViewModel(api: api, store: store, temporaryStore: .shared)
 
         await viewModel.loadTree(basePath: "documents")
 
@@ -42,7 +43,8 @@ final class FilesViewModelTests: XCTestCase {
             getContentResult: .success(freshContent),
             downloadResult: .failure(MockError.forced)
         )
-        let viewModel = FilesViewModel(api: api, cache: cache, temporaryStore: .shared)
+        let store = FilesStore(api: api, cache: cache)
+        let viewModel = FilesViewModel(api: api, store: store, temporaryStore: .shared)
 
         await viewModel.loadContent(basePath: "documents", path: "/hello.txt")
 
@@ -61,7 +63,8 @@ final class FilesViewModelTests: XCTestCase {
         )
         let tempDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = TemporaryFileStore(directory: tempDirectory)
-        let viewModel = FilesViewModel(api: api, cache: cache, temporaryStore: store)
+        let filesStore = FilesStore(api: api, cache: cache)
+        let viewModel = FilesViewModel(api: api, store: filesStore, temporaryStore: store)
 
         await viewModel.selectFile(path: "/note.md", name: "note.md")
 

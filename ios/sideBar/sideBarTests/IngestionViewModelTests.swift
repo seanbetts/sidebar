@@ -17,7 +17,8 @@ final class IngestionViewModelTests: XCTestCase {
             contentResult: .failure(MockError.forced),
             pinResult: .failure(MockError.forced)
         )
-        let viewModel = IngestionViewModel(api: api, cache: cache, temporaryStore: .shared)
+        let store = IngestionStore(api: api, cache: cache)
+        let viewModel = IngestionViewModel(api: api, store: store, temporaryStore: .shared)
 
         await viewModel.load()
 
@@ -49,7 +50,8 @@ final class IngestionViewModelTests: XCTestCase {
         )
         let tempDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = TemporaryFileStore(directory: tempDirectory)
-        let viewModel = IngestionViewModel(api: api, cache: TestCacheClient(), temporaryStore: store)
+        let ingestionStore = IngestionStore(api: api, cache: TestCacheClient())
+        let viewModel = IngestionViewModel(api: api, store: ingestionStore, temporaryStore: store)
 
         await viewModel.selectFile(fileId: file.id)
 

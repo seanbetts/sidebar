@@ -13,28 +13,34 @@ public final class FilesViewModel: ObservableObject {
     @Published public private(set) var errorMessage: String? = nil
 
     private let api: any FilesProviding
-    private let cache: CacheClient
     private let temporaryStore: TemporaryFileStore
+    private let store: FilesStore
+    private var cancellables = Set<AnyCancellable>()
 
-    public init(api: any FilesProviding, cache: CacheClient, temporaryStore: TemporaryFileStore) {
+    public init(api: any FilesProviding, store: FilesStore, temporaryStore: TemporaryFileStore) {
         self.api = api
-        self.cache = cache
         self.temporaryStore = temporaryStore
+        self.store = store
+
+        store.$tree
+            .sink { [weak self] tree in
+                self?.tree = tree
+            }
+            .store(in: &cancellables)
+
+        store.$activeFile
+            .sink { [weak self] file in
+                self?.activeFile = file
+            }
+            .store(in: &cancellables)
     }
 
     public func loadTree(basePath: String = "documents") async {
         errorMessage = nil
-        let cacheKey = CacheKeys.filesTree(basePath: basePath)
-        let cached: FileTree? = cache.get(key: cacheKey)
-        if let cached {
-            tree = cached
-        }
         do {
-            let response = try await api.listTree(basePath: basePath)
-            tree = response
-            cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.filesTree)
+            try await store.loadTree(basePath: basePath)
         } catch {
-            if cached == nil {
+            if tree == nil {
                 errorMessage = error.localizedDescription
             }
         }
@@ -42,17 +48,10 @@ public final class FilesViewModel: ObservableObject {
 
     public func loadContent(basePath: String = "documents", path: String) async {
         errorMessage = nil
-        let cacheKey = CacheKeys.fileContent(basePath: basePath, path: path)
-        let cached: FileContent? = cache.get(key: cacheKey)
-        if let cached {
-            activeFile = cached
-        }
         do {
-            let response = try await api.getContent(basePath: basePath, path: path)
-            activeFile = response
-            cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.fileContent)
+            try await store.loadContent(basePath: basePath, path: path)
         } catch {
-            if cached == nil {
+            if activeFile == nil {
                 errorMessage = error.localizedDescription
             }
         }
@@ -94,5 +93,11 @@ public final class FilesViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    public func clearSelection() {
+        selectedPath = nil
+        viewerState = nil
+        store.clearActiveFile()
     }
 }
