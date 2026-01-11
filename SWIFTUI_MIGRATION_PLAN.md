@@ -323,7 +323,11 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - [ ] 8.3 SSE/Realtime events update caches directly
 - [ ] 8.4 Background revalidation for list endpoints only
 - [ ] 8.5 Offline-first reading via persistent cache
-- [ ] 8.6 Design system rollout (tokens + shared components + utilities + styles)
+- [ ] 8.6 Design tokens defined (spacing, radius, sizes, colors, animations)
+- [ ] 8.7 Shared components (PanelHeader, SearchField, SelectableRow, EmptyState, Loading)
+- [ ] 8.8 Utilities/extensions centralized (DateFormatter, String, Image)
+- [ ] 8.9 Style modifiers (glass button, card, pill)
+- [ ] 8.10 Migrate duplicated panel headers and selection styling
 
 **Architecture Notes (Phase 8)**
 - Cache is the single observable source of truth for UI.
@@ -1545,6 +1549,38 @@ Same pattern as notes/conversations.
 - Shared components: PanelHeader, SearchField, SelectableRow, EmptyStateView, LoadingView.
 - Utilities & extensions (DateFormatter, String, Image).
 - Style modifiers (glass button, card, pill).
+
+**8.5a Design Tokens (Phase 1)**
+- File: `ios/sideBar/sideBar/Design/DesignTokens.swift`
+- Spacing: xxs/xs/sm/md/lg/xl/xxl
+- Corner radius: xs/sm/md/lg/xl/xxl
+- Sizes: touch targets, rail width, panel widths, content max width
+- Icon sizes: sm/md/lg/xl/xxl
+- Colors: semantic backgrounds, selection, borders, text, status
+- Animation timings: quick/standard/slow
+
+**8.5b Reusable Components (Phase 2)**
+- `Design/Components/PanelHeader.swift` (highest value; replaces duplicated headers)
+- `Design/Components/SearchField.swift`
+- `Design/Components/SelectableRow.swift`
+- `Design/Components/EmptyStateView.swift`
+- `Design/Components/LoadingView.swift`
+
+**8.5c Utilities & Extensions (Phase 3)**
+- `Design/Extensions/DateFormatter+SideBar.swift`
+- `Design/Extensions/String+SideBar.swift` (trim + stripFileExtension)
+- `Design/Extensions/Image+SideBar.swift` (profile image helpers)
+
+**8.5d Style Modifiers (Phase 4)**
+- `Design/Styles/GlassButtonStyle.swift`
+- `Design/Styles/CardModifier.swift`
+- `Design/Styles/PillModifier.swift`
+
+**8.5e Migration Checklist**
+- Replace panel headers in Conversations/Notes/Files/Websites panels.
+- Move all hardcoded colors to tokens in new code.
+- Migrate selection styling to SelectableRow.
+- Consolidate empty/loading states.
 
 ### Technical Decisions
 - **Persistence**: Core Data or file-backed cache with Codable payloads.
