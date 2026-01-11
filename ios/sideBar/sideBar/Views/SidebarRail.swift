@@ -47,12 +47,12 @@ public struct SidebarRail: View {
 
             #if os(macOS)
             SettingsLink {
-                settingsAvatar
+                ProfileAvatarView(size: 32)
             }
             .buttonStyle(.plain)
             #else
             Button(action: { onShowSettings?() }) {
-                settingsAvatar
+                ProfileAvatarView(size: 32)
             }
             .buttonStyle(.plain)
             #endif
@@ -135,30 +135,4 @@ public struct SidebarRail: View {
         #endif
     }
 
-    private var settingsAvatar: some View {
-        Group {
-            if environment.isAuthenticated,
-               let data = environment.settingsViewModel.profileImageData,
-               let image = loadProfileImage(from: data) {
-                image
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Image(systemName: "person.crop.circle")
-                    .font(.system(size: 22, weight: .regular))
-            }
-        }
-        .frame(width: 32, height: 32)
-        .clipShape(Circle())
-    }
-
-    private func loadProfileImage(from data: Data) -> Image? {
-        #if os(macOS)
-        guard let image = NSImage(data: data) else { return nil }
-        return Image(nsImage: image)
-        #else
-        guard let image = UIImage(data: data) else { return nil }
-        return Image(uiImage: image)
-        #endif
-    }
 }
