@@ -62,6 +62,7 @@
 		"@sveltejs/adapter-vercel": "^6.2.0",
 		"@tiptap/core": "^3.14.0",
 		"@tiptap/extension-image": "^3.14.0",
+		"@tiptap/extension-link": "^3.15.3",
 		"@tiptap/extension-list": "^3.14.0",
 		"@tiptap/extension-table": "^3.14.0",
 		"@tiptap/extension-youtube": "^3.14.0",

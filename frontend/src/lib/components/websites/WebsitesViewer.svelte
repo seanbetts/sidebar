@@ -3,6 +3,7 @@
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Youtube from '@tiptap/extension-youtube';
+	import Link from '@tiptap/extension-link';
 	import { ImageGallery } from '$lib/components/editor/ImageGallery';
 	import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
 	import { VimeoEmbed } from '$lib/components/editor/VimeoEmbed';
@@ -115,6 +116,15 @@
 				TaskList,
 				TaskItem.configure({ nested: true }),
 				TableKit,
+				Link.configure({
+					openOnClick: true,
+					autolink: true,
+					linkOnPaste: true,
+					HTMLAttributes: {
+						rel: 'noopener noreferrer',
+						target: '_blank'
+					}
+				}),
 				Markdown.configure({ html: true })
 			],
 			content: '',
