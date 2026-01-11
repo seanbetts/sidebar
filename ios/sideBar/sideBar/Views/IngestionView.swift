@@ -170,7 +170,7 @@ private struct IngestionRow: View {
         #if os(macOS)
         return Color(nsColor: .textBackgroundColor)
         #else
-        return Color(uiColor: .systemBackground)
+        return Color.platformSystemBackground
         #endif
     }
 }

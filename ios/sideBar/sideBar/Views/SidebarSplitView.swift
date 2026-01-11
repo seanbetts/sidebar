@@ -95,7 +95,7 @@ public struct SidebarSplitView<Detail: View>: View {
         #if os(macOS)
         return Color(nsColor: .underPageBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -121,7 +121,7 @@ public struct SidebarSplitView<Detail: View>: View {
         #if os(macOS)
         return Color(nsColor: .windowBackgroundColor)
         #else
-        return Color(uiColor: .systemBackground)
+        return Color.platformSystemBackground
         #endif
     }
 
@@ -129,7 +129,7 @@ public struct SidebarSplitView<Detail: View>: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -137,7 +137,7 @@ public struct SidebarSplitView<Detail: View>: View {
         #if os(macOS)
         return Color(nsColor: .tertiaryLabelColor)
         #else
-        return Color(uiColor: .tertiaryLabel)
+        return Color.platformTertiaryLabel
         #endif
     }
 }

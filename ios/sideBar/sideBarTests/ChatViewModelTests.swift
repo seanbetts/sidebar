@@ -3,6 +3,19 @@ import XCTest
 
 @MainActor
 final class ChatViewModelTests: XCTestCase {
+    private static let sharedAPIClient = APIClient(
+        config: APIClientConfig(
+            baseUrl: URL(string: "https://example.com")!,
+            accessTokenProvider: { nil }
+        )
+    )
+    private static let sharedThemeManager: ThemeManager = {
+        let defaults = UserDefaults(suiteName: "ChatViewModelTestsTheme") ?? .standard
+        defaults.removePersistentDomain(forName: "ChatViewModelTestsTheme")
+        return ThemeManager(userDefaults: defaults)
+    }()
+    private static var retainedViewModels: [ChatViewModel] = []
+
     func testLoadConversationsUsesCacheOnFailure() async {
         let cached = [Conversation(
             id: "conv-1",
@@ -50,7 +63,7 @@ final class ChatViewModelTests: XCTestCase {
         let api = MockConversationsAPI(listResult: .success([]), getResult: .success(conversation))
         let viewModel = makeViewModel(api: api, cache: cache)
 
-        await viewModel.loadConversation(id: "conv-1")
+        await viewModel.selectConversation(id: "conv-1")
 
         let event = ChatStreamEvent(
             type: .toolCall,
@@ -123,23 +136,20 @@ final class ChatViewModelTests: XCTestCase {
         let api = MockConversationsAPI(listResult: .success([]), getResult: .success(conversation))
         let viewModel = makeViewModel(api: api, cache: cache)
 
-        await viewModel.loadConversation(id: "conv-1")
+        await viewModel.selectConversation(id: "conv-1")
 
         XCTAssertEqual(viewModel.messages.first?.id, "msg-1")
         XCTAssertEqual(viewModel.messages.last?.id, "msg-2")
     }
 
     private func makeViewModel(api: MockConversationsAPI, cache: CacheClient) -> ChatViewModel {
-        let config = APIClientConfig(baseUrl: URL(string: "https://example.com")!, accessTokenProvider: { nil })
-        let chatAPI = ChatAPI(client: APIClient(config: config))
-        let themeDefaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
-        themeDefaults.removePersistentDomain(forName: "ChatViewModelTests")
-        let themeManager = ThemeManager(userDefaults: themeDefaults)
+        let chatAPI = ChatAPI(client: Self.sharedAPIClient)
+        let themeManager = Self.sharedThemeManager
         let streamClient = MockChatStreamClient()
         let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
-        return ChatViewModel(
+        let viewModel = ChatViewModel(
             chatAPI: chatAPI,
             cache: cache,
             themeManager: themeManager,
@@ -148,6 +158,8 @@ final class ChatViewModelTests: XCTestCase {
             userDefaults: defaults,
             clock: { Date(timeIntervalSince1970: 0) }
         )
+        Self.retainedViewModels.append(viewModel)
+        return viewModel
     }
 }
 

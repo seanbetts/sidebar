@@ -1,6 +1,5 @@
 #if os(macOS)
 import SwiftUI
-import AppKit
 
 struct SidebarCommands: Commands {
     @EnvironmentObject private var environment: AppEnvironment
@@ -34,10 +33,16 @@ struct SidebarCommands: Commands {
         }
 
         CommandGroup(after: .appSettings) {
-            Button("Settings") {
-                NSApp.sendAction(#selector(NSApplication.showSettingsWindow(_:)), to: nil, from: nil)
+            if #available(macOS 13.0, *) {
+                SettingsLink {
+                    Text("Settings")
+                }
+                .keyboardShortcut(",", modifiers: [.command])
+            } else {
+                Button("Settings") {
+                }
+                .keyboardShortcut(",", modifiers: [.command])
             }
-            .keyboardShortcut(",", modifiers: [.command])
         }
     }
 }

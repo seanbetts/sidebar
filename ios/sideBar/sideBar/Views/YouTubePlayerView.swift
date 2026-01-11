@@ -11,7 +11,6 @@ public struct YouTubePlayerView: NSViewRepresentable {
 
     public func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
-        configuration.allowsInlineMediaPlayback = true
         if #available(macOS 10.12, *) {
             configuration.mediaTypesRequiringUserActionForPlayback = []
         }

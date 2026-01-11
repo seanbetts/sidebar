@@ -6,9 +6,12 @@ public final class KeychainAuthStateStore: AuthStateStore {
     private let service: String
     private let accessTokenAccount = "accessToken"
     private let userIdAccount = "userId"
+    private let useInMemoryStore: Bool
+    private var memoryStore: [String: String] = [:]
 
     public init(service: String? = nil) {
         self.service = service ?? (Bundle.main.bundleIdentifier ?? "sideBar.Auth")
+        self.useInMemoryStore = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
     public func saveAccessToken(_ token: String?) {
@@ -33,6 +36,14 @@ public final class KeychainAuthStateStore: AuthStateStore {
     }
 
     private func saveString(_ value: String?, account: String) {
+        if useInMemoryStore {
+            if let value {
+                memoryStore[account] = value
+            } else {
+                memoryStore.removeValue(forKey: account)
+            }
+            return
+        }
         guard let value else {
             deleteItem(account: account)
             return
@@ -42,21 +53,28 @@ public final class KeychainAuthStateStore: AuthStateStore {
         }
 
         let query = baseQuery(account: account)
-        let attributes: [String: Any] = [
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+        var attributes: [String: Any] = [
+            kSecValueData as String: data
         ]
+        #if os(iOS)
+        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        #endif
 
         let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if status == errSecItemNotFound {
             var create = query
             create[kSecValueData as String] = data
+            #if os(iOS)
             create[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            #endif
             _ = SecItemAdd(create as CFDictionary, nil)
         }
     }
 
     private func loadString(account: String) -> String? {
+        if useInMemoryStore {
+            return memoryStore[account]
+        }
         var query = baseQuery(account: account)
         query[kSecReturnData as String] = kCFBooleanTrue
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -70,6 +88,10 @@ public final class KeychainAuthStateStore: AuthStateStore {
     }
 
     private func deleteItem(account: String) {
+        if useInMemoryStore {
+            memoryStore.removeValue(forKey: account)
+            return
+        }
         let query = baseQuery(account: account)
         SecItemDelete(query as CFDictionary)
     }
