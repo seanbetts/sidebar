@@ -46,6 +46,8 @@ public struct BiometricLockView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .tint(.accentColor)
+            .keyboardShortcut(.defaultAction)
             .disabled(isAuthenticating)
 
             Button(role: .destructive) {
@@ -59,7 +61,9 @@ public struct BiometricLockView: View {
         }
         .frame(maxWidth: 420)
         .padding(24)
+        .cardStyle()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .background(DesignTokens.Colors.background)
         .onAppear {
             updateBiometryType()
             authenticate()
