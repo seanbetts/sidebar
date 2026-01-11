@@ -35,11 +35,8 @@ private struct TasksPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Text("Tasks")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
+        VStack(spacing: DesignTokens.Spacing.sm) {
+            PanelHeader(title: "Tasks") {
                 Button {
                 } label: {
                     Image(systemName: "plus")
@@ -49,53 +46,11 @@ private struct TasksPanelView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Add task")
             }
-
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search tasks", text: $searchQuery)
-                    .textFieldStyle(.plain)
-                if !searchQuery.isEmpty {
-                    Button {
-                        searchQuery = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear search")
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .font(.subheadline)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(searchFill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(searchBorder, lineWidth: 1)
-            )
+            SearchField(text: $searchQuery, placeholder: "Search tasks")
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.bottom, DesignTokens.Spacing.sm)
         }
-        .padding(16)
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
-    }
-
-    private var searchFill: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
-    }
-
-    private var searchBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
     }
 }
 
@@ -127,11 +82,8 @@ private struct ConversationsPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Text("Chat")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
+        VStack(spacing: DesignTokens.Spacing.sm) {
+            PanelHeader(title: "Chat") {
                 Button {
                 } label: {
                     Image(systemName: "plus")
@@ -141,36 +93,10 @@ private struct ConversationsPanelView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("New chat")
             }
-
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search chats", text: $searchQuery)
-                    .textFieldStyle(.plain)
-                if !searchQuery.isEmpty {
-                    Button {
-                        searchQuery = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear search")
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .font(.subheadline)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(searchFill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(searchBorder, lineWidth: 1)
-            )
+            SearchField(text: $searchQuery, placeholder: "Search chats")
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.bottom, DesignTokens.Spacing.sm)
         }
-        .padding(16)
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
     }
 
@@ -225,22 +151,6 @@ private struct ConversationsPanelView: View {
 
     private var unselectedRowBackground: Color {
         colorScheme == .dark ? Color.black : Color.platformSystemBackground
-    }
-
-    private var searchFill: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
-    }
-
-    private var searchBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
     }
 
     private var panelBackground: Color {
@@ -355,58 +265,31 @@ private struct NotesPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Text("Notes")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Button {
-                } label: {
-                    Image(systemName: "folder")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add folder")
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add note")
-            }
-
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search notes", text: $viewModel.searchQuery)
-                    .textFieldStyle(.plain)
-                if !viewModel.searchQuery.isEmpty {
+        VStack(spacing: DesignTokens.Spacing.sm) {
+            PanelHeader(title: "Notes") {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Button {
-                        viewModel.searchQuery = ""
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                        Image(systemName: "folder")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Clear search")
+                    .accessibilityLabel("Add folder")
+                    Button {
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add note")
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .font(.subheadline)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(searchFill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(searchBorder, lineWidth: 1)
-            )
+            SearchField(text: $viewModel.searchQuery, placeholder: "Search notes")
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.bottom, DesignTokens.Spacing.sm)
         }
-        .padding(16)
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
     }
 
@@ -504,42 +387,6 @@ private struct NotesPanelView: View {
         .refreshable {
             await viewModel.loadTree()
         }
-    }
-
-    private var searchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField("Search notes", text: $viewModel.searchQuery)
-                .textFieldStyle(.plain)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .font(.subheadline)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(searchFill)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(searchBorder, lineWidth: 1)
-        )
-    }
-
-    private var searchFill: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
-    }
-
-    private var searchBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
     }
 
     private var panelBackground: Color {
@@ -775,11 +622,8 @@ private struct FilesPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Text("Files")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
+        VStack(spacing: DesignTokens.Spacing.sm) {
+            PanelHeader(title: "Files") {
                 Button {
                 } label: {
                     Image(systemName: "plus")
@@ -787,46 +631,12 @@ private struct FilesPanelView: View {
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(searchFill)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(searchBorder, lineWidth: 1)
-                )
                 .accessibilityLabel("Add file")
             }
-
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search files", text: $searchQuery)
-                    .textFieldStyle(.plain)
-                if !searchQuery.isEmpty {
-                    Button {
-                        searchQuery = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear search")
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .font(.subheadline)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(searchFill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(searchBorder, lineWidth: 1)
-            )
+            SearchField(text: $searchQuery, placeholder: "Search files")
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.bottom, DesignTokens.Spacing.sm)
         }
-        .padding(16)
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
     }
 
@@ -1016,22 +826,6 @@ private struct FilesPanelView: View {
         ["documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"]
     }
 
-    private var searchFill: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
-    }
-
-    private var searchBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
-    }
-
     private var panelBackground: Color {
         #if os(macOS)
         return Color(nsColor: .underPageBackgroundColor)
@@ -1152,11 +946,8 @@ private struct WebsitesPanelView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Text("Websites")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
+        VStack(spacing: DesignTokens.Spacing.sm) {
+            PanelHeader(title: "Websites") {
                 Button {
                 } label: {
                     Image(systemName: "plus")
@@ -1166,26 +957,10 @@ private struct WebsitesPanelView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Add website")
             }
-
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search websites...", text: $searchQuery)
-                    .textFieldStyle(.plain)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .font(.subheadline)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(searchFill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(searchBorder, lineWidth: 1)
-            )
+            SearchField(text: $searchQuery, placeholder: "Search websites")
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.bottom, DesignTokens.Spacing.sm)
         }
-        .padding(16)
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
     }
 
@@ -1330,22 +1105,6 @@ private struct WebsitesPanelView: View {
             item.domain.lowercased().contains(needle) ||
             item.url.lowercased().contains(needle)
         }
-    }
-
-    private var searchFill: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
-    }
-
-    private var searchBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
     }
 
     private var actionBackground: Color {
