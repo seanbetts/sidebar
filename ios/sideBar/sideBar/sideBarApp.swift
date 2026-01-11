@@ -39,8 +39,15 @@ struct sideBarApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if os(macOS)
             ContentView()
                 .environmentObject(environment)
+                .environment(\.controlSize, .large)
+                .dynamicTypeSize(.large)
+            #else
+            ContentView()
+                .environmentObject(environment)
+            #endif
         }
         #if os(macOS)
         .commands {

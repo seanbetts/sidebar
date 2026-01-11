@@ -56,6 +56,7 @@ public struct ContentView: View {
                     GeometryReader { proxy in
                         mainView
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .background(DesignTokens.Colors.background)
                             .overlay(alignment: .top) {
                                 Rectangle()
                                     .fill(topSafeAreaBackground)
@@ -430,10 +431,11 @@ public struct ContentView: View {
             isLeftPanelExpanded = false
         }
 #else
-        primarySection = nil
+        primarySection = .notes
         secondarySection = .chat
-        lastNonChatSection = nil
-        isLeftPanelExpanded = false
+        lastNonChatSection = .notes
+        sidebarSelection = .notes
+        isLeftPanelExpanded = true
 #endif
     }
 
