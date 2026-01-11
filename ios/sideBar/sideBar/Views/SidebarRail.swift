@@ -131,7 +131,7 @@ public struct SidebarRail: View {
         #if os(macOS)
         return Color(nsColor: .windowBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 

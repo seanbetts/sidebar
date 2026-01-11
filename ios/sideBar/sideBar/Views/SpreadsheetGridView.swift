@@ -1,5 +1,8 @@
 import SwiftUI
+
+#if os(iOS)
 import UIKit
+#endif
 
 #if os(iOS)
 struct SpreadsheetGridView: UIViewRepresentable {

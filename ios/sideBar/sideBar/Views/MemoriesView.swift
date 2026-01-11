@@ -168,7 +168,7 @@ struct MemoriesDetailView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -176,7 +176,7 @@ struct MemoriesDetailView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -233,7 +233,7 @@ private struct MemoryRow: View {
         #if os(macOS)
         return Color(nsColor: .textBackgroundColor)
         #else
-        return Color(uiColor: .systemBackground)
+        return Color.platformSystemBackground
         #endif
     }
 }

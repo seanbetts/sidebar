@@ -301,7 +301,7 @@ public struct ContentView: View {
         #if os(macOS)
         return Color(nsColor: .windowBackgroundColor)
         #else
-        return Color(uiColor: .systemBackground)
+        return Color.platformSystemBackground
         #endif
     }
 
@@ -340,7 +340,7 @@ public struct ContentView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -348,7 +348,7 @@ public struct ContentView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -356,7 +356,7 @@ public struct ContentView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 

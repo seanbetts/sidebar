@@ -191,17 +191,21 @@ private struct PlatformImageView: View {
 }
 
 private struct QuickLookPreview: NSViewRepresentable {
+    typealias NSViewType = NSView
     let url: URL
 
-    func makeNSView(context: Context) -> QLPreviewView {
-        let view = QLPreviewView(frame: .zero, style: .normal)
+    func makeNSView(context: Context) -> NSView {
+        guard let view = QLPreviewView(frame: .zero, style: .normal) else {
+            return NSView()
+        }
         view.autostarts = true
         view.previewItem = url as QLPreviewItem
         return view
     }
 
-    func updateNSView(_ nsView: QLPreviewView, context: Context) {
-        nsView.previewItem = url as QLPreviewItem
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let previewView = nsView as? QLPreviewView else { return }
+        previewView.previewItem = url as QLPreviewItem
     }
 }
 #else

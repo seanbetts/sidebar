@@ -42,7 +42,7 @@ struct SideBarMarkdown: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 

@@ -27,7 +27,7 @@ private struct WebsitesDetailView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        #if canImport(SafariServices)
+        #if os(iOS) && canImport(SafariServices)
         .sheet(isPresented: safariBinding) {
             if let safariURL {
                 SafariView(url: safariURL)
@@ -140,7 +140,7 @@ private struct WebsitesDetailView: View {
 
     private func openSource() {
         guard let url = sourceURL else { return }
-        #if canImport(SafariServices)
+        #if os(iOS) && canImport(SafariServices)
         safariURL = url
         #else
         openURL(url)

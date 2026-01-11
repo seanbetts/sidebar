@@ -36,6 +36,7 @@ public struct ChatView: View {
     }
 }
 
+#if !os(macOS)
 private struct ChatCompactView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var path: [String] = []
@@ -116,6 +117,7 @@ private struct CompactConversationRow: View {
         return "\(formattedDate) | \(label)"
     }
 }
+#endif
 
 private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
@@ -205,7 +207,7 @@ private struct ChatHeaderView: View {
         #if os(macOS)
         return Color(nsColor: .windowBackgroundColor)
         #else
-        return Color(uiColor: .systemBackground)
+        return Color.platformSystemBackground
         #endif
     }
 
@@ -322,8 +324,8 @@ private struct ChatMessageRow: View {
         #else
         if colorScheme == .dark {
             return message.role == .assistant
-                ? Color(uiColor: .secondarySystemBackground)
-                : Color(uiColor: .systemGray6)
+                ? Color.platformSecondarySystemBackground
+                : Color.platformSystemGray6
         }
         return Color.white
         #endif
@@ -333,7 +335,7 @@ private struct ChatMessageRow: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -363,7 +365,7 @@ private struct ChatMessageRow: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -399,7 +401,7 @@ private struct ToolCallListView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 }
@@ -456,7 +458,7 @@ private struct ToolCallRow: View {
         #if os(macOS)
         return Color(nsColor: .windowBackgroundColor)
         #else
-        return Color(uiColor: .systemBackground)
+        return Color.platformSystemBackground
         #endif
     }
 
@@ -493,7 +495,7 @@ private struct ChatActiveToolBanner: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -544,7 +546,7 @@ private struct PromptPreviewView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 }
@@ -601,7 +603,7 @@ private struct ChatInputBar: View {
         #if os(macOS)
         let color = Color(nsColor: .separatorColor)
         #else
-        let color = Color(uiColor: .separator)
+        let color = Color.platformSeparator
         #endif
         return colorScheme == .dark ? color.opacity(0.95) : color.opacity(0.7)
     }

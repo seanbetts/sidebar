@@ -86,7 +86,7 @@ private struct TasksPanelView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -94,7 +94,7 @@ private struct TasksPanelView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 }
@@ -224,14 +224,14 @@ private struct ConversationsPanelView: View {
     }
 
     private var unselectedRowBackground: Color {
-        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var searchFill: Color {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -239,7 +239,7 @@ private struct ConversationsPanelView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -247,7 +247,7 @@ private struct ConversationsPanelView: View {
         #if os(macOS)
         return Color(nsColor: .underPageBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -530,7 +530,7 @@ private struct NotesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -538,7 +538,7 @@ private struct NotesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -546,12 +546,12 @@ private struct NotesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .underPageBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
     private var unselectedRowBackground: Color {
-        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var mainOutlineGroup: some View {
@@ -697,7 +697,7 @@ private struct NotesTreeRow: View {
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var primaryTextColor: Color {
@@ -1021,7 +1021,7 @@ private struct FilesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -1029,7 +1029,7 @@ private struct FilesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -1037,12 +1037,12 @@ private struct FilesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .underPageBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
     private var unselectedRowBackground: Color {
-        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
 }
@@ -1093,7 +1093,7 @@ private struct FilesIngestionRow: View {
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var primaryTextColor: Color {
@@ -1337,7 +1337,7 @@ private struct WebsitesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -1345,7 +1345,7 @@ private struct WebsitesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -1353,7 +1353,7 @@ private struct WebsitesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
@@ -1361,7 +1361,7 @@ private struct WebsitesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .separatorColor)
         #else
-        return Color(uiColor: .separator)
+        return Color.platformSeparator
         #endif
     }
 
@@ -1369,12 +1369,12 @@ private struct WebsitesPanelView: View {
         #if os(macOS)
         return Color(nsColor: .underPageBackgroundColor)
         #else
-        return Color(uiColor: .secondarySystemBackground)
+        return Color.platformSecondarySystemBackground
         #endif
     }
 
     private var unselectedRowBackground: Color {
-        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 }
 
@@ -1413,7 +1413,7 @@ private struct WebsiteRow: View {
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color(uiColor: .systemBackground)
+        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var primaryTextColor: Color {
