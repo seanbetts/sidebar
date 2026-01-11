@@ -1818,7 +1818,7 @@ def _process_youtube_job(db, job: FileProcessingJob, record: IngestedFile) -> No
                     )
             elif stage == "extracting":
                 transcript, metadata = _transcribe_youtube(
-                    record, upload_transcript=not is_website_transcript
+                    record, upload_transcript=False
                 )
             elif stage == "ai_md":
                 if not is_website_transcript:
