@@ -21,6 +21,18 @@ public struct FilesView: View {
         #if !os(macOS)
         .navigationTitle(fileTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isCompact {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("File options")
+                }
+            }
+        }
         #endif
     }
 

@@ -14,6 +14,18 @@ public struct ChatView: View {
             #if !os(macOS)
             .navigationTitle(chatTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isCompact {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("New chat")
+                    }
+                }
+            }
             #endif
             .task {
                 await environment.chatViewModel.loadConversations()
@@ -31,6 +43,14 @@ public struct ChatView: View {
             return "Chat"
         }
         return conversation.title
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 }
 

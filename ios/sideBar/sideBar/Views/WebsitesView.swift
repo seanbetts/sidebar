@@ -15,6 +15,18 @@ public struct WebsitesView: View {
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isCompact {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                        } label: {
+                            Image(systemName: "line.3.horizontal")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Website options")
+                    }
+                }
+            }
             #endif
     }
 
@@ -29,6 +41,14 @@ public struct WebsitesView: View {
             return "Websites"
         }
         return website.title.isEmpty ? website.url : website.title
+        #endif
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
         #endif
     }
 }

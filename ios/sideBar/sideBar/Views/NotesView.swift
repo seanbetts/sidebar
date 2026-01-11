@@ -15,6 +15,18 @@ public struct NotesView: View {
             #if !os(macOS)
             .navigationTitle(noteTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isCompact {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                        } label: {
+                            Image(systemName: "line.3.horizontal")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Note options")
+                    }
+                }
+            }
             #endif
     }
 
@@ -32,6 +44,14 @@ public struct NotesView: View {
             return String(name.dropLast(3))
         }
         return name
+        #endif
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
         #endif
     }
 }
