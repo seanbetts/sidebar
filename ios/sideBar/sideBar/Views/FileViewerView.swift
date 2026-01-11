@@ -147,6 +147,7 @@ private struct PDFKitView: NSViewRepresentable {
     func makeNSView(context: Context) -> PDFView {
         let view = PDFView()
         view.autoScales = true
+        view.backgroundColor = NSColor.white
         context.coordinator.loadDocument(into: view, url: url)
         return view
     }
@@ -215,6 +216,7 @@ private struct PDFKitView: UIViewRepresentable {
     func makeUIView(context: Context) -> PDFView {
         let view = PDFView()
         view.autoScales = true
+        view.backgroundColor = UIColor.white
         context.coordinator.loadDocument(into: view, url: url)
         return view
     }
