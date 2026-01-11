@@ -6,16 +6,18 @@ struct MemoriesDetailView: View {
     @State private var searchQuery: String = ""
     @State private var selection: String? = nil
     @State private var hasLoaded = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 header
-                Divider()
                 listContent
             }
+            .background(Color.platformSecondarySystemBackground)
         } detail: {
             detailContent
+                .background(Color.platformSecondarySystemBackground)
         }
         .navigationSplitViewStyle(.balanced)
         .onAppear {
@@ -38,9 +40,6 @@ struct MemoriesDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Memories")
-                .font(.subheadline.weight(.semibold))
-
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -95,19 +94,32 @@ struct MemoriesDetailView: View {
                 }
             }
             .listStyle(.sidebar)
+            #if os(iOS)
+            .scrollContentBackground(.hidden)
+            #endif
         }
     }
 
     @ViewBuilder
     private var detailContent: some View {
         if let memory = viewModel.active {
-            VStack(spacing: 0) {
-                detailHeader(memory: memory)
-                Divider()
+            if horizontalSizeClass == .compact {
                 ScrollView {
                     SideBarMarkdown(text: memory.content)
                         .padding(20)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .navigationTitle(displayName(memory.path))
+                .navigationBarTitleDisplayMode(.inline)
+            } else {
+                VStack(spacing: 0) {
+                    detailHeader(memory: memory)
+                    Divider()
+                    ScrollView {
+                        SideBarMarkdown(text: memory.content)
+                            .padding(20)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
         } else if viewModel.isLoadingDetail {
@@ -122,17 +134,12 @@ struct MemoriesDetailView: View {
 
     private func detailHeader(memory: MemoryItem) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "brain")
+            Image(systemName: "bookmark")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(memory.path))
                     .font(.headline)
-                if let updated = formattedDate(memory.updatedAt) {
-                    Text(updated)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
             Spacer()
         }
@@ -168,7 +175,7 @@ struct MemoriesDetailView: View {
         #if os(macOS)
         return Color(nsColor: .controlBackgroundColor)
         #else
-        return Color.platformSecondarySystemBackground
+        return Color.platformSystemBackground
         #endif
     }
 
@@ -199,11 +206,6 @@ private struct MemoryRow: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                     .foregroundStyle(isSelected ? Color.white : Color.primary)
-                if let updated = formattedDate(item.updatedAt) {
-                    Text(updated)
-                        .font(.caption)
-                        .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
-                }
             }
         }
     }
