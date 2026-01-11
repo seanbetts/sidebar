@@ -4,6 +4,9 @@ struct PanelHeader<Trailing: View>: View {
     let title: String
     let subtitle: String?
     let trailing: Trailing
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     init(
         title: String,
@@ -38,9 +41,17 @@ struct PanelHeader<Trailing: View>: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.background)
+        .background(backgroundColor)
         .overlay(alignment: .bottom) {
             EmptyView()
         }
+    }
+
+    private var backgroundColor: Color {
+        #if os(macOS)
+        return DesignTokens.Colors.background
+        #else
+        return horizontalSizeClass == .compact ? DesignTokens.Colors.background : DesignTokens.Colors.surface
+        #endif
     }
 }
