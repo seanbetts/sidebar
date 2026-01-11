@@ -347,6 +347,17 @@ Critical Path (MVP): [████████████████░░░�
 - [ ] 9.8 Loading States
 - [ ] 9.9 Offline Behavior (cached reading)
 
+**Phase 9.1 DRY Navigation Refactor (Cross-Device)**
+- [ ] Inventory compact vs regular entry points per section (Chat, Notes, Files, Websites, Tasks)
+- [ ] Define shared contract: PanelView + DetailView + selection state (no platform-specific list logic)
+- [ ] Build compact shell: TabView -> NavigationStack -> PanelView root -> DetailView push on selection
+- [ ] Keep regular shell: WorkspaceLayout uses same PanelView/DetailView pair
+- [ ] Refactor Notes end-to-end as the template
+- [ ] Apply template to Chat, Websites, Files, Tasks
+- [ ] Replace compact-only list flows (remove IngestionSplitView usage on iPhone)
+- [ ] Unify header avatar rendering (SiteHeaderBar uses shared avatar view)
+- [ ] Validate iPhone regressions: profile image, chat header, notes/websites list, files row content
+
 #### Phase 10: MVP Testing & Refinement (3-4 sessions MVP, 4-6 full)
 **MVP Scope: Read-Only Testing**
 - [ ] 10.1 Integration Testing (all view features)
