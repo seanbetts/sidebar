@@ -9,6 +9,7 @@ public enum CachePolicy {
     public static let websiteDetail: TimeInterval = 2 * 60 * 60
     public static let memoriesList: TimeInterval = 30 * 60
     public static let ingestionList: TimeInterval = 10 * 60
+    public static let ingestionMeta: TimeInterval = 10 * 60
     public static let scratchpad: TimeInterval = 7 * 24 * 60 * 60
     public static let filesTree: TimeInterval = 30 * 60
     public static let fileContent: TimeInterval = 2 * 60 * 60

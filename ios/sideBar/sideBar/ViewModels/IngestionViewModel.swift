@@ -13,6 +13,7 @@ public final class IngestionViewModel: ObservableObject {
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingContent: Bool = false
     @Published public private(set) var isSelecting: Bool = false
+    @Published public private(set) var isOffline: Bool = false
     @Published public private(set) var errorMessage: String? = nil
 
     private let api: any IngestionProviding
@@ -38,6 +39,12 @@ public final class IngestionViewModel: ObservableObject {
         store.$activeMeta
             .sink { [weak self] meta in
                 self?.activeMeta = meta
+            }
+            .store(in: &cancellables)
+
+        store.$isOffline
+            .sink { [weak self] isOffline in
+                self?.isOffline = isOffline
             }
             .store(in: &cancellables)
     }
