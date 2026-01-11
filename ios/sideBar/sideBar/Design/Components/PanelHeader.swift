@@ -38,12 +38,9 @@ struct PanelHeader<Trailing: View>: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.background)
-        .overlay(
-            Rectangle()
-                .fill(DesignTokens.Colors.border)
-                .frame(height: 1),
-            alignment: .bottom
-        )
+        .background(DesignTokens.Colors.surface)
+        .overlay(alignment: .bottom) {
+            EmptyView()
+        }
     }
 }
