@@ -83,6 +83,30 @@ public final class AppEnvironment: ObservableObject {
             }
             .store(in: &cancellables)
 
+        chatViewModel.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        notesViewModel.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        websitesViewModel.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        ingestionViewModel.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
         weatherViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
