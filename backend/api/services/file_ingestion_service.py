@@ -110,6 +110,7 @@ class FileIngestionService:
                     "false",
                 )
                 != "true",
+                ~func.coalesce(IngestedFile.path, "").ilike("%/ai/ai.md"),
             )
             .order_by(IngestedFile.created_at.desc())
             .limit(limit)

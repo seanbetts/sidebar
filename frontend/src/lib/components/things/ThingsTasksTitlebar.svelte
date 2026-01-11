@@ -34,6 +34,10 @@
 		background-color: var(--color-card);
 	}
 
+	:global(.dark) .things-view-titlebar {
+		background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0));
+	}
+
 	.title {
 		display: inline-flex;
 		align-items: center;

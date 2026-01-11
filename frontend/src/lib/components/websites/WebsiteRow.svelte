@@ -1,6 +1,6 @@
 <script lang="ts">
 	import {
-		FileTerminal,
+		Globe,
 		MoreHorizontal,
 		Pin,
 		PinOff,
@@ -52,7 +52,7 @@
 >
 	<button class="website-main" onclick={() => onOpen(site)}>
 		<span class="website-icon">
-			<FileTerminal />
+			<Globe />
 		</span>
 		<div class="website-text">
 			<span class="website-title">{site.title}</span>

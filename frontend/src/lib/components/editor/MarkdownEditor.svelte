@@ -141,7 +141,11 @@
 
 		if (diffSecs < 60) return 'just now';
 		if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}m ago`;
-		return date.toLocaleTimeString();
+		return date.toLocaleTimeString(undefined, {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false
+		});
 	}
 
 	// Track the timestamp (not the Date object) to detect actual changes

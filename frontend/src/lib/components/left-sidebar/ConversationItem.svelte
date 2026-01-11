@@ -152,6 +152,7 @@
 		{/if}
 		<div class="meta">
 			<span class="timestamp">{formatDate(conversation.updatedAt)}</span>
+			<span class="separator">|</span>
 			<span class="message-count">{conversation.messageCount} messages</span>
 		</div>
 	</div>

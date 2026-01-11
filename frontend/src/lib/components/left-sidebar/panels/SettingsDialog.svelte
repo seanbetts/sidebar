@@ -265,8 +265,20 @@
 		border: 1px solid var(--color-border);
 		background: var(--color-card);
 		padding: 0.65rem 0.75rem;
+		min-height: 2.5rem;
 		font-size: 0.9rem;
 		color: var(--color-sidebar-foreground);
+	}
+
+	:global(select.settings-input) {
+		height: 2.5rem;
+		padding-right: 2.25rem;
+		appearance: none;
+		-webkit-appearance: none;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 0.75rem center;
+		background-size: 14px;
 	}
 
 	:global(.settings-textarea:focus),

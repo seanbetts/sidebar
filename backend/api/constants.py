@@ -24,6 +24,6 @@ class PromptContextLimits:
     # First message prompt cap for concise bootstrapping.
     MAX_FIRST_MESSAGE_CHARS = 8000
     # Open file payload cap for viewer context.
-    MAX_OPEN_FILE_CHARS = 12000
+    MAX_OPEN_FILE_CHARS = 20000
     # Attachment payload cap for contextual snippets.
     MAX_ATTACHMENT_CHARS = 8000

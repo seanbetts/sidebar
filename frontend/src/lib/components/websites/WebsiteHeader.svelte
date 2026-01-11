@@ -1,6 +1,6 @@
 <script lang="ts">
 	import {
-		FileTerminal,
+		Globe,
 		Pin,
 		PinOff,
 		Pencil,
@@ -48,7 +48,7 @@
 	{#if website}
 		<div class="website-meta">
 			<div class="title-row">
-				<FileTerminal size={20} />
+				<Globe size={20} />
 				<span class="title-text">{website.title}</span>
 			</div>
 			<div class="website-meta-row">
@@ -301,6 +301,10 @@
 		border-bottom: 1px solid var(--color-border);
 		background-color: var(--color-card);
 		container-type: inline-size;
+	}
+
+	:global(.dark) .website-header {
+		background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0));
 	}
 
 	.website-meta {

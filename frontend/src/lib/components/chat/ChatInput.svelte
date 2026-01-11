@@ -4,7 +4,7 @@
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { TOOLTIP_COPY } from '$lib/constants/tooltips';
 	import { canShowTooltips } from '$lib/utils/tooltip';
-	import { Paperclip, Send } from 'lucide-svelte';
+	import { ArrowUp, Paperclip } from 'lucide-svelte';
 	import { chatStore } from '$lib/stores/chat';
 
 	export let disabled = false;
@@ -155,9 +155,10 @@
 							}}
 							disabled={disabled || !inputValue.trim()}
 							size="icon"
+							class="rounded-full"
 							aria-label="Send message"
 						>
-							<Send size={16} />
+							<ArrowUp size={16} />
 						</Button>
 					{/snippet}
 				</TooltipTrigger>
