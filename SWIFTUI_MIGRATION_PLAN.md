@@ -323,11 +323,13 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - [ ] 8.3 SSE/Realtime events update caches directly
 - [ ] 8.4 Background revalidation for list endpoints only
 - [ ] 8.5 Offline-first reading via persistent cache
+- [ ] 8.6 Design system rollout (tokens + shared components + utilities + styles)
 
 **Architecture Notes (Phase 8)**
 - Cache is the single observable source of truth for UI.
 - View models consume store snapshots; they do not own freshness logic.
 - Updates only publish when cache contents change.
+- Design system reduces duplication before Phase 9 UI polish.
 
 #### Phase 9: Platform Optimization (5-7 sessions)
 **MVP Scope: Full**
@@ -1538,12 +1540,20 @@ Same pattern as notes/conversations.
 - Persistent cache for offline viewing.
 - Clear UX for stale/unknown sync states.
 
+**8.5 Design System Foundation**
+- Design tokens (spacing, colors, sizing, typography).
+- Shared components: PanelHeader, SearchField, SelectableRow, EmptyStateView, LoadingView.
+- Utilities & extensions (DateFormatter, String, Image).
+- Style modifiers (glass button, card, pill).
+
 ### Technical Decisions
 - **Persistence**: Core Data or file-backed cache with Codable payloads.
 - **Diffing**: lightweight message/version checks before publishing.
+- **Design scope**: prioritize PanelHeader + tokens before Phase 9 polish.
 
 ### Risks & Challenges
 - **State consistency** across domains and event streams.
+- **Design churn** if tokens/components aren’t stabilized before Phase 9.
 
 ---
 
