@@ -266,7 +266,7 @@ public struct ContentView: View {
             phonePanelView(for: section)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .toolbar(.hidden, for: .navigationBar)
-                .navigationDestination(isPresented: phoneDetailBinding(for: section)) {
+                .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
                     detailView(for: section)
                         .navigationBarTitleDisplayMode(.inline)
                 }
@@ -312,42 +312,42 @@ public struct ContentView: View {
         }
     }
 
-    private func phoneDetailBinding(for section: AppSection) -> Binding<Bool> {
+    private func phoneDetailItemBinding(for section: AppSection) -> Binding<PhoneDetailRoute?> {
         switch section {
         case .chat:
             return Binding(
-                get: { environment.chatViewModel.selectedConversationId != nil },
-                set: { isPresented in
-                    guard !isPresented else { return }
+                get: { environment.chatViewModel.selectedConversationId.map(PhoneDetailRoute.init) },
+                set: { route in
+                    guard route == nil else { return }
                     Task { await environment.chatViewModel.selectConversation(id: nil) }
                 }
             )
         case .notes:
             return Binding(
-                get: { environment.notesViewModel.selectedNoteId != nil },
-                set: { isPresented in
-                    guard !isPresented else { return }
+                get: { environment.notesViewModel.selectedNoteId.map(PhoneDetailRoute.init) },
+                set: { route in
+                    guard route == nil else { return }
                     environment.notesViewModel.clearSelection()
                 }
             )
         case .files:
             return Binding(
-                get: { environment.ingestionViewModel.selectedFileId != nil },
-                set: { isPresented in
-                    guard !isPresented else { return }
+                get: { environment.ingestionViewModel.selectedFileId.map(PhoneDetailRoute.init) },
+                set: { route in
+                    guard route == nil else { return }
                     environment.ingestionViewModel.clearSelection()
                 }
             )
         case .websites:
             return Binding(
-                get: { environment.websitesViewModel.selectedWebsiteId != nil },
-                set: { isPresented in
-                    guard !isPresented else { return }
+                get: { environment.websitesViewModel.selectedWebsiteId.map(PhoneDetailRoute.init) },
+                set: { route in
+                    guard route == nil else { return }
                     environment.websitesViewModel.clearSelection()
                 }
             )
         case .tasks, .settings:
-            return Binding(get: { false }, set: { _ in })
+            return Binding(get: { nil }, set: { _ in })
         }
     }
 
@@ -421,6 +421,10 @@ public struct ContentView: View {
         #endif
     }
 
+}
+
+private struct PhoneDetailRoute: Identifiable, Hashable {
+    let id: String
 }
 
 private extension String {
