@@ -1,6 +1,6 @@
 # Phase 8: Cache-First Sync (Kickoff)
 
 - Move chat conversations + messages to a cache-backed store.
-- Extend the store pattern to notes and websites (lists + detail).
+- Extend the store pattern to notes, websites, files, and ingestion (lists + detail).
 - Keep streaming behavior intact while syncing store snapshots.
-- Use this as the template for files and tasks stores.
+- Scaffold tasks store for future TasksViewModel integration.
