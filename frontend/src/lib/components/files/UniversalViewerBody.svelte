@@ -52,21 +52,17 @@
 		<div class="viewer-placeholder">{error}</div>
 	{:else if isVideo}
 		<div class="file-viewer-video-content">
-			<div class="file-viewer-video-card">
-				{#if videoEmbedUrl}
-					<div class="file-viewer-video-frame">
-						<iframe
-							class="file-viewer-video-embed"
-							src={videoEmbedUrl}
-							title={filename}
-							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-							allowfullscreen
-						></iframe>
-					</div>
-				{:else}
-					<div class="viewer-placeholder">Video unavailable.</div>
-				{/if}
-			</div>
+			{#if videoEmbedUrl}
+				<iframe
+					class="file-viewer-video-embed"
+					src={videoEmbedUrl}
+					title={filename}
+					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+					allowfullscreen
+				></iframe>
+			{:else}
+				<div class="viewer-placeholder">Video unavailable.</div>
+			{/if}
 			{#if isInProgress || isFailed}
 				<div class="viewer-placeholder video-status">
 					<div class="viewer-placeholder-stack">
@@ -283,8 +279,7 @@
 		min-height: 0;
 	}
 
-	.file-viewer-audio-card,
-	.file-viewer-video-card {
+	.file-viewer-audio-card {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -307,20 +302,12 @@
 		width: min(520px, 100%);
 	}
 
-	.file-viewer-video-frame {
+	.file-viewer-video-embed {
 		width: min(720px, 100%);
 		aspect-ratio: 16 / 9;
-		border-radius: 0.75rem;
-		overflow: hidden;
-		background: var(--color-background);
-		border: 1px solid var(--color-border);
-	}
-
-	.file-viewer-video-embed {
-		width: 100%;
-		height: 100%;
 		border: none;
 		display: block;
+		margin: 0 auto;
 	}
 
 	.audio-markdown-status,

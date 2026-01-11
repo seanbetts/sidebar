@@ -1,0 +1,16 @@
+// Local-only secrets for sideBar iOS/macOS builds
+//
+// 1) Copy this file to `SideBar.local.xcconfig` (not committed)
+// 2) In Xcode: sideBar target → Build Settings → "Base Configuration"
+//    - Debug: set to `Config/SideBar.xcconfig` (which includes the local file)
+//    - (Optional) Release: set to `Config/SideBar.xcconfig`
+
+// Note: escape // in URLs so .xcconfig doesn't treat it as a comment.
+API_BASE_URL = http:\/\/127.0.0.1:8001\/api\/v1
+
+SUPABASE_URL = https:\/\/YOUR_PROJECT.supabase.co
+SUPABASE_ANON_KEY = YOUR_SUPABASE_ANON_KEY
+
+INFOPLIST_KEY_API_BASE_URL = $(API_BASE_URL)
+INFOPLIST_KEY_SUPABASE_URL = $(SUPABASE_URL)
+INFOPLIST_KEY_SUPABASE_ANON_KEY = $(SUPABASE_ANON_KEY)

@@ -104,3 +104,27 @@ def test_list_ingestions_hides_website_transcripts(db_session):
 
     assert len(records) == 1
     assert records[0].filename_original == "report.pdf"
+
+
+def test_list_ingestions_hides_ai_md_paths(db_session):
+    FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="ai.md",
+        path="files/videos/abc123/ai/ai.md",
+        mime_original="text/plain",
+        size_bytes=10,
+    )
+    FileIngestionService.create_ingestion(
+        db_session,
+        "user-1",
+        filename_original="notes.md",
+        path="notes.md",
+        mime_original="text/markdown",
+        size_bytes=10,
+    )
+
+    records = FileIngestionService.list_ingestions(db_session, "user-1", limit=50)
+
+    assert len(records) == 1
+    assert records[0].filename_original == "notes.md"

@@ -3,6 +3,7 @@
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Youtube from '@tiptap/extension-youtube';
+	import Link from '@tiptap/extension-link';
 	import { ImageGallery } from '$lib/components/editor/ImageGallery';
 	import { ImageWithCaption } from '$lib/components/editor/ImageWithCaption';
 	import { VimeoEmbed } from '$lib/components/editor/VimeoEmbed';
@@ -115,6 +116,15 @@
 				TaskList,
 				TaskItem.configure({ nested: true }),
 				TableKit,
+				Link.configure({
+					openOnClick: true,
+					autolink: true,
+					linkOnPaste: true,
+					HTMLAttributes: {
+						rel: 'noopener noreferrer',
+						target: '_blank'
+					}
+				}),
 				Markdown.configure({ html: true })
 			],
 			content: '',
@@ -136,8 +146,9 @@
 
 	$: if (editor && $websitesStore.active) {
 		const raw = stripFrontmatter($websitesStore.active.content || '');
+		const normalized = normalizeHtmlBlocks(raw);
 		editor.commands.setContent(
-			rewriteVideoEmbeds(raw, $websitesStore.active, $transcriptStatusStore)
+			rewriteVideoEmbeds(normalized, $websitesStore.active, $transcriptStatusStore)
 		);
 	}
 
@@ -150,6 +161,10 @@
 		const separatorIndex = lines.findIndex((line) => line.trim() === '---');
 		if (separatorIndex >= 0) return lines.slice(separatorIndex + 1).join('\n');
 		return text;
+	}
+
+	function normalizeHtmlBlocks(text: string): string {
+		return text.replace(/<\/figure>\n(?!\s*\n)/g, '</figure>\n\n');
 	}
 
 	function buildYouTubeEmbed(url: string): string | null {
