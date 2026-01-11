@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 public enum CacheKeys {
     public static let conversationsList = "conversations.list"

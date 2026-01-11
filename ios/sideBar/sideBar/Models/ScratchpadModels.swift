@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 public struct ScratchpadResponse: Codable {
     public let id: String

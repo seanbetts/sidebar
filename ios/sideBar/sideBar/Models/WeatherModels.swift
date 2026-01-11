@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 public struct WeatherResponse: Codable {
     public let temperatureC: Double

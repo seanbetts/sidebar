@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 public struct UserSettings: Codable {
     public let userId: String
