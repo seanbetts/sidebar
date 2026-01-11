@@ -56,7 +56,6 @@ private struct TasksPanelView: View {
 
 private struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
-    @Environment(\.colorScheme) private var colorScheme
     @State private var searchQuery: String = ""
 
     var body: some View {
@@ -108,17 +107,14 @@ private struct ConversationsPanelView: View {
                         Button {
                             Task { await viewModel.selectConversation(id: conversation.id) }
                         } label: {
-                            ConversationRow(
-                                conversation: conversation,
-                                isSelected: viewModel.selectedConversationId == conversation.id
-                            )
+                            SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
+                                ConversationRow(
+                                    conversation: conversation,
+                                    isSelected: viewModel.selectedConversationId == conversation.id
+                                )
+                            }
                         }
                         .buttonStyle(.plain)
-                        .listRowBackground(
-                            viewModel.selectedConversationId == conversation.id
-                                ? selectionBackground
-                                : unselectedRowBackground
-                        )
                     }
                 }
             }
@@ -143,14 +139,6 @@ private struct ConversationsPanelView: View {
             guard !filtered.isEmpty else { return nil }
             return ConversationGroup(id: group.id, title: group.title, conversations: filtered)
         }
-    }
-
-    private var selectionBackground: Color {
-        colorScheme == .dark ? Color.white : Color.black
-    }
-
-    private var unselectedRowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var panelBackground: Color {
@@ -178,7 +166,6 @@ private struct ConversationRow: View {
                 .font(.caption2)
                 .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
         }
-        .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
     }
 
@@ -234,7 +221,6 @@ public struct NotesPanel: View {
 
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
-    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
 
@@ -378,7 +364,6 @@ private struct NotesPanelView: View {
                         Label("Archive", systemImage: "archivebox")
                     }
                 )
-                .listRowBackground(unselectedRowBackground)
             }
         }
         .listStyle(.sidebar)
@@ -397,10 +382,6 @@ private struct NotesPanelView: View {
         #endif
     }
 
-    private var unselectedRowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
-    }
-
     private var mainOutlineGroup: some View {
         OutlineGroup(buildItems(from: mainNodes), children: \.children) { item in
             NotesTreeRow(
@@ -412,7 +393,6 @@ private struct NotesPanelView: View {
                 }
             }
         }
-        .listRowBackground(unselectedRowBackground)
     }
 
     private var archivedOutlineGroup: some View {
@@ -426,7 +406,6 @@ private struct NotesPanelView: View {
                 }
             }
         }
-        .listRowBackground(unselectedRowBackground)
     }
 
     private var pinnedItems: [FileNodeItem] {
@@ -518,33 +497,22 @@ private struct NotesTreeRow: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let content = HStack(spacing: 8) {
-            Image(systemName: item.isFile ? "doc.text" : "folder")
-                .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
-            Text(item.displayName)
-                .lineLimit(1)
-                .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+        let row = SelectableRow(isSelected: isSelected) {
+            HStack(spacing: 8) {
+                Image(systemName: item.isFile ? "doc.text" : "folder")
+                    .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
+                Text(item.displayName)
+                    .lineLimit(1)
+                    .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+            }
         }
-        .padding(.vertical, 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
 
         if item.isFile {
-            content
-                .contentShape(Rectangle())
+            row
                 .onTapGesture { onSelect() }
-                .listRowBackground(isSelected ? selectionBackground : rowBackground)
         } else {
-            content
-                .listRowBackground(isSelected ? selectionBackground : rowBackground)
+            row
         }
-    }
-
-    private var selectionBackground: Color {
-        colorScheme == .dark ? Color.white : Color.black
-    }
-
-    private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var primaryTextColor: Color {
@@ -589,7 +557,6 @@ public struct FilesPanel: View {
 
 private struct FilesPanelView: View {
     @ObservedObject var viewModel: IngestionViewModel
-    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
@@ -674,7 +641,6 @@ private struct FilesPanelView: View {
                                     }
                                 }
                             }
-                            .listRowBackground(unselectedRowBackground)
                         }
                     }
                 }
@@ -834,10 +800,6 @@ private struct FilesPanelView: View {
         #endif
     }
 
-    private var unselectedRowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
-    }
-
 }
 
 private struct FilesIngestionRow: View {
@@ -846,20 +808,19 @@ private struct FilesIngestionRow: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: iconName)
-                .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(stripFileExtension(item.file.filenameOriginal))
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+        SelectableRow(isSelected: isSelected) {
+            HStack(spacing: 8) {
+                Image(systemName: iconName)
+                    .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(stripFileExtension(item.file.filenameOriginal))
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                }
+                Spacer()
             }
-            Spacer()
         }
-        .padding(.vertical, 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .listRowBackground(isSelected ? selectionBackground : rowBackground)
     }
 
     private var iconName: String {
@@ -879,14 +840,6 @@ private struct FilesIngestionRow: View {
         default:
             return "doc"
         }
-    }
-
-    private var selectionBackground: Color {
-        colorScheme == .dark ? Color.white : Color.black
-    }
-
-    private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var primaryTextColor: Color {
@@ -919,7 +872,6 @@ public struct WebsitesPanel: View {
 
 private struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
-    @Environment(\.colorScheme) private var colorScheme
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
@@ -1058,7 +1010,6 @@ private struct WebsitesPanelView: View {
                             Label("Archive", systemImage: "archivebox")
                         }
                     )
-                    .listRowBackground(unselectedRowBackground)
                 }
             }
             .listStyle(.sidebar)
@@ -1131,9 +1082,6 @@ private struct WebsitesPanelView: View {
         #endif
     }
 
-    private var unselectedRowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
-    }
 }
 
 private struct WebsiteRow: View {
@@ -1142,36 +1090,27 @@ private struct WebsiteRow: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "globe")
-                .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.title.isEmpty ? item.url : item.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                    .lineLimit(1)
-                Text(formatDomain(item.domain))
-                    .font(.caption)
-                    .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
-                    .lineLimit(1)
+        SelectableRow(isSelected: isSelected) {
+            HStack(spacing: 8) {
+                Image(systemName: "globe")
+                    .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.title.isEmpty ? item.url : item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                        .lineLimit(1)
+                    Text(formatDomain(item.domain))
+                        .font(.caption)
+                        .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
+                        .lineLimit(1)
+                }
+                Spacer()
             }
-            Spacer()
         }
-        .padding(.vertical, 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .listRowBackground(isSelected ? selectionBackground : rowBackground)
     }
 
     private func formatDomain(_ domain: String) -> String {
         domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
-    }
-
-    private var selectionBackground: Color {
-        colorScheme == .dark ? Color.white : Color.black
-    }
-
-    private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
     }
 
     private var primaryTextColor: Color {
