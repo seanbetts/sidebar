@@ -9,6 +9,8 @@
 
 Replace the Things bridge-based task system with a native PostgreSQL implementation to achieve data ownership, offline-first capability, and dramatically improved performance. This migration eliminates the three-layer architecture (Backend → Bridge → AppleScript → Things) in favor of direct database access.
 
+**Key Feature:** Full repeating task support with auto-creation of next instances (covers 100% of user's 20 existing repeating tasks).
+
 ### Current Architecture
 
 ```
@@ -27,6 +29,7 @@ Frontend → Backend API → PostgreSQL
 - Offline-first (data in our DB)
 - Cross-platform ready
 - Full data ownership
+- Native recurrence logic (daily, weekly, monthly with intervals)
 ```
 
 ---
@@ -44,6 +47,8 @@ Frontend → Backend API → PostgreSQL
 - ✅ Store tags as JSONB array for flexibility
 - ✅ Track completion with `completed_at` timestamp
 - ✅ Support task status: inbox, today, upcoming, someday, completed, trashed
+- ✅ Store recurrence rules as JSONB (daily, weekly, monthly with intervals)
+- ✅ Auto-create next instances when repeating tasks completed
 
 **API Compatibility:**
 - ✅ Keep existing REST endpoint structure
@@ -68,6 +73,8 @@ Frontend → Backend API → PostgreSQL
 ## Success Criteria
 
 - ✅ All Things data (areas, projects, tasks) imported successfully
+- ✅ All 20 repeating tasks imported with correct recurrence rules
+- ✅ Repeating tasks auto-create next instance on completion
 - ✅ Task list loads in <100ms (vs current ~500ms with bridge)
 - ✅ Full CRUD operations working (create, read, update, delete, complete)
 - ✅ Search functionality matches or exceeds current capability
@@ -154,6 +161,10 @@ def upgrade() -> None:
         sa.Column('repeating', sa.Boolean, nullable=False, default=False),
         sa.Column('repeat_template', sa.Boolean, nullable=False, default=False),
 
+        # Recurrence support
+        sa.Column('recurrence_rule', JSONB, nullable=True),  # Structured recurrence rule (see Phase 2.5)
+        sa.Column('next_instance_date', sa.Date, nullable=True),  # When to auto-create next instance
+
         # Timestamps
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -173,6 +184,7 @@ def upgrade() -> None:
         sa.Index('idx_tasks_deadline_start', 'deadline_start'),
         sa.Index('idx_tasks_scheduled_date', 'scheduled_date'),
         sa.Index('idx_tasks_completed_at', 'completed_at'),
+        sa.Index('idx_tasks_next_instance_date', 'next_instance_date'),  # For recurrence processing
 
         # GIN index for tags array search
         sa.Index('idx_tasks_tags_gin', 'tags', postgresql_using='gin'),
@@ -306,6 +318,10 @@ class Task(Base):
     repeating: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     repeat_template: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # Recurrence support (see Phase 2.5)
+    recurrence_rule: Mapped[dict | None] = mapped_column(JSONB)
+    next_instance_date: Mapped[date | None] = mapped_column(Date)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -324,6 +340,7 @@ class Task(Base):
         Index("idx_tasks_deadline_start", "deadline_start"),
         Index("idx_tasks_scheduled_date", "scheduled_date"),
         Index("idx_tasks_completed_at", "completed_at"),
+        Index("idx_tasks_next_instance_date", "next_instance_date"),
         Index("idx_tasks_tags_gin", "tags", postgresql_using="gin"),
         Index("idx_tasks_user_status", "user_id", "status"),
     )
@@ -342,6 +359,7 @@ class Task(Base):
 ### Objectives
 - Create import script using existing bridge
 - Fetch all data from Things (areas, projects, tasks)
+- Parse recurrence rules from Things SQLite database
 - Insert into PostgreSQL with Things IDs preserved
 - Validate import completeness
 
@@ -587,6 +605,363 @@ async def import_from_things(
 - ✅ Admin API endpoint for web-based import
 - ✅ Things IDs preserved for reference
 - ✅ Import statistics and error reporting
+
+---
+
+## Phase 2.5: Recurrence Implementation (2-3 days)
+
+### Objectives
+- Parse Things proprietary recurrence format from SQLite
+- Implement recurrence logic for task completion
+- Auto-create next instances when repeating tasks are completed
+- Support daily, weekly, and monthly patterns with intervals
+
+### Background
+
+**User's Repeating Task Audit (20 tasks):**
+- **9 daily tasks** (e.g., "Moisturise", "Breakfast", "Pill")
+  - Pattern: Every 1-2 days
+- **7 weekly tasks** (e.g., "Put Bins Out", "Write News Stand")
+  - Pattern: Every 1-4 weeks on specific weekday
+- **3 monthly tasks** (e.g., "Monthly Budget", "Update Revenue Tracker")
+  - Pattern: Every month on specific day (1st, 9th, 22nd)
+
+**Things Recurrence Format:**
+Things stores recurrence in binary plist format with these fields:
+- `fu` (frequency unit): 16=Daily, 256=Weekly, 8=Monthly
+- `fa` (frequency amount): Interval multiplier (1-4)
+- `of` (occurrence frequency): `{'wd': N}` for weekday or `{'dy': N}` for day of month
+- `sr` (start recurrence): Start date
+- `ed` (end date): Recurrence end date (usually far future)
+
+### 2.5.1 Recurrence Rule Schema
+
+**JSONB Structure in `tasks.recurrence_rule`:**
+
+```json
+{
+  "type": "daily" | "weekly" | "monthly",
+  "interval": 1,              // Every N days/weeks/months
+  "weekday": 0,              // For weekly: 0=Sun, 1=Mon, ..., 6=Sat (optional)
+  "day_of_month": 1,         // For monthly: 1-31 (optional)
+  "start_date": "2025-01-01", // When recurrence started
+  "end_date": null           // When to stop (null = indefinite)
+}
+```
+
+**Examples:**
+
+```json
+// Every 2 days (e.g., "Pill")
+{"type": "daily", "interval": 2, "start_date": "2025-01-01"}
+
+// Every 2 weeks on Monday (e.g., "Put Bins Out - Recycling")
+{"type": "weekly", "interval": 2, "weekday": 1, "start_date": "2025-01-01"}
+
+// Every month on the 22nd (e.g., "Book Madisons")
+{"type": "monthly", "interval": 1, "day_of_month": 22, "start_date": "2025-01-01"}
+```
+
+### 2.5.2 Parse Things Plist Recurrence
+
+**File: `/backend/api/services/things_recurrence_parser.py` (NEW)**
+
+```python
+"""Parse Things proprietary plist recurrence format"""
+import plistlib
+from datetime import date
+from typing import Optional
+
+class ThingsRecurrenceParser:
+    """Parse Things recurrence rules from SQLite plist data"""
+
+    @staticmethod
+    def parse_recurrence_rule(plist_data: bytes) -> Optional[dict]:
+        """
+        Parse Things binary plist recurrence data.
+
+        Args:
+            plist_data: Raw bytes from Things SQLite rt1_recurrenceRule column
+
+        Returns:
+            Recurrence rule dict or None if not repeating
+        """
+        if not plist_data:
+            return None
+
+        try:
+            plist = plistlib.loads(plist_data)
+
+            fu = plist.get('fu')  # Frequency unit
+            fa = plist.get('fa', 1)  # Frequency amount (interval)
+            of = plist.get('of', {})  # Occurrence frequency
+            sr = plist.get('sr')  # Start recurrence date
+            ed = plist.get('ed')  # End date
+
+            # Map frequency unit to type
+            type_map = {
+                16: 'daily',
+                256: 'weekly',
+                8: 'monthly'
+            }
+
+            recurrence_type = type_map.get(fu)
+            if not recurrence_type:
+                return None
+
+            rule = {
+                'type': recurrence_type,
+                'interval': fa,
+                'start_date': ThingsRecurrenceParser._parse_things_date(sr) if sr else None,
+                'end_date': ThingsRecurrenceParser._parse_things_date(ed) if ed and ed < 64092211200 else None
+            }
+
+            # Add weekday for weekly recurrence
+            if recurrence_type == 'weekly' and 'wd' in of:
+                rule['weekday'] = of['wd']
+
+            # Add day of month for monthly recurrence
+            if recurrence_type == 'monthly' and 'dy' in of:
+                rule['day_of_month'] = of['dy']
+
+            return rule
+
+        except Exception as e:
+            logger.error(f"Failed to parse recurrence plist: {e}")
+            return None
+
+    @staticmethod
+    def _parse_things_date(things_timestamp: int) -> str:
+        """
+        Convert Things timestamp to ISO date.
+
+        Things uses: 2001-01-01 + ((timestamp - 131611392) / 128) days
+        """
+        from datetime import timedelta
+
+        base_date = date(2001, 1, 1)
+        days_offset = (things_timestamp - 131611392) / 128
+        result_date = base_date + timedelta(days=days_offset)
+        return result_date.isoformat()
+```
+
+### 2.5.3 Update Import Service
+
+**File: `/backend/api/services/tasks_import_service.py`**
+
+Add recurrence parsing to import:
+
+```python
+import sqlite3
+from api.services.things_recurrence_parser import ThingsRecurrenceParser
+
+class TasksImportService:
+    @staticmethod
+    async def import_all_data(db: Session, user_id: str, bridge_client: ThingsBridgeClient):
+        # ... existing code ...
+
+        # Open Things SQLite database for recurrence data
+        things_db_path = ThingsRecurrenceParser.find_things_database()
+        things_conn = sqlite3.connect(things_db_path)
+        things_cursor = things_conn.cursor()
+
+        # Fetch recurrence rules
+        things_cursor.execute("""
+            SELECT uuid, rt1_recurrenceRule
+            FROM TMTask
+            WHERE rt1_recurrenceRule IS NOT NULL
+        """)
+        recurrence_map = {
+            row[0]: ThingsRecurrenceParser.parse_recurrence_rule(row[1])
+            for row in things_cursor.fetchall()
+        }
+        things_conn.close()
+
+        # ... when creating tasks ...
+        for task_data in tasks_by_id.values():
+            recurrence_rule = recurrence_map.get(task_data["id"])
+
+            task = Task(
+                # ... existing fields ...
+                recurrence_rule=recurrence_rule,
+                next_instance_date=ThingsRecurrenceParser.calculate_next_occurrence(
+                    recurrence_rule
+                ) if recurrence_rule else None
+            )
+            # ... rest of import logic ...
+```
+
+### 2.5.4 Recurrence Service
+
+**File: `/backend/api/services/recurrence_service.py` (NEW)**
+
+```python
+"""Handle repeating task logic"""
+import uuid
+from datetime import date, timedelta
+from calendar import monthrange
+from sqlalchemy.orm import Session
+from api.models.task import Task
+
+class RecurrenceService:
+    """Manage repeating task instances"""
+
+    @staticmethod
+    def calculate_next_occurrence(recurrence_rule: dict, from_date: date = None) -> date:
+        """
+        Calculate next occurrence date based on recurrence rule.
+
+        Args:
+            recurrence_rule: Recurrence rule dict
+            from_date: Calculate from this date (default: today)
+
+        Returns:
+            Next occurrence date
+        """
+        if not recurrence_rule:
+            raise ValueError("No recurrence rule provided")
+
+        if from_date is None:
+            from_date = date.today()
+
+        rule_type = recurrence_rule['type']
+        interval = recurrence_rule.get('interval', 1)
+
+        if rule_type == 'daily':
+            return from_date + timedelta(days=interval)
+
+        elif rule_type == 'weekly':
+            target_weekday = recurrence_rule.get('weekday', from_date.weekday())
+            # Find next occurrence of target weekday, N weeks out
+            days_ahead = (target_weekday - from_date.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7 * interval
+            else:
+                days_ahead += 7 * (interval - 1)
+            return from_date + timedelta(days=days_ahead)
+
+        elif rule_type == 'monthly':
+            target_day = recurrence_rule.get('day_of_month', from_date.day)
+            # Add N months
+            month = from_date.month + interval
+            year = from_date.year + (month - 1) // 12
+            month = ((month - 1) % 12) + 1
+
+            # Handle month boundaries (e.g., Jan 31 -> Feb 28)
+            max_day = monthrange(year, month)[1]
+            day = min(target_day, max_day)
+
+            return date(year, month, day)
+
+        else:
+            raise ValueError(f"Unknown recurrence type: {rule_type}")
+
+    @staticmethod
+    def complete_repeating_task(db: Session, task: Task) -> Task | None:
+        """
+        When completing a repeating task, create next instance.
+
+        Args:
+            db: Database session
+            task: The completed task
+
+        Returns:
+            New task instance or None if not repeating
+        """
+        if not task.recurrence_rule:
+            return None
+
+        # Calculate next occurrence
+        next_date = RecurrenceService.calculate_next_occurrence(
+            task.recurrence_rule,
+            from_date=task.completed_at.date() if task.completed_at else date.today()
+        )
+
+        # Create new task instance
+        new_task = Task(
+            user_id=task.user_id,
+            project_id=task.project_id,
+            area_id=task.area_id,
+            title=task.title,
+            notes=task.notes,
+            status='inbox',  # New instance starts in inbox
+            recurrence_rule=task.recurrence_rule,
+            next_instance_date=RecurrenceService.calculate_next_occurrence(
+                task.recurrence_rule,
+                from_date=next_date
+            ),
+            scheduled_date=next_date,
+            tags=task.tags,
+            repeating=True,
+            repeat_template=False
+        )
+
+        db.add(new_task)
+        db.flush()
+
+        return new_task
+
+    @staticmethod
+    def find_things_database() -> str:
+        """Find Things SQLite database path"""
+        import glob
+        pattern = os.path.expanduser(
+            "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-*/Things Database.thingsdatabase/main.sqlite"
+        )
+        matches = glob.glob(pattern)
+        if not matches:
+            raise FileNotFoundError("Things database not found")
+        return matches[0]
+```
+
+### 2.5.5 Update Task Service Complete Logic
+
+**File: `/backend/api/services/task_service.py`**
+
+Modify complete_task to handle recurrence:
+
+```python
+from api.services.recurrence_service import RecurrenceService
+
+class TaskService:
+    # ... existing methods ...
+
+    @staticmethod
+    def complete_task(db: Session, user_id: str, task_id: str) -> dict:
+        """Mark task as complete and create next instance if repeating"""
+        task = db.execute(
+            select(Task).where(Task.id == uuid.UUID(task_id), Task.user_id == user_id)
+        ).scalar_one_or_none()
+
+        if not task:
+            raise ValueError("Task not found")
+
+        # Mark as complete
+        task.status = "completed"
+        task.completed_at = datetime.now()
+        task.updated_at = datetime.now()
+
+        # If repeating, create next instance
+        next_task = None
+        if task.recurrence_rule:
+            next_task = RecurrenceService.complete_repeating_task(db, task)
+
+        db.commit()
+
+        result = {"success": True}
+        if next_task:
+            result["next_task"] = TaskService._task_to_dict(next_task)
+
+        return result
+```
+
+### Deliverables
+- ✅ Things plist recurrence parser
+- ✅ Recurrence rule schema defined
+- ✅ Import updated to parse and store recurrence rules
+- ✅ RecurrenceService implements next occurrence calculation
+- ✅ Task completion auto-creates next instance
+- ✅ 100% coverage of user's 20 repeating tasks
 
 ---
 
@@ -1072,15 +1447,59 @@ def test_complete_task(db, test_user):
     db.refresh(task)
     assert task.status == "completed"
     assert task.completed_at is not None
+
+def test_complete_repeating_task_daily(db, test_user):
+    """Test completing a daily repeating task creates next instance"""
+    task = Task(
+        user_id=test_user.id,
+        title="Daily task",
+        status="today",
+        recurrence_rule={"type": "daily", "interval": 1},
+        repeating=True
+    )
+    db.add(task)
+    db.commit()
+
+    result = TaskService.complete_task(db, test_user.id, str(task.id))
+
+    # Original task completed
+    db.refresh(task)
+    assert task.status == "completed"
+
+    # New instance created
+    assert "next_task" in result
+    assert result["next_task"]["title"] == "Daily task"
+    assert result["next_task"]["recurrence_rule"]["type"] == "daily"
+
+def test_calculate_next_occurrence_weekly(db, test_user):
+    """Test weekly recurrence calculation"""
+    rule = {"type": "weekly", "interval": 2, "weekday": 1}  # Every 2 weeks on Monday
+    from_date = date(2026, 1, 12)  # A Monday
+
+    next_date = RecurrenceService.calculate_next_occurrence(rule, from_date)
+
+    assert next_date == date(2026, 1, 26)  # 2 weeks later, still Monday
+
+def test_parse_things_recurrence_plist(db, test_user):
+    """Test parsing Things binary plist recurrence data"""
+    # Mock plist data for daily every 2 days
+    plist_bytes = plistlib.dumps({"fu": 16, "fa": 2, "of": {"dy": 1}})
+
+    rule = ThingsRecurrenceParser.parse_recurrence_rule(plist_bytes)
+
+    assert rule["type"] == "daily"
+    assert rule["interval"] == 2
 ```
 
 ### Integration Tests
 
 1. **Import Validation**: Run import script, verify all data migrated
-2. **API Parity**: Compare bridge responses vs native responses
-3. **Performance**: Measure query times (<100ms requirement)
-4. **Search**: Test full-text search accuracy
-5. **Counts**: Verify badge counts match across all views
+2. **Recurrence Import**: Verify all 20 repeating tasks imported with correct rules
+3. **API Parity**: Compare bridge responses vs native responses
+4. **Performance**: Measure query times (<100ms requirement)
+5. **Search**: Test full-text search accuracy
+6. **Counts**: Verify badge counts match across all views
+7. **Recurrence Flow**: Complete repeating task, verify next instance created with correct date
 
 ### Manual Testing Checklist
 
@@ -1094,6 +1513,10 @@ def test_complete_task(db, test_user):
 - [ ] Search for tasks
 - [ ] Verify counts/badges
 - [ ] Test on slow connection (performance)
+- [ ] Complete daily repeating task, verify next instance appears
+- [ ] Complete weekly repeating task, verify correct weekday
+- [ ] Complete monthly repeating task, verify correct day of month
+- [ ] Verify all 20 repeating tasks imported correctly
 
 ---
 
@@ -1141,6 +1564,7 @@ USE_NATIVE_TASK_SYSTEM=false
 | Bridge dependency | Required | Optional | Architecture |
 | Offline support | None | Full | Feature availability |
 | Data ownership | Things | sideBar | Data location |
+| Repeating tasks | 20 tasks | 100% working | Manual verification |
 
 ---
 
@@ -1150,12 +1574,13 @@ USE_NATIVE_TASK_SYSTEM=false
 |-------|--------|-------------|
 | 1. Database Schema | 2-3 days | None |
 | 2. Things Import | 2-3 days | Phase 1 |
-| 3. Backend API | 3-4 days | Phase 1, 2 |
+| 2.5. Recurrence Implementation | 2-3 days | Phase 2 |
+| 3. Backend API | 3-4 days | Phase 1, 2, 2.5 |
 | 4. Frontend Update | 2 days | Phase 3 |
 | 5. Performance Optimization | 1-2 days | Phase 3, 4 |
 | 6. Bridge Decommission | 1 day | All phases |
-| Testing & Validation | 2 days | Ongoing |
-| **Total** | **13-17 days** | |
+| Testing & Validation | 2-3 days | Ongoing |
+| **Total** | **15-21 days** | |
 
 ---
 
@@ -1172,7 +1597,9 @@ backend/
 │   │   └── task_area.py
 │   ├── services/
 │   │   ├── task_service.py
-│   │   └── tasks_import_service.py
+│   │   ├── tasks_import_service.py
+│   │   ├── recurrence_service.py              # NEW: Phase 2.5
+│   │   └── things_recurrence_parser.py        # NEW: Phase 2.5
 │   ├── routers/
 │   │   └── tasks_admin.py
 │   └── alembic/versions/
@@ -1207,9 +1634,10 @@ frontend/
 1. ✅ Review and approve this migration plan
 2. ⏭️ Begin Phase 1: Create database schema and models (2-3 days)
 3. ⏭️ Execute Phase 2: Import all Things data (2-3 days)
-4. ⏭️ Implement Phase 3: Migrate backend API to native queries (3-4 days)
-5. ⏭️ Update Phase 4: Frontend optimizations (2 days)
-6. ⏭️ Optimize Phase 5: Database performance tuning (1-2 days)
-7. ⏭️ Complete Phase 6: Decommission bridge (1 day)
-8. ⏭️ Validate: Run full test suite and performance benchmarks
-9. ⏭️ Deploy: Execute rollout strategy with feature flag
+4. ⏭️ Implement Phase 2.5: Recurrence support (2-3 days)
+5. ⏭️ Implement Phase 3: Migrate backend API to native queries (3-4 days)
+6. ⏭️ Update Phase 4: Frontend optimizations (2 days)
+7. ⏭️ Optimize Phase 5: Database performance tuning (1-2 days)
+8. ⏭️ Complete Phase 6: Decommission bridge (1 day)
+9. ⏭️ Validate: Run full test suite and performance benchmarks (including 20 repeating tasks)
+10. ⏭️ Deploy: Execute rollout strategy with feature flag
