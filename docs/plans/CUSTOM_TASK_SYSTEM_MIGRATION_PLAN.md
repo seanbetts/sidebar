@@ -37,9 +37,10 @@ Frontend → Backend API → PostgreSQL
 ## Key Design Decisions
 
 **Data Migration:**
-- ✅ One-time import of all Things data via existing bridge
+- ✅ One-time import of active Things data via existing bridge
+- ✅ **Filter out** completed, trashed, and canceled tasks (keep only active/open tasks)
+- ✅ Import active areas and projects only
 - ✅ Preserve Things IDs for reference/rollback
-- ✅ Import areas, projects, and tasks with full metadata
 - ✅ Create snapshot before migration for safety
 
 **Database Schema:**
@@ -72,7 +73,7 @@ Frontend → Backend API → PostgreSQL
 
 ## Success Criteria
 
-- ✅ All Things data (areas, projects, tasks) imported successfully
+- ✅ All **active** Things data imported successfully (completed/trashed filtered out)
 - ✅ All 20 repeating tasks imported with correct recurrence rules
 - ✅ Repeating tasks auto-create next instance on completion
 - ✅ Task list loads in <100ms (vs current ~500ms with bridge)
@@ -393,7 +394,9 @@ class TasksImportService:
         stats = {
             "areas_imported": 0,
             "projects_imported": 0,
+            "projects_skipped": 0,
             "tasks_imported": 0,
+            "tasks_skipped": 0,
             "errors": []
         }
 
@@ -420,18 +423,25 @@ class TasksImportService:
             db.commit()
             logger.info(f"Imported {stats['areas_imported']} areas")
 
-            # 2. Fetch all projects
+            # 2. Fetch all projects (filter active only)
             logger.info(f"Fetching projects for user {user_id}")
             projects_data = areas_response.get("projects", [])
 
             project_id_map = {}  # Map Things ID -> New UUID
             for project_data in projects_data:
+                # Skip completed, canceled projects
+                status = project_data.get("status", "active")
+                if status in ["completed", "canceled"]:
+                    logger.debug(f"Skipping {status} project: {project_data['title']}")
+                    stats["projects_skipped"] += 1
+                    continue
+
                 project = TaskProject(
                     user_id=user_id,
                     things_id=project_data["id"],
                     area_id=area_id_map.get(project_data.get("areaId")),
                     title=project_data["title"],
-                    status=project_data.get("status", "active"),
+                    status=status,
                     created_at=datetime.fromisoformat(project_data.get("updatedAt", datetime.now().isoformat())),
                     updated_at=datetime.fromisoformat(project_data.get("updatedAt", datetime.now().isoformat()))
                 )
@@ -441,7 +451,7 @@ class TasksImportService:
                 stats["projects_imported"] += 1
 
             db.commit()
-            logger.info(f"Imported {stats['projects_imported']} projects")
+            logger.info(f"Imported {stats['projects_imported']} active projects")
 
             # 3. Fetch all tasks (from all lists)
             logger.info(f"Fetching tasks for user {user_id}")
@@ -460,7 +470,21 @@ class TasksImportService:
             # Deduplicate by Things ID
             tasks_by_id = {t["id"]: t for t in all_tasks}
 
+            # Filter and import only active tasks
             for task_data in tasks_by_id.values():
+                # Skip completed, trashed, or canceled tasks
+                status = task_data.get("status", "inbox")
+                if status in ["completed", "trashed", "canceled"]:
+                    logger.debug(f"Skipping {status} task: {task_data['title']}")
+                    stats["tasks_skipped"] += 1
+                    continue
+
+                # Skip repeat templates (keep only active instances)
+                if task_data.get("repeatTemplate", False):
+                    logger.debug(f"Skipping repeat template: {task_data['title']}")
+                    stats["tasks_skipped"] += 1
+                    continue
+
                 task = Task(
                     user_id=user_id,
                     things_id=task_data["id"],
@@ -468,12 +492,12 @@ class TasksImportService:
                     area_id=area_id_map.get(task_data.get("areaId")),
                     title=task_data["title"],
                     notes=task_data.get("notes"),
-                    status=task_data.get("status", "inbox"),
+                    status=status,
                     deadline=datetime.fromisoformat(task_data["deadline"]).date() if task_data.get("deadline") else None,
                     deadline_start=datetime.fromisoformat(task_data["deadlineStart"]).date() if task_data.get("deadlineStart") else None,
                     tags=task_data.get("tags", []),
                     repeating=task_data.get("repeating", False),
-                    repeat_template=task_data.get("repeatTemplate", False),
+                    repeat_template=False,  # Never import templates
                     created_at=datetime.fromisoformat(task_data.get("updatedAt", datetime.now().isoformat())),
                     updated_at=datetime.fromisoformat(task_data.get("updatedAt", datetime.now().isoformat()))
                 )
@@ -481,7 +505,7 @@ class TasksImportService:
                 stats["tasks_imported"] += 1
 
             db.commit()
-            logger.info(f"Imported {stats['tasks_imported']} tasks")
+            logger.info(f"Imported {stats['tasks_imported']} active tasks")
 
         except Exception as e:
             logger.error(f"Import failed: {str(e)}")
@@ -530,8 +554,8 @@ async def main(user_id: str):
 
         print("\n=== Import Complete ===")
         print(f"Areas imported: {stats['areas_imported']}")
-        print(f"Projects imported: {stats['projects_imported']}")
-        print(f"Tasks imported: {stats['tasks_imported']}")
+        print(f"Projects imported: {stats['projects_imported']} (skipped: {stats['projects_skipped']} completed/canceled)")
+        print(f"Tasks imported: {stats['tasks_imported']} (skipped: {stats['tasks_skipped']} completed/trashed/templates)")
 
         if stats["errors"]:
             print(f"\nErrors: {len(stats['errors'])}")
@@ -601,10 +625,34 @@ async def import_from_things(
 
 ### Deliverables
 - ✅ Import service handles all Things data types
-- ✅ CLI script for manual import
+- ✅ **Filters out** completed, trashed, canceled tasks and projects
+- ✅ **Skips** repeat templates (imports only active instances)
+- ✅ CLI script for manual import with skip statistics
 - ✅ Admin API endpoint for web-based import
 - ✅ Things IDs preserved for reference
-- ✅ Import statistics and error reporting
+- ✅ Import statistics including skipped counts
+
+### Import Filter Summary
+
+**What Gets Imported:**
+- ✅ All areas
+- ✅ Active projects (status = "active")
+- ✅ Active tasks (status = "inbox", "today", "upcoming", "someday")
+- ✅ Repeating tasks (active instances with recurrence rules)
+
+**What Gets Filtered Out:**
+- ❌ Completed projects (status = "completed")
+- ❌ Canceled projects (status = "canceled")
+- ❌ Completed tasks (status = "completed")
+- ❌ Trashed tasks (status = "trashed")
+- ❌ Canceled tasks (status = "canceled")
+- ❌ Repeat templates (repeatTemplate = true, keep only active instances)
+
+**Why Filter?**
+- Reduces database size and improves performance
+- Only migrates actionable data (what you need going forward)
+- Completed/trashed items remain in Things as historical archive
+- Can always reference Things backup if historical data needed
 
 ---
 
