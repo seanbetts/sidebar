@@ -60,6 +60,42 @@ final class IngestionViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.viewerState?.fileURL)
     }
 
+    func testLoadMetaUsesCacheAndMarksOfflineOnRefreshFailure() async {
+        let file = makeFile(id: "file-1")
+        let meta = IngestionMetaResponse(
+            file: file,
+            job: makeJob(),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        let cache = TestCacheClient()
+        cache.set(
+            key: CacheKeys.ingestionMeta(fileId: file.id),
+            value: meta,
+            ttlSeconds: 60
+        )
+        let api = MockIngestionAPI(
+            listResult: .failure(MockError.forced),
+            metaResult: .failure(MockError.forced),
+            contentResult: .failure(MockError.forced),
+            pinResult: .failure(MockError.forced)
+        )
+        let store = IngestionStore(api: api, cache: cache)
+        let viewModel = IngestionViewModel(api: api, store: store, temporaryStore: .shared)
+
+        await viewModel.loadMeta(fileId: file.id)
+
+        for _ in 0..<10 {
+            if viewModel.isOffline {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        XCTAssertEqual(viewModel.activeMeta?.file.id, file.id)
+        XCTAssertTrue(viewModel.isOffline)
+    }
+
     private func makeListItem(id: String) -> IngestionListItem {
         IngestionListItem(
             file: makeFile(id: id),

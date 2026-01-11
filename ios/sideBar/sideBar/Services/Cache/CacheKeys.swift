@@ -7,6 +7,7 @@ public enum CacheKeys {
     public static let websitesList = "websites.list"
     public static let memoriesList = "memories.list"
     public static let ingestionList = "ingestion.list"
+    public static let ingestionMetaPrefix = "ingestion.meta"
     public static let scratchpad = "scratchpad.content"
     public static let filesTreePrefix = "files.tree"
     public static let fileContentPrefix = "files.content"
@@ -32,5 +33,9 @@ public enum CacheKeys {
 
     public static func fileContent(basePath: String, path: String) -> String {
         "\(fileContentPrefix).\(basePath).\(path)"
+    }
+
+    public static func ingestionMeta(fileId: String) -> String {
+        "\(ingestionMetaPrefix).\(fileId)"
     }
 }

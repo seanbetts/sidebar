@@ -5,10 +5,12 @@ import Combine
 public final class IngestionStore: ObservableObject {
     @Published public private(set) var items: [IngestionListItem] = []
     @Published public private(set) var activeMeta: IngestionMetaResponse? = nil
+    @Published public private(set) var isOffline: Bool = false
 
     private let api: any IngestionProviding
     private let cache: CacheClient
     private var isRefreshingList = false
+    private var refreshingMetaIds = Set<String>()
 
     public init(api: any IngestionProviding, cache: CacheClient) {
         self.api = api
@@ -25,12 +27,22 @@ public final class IngestionStore: ObservableObject {
             return
         }
         let response = try await api.list()
+        isOffline = false
         applyListUpdate(response.items, persist: true)
     }
 
-    public func loadMeta(fileId: String) async throws {
+    public func loadMeta(fileId: String, force: Bool = false) async throws {
+        let cacheKey = CacheKeys.ingestionMeta(fileId: fileId)
+        if !force, let cached: IngestionMetaResponse = cache.get(key: cacheKey) {
+            applyMetaUpdate(cached, persist: false)
+            Task { [weak self] in
+                await self?.refreshMeta(fileId: fileId)
+            }
+            return
+        }
         let response = try await api.getMeta(fileId: fileId)
-        activeMeta = response
+        isOffline = false
+        applyMetaUpdate(response, persist: true)
     }
 
     public func invalidateList() {
@@ -53,6 +65,9 @@ public final class IngestionStore: ObservableObject {
             if let fileId {
                 items.removeAll { $0.file.id == fileId }
                 persistListCache()
+                if activeMeta?.file.id == fileId {
+                    activeMeta = nil
+                }
             }
         case .insert, .update:
             guard let record = payload.record,
@@ -94,8 +109,26 @@ public final class IngestionStore: ObservableObject {
         defer { isRefreshingList = false }
         do {
             let response = try await api.list()
+            isOffline = false
             applyListUpdate(response.items, persist: true)
         } catch {
+            isOffline = true
+            // Ignore background refresh failures; cache remains source of truth.
+        }
+    }
+
+    private func refreshMeta(fileId: String) async {
+        guard !refreshingMetaIds.contains(fileId) else {
+            return
+        }
+        refreshingMetaIds.insert(fileId)
+        defer { refreshingMetaIds.remove(fileId) }
+        do {
+            let response = try await api.getMeta(fileId: fileId)
+            isOffline = false
+            applyMetaUpdate(response, persist: true)
+        } catch {
+            isOffline = true
             // Ignore background refresh failures; cache remains source of truth.
         }
     }
@@ -137,6 +170,32 @@ public final class IngestionStore: ObservableObject {
             items.append(item)
         }
         persistListCache()
+    }
+
+    private func applyMetaUpdate(_ incoming: IngestionMetaResponse, persist: Bool) {
+        guard shouldUpdateMeta(incoming) else {
+            return
+        }
+        activeMeta = incoming
+        if persist {
+            cache.set(
+                key: CacheKeys.ingestionMeta(fileId: incoming.file.id),
+                value: incoming,
+                ttlSeconds: CachePolicy.ingestionMeta
+            )
+        }
+    }
+
+    private func shouldUpdateMeta(_ incoming: IngestionMetaResponse) -> Bool {
+        guard let current = activeMeta else {
+            return true
+        }
+        return current.file.pinned != incoming.file.pinned
+            || current.file.pinnedOrder != incoming.file.pinnedOrder
+            || current.job.updatedAt != incoming.job.updatedAt
+            || current.job.status != incoming.job.status
+            || current.job.stage != incoming.job.stage
+            || current.derivatives.count != incoming.derivatives.count
     }
 
     private func persistListCache() {
