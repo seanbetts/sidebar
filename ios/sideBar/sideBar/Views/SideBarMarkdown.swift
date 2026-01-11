@@ -35,11 +35,7 @@ struct SideBarMarkdown: View {
     }
 
     private var codeBlockBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.muted
     }
 
     #if canImport(MarkdownUI)

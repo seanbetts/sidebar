@@ -348,51 +348,27 @@ public struct SpreadsheetViewer: View {
     }
 
     private var headerBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 
     private var rowBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .textBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
+        DesignTokens.Colors.background
     }
 
     private var tabBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 
     private var tabSelectedBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .selectedContentBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.background
     }
 
     private var controlBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 
     private var controlBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 }
 

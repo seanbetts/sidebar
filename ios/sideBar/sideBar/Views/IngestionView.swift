@@ -55,6 +55,8 @@ public struct IngestionSplitView: View {
             }
         }
         .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(DesignTokens.Colors.sidebar)
         .refreshable {
             await viewModel.load()
         }
@@ -96,28 +98,32 @@ private struct IngestionRow: View {
         SelectableRow(isSelected: isSelected) {
             HStack(spacing: 10) {
                 Image(systemName: iconName)
-                    .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                    .foregroundStyle(iconColor)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(stripFileExtension(item.file.filenameOriginal))
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
-                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
                     Text(statusText)
                         .font(.caption)
-                        .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
                     if let created = formattedDate {
                         Text(created)
                             .font(.caption2)
-                            .foregroundStyle(isSelected ? Color.white.opacity(0.6) : Color.secondary)
+                            .foregroundStyle(DesignTokens.Colors.textSecondary)
                     }
                 }
                 Spacer()
                 if item.file.pinned == true {
                     Image(systemName: "pin.fill")
-                        .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
                 }
             }
         }
+    }
+
+    private var iconColor: Color {
+        isSelected ? DesignTokens.Colors.textPrimary : DesignTokens.Colors.textSecondary
     }
 
     private var iconName: String {

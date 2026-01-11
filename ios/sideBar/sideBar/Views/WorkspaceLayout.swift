@@ -226,34 +226,18 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     }
 
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
     private var handleBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
+        DesignTokens.Colors.background
     }
 
     private var handleBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 
     private var handleGrabber: Color {
-        #if os(macOS)
-        return Color(nsColor: .tertiaryLabelColor)
-        #else
-        return Color.platformTertiaryLabel
-        #endif
+        DesignTokens.Colors.textTertiary
     }
 }

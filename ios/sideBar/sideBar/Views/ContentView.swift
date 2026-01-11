@@ -382,12 +382,12 @@ public struct ContentView: View {
 
     private var topSafeAreaBackground: Color {
         #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
+        return DesignTokens.Colors.background
         #else
         if isCompact && isPhonePanelListVisible {
             return DesignTokens.Colors.surface
         }
-        return Color.platformSystemBackground
+        return DesignTokens.Colors.background
         #endif
     }
 
@@ -448,25 +448,25 @@ public struct ContentView: View {
 
     private var tabAccessoryBackground: Color {
         #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
+        return DesignTokens.Colors.surface
         #else
-        return Color.platformSecondarySystemBackground
+        return DesignTokens.Colors.surface
         #endif
     }
 
     private var tabAccessoryBorder: Color {
         #if os(macOS)
-        return Color(nsColor: .separatorColor)
+        return DesignTokens.Colors.border
         #else
-        return Color.platformSeparator
+        return DesignTokens.Colors.border
         #endif
     }
 
     private var separatorColor: Color {
         #if os(macOS)
-        return Color(nsColor: .separatorColor)
+        return DesignTokens.Colors.border
         #else
-        return Color.platformSeparator
+        return DesignTokens.Colors.border
         #endif
     }
 
