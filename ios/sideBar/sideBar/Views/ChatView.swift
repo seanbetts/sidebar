@@ -215,6 +215,7 @@ private struct ChatHeaderView: View {
 
 private struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
+    @State private var shouldScrollToBottom = false
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -224,27 +225,54 @@ private struct ChatMessageListView: View {
                         ChatMessageRow(message: message)
                             .id(message.id)
                     }
+                    Color.clear
+                        .frame(height: 1)
+                        .id("bottom")
                 }
                 .padding(16)
             }
-            .onChange(of: viewModel.messages.count) { _, _ in
-                guard let last = viewModel.messages.last else {
+            .task(id: viewModel.selectedConversationId) {
+                guard viewModel.selectedConversationId != nil else {
                     return
                 }
-                withAnimation(.easeOut(duration: 0.2)) {
-                    proxy.scrollTo(last.id, anchor: .bottom)
+                shouldScrollToBottom = true
+                await Task.yield()
+                scrollToBottom(proxy: proxy, animated: false)
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                scrollToBottom(proxy: proxy, animated: false)
+                shouldScrollToBottom = false
+            }
+            .onChange(of: viewModel.selectedConversationId) { _, _ in
+                shouldScrollToBottom = true
+            }
+            .onChange(of: viewModel.messages.count) { _, _ in
+                let shouldJump = shouldScrollToBottom
+                scrollToBottom(proxy: proxy, animated: !shouldJump)
+                if shouldJump {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 200_000_000)
+                        scrollToBottom(proxy: proxy, animated: false)
+                    }
                 }
+                shouldScrollToBottom = false
             }
             .onChange(of: viewModel.messages.last?.content ?? "") { _, _ in
-                guard let last = viewModel.messages.last else {
-                    return
-                }
-                proxy.scrollTo(last.id, anchor: .bottom)
+                scrollToBottom(proxy: proxy, animated: shouldScrollToBottom == false)
             }
             .refreshable {
                 await viewModel.refreshConversations()
                 await viewModel.refreshActiveConversation()
             }
+        }
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
+        if animated {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo("bottom", anchor: .bottom)
+            }
+        } else {
+            proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
 }
