@@ -149,7 +149,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 | **5. File Viewing** | ✅ Complete | 4 / 4-6 | 4 / 4-6 | 100% | Full (already read-only) |
 | **6. Website Viewer** | ✅ Complete | 1 / 1-2 | 1 / 2-3 | 100% | Modified (no saving) |
 | **7. Additional Features** | ✅ Complete | 1 / 2-3 | 1 / 3-4 | 100% | Modified (view-only) |
-| **8. Cache-First Sync Architecture** | 🟨 In Progress | 0 / 2-3 | 0 / 2-3 | 40% | Full |
+| **8. Cache-First Sync Architecture** | 🟨 In Progress | 0 / 2-3 | 0 / 2-3 | 90% | Full |
 | **9. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
 | **10. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
 | **MVP TOTAL** | | **24-36** | | | |
@@ -323,10 +323,10 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - [x] 8.3 SSE/Realtime events update caches directly
 - [x] 8.4 Background revalidation for list endpoints only
 - [x] 8.5 Offline-first reading via persistent cache
-- [ ] 8.6 Design tokens defined (spacing, radius, sizes, colors, animations)
-- [ ] 8.7 Shared components (PanelHeader, SearchField, SelectableRow, EmptyState, Loading)
-- [ ] 8.8 Utilities/extensions centralized (DateFormatter, String, Image)
-- [ ] 8.9 Style modifiers (glass button, card, pill)
+- [x] 8.6 Design tokens defined (spacing, radius, sizes, colors, animations)
+- [x] 8.7 Shared components (PanelHeader, SearchField, SelectableRow, EmptyState, Loading)
+- [x] 8.8 Utilities/extensions centralized (DateFormatter, String, Image)
+- [x] 8.9 Style modifiers (glass button, card, pill)
 - [ ] 8.10 Migrate duplicated panel headers and selection styling
 
 **Architecture Notes (Phase 8)**
