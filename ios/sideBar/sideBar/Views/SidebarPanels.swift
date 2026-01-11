@@ -384,7 +384,7 @@ private struct NotesPanelView: View {
             Section("Notes") {
                 mainOutlineGroup
             }
-
+#if !os(macOS)
             Section {
                 DisclosureGroup(
                     isExpanded: $isArchiveExpanded,
@@ -394,7 +394,17 @@ private struct NotesPanelView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
-                            archivedOutlineGroup
+                            OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                                NotesTreeRow(
+                                    item: item,
+                                    isSelected: viewModel.selectedNoteId == item.id
+                                ) {
+                                    if item.isFile {
+                                        Task { await viewModel.selectNote(id: item.id) }
+                                    }
+                                }
+                            }
+                            .listRowBackground(rowBackground)
                         }
                     },
                     label: {
@@ -403,10 +413,16 @@ private struct NotesPanelView: View {
                 )
                 .listRowBackground(rowBackground)
             }
+#endif
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(panelBackground)
+        #if os(macOS)
+        .safeAreaInset(edge: .bottom) {
+            notesArchiveSection
+        }
+        #endif
         .refreshable {
             await viewModel.loadTree()
         }
@@ -434,18 +450,41 @@ private struct NotesPanelView: View {
         .listRowBackground(rowBackground)
     }
 
-    private var archivedOutlineGroup: some View {
-        OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-            NotesTreeRow(
-                item: item,
-                isSelected: viewModel.selectedNoteId == item.id
-            ) {
-                if item.isFile {
-                    Task { await viewModel.selectNote(id: item.id) }
+    private var notesArchiveSection: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Divider()
+                .overlay(DesignTokens.Colors.border)
+                .padding(.bottom, DesignTokens.Spacing.xs)
+            DisclosureGroup(
+                isExpanded: $isArchiveExpanded,
+                content: {
+                    if archivedNodes.isEmpty {
+                        Text("No archived notes")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                            NotesTreeRow(
+                                item: item,
+                                isSelected: viewModel.selectedNoteId == item.id,
+                                useListStyling: false
+                            ) {
+                                if item.isFile {
+                                    Task { await viewModel.selectNote(id: item.id) }
+                                }
+                            }
+                        }
+                    }
+                },
+                label: {
+                    Label("Archive", systemImage: "archivebox")
+                        .font(.subheadline.weight(.semibold))
                 }
-            }
+            )
         }
-        .listRowBackground(rowBackground)
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.sm)
+        .background(panelBackground)
     }
 
     private var pinnedItems: [FileNodeItem] {
@@ -534,9 +573,22 @@ private struct NotesTreeRow: View {
     let item: FileNodeItem
     let isSelected: Bool
     let onSelect: () -> Void
+    let useListStyling: Bool
+
+    init(
+        item: FileNodeItem,
+        isSelected: Bool,
+        useListStyling: Bool = true,
+        onSelect: @escaping () -> Void
+    ) {
+        self.item = item
+        self.isSelected = isSelected
+        self.useListStyling = useListStyling
+        self.onSelect = onSelect
+    }
 
     var body: some View {
-        let row = SelectableRow(isSelected: isSelected) {
+        let row = SelectableRow(isSelected: isSelected, useListStyling: useListStyling) {
             HStack(spacing: 8) {
                 Image(systemName: item.isFile ? "doc.text" : "folder")
                     .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
@@ -549,9 +601,11 @@ private struct NotesTreeRow: View {
         if item.isFile {
             row
                 .onTapGesture { onSelect() }
-        } else {
+        } else if useListStyling {
             row
                 .listRowBackground(rowBackground)
+        } else {
+            row
         }
     }
 
@@ -868,7 +922,7 @@ private struct FilesIngestionRow: View {
     let isSelected: Bool
 
     var body: some View {
-        SelectableRow(isSelected: isSelected) {
+        SelectableRow(isSelected: isSelected, insets: compactRowInsets) {
             HStack(spacing: 8) {
                 Image(systemName: iconName)
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
@@ -912,6 +966,15 @@ private struct FilesIngestionRow: View {
 
     private var selectedTextColor: Color {
         DesignTokens.Colors.textPrimary
+    }
+
+    private var compactRowInsets: EdgeInsets {
+        EdgeInsets(
+            top: 0,
+            leading: DesignTokens.Spacing.xs,
+            bottom: 0,
+            trailing: DesignTokens.Spacing.xs
+        )
     }
 }
 
@@ -990,7 +1053,7 @@ private struct WebsitesPanelView: View {
         } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
-            List(selection: $selection) {
+            List {
                 Section("Results") {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
@@ -1000,7 +1063,6 @@ private struct WebsitesPanelView: View {
                                 item: item,
                                 isSelected: selection == item.id
                             )
-                            .tag(item.id)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                         }
@@ -1011,7 +1073,7 @@ private struct WebsitesPanelView: View {
             .scrollContentBackground(.hidden)
             .background(panelBackground)
         } else {
-            List(selection: $selection) {
+            List {
                 if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
                     Section("Pinned") {
                         if pinnedItemsSorted.isEmpty {
@@ -1024,7 +1086,6 @@ private struct WebsitesPanelView: View {
                                     item: item,
                                     isSelected: selection == item.id
                                 )
-                                .tag(item.id)
                                 .contentShape(Rectangle())
                                 .onTapGesture { open(item: item) }
                             }
@@ -1042,44 +1103,48 @@ private struct WebsitesPanelView: View {
                                     item: item,
                                     isSelected: selection == item.id
                                 )
-                                .tag(item.id)
                                 .contentShape(Rectangle())
                                 .onTapGesture { open(item: item) }
                             }
                         }
                     }
                 }
-
+#if !os(macOS)
                 Section {
                     DisclosureGroup(
                         isExpanded: $isArchiveExpanded,
                         content: {
-                        if archivedItems.isEmpty {
-                            Text("No archived websites")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(archivedItems, id: \.id) { item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .tag(item.id)
-                                .contentShape(Rectangle())
-                                .onTapGesture { open(item: item) }
+                            if archivedItems.isEmpty {
+                                Text("No archived websites")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(archivedItems, id: \.id) { item in
+                                    WebsiteRow(
+                                        item: item,
+                                        isSelected: selection == item.id
+                                    )
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { open(item: item) }
+                                }
                             }
-                        }
-                    },
+                        },
                         label: {
                             Label("Archive", systemImage: "archivebox")
                         }
                     )
-                    .listRowBackground(rowBackground)
+                    .listRowBackground(DesignTokens.Colors.sidebar)
                 }
+#endif
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(panelBackground)
+            #if os(macOS)
+            .safeAreaInset(edge: .bottom) {
+                websitesArchiveSection
+            }
+            #endif
         }
     }
 
@@ -1131,6 +1196,41 @@ private struct WebsitesPanelView: View {
         DesignTokens.Colors.sidebar
     }
 
+    private var websitesArchiveSection: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Divider()
+                .overlay(DesignTokens.Colors.border)
+                .padding(.bottom, DesignTokens.Spacing.xs)
+            DisclosureGroup(
+                isExpanded: $isArchiveExpanded,
+                content: {
+                    if archivedItems.isEmpty {
+                        Text("No archived websites")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(archivedItems, id: \.id) { item in
+                            WebsiteRow(
+                                item: item,
+                                isSelected: selection == item.id,
+                                useListStyling: false
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(item: item) }
+                        }
+                    }
+                },
+                label: {
+                    Label("Archive", systemImage: "archivebox")
+                        .font(.subheadline.weight(.semibold))
+                }
+            )
+        }
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.sm)
+        .background(panelBackground)
+    }
+
     private var isCompact: Bool {
         #if os(macOS)
         return false
@@ -1144,9 +1244,20 @@ private struct WebsitesPanelView: View {
 private struct WebsiteRow: View {
     let item: WebsiteItem
     let isSelected: Bool
+    let useListStyling: Bool
+
+    init(item: WebsiteItem, isSelected: Bool, useListStyling: Bool = true) {
+        self.item = item
+        self.isSelected = isSelected
+        self.useListStyling = useListStyling
+    }
 
     var body: some View {
-        SelectableRow(isSelected: isSelected) {
+        SelectableRow(
+            isSelected: isSelected,
+            insets: compactRowInsets,
+            useListStyling: useListStyling
+        ) {
             HStack(spacing: 8) {
                 Image(systemName: "globe")
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
@@ -1183,6 +1294,15 @@ private struct WebsiteRow: View {
 
     private var selectedSecondaryText: Color {
         DesignTokens.Colors.textSecondary
+    }
+
+    private var compactRowInsets: EdgeInsets {
+        EdgeInsets(
+            top: 0,
+            leading: DesignTokens.Spacing.xs,
+            bottom: 0,
+            trailing: DesignTokens.Spacing.xs
+        )
     }
 }
 
