@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 public protocol AuthSession {
     var accessToken: String? { get }

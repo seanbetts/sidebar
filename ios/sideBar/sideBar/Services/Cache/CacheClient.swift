@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 public protocol CacheClient {
     func get<T: Codable>(key: String) -> T?

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 public final class ChatStore: ObservableObject {
@@ -82,5 +83,4 @@ public final class ChatStore: ObservableObject {
         }
         return true
     }
-}
 }
