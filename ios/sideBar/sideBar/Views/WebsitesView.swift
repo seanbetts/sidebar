@@ -3,12 +3,33 @@ import MarkdownUI
 
 public struct WebsitesView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     public init() {
     }
 
     public var body: some View {
         WebsitesDetailView(viewModel: environment.websitesViewModel)
+            #if !os(macOS)
+            .navigationTitle(websiteTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+    }
+
+    private var websiteTitle: String {
+        #if os(macOS)
+        return "Websites"
+        #else
+        guard horizontalSizeClass == .compact else {
+            return "Websites"
+        }
+        guard let website = environment.websitesViewModel.active else {
+            return "Websites"
+        }
+        return website.title.isEmpty ? website.url : website.title
+        #endif
     }
 }
 
@@ -19,11 +40,16 @@ private struct WebsitesDetailView: View {
     @State private var scrollWidth: CGFloat = 0
     private let contentMaxWidth: CGFloat = 800
     private let contentHorizontalPadding: CGFloat = 20
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
+            if !isCompact {
+                header
+                Divider()
+            }
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -136,6 +162,14 @@ private struct WebsitesDetailView: View {
             parts.append(Self.publishedDateFormatter.string(from: date))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " | ")
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
     private func openSource() {
