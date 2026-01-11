@@ -81,6 +81,7 @@ public struct ContentView: View {
             .onChange(of: phoneSelection) { _, newValue in
                 sidebarSelection = newValue
                 primarySection = newValue
+                Task { await loadPhoneSectionIfNeeded(newValue) }
             }
             .onReceive(environment.notesViewModel.$selectedNoteId) { newValue in
                 guard newValue != nil else { return }
@@ -358,6 +359,21 @@ public struct ContentView: View {
         let location = environment.settingsViewModel.settings?.location?.trimmed ?? ""
         guard !location.isEmpty else { return }
         await environment.weatherViewModel.load(location: location)
+    }
+
+    private func loadPhoneSectionIfNeeded(_ section: AppSection) async {
+        switch section {
+        case .notes:
+            await environment.notesViewModel.loadTree()
+        case .websites:
+            await environment.websitesViewModel.load()
+        case .files:
+            await environment.ingestionViewModel.load()
+        case .chat:
+            await environment.chatViewModel.loadConversations()
+        case .tasks, .settings:
+            break
+        }
     }
 
     private var topSafeAreaBackground: Color {
