@@ -2,12 +2,19 @@ import SwiftUI
 
 public struct ChatView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     public init() {
     }
 
     public var body: some View {
         ChatDetailView(viewModel: environment.chatViewModel)
+            #if !os(macOS)
+            .navigationTitle(chatTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .task {
                 await environment.chatViewModel.loadConversations()
                 environment.chatViewModel.startAutoRefresh()
@@ -16,18 +23,32 @@ public struct ChatView: View {
                 environment.chatViewModel.stopAutoRefresh()
             }
     }
+
+    private var chatTitle: String {
+        guard horizontalSizeClass == .compact,
+              let selectedId = environment.chatViewModel.selectedConversationId,
+              let conversation = environment.chatViewModel.conversations.first(where: { $0.id == selectedId }) else {
+            return "Chat"
+        }
+        return conversation.title
+    }
 }
 
 private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var draftMessage: String = ""
     private let inputBarHeight: CGFloat = 60
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
-                ChatHeaderView(viewModel: viewModel)
-                Divider()
+                if !isCompact {
+                    ChatHeaderView(viewModel: viewModel)
+                    Divider()
+                }
                 if viewModel.isLoadingMessages {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -49,31 +70,33 @@ private struct ChatDetailView: View {
             .padding(.bottom, 16)
         }
     }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
 }
 
 private struct ChatHeaderView: View {
     @ObservedObject var viewModel: ChatViewModel
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 12) {
-                Image(systemName: "bubble")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(selectedTitle)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                Spacer()
-                if viewModel.isStreaming {
-                    Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .labelStyle(.titleAndIcon)
-                }
+        if isCompact {
+            VStack(alignment: .leading, spacing: 6) {
+                headerContent
             }
+            .padding(16)
+            .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
+            .background(headerBackground)
+        } else {
+        VStack(alignment: .leading, spacing: 6) {
+            headerContent
 
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
@@ -92,6 +115,28 @@ private struct ChatHeaderView: View {
         .padding(16)
         .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
         .background(headerBackground)
+        }
+    }
+
+    private var headerContent: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "bubble")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(selectedTitle)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            Spacer()
+            if viewModel.isStreaming {
+                Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
+            }
+        }
     }
 
     private var selectedTitle: String {
@@ -110,6 +155,13 @@ private struct ChatHeaderView: View {
         #endif
     }
 
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
 }
 
 private struct ChatMessageListView: View {
