@@ -93,7 +93,7 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 **Phase I - Read-Only MVP** (Recommended First)
 - Focus on viewing capabilities across all content types
 - Defer editing features (markdown editor, chat input, content creation)
-- Deliver a functional, useful app in 7-11 weeks
+- Deliver a functional, useful app in 8-13 weeks
 - Validate architecture and foundations before tackling complex editing
 
 **Phase II - Editing Capabilities** (Post-MVP)
@@ -105,15 +105,15 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 ### Effort Estimates
 
 **Read-Only MVP:**
-- **Sessions**: 22-33 (vs 36-51 for full app)
-- **Hours**: 88-132 hours (vs 157-280 for full app)
-- **Timeline**: 7-11 weeks at 3-4 sessions per week
+- **Sessions**: 24-36 (vs 38-54 for full app)
+- **Hours**: 96-144 hours (vs 165-292 for full app)
+- **Timeline**: 8-13 weeks at 3-4 sessions per week
 - **Complexity**: Medium (defers hardest 40% of work)
 
 **Full App (MVP + Editing):**
-- **Sessions**: 36-51 total
-- **Hours**: 157-280 hours total
-- **Timeline**: 12-18 weeks total
+- **Sessions**: 38-54 total
+- **Hours**: 165-292 hours total
+- **Timeline**: 13-19 weeks total
 - **Complexity**: High (native markdown editor and streaming)
 
 ---
@@ -124,16 +124,16 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 
 **Current Target**: Read-Only MVP
 **Status**: Phase 7 complete (Additional Features)
-**Sessions Completed (Implementation)**: 15 / 22-33 (MVP) or 15 / 36-51 (Full App)
-**Hours Logged (Implementation)**: TBD / 88-132 (MVP) or TBD / 157-280 (Full App)
-**Weeks Elapsed (Implementation)**: 0 / 7-11 (MVP) or 0 / 12-18 (Full App)
+**Sessions Completed (Implementation)**: 15 / 24-36 (MVP) or 15 / 38-54 (Full App)
+**Hours Logged (Implementation)**: TBD / 96-144 (MVP) or TBD / 165-292 (Full App)
+**Weeks Elapsed (Implementation)**: 0 / 8-13 (MVP) or 0 / 13-19 (Full App)
 
 ```
-MVP Progress:      [█████████████░░░░░░░] 64%
-Full App Progress: [██████████░░░░░░░░░░] 44%
+MVP Progress:      [██████████░░░░░░░░░] 50%
+Full App Progress: [███████░░░░░░░░░░░░] 33%
 
 Critical Path (MVP): [███████████░░░░░░░░░] 55%
-(Phases 1 → 2 → 3-Modified → 4-Reduced → 5 → 6-Modified → 7-Modified → 8 → 9)
+(Phases 1 → 2 → 3-Modified → 4-Reduced → 5 → 6-Modified → 7-Modified → 8 → 9 → 10)
 ```
 
 ### Phase Completion Status
@@ -149,11 +149,12 @@ Critical Path (MVP): [███████████░░░░░░░░�
 | **5. File Viewing** | ✅ Complete | 4 / 4-6 | 4 / 4-6 | 100% | Full (already read-only) |
 | **6. Website Viewer** | ✅ Complete | 1 / 1-2 | 1 / 2-3 | 100% | Modified (no saving) |
 | **7. Additional Features** | ✅ Complete | 1 / 2-3 | 1 / 3-4 | 100% | Modified (view-only) |
-| **8. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
-| **9. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
-| **MVP TOTAL** | | **22-33** | | | |
+| **8. Cache-First Sync Architecture** | ⬜ Not Started | 0 / 2-3 | 0 / 2-3 | 0% | Full |
+| **9. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
+| **10. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
+| **MVP TOTAL** | | **24-36** | | | |
 
-#### Post-MVP: Editing Capabilities (Phase 10)
+#### Post-MVP: Editing Capabilities (Phase 11)
 
 | Phase | Status | Sessions | Complete | Full App Required |
 |-------|--------|----------|----------|-------------------|
@@ -164,7 +165,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 | **10.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
 | **POST-MVP TOTAL** | | **11-17** | | |
 
-**FULL APP TOTAL: 36-51 sessions (MVP 22-33 + Post-MVP 11-17)**
+**FULL APP TOTAL: 38-54 sessions (MVP 24-36 + Post-MVP 11-17)**
 
 **Legend**: ⬜ Not Started | 🟨 In Progress | ✅ Complete
 
@@ -227,7 +228,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - Prefer native context menus and swipe actions for message utilities.
 - macOS: command-click selection, keyboard navigation, and copy/select behaviors.
 
-**Post-MVP (Phase 10.1): Chat Input**
+**Post-MVP (Phase 11.1): Chat Input**
 - [x] 3.7a Chat input UI shell (native growing text view + send button, not wired)
 - [ ] 3.7b Chat input wiring (send action, attachments, keyboard shortcuts)
 
@@ -269,7 +270,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - Prefer Quick Look where it improves native affordances and share workflows.
 - Use native file pickers, share sheets, and drag-drop on macOS/iPadOS.
 
-**Note**: File upload and ingestion deferred to post-launch (not part of MVP or Phase 10)
+**Note**: File upload and ingestion deferred to post-launch (not part of MVP or Phase 12)
 **Note**: Workspace tree is deprecated in favor of ingestion-driven files list.
 
 #### Phase 6: Website Viewer (1-2 sessions MVP, 2-3 full)
@@ -283,7 +284,7 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - Use `SFSafariViewController` on iOS for external viewing.
 - Use `WKWebView` in-app only when needed; prefer markdown/native text for speed and accessibility.
 
-**Post-MVP (Phase 10.4): Content Creation**
+**Post-MVP (Phase 11.4): Content Creation**
 - [ ] 6.3 Save Website (URL input, validation, loading state)
 
 #### Phase 7: Additional Features (2-3 sessions MVP, 3-4 full)
@@ -311,48 +312,61 @@ Critical Path (MVP): [███████████░░░░░░░░�
 - [ ] 7.T1 Task System Migration (replace Things dependency with in-app todo management)
   - Sessions: 3-5 (estimate)
 
-**Post-MVP (Phase 10.4): Editing**
+**Post-MVP (Phase 11.4): Editing**
 - [ ] 7.1 Memory Management (add, edit, delete memories)
 - [ ] 7.2 Scratchpad (editable with auto-save)
 
-#### Phase 8: Platform Optimization (5-7 sessions)
+#### Phase 8: Cache-First Sync Architecture (2-3 sessions)
 **MVP Scope: Full**
-- [ ] 8.1 iPhone-Specific Layout (read-only optimized)
-- [ ] 8.2 iPad-Specific Layout
-- [ ] 8.3 macOS-Specific Features
-- [ ] 8.4 Animations & Transitions
-- [ ] 8.5 Performance Optimization
-- [ ] 8.6 Accessibility (VoiceOver, Dynamic Type)
-- [ ] 8.7 Error Handling
-- [ ] 8.8 Loading States
-- [ ] 8.9 Offline Behavior (cached reading)
+- [ ] 8.1 Store layer per domain (chat, notes, tasks, websites, files)
+- [ ] 8.2 Cache-first load with stale-while-revalidate
+- [ ] 8.3 SSE/Realtime events update caches directly
+- [ ] 8.4 Background revalidation for list endpoints only
+- [ ] 8.5 Offline-first reading via persistent cache
 
-#### Phase 9: MVP Testing & Refinement (3-4 sessions MVP, 4-6 full)
+**Architecture Notes (Phase 8)**
+- Cache is the single observable source of truth for UI.
+- View models consume store snapshots; they do not own freshness logic.
+- Updates only publish when cache contents change.
+
+#### Phase 9: Platform Optimization (5-7 sessions)
+**MVP Scope: Full**
+- [ ] 9.1 iPhone-Specific Layout (read-only optimized)
+- [ ] 9.2 iPad-Specific Layout
+- [ ] 9.3 macOS-Specific Features
+- [ ] 9.4 Animations & Transitions
+- [ ] 9.5 Performance Optimization
+- [ ] 9.6 Accessibility (VoiceOver, Dynamic Type)
+- [ ] 9.7 Error Handling
+- [ ] 9.8 Loading States
+- [ ] 9.9 Offline Behavior (cached reading)
+
+#### Phase 10: MVP Testing & Refinement (3-4 sessions MVP, 4-6 full)
 **MVP Scope: Read-Only Testing**
-- [ ] 9.1 Integration Testing (all view features)
-- [ ] 9.2 Real-World Usage (daily use as reference app)
-- [ ] 9.3 Bug Fixes
-- [ ] 9.4 Edge Cases (very long content, slow network, empty states)
-- [ ] 9.5 Polish
+- [ ] 10.1 Integration Testing (all view features)
+- [ ] 10.2 Real-World Usage (daily use as reference app)
+- [ ] 10.3 Bug Fixes
+- [ ] 10.4 Edge Cases (very long content, slow network, empty states)
+- [ ] 10.5 Polish
 
-**Post-MVP (Phase 10.5): Full App Testing**
+**Post-MVP (Phase 11.5): Full App Testing**
 - [ ] Test editing features
 - [ ] Test creation workflows
 - [ ] End-to-end capability parity validation (native UX)
 
 ---
 
-### Phase 10: Editing Capabilities (POST-MVP)
+### Phase 11: Editing Capabilities (POST-MVP)
 **Sessions: 11-17 | Added after MVP delivery**
 
-#### Phase 10.1: Chat Input (2-3 sessions)
+#### Phase 11.1: Chat Input (2-3 sessions)
 - [ ] Text input with auto-expanding height
 - [ ] Send button (disabled when empty)
 - [ ] SSE streaming for sending messages
 - [ ] File attachment picker (optional)
 - [ ] Keyboard shortcuts (Cmd+Enter on Mac)
 
-#### Phase 10.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
+#### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
 - [ ] **Critical Decision**: RichTextKit vs Custom UITextView/NSTextView
 - [ ] Basic markdown editing with RichTextKit integration
 - [ ] Editor toolbar (bold, italic, headings, lists, etc.)
@@ -367,7 +381,7 @@ Evaluate RichTextKit capabilities. Choose:
 - Option B: Build custom UITextView wrapper (adds 3-5 sessions)
 - Option C: Reduce scope (defer tables/advanced features)
 
-#### Phase 10.3: Note Operations (1-2 sessions)
+#### Phase 11.3: Note Operations (1-2 sessions)
 - [ ] Create new note (modal dialog for name/folder)
 - [ ] Rename note (alert with text input)
 - [ ] Move to folder (picker sheet)
@@ -377,12 +391,12 @@ Evaluate RichTextKit capabilities. Choose:
 - [ ] Save with dirty state tracking
 - [ ] Auto-save with 2-second debounce
 
-#### Phase 10.4: Content Creation (1 session)
+#### Phase 11.4: Content Creation (1 session)
 - [ ] Save websites (URL input sheet with validation)
 - [ ] Add/edit/delete memories
 - [ ] Editable scratchpad with auto-save
 
-#### Phase 10.5: Full App Testing (1-2 sessions)
+#### Phase 11.5: Full App Testing (1-2 sessions)
 - [ ] Test all editing workflows
 - [ ] Test creation and deletion
 - [ ] Verify capability parity with native UX
@@ -397,20 +411,20 @@ Evaluate RichTextKit capabilities. Choose:
 - [ ] **Milestone 3**: Can read notes in file tree (End of Phase 4)
 - [ ] **Milestone 4**: Can view all file types (End of Phase 5)
 - [ ] **Milestone 5**: All view features implemented (End of Phase 7)
-- [ ] **Milestone 6**: App feels polished on all platforms (End of Phase 8)
-- [ ] **MVP COMPLETE**: Read-only app ready for daily reference use (End of Phase 9)
+- [ ] **Milestone 6**: App feels polished on all platforms (End of Phase 9)
+- [ ] **MVP COMPLETE**: Read-only app ready for daily reference use (End of Phase 10)
 
 **MVP Decision Gate**: Evaluate whether to:
-1. Ship MVP and take break before Phase 10
+1. Ship MVP and take break before Phase 11
 2. Continue immediately to editing capabilities
 3. Iterate on MVP based on real-world usage
 
 #### Post-MVP Milestones (Full App)
 
-- [ ] **Milestone 7**: Can send chat messages (End of Phase 10.1)
-- [ ] **Milestone 8**: Can create and edit notes (End of Phase 10.2-10.3)
-- [ ] **Milestone 9**: Can create content everywhere (End of Phase 10.4)
-- [ ] **FULL APP COMPLETE**: Capability parity with native UX (End of Phase 10.5)
+- [ ] **Milestone 7**: Can send chat messages (End of Phase 11.1)
+- [ ] **Milestone 8**: Can create and edit notes (End of Phase 11.2-11.3)
+- [ ] **Milestone 9**: Can create content everywhere (End of Phase 11.4)
+- [ ] **FULL APP COMPLETE**: Capability parity with native UX (End of Phase 11.5)
 
 ### Session Log
 
@@ -434,7 +448,7 @@ This plan takes a **two-phase delivery approach**: ship a read-only viewer app f
 
 ### Benefits of MVP-First Approach
 
-**1. Faster Time to Value (7-11 weeks vs 12-18 weeks)**
+**1. Faster Time to Value (8-13 weeks vs 13-19 weeks)**
 - Get a functional, useful app in ~40% less time
 - Can use app daily for reference/viewing while editing remains in the desktop workflow
 - Natural break point for context switching to other features
@@ -455,7 +469,7 @@ This plan takes a **two-phase delivery approach**: ship a read-only viewer app f
 ```
 Weeks 1-7:   Build read-only iOS app (MVP)
 Weeks 8-10:  Ship MVP, switch to backend features
-Weeks 11-15: Return to iOS, add editing (Phase 10)
+Weeks 11-15: Return to iOS, add editing (Phase 11)
 ```
 
 **5. Immediate Daily Use Value**
@@ -490,7 +504,7 @@ Even read-only, the app provides genuine utility:
 
 ### What's Deferred to Post-MVP
 
-**❌ Editing Features (Phase 10):**
+**❌ Editing Features (Phase 11):**
 - Chat input and sending messages
 - Markdown editor with toolbar
 - Note creation/editing/deletion
@@ -518,19 +532,19 @@ Even read-only, the app provides genuine utility:
 - Markdown editor alone: 6-9 sessions (most complex component)
 - Chat input: 2-3 sessions
 - Combined: ~40% of total development time
-- Can be added as cohesive Phase 10 after architecture is validated
+- Can be added as cohesive Phase 11 after architecture is validated
 
 ### MVP Decision Gate
 
-At the end of Phase 9 (MVP Testing), evaluate:
+At the end of Phase 10 (MVP Testing), evaluate:
 
 **Option 1: Ship MVP & Take Break** (Recommended)
 - Use read-only app daily for 2-4 weeks
 - Identify UX improvements through real usage
 - Switch to backend development
-- Return to Phase 10 when ready for editing features
+- Return to Phase 11 when ready for editing features
 
-**Option 2: Continue to Phase 10 Immediately**
+**Option 2: Continue to Phase 11 Immediately**
 - Momentum is high, keep building
 - Complete full app in one continuous push
 - Good if iOS momentum is strong and motivation high
@@ -570,7 +584,7 @@ At the end of Phase 9 (MVP Testing), evaluate:
 ❌ Edit scratchpad
 ```
 
-### Post-MVP Phase 10 Breakdown
+### Post-MVP Phase 11 Breakdown
 
 When ready to resume (estimated 11-17 additional sessions):
 
@@ -582,7 +596,7 @@ When ready to resume (estimated 11-17 additional sessions):
 | Content Creation | 1 | Low | Save websites, edit memories, scratchpad |
 | Full Testing | 1-2 | Medium | End-to-end capability parity validation (native UX) |
 
-**Critical Decision in Phase 10.2:**
+**Critical Decision in Phase 11.2:**
 After 3-5 sessions evaluating RichTextKit for markdown editing:
 - Continue with RichTextKit + workarounds
 - Build custom UITextView/NSTextView wrapper (+3-5 sessions)
@@ -591,7 +605,7 @@ After 3-5 sessions evaluating RichTextKit for markdown editing:
 ### Why This Works for Your Project
 
 **Solo Development Reality:**
-- You'll want breaks from iOS during 12-18 week timeline
+- You'll want breaks from iOS during 13-19 week timeline
 - Backend features and improvements will come up
 - MVP provides a natural stopping point that's still valuable
 - Editing features can wait until you're ready to focus again
@@ -1216,7 +1230,7 @@ Evaluate RichTextKit capabilities. If major feature gaps exist (especially for t
 ### Objectives
 - Build file tree browser for existing workspace files
 - Implement native file viewing (Quick Look first, native viewers as needed)
-- **Note**: File uploads and ingestion processing are intentionally deferred to Phase 10 (post-MVP)
+- **Note**: File uploads and ingestion processing are intentionally deferred to Phase 12 (post-MVP)
 
 ### Key Deliverables
 
@@ -1497,7 +1511,43 @@ Same pattern as notes/conversations.
 
 ---
 
-## Phase 8: Platform Optimization & Polish
+## Phase 8: Cache-First Sync Architecture
+**Sessions: 2-3 | Critical Path: Yes**
+
+### Objectives
+- Make cache the single observable source of truth.
+- Ensure real-time updates flow through cache for UI refresh.
+- Support offline reading across all domains.
+
+### Key Deliverables
+
+**8.1 Store Layer**
+- Domain stores for chat, notes, tasks, websites, files.
+- View models subscribe to store snapshots.
+
+**8.2 Read-Through Cache**
+- Load cached data immediately.
+- Stale-while-revalidate for network fetches.
+- Update cache only on meaningful diffs.
+
+**8.3 Event-Driven Updates**
+- SSE/Realtime events mutate cache directly.
+- Cache mutations publish updates to UI.
+
+**8.4 Offline Behavior**
+- Persistent cache for offline viewing.
+- Clear UX for stale/unknown sync states.
+
+### Technical Decisions
+- **Persistence**: Core Data or file-backed cache with Codable payloads.
+- **Diffing**: lightweight message/version checks before publishing.
+
+### Risks & Challenges
+- **State consistency** across domains and event streams.
+
+---
+
+## Phase 9: Platform Optimization & Polish
 **Sessions: 4-6 | Critical Path: No**
 
 ### Objectives
@@ -1508,28 +1558,28 @@ Same pattern as notes/conversations.
 
 ### Key Deliverables
 
-**8.1 iPhone-Specific Layout (Narrow Scope)**
+**9.1 iPhone-Specific Layout (Narrow Scope)**
 - Full-screen navigation (no split view)
 - Focus on **Chat + Notes editing**
 - Limit panes and advanced controls
 - Compact chat input
 - Gesture-based navigation (swipe to go back)
 
-**8.2 iPad-Specific Layout**
+**9.2 iPad-Specific Layout**
 - Utilize full screen real estate
 - Three-column layout option (sidebar | list | detail)
 - Keyboard navigation
 - External keyboard shortcuts
 - Drag-drop between apps (if feasible)
 
-**8.3 macOS-Specific**
+**9.3 macOS-Specific**
 - Window size constraints (min 1000x600)
 - Toolbar customization
 - Menu bar items (File, Edit, View, Window, Help)
 - Touch Bar support (if applicable)
 - Keyboard focus management
 
-**8.4 Animations & Transitions**
+**9.4 Animations & Transitions**
 - Smooth section switching
 - Message appearance animations
 - Tool call state transitions
@@ -1537,34 +1587,34 @@ Same pattern as notes/conversations.
 - Pull-to-refresh animations
 - Haptic feedback (iOS)
 
-**8.5 Performance Optimization**
+**9.5 Performance Optimization**
 - LazyVStack/LazyHStack for large lists
 - Image caching for avatars/thumbnails
 - Pagination for conversation history (load more)
 - Debounce search queries
 - Background tasks for cache refresh
 
-**8.6 Accessibility**
+**9.6 Accessibility**
 - VoiceOver labels for all interactive elements
 - Dynamic Type support (respect user font size)
 - Color contrast compliance
 - Reduce Motion support
 - Keyboard navigation (full app usable via keyboard on Mac)
 
-**8.7 Error Handling**
+**9.7 Error Handling**
 - Network error recovery (retry, offline mode)
 - Form validation errors
 - File upload errors
 - Authentication errors (redirect to login)
 - User-friendly error messages
 
-**8.8 Loading States**
+**9.8 Loading States**
 - Skeleton screens for list loading
 - Progress indicators for long operations
 - Pull-to-refresh
 - Infinite scroll loading
 
-**8.9 Offline Behavior**
+**9.9 Offline Behavior**
 - Cache messages/notes for reading
 - Queue uploads for when online
 - Show offline indicator
@@ -1580,7 +1630,7 @@ Same pattern as notes/conversations.
 
 ---
 
-## Phase 9: Testing & Refinement
+## Phase 10: Testing & Refinement
 **Sessions: 3-5 | Critical Path: Yes**
 
 ### Objectives
@@ -1591,26 +1641,26 @@ Same pattern as notes/conversations.
 
 ### Key Deliverables
 
-**9.1 Integration Testing**
+**10.1 Integration Testing**
 - Test all features end-to-end
 - Test across all platforms (Mac, iPad, iPhone)
 - Test offline scenarios
 - Test poor network conditions
 - Test authentication edge cases
 
-**9.2 Real-World Usage**
+**10.2 Real-World Usage**
 - Use app daily for own workflows
 - Identify UX friction points
 - Performance issues
 - Missing features/gaps
 
-**9.3 Bug Fixes**
+**10.3 Bug Fixes**
 - Fix crashes
 - Fix data inconsistencies
 - Fix UI glitches
 - Fix performance issues
 
-**9.4 Edge Cases**
+**10.4 Edge Cases**
 - Very long messages
 - Very long notes
 - Large file uploads
@@ -1619,7 +1669,7 @@ Same pattern as notes/conversations.
 - Empty states
 - Error states
 
-**9.5 Polish**
+**10.5 Polish**
 - Smooth animations
 - Consistent spacing
 - Icon alignment
@@ -1692,6 +1742,15 @@ Same pattern as notes/conversations.
 
 **Fallback**: Upload without progress indicator (spinner only).
 
+### 6. Code Block Wrapping (Read-Only MarkdownUI)
+**Challenge**: MarkdownUI code blocks do not wrap long lines inside SwiftUI layouts, even with custom UITextView/NSTextView wrappers.
+
+**Mitigation**:
+- Track upstream MarkdownUI behavior and revisit with a targeted workaround.
+- If needed, insert soft wrap opportunities for display-only rendering while preserving original text for copy.
+
+**Fallback**: Accept horizontal overflow for code blocks until a reliable solution is available.
+
 ---
 
 ## Recommended Work Cadence (Revised)
@@ -1726,14 +1785,19 @@ Same pattern as notes/conversations.
 - Day 5: Settings, weather
 - **Milestone**: All features implemented
 
-### Week 10-11: Platform Optimization (Phase 8)
+### Week 10: Cache-First Sync Architecture (Phase 8)
+- Day 1-2: Store layer + cache-first reads
+- Day 3-4: SSE/Realtime cache updates + revalidation
+- **Milestone**: Cache-first architecture in place
+
+### Week 11-12: Platform Optimization (Phase 9)
 - Day 1-2: iPhone narrow-scope layout
 - Day 3-4: iPad/Mac optimizations
 - Day 5-6: Animations, performance
 - Day 7-8: Accessibility, error handling
 - **Milestone**: App feels polished on all platforms
 
-### Week 12: Testing & Refinement (Phase 9)
+### Week 13: Testing & Refinement (Phase 10)
 - Day 1-3: Integration testing, bug fixes
 - Day 4-5: Real-world usage, polish
 - **Milestone**: App ready for daily use
@@ -1751,12 +1815,13 @@ Same pattern as notes/conversations.
 | 5. File Viewing (uploads deferred) | 4-6 | 8-24 hrs | Medium |
 | 6. Websites | 2-3 | 4-12 hrs | Medium |
 | 7. Additional | 3-4 | 6-16 hrs | Medium |
-| 8. Platform | 5-7 | 10-28 hrs | High |
-| 9. Testing | 4-6 | 8-24 hrs | Critical |
+| 8. Cache-First Sync | 2-3 | 4-12 hrs | Critical |
+| 9. Platform | 5-7 | 10-28 hrs | High |
+| 10. Testing | 4-6 | 8-24 hrs | Critical |
 | 7.T1 Task System Migration (post-MVP) | 3-5 | 6-20 hrs | Medium |
-| **Total (Planned)** | **39-56** | **78-224 hrs** | |
+| **Total (Planned)** | **41-59** | **82-236 hrs** | |
 
-**Note**: The planned breakdown above totals 39-56 sessions including the optional post-MVP task system migration. The timeline estimates below include buffer time for unexpected complexity, iteration, and overruns (particularly in Phases 4 and 8), bringing the realistic total to 40-70 sessions (or 43-75 with the migration).
+**Note**: The planned breakdown above totals 41-59 sessions including the optional post-MVP task system migration. The timeline estimates below include buffer time for unexpected complexity, iteration, and overruns (particularly in Phases 4 and 9), bringing the realistic total to 42-73 sessions (or 45-78 with the migration).
 
 **Assuming 3-4 sessions/week at 3-4 hours each:**
 - **Optimistic**: 9-10 weeks (36-40 sessions × 3 hrs = 108-120 hrs)
@@ -1775,11 +1840,12 @@ Phase 1 (Foundation) → Phase 2 (Navigation) → Phase 3 (Chat)
                                               ↘ Phase 6 (Websites)
 
 Phase 3, 4, 5, 6 → Phase 7 (Additional Features)
-All Phases → Phase 8 (Platform Optimization)
-All Phases → Phase 9 (Testing)
+Phase 3, 4, 5, 6, 7 → Phase 8 (Cache-First Sync)
+All Phases → Phase 9 (Platform Optimization)
+All Phases → Phase 10 (Testing)
 ```
 
-**Critical Path**: 1 → 2 → 3 → 4 → 8 → 9
+**Critical Path**: 1 → 2 → 3 → 4 → 8 → 9 → 10
 
 You can parallelize:
 - Phase 5, 6, 7 can be worked on in any order after Phase 3
@@ -1797,15 +1863,15 @@ You can parallelize:
      - **Option C**: Reduce scope - defer tables/advanced features to post-launch
    - This decision impacts timeline by up to 1 month if custom solution needed
 
-2. **iPhone Navigation Pattern** (Week 10-11)
+2. **iPhone Navigation Pattern** (Week 11-12)
    - Tab bar vs. hamburger menu vs. gesture-based navigation
    - Focus on chat + notes simplicity vs. attempting full capability parity
 
 3. **Offline Mode Scope** (Week 11-12)
    - Read-only cached content vs. full offline editing with sync queue
-   - Queue-based approach may add 2-3 sessions to Phase 8
+   - Queue-based approach may add 2-3 sessions to Phase 9
 
-4. **Animation Style** (Week 10-11)
+4. **Animation Style** (Week 11-12)
    - Subtle/minimal (faster to implement) vs. playful/animated (adds polish)
 
 5. **App Icon & Branding** (Week 11-12)
@@ -1813,7 +1879,7 @@ You can parallelize:
    - Consider hiring designer vs. AI-generated vs. self-designed
 
 6. **File Upload Timing** (Post-MVP)
-   - When to implement deferred Phase 10 (file uploads)
+   - When to implement deferred Phase 12 (file uploads)
    - Immediately after MVP or wait for user feedback
 
 ---
@@ -1854,7 +1920,7 @@ All libraries are actively maintained and have permissive licenses.
 
 Once core app is complete, consider:
 
-### Phase 10: File Upload & Ingestion (Deferred from Phase 5)
+### Phase 12: File Upload & Ingestion (Deferred from Phase 5)
 - **File upload** with progress tracking
 - **Ingestion job polling** for processing status
 - **Upload queue management** with retry logic
