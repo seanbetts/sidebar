@@ -230,7 +230,7 @@ Critical Path (MVP): [███████████████████�
 
 **Post-MVP (Phase 11.1): Chat Input**
 - [x] 3.7a Chat input UI shell (native growing text view + send button, not wired)
-- [ ] 3.7b Chat input wiring (send action, attachments, keyboard shortcuts)
+- [x] 3.7b Chat input wiring (send action, attachments, keyboard shortcuts)
 
 #### Phase 4: Note Viewer (2-3 sessions MVP, 7-10 full)
 **MVP Scope: Read-Only Note Viewer**
@@ -404,7 +404,7 @@ Critical Path (MVP): [███████████████████�
 - [x] Text input with auto-expanding height
 - [x] Send button (disabled when empty)
 - [x] SSE streaming for sending messages
-- [ ] File attachment picker (optional)
+- [x] File attachment picker (optional)
 - [x] Keyboard shortcuts (Cmd+Enter on Mac)
 
 #### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
