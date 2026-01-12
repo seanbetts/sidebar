@@ -11,6 +11,7 @@ public final class AppEnvironment: ObservableObject {
     public let filesStore: FilesStore
     public let ingestionStore: IngestionStore
     public let tasksStore: TasksStore
+    public let toastCenter: ToastCenter
     public let chatViewModel: ChatViewModel
     public let notesViewModel: NotesViewModel
     public let filesViewModel: FilesViewModel
@@ -40,13 +41,15 @@ public final class AppEnvironment: ObservableObject {
         self.filesStore = FilesStore(api: container.filesAPI, cache: container.cacheClient)
         self.ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
         self.tasksStore = TasksStore()
+        self.toastCenter = ToastCenter()
         self.chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
             conversationsAPI: container.conversationsAPI,
             cache: container.cacheClient,
             themeManager: themeManager,
             streamClient: container.makeChatStreamClient(handler: nil),
-            chatStore: chatStore
+            chatStore: chatStore,
+            toastCenter: toastCenter
         )
         let temporaryStore = TemporaryFileStore.shared
         self.notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore)

@@ -56,12 +56,13 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public private(set) var promptPreview: ChatPromptPreview? = nil
 
     private let chatAPI: ChatAPI
-    private let conversationsAPI: ConversationsAPI
+    private let conversationsAPI: ConversationsAPIProviding
     private let cache: CacheClient
     private let themeManager: ThemeManager
     private let streamClient: ChatStreamClient
     private let chatStore: ChatStore
     private let userDefaults: UserDefaults
+    private let toastCenter: ToastCenter?
     private let clock: () -> Date
 
     private var currentStreamMessageId: String?
@@ -73,11 +74,12 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
 
     public init(
         chatAPI: ChatAPI,
-        conversationsAPI: ConversationsAPI,
+        conversationsAPI: ConversationsAPIProviding,
         cache: CacheClient,
         themeManager: ThemeManager,
         streamClient: ChatStreamClient,
         chatStore: ChatStore,
+        toastCenter: ToastCenter? = nil,
         userDefaults: UserDefaults = .standard,
         clock: @escaping () -> Date = Date.init
     ) {
@@ -88,6 +90,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         self.streamClient = streamClient
         self.chatStore = chatStore
         self.userDefaults = userDefaults
+        self.toastCenter = toastCenter
         self.clock = clock
         self.streamClient.handler = self
         self.selectedConversationId = nil
@@ -229,7 +232,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         var conversationId = selectedConversationId
         if conversationId == nil {
             do {
-                let conversation = try await conversationsAPI.create()
+                let conversation = try await conversationsAPI.create(title: "New Chat")
                 conversationId = conversation.id
                 selectedConversationId = conversation.id
                 chatStore.upsertConversation(conversation)
@@ -310,7 +313,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         clearActiveToolTask?.cancel()
         await cleanupEmptyConversationIfNeeded()
         do {
-            let conversation = try await conversationsAPI.create()
+            let conversation = try await conversationsAPI.create(title: "New Chat")
             selectedConversationId = conversation.id
             userDefaults.set(conversation.id, forKey: AppStorageKeys.lastConversationId)
             messages = []
@@ -376,6 +379,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
                 titleGenerated: previousGenerated
             )
             errorMessage = error.localizedDescription
+            toastCenter?.show(message: "Failed to rename conversation")
         }
     }
 
@@ -406,6 +410,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
                 activeTool = previousActiveTool
             }
             errorMessage = error.localizedDescription
+            toastCenter?.show(message: "Failed to delete conversation")
         }
     }
 
