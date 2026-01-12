@@ -154,7 +154,7 @@ private struct WebsitesDetailView: View {
                 }
             }
         } else if viewModel.isLoadingDetail {
-            ProgressView()
+            LoadingView(message: "Loading website…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
             PlaceholderView(
@@ -165,8 +165,15 @@ private struct WebsitesDetailView: View {
                 guard let selectedId = viewModel.selectedWebsiteId else { return }
                 Task { await viewModel.loadById(id: selectedId) }
             }
+        } else if viewModel.isLoading && viewModel.items.isEmpty {
+            LoadingView(message: "Loading websites…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            PlaceholderView(title: "Select a website")
+            PlaceholderView(
+                title: "Select a website",
+                subtitle: "Choose a website from the sidebar to read it.",
+                iconName: "globe"
+            )
         }
     }
 

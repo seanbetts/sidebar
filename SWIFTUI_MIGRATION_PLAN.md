@@ -355,14 +355,16 @@ Critical Path (MVP): [█████████████████░░�
   - [x] Validate Dynamic Type on iOS/macOS (no truncation/overlap)
   - [x] Ensure sidebar selection states are announced
   - [x] Verify focus order in Settings and Login
-- [ ] 9.7 Error Handling
+- [x] 9.7 Error Handling
   - [x] Standardize error empty states across panels
   - [x] Add retry actions where appropriate
   - [x] Ensure auth errors offer a clear recovery path
-- [ ] 9.8 Loading States
-  - [ ] Make loading placeholders consistent across panels
-  - [ ] Add skeleton rows for list loading where feasible
-  - [ ] Prevent layout shifts during loading
+- [x] 9.8 Loading States
+  - [x] Make loading placeholders consistent across panels
+  - [x] Add skeleton rows for list loading where feasible
+  - [x] Prevent layout shifts during loading
+  - [x] Pull-to-refresh
+  - [x] Infinite scroll loading
 - [ ] 9.9 Offline Behavior (cached reading)
   - [ ] Validate cached reading offline (notes/files/websites/chat)
   - [ ] Show offline indicator when SSE disconnects

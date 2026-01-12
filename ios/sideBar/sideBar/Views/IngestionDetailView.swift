@@ -22,7 +22,7 @@ public struct IngestionDetailView: View {
     private var viewer: some View {
         Group {
             if viewModel.isSelecting || viewModel.isLoadingContent {
-                ProgressView()
+                LoadingView(message: "Loading preview…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state)

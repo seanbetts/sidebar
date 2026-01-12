@@ -101,35 +101,49 @@ private struct NotesDetailView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let note = viewModel.activeNote {
-            ScrollView {
-                SideBarMarkdown(text: strippedContent(note: note))
-                    .frame(maxWidth: contentMaxWidth, alignment: .leading)
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-        } else if viewModel.selectedNoteId != nil {
-            if let error = viewModel.errorMessage {
-                PlaceholderView(
-                    title: "Unable to load note",
-                    subtitle: error,
-                    actionTitle: "Retry"
-                ) {
-                    guard let selectedId = viewModel.selectedNoteId else { return }
-                    Task { await viewModel.loadNote(id: selectedId) }
+            if let note = viewModel.activeNote {
+                ScrollView {
+                    SideBarMarkdown(text: strippedContent(note: note))
+                        .frame(maxWidth: contentMaxWidth, alignment: .leading)
+                        .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            } else if viewModel.selectedNoteId != nil {
+                if let error = viewModel.errorMessage {
+                    PlaceholderView(
+                        title: "Unable to load note",
+                        subtitle: error,
+                        actionTitle: "Retry"
+                    ) {
+                        guard let selectedId = viewModel.selectedNoteId else { return }
+                        Task { await viewModel.loadNote(id: selectedId) }
+                    }
+                } else {
+                    LoadingView(message: "Loading note…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                #if os(macOS)
+                if viewModel.tree == nil {
+                    LoadingView(message: "Loading notes…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    WelcomeEmptyView()
+                }
+                #else
+                if viewModel.tree == nil {
+                    LoadingView(message: "Loading notes…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    PlaceholderView(
+                        title: "Select a note",
+                        subtitle: "Choose a note from the sidebar to start reading.",
+                        iconName: "text.document"
+                    )
+                }
+                #endif
             }
-        } else {
-            #if os(macOS)
-            WelcomeEmptyView()
-            #else
-            PlaceholderView(title: "Select a note")
-            #endif
         }
-    }
 
     private var displayTitle: String {
         guard let name = viewModel.activeNote?.name else {

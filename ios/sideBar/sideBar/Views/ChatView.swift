@@ -73,10 +73,19 @@ private struct ChatDetailView: View {
                     Divider()
                 }
                 if viewModel.isLoadingMessages {
-                    ProgressView()
+                    LoadingView(message: "Loading messages…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.selectedConversationId == nil {
-                    EmptyView()
+                    if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
+                        LoadingView(message: "Loading chats…")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        PlaceholderView(
+                            title: "Select a chat",
+                            subtitle: "Choose a conversation from the sidebar to continue.",
+                            iconName: "bubble"
+                        )
+                    }
                 } else if viewModel.messages.isEmpty {
                     ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
                 } else {
@@ -221,6 +230,7 @@ private struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var shouldScrollToBottom = false
     @State private var visibleMessageCount: Int = 40
+    @State private var isAutoLoadingMore = false
     private let pageSize: Int = 40
     private let maxContentWidth: CGFloat = 860
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -230,16 +240,26 @@ private struct ChatMessageListView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     if hasMoreMessages {
-                        Button {
-                            loadMoreMessages(proxy: proxy)
-                        } label: {
-                            Text("Load earlier messages")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
+                        VStack(spacing: 6) {
+                            Button {
+                                loadMoreMessages(proxy: proxy)
+                            } label: {
+                                Text(isAutoLoadingMore ? "Loading earlier messages…" : "Load earlier messages")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isAutoLoadingMore)
+                            if isAutoLoadingMore {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
                         }
-                        .buttonStyle(.plain)
                         .padding(.vertical, 4)
+                        .onAppear {
+                            autoLoadMore(proxy: proxy)
+                        }
                     }
                     ForEach(visibleMessages) { message in
                         ChatMessageRow(message: message)
@@ -268,6 +288,7 @@ private struct ChatMessageListView: View {
             }
             .onChange(of: viewModel.selectedConversationId) { _, _ in
                 visibleMessageCount = pageSize
+                isAutoLoadingMore = false
                 shouldScrollToBottom = true
             }
             .onChange(of: viewModel.messages.count) { oldValue, newValue in
@@ -321,12 +342,28 @@ private struct ChatMessageListView: View {
     }
 
     private func loadMoreMessages(proxy: ScrollViewProxy) {
+        loadMoreMessages(proxy: proxy) {}
+    }
+
+    private func autoLoadMore(proxy: ScrollViewProxy) {
+        guard hasMoreMessages, !isAutoLoadingMore else {
+            return
+        }
+        isAutoLoadingMore = true
+        loadMoreMessages(proxy: proxy) {
+            isAutoLoadingMore = false
+        }
+    }
+
+    private func loadMoreMessages(proxy: ScrollViewProxy, completion: @escaping () -> Void) {
         guard hasMoreMessages else {
+            completion()
             return
         }
         let anchorId = visibleMessages.first?.id
         visibleMessageCount = min(viewModel.messages.count, visibleMessageCount + pageSize)
         guard let anchorId else {
+            completion()
             return
         }
         Task { @MainActor in
@@ -338,6 +375,7 @@ private struct ChatMessageListView: View {
                     proxy.scrollTo(anchorId, anchor: .top)
                 }
             }
+            completion()
         }
     }
 }
