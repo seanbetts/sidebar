@@ -288,7 +288,7 @@ private struct ChatHeaderView: View {
                         } label: {
                             Image(systemName: "plus")
                                 .font(.system(size: 14, weight: .semibold))
-                                .frame(width: 28, height: 28)
+                                .frame(width: 28, height: 20)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("New chat")
@@ -301,7 +301,7 @@ private struct ChatHeaderView: View {
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 14, weight: .semibold))
-                                .frame(width: 28, height: 28)
+                                .frame(width: 28, height: 20)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Close chat")
