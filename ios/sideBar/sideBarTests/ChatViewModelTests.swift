@@ -151,6 +151,7 @@ final class ChatViewModelTests: XCTestCase {
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
         let viewModel = ChatViewModel(
             chatAPI: chatAPI,
+            conversationsAPI: api,
             cache: cache,
             themeManager: themeManager,
             streamClient: streamClient,
@@ -178,11 +179,14 @@ private final class MockChatStreamClient: ChatStreamClient {
     }
 }
 
-private struct MockConversationsAPI: ConversationsProviding {
+private struct MockConversationsAPI: ConversationsAPIProviding {
     let listResult: Result<[Conversation], Error>
     let getResult: Result<ConversationWithMessages, Error>
     let searchResult: Result<[Conversation], Error>
     let deleteResult: Result<Conversation, Error>
+    let createResult: Result<Conversation, Error>
+    let addMessageResult: Result<Conversation, Error>
+    let updateResult: Result<Conversation, Error>
 
     init(
         listResult: Result<[Conversation], Error>,
@@ -197,12 +201,18 @@ private struct MockConversationsAPI: ConversationsProviding {
             messageCount: 0,
             firstMessage: nil,
             isArchived: true
-        ))
+        )),
+        createResult: Result<Conversation, Error> = .failure(MockError.forced),
+        addMessageResult: Result<Conversation, Error> = .failure(MockError.forced),
+        updateResult: Result<Conversation, Error> = .failure(MockError.forced)
     ) {
         self.listResult = listResult
         self.getResult = getResult
         self.searchResult = searchResult
         self.deleteResult = deleteResult
+        self.createResult = createResult
+        self.addMessageResult = addMessageResult
+        self.updateResult = updateResult
     }
 
     func list() async throws -> [Conversation] {
@@ -223,5 +233,22 @@ private struct MockConversationsAPI: ConversationsProviding {
     func delete(conversationId: String) async throws -> Conversation {
         _ = conversationId
         return try deleteResult.get()
+    }
+
+    func create(title: String) async throws -> Conversation {
+        _ = title
+        return try createResult.get()
+    }
+
+    func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation {
+        _ = conversationId
+        _ = message
+        return try addMessageResult.get()
+    }
+
+    func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation {
+        _ = conversationId
+        _ = updates
+        return try updateResult.get()
     }
 }

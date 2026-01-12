@@ -75,6 +75,17 @@ public struct ContentView: View {
                     .frame(width: 0, height: 0)
             )
             #endif
+            .overlay(alignment: .top) {
+                if let toast = environment.toastCenter.toast {
+                    ToastBanner(toast: toast)
+                        .padding(.top, 12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .onTapGesture {
+                            environment.toastCenter.dismiss()
+                        }
+                }
+            }
+            .animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast)
             .onChange(of: scenePhase) { _, newValue in
                 if newValue != .active && biometricUnlockEnabled {
                     isBiometricUnlocked = false
