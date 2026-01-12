@@ -227,6 +227,36 @@ private struct ChatHeaderView: View {
                     .foregroundStyle(.secondary)
                     .labelStyle(.titleAndIcon)
             }
+            if showNewChatButton || showCloseButton {
+                HStack(spacing: 8) {
+                    if showNewChatButton {
+                        Button {
+                            Task {
+                                await viewModel.startNewConversation()
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("New chat")
+                    }
+                    if showCloseButton {
+                        Button {
+                            Task {
+                                await viewModel.closeConversation()
+                            }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Close chat")
+                    }
+                }
+            }
         }
     }
 
@@ -236,6 +266,17 @@ private struct ChatHeaderView: View {
             return "New Chat"
         }
         return conversation.title
+    }
+
+    private var showNewChatButton: Bool {
+        guard viewModel.selectedConversationId != nil else {
+            return true
+        }
+        return !viewModel.messages.isEmpty
+    }
+
+    private var showCloseButton: Bool {
+        viewModel.selectedConversationId != nil
     }
 
     private var headerBackground: Color {

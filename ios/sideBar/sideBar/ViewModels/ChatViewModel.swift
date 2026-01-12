@@ -319,6 +319,20 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         }
     }
 
+    public func closeConversation() async {
+        guard selectedConversationId != nil else {
+            return
+        }
+        await cleanupEmptyConversationIfNeeded()
+        stopStream()
+        selectedConversationId = nil
+        messages = []
+        promptPreview = nil
+        activeTool = nil
+        clearActiveToolTask?.cancel()
+        userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+    }
+
     public func selectConversation(id: String?) async {
         guard selectedConversationId != id else {
             return
