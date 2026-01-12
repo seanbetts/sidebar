@@ -219,6 +219,7 @@ private struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var shouldScrollToBottom = false
     private let maxContentWidth: CGFloat = 860
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollViewReader { proxy in
