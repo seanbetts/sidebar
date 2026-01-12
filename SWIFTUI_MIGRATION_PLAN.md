@@ -356,9 +356,9 @@ Critical Path (MVP): [█████████████████░░�
   - [x] Ensure sidebar selection states are announced
   - [x] Verify focus order in Settings and Login
 - [ ] 9.7 Error Handling
-  - [ ] Standardize error empty states across panels
-  - [ ] Add retry actions where appropriate
-  - [ ] Ensure auth errors offer a clear recovery path
+  - [x] Standardize error empty states across panels
+  - [x] Add retry actions where appropriate
+  - [x] Ensure auth errors offer a clear recovery path
 - [ ] 9.8 Loading States
   - [ ] Make loading placeholders consistent across panels
   - [ ] Add skeleton rows for list loading where feasible

@@ -353,7 +353,16 @@ private struct NotesPanelView: View {
     private var searchResultsView: some View {
         List {
             Section("Results") {
-                if viewModel.isSearching {
+                if let error = viewModel.errorMessage,
+                   !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    SidebarPanelPlaceholder(
+                        title: "Search failed",
+                        subtitle: error,
+                        actionTitle: "Retry"
+                    ) {
+                        viewModel.updateSearch(query: viewModel.searchQuery)
+                    }
+                } else if viewModel.isSearching {
                     HStack(spacing: 12) {
                         ProgressView()
                         Text("Searching…")
@@ -386,7 +395,15 @@ private struct NotesPanelView: View {
 
     private var notesPanelContent: some View {
         Group {
-            if viewModel.tree == nil {
+            if let error = viewModel.errorMessage, viewModel.tree == nil {
+                SidebarPanelPlaceholder(
+                    title: "Unable to load notes",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    Task { await viewModel.loadTree() }
+                }
+            } else if viewModel.tree == nil {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -399,7 +416,15 @@ private struct NotesPanelView: View {
 
     private var notesPanelContentWithArchive: some View {
         Group {
-            if viewModel.tree == nil {
+            if let error = viewModel.errorMessage, viewModel.tree == nil {
+                SidebarPanelPlaceholder(
+                    title: "Unable to load notes",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    Task { await viewModel.loadTree() }
+                }
+            } else if viewModel.tree == nil {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -775,7 +800,13 @@ private struct FilesPanelView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let message = viewModel.errorMessage {
-                SidebarPanelPlaceholder(title: message)
+                SidebarPanelPlaceholder(
+                    title: "Unable to load files",
+                    subtitle: message,
+                    actionTitle: "Retry"
+                ) {
+                    Task { await viewModel.load() }
+                }
             } else if filteredReadyItems.isEmpty && filteredProcessingItems.isEmpty && filteredFailedItems.isEmpty {
                 SidebarPanelPlaceholder(title: "No files yet.")
             } else {
@@ -1216,7 +1247,13 @@ private struct WebsitesPanelView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage {
-            SidebarPanelPlaceholder(title: error)
+            SidebarPanelPlaceholder(
+                title: "Unable to load websites",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                Task { await viewModel.load() }
+            }
         } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
@@ -1316,7 +1353,13 @@ private struct WebsitesPanelView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage {
-            SidebarPanelPlaceholder(title: error)
+            SidebarPanelPlaceholder(
+                title: "Unable to load websites",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                Task { await viewModel.load() }
+            }
         } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {

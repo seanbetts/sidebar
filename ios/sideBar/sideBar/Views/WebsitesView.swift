@@ -157,7 +157,14 @@ private struct WebsitesDetailView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
-            PlaceholderView(title: error)
+            PlaceholderView(
+                title: "Unable to load website",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                guard let selectedId = viewModel.selectedWebsiteId else { return }
+                Task { await viewModel.loadById(id: selectedId) }
+            }
         } else {
             PlaceholderView(title: "Select a website")
         }

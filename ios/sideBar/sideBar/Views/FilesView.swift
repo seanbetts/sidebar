@@ -129,7 +129,14 @@ private struct FilesDetailContainer: View {
         if let meta = viewModel.activeMeta {
             IngestionDetailView(viewModel: viewModel, meta: meta)
         } else if let message = viewModel.errorMessage {
-            PlaceholderView(title: message)
+            PlaceholderView(
+                title: "Unable to load file",
+                subtitle: message,
+                actionTitle: viewModel.selectedFileId == nil ? nil : "Retry"
+            ) {
+                guard let selectedId = viewModel.selectedFileId else { return }
+                Task { await viewModel.selectFile(fileId: selectedId) }
+            }
         } else if viewModel.isLoadingContent {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

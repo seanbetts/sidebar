@@ -77,7 +77,13 @@ struct MemoriesDetailView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage {
-            SidebarPanelPlaceholder(title: error)
+            SidebarPanelPlaceholder(
+                title: "Unable to load memories",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                Task { await viewModel.load() }
+            }
         } else if filteredItems.isEmpty {
             SidebarPanelPlaceholder(
                 title: searchQuery.trimmed.isEmpty
@@ -126,6 +132,15 @@ struct MemoriesDetailView: View {
         } else if viewModel.isLoadingDetail {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let error = viewModel.errorMessage, viewModel.selectedMemoryId != nil {
+            PlaceholderView(
+                title: "Unable to load memory",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                guard let selectedId = viewModel.selectedMemoryId else { return }
+                Task { await viewModel.selectMemory(id: selectedId) }
+            }
         } else if viewModel.selectedMemoryId != nil {
             PlaceholderView(title: "Memory not available")
         } else {
