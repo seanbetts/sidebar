@@ -32,13 +32,21 @@ struct SelectableRow<Content: View>: View {
         if useListStyling {
             rowContent
                 .listRowInsets(rowInsets)
-                .listRowBackground(isSelected ? DesignTokens.Colors.selection : DesignTokens.Colors.sidebar)
+                .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
         } else {
             rowContent
                 .padding(.leading, rowInsets.leading)
                 .padding(.trailing, rowInsets.trailing)
-                .background(isSelected ? DesignTokens.Colors.selection : DesignTokens.Colors.sidebar)
+                .background(isSelected ? DesignTokens.Colors.selection : rowBackground)
                 .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
         }
+    }
+
+    private var rowBackground: Color {
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
     }
 }
