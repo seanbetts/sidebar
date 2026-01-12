@@ -3,7 +3,7 @@ import MarkdownUI
 #endif
 import SwiftUI
 
-struct SideBarMarkdown: View {
+struct SideBarMarkdown: View, Equatable {
     let text: String
     let preprocessor: (String) -> String
     private let maxImageSize = CGSize(width: 450, height: 450)
@@ -11,6 +11,10 @@ struct SideBarMarkdown: View {
     init(text: String, preprocessor: @escaping (String) -> String = MarkdownRendering.normalizeTaskLists) {
         self.text = text
         self.preprocessor = preprocessor
+    }
+
+    static func == (lhs: SideBarMarkdown, rhs: SideBarMarkdown) -> Bool {
+        lhs.text == rhs.text
     }
 
     var body: some View {

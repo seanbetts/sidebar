@@ -196,9 +196,17 @@ private struct ConversationsPanelView: View {
 
 }
 
-private struct ConversationRow: View {
+private struct ConversationRow: View, Equatable {
     let conversation: Conversation
     let isSelected: Bool
+
+    static func == (lhs: ConversationRow, rhs: ConversationRow) -> Bool {
+        lhs.isSelected == rhs.isSelected &&
+        lhs.conversation.id == rhs.conversation.id &&
+        lhs.conversation.title == rhs.conversation.title &&
+        lhs.conversation.updatedAt == rhs.conversation.updatedAt &&
+        lhs.conversation.messageCount == rhs.conversation.messageCount
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1028,9 +1036,23 @@ private struct FilesPanelView: View {
 
 }
 
-private struct FilesIngestionRow: View {
+private struct FilesIngestionRow: View, Equatable {
     let item: IngestionListItem
     let isSelected: Bool
+
+    static func == (lhs: FilesIngestionRow, rhs: FilesIngestionRow) -> Bool {
+        lhs.isSelected == rhs.isSelected &&
+        lhs.item.file.id == rhs.item.file.id &&
+        lhs.item.file.filenameOriginal == rhs.item.file.filenameOriginal &&
+        lhs.item.file.category == rhs.item.file.category &&
+        lhs.item.file.pinned == rhs.item.file.pinned &&
+        lhs.item.file.pinnedOrder == rhs.item.file.pinnedOrder &&
+        lhs.item.job.status == rhs.item.job.status &&
+        lhs.item.job.stage == rhs.item.job.stage &&
+        lhs.item.job.progress == rhs.item.job.progress &&
+        lhs.item.job.errorMessage == rhs.item.job.errorMessage &&
+        lhs.item.recommendedViewer == rhs.item.recommendedViewer
+    }
 
     var body: some View {
         SelectableRow(isSelected: isSelected, insets: rowInsets) {
@@ -1460,7 +1482,7 @@ private struct WebsitesPanelView: View {
 
 }
 
-private struct WebsiteRow: View {
+private struct WebsiteRow: View, Equatable {
     let item: WebsiteItem
     let isSelected: Bool
     let useListStyling: Bool
@@ -1469,6 +1491,19 @@ private struct WebsiteRow: View {
         self.item = item
         self.isSelected = isSelected
         self.useListStyling = useListStyling
+    }
+
+    static func == (lhs: WebsiteRow, rhs: WebsiteRow) -> Bool {
+        lhs.isSelected == rhs.isSelected &&
+        lhs.useListStyling == rhs.useListStyling &&
+        lhs.item.id == rhs.item.id &&
+        lhs.item.title == rhs.item.title &&
+        lhs.item.url == rhs.item.url &&
+        lhs.item.domain == rhs.item.domain &&
+        lhs.item.pinned == rhs.item.pinned &&
+        lhs.item.pinnedOrder == rhs.item.pinnedOrder &&
+        lhs.item.archived == rhs.item.archived &&
+        lhs.item.updatedAt == rhs.item.updatedAt
     }
 
     var body: some View {

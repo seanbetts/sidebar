@@ -340,15 +340,15 @@ Critical Path (MVP): [█████████████████░░�
 - [x] 9.1 iPhone-Specific Layout (read-only optimized)
 - [x] 9.2 iPad-Specific Layout
 - [x] 9.3 macOS-Specific Features
-- [ ] 9.4 Animations & Transitions
-  - [ ] Define core animation patterns (panel swap, list insert/remove, detail open/close)
-  - [ ] Add selection transition for sidebar rows (notes/files/websites)
-  - [ ] Add optional list load-in stagger for panel lists
-  - [ ] Respect Reduce Motion across animations
+- [x] 9.4 Animations & Transitions
+  - [x] Define core animation patterns (panel swap, list insert/remove, detail open/close)
+  - [x] Add selection transition for sidebar rows (notes/files/websites)
+  - [x] Add optional list load-in stagger for panel lists
+  - [x] Respect Reduce Motion across animations
 - [ ] 9.5 Performance Optimization
-  - [ ] Profile list rendering with large datasets (notes/files/websites)
-  - [ ] Reduce recomputation in chat and markdown-heavy views
-  - [ ] Audit image sizing and caching (avatars/icons)
+  - [x] Profile list rendering with large datasets (notes/files/websites)
+  - [x] Reduce recomputation in chat and markdown-heavy views
+  - [x] Audit image sizing and caching (avatars/icons)
   - [ ] Minimize expensive modifiers in scrolling lists
 - [ ] 9.6 Accessibility (VoiceOver, Dynamic Type)
   - [ ] Add VoiceOver labels for custom controls (chat input, toolbar buttons)
