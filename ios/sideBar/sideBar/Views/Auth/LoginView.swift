@@ -41,12 +41,14 @@ public struct LoginView: View {
                             .textFieldStyle(.roundedBorder)
                             .focused($focusedField, equals: .email)
                             .submitLabel(.next)
+                            .accessibilitySortPriority(3)
 
                         SecureField("Password", text: $password)
                             .textContentType(.password)
                             .textFieldStyle(.roundedBorder)
                             .focused($focusedField, equals: .password)
                             .submitLabel(.go)
+                            .accessibilitySortPriority(2)
                     }
 
                     if let errorMessage {
@@ -73,6 +75,7 @@ public struct LoginView: View {
                     .tint(.accentColor)
                     .keyboardShortcut(.defaultAction)
                     .disabled(isSigningIn || email.isEmpty || password.isEmpty)
+                    .accessibilitySortPriority(1)
                 }
                 .onSubmit(handleSubmit)
             }

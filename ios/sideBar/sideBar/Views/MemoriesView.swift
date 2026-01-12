@@ -197,7 +197,9 @@ private struct MemoryRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(item.path))
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .layoutPriority(1)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
             }
         }

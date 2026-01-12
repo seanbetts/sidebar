@@ -36,6 +36,7 @@ public struct SidebarRail: View {
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Toggle sidebar")
 
             VStack(spacing: 12) {
                 ForEach(sections) { section in
@@ -50,11 +51,13 @@ public struct SidebarRail: View {
                 ProfileAvatarView(size: 32)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
             #else
             Button(action: { onShowSettings?() }) {
                 ProfileAvatarView(size: 32)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
             #endif
         }
         .frame(width: 56)
@@ -93,6 +96,9 @@ public struct SidebarRail: View {
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(section.title)
+        .accessibilityValue(isActive ? "Selected" : "")
+        .accessibilityAddTraits(isActive ? .isSelected : [])
         #if os(macOS)
         .onHover { isHovering in
             hoveredSection = isHovering ? section : nil

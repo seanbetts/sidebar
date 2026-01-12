@@ -181,7 +181,9 @@ private struct ChatHeaderView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(selectedTitle)
                     .font(.headline)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .layoutPriority(1)
                     .truncationMode(.tail)
             }
             Spacer()
@@ -758,6 +760,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        textView.accessibilityLabel = "Message"
 
         let placeholderLabel = UILabel()
         placeholderLabel.text = "Ask Anything..."
@@ -768,12 +771,14 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         let attachButton = UIButton(type: .system)
         attachButton.setImage(UIImage(systemName: "paperclip.circle.fill"), for: .normal)
         attachButton.clipsToBounds = true
+        attachButton.accessibilityLabel = "Attach file"
 
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
         button.layer.cornerRadius = 14
         button.clipsToBounds = true
         button.addTarget(context.coordinator, action: #selector(Coordinator.didTapSend), for: .touchUpInside)
+        button.accessibilityLabel = "Send message"
 
         containerView.addSubview(textView)
         containerView.addSubview(placeholderLabel)
@@ -908,6 +913,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.textColor = .labelColor
         textView.string = text
+        textView.setAccessibilityLabel("Message")
 
         let controlBar = NSView()
         controlBar.wantsLayer = true
@@ -930,6 +936,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         )?.withSymbolConfiguration(
             NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
         )
+        attachButton.setAccessibilityLabel("Attach file")
 
         let button = NSButton()
         button.bezelStyle = .regularSquare
@@ -944,6 +951,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         button.layer?.cornerRadius = 22
         button.target = context.coordinator
         button.action = #selector(Coordinator.didTapSend)
+        button.setAccessibilityLabel("Send message")
 
         containerView.addSubview(textView)
         containerView.addSubview(placeholderLabel)

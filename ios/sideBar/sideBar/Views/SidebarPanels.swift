@@ -223,7 +223,9 @@ private struct ConversationRow: View, Equatable {
             Text(conversation.title)
                 .font(.subheadline)
                 .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(1)
             Text(subtitleText)
                 .font(.caption2)
                 .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
@@ -666,7 +668,9 @@ private struct NotesTreeRow: View {
                     .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
                 Text(item.displayName)
                     .font(.subheadline)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .layoutPriority(1)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
             }
         }
@@ -1074,7 +1078,9 @@ private struct FilesIngestionRow: View, Equatable {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayName)
                         .font(.subheadline)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .layoutPriority(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                 }
                 Spacer()
@@ -1527,11 +1533,14 @@ private struct WebsiteRow: View, Equatable {
                     Text(titleText)
                         .font(.subheadline)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .layoutPriority(1)
                     Text(domainText)
                         .font(.caption)
                         .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                 }
                 Spacer()
             }

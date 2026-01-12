@@ -74,7 +74,9 @@ private struct FilesHeaderView: View {
                 .foregroundStyle(.primary)
             Text(activeTitle)
                 .font(.headline)
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(1)
                 .truncationMode(.tail)
             Spacer()
             Button {
