@@ -470,7 +470,11 @@ private struct NotesPanelView: View {
     }
 
     private var rowBackground: Color {
-        DesignTokens.Colors.sidebar
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
     }
 
     private var mainOutlineGroup: some View {
