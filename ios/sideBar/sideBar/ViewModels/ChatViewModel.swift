@@ -68,6 +68,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     private var streamingConversationId: String?
     private var clearActiveToolTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    private var generatingTitleIds = Set<String>()
     private var cancellables = Set<AnyCancellable>()
 
     public init(
@@ -217,7 +218,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
                 let conversation = try await conversationsAPI.create()
                 conversationId = conversation.id
                 selectedConversationId = conversation.id
-                chatStore.addConversation(conversation)
+                chatStore.upsertConversation(conversation)
                 chatStore.upsertConversationDetail(
                     ConversationWithMessages(
                         id: conversation.id,
@@ -548,6 +549,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             Task { [weak self] in
                 await self?.persistMessage(conversationId: conversationId, message: assistantMessage)
                 await self?.refreshConversations()
+                await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
             }
         }
         isStreaming = false
@@ -713,7 +715,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
 
     private func persistMessage(conversationId: String, message: Message) async {
         do {
-            _ = try await conversationsAPI.addMessage(
+            let updated = try await conversationsAPI.addMessage(
                 conversationId: conversationId,
                 message: ConversationMessageCreate(
                     id: message.id,
@@ -725,6 +727,9 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
                     error: message.error
                 )
             )
+            await MainActor.run { [chatStore] in
+                chatStore.upsertConversation(updated)
+            }
         } catch {
             await MainActor.run {
                 errorMessage = error.localizedDescription
@@ -740,6 +745,37 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
 
     private static func isoTimestamp(from date: Date) -> String {
         isoFormatter.string(from: date)
+    }
+
+    private func generateConversationTitleIfNeeded(conversationId: String) async {
+        guard let conversation = chatStore.conversations.first(where: { $0.id == conversationId }) else {
+            return
+        }
+        guard !conversation.titleGenerated else {
+            return
+        }
+        guard !generatingTitleIds.contains(conversationId) else {
+            return
+        }
+        guard messages.count == 2 else {
+            return
+        }
+        generatingTitleIds.insert(conversationId)
+        defer { generatingTitleIds.remove(conversationId) }
+        do {
+            let response = try await chatAPI.generateTitle(conversationId: conversationId)
+            await MainActor.run { [chatStore] in
+                chatStore.updateConversationTitle(
+                    id: conversationId,
+                    title: response.title,
+                    titleGenerated: response.fallback == false
+                )
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     private func prefixForToken(message: Message, token: String) -> String {
