@@ -713,7 +713,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
 
     private func persistMessage(conversationId: String, message: Message) async {
         do {
-            try await conversationsAPI.addMessage(
+            _ = try await conversationsAPI.addMessage(
                 conversationId: conversationId,
                 message: ConversationMessageCreate(
                     id: message.id,
