@@ -59,6 +59,7 @@ private struct ChatDetailView: View {
     @State private var draftMessage: String = ""
     private let inputBarHeight: CGFloat = 60
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var environment: AppEnvironment
@@ -68,6 +69,9 @@ private struct ChatDetailView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
+                if environment.isOffline {
+                    OfflineBanner()
+                }
                 if !isCompact {
                     ChatHeaderView(viewModel: viewModel)
                     Divider()

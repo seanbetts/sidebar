@@ -60,12 +60,16 @@ private struct WebsitesDetailView: View {
     @State private var scrollWidth: CGFloat = 0
     private let contentMaxWidth: CGFloat = 800
     private let contentHorizontalPadding: CGFloat = 20
+    @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
     var body: some View {
         VStack(spacing: 0) {
+            if environment.isOffline {
+                OfflineBanner()
+            }
             if !isCompact {
                 header
                 Divider()

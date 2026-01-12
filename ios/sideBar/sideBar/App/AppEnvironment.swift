@@ -21,8 +21,10 @@ public final class AppEnvironment: ObservableObject {
     public let weatherViewModel: WeatherViewModel
     private let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
+    public let networkMonitor: NetworkMonitor
 
     @Published public private(set) var isAuthenticated: Bool = false
+    @Published public private(set) var isOffline: Bool = false
     @Published public var commandSelection: AppSection? = nil
     private var cancellables = Set<AnyCancellable>()
 
@@ -66,6 +68,7 @@ public final class AppEnvironment: ObservableObject {
         )
         self.weatherViewModel = WeatherViewModel(api: container.weatherAPI)
         self.realtimeClient = container.makeRealtimeClient(handler: nil)
+        self.networkMonitor = NetworkMonitor()
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
 
@@ -110,6 +113,16 @@ public final class AppEnvironment: ObservableObject {
         weatherViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        networkMonitor.$isOffline
+            .removeDuplicates()
+            .sink { [weak self] isOffline in
+                self?.isOffline = isOffline
+                if isOffline == false {
+                    self?.refreshOnReconnect()
+                }
             }
             .store(in: &cancellables)
 
@@ -189,6 +202,19 @@ public final class AppEnvironment: ObservableObject {
         notesViewModel.clearSelection()
         websitesViewModel.clearSelection()
         // TODO: Clear tasks selection once TasksViewModel exists.
+    }
+
+    private func refreshOnReconnect() {
+        guard isAuthenticated else {
+            return
+        }
+        Task {
+            await chatViewModel.refreshConversations()
+            await chatViewModel.refreshActiveConversation(silent: true)
+            await notesViewModel.loadTree()
+            await websitesViewModel.load()
+            await ingestionViewModel.load()
+        }
     }
 }
 

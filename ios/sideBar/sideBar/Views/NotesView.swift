@@ -59,12 +59,16 @@ public struct NotesView: View {
 private struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     private let contentMaxWidth: CGFloat = 800
+    @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
     var body: some View {
         VStack(spacing: 0) {
+            if environment.isOffline {
+                OfflineBanner()
+            }
             if !isCompact {
                 header
                 Divider()
