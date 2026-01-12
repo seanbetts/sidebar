@@ -1,7 +1,7 @@
 import SwiftUI
 import MarkdownUI
 
-struct MemoriesDetailView: View {
+struct MemoriesSettingsDetailView: View {
     @ObservedObject var viewModel: MemoriesViewModel
     @State private var searchQuery: String = ""
     @State private var selection: String? = nil
@@ -240,7 +240,7 @@ private struct MemoryRow: View {
 
     private func formattedDate(_ value: String) -> String? {
         guard let date = DateParsing.parseISO8601(value) else { return nil }
-        return MemoriesDetailView.dateFormatter.string(from: date)
+        return MemoriesSettingsDetailView.dateFormatter.string(from: date)
     }
 
 }
