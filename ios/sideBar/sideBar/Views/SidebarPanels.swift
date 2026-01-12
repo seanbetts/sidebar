@@ -127,6 +127,7 @@ private struct ConversationsPanelView: View {
                         SettingsAvatarButton()
                     }
                 }
+                .frame(height: 28)
             }
             SearchField(text: $searchQuery, placeholder: "Search chats")
                 .padding(.horizontal, DesignTokens.Spacing.md)
