@@ -6,6 +6,7 @@ struct SelectableRow<Content: View>: View {
     private let rowInsets: EdgeInsets
     private let useListStyling: Bool
     private let verticalPadding: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         isSelected: Bool,
@@ -31,6 +32,7 @@ struct SelectableRow<Content: View>: View {
             .padding(.vertical, verticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
+            .animation(Motion.quick(reduceMotion: reduceMotion), value: isSelected)
 
         if useListStyling {
             rowContent

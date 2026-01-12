@@ -18,6 +18,7 @@ public struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var colorScheme
     #endif
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @State private var sidebarSelection: AppSection? = nil
     @State private var primarySection: AppSection? = nil
@@ -254,11 +255,20 @@ public struct ContentView: View {
     }
 
     private func swapPrimaryAndSecondary() {
-        let temp = primarySection
-        primarySection = secondarySection
-        secondarySection = temp
-        if primarySection != .chat, let primarySection {
-            lastNonChatSection = primarySection
+        let performSwap = {
+            let temp = primarySection
+            primarySection = secondarySection
+            secondarySection = temp
+            if primarySection != .chat, let primarySection {
+                lastNonChatSection = primarySection
+            }
+        }
+        if reduceMotion {
+            performSwap()
+        } else {
+            withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
+                performSwap()
+            }
         }
     }
 
