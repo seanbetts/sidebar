@@ -221,7 +221,7 @@ private struct ConversationRow: View, Equatable {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(conversation.title)
-                .font(.subheadline.weight(.semibold))
+                .font(.subheadline)
                 .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                 .lineLimit(1)
             Text(subtitleText)
@@ -545,7 +545,7 @@ private struct NotesPanelView: View {
                 },
                 label: {
                     Label("Archive", systemImage: "archivebox")
-                        .font(.subheadline.weight(.semibold))
+                        .font(.subheadline)
                 }
             )
         }
@@ -665,7 +665,7 @@ private struct NotesTreeRow: View {
                 Image(systemName: item.isFile ? "doc.text" : "folder")
                     .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
                 Text(item.displayName)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline)
                     .lineLimit(1)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
             }
@@ -867,7 +867,7 @@ private struct FilesPanelView: View {
                                 }
                             } label: {
                                 Text(categoryLabels[category] ?? "Files")
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(.subheadline)
                             }
                             .listRowBackground(rowBackground)
                         }
@@ -1075,7 +1075,7 @@ private struct FilesIngestionRow: View, Equatable {
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayName)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.subheadline)
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                 }
@@ -1477,7 +1477,7 @@ private struct WebsitesPanelView: View {
                 },
                 label: {
                     Label("Archive", systemImage: "archivebox")
-                        .font(.subheadline.weight(.semibold))
+                        .font(.subheadline)
                 }
             )
         }
@@ -1535,7 +1535,7 @@ private struct WebsiteRow: View, Equatable {
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(titleText)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.subheadline)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                         .lineLimit(1)
                     Text(domainText)
