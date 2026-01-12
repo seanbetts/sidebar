@@ -138,10 +138,17 @@ private struct FilesDetailContainer: View {
                 Task { await viewModel.selectFile(fileId: selectedId) }
             }
         } else if viewModel.isLoadingContent {
-            ProgressView()
+            LoadingView(message: "Loading file…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.isLoading && viewModel.items.isEmpty {
+            LoadingView(message: "Loading files…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            PlaceholderView(title: "Select a file")
+            PlaceholderView(
+                title: "Select a file",
+                subtitle: "Choose a file from the sidebar to preview it.",
+                iconName: "folder"
+            )
         }
     }
 }

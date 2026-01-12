@@ -74,8 +74,7 @@ struct MemoriesDetailView: View {
     @ViewBuilder
     private var listContent: some View {
         if viewModel.isLoading && viewModel.items.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            SidebarListSkeleton(rowCount: 8, showSubtitle: false)
         } else if let error = viewModel.errorMessage {
             SidebarPanelPlaceholder(
                 title: "Unable to load memories",
@@ -102,6 +101,9 @@ struct MemoriesDetailView: View {
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(DesignTokens.Colors.sidebar)
+            .refreshable {
+                await viewModel.load()
+            }
         }
     }
 
@@ -130,7 +132,7 @@ struct MemoriesDetailView: View {
                 }
             }
         } else if viewModel.isLoadingDetail {
-            ProgressView()
+            LoadingView(message: "Loading memory…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage, viewModel.selectedMemoryId != nil {
             PlaceholderView(
@@ -141,10 +143,17 @@ struct MemoriesDetailView: View {
                 guard let selectedId = viewModel.selectedMemoryId else { return }
                 Task { await viewModel.selectMemory(id: selectedId) }
             }
+        } else if viewModel.isLoading && viewModel.items.isEmpty {
+            LoadingView(message: "Loading memories…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.selectedMemoryId != nil {
             PlaceholderView(title: "Memory not available")
         } else {
-            PlaceholderView(title: "Select a memory")
+            PlaceholderView(
+                title: "Select a memory",
+                subtitle: "Choose a memory from the sidebar to open it.",
+                iconName: "bookmark"
+            )
         }
     }
 

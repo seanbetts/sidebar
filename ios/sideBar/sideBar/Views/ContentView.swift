@@ -594,21 +594,29 @@ public struct PlaceholderView: View {
     public let subtitle: String?
     public let actionTitle: String?
     public let action: (() -> Void)?
+    public let iconName: String?
 
     public init(
         title: String,
         subtitle: String? = nil,
         actionTitle: String? = nil,
-        action: (() -> Void)? = nil
+        action: (() -> Void)? = nil,
+        iconName: String? = nil
     ) {
         self.title = title
         self.subtitle = subtitle
         self.actionTitle = actionTitle
         self.action = action
+        self.iconName = iconName
     }
 
     public var body: some View {
         VStack(spacing: 12) {
+            if let iconName {
+                Image(systemName: iconName)
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
             Text(title)
                 .font(.title2)
             if let subtitle {

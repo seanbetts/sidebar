@@ -96,13 +96,7 @@ private struct ConversationsPanelView: View {
             header
             Group {
                 if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
-                    VStack(spacing: 12) {
-                        ProgressView()
-                        Text("Loading conversations…")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    SidebarListSkeleton(rowCount: 6, showSubtitle: true)
                 } else if filteredGroups.isEmpty {
                     SidebarPanelPlaceholder(title: searchQuery.isEmpty ? "No conversations" : "No matching conversations")
                 } else {
@@ -402,8 +396,7 @@ private struct NotesPanelView: View {
                     Task { await viewModel.loadTree() }
                 }
             } else if viewModel.tree == nil {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
             } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 searchResultsView
             } else {
@@ -423,8 +416,7 @@ private struct NotesPanelView: View {
                     Task { await viewModel.loadTree() }
                 }
             } else if viewModel.tree == nil {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
             } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 searchResultsView
             } else {
@@ -793,8 +785,7 @@ private struct FilesPanelView: View {
         VStack(spacing: 0) {
             header
             if viewModel.isLoading && viewModel.items.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
             } else if let message = viewModel.errorMessage {
                 SidebarPanelPlaceholder(
                     title: "Unable to load files",
@@ -1238,8 +1229,7 @@ private struct WebsitesPanelView: View {
     @ViewBuilder
     private var content: some View {
         if viewModel.isLoading && viewModel.items.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            SidebarListSkeleton(rowCount: 8, showSubtitle: true)
         } else if let error = viewModel.errorMessage {
             SidebarPanelPlaceholder(
                 title: "Unable to load websites",
@@ -1270,6 +1260,9 @@ private struct WebsitesPanelView: View {
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
         } else {
             List {
                 if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
@@ -1338,14 +1331,16 @@ private struct WebsitesPanelView: View {
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
         }
     }
 
     @ViewBuilder
     private var websitesPanelContentWithArchive: some View {
         if viewModel.isLoading && viewModel.items.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            SidebarListSkeleton(rowCount: 8, showSubtitle: true)
         } else if let error = viewModel.errorMessage {
             SidebarPanelPlaceholder(
                 title: "Unable to load websites",
@@ -1376,6 +1371,9 @@ private struct WebsitesPanelView: View {
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
         } else {
             VStack(spacing: 0) {
                 websitesListView
@@ -1425,6 +1423,9 @@ private struct WebsitesPanelView: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(panelBackground)
+        .refreshable {
+            await viewModel.load()
+        }
     }
 
     private func open(item: WebsiteItem) {
