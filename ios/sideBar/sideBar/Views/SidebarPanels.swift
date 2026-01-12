@@ -110,17 +110,19 @@ private struct ConversationsPanelView: View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Chat") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    Button {
-                        Task {
-                            await viewModel.startNewConversation()
+                    if showNewChatButton {
+                        Button {
+                            Task {
+                                await viewModel.startNewConversation()
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(width: 28, height: 28)
                         }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .semibold))
-                            .frame(width: 28, height: 28)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("New chat")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("New chat")
                     if isCompact {
                         SettingsAvatarButton()
                     }
@@ -140,6 +142,13 @@ private struct ConversationsPanelView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private var showNewChatButton: Bool {
+        guard viewModel.selectedConversationId != nil else {
+            return false
+        }
+        return !viewModel.isBlankConversation
     }
 
     private var conversationsList: some View {

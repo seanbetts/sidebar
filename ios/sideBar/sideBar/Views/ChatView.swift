@@ -270,9 +270,9 @@ private struct ChatHeaderView: View {
 
     private var showNewChatButton: Bool {
         guard viewModel.selectedConversationId != nil else {
-            return true
+            return false
         }
-        return !viewModel.messages.isEmpty
+        return !viewModel.isBlankConversation
     }
 
     private var showCloseButton: Bool {

@@ -161,6 +161,16 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         ].filter { !$0.conversations.isEmpty }
     }
 
+    public var isBlankConversation: Bool {
+        guard let selectedId = selectedConversationId else {
+            return false
+        }
+        guard let conversation = conversations.first(where: { $0.id == selectedId }) else {
+            return messages.isEmpty
+        }
+        return conversation.messageCount == 0 && messages.isEmpty
+    }
+
     public func loadConversations(force: Bool = false) async {
         errorMessage = nil
         isLoadingConversations = true
