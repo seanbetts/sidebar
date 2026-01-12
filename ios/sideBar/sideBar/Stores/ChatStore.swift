@@ -176,6 +176,20 @@ public final class ChatStore: ObservableObject {
         }
     }
 
+    public func removeConversation(id: String, persist: Bool = true) {
+        conversations.removeAll { $0.id == id }
+        conversationDetails[id] = nil
+        if persist {
+            cache.set(
+                key: CacheKeys.conversationsList,
+                value: conversations,
+                ttlSeconds: CachePolicy.conversationsList
+            )
+            let cacheKey = CacheKeys.conversation(id: id)
+            cache.remove(key: cacheKey)
+        }
+    }
+
     private func shouldApplyConversationUpdate(
         _ response: ConversationWithMessages,
         cached: ConversationWithMessages?

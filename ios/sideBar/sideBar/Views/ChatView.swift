@@ -87,7 +87,7 @@ private struct ChatDetailView: View {
                         EmptyView()
                     }
                 } else if viewModel.messages.isEmpty {
-                    ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
+                    EmptyView()
                 } else {
                     ChatMessageListView(viewModel: viewModel, bottomInset: messageListBottomInset)
                 }
@@ -676,22 +676,6 @@ private struct PromptPreviewView: View {
 
     private var promptBackground: Color {
         DesignTokens.Colors.surface
-    }
-}
-
-private struct ChatEmptyStateView: View {
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text(title)
-                .font(.headline)
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

@@ -285,10 +285,45 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         )
     }
 
+    public func startNewConversation() async {
+        guard !isStreaming else {
+            return
+        }
+        errorMessage = nil
+        stopStream()
+        promptPreview = nil
+        activeTool = nil
+        clearActiveToolTask?.cancel()
+        await cleanupEmptyConversationIfNeeded()
+        do {
+            let conversation = try await conversationsAPI.create()
+            selectedConversationId = conversation.id
+            userDefaults.set(conversation.id, forKey: AppStorageKeys.lastConversationId)
+            messages = []
+            chatStore.upsertConversation(conversation)
+            chatStore.upsertConversationDetail(
+                ConversationWithMessages(
+                    id: conversation.id,
+                    title: conversation.title,
+                    titleGenerated: conversation.titleGenerated,
+                    createdAt: conversation.createdAt,
+                    updatedAt: conversation.updatedAt,
+                    messageCount: conversation.messageCount,
+                    firstMessage: conversation.firstMessage,
+                    isArchived: conversation.isArchived,
+                    messages: []
+                )
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     public func selectConversation(id: String?) async {
         guard selectedConversationId != id else {
             return
         }
+        await cleanupEmptyConversationIfNeeded()
         selectedConversationId = id
         promptPreview = nil
         activeTool = nil
@@ -416,6 +451,31 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         return currentLast.id == incomingLast.id
             && currentLast.content == incomingLast.content
             && currentLast.status == incomingLast.status
+    }
+
+    private func cleanupEmptyConversationIfNeeded() async {
+        guard let conversationId = selectedConversationId else {
+            return
+        }
+        guard !isStreaming, !isLoadingMessages else {
+            return
+        }
+        guard messages.isEmpty else {
+            return
+        }
+        if let detail = chatStore.conversationDetails[conversationId], detail.messageCount > 0 {
+            return
+        }
+        if let conversation = chatStore.conversations.first(where: { $0.id == conversationId }),
+           conversation.messageCount > 0 {
+            return
+        }
+        do {
+            _ = try await conversationsAPI.delete(conversationId: conversationId)
+            chatStore.removeConversation(id: conversationId)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func syncMessagesToStore(conversationId: String?, persist: Bool = false) {
