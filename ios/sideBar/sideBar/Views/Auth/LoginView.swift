@@ -52,9 +52,14 @@ public struct LoginView: View {
                     }
 
                     if let errorMessage {
-                        Text(errorMessage)
-                            .foregroundStyle(.red)
-                            .font(.callout)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(errorMessage)
+                                .foregroundStyle(.red)
+                                .font(.callout)
+                            Text("Double-check your credentials and connection, then try again.")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                        }
                     }
 
                     Button {

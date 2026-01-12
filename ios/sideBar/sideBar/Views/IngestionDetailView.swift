@@ -27,7 +27,19 @@ public struct IngestionDetailView: View {
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state)
             } else if let error = viewModel.errorMessage {
-                PlaceholderView(title: error)
+                PlaceholderView(
+                    title: "Unable to load preview",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    Task {
+                        if let kind = viewModel.selectedDerivativeKind {
+                            await viewModel.selectDerivative(kind: kind)
+                        } else {
+                            await viewModel.loadMeta(fileId: meta.file.id)
+                        }
+                    }
+                }
             } else {
                 PlaceholderView(title: "Preview unavailable")
             }

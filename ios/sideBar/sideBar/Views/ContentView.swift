@@ -591,15 +591,36 @@ public struct WelcomeEmptyView: View {
 
 public struct PlaceholderView: View {
     public let title: String
+    public let subtitle: String?
+    public let actionTitle: String?
+    public let action: (() -> Void)?
 
-    public init(title: String) {
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil
+    ) {
         self.title = title
+        self.subtitle = subtitle
+        self.actionTitle = actionTitle
+        self.action = action
     }
 
     public var body: some View {
-        VStack {
+        VStack(spacing: 12) {
             Text(title)
                 .font(.title2)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.bordered)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }

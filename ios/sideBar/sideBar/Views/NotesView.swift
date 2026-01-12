@@ -109,8 +109,19 @@ private struct NotesDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         } else if viewModel.selectedNoteId != nil {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if let error = viewModel.errorMessage {
+                PlaceholderView(
+                    title: "Unable to load note",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    guard let selectedId = viewModel.selectedNoteId else { return }
+                    Task { await viewModel.loadNote(id: selectedId) }
+                }
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         } else {
             #if os(macOS)
             WelcomeEmptyView()
