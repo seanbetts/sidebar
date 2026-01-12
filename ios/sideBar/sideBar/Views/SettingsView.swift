@@ -234,6 +234,10 @@ private struct ProfileSettingsView: View {
                     isProfileImageImporterPresented = true
                 }
 #endif
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Profile photo")
+                .accessibilityHint("Double tap to change your profile photo.")
+                .accessibilityAddTraits(.isButton)
             }
 
             #if os(macOS)

@@ -350,11 +350,11 @@ Critical Path (MVP): [█████████████████░░�
   - [x] Reduce recomputation in chat and markdown-heavy views
   - [x] Audit image sizing and caching (avatars/icons)
   - [x] Minimize expensive modifiers in scrolling lists
-- [ ] 9.6 Accessibility (VoiceOver, Dynamic Type)
-  - [ ] Add VoiceOver labels for custom controls (chat input, toolbar buttons)
-  - [ ] Validate Dynamic Type on iOS/macOS (no truncation/overlap)
-  - [ ] Ensure sidebar selection states are announced
-  - [ ] Verify focus order in Settings and Login
+- [x] 9.6 Accessibility (VoiceOver, Dynamic Type)
+  - [x] Add VoiceOver labels for custom controls (chat input, toolbar buttons)
+  - [x] Validate Dynamic Type on iOS/macOS (no truncation/overlap)
+  - [x] Ensure sidebar selection states are announced
+  - [x] Verify focus order in Settings and Login
 - [ ] 9.7 Error Handling
   - [ ] Standardize error empty states across panels
   - [ ] Add retry actions where appropriate

@@ -90,13 +90,16 @@ private struct WebsitesDetailView: View {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(displayTitle)
                     .font(.headline)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .layoutPriority(1)
                     .truncationMode(.tail)
                 if let subtitle = subtitleText {
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                 }
             }
             Spacer()

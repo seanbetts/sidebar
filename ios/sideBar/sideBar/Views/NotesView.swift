@@ -81,7 +81,9 @@ private struct NotesDetailView: View {
                 .foregroundStyle(.primary)
             Text(displayTitle)
                 .font(.headline)
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(1)
                 .truncationMode(.tail)
             Spacer()
             Button {

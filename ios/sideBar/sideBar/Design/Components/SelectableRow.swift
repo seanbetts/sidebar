@@ -33,6 +33,7 @@ struct SelectableRow<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .animation(Motion.quick(reduceMotion: reduceMotion), value: isSelected)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
 
         if useListStyling {
             rowContent
