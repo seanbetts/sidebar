@@ -634,7 +634,7 @@ private struct NotesTreeRow: View {
     var body: some View {
         let row = SelectableRow(
             isSelected: isSelected,
-            insets: compactRowInsets,
+            insets: rowInsets,
             verticalPadding: rowVerticalPadding,
             useListStyling: useListStyling
         ) {
@@ -679,12 +679,18 @@ private struct NotesTreeRow: View {
         #endif
     }
 
-    private var compactRowInsets: EdgeInsets {
-        EdgeInsets(
+    private var rowInsets: EdgeInsets {
+        let horizontalPadding: CGFloat
+        #if os(macOS)
+        horizontalPadding = DesignTokens.Spacing.xs
+        #else
+        horizontalPadding = item.isFile ? DesignTokens.Spacing.sm : DesignTokens.Spacing.xs
+        #endif
+        return EdgeInsets(
             top: 0,
-            leading: DesignTokens.Spacing.xs,
+            leading: horizontalPadding,
             bottom: 0,
-            trailing: DesignTokens.Spacing.xs
+            trailing: horizontalPadding
         )
     }
 
@@ -998,7 +1004,7 @@ private struct FilesIngestionRow: View {
     let isSelected: Bool
 
     var body: some View {
-        SelectableRow(isSelected: isSelected, insets: compactRowInsets) {
+        SelectableRow(isSelected: isSelected, insets: rowInsets) {
             HStack(spacing: 8) {
                 Image(systemName: iconName)
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
@@ -1044,12 +1050,18 @@ private struct FilesIngestionRow: View {
         DesignTokens.Colors.textPrimary
     }
 
-    private var compactRowInsets: EdgeInsets {
-        EdgeInsets(
+    private var rowInsets: EdgeInsets {
+        let horizontalPadding: CGFloat
+        #if os(macOS)
+        horizontalPadding = DesignTokens.Spacing.xs
+        #else
+        horizontalPadding = item.file.category == "folder" ? DesignTokens.Spacing.xs : DesignTokens.Spacing.sm
+        #endif
+        return EdgeInsets(
             top: 0,
-            leading: DesignTokens.Spacing.xs,
+            leading: horizontalPadding,
             bottom: 0,
-            trailing: DesignTokens.Spacing.xs
+            trailing: horizontalPadding
         )
     }
 }
@@ -1420,7 +1432,7 @@ private struct WebsiteRow: View {
     var body: some View {
         SelectableRow(
             isSelected: isSelected,
-            insets: compactRowInsets,
+            insets: rowInsets,
             useListStyling: useListStyling
         ) {
             HStack(spacing: 8) {
@@ -1461,12 +1473,18 @@ private struct WebsiteRow: View {
         DesignTokens.Colors.textSecondary
     }
 
-    private var compactRowInsets: EdgeInsets {
-        EdgeInsets(
+    private var rowInsets: EdgeInsets {
+        let horizontalPadding: CGFloat
+        #if os(macOS)
+        horizontalPadding = DesignTokens.Spacing.xs
+        #else
+        horizontalPadding = DesignTokens.Spacing.sm
+        #endif
+        return EdgeInsets(
             top: 0,
-            leading: DesignTokens.Spacing.xs,
+            leading: horizontalPadding,
             bottom: 0,
-            trailing: DesignTokens.Spacing.xs
+            trailing: horizontalPadding
         )
     }
 }
