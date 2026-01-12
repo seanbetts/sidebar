@@ -81,12 +81,10 @@ private struct SettingsSplitView: View {
                     .tag(section)
             }
             .listStyle(.sidebar)
-            .scrollContentBackground(.hidden)
-            .background(DesignTokens.Colors.sidebar)
         } detail: {
             settingsDetailView(for: selection ?? .profile)
+                .navigationTitle(selection?.title ?? "Settings")
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(DesignTokens.Colors.background)
         }
         .navigationSplitViewStyle(.balanced)
         .modifier(SidebarToggleHider())
@@ -237,6 +235,9 @@ private struct ProfileSettingsView: View {
                 }
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
                 ProgressView()
@@ -312,9 +313,16 @@ private struct GeneralSettingsView: View {
                     Text("Celsius").tag(false)
                     Text("Fahrenheit").tag(true)
                 }
+                #if os(macOS)
+                .pickerStyle(.radioGroup)
+                #else
                 .pickerStyle(.segmented)
+                #endif
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .onAppear {
             evaluateBiometricSupport()
         }
@@ -357,6 +365,9 @@ private struct SystemSettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
                 ProgressView()
@@ -412,30 +423,29 @@ private struct SkillsSettingsView: View {
                 ForEach(groupedSkills, id: \.0) { category, skills in
                     Section(category) {
                         ForEach(skills, id: \.id) { skill in
-                            VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(skill.name)
-                                    .font(.subheadline.weight(.semibold))
-                                Spacer()
-                                Toggle("", isOn: Binding(
-                                    get: { isSkillEnabled(skill.id) },
-                                    set: { isEnabled in
-                                        Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
-                                    }
-                                ))
-                                .labelsHidden()
-                                .disabled(viewModel.isSavingSkills || viewModel.settings == nil)
+                            Toggle(isOn: Binding(
+                                get: { isSkillEnabled(skill.id) },
+                                set: { isEnabled in
+                                    Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                                }
+                            )) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(skill.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(skill.description)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                            Text(skill.description)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 4)
+                            .disabled(viewModel.isSavingSkills || viewModel.settings == nil)
                         }
                     }
                 }
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .overlay {
             if viewModel.isLoadingSkills && viewModel.skills.isEmpty {
                 ProgressView()
@@ -465,7 +475,17 @@ private struct MemoriesSettingsView: View {
     @ObservedObject var viewModel: MemoriesViewModel
 
     var body: some View {
+        #if os(macOS)
+        Form {
+            Section("Memories") {
+                Text("Manage and view memories in the main workspace.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        #else
         MemoriesDetailView(viewModel: viewModel)
+        #endif
     }
 }
 
@@ -498,6 +518,9 @@ private struct ShortcutsSettingsView: View {
                 }
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .overlay {
             if viewModel.isLoadingShortcuts && viewModel.shortcutsToken.isEmpty {
                 ProgressView()
@@ -531,6 +554,9 @@ private struct ThingsSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
     }
 }
 
@@ -574,5 +600,8 @@ private struct APISettingsView: View {
             }
 #endif
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
     }
 }
