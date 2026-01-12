@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UniformTypeIdentifiers
 
 // TODO: Revisit to prefer native-first data sources where applicable.
 
@@ -51,6 +52,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public private(set) var isStreaming: Bool = false
     @Published public private(set) var isLoadingConversations: Bool = false
     @Published public private(set) var isLoadingMessages: Bool = false
+    @Published public private(set) var attachments: [ChatAttachmentItem] = []
     @Published public private(set) var errorMessage: String? = nil
     @Published public private(set) var activeTool: ChatActiveTool? = nil
     @Published public private(set) var promptPreview: ChatPromptPreview? = nil
@@ -58,6 +60,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     private let chatAPI: ChatAPI
     private let conversationsAPI: ConversationsAPIProviding
     private let cache: CacheClient
+    private let ingestionAPI: IngestionAPI
     private let themeManager: ThemeManager
     private let streamClient: ChatStreamClient
     private let chatStore: ChatStore
@@ -71,10 +74,12 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     private var refreshTask: Task<Void, Never>?
     private var generatingTitleIds = Set<String>()
     private var cancellables = Set<AnyCancellable>()
+    private var attachmentPollTasks: [String: Task<Void, Never>] = [:]
 
     public init(
         chatAPI: ChatAPI,
         conversationsAPI: ConversationsAPIProviding,
+        ingestionAPI: IngestionAPI,
         cache: CacheClient,
         themeManager: ThemeManager,
         streamClient: ChatStreamClient,
@@ -86,6 +91,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         self.chatAPI = chatAPI
         self.conversationsAPI = conversationsAPI
         self.cache = cache
+        self.ingestionAPI = ingestionAPI
         self.themeManager = themeManager
         self.streamClient = streamClient
         self.chatStore = chatStore
@@ -174,6 +180,18 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         return conversation.messageCount == 0 && messages.isEmpty
     }
 
+    public var hasPendingAttachments: Bool {
+        attachments.contains { $0.status != .ready }
+    }
+
+    public var readyAttachments: [ChatAttachmentItem] {
+        attachments.filter { $0.status == .ready }
+    }
+
+    public var pendingAttachments: [ChatAttachmentItem] {
+        attachments.filter { $0.status != .ready }
+    }
+
     public func loadConversations(force: Bool = false, silent: Bool = false) async {
         errorMessage = nil
         if !silent {
@@ -225,9 +243,16 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             return
         }
         errorMessage = nil
+        guard !hasPendingAttachments else {
+            return
+        }
         let userMessageId = UUID().uuidString
         let assistantMessageId = UUID().uuidString
         let timestamp = Self.isoTimestamp(from: clock())
+        let attachmentsForMessage = readyAttachments.compactMap { attachment -> ChatAttachment? in
+            guard let fileId = attachment.fileId else { return nil }
+            return ChatAttachment(fileId: fileId, filename: attachment.name)
+        }
 
         var conversationId = selectedConversationId
         if conversationId == nil {
@@ -297,9 +322,11 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             request: ChatStreamRequest(
                 message: trimmed,
                 conversationId: conversationId,
-                userMessageId: userMessageId
+                userMessageId: userMessageId,
+                attachments: attachmentsForMessage.isEmpty ? nil : attachmentsForMessage
             )
         )
+        clearAttachments()
     }
 
     public func startNewConversation() async {
@@ -312,6 +339,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         activeTool = nil
         clearActiveToolTask?.cancel()
         await cleanupEmptyConversationIfNeeded()
+        clearAttachments()
         do {
             let conversation = try await conversationsAPI.create(title: "New Chat")
             selectedConversationId = conversation.id
@@ -342,6 +370,56 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         }
         await cleanupEmptyConversationIfNeeded()
         clearConversationSelection()
+    }
+
+    public func addAttachments(urls: [URL]) {
+        for url in urls {
+            Task { [weak self] in
+                await self?.addAttachment(url: url)
+            }
+        }
+    }
+
+    public func retryAttachment(id: String) {
+        guard let attachment = attachments.first(where: { $0.id == id }),
+              let url = attachment.fileURL else {
+            toastCenter?.show(message: "Re-upload the file to retry")
+            return
+        }
+        updateAttachment(id: id) { item in
+            var updated = item
+            updated.status = .uploading
+            updated.stage = "uploading"
+            updated.fileId = nil
+            return updated
+        }
+        Task { [weak self] in
+            await self?.uploadAttachment(id: id, url: url)
+        }
+    }
+
+    public func deleteAttachment(id: String) {
+        guard let attachment = attachments.first(where: { $0.id == id }) else {
+            return
+        }
+        attachmentPollTasks[id]?.cancel()
+        attachmentPollTasks[id] = nil
+        attachments.removeAll { $0.id == id }
+        if let fileId = attachment.fileId {
+            Task { [weak self] in
+                do {
+                    try await self?.ingestionAPI.delete(fileId: fileId)
+                } catch {
+                    await MainActor.run {
+                        self?.toastCenter?.show(message: "Failed to delete attachment")
+                    }
+                }
+            }
+        }
+    }
+
+    public func removeReadyAttachment(id: String) {
+        attachments.removeAll { $0.id == id }
     }
 
     public func renameConversation(id: String, title: String) async {
@@ -581,6 +659,121 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         activeTool = nil
         clearActiveToolTask?.cancel()
         userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        clearAttachments()
+    }
+
+    private func clearAttachments() {
+        attachments.removeAll()
+        attachmentPollTasks.values.forEach { $0.cancel() }
+        attachmentPollTasks = [:]
+    }
+
+    private func addAttachment(url: URL) async {
+        let id = UUID().uuidString
+        let name = url.lastPathComponent
+        attachments.append(
+            ChatAttachmentItem(
+                id: id,
+                name: name,
+                status: .uploading,
+                stage: "uploading",
+                fileURL: url
+            )
+        )
+        await uploadAttachment(id: id, url: url)
+    }
+
+    private func uploadAttachment(id: String, url: URL) async {
+        let access = url.startAccessingSecurityScopedResource()
+        defer {
+            if access {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            let mimeType = mimeTypeFor(url: url)
+            let fileId = try await ingestionAPI.upload(
+                fileData: data,
+                filename: url.lastPathComponent,
+                mimeType: mimeType
+            )
+            updateAttachment(id: id) { item in
+                var updated = item
+                updated.status = .queued
+                updated.stage = "queued"
+                updated.fileId = fileId
+                return updated
+            }
+            startAttachmentPolling(id: id, fileId: fileId)
+        } catch {
+            updateAttachment(id: id) { item in
+                var updated = item
+                updated.status = .failed
+                updated.stage = "failed"
+                return updated
+            }
+            toastCenter?.show(message: "Attachment upload failed")
+        }
+    }
+
+    private func startAttachmentPolling(id: String, fileId: String) {
+        attachmentPollTasks[id]?.cancel()
+        let task = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            while !Task.isCancelled {
+                do {
+                    guard let self else { return }
+                    let meta = try await ingestionAPI.getMeta(fileId: fileId)
+                    let status = meta.job.status ?? "queued"
+                    let stage = meta.job.stage
+                    let resolvedStatus: ChatAttachmentStatus
+                    switch status {
+                    case "ready":
+                        resolvedStatus = .ready
+                    case "failed":
+                        resolvedStatus = .failed
+                    case "canceled":
+                        resolvedStatus = .canceled
+                    default:
+                        resolvedStatus = .queued
+                    }
+                    await MainActor.run {
+                        self.updateAttachment(id: id) { item in
+                            var updated = item
+                            updated.status = resolvedStatus
+                            updated.stage = stage ?? status
+                            return updated
+                        }
+                    }
+                    if resolvedStatus == .ready || resolvedStatus == .failed || resolvedStatus == .canceled {
+                        return
+                    }
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                } catch {
+                    await MainActor.run {
+                        self?.toastCenter?.show(message: "Attachment status failed")
+                    }
+                    return
+                }
+            }
+        }
+        attachmentPollTasks[id] = task
+    }
+
+    private func updateAttachment(id: String, update: (ChatAttachmentItem) -> ChatAttachmentItem) {
+        guard let index = attachments.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+        attachments[index] = update(attachments[index])
+    }
+
+    private func mimeTypeFor(url: URL) -> String {
+        if let type = UTType(filenameExtension: url.pathExtension),
+           let mime = type.preferredMIMEType {
+            return mime
+        }
+        return "application/octet-stream"
     }
 
     private func syncMessagesToStore(conversationId: String?, persist: Bool = false) {

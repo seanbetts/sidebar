@@ -45,6 +45,7 @@ public final class AppEnvironment: ObservableObject {
         self.chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
             conversationsAPI: container.conversationsAPI,
+            ingestionAPI: container.ingestionAPI,
             cache: container.cacheClient,
             themeManager: themeManager,
             streamClient: container.makeChatStreamClient(handler: nil),
