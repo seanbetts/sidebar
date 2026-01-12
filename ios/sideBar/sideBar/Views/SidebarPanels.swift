@@ -1,5 +1,16 @@
 import SwiftUI
 
+private func panelHeaderBackground(_ colorScheme: ColorScheme) -> Color {
+    #if os(macOS)
+    if colorScheme == .light {
+        return DesignTokens.Colors.sidebar
+    }
+    return DesignTokens.Colors.surface
+    #else
+    return DesignTokens.Colors.surface
+    #endif
+}
+
 public struct ConversationsPanel: View {
     @EnvironmentObject private var environment: AppEnvironment
 
@@ -25,6 +36,7 @@ public struct TasksPanel: View {
 
 private struct TasksPanelView: View {
     @State private var searchQuery: String = ""
+    @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -58,7 +70,7 @@ private struct TasksPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
-        .background(DesignTokens.Colors.surface)
+        .background(panelHeaderBackground(colorScheme))
     }
 
     private var isCompact: Bool {
@@ -73,6 +85,7 @@ private struct TasksPanelView: View {
 private struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var searchQuery: String = ""
+    @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -120,7 +133,7 @@ private struct ConversationsPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
-        .background(DesignTokens.Colors.surface)
+        .background(panelHeaderBackground(colorScheme))
     }
 
     private var isCompact: Bool {
@@ -247,6 +260,7 @@ private struct NotesPanelView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
 
@@ -300,7 +314,7 @@ private struct NotesPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
-        .background(DesignTokens.Colors.surface)
+        .background(panelHeaderBackground(colorScheme))
     }
 
     private var isCompact: Bool {
@@ -684,6 +698,7 @@ private struct FilesPanelView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
@@ -736,7 +751,7 @@ private struct FilesPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
-        .background(DesignTokens.Colors.surface)
+        .background(panelHeaderBackground(colorScheme))
     }
 
     private var isCompact: Bool {
@@ -1020,6 +1035,7 @@ private struct WebsitesPanelView: View {
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @Environment(\.colorScheme) private var colorScheme
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
@@ -1070,7 +1086,7 @@ private struct WebsitesPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
-        .background(DesignTokens.Colors.surface)
+        .background(panelHeaderBackground(colorScheme))
     }
 
     @ViewBuilder
