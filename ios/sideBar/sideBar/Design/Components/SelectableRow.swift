@@ -5,6 +5,7 @@ struct SelectableRow<Content: View>: View {
     let content: Content
     private let rowInsets: EdgeInsets
     private let useListStyling: Bool
+    private let verticalPadding: CGFloat
 
     init(
         isSelected: Bool,
@@ -14,18 +15,20 @@ struct SelectableRow<Content: View>: View {
             bottom: 0,
             trailing: DesignTokens.Spacing.sm
         ),
+        verticalPadding: CGFloat = DesignTokens.Spacing.xs,
         useListStyling: Bool = true,
         @ViewBuilder content: () -> Content
     ) {
         self.isSelected = isSelected
         self.rowInsets = insets
         self.useListStyling = useListStyling
+        self.verticalPadding = verticalPadding
         self.content = content()
     }
 
     var body: some View {
         let rowContent = content
-            .padding(.vertical, DesignTokens.Spacing.xs)
+            .padding(.vertical, verticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
 
