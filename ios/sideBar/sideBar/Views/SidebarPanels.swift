@@ -85,6 +85,7 @@ private struct TasksPanelView: View {
 private struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var searchQuery: String = ""
+    @State private var listAppeared = false
     @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -148,13 +149,14 @@ private struct ConversationsPanelView: View {
         List {
             ForEach(filteredGroups) { group in
                 Section(group.title) {
-                    ForEach(group.conversations) { conversation in
+                    ForEach(Array(group.conversations.enumerated()), id: \.element.id) { index, conversation in
                         SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
                             ConversationRow(
                                 conversation: conversation,
                                 isSelected: viewModel.selectedConversationId == conversation.id
                             )
                         }
+                        .staggeredAppear(index: index, isActive: listAppeared)
                         .onTapGesture { Task { await viewModel.selectConversation(id: conversation.id) } }
                     }
                 }
@@ -165,6 +167,12 @@ private struct ConversationsPanelView: View {
         .background(panelBackground)
         .refreshable {
             await viewModel.refreshConversations()
+        }
+        .onAppear {
+            listAppeared = !viewModel.isLoadingConversations
+        }
+        .onChange(of: viewModel.isLoadingConversations) { _, isLoading in
+            listAppeared = !isLoading
         }
     }
 
@@ -739,6 +747,7 @@ private struct FilesPanelView: View {
     @State private var hasLoaded = false
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
+    @State private var listAppeared = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -803,12 +812,14 @@ private struct FilesPanelView: View {
         List {
             if !pinnedItems.isEmpty {
                 Section("Pinned") {
-                    ForEach(pinnedItems, id: \.file.id) { item in
+                    ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
                         let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                         if isFolder(item) {
                             row
+                                .staggeredAppear(index: index, isActive: listAppeared)
                         } else {
                             row.contentShape(Rectangle())
+                                .staggeredAppear(index: index, isActive: listAppeared)
                                 .onTapGesture { open(item: item) }
                         }
                     }
@@ -817,17 +828,25 @@ private struct FilesPanelView: View {
 
             if !categorizedItems.isEmpty {
                 Section("Files") {
-                    ForEach(categoryOrder, id: \.self) { category in
+                    ForEach(Array(categoryOrder.enumerated()), id: \.element) { categoryIndex, category in
                         if let items = categorizedItems[category], !items.isEmpty {
                             DisclosureGroup(
                                 isExpanded: bindingForCategory(category)
                             ) {
-                                ForEach(items, id: \.file.id) { item in
+                                ForEach(Array(items.enumerated()), id: \.element.file.id) { itemIndex, item in
                                     let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                                     if isFolder(item) {
                                         row
+                                            .staggeredAppear(
+                                                index: categoryIndex + itemIndex,
+                                                isActive: listAppeared
+                                            )
                                     } else {
                                         row.contentShape(Rectangle())
+                                            .staggeredAppear(
+                                                index: categoryIndex + itemIndex,
+                                                isActive: listAppeared
+                                            )
                                             .onTapGesture { open(item: item) }
                                     }
                                 }
@@ -843,13 +862,15 @@ private struct FilesPanelView: View {
 
             if !filteredProcessingItems.isEmpty || !filteredFailedItems.isEmpty {
                 Section("Uploads") {
-                    ForEach(filteredProcessingItems, id: \.file.id) { item in
+                    ForEach(Array(filteredProcessingItems.enumerated()), id: \.element.file.id) { index, item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                     }
-                    ForEach(filteredFailedItems, id: \.file.id) { item in
+                    ForEach(Array(filteredFailedItems.enumerated()), id: \.element.file.id) { index, item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                     }
@@ -861,6 +882,12 @@ private struct FilesPanelView: View {
         .background(panelBackground)
         .refreshable {
             await viewModel.load()
+        }
+        .onAppear {
+            listAppeared = !viewModel.isLoading
+        }
+        .onChange(of: viewModel.isLoading) { _, isLoading in
+            listAppeared = !isLoading
         }
     }
 
@@ -1089,6 +1116,7 @@ private struct WebsitesPanelView: View {
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
     @State private var selection: String? = nil
+    @State private var listAppeared = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1107,9 +1135,13 @@ private struct WebsitesPanelView: View {
             if selection == nil {
                 selection = viewModel.active?.id
             }
+            listAppeared = !viewModel.isLoading
         }
         .onChange(of: viewModel.active?.id) { _, newValue in
             selection = newValue
+        }
+        .onChange(of: viewModel.isLoading) { _, isLoading in
+            listAppeared = !isLoading
         }
     }
 
@@ -1153,11 +1185,12 @@ private struct WebsitesPanelView: View {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
-                        ForEach(filteredItems, id: \.id) { item in
+                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
                             WebsiteRow(
                                 item: item,
                                 isSelected: selection == item.id
                             )
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                         }
@@ -1176,11 +1209,12 @@ private struct WebsitesPanelView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
-                            ForEach(pinnedItemsSorted, id: \.id) { item in
+                            ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
                                 WebsiteRow(
                                     item: item,
                                     isSelected: selection == item.id
                                 )
+                                .staggeredAppear(index: index, isActive: listAppeared)
                                 .contentShape(Rectangle())
                                 .onTapGesture { open(item: item) }
                             }
@@ -1193,11 +1227,12 @@ private struct WebsitesPanelView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
-                            ForEach(mainItems, id: \.id) { item in
+                            ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
                                 WebsiteRow(
                                     item: item,
                                     isSelected: selection == item.id
                                 )
+                                .staggeredAppear(index: index, isActive: listAppeared)
                                 .contentShape(Rectangle())
                                 .onTapGesture { open(item: item) }
                             }
@@ -1214,11 +1249,12 @@ private struct WebsitesPanelView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             } else {
-                                ForEach(archivedItems, id: \.id) { item in
+                                ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
                                     WebsiteRow(
                                         item: item,
                                         isSelected: selection == item.id
                                     )
+                                    .staggeredAppear(index: index, isActive: listAppeared)
                                     .contentShape(Rectangle())
                                     .onTapGesture { open(item: item) }
                                 }
@@ -1253,11 +1289,12 @@ private struct WebsitesPanelView: View {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
-                        ForEach(filteredItems, id: \.id) { item in
+                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
                             WebsiteRow(
                                 item: item,
                                 isSelected: selection == item.id
                             )
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                         }
@@ -1284,11 +1321,12 @@ private struct WebsitesPanelView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(pinnedItemsSorted, id: \.id) { item in
+                        ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
                             WebsiteRow(
                                 item: item,
                                 isSelected: selection == item.id
                             )
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                         }
@@ -1301,11 +1339,12 @@ private struct WebsitesPanelView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(mainItems, id: \.id) { item in
+                        ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
                             WebsiteRow(
                                 item: item,
                                 isSelected: selection == item.id
                             )
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                         }
@@ -1385,12 +1424,13 @@ private struct WebsitesPanelView: View {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: DesignTokens.Spacing.xs) {
-                                ForEach(archivedItems, id: \.id) { item in
+                                ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
                                     WebsiteRow(
                                         item: item,
                                         isSelected: selection == item.id,
                                         useListStyling: false
                                     )
+                                    .staggeredAppear(index: index, isActive: listAppeared)
                                     .contentShape(Rectangle())
                                     .onTapGesture { open(item: item) }
                                 }
