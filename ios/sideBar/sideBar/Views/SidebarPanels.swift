@@ -666,7 +666,11 @@ private struct NotesTreeRow: View {
     }
 
     private var rowBackground: Color {
-        DesignTokens.Colors.sidebar
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
     }
 }
 
@@ -957,7 +961,11 @@ private struct FilesPanelView: View {
     }
 
     private var rowBackground: Color {
-        DesignTokens.Colors.sidebar
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
     }
 
 }
@@ -1183,7 +1191,7 @@ private struct WebsitesPanelView: View {
                             Label("Archive", systemImage: "archivebox")
                         }
                     )
-                    .listRowBackground(DesignTokens.Colors.sidebar)
+                    .listRowBackground(rowBackground)
                 }
 #endif
             }
@@ -1318,7 +1326,11 @@ private struct WebsitesPanelView: View {
     }
 
     private var rowBackground: Color {
-        DesignTokens.Colors.sidebar
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
     }
 
     private var websitesArchiveSection: some View {
