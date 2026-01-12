@@ -805,7 +805,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         let containerView = UIView()
         containerView.backgroundColor = .clear
 
-        let textView = UITextView()
+        let textView = ChatInputTextView()
         textView.font = UIFont.preferredFont(forTextStyle: .body)
         textView.backgroundColor = .clear
         textView.textColor = UIColor.label
@@ -813,6 +813,10 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false
         textView.delegate = context.coordinator
+        textView.onShiftEnter = {
+            textView.allowNewlineOnce = true
+            textView.insertText("\n")
+        }
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         textView.accessibilityLabel = "Message"
@@ -950,6 +954,22 @@ private struct ChatInputUIKitView: UIViewRepresentable {
             if measuredHeight.wrappedValue != height {
                 measuredHeight.wrappedValue = height
             }
+        }
+
+        func textView(
+            _ textView: UITextView,
+            shouldChangeTextIn range: NSRange,
+            replacementText text: String
+        ) -> Bool {
+            guard text == "\n" else {
+                return true
+            }
+            if let chatTextView = textView as? ChatInputTextView, chatTextView.allowNewlineOnce {
+                chatTextView.allowNewlineOnce = false
+                return true
+            }
+            onSend()
+            return false
         }
 
         @objc func didTapSend() {
@@ -1158,17 +1178,40 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-            if commandSelector == #selector(NSResponder.insertNewline(_:)),
-               NSEvent.modifierFlags.contains(.command) {
-                onSend()
-                return true
+            guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
+                return false
             }
-            return false
+            if NSEvent.modifierFlags.contains(.shift) {
+                return false
+            }
+            onSend()
+            return true
         }
 
         @objc func didTapSend() {
             onSend()
         }
+    }
+}
+#endif
+
+#if os(iOS)
+private final class ChatInputTextView: UITextView {
+    var allowNewlineOnce = false
+    var onShiftEnter: (() -> Void)?
+
+    override var keyCommands: [UIKeyCommand]? {
+        [
+            UIKeyCommand(
+                input: "\r",
+                modifierFlags: .shift,
+                action: #selector(handleShiftEnter)
+            )
+        ]
+    }
+
+    @objc private func handleShiftEnter() {
+        onShiftEnter?()
     }
 }
 #endif
