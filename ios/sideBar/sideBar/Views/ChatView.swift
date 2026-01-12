@@ -62,7 +62,6 @@ private struct ChatDetailView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @EnvironmentObject private var environment: AppEnvironment
     @State private var isScratchpadPresented = false
     #endif
 

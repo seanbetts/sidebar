@@ -21,7 +21,7 @@ public final class AppEnvironment: ObservableObject {
     public let weatherViewModel: WeatherViewModel
     private let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
-    public let networkMonitor: NetworkMonitor
+    private let networkMonitor: NetworkMonitor
 
     @Published public private(set) var isAuthenticated: Bool = false
     @Published public private(set) var isOffline: Bool = false

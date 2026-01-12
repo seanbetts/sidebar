@@ -1,8 +1,8 @@
 import Foundation
+import Combine
 import Network
 
-@MainActor
-final class NetworkMonitor: ObservableObject {
+final class NetworkMonitor: ObservableObject, @unchecked Sendable {
     @Published private(set) var isOffline: Bool = false
     private let monitor: NWPathMonitor
     private let queue = DispatchQueue(label: "sidebar.network.monitor")
@@ -10,8 +10,9 @@ final class NetworkMonitor: ObservableObject {
     init() {
         monitor = NWPathMonitor()
         monitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
-                self?.isOffline = path.status != .satisfied
+            let isOffline = path.status != .satisfied
+            DispatchQueue.main.async {
+                self?.isOffline = isOffline
             }
         }
         monitor.start(queue: queue)
