@@ -1,6 +1,9 @@
 import SwiftUI
 import LocalAuthentication
 #if os(macOS)
+import UniformTypeIdentifiers
+#endif
+#if os(macOS)
 import AppKit
 #else
 import UIKit
@@ -73,18 +76,21 @@ private struct SettingsSplitView: View {
     @ObservedObject var memoriesViewModel: MemoriesViewModel
     @State private var selection: SettingsSection? = .profile
     @State private var hasLoaded = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(SettingsSection.allCases, selection: $selection) { section in
                 Label(section.title, systemImage: section.systemImage)
                     .tag(section)
             }
             .listStyle(.sidebar)
+            .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selection ?? .profile)
                 .navigationTitle(selection?.title ?? "Settings")
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .modifier(SidebarToggleHider())
         }
         .navigationSplitViewStyle(.balanced)
         .modifier(SidebarToggleHider())
@@ -95,6 +101,11 @@ private struct SettingsSplitView: View {
                 Task {
                     await loadSettings()
                 }
+            }
+        }
+        .onChange(of: columnVisibility) { _, newValue in
+            if newValue != .all {
+                columnVisibility = .all
             }
         }
     }
@@ -190,6 +201,9 @@ private struct ProfileSettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @State private var isImagePickerPresented = false
     @State private var profileImage: Image?
+    @State private var isProfileImageImporterPresented = false
+    @State private var isUploadingProfileImage = false
+    @State private var profileImageError: String?
 
     var body: some View {
         Form {
@@ -199,7 +213,7 @@ private struct ProfileSettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Profile photo")
                             .font(.headline)
-                        Text("Tap to change.")
+                        Text(photoSubtitle)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -214,7 +228,23 @@ private struct ProfileSettingsView: View {
                     ImagePicker(selectedImage: $profileImage)
                 }
 #endif
+#if os(macOS)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isProfileImageImporterPresented = true
+                }
+#endif
             }
+
+            #if os(macOS)
+            if let profileImageError {
+                Section {
+                    Text(profileImageError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+            #endif
 
             Section {
                 LabeledContent("Name", value: displayValue(viewModel.settings?.name))
@@ -237,6 +267,16 @@ private struct ProfileSettingsView: View {
         }
         #if os(macOS)
         .formStyle(.grouped)
+        #endif
+        #if os(macOS)
+        .fileImporter(
+            isPresented: $isProfileImageImporterPresented,
+            allowedContentTypes: [.image]
+        ) { result in
+            Task {
+                await handleProfileImageImport(result)
+            }
+        }
         #endif
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
@@ -270,6 +310,38 @@ private struct ProfileSettingsView: View {
         .overlay(Circle().strokeBorder(Color.secondary.opacity(0.2)))
         .accessibilityLabel("Profile photo")
     }
+
+    private var photoSubtitle: String {
+        #if os(macOS)
+        return "Choose an image to update your profile photo."
+        #else
+        return "Tap to change."
+        #endif
+    }
+
+#if os(macOS)
+    private func handleProfileImageImport(_ result: Result<URL, Error>) async {
+        profileImageError = nil
+        do {
+            let url = try result.get()
+            let data = try Data(contentsOf: url)
+            let contentType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "image/png"
+            let filename = url.lastPathComponent.isEmpty ? "profile-image" : url.lastPathComponent
+            isUploadingProfileImage = true
+            defer { isUploadingProfileImage = false }
+            if let image = NSImage(contentsOf: url) {
+                profileImage = Image(nsImage: image)
+            }
+            try await viewModel.uploadProfileImage(
+                data: data,
+                contentType: contentType,
+                filename: filename
+            )
+        } catch {
+            profileImageError = error.localizedDescription
+        }
+    }
+#endif
 
     private func displayValue(_ value: String?) -> String {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

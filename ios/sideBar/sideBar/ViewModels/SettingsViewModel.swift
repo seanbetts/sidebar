@@ -114,6 +114,15 @@ public final class SettingsViewModel: ObservableObject {
         isLoadingProfileImage = false
     }
 
+    public func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
+        try await settingsAPI.uploadProfileImage(data: data, contentType: contentType, filename: filename)
+        profileImageData = data
+        cache.set(key: CacheKeys.profileImage, value: data, ttlSeconds: CachePolicy.profileImage)
+        if settings?.profileImageUrl == nil {
+            await load()
+        }
+    }
+
     public func setSkillEnabled(id: String, enabled: Bool) async {
         guard let settings else { return }
         var next = settings.enabledSkills
