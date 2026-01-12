@@ -338,13 +338,75 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             return
         }
         await cleanupEmptyConversationIfNeeded()
-        stopStream()
-        selectedConversationId = nil
-        messages = []
-        promptPreview = nil
-        activeTool = nil
-        clearActiveToolTask?.cancel()
-        userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        clearConversationSelection()
+    }
+
+    public func renameConversation(id: String, title: String) async {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return
+        }
+        guard let existing = conversations.first(where: { $0.id == id }) else {
+            return
+        }
+        guard existing.title != trimmed else {
+            return
+        }
+        let previousTitle = existing.title
+        let previousGenerated = existing.titleGenerated
+        chatStore.updateConversationTitle(
+            id: id,
+            title: trimmed,
+            titleGenerated: false
+        )
+        do {
+            let updated = try await conversationsAPI.update(
+                conversationId: id,
+                updates: ConversationUpdateRequest(title: trimmed, titleGenerated: false, isArchived: nil)
+            )
+            chatStore.updateConversationTitle(
+                id: id,
+                title: updated.title,
+                titleGenerated: updated.titleGenerated
+            )
+        } catch {
+            chatStore.updateConversationTitle(
+                id: id,
+                title: previousTitle,
+                titleGenerated: previousGenerated
+            )
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    public func deleteConversation(id: String) async {
+        let wasSelected = selectedConversationId == id
+        let existing = chatStore.conversations.first(where: { $0.id == id })
+        let existingDetail = chatStore.conversationDetails[id]
+        let previousMessages = messages
+        let previousPromptPreview = promptPreview
+        let previousActiveTool = activeTool
+        chatStore.removeConversation(id: id)
+        if wasSelected {
+            clearConversationSelection()
+        }
+        do {
+            _ = try await conversationsAPI.delete(conversationId: id)
+        } catch {
+            if let existing {
+                chatStore.upsertConversation(existing)
+            }
+            if let existingDetail {
+                chatStore.upsertConversationDetail(existingDetail)
+            }
+            if wasSelected {
+                selectedConversationId = id
+                messages = existingDetail?.messages ?? previousMessages
+                promptPreview = previousPromptPreview
+                activeTool = previousActiveTool
+            }
+            errorMessage = error.localizedDescription
+        }
     }
 
     public func selectConversation(id: String?) async {
@@ -504,6 +566,16 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func clearConversationSelection() {
+        stopStream()
+        selectedConversationId = nil
+        messages = []
+        promptPreview = nil
+        activeTool = nil
+        clearActiveToolTask?.cancel()
+        userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
     }
 
     private func syncMessagesToStore(conversationId: String?, persist: Bool = false) {
