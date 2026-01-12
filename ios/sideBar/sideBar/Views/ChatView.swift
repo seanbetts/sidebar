@@ -574,8 +574,6 @@ private struct ChatInputBar: View {
     let isEnabled: Bool
 
     @State private var textHeight: CGFloat = 0
-    private let minHeight: CGFloat = 46
-    private let maxHeight: CGFloat = 140
     @Environment(\.colorScheme) private var colorScheme
     private let maxInputWidth: CGFloat = 860
 
@@ -620,6 +618,22 @@ private struct ChatInputBar: View {
     private var computedHeight: CGFloat {
         let clamped = min(max(textHeight, minHeight), maxHeight)
         return clamped
+    }
+
+    private var minHeight: CGFloat {
+        #if os(macOS)
+        return 84
+        #else
+        return 46
+        #endif
+    }
+
+    private var maxHeight: CGFloat {
+        #if os(macOS)
+        return 240
+        #else
+        return 140
+        #endif
     }
 }
 
@@ -820,6 +834,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
     let isEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
+    private let controlBarHeight: CGFloat = 44
 
     func makeNSView(context: Context) -> NSView {
         let containerView = NSView()
@@ -827,7 +842,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         let textView = NSTextView()
         textView.font = NSFont.preferredFont(forTextStyle: .body)
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 44, height: 8)
+        textView.textContainerInset = NSSize(width: 16, height: 14)
         textView.textContainer?.lineFragmentPadding = 0
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
@@ -836,6 +851,10 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.textColor = .labelColor
         textView.string = text
+
+        let controlBar = NSView()
+        controlBar.wantsLayer = true
+        controlBar.layer?.backgroundColor = NSColor.clear.cgColor
 
         let placeholderLabel = NSTextField(labelWithString: "Ask Anything...")
         placeholderLabel.font = textView.font
@@ -848,23 +867,35 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         let attachButton = NSButton()
         attachButton.bezelStyle = .regularSquare
         attachButton.isBordered = false
-        attachButton.image = NSImage(systemSymbolName: "paperclip.circle.fill", accessibilityDescription: nil)
+        attachButton.image = NSImage(
+            systemSymbolName: "paperclip.circle.fill",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(
+            NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+        )
 
         let button = NSButton()
         button.bezelStyle = .regularSquare
         button.isBordered = false
-        button.image = NSImage(systemSymbolName: "arrow.up.circle.fill", accessibilityDescription: nil)
+        button.image = NSImage(
+            systemSymbolName: "arrow.up.circle.fill",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(
+            NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+        )
         button.wantsLayer = true
-        button.layer?.cornerRadius = 14
+        button.layer?.cornerRadius = 22
         button.target = context.coordinator
         button.action = #selector(Coordinator.didTapSend)
 
         containerView.addSubview(textView)
         containerView.addSubview(placeholderLabel)
-        containerView.addSubview(attachButton)
-        containerView.addSubview(button)
+        containerView.addSubview(controlBar)
+        controlBar.addSubview(attachButton)
+        controlBar.addSubview(button)
         textView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        controlBar.translatesAutoresizingMaskIntoConstraints = false
         attachButton.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
 
@@ -872,18 +903,22 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             textView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             textView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             textView.topAnchor.constraint(equalTo: containerView.topAnchor),
-            textView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 44),
-            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -48),
+            textView.bottomAnchor.constraint(equalTo: controlBar.topAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 16),
+            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -16),
             placeholderLabel.topAnchor.constraint(equalTo: textView.topAnchor, constant: textView.textContainerInset.height + 2),
-            attachButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
-            attachButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
-            attachButton.widthAnchor.constraint(equalToConstant: 28),
-            attachButton.heightAnchor.constraint(equalToConstant: 28),
-            button.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
-            button.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
-            button.widthAnchor.constraint(equalToConstant: 28),
-            button.heightAnchor.constraint(equalToConstant: 28)
+            controlBar.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            controlBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            controlBar.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            controlBar.heightAnchor.constraint(equalToConstant: controlBarHeight),
+            attachButton.leadingAnchor.constraint(equalTo: controlBar.leadingAnchor, constant: 6),
+            attachButton.centerYAnchor.constraint(equalTo: controlBar.centerYAnchor),
+            attachButton.widthAnchor.constraint(equalToConstant: 48),
+            attachButton.heightAnchor.constraint(equalToConstant: 48),
+            button.trailingAnchor.constraint(equalTo: controlBar.trailingAnchor, constant: -6),
+            button.centerYAnchor.constraint(equalTo: controlBar.centerYAnchor),
+            button.widthAnchor.constraint(equalToConstant: 48),
+            button.heightAnchor.constraint(equalToConstant: 48)
         ])
 
         context.coordinator.textView = textView
@@ -917,7 +952,13 @@ private struct ChatInputAppKitView: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, measuredHeight: $measuredHeight, minHeight: minHeight, maxHeight: maxHeight)
+        Coordinator(
+            text: $text,
+            measuredHeight: $measuredHeight,
+            minHeight: minHeight,
+            maxHeight: maxHeight,
+            controlBarHeight: controlBarHeight
+        )
     }
 
     private func recalculateHeight(for textView: NSTextView) {
@@ -926,7 +967,8 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         }
         layoutManager.ensureLayout(for: textContainer)
         let usedRect = layoutManager.usedRect(for: textContainer)
-        let height = min(maxHeight, max(minHeight, usedRect.height + textView.textContainerInset.height * 2))
+        let contentHeight = usedRect.height + textView.textContainerInset.height * 2
+        let height = min(maxHeight, max(minHeight, contentHeight + controlBarHeight))
         if measuredHeight != height {
             DispatchQueue.main.async {
                 measuredHeight = height
@@ -939,16 +981,24 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         private var measuredHeight: Binding<CGFloat>
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
+        private let controlBarHeight: CGFloat
         weak var textView: NSTextView?
         weak var sendButton: NSButton?
         weak var attachButton: NSButton?
         weak var placeholderLabel: NSTextField?
 
-        init(text: Binding<String>, measuredHeight: Binding<CGFloat>, minHeight: CGFloat, maxHeight: CGFloat) {
+        init(
+            text: Binding<String>,
+            measuredHeight: Binding<CGFloat>,
+            minHeight: CGFloat,
+            maxHeight: CGFloat,
+            controlBarHeight: CGFloat
+        ) {
             self.text = text
             self.measuredHeight = measuredHeight
             self.minHeight = minHeight
             self.maxHeight = maxHeight
+            self.controlBarHeight = controlBarHeight
         }
 
         func textDidChange(_ notification: Notification) {
@@ -960,7 +1010,8 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             }
             layoutManager.ensureLayout(for: textContainer)
             let usedRect = layoutManager.usedRect(for: textContainer)
-            let height = min(maxHeight, max(minHeight, usedRect.height + textView.textContainerInset.height * 2))
+            let contentHeight = usedRect.height + textView.textContainerInset.height * 2
+            let height = min(maxHeight, max(minHeight, contentHeight + controlBarHeight))
             if measuredHeight.wrappedValue != height {
                 measuredHeight.wrappedValue = height
             }
