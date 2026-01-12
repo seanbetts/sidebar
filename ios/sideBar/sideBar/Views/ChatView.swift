@@ -64,6 +64,7 @@ private struct ChatDetailView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isScratchpadPresented = false
     #endif
+    @State private var inputMeasuredHeight: CGFloat = 0
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -88,13 +89,14 @@ private struct ChatDetailView: View {
                 } else if viewModel.messages.isEmpty {
                     ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
                 } else {
-                    ChatMessageListView(viewModel: viewModel)
+                    ChatMessageListView(viewModel: viewModel, bottomInset: messageListBottomInset)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             ChatInputBar(
                 text: $draftMessage,
+                measuredHeight: $inputMeasuredHeight,
                 isEnabled: !viewModel.isStreaming,
                 onSend: handleSend
             )
@@ -132,6 +134,18 @@ private struct ChatDetailView: View {
                 cache: environment.container.cacheClient
             )
         }
+        #endif
+    }
+
+    private var messageListBottomInset: CGFloat {
+        max(inputMeasuredHeight, inputBarMinHeight) + 40
+    }
+
+    private var inputBarMinHeight: CGFloat {
+        #if os(macOS)
+        return 84
+        #else
+        return 46
         #endif
     }
 
@@ -239,6 +253,7 @@ private struct ChatHeaderView: View {
 
 private struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
+    let bottomInset: CGFloat
     @State private var shouldScrollToBottom = false
     @State private var visibleMessageCount: Int = 40
     @State private var isAutoLoadingMore = false
@@ -277,7 +292,7 @@ private struct ChatMessageListView: View {
                             .id(message.id)
                     }
                     Color.clear
-                        .frame(height: 1)
+                        .frame(height: max(bottomInset, 1))
                         .id("bottom")
                 }
                 .padding(16)
@@ -322,6 +337,9 @@ private struct ChatMessageListView: View {
             }
             .onChange(of: viewModel.messages.last?.content ?? "") { _, _ in
                 scrollToBottom(proxy: proxy, animated: shouldScrollToBottom == false)
+            }
+            .onChange(of: bottomInset) { _, _ in
+                scrollToBottom(proxy: proxy, animated: false)
             }
             .refreshable {
                 await viewModel.refreshConversations()
@@ -679,10 +697,10 @@ private struct ChatEmptyStateView: View {
 
 private struct ChatInputBar: View {
     @Binding var text: String
+    @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
     let onSend: () -> Void
 
-    @State private var textHeight: CGFloat = 0
     @Environment(\.colorScheme) private var colorScheme
     private let maxInputWidth: CGFloat = 860
 
@@ -690,7 +708,7 @@ private struct ChatInputBar: View {
         ChatInputContainer {
             PlatformChatInputView(
                 text: $text,
-                measuredHeight: $textHeight,
+                measuredHeight: $measuredHeight,
                 isEnabled: isEnabled,
                 minHeight: minHeight,
                 maxHeight: maxHeight,
@@ -726,7 +744,7 @@ private struct ChatInputBar: View {
     }
 
     private var computedHeight: CGFloat {
-        let clamped = min(max(textHeight, minHeight), maxHeight)
+        let clamped = min(max(measuredHeight, minHeight), maxHeight)
         return clamped
     }
 
