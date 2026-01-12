@@ -111,6 +111,9 @@ private struct ConversationsPanelView: View {
             PanelHeader(title: "Chat") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Button {
+                        Task {
+                            await viewModel.startNewConversation()
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .semibold))
