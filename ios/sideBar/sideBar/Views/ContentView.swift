@@ -250,7 +250,7 @@ public struct ContentView: View {
     }
 
     private func detailView(for section: AppSection?) -> some View {
-        SectionDetailView(section: section)
+        detailViewDefinition(for: section)
     }
 
     private func swapPrimaryAndSecondary() {
@@ -279,7 +279,7 @@ public struct ContentView: View {
                 .toolbar(.hidden, for: .navigationBar)
                 #endif
                 .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
-                    detailView(for: section)
+                    detailViewDefinition(for: section)
                     #if !os(macOS)
                         .navigationBarTitleDisplayMode(.inline)
                     #endif
@@ -310,58 +310,96 @@ public struct ContentView: View {
 
     @ViewBuilder
     private func phonePanelView(for section: AppSection) -> some View {
-        switch section {
-        case .chat:
-            ConversationsPanel()
-        case .notes:
-            NotesPanel()
-        case .tasks:
-            TasksPanel()
-        case .files:
-            FilesPanel()
-        case .websites:
-            WebsitesPanel()
-        case .settings:
-            SettingsView()
-        }
+        sectionDefinition(for: section).panelView()
     }
 
     private func phoneDetailItemBinding(for section: AppSection) -> Binding<PhoneDetailRoute?> {
+        sectionDefinition(for: section).phoneSelection()
+    }
+
+    private func detailViewDefinition(for section: AppSection?) -> AnyView {
+        guard let section else {
+            return AnyView(WelcomeEmptyView())
+        }
+        return sectionDefinition(for: section).detailView()
+    }
+
+    private func sectionDefinition(for section: AppSection) -> SectionDefinition {
         switch section {
         case .chat:
-            return Binding(
-                get: { environment.chatViewModel.selectedConversationId.map(PhoneDetailRoute.init) },
-                set: { route in
-                    guard route == nil else { return }
-                    Task { await environment.chatViewModel.selectConversation(id: nil) }
+            return SectionDefinition(
+                section: .chat,
+                panelView: { AnyView(ConversationsPanel()) },
+                detailView: { AnyView(ChatView()) },
+                phoneSelection: {
+                    Binding(
+                        get: { environment.chatViewModel.selectedConversationId.map(PhoneDetailRoute.init) },
+                        set: { route in
+                            guard route == nil else { return }
+                            Task { await environment.chatViewModel.selectConversation(id: nil) }
+                        }
+                    )
                 }
             )
         case .notes:
-            return Binding(
-                get: { environment.notesViewModel.selectedNoteId.map(PhoneDetailRoute.init) },
-                set: { route in
-                    guard route == nil else { return }
-                    environment.notesViewModel.clearSelection()
+            return SectionDefinition(
+                section: .notes,
+                panelView: { AnyView(NotesPanel()) },
+                detailView: { AnyView(NotesView()) },
+                phoneSelection: {
+                    Binding(
+                        get: { environment.notesViewModel.selectedNoteId.map(PhoneDetailRoute.init) },
+                        set: { route in
+                            guard route == nil else { return }
+                            environment.notesViewModel.clearSelection()
+                        }
+                    )
                 }
             )
         case .files:
-            return Binding(
-                get: { environment.ingestionViewModel.selectedFileId.map(PhoneDetailRoute.init) },
-                set: { route in
-                    guard route == nil else { return }
-                    environment.ingestionViewModel.clearSelection()
+            return SectionDefinition(
+                section: .files,
+                panelView: { AnyView(FilesPanel()) },
+                detailView: { AnyView(FilesView()) },
+                phoneSelection: {
+                    Binding(
+                        get: { environment.ingestionViewModel.selectedFileId.map(PhoneDetailRoute.init) },
+                        set: { route in
+                            guard route == nil else { return }
+                            environment.ingestionViewModel.clearSelection()
+                        }
+                    )
                 }
             )
         case .websites:
-            return Binding(
-                get: { environment.websitesViewModel.selectedWebsiteId.map(PhoneDetailRoute.init) },
-                set: { route in
-                    guard route == nil else { return }
-                    environment.websitesViewModel.clearSelection()
+            return SectionDefinition(
+                section: .websites,
+                panelView: { AnyView(WebsitesPanel()) },
+                detailView: { AnyView(WebsitesView()) },
+                phoneSelection: {
+                    Binding(
+                        get: { environment.websitesViewModel.selectedWebsiteId.map(PhoneDetailRoute.init) },
+                        set: { route in
+                            guard route == nil else { return }
+                            environment.websitesViewModel.clearSelection()
+                        }
+                    )
                 }
             )
-        case .tasks, .settings:
-            return Binding(get: { nil }, set: { _ in })
+        case .settings:
+            return SectionDefinition(
+                section: .settings,
+                panelView: { AnyView(SettingsView()) },
+                detailView: { AnyView(SettingsView()) },
+                phoneSelection: { Binding(get: { nil }, set: { _ in }) }
+            )
+        case .tasks:
+            return SectionDefinition(
+                section: .tasks,
+                panelView: { AnyView(TasksPanel()) },
+                detailView: { AnyView(TasksView()) },
+                phoneSelection: { Binding(get: { nil }, set: { _ in }) }
+            )
         }
     }
 
@@ -484,6 +522,13 @@ private struct PhoneDetailRoute: Identifiable, Hashable {
     let id: String
 }
 
+private struct SectionDefinition {
+    let section: AppSection
+    let panelView: () -> AnyView
+    let detailView: () -> AnyView
+    let phoneSelection: () -> Binding<PhoneDetailRoute?>
+}
+
 private extension String {
     var trimmed: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
@@ -509,34 +554,6 @@ public struct ConfigErrorView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(24)
-    }
-}
-
-public struct SectionDetailView: View {
-    public let section: AppSection?
-
-    public init(section: AppSection?) {
-        self.section = section
-    }
-
-    public var body: some View {
-        // TODO: Swap placeholders for native views per platform conventions.
-        switch section {
-        case .chat:
-            ChatView()
-        case .notes:
-            NotesView()
-        case .files:
-            FilesView()
-        case .websites:
-            WebsitesView()
-        case .settings:
-            SettingsView()
-        case .tasks:
-            TasksView()
-        case .none:
-            WelcomeEmptyView()
-        }
     }
 }
 

@@ -111,9 +111,7 @@ public struct SiteHeaderBar: View {
                 Button {
                     onShowSettings?()
                 } label: {
-                    Image(systemName: "person.crop.circle")
-                        .font(.system(size: 20, weight: .regular))
-                        .frame(width: 28, height: 28)
+                    ProfileAvatarView(size: 28)
                 }
                 .buttonStyle(.plain)
                 .imageScale(.medium)
