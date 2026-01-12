@@ -32,7 +32,7 @@ public struct LoginView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 12) {
                         TextField("Email", text: $email)
-                            .textContentType(.username)
+                            .textContentType(.emailAddress)
 #if canImport(UIKit)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
@@ -58,13 +58,15 @@ public struct LoginView: View {
                     Button {
                         Task { await signIn() }
                     } label: {
-                        if isSigningIn {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
+                        ZStack {
                             Text("Sign In")
-                                .frame(maxWidth: .infinity)
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .opacity(isSigningIn ? 1 : 0)
+                                Spacer()
+                            }
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
@@ -80,6 +82,12 @@ public struct LoginView: View {
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .background(DesignTokens.Colors.background)
+        .onChange(of: email) { _, _ in
+            errorMessage = nil
+        }
+        .onChange(of: password) { _, _ in
+            errorMessage = nil
+        }
         .onAppear {
             focusedField = .email
         }
@@ -91,7 +99,11 @@ public struct LoginView: View {
         defer { isSigningIn = false }
 
         do {
-            try await environment.container.authSession.signIn(email: email, password: password)
+            let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedEmail != email {
+                email = trimmedEmail
+            }
+            try await environment.container.authSession.signIn(email: trimmedEmail, password: password)
             environment.refreshAuthState()
         } catch {
             errorMessage = error.localizedDescription
