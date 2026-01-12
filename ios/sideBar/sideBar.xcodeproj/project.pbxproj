@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0A12F21000000BEEF02 /* MarkdownUI */; };
+		1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
 		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
@@ -35,6 +36,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SideBar.local.xcconfig; sourceTree = "<group>"; };
 		14C84A482F10562300FE0C16 /* sideBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sideBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A552F10562500FE0C16 /* sideBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -105,6 +107,7 @@
 				14C84A582F10562500FE0C16 /* sideBarTests */,
 				14C84A622F10562500FE0C16 /* sideBarUITests */,
 				14C84A492F10562300FE0C16 /* Products */,
+				1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -250,6 +253,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -446,7 +450,7 @@
 		};
 		14C84A6A2F10562500FE0C16 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */;
+			baseConfigurationReference = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -499,7 +503,7 @@
 		};
 		14C84A6B2F10562500FE0C16 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */;
+			baseConfigurationReference = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
