@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 public struct ChatView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -65,6 +66,8 @@ private struct ChatDetailView: View {
     @State private var isScratchpadPresented = false
     #endif
     @State private var inputMeasuredHeight: CGFloat = 0
+    @State private var attachmentsHeight: CGFloat = 0
+    @State private var isFileImporterPresented = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -94,18 +97,30 @@ private struct ChatDetailView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            ChatInputBar(
-                text: $draftMessage,
-                measuredHeight: $inputMeasuredHeight,
-                isEnabled: !viewModel.isStreaming,
-                onSend: handleSend
-            )
+            VStack(spacing: 8) {
+                attachmentsContainer
+                ChatInputBar(
+                    text: $draftMessage,
+                    measuredHeight: $inputMeasuredHeight,
+                    isEnabled: !viewModel.isStreaming,
+                    isSendEnabled: !viewModel.isStreaming && !viewModel.hasPendingAttachments,
+                    onSend: handleSend,
+                    onAttach: { isFileImporterPresented = true }
+                )
+            }
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
             #if os(macOS)
             .frame(maxWidth: 860)
             .frame(maxWidth: .infinity, alignment: .center)
             #endif
+        }
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: true
+        ) { result in
+            handleFileImport(result)
         }
         #if !os(macOS)
         .overlay(alignment: .bottomTrailing) {
@@ -138,7 +153,7 @@ private struct ChatDetailView: View {
     }
 
     private var messageListBottomInset: CGFloat {
-        max(inputMeasuredHeight, inputBarMinHeight) + 40
+        max(inputMeasuredHeight, inputBarMinHeight) + attachmentsHeight + 40
     }
 
     private var inputBarMinHeight: CGFloat {
@@ -157,6 +172,42 @@ private struct ChatDetailView: View {
         draftMessage = ""
         Task {
             await viewModel.sendMessage(text: message)
+        }
+    }
+
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            viewModel.addAttachments(urls: urls)
+        case .failure:
+            environment.toastCenter.show(message: "Failed to attach file")
+        }
+    }
+
+    private var attachmentsContainer: some View {
+        VStack(spacing: 8) {
+            if !viewModel.pendingAttachments.isEmpty {
+                PendingAttachmentsView(
+                    attachments: viewModel.pendingAttachments,
+                    onRetry: { viewModel.retryAttachment(id: $0) },
+                    onDelete: { viewModel.deleteAttachment(id: $0) }
+                )
+            }
+            if !viewModel.readyAttachments.isEmpty {
+                ReadyAttachmentsView(
+                    attachments: viewModel.readyAttachments,
+                    onRemove: { viewModel.removeReadyAttachment(id: $0) }
+                )
+            }
+        }
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: AttachmentHeightPreferenceKey.self, value: proxy.size.height)
+            }
+        )
+        .onPreferenceChange(AttachmentHeightPreferenceKey.self) { height in
+            attachmentsHeight = height
         }
     }
 
@@ -724,7 +775,9 @@ private struct ChatInputBar: View {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
+    let isSendEnabled: Bool
     let onSend: () -> Void
+    let onAttach: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     private let maxInputWidth: CGFloat = 860
@@ -735,9 +788,11 @@ private struct ChatInputBar: View {
                 text: $text,
                 measuredHeight: $measuredHeight,
                 isEnabled: isEnabled,
+                isSendEnabled: isSendEnabled,
                 minHeight: minHeight,
                 maxHeight: maxHeight,
-                onSend: onSend
+                onSend: onSend,
+                onAttach: onAttach
             )
             .frame(height: computedHeight)
             .modifier(GlassEffectModifier())
@@ -808,9 +863,11 @@ private struct PlatformChatInputView: View {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
+    let isSendEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
     let onSend: () -> Void
+    let onAttach: () -> Void
 
     var body: some View {
         #if os(iOS)
@@ -818,18 +875,22 @@ private struct PlatformChatInputView: View {
             text: $text,
             measuredHeight: $measuredHeight,
             isEnabled: isEnabled,
+            isSendEnabled: isSendEnabled,
             minHeight: minHeight,
             maxHeight: maxHeight,
-            onSend: onSend
+            onSend: onSend,
+            onAttach: onAttach
         )
         #else
         ChatInputAppKitView(
             text: $text,
             measuredHeight: $measuredHeight,
             isEnabled: isEnabled,
+            isSendEnabled: isSendEnabled,
             minHeight: minHeight,
             maxHeight: maxHeight,
-            onSend: onSend
+            onSend: onSend,
+            onAttach: onAttach
         )
         #endif
     }
@@ -840,9 +901,11 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
+    let isSendEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
     let onSend: () -> Void
+    let onAttach: () -> Void
 
     func makeUIView(context: Context) -> UIView {
         let containerView = UIView()
@@ -874,6 +937,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         attachButton.setImage(UIImage(systemName: "paperclip.circle.fill"), for: .normal)
         attachButton.clipsToBounds = true
         attachButton.accessibilityLabel = "Attach file"
+        attachButton.addTarget(context.coordinator, action: #selector(Coordinator.didTapAttach), for: .touchUpInside)
 
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
@@ -933,13 +997,13 @@ private struct ChatInputUIKitView: UIViewRepresentable {
             textView.text = text
         }
         textView.isEditable = isEnabled
-        let canSend = isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let canSend = isSendEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         button.isEnabled = canSend
         button.alpha = canSend ? 1.0 : 0.45
         let tintColor: UIColor = .label
         button.backgroundColor = .clear
         button.tintColor = canSend ? tintColor : UIColor.secondaryLabel
-        attachButton.tintColor = UIColor.secondaryLabel
+        attachButton.tintColor = isEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         recalculateHeight(for: textView)
     }
@@ -950,7 +1014,8 @@ private struct ChatInputUIKitView: UIViewRepresentable {
             measuredHeight: $measuredHeight,
             minHeight: minHeight,
             maxHeight: maxHeight,
-            onSend: onSend
+            onSend: onSend,
+            onAttach: onAttach
         )
     }
 
@@ -970,6 +1035,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
         private let onSend: () -> Void
+        private let onAttach: () -> Void
         weak var textView: UITextView?
         weak var sendButton: UIButton?
         weak var attachButton: UIButton?
@@ -980,13 +1046,15 @@ private struct ChatInputUIKitView: UIViewRepresentable {
             measuredHeight: Binding<CGFloat>,
             minHeight: CGFloat,
             maxHeight: CGFloat,
-            onSend: @escaping () -> Void
+            onSend: @escaping () -> Void,
+            onAttach: @escaping () -> Void
         ) {
             self.text = text
             self.measuredHeight = measuredHeight
             self.minHeight = minHeight
             self.maxHeight = maxHeight
             self.onSend = onSend
+            self.onAttach = onAttach
         }
 
         func textViewDidChange(_ textView: UITextView) {
@@ -1018,6 +1086,10 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         @objc func didTapSend() {
             onSend()
         }
+
+        @objc func didTapAttach() {
+            onAttach()
+        }
     }
 }
 #endif
@@ -1027,10 +1099,12 @@ private struct ChatInputAppKitView: NSViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
+    let isSendEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
     private let controlBarHeight: CGFloat = 44
     let onSend: () -> Void
+    let onAttach: () -> Void
 
     func makeNSView(context: Context) -> NSView {
         let containerView = NSView()
@@ -1071,6 +1145,8 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
         )
         attachButton.setAccessibilityLabel("Attach file")
+        attachButton.target = context.coordinator
+        attachButton.action = #selector(Coordinator.didTapAttach)
 
         let button = NSButton()
         button.bezelStyle = .regularSquare
@@ -1139,13 +1215,13 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             textView.string = text
         }
         textView.isEditable = isEnabled
-        let canSend = isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let canSend = isSendEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         button.isEnabled = canSend
         button.alphaValue = canSend ? 1.0 : 0.45
         let tintColor: NSColor = .labelColor
         button.layer?.backgroundColor = NSColor.clear.cgColor
         button.contentTintColor = canSend ? tintColor : NSColor.secondaryLabelColor
-        attachButton.contentTintColor = NSColor.secondaryLabelColor
+        attachButton.contentTintColor = isEnabled ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         recalculateHeight(for: textView)
     }
@@ -1157,7 +1233,8 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             minHeight: minHeight,
             maxHeight: maxHeight,
             controlBarHeight: controlBarHeight,
-            onSend: onSend
+            onSend: onSend,
+            onAttach: onAttach
         )
     }
 
@@ -1183,6 +1260,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         private let maxHeight: CGFloat
         private let controlBarHeight: CGFloat
         private let onSend: () -> Void
+        private let onAttach: () -> Void
         weak var textView: NSTextView?
         weak var sendButton: NSButton?
         weak var attachButton: NSButton?
@@ -1194,7 +1272,8 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             minHeight: CGFloat,
             maxHeight: CGFloat,
             controlBarHeight: CGFloat,
-            onSend: @escaping () -> Void
+            onSend: @escaping () -> Void,
+            onAttach: @escaping () -> Void
         ) {
             self.text = text
             self.measuredHeight = measuredHeight
@@ -1202,6 +1281,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             self.maxHeight = maxHeight
             self.controlBarHeight = controlBarHeight
             self.onSend = onSend
+            self.onAttach = onAttach
         }
 
         func textDidChange(_ notification: Notification) {
@@ -1233,6 +1313,10 @@ private struct ChatInputAppKitView: NSViewRepresentable {
 
         @objc func didTapSend() {
             onSend()
+        }
+
+        @objc func didTapAttach() {
+            onAttach()
         }
     }
 }
@@ -1281,4 +1365,121 @@ private extension DateFormatter {
         formatter.timeStyle = .short
         return formatter
     }()
+}
+
+private struct PendingAttachmentsView: View {
+    let attachments: [ChatAttachmentItem]
+    let onRetry: (String) -> Void
+    let onDelete: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(attachments) { attachment in
+                HStack(spacing: 10) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(attachment.name)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                        Text(statusText(for: attachment))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if attachment.status == .failed {
+                        HStack(spacing: 8) {
+                            Button {
+                                onRetry(attachment.id)
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Retry attachment")
+                            Button {
+                                onDelete(attachment.id)
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Delete attachment")
+                        }
+                    } else {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(DesignTokens.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    private func statusText(for attachment: ChatAttachmentItem) -> String {
+        if let stage = attachment.stage, !stage.isEmpty {
+            return stage
+        }
+        switch attachment.status {
+        case .uploading:
+            return "uploading"
+        case .queued:
+            return "queued"
+        case .failed:
+            return "failed"
+        case .canceled:
+            return "canceled"
+        case .ready:
+            return "ready"
+        }
+    }
+}
+
+private struct ReadyAttachmentsView: View {
+    let attachments: [ChatAttachmentItem]
+    let onRemove: (String) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(attachments) { attachment in
+                    HStack(spacing: 6) {
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(attachment.name)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                        Button {
+                            onRemove(attachment.id)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Remove \(attachment.name)")
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(DesignTokens.Colors.muted)
+                    .clipShape(Capsule())
+                }
+            }
+        }
+    }
+}
+
+private struct AttachmentHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
 }

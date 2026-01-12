@@ -149,9 +149,11 @@ final class ChatViewModelTests: XCTestCase {
         let defaults = UserDefaults(suiteName: "ChatViewModelTests") ?? .standard
         defaults.removePersistentDomain(forName: "ChatViewModelTests")
         let chatStore = ChatStore(conversationsAPI: api, cache: cache)
+        let ingestionAPI = IngestionAPI(client: Self.sharedAPIClient)
         let viewModel = ChatViewModel(
             chatAPI: chatAPI,
             conversationsAPI: api,
+            ingestionAPI: ingestionAPI,
             cache: cache,
             themeManager: themeManager,
             streamClient: streamClient,
@@ -179,7 +181,7 @@ private final class MockChatStreamClient: ChatStreamClient {
     }
 }
 
-private struct MockConversationsAPI: ConversationsAPIProviding {
+private struct MockConversationsAPI: ConversationsAPIProviding, ConversationsProviding {
     let listResult: Result<[Conversation], Error>
     let getResult: Result<ConversationWithMessages, Error>
     let searchResult: Result<[Conversation], Error>
