@@ -210,7 +210,7 @@ public final class AppEnvironment: ObservableObject {
             return
         }
         Task {
-            await chatViewModel.refreshConversations()
+            await chatViewModel.refreshConversations(silent: true)
             await chatViewModel.refreshActiveConversation(silent: true)
             await notesViewModel.loadTree()
             await websitesViewModel.load()
