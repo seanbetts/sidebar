@@ -58,6 +58,7 @@ private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var draftMessage: String = ""
     private let inputBarHeight: CGFloat = 60
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var environment: AppEnvironment
@@ -273,13 +274,13 @@ private struct ChatMessageListView: View {
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
-        if animated {
-            withAnimation(.easeOut(duration: 0.2)) {
+        if animated && !reduceMotion {
+            withAnimation(Motion.quick(reduceMotion: reduceMotion)) {
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
-        } else {
-            proxy.scrollTo("bottom", anchor: .bottom)
+            return
         }
+        proxy.scrollTo("bottom", anchor: .bottom)
     }
 }
 
