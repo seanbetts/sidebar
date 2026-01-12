@@ -401,11 +401,11 @@ Critical Path (MVP): [███████████████████�
 **Sessions: 11-17 | Added after MVP delivery**
 
 #### Phase 11.1: Chat Input (2-3 sessions)
-- [ ] Text input with auto-expanding height
-- [ ] Send button (disabled when empty)
-- [ ] SSE streaming for sending messages
+- [x] Text input with auto-expanding height
+- [x] Send button (disabled when empty)
+- [x] SSE streaming for sending messages
 - [ ] File attachment picker (optional)
-- [ ] Keyboard shortcuts (Cmd+Enter on Mac)
+- [x] Keyboard shortcuts (Cmd+Enter on Mac)
 
 #### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
 - [ ] **Critical Decision**: RichTextKit vs Custom UITextView/NSTextView

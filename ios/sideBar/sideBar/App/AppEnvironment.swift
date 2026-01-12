@@ -42,6 +42,7 @@ public final class AppEnvironment: ObservableObject {
         self.tasksStore = TasksStore()
         self.chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
+            conversationsAPI: container.conversationsAPI,
             cache: container.cacheClient,
             themeManager: themeManager,
             streamClient: container.makeChatStreamClient(handler: nil),

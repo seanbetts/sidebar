@@ -56,6 +56,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public private(set) var promptPreview: ChatPromptPreview? = nil
 
     private let chatAPI: ChatAPI
+    private let conversationsAPI: ConversationsAPI
     private let cache: CacheClient
     private let themeManager: ThemeManager
     private let streamClient: ChatStreamClient
@@ -71,6 +72,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
 
     public init(
         chatAPI: ChatAPI,
+        conversationsAPI: ConversationsAPI,
         cache: CacheClient,
         themeManager: ThemeManager,
         streamClient: ChatStreamClient,
@@ -79,6 +81,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         clock: @escaping () -> Date = Date.init
     ) {
         self.chatAPI = chatAPI
+        self.conversationsAPI = conversationsAPI
         self.cache = cache
         self.themeManager = themeManager
         self.streamClient = streamClient
@@ -196,6 +199,89 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     public func stopAutoRefresh() {
         refreshTask?.cancel()
         refreshTask = nil
+    }
+
+    public func sendMessage(text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isStreaming else {
+            return
+        }
+        errorMessage = nil
+        let userMessageId = UUID().uuidString
+        let assistantMessageId = UUID().uuidString
+        let timestamp = Self.isoTimestamp(from: clock())
+
+        var conversationId = selectedConversationId
+        if conversationId == nil {
+            do {
+                let conversation = try await conversationsAPI.create()
+                conversationId = conversation.id
+                selectedConversationId = conversation.id
+                chatStore.addConversation(conversation)
+                chatStore.upsertConversationDetail(
+                    ConversationWithMessages(
+                        id: conversation.id,
+                        title: conversation.title,
+                        titleGenerated: conversation.titleGenerated,
+                        createdAt: conversation.createdAt,
+                        updatedAt: conversation.updatedAt,
+                        messageCount: conversation.messageCount,
+                        firstMessage: conversation.firstMessage,
+                        isArchived: conversation.isArchived,
+                        messages: []
+                    )
+                )
+            } catch {
+                errorMessage = error.localizedDescription
+                return
+            }
+        }
+
+        guard let conversationId else {
+            return
+        }
+
+        let userMessage = Message(
+            id: userMessageId,
+            role: .user,
+            content: trimmed,
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: timestamp,
+            error: nil
+        )
+        messages.append(userMessage)
+        syncMessagesToStore(conversationId: conversationId, persist: true)
+
+        let assistantMessage = Message(
+            id: assistantMessageId,
+            role: .assistant,
+            content: "",
+            status: .streaming,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: timestamp,
+            error: nil
+        )
+        messages.append(assistantMessage)
+        beginStreamingMessage(assistantMessageId: assistantMessageId)
+        syncMessagesToStore(conversationId: conversationId, persist: true)
+
+        Task { [weak self] in
+            await self?.persistMessage(
+                conversationId: conversationId,
+                message: userMessage
+            )
+        }
+
+        await startStream(
+            request: ChatStreamRequest(
+                message: trimmed,
+                conversationId: conversationId,
+                userMessageId: userMessageId
+            )
+        )
     }
 
     public func selectConversation(id: String?) async {
@@ -457,6 +543,13 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             )
         }
         syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId, persist: true)
+        if let conversationId = streamingConversationId ?? selectedConversationId,
+           let assistantMessage = messages.first(where: { $0.id == messageId }) {
+            Task { [weak self] in
+                await self?.persistMessage(conversationId: conversationId, message: assistantMessage)
+                await self?.refreshConversations()
+            }
+        }
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil
@@ -616,6 +709,37 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             return [:]
         }
         return dict.mapValues { AnyCodable($0) }
+    }
+
+    private func persistMessage(conversationId: String, message: Message) async {
+        do {
+            try await conversationsAPI.addMessage(
+                conversationId: conversationId,
+                message: ConversationMessageCreate(
+                    id: message.id,
+                    role: message.role.rawValue,
+                    content: message.content,
+                    status: message.status.rawValue,
+                    timestamp: message.timestamp,
+                    toolCalls: message.toolCalls?.map { AnyCodable($0) },
+                    error: message.error
+                )
+            )
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static func isoTimestamp(from date: Date) -> String {
+        isoFormatter.string(from: date)
     }
 
     private func prefixForToken(message: Message, token: String) -> String {
