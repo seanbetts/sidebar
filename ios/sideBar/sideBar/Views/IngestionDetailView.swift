@@ -48,20 +48,3 @@ public struct IngestionDetailView: View {
     }
 
 }
-
-private struct OfflineBanner: View {
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "wifi.slash")
-            Text("Offline - showing cached data")
-                .font(.subheadline.weight(.semibold))
-        }
-        .foregroundStyle(.primary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.yellow.opacity(0.2))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal, 12)
-    }
-}

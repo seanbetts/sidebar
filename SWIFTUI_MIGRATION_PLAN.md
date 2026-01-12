@@ -365,10 +365,10 @@ Critical Path (MVP): [█████████████████░░�
   - [x] Prevent layout shifts during loading
   - [x] Pull-to-refresh
   - [x] Infinite scroll loading
-- [ ] 9.9 Offline Behavior (cached reading)
-  - [ ] Validate cached reading offline (notes/files/websites/chat)
-  - [ ] Show offline indicator when SSE disconnects
-  - [ ] Retry gracefully on network return
+- [x] 9.9 Offline Behavior (cached reading)
+  - [x] Validate cached reading offline (notes/files/websites/chat)
+  - [x] Show offline indicator when SSE disconnects
+  - [x] Retry gracefully on network return
 
 **Phase 9.1 DRY Navigation Refactor (Cross-Device)**
 - [x] Inventory compact vs regular entry points per section (Chat, Notes, Files, Websites, Tasks)
