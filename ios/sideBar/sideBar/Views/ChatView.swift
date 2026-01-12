@@ -90,6 +90,10 @@ private struct ChatDetailView: View {
             )
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
+            #if os(macOS)
+            .frame(maxWidth: 860)
+            .frame(maxWidth: .infinity, alignment: .center)
+            #endif
         }
         #if !os(macOS)
         .overlay(alignment: .bottomTrailing) {
@@ -213,6 +217,7 @@ private struct ChatHeaderView: View {
 private struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var shouldScrollToBottom = false
+    private let maxContentWidth: CGFloat = 860
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -227,6 +232,10 @@ private struct ChatMessageListView: View {
                         .id("bottom")
                 }
                 .padding(16)
+                #if os(macOS)
+                .frame(maxWidth: maxContentWidth)
+                .frame(maxWidth: .infinity, alignment: .center)
+                #endif
             }
             .task(id: viewModel.selectedConversationId) {
                 guard viewModel.selectedConversationId != nil else {
@@ -277,6 +286,7 @@ private struct ChatMessageListView: View {
 private struct ChatMessageRow: View {
     let message: Message
     @Environment(\.colorScheme) private var colorScheme
+    private let maxBubbleWidth: CGFloat = 860
 
     var body: some View {
         bubble
@@ -327,8 +337,13 @@ private struct ChatMessageRow: View {
                 .stroke(bubbleBorder, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        #if os(macOS)
+        .frame(maxWidth: maxBubbleWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
+        #else
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity, alignment: .center)
+        #endif
     }
 
     private var formattedTimestamp: String {
@@ -562,6 +577,7 @@ private struct ChatInputBar: View {
     private let minHeight: CGFloat = 46
     private let maxHeight: CGFloat = 140
     @Environment(\.colorScheme) private var colorScheme
+    private let maxInputWidth: CGFloat = 860
 
     var body: some View {
         ChatInputContainer {
@@ -575,6 +591,12 @@ private struct ChatInputBar: View {
             .frame(height: computedHeight)
             .modifier(GlassEffectModifier())
         }
+        .frame(maxWidth: maxInputWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(DesignTokens.Colors.surface)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(borderColor, lineWidth: 1)
@@ -603,11 +625,7 @@ private struct ChatInputBar: View {
 
 private struct GlassEffectModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 18.0, macOS 15.0, *) {
-            content.glassEffect(.regular)
-        } else {
-            content
-        }
+        content
     }
 }
 
@@ -615,13 +633,7 @@ private struct ChatInputContainer<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        if #available(iOS 18.0, macOS 15.0, *) {
-            GlassEffectContainer {
-                content()
-            }
-        } else {
-            content()
-        }
+        content()
     }
 }
 
@@ -661,17 +673,9 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     let minHeight: CGFloat
     let maxHeight: CGFloat
 
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        let effectView: UIVisualEffectView
-        if #available(iOS 18.0, *) {
-            effectView = UIVisualEffectView(effect: nil)
-        } else {
-            effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-        }
-        effectView.clipsToBounds = true
-        effectView.layer.cornerRadius = 16
-        effectView.backgroundColor = .clear
-        effectView.isOpaque = false
+    func makeUIView(context: Context) -> UIView {
+        let containerView = UIView()
+        containerView.backgroundColor = .clear
 
         let textView = UITextView()
         textView.font = UIFont.preferredFont(forTextStyle: .body)
@@ -700,10 +704,10 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         button.clipsToBounds = true
         button.addTarget(context.coordinator, action: #selector(Coordinator.didTapSend), for: .touchUpInside)
 
-        effectView.contentView.addSubview(textView)
-        effectView.contentView.addSubview(placeholderLabel)
-        effectView.contentView.addSubview(attachButton)
-        effectView.contentView.addSubview(button)
+        containerView.addSubview(textView)
+        containerView.addSubview(placeholderLabel)
+        containerView.addSubview(attachButton)
+        containerView.addSubview(button)
 
         textView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -714,19 +718,19 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         placeholderCenter.priority = .defaultHigh
 
         NSLayoutConstraint.activate([
-            textView.leadingAnchor.constraint(equalTo: effectView.contentView.leadingAnchor),
-            textView.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor),
-            textView.topAnchor.constraint(equalTo: effectView.contentView.topAnchor),
-            textView.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor),
+            textView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            textView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 44),
             placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -48),
             placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: 8),
-            attachButton.leadingAnchor.constraint(equalTo: effectView.contentView.leadingAnchor, constant: 10),
-            attachButton.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -10),
+            attachButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
+            attachButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
             attachButton.widthAnchor.constraint(equalToConstant: 28),
             attachButton.heightAnchor.constraint(equalToConstant: 28),
-            button.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor, constant: -10),
-            button.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -10),
+            button.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            button.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
             button.widthAnchor.constraint(equalToConstant: 28),
             button.heightAnchor.constraint(equalToConstant: 28)
         ])
@@ -737,10 +741,10 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         context.coordinator.attachButton = attachButton
         context.coordinator.placeholderLabel = placeholderLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return effectView
+        return containerView
     }
 
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+    func updateUIView(_ uiView: UIView, context: Context) {
         guard let textView = context.coordinator.textView,
               let button = context.coordinator.sendButton,
               let attachButton = context.coordinator.attachButton,
@@ -817,22 +821,13 @@ private struct ChatInputAppKitView: NSViewRepresentable {
     let minHeight: CGFloat
     let maxHeight: CGFloat
 
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let effectView = NSVisualEffectView()
-        if #available(macOS 15.0, *) {
-            effectView.material = .underWindowBackground
-        } else {
-            effectView.material = .hudWindow
-        }
-        effectView.state = .active
-        effectView.blendingMode = .behindWindow
-        effectView.wantsLayer = true
-        effectView.layer?.cornerRadius = 16
+    func makeNSView(context: Context) -> NSView {
+        let containerView = NSView()
 
         let textView = NSTextView()
         textView.font = NSFont.preferredFont(forTextStyle: .body)
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 12, height: 8)
+        textView.textContainerInset = NSSize(width: 44, height: 8)
         textView.textContainer?.lineFragmentPadding = 0
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
@@ -864,46 +859,42 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         button.target = context.coordinator
         button.action = #selector(Coordinator.didTapSend)
 
-        effectView.addSubview(textView)
-        effectView.addSubview(placeholderLabel)
-        effectView.addSubview(attachButton)
-        effectView.addSubview(button)
+        containerView.addSubview(textView)
+        containerView.addSubview(placeholderLabel)
+        containerView.addSubview(attachButton)
+        containerView.addSubview(button)
         textView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         attachButton.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
 
-        let placeholderCenter = placeholderLabel.centerYAnchor.constraint(equalTo: textView.centerYAnchor)
-        placeholderCenter.priority = .defaultHigh
-
         NSLayoutConstraint.activate([
-            textView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
-            textView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
-            textView.topAnchor.constraint(equalTo: effectView.topAnchor),
-            textView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
+            textView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            textView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 44),
             placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -48),
-            placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: 8),
-            attachButton.leadingAnchor.constraint(equalTo: effectView.leadingAnchor, constant: 10),
-            attachButton.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -10),
+            placeholderLabel.topAnchor.constraint(equalTo: textView.topAnchor, constant: textView.textContainerInset.height + 2),
+            attachButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
+            attachButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
             attachButton.widthAnchor.constraint(equalToConstant: 28),
             attachButton.heightAnchor.constraint(equalToConstant: 28),
-            button.trailingAnchor.constraint(equalTo: effectView.trailingAnchor, constant: -10),
-            button.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -10),
+            button.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            button.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
             button.widthAnchor.constraint(equalToConstant: 28),
             button.heightAnchor.constraint(equalToConstant: 28)
         ])
-        placeholderCenter.isActive = true
 
         context.coordinator.textView = textView
         context.coordinator.sendButton = button
         context.coordinator.attachButton = attachButton
         context.coordinator.placeholderLabel = placeholderLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return effectView
+        return containerView
     }
 
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+    func updateNSView(_ nsView: NSView, context: Context) {
         guard let textView = context.coordinator.textView,
               let button = context.coordinator.sendButton,
               let attachButton = context.coordinator.attachButton,
