@@ -49,6 +49,28 @@ public final class ChatStore: ObservableObject {
         conversationDetails = [:]
     }
 
+    public func addConversation(_ conversation: Conversation, persist: Bool = true) {
+        var updated = conversations
+        updated.removeAll { $0.id == conversation.id }
+        updated.insert(conversation, at: 0)
+        conversations = updated
+        if persist {
+            cache.set(
+                key: CacheKeys.conversationsList,
+                value: updated,
+                ttlSeconds: CachePolicy.conversationsList
+            )
+        }
+    }
+
+    public func upsertConversationDetail(_ detail: ConversationWithMessages, persist: Bool = true) {
+        conversationDetails[detail.id] = detail
+        if persist {
+            let cacheKey = CacheKeys.conversation(id: detail.id)
+            cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+        }
+    }
+
     public func updateConversationMessages(
         id: String,
         messages: [Message],

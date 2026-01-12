@@ -95,7 +95,8 @@ private struct ChatDetailView: View {
 
             ChatInputBar(
                 text: $draftMessage,
-                isEnabled: true
+                isEnabled: !viewModel.isStreaming,
+                onSend: handleSend
             )
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
@@ -132,6 +133,17 @@ private struct ChatDetailView: View {
             )
         }
         #endif
+    }
+
+    private func handleSend() {
+        let message = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else {
+            return
+        }
+        draftMessage = ""
+        Task {
+            await viewModel.sendMessage(text: message)
+        }
     }
 
     private var isCompact: Bool {
@@ -668,6 +680,7 @@ private struct ChatEmptyStateView: View {
 private struct ChatInputBar: View {
     @Binding var text: String
     let isEnabled: Bool
+    let onSend: () -> Void
 
     @State private var textHeight: CGFloat = 0
     @Environment(\.colorScheme) private var colorScheme
@@ -680,7 +693,8 @@ private struct ChatInputBar: View {
                 measuredHeight: $textHeight,
                 isEnabled: isEnabled,
                 minHeight: minHeight,
-                maxHeight: maxHeight
+                maxHeight: maxHeight,
+                onSend: onSend
             )
             .frame(height: computedHeight)
             .modifier(GlassEffectModifier())
@@ -753,6 +767,7 @@ private struct PlatformChatInputView: View {
     let isEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
+    let onSend: () -> Void
 
     var body: some View {
         #if os(iOS)
@@ -761,7 +776,8 @@ private struct PlatformChatInputView: View {
             measuredHeight: $measuredHeight,
             isEnabled: isEnabled,
             minHeight: minHeight,
-            maxHeight: maxHeight
+            maxHeight: maxHeight,
+            onSend: onSend
         )
         #else
         ChatInputAppKitView(
@@ -769,7 +785,8 @@ private struct PlatformChatInputView: View {
             measuredHeight: $measuredHeight,
             isEnabled: isEnabled,
             minHeight: minHeight,
-            maxHeight: maxHeight
+            maxHeight: maxHeight,
+            onSend: onSend
         )
         #endif
     }
@@ -782,6 +799,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     let isEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
+    let onSend: () -> Void
 
     func makeUIView(context: Context) -> UIView {
         let containerView = UIView()
@@ -880,7 +898,13 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, measuredHeight: $measuredHeight, minHeight: minHeight, maxHeight: maxHeight)
+        Coordinator(
+            text: $text,
+            measuredHeight: $measuredHeight,
+            minHeight: minHeight,
+            maxHeight: maxHeight,
+            onSend: onSend
+        )
     }
 
     private func recalculateHeight(for textView: UITextView) {
@@ -898,16 +922,24 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         private var measuredHeight: Binding<CGFloat>
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
+        private let onSend: () -> Void
         weak var textView: UITextView?
         weak var sendButton: UIButton?
         weak var attachButton: UIButton?
         weak var placeholderLabel: UILabel?
 
-        init(text: Binding<String>, measuredHeight: Binding<CGFloat>, minHeight: CGFloat, maxHeight: CGFloat) {
+        init(
+            text: Binding<String>,
+            measuredHeight: Binding<CGFloat>,
+            minHeight: CGFloat,
+            maxHeight: CGFloat,
+            onSend: @escaping () -> Void
+        ) {
             self.text = text
             self.measuredHeight = measuredHeight
             self.minHeight = minHeight
             self.maxHeight = maxHeight
+            self.onSend = onSend
         }
 
         func textViewDidChange(_ textView: UITextView) {
@@ -921,6 +953,7 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         }
 
         @objc func didTapSend() {
+            onSend()
         }
     }
 }
@@ -934,6 +967,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
     let minHeight: CGFloat
     let maxHeight: CGFloat
     private let controlBarHeight: CGFloat = 44
+    let onSend: () -> Void
 
     func makeNSView(context: Context) -> NSView {
         let containerView = NSView()
@@ -1059,7 +1093,8 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             measuredHeight: $measuredHeight,
             minHeight: minHeight,
             maxHeight: maxHeight,
-            controlBarHeight: controlBarHeight
+            controlBarHeight: controlBarHeight,
+            onSend: onSend
         )
     }
 
@@ -1084,6 +1119,7 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
         private let controlBarHeight: CGFloat
+        private let onSend: () -> Void
         weak var textView: NSTextView?
         weak var sendButton: NSButton?
         weak var attachButton: NSButton?
@@ -1094,13 +1130,15 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             measuredHeight: Binding<CGFloat>,
             minHeight: CGFloat,
             maxHeight: CGFloat,
-            controlBarHeight: CGFloat
+            controlBarHeight: CGFloat,
+            onSend: @escaping () -> Void
         ) {
             self.text = text
             self.measuredHeight = measuredHeight
             self.minHeight = minHeight
             self.maxHeight = maxHeight
             self.controlBarHeight = controlBarHeight
+            self.onSend = onSend
         }
 
         func textDidChange(_ notification: Notification) {
@@ -1119,7 +1157,17 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             }
         }
 
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)),
+               NSEvent.modifierFlags.contains(.command) {
+                onSend()
+                return true
+            }
+            return false
+        }
+
         @objc func didTapSend() {
+            onSend()
         }
     }
 }
