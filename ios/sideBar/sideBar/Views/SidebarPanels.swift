@@ -632,11 +632,17 @@ private struct NotesTreeRow: View {
     }
 
     var body: some View {
-        let row = SelectableRow(isSelected: isSelected, useListStyling: useListStyling) {
+        let row = SelectableRow(
+            isSelected: isSelected,
+            insets: compactRowInsets,
+            verticalPadding: rowVerticalPadding,
+            useListStyling: useListStyling
+        ) {
             HStack(spacing: 8) {
                 Image(systemName: item.isFile ? "doc.text" : "folder")
                     .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
                 Text(item.displayName)
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
             }
@@ -670,6 +676,23 @@ private struct NotesTreeRow: View {
         return DesignTokens.Colors.sidebar
         #else
         return DesignTokens.Colors.background
+        #endif
+    }
+
+    private var compactRowInsets: EdgeInsets {
+        EdgeInsets(
+            top: 0,
+            leading: DesignTokens.Spacing.xs,
+            bottom: 0,
+            trailing: DesignTokens.Spacing.xs
+        )
+    }
+
+    private var rowVerticalPadding: CGFloat {
+        #if os(macOS)
+        return DesignTokens.Spacing.xs
+        #else
+        return item.isFile ? DesignTokens.Spacing.xs : DesignTokens.Spacing.xxs
         #endif
     }
 }
