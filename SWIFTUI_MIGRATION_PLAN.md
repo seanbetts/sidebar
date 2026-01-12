@@ -150,7 +150,7 @@ Critical Path (MVP): [████████████████░░░�
 | **6. Website Viewer** | ✅ Complete | 1 / 1-2 | 1 / 2-3 | 100% | Modified (no saving) |
 | **7. Additional Features** | ✅ Complete | 1 / 2-3 | 1 / 3-4 | 100% | Modified (view-only) |
 | **8. Cache-First Sync Architecture** | ✅ Complete | 2 / 2-3 | 2 / 2-3 | 100% | Full |
-| **9. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
+| **9. Platform Optimization** | 🟨 In Progress | 0 / 5-7 | 0 / 5-7 | 67% | Full |
 | **10. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
 | **MVP TOTAL** | | **24-36** | | | |
 
@@ -337,9 +337,9 @@ Critical Path (MVP): [████████████████░░░�
 
 #### Phase 9: Platform Optimization (5-7 sessions)
 **MVP Scope: Full**
-- [ ] 9.1 iPhone-Specific Layout (read-only optimized)
-- [ ] 9.2 iPad-Specific Layout
-- [ ] 9.3 macOS-Specific Features
+- [x] 9.1 iPhone-Specific Layout (read-only optimized)
+- [x] 9.2 iPad-Specific Layout
+- [x] 9.3 macOS-Specific Features
 - [ ] 9.4 Animations & Transitions
 - [ ] 9.5 Performance Optimization
 - [ ] 9.6 Accessibility (VoiceOver, Dynamic Type)
@@ -348,14 +348,14 @@ Critical Path (MVP): [████████████████░░░�
 - [ ] 9.9 Offline Behavior (cached reading)
 
 **Phase 9.1 DRY Navigation Refactor (Cross-Device)**
-- [ ] Inventory compact vs regular entry points per section (Chat, Notes, Files, Websites, Tasks)
-- [ ] Define shared contract: PanelView + DetailView + selection state (no platform-specific list logic)
-- [ ] Build compact shell: TabView -> NavigationStack -> PanelView root -> DetailView push on selection
-- [ ] Keep regular shell: WorkspaceLayout uses same PanelView/DetailView pair
-- [ ] Refactor Notes end-to-end as the template
-- [ ] Apply template to Chat, Websites, Files, Tasks
-- [ ] Replace compact-only list flows (remove IngestionSplitView usage on iPhone)
-- [ ] Unify header avatar rendering (SiteHeaderBar uses shared avatar view)
+- [x] Inventory compact vs regular entry points per section (Chat, Notes, Files, Websites, Tasks)
+- [x] Define shared contract: PanelView + DetailView + selection state (no platform-specific list logic)
+- [x] Build compact shell: TabView -> NavigationStack -> PanelView root -> DetailView push on selection
+- [x] Keep regular shell: WorkspaceLayout uses same PanelView/DetailView pair
+- [x] Refactor Notes end-to-end as the template
+- [x] Apply template to Chat, Websites, Files, Tasks
+- [x] Replace compact-only list flows (remove IngestionSplitView usage on iPhone)
+- [x] Unify header avatar rendering (SiteHeaderBar uses shared avatar view)
 - [ ] Validate iPhone regressions: profile image, chat header, notes/websites list, files row content
 
 #### Phase 10: MVP Testing & Refinement (3-4 sessions MVP, 4-6 full)
