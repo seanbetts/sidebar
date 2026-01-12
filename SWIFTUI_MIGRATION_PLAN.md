@@ -341,11 +341,32 @@ Critical Path (MVP): [█████████████████░░�
 - [x] 9.2 iPad-Specific Layout
 - [x] 9.3 macOS-Specific Features
 - [ ] 9.4 Animations & Transitions
+  - [ ] Define core animation patterns (panel swap, list insert/remove, detail open/close)
+  - [ ] Add selection transition for sidebar rows (notes/files/websites)
+  - [ ] Add optional list load-in stagger for panel lists
+  - [ ] Respect Reduce Motion across animations
 - [ ] 9.5 Performance Optimization
+  - [ ] Profile list rendering with large datasets (notes/files/websites)
+  - [ ] Reduce recomputation in chat and markdown-heavy views
+  - [ ] Audit image sizing and caching (avatars/icons)
+  - [ ] Minimize expensive modifiers in scrolling lists
 - [ ] 9.6 Accessibility (VoiceOver, Dynamic Type)
+  - [ ] Add VoiceOver labels for custom controls (chat input, toolbar buttons)
+  - [ ] Validate Dynamic Type on iOS/macOS (no truncation/overlap)
+  - [ ] Ensure sidebar selection states are announced
+  - [ ] Verify focus order in Settings and Login
 - [ ] 9.7 Error Handling
+  - [ ] Standardize error empty states across panels
+  - [ ] Add retry actions where appropriate
+  - [ ] Ensure auth errors offer a clear recovery path
 - [ ] 9.8 Loading States
+  - [ ] Make loading placeholders consistent across panels
+  - [ ] Add skeleton rows for list loading where feasible
+  - [ ] Prevent layout shifts during loading
 - [ ] 9.9 Offline Behavior (cached reading)
+  - [ ] Validate cached reading offline (notes/files/websites/chat)
+  - [ ] Show offline indicator when SSE disconnects
+  - [ ] Retry gracefully on network return
 
 **Phase 9.1 DRY Navigation Refactor (Cross-Device)**
 - [x] Inventory compact vs regular entry points per section (Chat, Notes, Files, Websites, Tasks)
