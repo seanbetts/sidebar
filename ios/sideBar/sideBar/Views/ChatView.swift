@@ -218,6 +218,8 @@ private struct ChatHeaderView: View {
 private struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var shouldScrollToBottom = false
+    @State private var visibleMessageCount: Int = 40
+    private let pageSize: Int = 40
     private let maxContentWidth: CGFloat = 860
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -225,7 +227,19 @@ private struct ChatMessageListView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(viewModel.messages) { message in
+                    if hasMoreMessages {
+                        Button {
+                            loadMoreMessages(proxy: proxy)
+                        } label: {
+                            Text("Load earlier messages")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.vertical, 4)
+                    }
+                    ForEach(visibleMessages) { message in
                         ChatMessageRow(message: message)
                             .id(message.id)
                     }
@@ -251,9 +265,17 @@ private struct ChatMessageListView: View {
                 shouldScrollToBottom = false
             }
             .onChange(of: viewModel.selectedConversationId) { _, _ in
+                visibleMessageCount = pageSize
                 shouldScrollToBottom = true
             }
-            .onChange(of: viewModel.messages.count) { _, _ in
+            .onChange(of: viewModel.messages.count) { oldValue, newValue in
+                if oldValue == 0 {
+                    visibleMessageCount = min(pageSize, newValue)
+                } else if visibleMessageCount >= oldValue {
+                    visibleMessageCount = newValue
+                } else if visibleMessageCount > newValue {
+                    visibleMessageCount = newValue
+                }
                 let shouldJump = shouldScrollToBottom
                 scrollToBottom(proxy: proxy, animated: !shouldJump)
                 if shouldJump {
@@ -274,6 +296,18 @@ private struct ChatMessageListView: View {
         }
     }
 
+    private var visibleMessages: [Message] {
+        let total = viewModel.messages.count
+        guard total > visibleMessageCount else {
+            return viewModel.messages
+        }
+        return Array(viewModel.messages.suffix(visibleMessageCount))
+    }
+
+    private var hasMoreMessages: Bool {
+        viewModel.messages.count > visibleMessageCount
+    }
+
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
         if animated && !reduceMotion {
             withAnimation(Motion.quick(reduceMotion: reduceMotion)) {
@@ -282,6 +316,27 @@ private struct ChatMessageListView: View {
             return
         }
         proxy.scrollTo("bottom", anchor: .bottom)
+    }
+
+    private func loadMoreMessages(proxy: ScrollViewProxy) {
+        guard hasMoreMessages else {
+            return
+        }
+        let anchorId = visibleMessages.first?.id
+        visibleMessageCount = min(viewModel.messages.count, visibleMessageCount + pageSize)
+        guard let anchorId else {
+            return
+        }
+        Task { @MainActor in
+            await Task.yield()
+            if reduceMotion {
+                proxy.scrollTo(anchorId, anchor: .top)
+            } else {
+                withAnimation(Motion.quick(reduceMotion: reduceMotion)) {
+                    proxy.scrollTo(anchorId, anchor: .top)
+                }
+            }
+        }
     }
 }
 

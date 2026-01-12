@@ -345,11 +345,11 @@ Critical Path (MVP): [█████████████████░░�
   - [x] Add selection transition for sidebar rows (notes/files/websites)
   - [x] Add optional list load-in stagger for panel lists
   - [x] Respect Reduce Motion across animations
-- [ ] 9.5 Performance Optimization
+- [x] 9.5 Performance Optimization
   - [x] Profile list rendering with large datasets (notes/files/websites)
   - [x] Reduce recomputation in chat and markdown-heavy views
   - [x] Audit image sizing and caching (avatars/icons)
-  - [ ] Minimize expensive modifiers in scrolling lists
+  - [x] Minimize expensive modifiers in scrolling lists
 - [ ] 9.6 Accessibility (VoiceOver, Dynamic Type)
   - [ ] Add VoiceOver labels for custom controls (chat input, toolbar buttons)
   - [ ] Validate Dynamic Type on iOS/macOS (no truncation/overlap)
