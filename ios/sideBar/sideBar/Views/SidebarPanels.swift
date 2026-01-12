@@ -833,7 +833,7 @@ private struct FilesPanelView: View {
                             row
                                 .staggeredAppear(index: index, isActive: listAppeared)
                         } else {
-                            row.contentShape(Rectangle())
+                            row
                                 .staggeredAppear(index: index, isActive: listAppeared)
                                 .onTapGesture { open(item: item) }
                         }
@@ -857,7 +857,7 @@ private struct FilesPanelView: View {
                                                 isActive: listAppeared
                                             )
                                     } else {
-                                        row.contentShape(Rectangle())
+                                        row
                                             .staggeredAppear(
                                                 index: categoryIndex + itemIndex,
                                                 isActive: listAppeared
@@ -880,13 +880,11 @@ private struct FilesPanelView: View {
                     ForEach(Array(filteredProcessingItems.enumerated()), id: \.element.file.id) { index, item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                             .staggeredAppear(index: index, isActive: listAppeared)
-                            .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                     }
                     ForEach(Array(filteredFailedItems.enumerated()), id: \.element.file.id) { index, item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                             .staggeredAppear(index: index, isActive: listAppeared)
-                            .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                     }
                 }
@@ -1227,7 +1225,6 @@ private struct WebsitesPanelView: View {
                                 isSelected: selection == item.id
                             )
                             .staggeredAppear(index: index, isActive: listAppeared)
-                            .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                         }
                     }
@@ -1251,7 +1248,6 @@ private struct WebsitesPanelView: View {
                                     isSelected: selection == item.id
                                 )
                                 .staggeredAppear(index: index, isActive: listAppeared)
-                                .contentShape(Rectangle())
                                 .onTapGesture { open(item: item) }
                             }
                         }
@@ -1269,7 +1265,6 @@ private struct WebsitesPanelView: View {
                                     isSelected: selection == item.id
                                 )
                                 .staggeredAppear(index: index, isActive: listAppeared)
-                                .contentShape(Rectangle())
                                 .onTapGesture { open(item: item) }
                             }
                         }
@@ -1291,7 +1286,6 @@ private struct WebsitesPanelView: View {
                                         isSelected: selection == item.id
                                     )
                                     .staggeredAppear(index: index, isActive: listAppeared)
-                                    .contentShape(Rectangle())
                                     .onTapGesture { open(item: item) }
                                 }
                             }
@@ -1331,7 +1325,6 @@ private struct WebsitesPanelView: View {
                                 isSelected: selection == item.id
                             )
                             .staggeredAppear(index: index, isActive: listAppeared)
-                            .contentShape(Rectangle())
                             .onTapGesture { open(item: item) }
                         }
                     }
@@ -1358,13 +1351,12 @@ private struct WebsitesPanelView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
-                            WebsiteRow(
-                                item: item,
-                                isSelected: selection == item.id
-                            )
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .contentShape(Rectangle())
-                            .onTapGesture { open(item: item) }
+                                WebsiteRow(
+                                    item: item,
+                                    isSelected: selection == item.id
+                                )
+                                .staggeredAppear(index: index, isActive: listAppeared)
+                                .onTapGesture { open(item: item) }
                         }
                     }
                 }
@@ -1376,13 +1368,12 @@ private struct WebsitesPanelView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
-                            WebsiteRow(
-                                item: item,
-                                isSelected: selection == item.id
-                            )
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .contentShape(Rectangle())
-                            .onTapGesture { open(item: item) }
+                                WebsiteRow(
+                                    item: item,
+                                    isSelected: selection == item.id
+                                )
+                                .staggeredAppear(index: index, isActive: listAppeared)
+                                .onTapGesture { open(item: item) }
                         }
                     }
                 }
@@ -1467,7 +1458,6 @@ private struct WebsitesPanelView: View {
                                         useListStyling: false
                                     )
                                     .staggeredAppear(index: index, isActive: listAppeared)
-                                    .contentShape(Rectangle())
                                     .onTapGesture { open(item: item) }
                                 }
                             }
