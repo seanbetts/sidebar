@@ -83,11 +83,7 @@ private struct ChatDetailView: View {
                         LoadingView(message: "Loading chats…")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        PlaceholderView(
-                            title: "Select a chat",
-                            subtitle: "Choose a conversation from the sidebar to continue.",
-                            iconName: "bubble"
-                        )
+                        EmptyView()
                     }
                 } else if viewModel.messages.isEmpty {
                     ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
