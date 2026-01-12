@@ -560,7 +560,7 @@ private struct MemoriesSettingsView: View {
         }
         .formStyle(.grouped)
         #else
-        MemoriesDetailView(viewModel: viewModel)
+        MemoriesSettingsDetailView(viewModel: viewModel)
         #endif
     }
 }
