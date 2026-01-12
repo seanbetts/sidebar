@@ -171,9 +171,11 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         return conversation.messageCount == 0 && messages.isEmpty
     }
 
-    public func loadConversations(force: Bool = false) async {
+    public func loadConversations(force: Bool = false, silent: Bool = false) async {
         errorMessage = nil
-        isLoadingConversations = true
+        if !silent {
+            isLoadingConversations = true
+        }
         do {
             try await chatStore.loadConversations(force: force)
         } catch {
@@ -181,11 +183,13 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
                 errorMessage = error.localizedDescription
             }
         }
-        isLoadingConversations = false
+        if !silent {
+            isLoadingConversations = false
+        }
     }
 
-    public func refreshConversations() async {
-        await loadConversations(force: true)
+    public func refreshConversations(silent: Bool = false) async {
+        await loadConversations(force: true, silent: silent)
     }
 
     public func refreshActiveConversation(silent: Bool = false) async {
@@ -201,7 +205,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             guard let self else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(intervalSeconds * 1_000_000_000))
-                await self.refreshConversations()
+                await self.refreshConversations(silent: true)
                 await self.refreshActiveConversation(silent: true)
             }
         }
@@ -632,7 +636,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
            let assistantMessage = messages.first(where: { $0.id == messageId }) {
             Task { [weak self] in
                 await self?.persistMessage(conversationId: conversationId, message: assistantMessage)
-                await self?.refreshConversations()
+                await self?.refreshConversations(silent: true)
                 await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
             }
         }
