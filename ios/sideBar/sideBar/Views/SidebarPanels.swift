@@ -113,10 +113,15 @@ private struct ConversationsPanelView: View {
             isPresented: isDeleteDialogPresented
         ) {
             Button("Delete", role: .destructive) {
+                let targetId = deleteConversationId
+                clearDeleteTarget()
                 Task {
-                    await confirmDelete()
+                    if let id = targetId {
+                        await viewModel.deleteConversation(id: id)
+                    }
                 }
             }
+            .keyboardShortcut(.defaultAction)
             Button("Cancel", role: .cancel) {
                 clearDeleteTarget()
             }
@@ -201,7 +206,7 @@ private struct ConversationsPanelView: View {
                             }
                             .tint(.blue)
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button("Delete") {
                                 presentDelete(conversation)
                             }
@@ -283,14 +288,6 @@ private struct ConversationsPanelView: View {
     private func clearDeleteTarget() {
         deleteConversationId = nil
         deleteConversationTitle = ""
-    }
-
-    private func confirmDelete() async {
-        guard let id = deleteConversationId else {
-            return
-        }
-        clearDeleteTarget()
-        await viewModel.deleteConversation(id: id)
     }
 
     private var deleteDialogTitle: String {
@@ -382,7 +379,7 @@ private struct ConversationRow: View, Equatable {
             Spacer(minLength: 0)
             #if os(macOS)
             if !isEditing {
-                Menu {
+                let menu = Menu {
                     Button("Rename") {
                         onRename()
                     }
@@ -398,6 +395,12 @@ private struct ConversationRow: View, Equatable {
                 .menuStyle(.borderlessButton)
                 .buttonStyle(.plain)
                 .accessibilityLabel("Conversation actions")
+
+                if #available(macOS 13.0, *) {
+                    menu.menuIndicator(.hidden)
+                } else {
+                    menu
+                }
             }
             #endif
         }
