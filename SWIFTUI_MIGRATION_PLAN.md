@@ -356,7 +356,7 @@ Critical Path (MVP): [████████████████░░░�
 - [x] Apply template to Chat, Websites, Files, Tasks
 - [x] Replace compact-only list flows (remove IngestionSplitView usage on iPhone)
 - [x] Unify header avatar rendering (SiteHeaderBar uses shared avatar view)
-- [ ] Validate iPhone regressions: profile image, chat header, notes/websites list, files row content
+- [x] Validate iPhone regressions: profile image, chat header, notes/websites list, files row content
 
 #### Phase 10: MVP Testing & Refinement (3-4 sessions MVP, 4-6 full)
 **MVP Scope: Read-Only Testing**
