@@ -820,7 +820,6 @@ private struct FilesPanelView: View {
                     ForEach(categoryOrder, id: \.self) { category in
                         if let items = categorizedItems[category], !items.isEmpty {
                             DisclosureGroup(
-                                categoryLabels[category] ?? "Files",
                                 isExpanded: bindingForCategory(category)
                             ) {
                                 ForEach(items, id: \.file.id) { item in
@@ -832,6 +831,9 @@ private struct FilesPanelView: View {
                                             .onTapGesture { open(item: item) }
                                     }
                                 }
+                            } label: {
+                                Text(categoryLabels[category] ?? "Files")
+                                    .font(.subheadline.weight(.semibold))
                             }
                             .listRowBackground(rowBackground)
                         }
