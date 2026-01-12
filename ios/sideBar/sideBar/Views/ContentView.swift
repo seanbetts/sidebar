@@ -86,18 +86,15 @@ public struct ContentView: View {
             }
             .onReceive(environment.notesViewModel.$selectedNoteId) { newValue in
                 guard newValue != nil else { return }
-                primarySection = .notes
-                lastNonChatSection = .notes
+                handleNonChatSelection(.notes)
             }
             .onReceive(environment.ingestionViewModel.$selectedFileId) { newValue in
                 guard newValue != nil else { return }
-                primarySection = .files
-                lastNonChatSection = .files
+                handleNonChatSelection(.files)
             }
             .onReceive(environment.websitesViewModel.$active) { newValue in
                 guard newValue != nil else { return }
-                primarySection = .websites
-                lastNonChatSection = .websites
+                handleNonChatSelection(.websites)
             }
             .onChange(of: environment.commandSelection) { _, newValue in
                 guard let newValue else { return }
@@ -263,6 +260,15 @@ public struct ContentView: View {
         if primarySection != .chat, let primarySection {
             lastNonChatSection = primarySection
         }
+    }
+
+    private func handleNonChatSelection(_ section: AppSection) {
+        if primarySection == .chat {
+            secondarySection = section
+        } else {
+            primarySection = section
+        }
+        lastNonChatSection = section
     }
 
     private func phoneTabView(for section: AppSection) -> some View {
