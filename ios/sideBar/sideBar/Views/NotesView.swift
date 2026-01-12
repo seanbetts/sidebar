@@ -110,7 +110,11 @@ private struct NotesDetailView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
+            #if os(macOS)
+            WelcomeEmptyView()
+            #else
             PlaceholderView(title: "Select a note")
+            #endif
         }
     }
 
