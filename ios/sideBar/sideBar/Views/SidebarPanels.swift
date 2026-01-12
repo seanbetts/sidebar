@@ -199,6 +199,16 @@ private struct ConversationsPanelView: View {
 private struct ConversationRow: View, Equatable {
     let conversation: Conversation
     let isSelected: Bool
+    private let subtitleText: String
+
+    init(conversation: Conversation, isSelected: Bool) {
+        self.conversation = conversation
+        self.isSelected = isSelected
+        let formattedDate = ConversationRow.formattedDate(from: conversation.updatedAt)
+        let count = conversation.messageCount
+        let label = count == 1 ? "1 message" : "\(count) messages"
+        self.subtitleText = "\(formattedDate) | \(label)"
+    }
 
     static func == (lhs: ConversationRow, rhs: ConversationRow) -> Bool {
         lhs.isSelected == rhs.isSelected &&
@@ -238,16 +248,13 @@ private struct ConversationRow: View, Equatable {
     }
 
     private var formattedDate: String {
-        guard let date = DateParsing.parseISO8601(conversation.updatedAt) else {
-            return conversation.updatedAt
+        ConversationRow.formattedDate(from: conversation.updatedAt)
+    }
+    private static func formattedDate(from value: String) -> String {
+        guard let date = DateParsing.parseISO8601(value) else {
+            return value
         }
         return DateFormatter.chatList.string(from: date)
-    }
-
-    private var subtitleText: String {
-        let count = conversation.messageCount
-        let label = count == 1 ? "1 message" : "\(count) messages"
-        return "\(formattedDate) | \(label)"
     }
 }
 
@@ -1039,6 +1046,13 @@ private struct FilesPanelView: View {
 private struct FilesIngestionRow: View, Equatable {
     let item: IngestionListItem
     let isSelected: Bool
+    private let displayName: String
+
+    init(item: IngestionListItem, isSelected: Bool) {
+        self.item = item
+        self.isSelected = isSelected
+        self.displayName = stripFileExtension(item.file.filenameOriginal)
+    }
 
     static func == (lhs: FilesIngestionRow, rhs: FilesIngestionRow) -> Bool {
         lhs.isSelected == rhs.isSelected &&
@@ -1060,7 +1074,7 @@ private struct FilesIngestionRow: View, Equatable {
                 Image(systemName: iconName)
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(stripFileExtension(item.file.filenameOriginal))
+                    Text(displayName)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
@@ -1486,11 +1500,15 @@ private struct WebsiteRow: View, Equatable {
     let item: WebsiteItem
     let isSelected: Bool
     let useListStyling: Bool
+    private let titleText: String
+    private let domainText: String
 
     init(item: WebsiteItem, isSelected: Bool, useListStyling: Bool = true) {
         self.item = item
         self.isSelected = isSelected
         self.useListStyling = useListStyling
+        self.titleText = item.title.isEmpty ? item.url : item.title
+        self.domainText = WebsiteRow.formatDomain(item.domain)
     }
 
     static func == (lhs: WebsiteRow, rhs: WebsiteRow) -> Bool {
@@ -1516,11 +1534,11 @@ private struct WebsiteRow: View, Equatable {
                 Image(systemName: "globe")
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(item.title.isEmpty ? item.url : item.title)
+                    Text(titleText)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                         .lineLimit(1)
-                    Text(formatDomain(item.domain))
+                    Text(domainText)
                         .font(.caption)
                         .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
                         .lineLimit(1)
@@ -1530,7 +1548,7 @@ private struct WebsiteRow: View, Equatable {
         }
     }
 
-    private func formatDomain(_ domain: String) -> String {
+    private static func formatDomain(_ domain: String) -> String {
         domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
     }
 
