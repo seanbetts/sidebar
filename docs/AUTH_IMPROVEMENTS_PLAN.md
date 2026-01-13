@@ -23,7 +23,6 @@ The sideBar app has a well-architected authentication system with Supabase integ
 - ❌ Incorrect biometric policy (falls back to passcode silently)
 - ❌ No session refresh mechanism
 - ❌ Silent keychain failures
-- ❌ No password recovery flow
 
 **Estimated Implementation Time:** 3-5 days for all phases
 
@@ -50,6 +49,7 @@ The sideBar app has a well-architected authentication system with Supabase integ
 **Severity:** CRITICAL
 **Impact:** App Store rejection, runtime crash on iOS devices with Face ID
 **Effort:** 5 minutes
+**Applicability:** ✅ Applies (required for current Face ID usage)
 
 **Issue:**
 - App uses Face ID but lacks required `NSFaceIDUsageDescription` in Info.plist
@@ -77,6 +77,7 @@ The sideBar app has a well-architected authentication system with Supabase integ
 **Severity:** HIGH
 **Impact:** Authentication tokens accessible when device locked, vulnerable to forensic extraction
 **Effort:** 5 minutes
+**Applicability:** ✅ Applies (auth tokens should be `WhenUnlockedThisDeviceOnly`)
 
 **Issue:**
 - Currently uses `kSecAttrAccessibleAfterFirstUnlock`
@@ -117,6 +118,7 @@ attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDev
 **Severity:** HIGH
 **Impact:** Users enable Face ID but get passcode prompt instead
 **Effort:** 5 minutes
+**Applicability:** ✅ Applies, with adjustment (choose explicit fallback behavior)
 
 **Issue:**
 - Uses `.deviceOwnerAuthentication` policy
@@ -187,6 +189,7 @@ private func authenticate() {
 **Severity:** HIGH
 **Impact:** Authentication state lost without error reporting, users mysteriously logged out
 **Effort:** 30 minutes
+**Applicability:** ✅ Applies (add logging/toast on failure)
 
 **Issue:**
 - Keychain operations that fail return `nil` without throwing
@@ -484,133 +487,7 @@ private func handleSignInError(_ error: Error) {
 
 ## Login Screen UI Improvements
 
-### 11. Add "Forgot Password" Flow ⭐ HIGH PRIORITY
-
-**Priority:** HIGH
-**Impact:** Critical feature for production app
-**Effort:** 3-4 hours
-
-**Current:** No password recovery mechanism
-**Issue:** Users locked out of accounts have no recourse
-
-**Implementation Plan:**
-
-1. **Add "Forgot Password?" Link**
-```swift
-// In LoginView.swift after error message
-Button("Forgot password?") {
-    showingPasswordReset = true
-}
-.buttonStyle(.plain)
-.font(.callout)
-.foregroundStyle(.secondary)
-.sheet(isPresented: $showingPasswordReset) {
-    PasswordResetView()
-}
-```
-
-2. **Create PasswordResetView**
-```swift
-public struct PasswordResetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var email: String = ""
-    @State private var isSubmitting: Bool = false
-    @State private var errorMessage: String?
-    @State private var resetSent: Bool = false
-
-    public var body: some View {
-        NavigationStack {
-            Form {
-                if resetSent {
-                    Section {
-                        Label {
-                            Text("Check your email for password reset instructions.")
-                        } icon: {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                        }
-                    }
-                } else {
-                    Section {
-                        TextField("Email", text: $email)
-                            .textContentType(.emailAddress)
-                            .keyboardType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                    } header: {
-                        Text("Enter your email address")
-                    } footer: {
-                        Text("We'll send you a link to reset your password.")
-                    }
-
-                    if let errorMessage {
-                        Section {
-                            Text(errorMessage)
-                                .foregroundStyle(.red)
-                        }
-                    }
-
-                    Section {
-                        Button {
-                            Task { await sendResetEmail() }
-                        } label: {
-                            if isSubmitting {
-                                ProgressView()
-                            } else {
-                                Text("Send Reset Link")
-                            }
-                        }
-                        .disabled(email.isEmpty || isSubmitting)
-                    }
-                }
-            }
-            .navigationTitle("Reset Password")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-
-    private func sendResetEmail() async {
-        errorMessage = nil
-        isSubmitting = true
-        defer { isSubmitting = false }
-
-        do {
-            try await supabase.auth.resetPasswordForEmail(email)
-            resetSent = true
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-}
-```
-
-3. **Handle Password Reset Deep Link**
-```swift
-// In sideBarApp.swift
-.onOpenURL { url in
-    // Handle password reset confirmation link
-    // Format: sidebarapp://reset-password?token=...
-    if url.host == "reset-password" {
-        showPasswordResetConfirmation = true
-    }
-}
-```
-
-**Testing:**
-- Request reset for valid email
-- Request reset for invalid email (should still show success for security)
-- Verify email delivery
-- Test deep link handling
-- Test new password submission
-
----
-
-### 12. Add Password Visibility Toggle ⭐ HIGH PRIORITY
+### 11. Add Password Visibility Toggle ⭐ HIGH PRIORITY
 
 **Priority:** HIGH
 **Impact:** Major UX improvement for mobile keyboards
@@ -672,7 +549,7 @@ SecureFieldWithToggle(
 
 ---
 
-### 13. Add Keyboard Dismiss Gesture ⭐ HIGH PRIORITY
+### 12. Add Keyboard Dismiss Gesture ⭐ HIGH PRIORITY
 
 **Priority:** HIGH
 **Impact:** Basic iOS UX expectation
@@ -700,7 +577,7 @@ SecureFieldWithToggle(
 
 ---
 
-### 14. Add Clear Buttons on Text Fields
+### 13. Add Clear Buttons on Text Fields
 
 **Priority:** Medium
 **Effort:** 30 minutes
@@ -726,7 +603,7 @@ HStack {
 
 ---
 
-### 15. Add Real-Time Email Validation
+### 14. Add Real-Time Email Validation
 
 **Priority:** Medium
 **Effort:** 30 minutes
@@ -753,7 +630,7 @@ HStack {
 
 ---
 
-### 16. Improve Error Styling
+### 15. Improve Error Styling
 
 **Priority:** Medium
 **Effort:** 30 minutes
@@ -785,7 +662,7 @@ if let errorMessage {
 
 ---
 
-### 17. Add Loading State Text
+### 16. Add Loading State Text
 
 **Priority:** Low
 **Effort:** 1 minute
@@ -797,7 +674,7 @@ Text(isSigningIn ? "Signing in..." : "Sign In")
 
 ---
 
-### 18. Add Success Animation
+### 17. Add Success Animation
 
 **Priority:** Low
 **Effort:** 1 hour
@@ -826,7 +703,7 @@ if showSuccess {
 
 ---
 
-### 19. Fix Password Trimming Inconsistency
+### 18. Fix Password Trimming Inconsistency
 
 **Priority:** Low
 **Effort:** 1 minute
@@ -849,43 +726,7 @@ try await environment.container.authSession.signIn(email: trimmedEmail, password
 
 ---
 
-### 20. Add "Sign Up" Link (If Applicable)
-
-**Priority:** Medium (if you support registration)
-**Effort:** 30 minutes
-
-**Implementation:**
-```swift
-// Below sign-in button
-HStack {
-    Text("Don't have an account?")
-        .foregroundStyle(.secondary)
-    Button("Sign up") {
-        showingSignUp = true
-    }
-    .buttonStyle(.plain)
-}
-.font(.callout)
-```
-
----
-
-### 21. Add Help/Support Link
-
-**Priority:** Low
-**Effort:** 15 minutes
-
-**Implementation:**
-```swift
-// At bottom of view
-Link("Need help?", destination: URL(string: "https://sidebar.app/support")!)
-    .font(.caption)
-    .foregroundStyle(.secondary)
-```
-
----
-
-### 22. Add Field Icons
+### 19. Add Field Icons
 
 **Priority:** Low (polish)
 **Effort:** 15 minutes
@@ -911,7 +752,7 @@ HStack {
 
 ## Biometric Authentication Improvements
 
-### 23. Fix Biometric Lock Timing ⭐ HIGH PRIORITY
+### 20. Fix Biometric Lock Timing ⭐ HIGH PRIORITY
 
 **Priority:** HIGH
 **Impact:** Prevents annoying re-authentication on brief interruptions
@@ -948,7 +789,7 @@ HStack {
 
 ---
 
-### 24. Add Biometric Availability Monitoring
+### 21. Add Biometric Availability Monitoring
 
 **Priority:** Medium
 **Effort:** 2 hours
@@ -1007,7 +848,7 @@ if isAuthenticated {
 
 ---
 
-### 25. Improve Biometric Error Handling
+### 22. Improve Biometric Error Handling
 
 **Priority:** Medium
 **Effort:** 1 hour
@@ -1048,7 +889,7 @@ private func handleAuthenticationError(_ error: Error) {
 
 ---
 
-### 26. Add Passcode Fallback Option
+### 23. Add Passcode Fallback Option
 
 **Priority:** Medium
 **Effort:** 2-3 hours
@@ -1089,7 +930,7 @@ private func authenticateWithPasscode() {
 
 ---
 
-### 27. Add Biometric Hint After First Login
+### 24. Add Biometric Hint After First Login
 
 **Priority:** Low
 **Effort:** 30 minutes
@@ -1119,7 +960,7 @@ if !hasShownBiometricHint && canUseBiometrics && !biometricUnlockEnabled {
 
 ## Session Management Improvements
 
-### 28. Implement Token Refresh (Covered in #6)
+### 25. Implement Token Refresh (Covered in #6)
 
 See Critical Issues section for full implementation.
 
@@ -1147,7 +988,7 @@ See Critical Issues section for full implementation.
 
 ---
 
-### 30. Add Offline Support
+### 26. Add Offline Support
 
 **Priority:** Medium
 **Effort:** 3-4 hours
@@ -1179,7 +1020,7 @@ if !isOnline && canUseOffline {
 
 ## Accessibility Improvements
 
-### 31. Add VoiceOver Announcements for Errors
+### 27. Add VoiceOver Announcements for Errors
 
 **Priority:** Medium
 **Effort:** 15 minutes
@@ -1198,22 +1039,7 @@ if let errorMessage {
 
 ---
 
-### 32. Verify Color Contrast
-
-**Priority:** Medium
-**Effort:** 30 minutes
-
-**Action Items:**
-- Test error red color in both light/dark modes
-- Verify 4.5:1 contrast ratio for text
-- Test with accessibility color settings
-- Ensure disabled button state is distinguishable
-
-**Tool:** Use Xcode Accessibility Inspector
-
----
-
-### 33. Add Haptic Feedback
+### 28. Add Haptic Feedback
 
 **Priority:** Low
 **Effort:** 10 minutes
@@ -1279,21 +1105,18 @@ triggerHaptic(.success)
 #### Implement:
 7. ✅ Password visibility toggle
 8. ✅ Keyboard dismiss gesture
-9. ✅ "Forgot Password" flow
-10. ✅ Clear buttons on text fields
-11. ✅ Improved error styling
-12. ✅ Loading state text
-13. ✅ Fix password trimming inconsistency
+9. ✅ Clear buttons on text fields
+10. ✅ Improved error styling
+11. ✅ Loading state text
+12. ✅ Fix password trimming inconsistency
 
 #### Testing:
 - Test password visibility toggle
-- Verify forgot password email delivery
 - Test keyboard dismissal on tap
 - Verify error styling in light/dark modes
 
 #### Success Criteria:
 - ✅ Users can see typed password
-- ✅ Users can recover forgotten passwords
 - ✅ Keyboard dismisses naturally
 - ✅ Errors are clear and actionable
 
@@ -1359,19 +1182,15 @@ triggerHaptic(.success)
 23. ✅ Success animation
 24. ✅ VoiceOver improvements
 25. ✅ Haptic feedback
-26. ✅ Color contrast verification
-27. ✅ Help/support links
-28. ✅ Field icons (optional)
+26. ✅ Field icons (optional)
 
 #### Testing:
 - Full VoiceOver testing
-- Color contrast verification
 - Test all animations
 - Comprehensive manual testing
 
 #### Success Criteria:
 - ✅ Fully accessible to VoiceOver users
-- ✅ WCAG AA color contrast compliance
 - ✅ Smooth animations and transitions
 - ✅ Professional polish throughout
 
@@ -1387,8 +1206,7 @@ triggerHaptic(.success)
 30. ⏸️ Apple Sign In / OAuth (6-8 hours)
 31. ⏸️ Offline mode with cached credentials (3-4 hours)
 32. ⏸️ Security event logging (2-3 hours)
-33. ⏸️ "Sign Up" flow (if applicable) (4-6 hours)
-34. ⏸️ Rate limiting UI feedback (1-2 hours)
+33. ⏸️ Rate limiting UI feedback (1-2 hours)
 
 ---
 
@@ -1434,7 +1252,6 @@ triggerHaptic(.success)
 ```swift
 - testFullLoginFlow()
 - testBiometricLockingFlow()
-- testPasswordResetFlow()
 - testSessionRefreshFlow()
 - testOfflineAuthFlow()
 ```
@@ -1450,7 +1267,6 @@ triggerHaptic(.success)
 - [ ] Error messages display correctly
 - [ ] Loading state shows progress
 - [ ] Success animation plays
-- [ ] "Forgot password" link works
 
 #### Biometric Authentication
 - [ ] Face ID prompt appears on device
@@ -1473,7 +1289,6 @@ triggerHaptic(.success)
 - [ ] VoiceOver announces all elements
 - [ ] VoiceOver announces errors
 - [ ] All buttons have labels
-- [ ] Color contrast meets WCAG AA
 - [ ] Works with large text sizes
 - [ ] Works with increased contrast mode
 - [ ] Works with reduce motion enabled
@@ -1512,7 +1327,6 @@ triggerHaptic(.success)
 ### Files to Create
 
 #### New Views
-- `Views/Auth/PasswordResetView.swift` - Password reset flow
 - `Views/Auth/SecureFieldWithToggle.swift` - Password visibility toggle component
 
 #### New Services
@@ -1547,19 +1361,14 @@ triggerHaptic(.success)
 
 ### Medium Risk Items
 
-4. **Password Reset Flow**
-   - Risk: Email delivery failures, broken deep links
-   - Mitigation: Test with multiple email providers
-   - Implement comprehensive error handling
-
-5. **Session Timing Changes**
+4. **Session Timing Changes**
    - Risk: Could annoy users or reduce security
    - Mitigation: Make configurable, gather user feedback
    - Monitor analytics for logout patterns
 
 ### Low Risk Items
 
-6. **UI Improvements**
+5. **UI Improvements**
    - Risk: Minor visual bugs, layout issues
    - Mitigation: Standard QA testing
    - Easy to fix post-release
@@ -1577,7 +1386,6 @@ triggerHaptic(.success)
 ### UX Metrics
 - **<5 second** average login time
 - **>90%** biometric authentication success rate
-- **<2%** password reset request rate (indicates usability)
 - **Zero** false lockouts (users locked out incorrectly)
 
 ### Quality Metrics
@@ -1621,7 +1429,7 @@ triggerHaptic(.success)
 This implementation plan addresses critical security vulnerabilities, UX gaps, and missing features in the authentication system. The phased approach ensures:
 
 1. **Critical issues resolved first** - No app crashes or major security holes
-2. **Core UX improvements next** - Users can successfully log in and recover passwords
+2. **Core UX improvements next** - Users can successfully log in with a smooth, intuitive experience
 3. **Polish and advanced features last** - Professional experience without delaying launch
 
 **Total Estimated Time:** 3-5 days for core implementation (Phases 1-5)
