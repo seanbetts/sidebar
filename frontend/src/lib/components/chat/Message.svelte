@@ -67,7 +67,7 @@
 	});
 </script>
 
-<div class="group p-4 {roleColor} rounded-lg mb-4 border">
+<div class="group p-4 {roleColor} rounded-lg border">
 	<div class="flex items-center justify-between gap-2 mb-2">
 		<div class="flex items-center gap-2">
 			<Badge variant={message.role === 'user' ? 'default' : 'outline'}>{roleName}</Badge>

@@ -49,6 +49,107 @@ public final class ChatStore: ObservableObject {
         conversationDetails = [:]
     }
 
+    public func addConversation(_ conversation: Conversation, persist: Bool = true) {
+        var updated = conversations
+        updated.removeAll { $0.id == conversation.id }
+        updated.insert(conversation, at: 0)
+        conversations = updated
+        if persist {
+            cache.set(
+                key: CacheKeys.conversationsList,
+                value: updated,
+                ttlSeconds: CachePolicy.conversationsList
+            )
+        }
+    }
+
+    public func upsertConversationDetail(_ detail: ConversationWithMessages, persist: Bool = true) {
+        conversationDetails[detail.id] = detail
+        if persist {
+            let cacheKey = CacheKeys.conversation(id: detail.id)
+            cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+        }
+    }
+
+    public func upsertConversation(_ conversation: Conversation, persist: Bool = true) {
+        var updated = conversations
+        if let index = updated.firstIndex(where: { $0.id == conversation.id }) {
+            updated[index] = conversation
+        } else {
+            updated.insert(conversation, at: 0)
+        }
+        conversations = updated
+        if let existing = conversationDetails[conversation.id] {
+            conversationDetails[conversation.id] = ConversationWithMessages(
+                id: conversation.id,
+                title: conversation.title,
+                titleGenerated: conversation.titleGenerated,
+                createdAt: conversation.createdAt,
+                updatedAt: conversation.updatedAt,
+                messageCount: conversation.messageCount,
+                firstMessage: conversation.firstMessage,
+                isArchived: conversation.isArchived,
+                messages: existing.messages
+            )
+        }
+        if persist {
+            cache.set(
+                key: CacheKeys.conversationsList,
+                value: updated,
+                ttlSeconds: CachePolicy.conversationsList
+            )
+            if let detail = conversationDetails[conversation.id] {
+                let cacheKey = CacheKeys.conversation(id: conversation.id)
+                cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+            }
+        }
+    }
+
+    public func updateConversationTitle(
+        id: String,
+        title: String,
+        titleGenerated: Bool,
+        persist: Bool = true
+    ) {
+        if let index = conversations.firstIndex(where: { $0.id == id }) {
+            let existing = conversations[index]
+            conversations[index] = Conversation(
+                id: existing.id,
+                title: title,
+                titleGenerated: titleGenerated,
+                createdAt: existing.createdAt,
+                updatedAt: existing.updatedAt,
+                messageCount: existing.messageCount,
+                firstMessage: existing.firstMessage,
+                isArchived: existing.isArchived
+            )
+        }
+        if let existing = conversationDetails[id] {
+            conversationDetails[id] = ConversationWithMessages(
+                id: existing.id,
+                title: title,
+                titleGenerated: titleGenerated,
+                createdAt: existing.createdAt,
+                updatedAt: existing.updatedAt,
+                messageCount: existing.messageCount,
+                firstMessage: existing.firstMessage,
+                isArchived: existing.isArchived,
+                messages: existing.messages
+            )
+        }
+        if persist {
+            cache.set(
+                key: CacheKeys.conversationsList,
+                value: conversations,
+                ttlSeconds: CachePolicy.conversationsList
+            )
+            if let detail = conversationDetails[id] {
+                let cacheKey = CacheKeys.conversation(id: id)
+                cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+            }
+        }
+    }
+
     public func updateConversationMessages(
         id: String,
         messages: [Message],
@@ -72,6 +173,20 @@ public final class ChatStore: ObservableObject {
         if persist {
             let cacheKey = CacheKeys.conversation(id: id)
             cache.set(key: cacheKey, value: updated, ttlSeconds: CachePolicy.conversationDetail)
+        }
+    }
+
+    public func removeConversation(id: String, persist: Bool = true) {
+        conversations.removeAll { $0.id == id }
+        conversationDetails[id] = nil
+        if persist {
+            cache.set(
+                key: CacheKeys.conversationsList,
+                value: conversations,
+                ttlSeconds: CachePolicy.conversationsList
+            )
+            let cacheKey = CacheKeys.conversation(id: id)
+            cache.remove(key: cacheKey)
         }
     }
 

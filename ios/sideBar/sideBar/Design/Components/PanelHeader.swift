@@ -4,6 +4,7 @@ struct PanelHeader<Trailing: View>: View {
     let title: String
     let subtitle: String?
     let trailing: Trailing
+    @Environment(\.colorScheme) private var colorScheme
 
     init(
         title: String,
@@ -38,9 +39,20 @@ struct PanelHeader<Trailing: View>: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(DesignTokens.Colors.surface)
+        .background(headerBackground)
         .overlay(alignment: .bottom) {
             EmptyView()
         }
+    }
+
+    private var headerBackground: Color {
+        #if os(macOS)
+        if colorScheme == .light {
+            return DesignTokens.Colors.sidebar
+        }
+        return DesignTokens.Colors.surface
+        #else
+        return DesignTokens.Colors.surface
+        #endif
     }
 }

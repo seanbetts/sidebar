@@ -59,6 +59,11 @@ public enum MarkdownRendering {
         return normalizeTaskLists(replaced)
     }
 
+    public nonisolated static func normalizeChatMarkdown(_ text: String) -> String {
+        let normalized = normalizeTaskLists(text)
+        return preserveLineBreaks(in: normalized)
+    }
+
     @MainActor
     public static func splitWebsiteContent(_ text: String) -> [WebsiteContentBlock] {
         let galleryRegex = makeGalleryRegex()
@@ -109,6 +114,27 @@ public enum MarkdownRendering {
     private nonisolated static func makeGalleryRegex() -> NSRegularExpression {
         let pattern = #"<figure\s+class=\"image-gallery\"[^>]*>.*?</figure>"#
         return try! NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+    }
+
+    private nonisolated static func preserveLineBreaks(in text: String) -> String {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+        guard lines.count > 1 else { return text }
+
+        var updated: [String] = []
+        updated.reserveCapacity(lines.count)
+
+        for (index, line) in lines.enumerated() {
+            let lineText = String(line)
+            if index == lines.count - 1 {
+                updated.append(lineText)
+            } else if lineText.isEmpty {
+                updated.append(lineText)
+            } else {
+                updated.append("\(lineText)  ")
+            }
+        }
+
+        return updated.joined(separator: "\n")
     }
 
     private nonisolated static func makeGalleryCaptionRegex() -> NSRegularExpression {

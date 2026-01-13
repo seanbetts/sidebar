@@ -113,7 +113,6 @@
 	}
 
 	onMount(() => {
-		ingestionStore.startPolling();
 		const handleDocumentClick = (event: MouseEvent) => {
 			if (!openMenuKey) return;
 			const target = event.target as HTMLElement | null;
@@ -124,10 +123,6 @@
 		};
 		document.addEventListener('click', handleDocumentClick);
 		return () => document.removeEventListener('click', handleDocumentClick);
-	});
-
-	onDestroy(() => {
-		ingestionStore.stopPolling();
 	});
 
 	// Data loading is now handled by parent Sidebar component

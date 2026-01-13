@@ -50,6 +50,10 @@ public final class NotesStore: ObservableObject {
         activeNote = nil
     }
 
+    public func applyEditorUpdate(_ note: NotePayload) {
+        applyNoteUpdate(note, persist: true)
+    }
+
     public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
         let noteId = payload.record?.id ?? payload.oldRecord?.id
         if payload.eventType == .delete {

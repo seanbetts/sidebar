@@ -1,6 +1,9 @@
 import SwiftUI
 import LocalAuthentication
 #if os(macOS)
+import UniformTypeIdentifiers
+#endif
+#if os(macOS)
 import AppKit
 #else
 import UIKit
@@ -73,17 +76,21 @@ private struct SettingsSplitView: View {
     @ObservedObject var memoriesViewModel: MemoriesViewModel
     @State private var selection: SettingsSection? = .profile
     @State private var hasLoaded = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(SettingsSection.allCases, selection: $selection) { section in
                 Label(section.title, systemImage: section.systemImage)
                     .tag(section)
             }
             .listStyle(.sidebar)
+            .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selection ?? .profile)
+                .navigationTitle(selection?.title ?? "Settings")
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .modifier(SidebarToggleHider())
         }
         .navigationSplitViewStyle(.balanced)
         .modifier(SidebarToggleHider())
@@ -94,6 +101,11 @@ private struct SettingsSplitView: View {
                 Task {
                     await loadSettings()
                 }
+            }
+        }
+        .onChange(of: columnVisibility) { _, newValue in
+            if newValue != .all {
+                columnVisibility = .all
             }
         }
     }
@@ -164,6 +176,8 @@ private struct SettingsTabsView: View {
                 }
         }
         .padding(16)
+        .background(DesignTokens.Colors.background)
+        .ignoresSafeArea()
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -185,8 +199,12 @@ private struct SettingsTabsView: View {
 private struct ProfileSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.dismiss) private var dismiss
     @State private var isImagePickerPresented = false
     @State private var profileImage: Image?
+    @State private var isProfileImageImporterPresented = false
+    @State private var isUploadingProfileImage = false
+    @State private var profileImageError: String?
 
     var body: some View {
         Form {
@@ -196,7 +214,7 @@ private struct ProfileSettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Profile photo")
                             .font(.headline)
-                        Text("Tap to change.")
+                        Text(photoSubtitle)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -211,7 +229,27 @@ private struct ProfileSettingsView: View {
                     ImagePicker(selectedImage: $profileImage)
                 }
 #endif
+#if os(macOS)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isProfileImageImporterPresented = true
+                }
+#endif
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Profile photo")
+                .accessibilityHint("Double tap to change your profile photo.")
+                .accessibilityAddTraits(.isButton)
             }
+
+            #if os(macOS)
+            if let profileImageError {
+                Section {
+                    Text(profileImageError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+            #endif
 
             Section {
                 LabeledContent("Name", value: displayValue(viewModel.settings?.name))
@@ -223,15 +261,31 @@ private struct ProfileSettingsView: View {
 
             Section {
                 Button(role: .destructive) {
-                    Task {
-                        await environment.container.authSession.signOut()
-                        environment.refreshAuthState()
+                    #if os(iOS)
+                    dismiss()
+                    #endif
+                    Task { @MainActor in
+                        await Task.yield()
+                        await environment.beginSignOut()
                     }
                 } label: {
                     Text("Sign Out")
                 }
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
+        #if os(macOS)
+        .fileImporter(
+            isPresented: $isProfileImageImporterPresented,
+            allowedContentTypes: [.image]
+        ) { result in
+            Task {
+                await handleProfileImageImport(result)
+            }
+        }
+        #endif
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
                 ProgressView()
@@ -265,6 +319,38 @@ private struct ProfileSettingsView: View {
         .accessibilityLabel("Profile photo")
     }
 
+    private var photoSubtitle: String {
+        #if os(macOS)
+        return "Choose an image to update your profile photo."
+        #else
+        return "Tap to change."
+        #endif
+    }
+
+#if os(macOS)
+    private func handleProfileImageImport(_ result: Result<URL, Error>) async {
+        profileImageError = nil
+        do {
+            let url = try result.get()
+            let data = try Data(contentsOf: url)
+            let contentType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "image/png"
+            let filename = url.lastPathComponent.isEmpty ? "profile-image" : url.lastPathComponent
+            isUploadingProfileImage = true
+            defer { isUploadingProfileImage = false }
+            if let image = NSImage(contentsOf: url) {
+                profileImage = Image(nsImage: image)
+            }
+            try await viewModel.uploadProfileImage(
+                data: data,
+                contentType: contentType,
+                filename: filename
+            )
+        } catch {
+            profileImageError = error.localizedDescription
+        }
+    }
+#endif
+
     private func displayValue(_ value: String?) -> String {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? "Not set" : trimmed
@@ -293,13 +379,9 @@ private struct GeneralSettingsView: View {
                 Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
                     .disabled(!canUseDeviceAuth)
                 if !canUseDeviceAuth {
-                    Text("Set a device passcode to enable biometric unlock.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if biometryType == .none {
-                    Text("Biometric unlock will fall back to device passcode.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("Set up Face ID or Touch ID to enable biometric unlock.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
             Section("Weather") {
@@ -307,9 +389,16 @@ private struct GeneralSettingsView: View {
                     Text("Celsius").tag(false)
                     Text("Fahrenheit").tag(true)
                 }
+                #if os(macOS)
+                .pickerStyle(.radioGroup)
+                #else
                 .pickerStyle(.segmented)
+                #endif
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .onAppear {
             evaluateBiometricSupport()
         }
@@ -328,7 +417,7 @@ private struct GeneralSettingsView: View {
 
     private func evaluateBiometricSupport() {
         let context = LAContext()
-        canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
+        canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         biometryType = context.biometryType
     }
@@ -352,6 +441,9 @@ private struct SystemSettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .overlay {
             if viewModel.isLoading && viewModel.settings == nil {
                 ProgressView()
@@ -407,30 +499,29 @@ private struct SkillsSettingsView: View {
                 ForEach(groupedSkills, id: \.0) { category, skills in
                     Section(category) {
                         ForEach(skills, id: \.id) { skill in
-                            VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(skill.name)
-                                    .font(.subheadline.weight(.semibold))
-                                Spacer()
-                                Toggle("", isOn: Binding(
-                                    get: { isSkillEnabled(skill.id) },
-                                    set: { isEnabled in
-                                        Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
-                                    }
-                                ))
-                                .labelsHidden()
-                                .disabled(viewModel.isSavingSkills || viewModel.settings == nil)
+                            Toggle(isOn: Binding(
+                                get: { isSkillEnabled(skill.id) },
+                                set: { isEnabled in
+                                    Task { await viewModel.setSkillEnabled(id: skill.id, enabled: isEnabled) }
+                                }
+                            )) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(skill.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(skill.description)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                            Text(skill.description)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 4)
+                            .disabled(viewModel.isSavingSkills || viewModel.settings == nil)
                         }
                     }
                 }
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .overlay {
             if viewModel.isLoadingSkills && viewModel.skills.isEmpty {
                 ProgressView()
@@ -460,7 +551,17 @@ private struct MemoriesSettingsView: View {
     @ObservedObject var viewModel: MemoriesViewModel
 
     var body: some View {
-        MemoriesDetailView(viewModel: viewModel)
+        #if os(macOS)
+        Form {
+            Section("Memories") {
+                Text("Manage and view memories in the main workspace.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        #else
+        MemoriesSettingsDetailView(viewModel: viewModel)
+        #endif
     }
 }
 
@@ -493,6 +594,9 @@ private struct ShortcutsSettingsView: View {
                 }
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
         .overlay {
             if viewModel.isLoadingShortcuts && viewModel.shortcutsToken.isEmpty {
                 ProgressView()
@@ -526,6 +630,9 @@ private struct ThingsSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
     }
 }
 
@@ -569,5 +676,8 @@ private struct APISettingsView: View {
             }
 #endif
         }
+        #if os(macOS)
+        .formStyle(.grouped)
+        #endif
     }
 }

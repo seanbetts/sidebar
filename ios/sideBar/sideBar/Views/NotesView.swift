@@ -1,25 +1,77 @@
 import SwiftUI
-import MarkdownUI
 
 public struct NotesView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     public init() {
     }
 
     public var body: some View {
         NotesDetailView(viewModel: environment.notesViewModel)
+            #if !os(macOS)
+            .navigationTitle(noteTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isCompact {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                        } label: {
+                            Image(systemName: "line.3.horizontal")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Note options")
+                    }
+                }
+            }
+            #endif
+    }
+
+    private var noteTitle: String {
+        #if os(macOS)
+        return "Notes"
+        #else
+        guard horizontalSizeClass == .compact else {
+            return "Notes"
+        }
+        guard let name = environment.notesViewModel.activeNote?.name else {
+            return "Notes"
+        }
+        if name.hasSuffix(".md") {
+            return String(name.dropLast(3))
+        }
+        return name
+        #endif
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 }
 
 private struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     private let contentMaxWidth: CGFloat = 800
+    @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
+            if environment.isOffline {
+                OfflineBanner()
+            }
+            if !isCompact {
+                header
+                Divider()
+            }
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -32,9 +84,12 @@ private struct NotesDetailView: View {
                 .foregroundStyle(.primary)
             Text(displayTitle)
                 .font(.headline)
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(1)
                 .truncationMode(.tail)
             Spacer()
+            SaveStatusView(editorViewModel: environment.notesEditorViewModel)
             Button {
             } label: {
                 Image(systemName: "line.3.horizontal")
@@ -50,20 +105,48 @@ private struct NotesDetailView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let note = viewModel.activeNote {
-            ScrollView {
-                SideBarMarkdown(text: strippedContent(note: note))
-                    .frame(maxWidth: contentMaxWidth, alignment: .leading)
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .center)
+            if viewModel.activeNote != nil {
+                MarkdownEditorView(
+                    viewModel: environment.notesEditorViewModel,
+                    maxContentWidth: contentMaxWidth,
+                    showsCompactStatus: isCompact
+                )
+            } else if viewModel.selectedNoteId != nil {
+                if let error = viewModel.errorMessage {
+                    PlaceholderView(
+                        title: "Unable to load note",
+                        subtitle: error,
+                        actionTitle: "Retry"
+                    ) {
+                        guard let selectedId = viewModel.selectedNoteId else { return }
+                        Task { await viewModel.loadNote(id: selectedId) }
+                    }
+                } else {
+                    LoadingView(message: "Loading note…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else {
+                #if os(macOS)
+                if viewModel.tree == nil {
+                    LoadingView(message: "Loading notes…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    WelcomeEmptyView()
+                }
+                #else
+                if viewModel.tree == nil {
+                    LoadingView(message: "Loading notes…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    PlaceholderView(
+                        title: "Select a note",
+                        subtitle: "Choose a note from the sidebar to start reading.",
+                        iconName: "text.document"
+                    )
+                }
+                #endif
             }
-        } else if viewModel.selectedNoteId != nil {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            PlaceholderView(title: "Select a note")
         }
-    }
 
     private var displayTitle: String {
         guard let name = viewModel.activeNote?.name else {
@@ -75,20 +158,12 @@ private struct NotesDetailView: View {
         return name
     }
 
-    private func strippedContent(note: NotePayload) -> String {
-        let title = displayTitle
-        let trimmed = note.content.trimmingCharacters(in: .whitespacesAndNewlines)
-        let heading = "# \(title)"
-        if trimmed.hasPrefix(heading) {
-            let lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
-            if lines.first?.trimmingCharacters(in: .whitespacesAndNewlines) == heading {
-                let remaining = lines.dropFirst()
-                let stripped = remaining.drop(while: { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
-                    .joined(separator: "\n")
-                return stripped.isEmpty ? note.content : stripped
-            }
-        }
-        return note.content
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
 }

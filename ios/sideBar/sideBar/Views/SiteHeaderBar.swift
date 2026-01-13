@@ -72,6 +72,8 @@ public struct SiteHeaderBar: View {
                 onToggleSidebar?()
             }
         }
+        .accessibilityLabel(isCompact ? "Show sidebar" : "sideBar")
+        .accessibilityAddTraits(isCompact ? .isButton : [])
     }
 
     private var trailingControls: some View {
@@ -94,6 +96,7 @@ public struct SiteHeaderBar: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(onSwapContent == nil)
+                .accessibilityLabel("Swap panels")
                 .font(.system(size: 16, weight: .semibold))
                 .imageScale(.medium)
                 .padding(6)
@@ -111,11 +114,10 @@ public struct SiteHeaderBar: View {
                 Button {
                     onShowSettings?()
                 } label: {
-                    Image(systemName: "person.crop.circle")
-                        .font(.system(size: 20, weight: .regular))
-                        .frame(width: 28, height: 28)
+                    ProfileAvatarView(size: 28)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
                 .imageScale(.medium)
                 .padding(6)
                 .background(
@@ -134,6 +136,7 @@ public struct SiteHeaderBar: View {
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Scratchpad")
                 .font(.system(size: 16, weight: .semibold))
                 .imageScale(.medium)
                 .padding(6)
@@ -157,28 +160,16 @@ public struct SiteHeaderBar: View {
     }
 
     private var barBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
+        DesignTokens.Colors.background
     }
 
 
     private var buttonBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 
     private var buttonBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 
     private var isCompact: Bool {

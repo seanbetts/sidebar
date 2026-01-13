@@ -16,7 +16,7 @@ public enum EnvironmentConfigLoadError: LocalizedError, Equatable {
 
 public extension EnvironmentConfig {
     static func load() throws -> EnvironmentConfig {
-        let apiBaseUrlString = try loadString(key: "API_BASE_URL")
+        let apiBaseUrlString = defaultApiBaseUrlString()
         let supabaseUrlString = try loadString(key: "SUPABASE_URL")
         let supabaseAnonKey = try loadString(key: "SUPABASE_ANON_KEY")
 
@@ -46,7 +46,25 @@ public extension EnvironmentConfig {
     }
 }
 
+private func defaultApiBaseUrlString() -> String {
+    #if targetEnvironment(simulator)
+    return "http://127.0.0.1:8001/api/v1"
+    #else
+    if let override = loadOptionalString(key: "API_BASE_URL") {
+        return override
+    }
+    return "https://sidebar-api.fly.dev/api/v1"
+    #endif
+}
+
 private func loadString(key: String) throws -> String {
+    if let value = loadOptionalString(key: key) {
+        return value
+    }
+    throw EnvironmentConfigLoadError.missingValue(key: key)
+}
+
+private func loadOptionalString(key: String) -> String? {
     if let value = ProcessInfo.processInfo.environment[key], !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
         return value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -60,5 +78,5 @@ private func loadString(key: String) throws -> String {
         return value
     }
 
-    throw EnvironmentConfigLoadError.missingValue(key: key)
+    return nil
 }

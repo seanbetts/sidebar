@@ -1,0 +1,125 @@
+/* ============================================================================
+   SHARED MARKDOWN STYLES
+
+   Common styles used across all TipTap markdown instances in the application.
+   These styles are extracted to a single location to avoid duplication and
+   ensure consistent presentation across all markdown viewers/editors.
+
+   Used by:
+   - MarkdownEditor.svelte (main note editor)
+   - ChatMarkdown.svelte (chat messages)
+   - FileMarkdown.svelte (file viewer)
+   - WebsitesViewer.svelte (website content)
+   - scratchpad-popover.svelte (quick notes)
+   ============================================================================ */
+
+/* ============================================================================
+   TABLE STYLES
+   Applied to all markdown components for consistent table presentation
+   ============================================================================ */
+
+.tiptap table,
+.chat-markdown table,
+.file-markdown table,
+.website-viewer table,
+.scratchpad-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.95em;
+}
+
+.tiptap th,
+.tiptap td,
+.chat-markdown th,
+.chat-markdown td,
+.file-markdown th,
+.file-markdown td,
+.website-viewer th,
+.website-viewer td,
+.scratchpad-editor th,
+.scratchpad-editor td {
+  border: 1px solid var(--color-border) !important;
+  padding: 0.5em 0.75em !important;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tiptap thead th,
+.chat-markdown thead th,
+.file-markdown thead th,
+.website-viewer thead th,
+.scratchpad-editor thead th {
+  background-color: color-mix(in oklab, var(--color-muted) 80%, var(--color-foreground) 8%) !important;
+  color: var(--color-foreground);
+  font-weight: 600;
+  padding: 0.65em 0.75em !important;
+  border-bottom: 2px solid var(--color-border) !important;
+}
+
+/* Striped rows using OKLAB color mixing for perceptually uniform blending */
+.tiptap tbody tr:nth-child(even),
+.chat-markdown tbody tr:nth-child(even),
+.file-markdown tbody tr:nth-child(even),
+.website-viewer tbody tr:nth-child(even),
+.scratchpad-editor tbody tr:nth-child(even) {
+  background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
+}
+
+/* ============================================================================
+   TASK LIST STYLES
+   Applied to editor and scratchpad for interactive task management
+   Note: Chat, file viewer, and website viewer don't use task lists
+   ============================================================================ */
+
+.tiptap ul[data-type='taskList'],
+.scratchpad-editor ul[data-type='taskList'] {
+  list-style: none !important;
+  padding-left: 0 !important;
+}
+
+.tiptap ul[data-type='taskList'] ul[data-type='taskList'],
+.scratchpad-editor ul[data-type='taskList'] ul[data-type='taskList'] {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.tiptap ul[data-type='taskList'] > li,
+.scratchpad-editor ul[data-type='taskList'] > li {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.tiptap ul[data-type='taskList'] > li > label,
+.scratchpad-editor ul[data-type='taskList'] > li > label {
+  margin-top: 0.2em;
+}
+
+.tiptap ul[data-type='taskList'] > li > div,
+.scratchpad-editor ul[data-type='taskList'] > li > div {
+  flex: 1;
+}
+
+.tiptap ul[data-type='taskList'] > li > div > p,
+.scratchpad-editor ul[data-type='taskList'] > li > div > p {
+  margin: 0;
+}
+
+.tiptap ul[data-type='taskList'] > li > div > p:empty,
+.scratchpad-editor ul[data-type='taskList'] > li > div > p:empty {
+  display: none;
+}
+
+.tiptap ul[data-type='taskList'] > li[data-checked='true'] > div,
+.scratchpad-editor ul[data-type='taskList'] > li[data-checked='true'] > div {
+  color: var(--color-muted-foreground) !important;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Theme-aware checkbox color (previously hardcoded to #000) */
+.tiptap ul[data-type='taskList'] input[type='checkbox'],
+.scratchpad-editor ul[data-type='taskList'] input[type='checkbox'] {
+  accent-color: var(--color-foreground);
+}

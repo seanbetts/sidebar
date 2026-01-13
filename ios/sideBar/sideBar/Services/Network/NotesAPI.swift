@@ -4,6 +4,7 @@ public protocol NotesProviding {
     func listTree() async throws -> FileTree
     func getNote(id: String) async throws -> NotePayload
     func search(query: String, limit: Int) async throws -> [FileNode]
+    func updateNote(id: String, content: String) async throws -> NotePayload
 }
 
 public struct NotesAPI {

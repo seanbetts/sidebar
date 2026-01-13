@@ -195,4 +195,10 @@ private struct MockNotesAPI: NotesProviding {
         _ = limit
         return []
     }
+
+    func updateNote(id: String, content: String) async throws -> NotePayload {
+        _ = id
+        _ = content
+        return try getNoteResult.get()
+    }
 }

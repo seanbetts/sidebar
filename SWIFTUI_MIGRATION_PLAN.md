@@ -122,17 +122,17 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 
 ### Overall Progress
 
-**Current Target**: Read-Only MVP
-**Status**: Phase 8 complete (Cache-First Sync Architecture)
-**Sessions Completed (Implementation)**: 17 / 24-36 (MVP) or 17 / 38-54 (Full App)
+**Current Target**: Phase 11 (Editing Capabilities)
+**Status**: Phase 11.1 complete (Chat Input)
+**Sessions Completed (Implementation)**: 26 / 24-36 (MVP) or 26 / 38-54 (Full App)
 **Hours Logged (Implementation)**: TBD / 96-144 (MVP) or TBD / 165-292 (Full App)
 **Weeks Elapsed (Implementation)**: 0 / 8-13 (MVP) or 0 / 13-19 (Full App)
 
 ```
-MVP Progress:      [████████████████░░░░] 80%
-Full App Progress: [███████████░░░░░░░░░] 55%
+MVP Progress:      [████████████████████] 100%
+Full App Progress: [████████████░░░░░░░░] 60%
 
-Critical Path (MVP): [████████████████░░░░] 80%
+Critical Path (MVP): [████████████████████] 100%
 (Phases 1 → 2 → 3-Modified → 4-Reduced → 5 → 6-Modified → 7-Modified → 8 → 9 → 10)
 ```
 
@@ -150,19 +150,19 @@ Critical Path (MVP): [████████████████░░░�
 | **6. Website Viewer** | ✅ Complete | 1 / 1-2 | 1 / 2-3 | 100% | Modified (no saving) |
 | **7. Additional Features** | ✅ Complete | 1 / 2-3 | 1 / 3-4 | 100% | Modified (view-only) |
 | **8. Cache-First Sync Architecture** | ✅ Complete | 2 / 2-3 | 2 / 2-3 | 100% | Full |
-| **9. Platform Optimization** | ⬜ Not Started | 0 / 5-7 | 0 / 5-7 | 0% | Full |
-| **10. MVP Testing** | ⬜ Not Started | 0 / 3-4 | 0 / 4-6 | 0% | Modified (read-only testing) |
+| **9. Platform Optimization** | ✅ Complete | 5 / 5-7 | 5 / 5-7 | 100% | Full |
+| **10. MVP Testing** | ✅ Complete | 3 / 3-4 | 3 / 4-6 | 100% | Modified (read-only testing) |
 | **MVP TOTAL** | | **24-36** | | | |
 
 #### Post-MVP: Editing Capabilities (Phase 11)
 
 | Phase | Status | Sessions | Complete | Full App Required |
 |-------|--------|----------|----------|-------------------|
-| **10.1 Chat Input** | ⬜ Not Started | 0 / 2-3 | 0% | ✅ Yes |
-| **10.2 Markdown Editor** | ⬜ Not Started | 0 / 6-9 | 0% | ✅ Yes |
-| **10.3 Note Operations** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
-| **10.4 Content Creation** | ⬜ Not Started | 0 / 1 | 0% | ✅ Yes |
-| **10.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
+| **11.1 Chat Input** | ✅ Complete | 2 / 2-3 | 100% | ✅ Yes |
+| **11.2 Markdown Editor** | ⬜ Not Started | 0 / 6-9 | 0% | ✅ Yes |
+| **11.3 Note Operations** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
+| **11.4 Content Creation** | ⬜ Not Started | 0 / 1 | 0% | ✅ Yes |
+| **11.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
 | **POST-MVP TOTAL** | | **11-17** | | |
 
 **FULL APP TOTAL: 38-54 sessions (MVP 24-36 + Post-MVP 11-17)**
@@ -230,7 +230,7 @@ Critical Path (MVP): [████████████████░░░�
 
 **Post-MVP (Phase 11.1): Chat Input**
 - [x] 3.7a Chat input UI shell (native growing text view + send button, not wired)
-- [ ] 3.7b Chat input wiring (send action, attachments, keyboard shortcuts)
+- [x] 3.7b Chat input wiring (send action, attachments, keyboard shortcuts)
 
 #### Phase 4: Note Viewer (2-3 sessions MVP, 7-10 full)
 **MVP Scope: Read-Only Note Viewer**
@@ -337,24 +337,58 @@ Critical Path (MVP): [████████████████░░░�
 
 #### Phase 9: Platform Optimization (5-7 sessions)
 **MVP Scope: Full**
-- [ ] 9.1 iPhone-Specific Layout (read-only optimized)
-- [ ] 9.2 iPad-Specific Layout
-- [ ] 9.3 macOS-Specific Features
-- [ ] 9.4 Animations & Transitions
-- [ ] 9.5 Performance Optimization
-- [ ] 9.6 Accessibility (VoiceOver, Dynamic Type)
-- [ ] 9.7 Error Handling
-- [ ] 9.8 Loading States
-- [ ] 9.9 Offline Behavior (cached reading)
+- [x] 9.1 iPhone-Specific Layout (read-only optimized)
+- [x] 9.2 iPad-Specific Layout
+- [x] 9.3 macOS-Specific Features
+- [x] 9.4 Animations & Transitions
+  - [x] Define core animation patterns (panel swap, list insert/remove, detail open/close)
+  - [x] Add selection transition for sidebar rows (notes/files/websites)
+  - [x] Add optional list load-in stagger for panel lists
+  - [x] Respect Reduce Motion across animations
+- [x] 9.5 Performance Optimization
+  - [x] Profile list rendering with large datasets (notes/files/websites)
+  - [x] Reduce recomputation in chat and markdown-heavy views
+  - [x] Audit image sizing and caching (avatars/icons)
+  - [x] Minimize expensive modifiers in scrolling lists
+- [x] 9.6 Accessibility (VoiceOver, Dynamic Type)
+  - [x] Add VoiceOver labels for custom controls (chat input, toolbar buttons)
+  - [x] Validate Dynamic Type on iOS/macOS (no truncation/overlap)
+  - [x] Ensure sidebar selection states are announced
+  - [x] Verify focus order in Settings and Login
+- [x] 9.7 Error Handling
+  - [x] Standardize error empty states across panels
+  - [x] Add retry actions where appropriate
+  - [x] Ensure auth errors offer a clear recovery path
+- [x] 9.8 Loading States
+  - [x] Make loading placeholders consistent across panels
+  - [x] Add skeleton rows for list loading where feasible
+  - [x] Prevent layout shifts during loading
+  - [x] Pull-to-refresh
+  - [x] Infinite scroll loading
+- [x] 9.9 Offline Behavior (cached reading)
+  - [x] Validate cached reading offline (notes/files/websites/chat)
+  - [x] Show offline indicator when SSE disconnects
+  - [x] Retry gracefully on network return
+
+**Phase 9.1 DRY Navigation Refactor (Cross-Device)**
+- [x] Inventory compact vs regular entry points per section (Chat, Notes, Files, Websites, Tasks)
+- [x] Define shared contract: PanelView + DetailView + selection state (no platform-specific list logic)
+- [x] Build compact shell: TabView -> NavigationStack -> PanelView root -> DetailView push on selection
+- [x] Keep regular shell: WorkspaceLayout uses same PanelView/DetailView pair
+- [x] Refactor Notes end-to-end as the template
+- [x] Apply template to Chat, Websites, Files, Tasks
+- [x] Replace compact-only list flows (remove IngestionSplitView usage on iPhone)
+- [x] Unify header avatar rendering (SiteHeaderBar uses shared avatar view)
+- [x] Validate iPhone regressions: profile image, chat header, notes/websites list, files row content
 
 #### Phase 10: MVP Testing & Refinement (3-4 sessions MVP, 4-6 full)
 **MVP Scope: Read-Only Testing**
-- [ ] 10.1 Integration Testing (all view features)
-- [ ] 10.1a Re-run iOS simulator tests (prior run timed out at 120s; macOS suite passed)
-- [ ] 10.2 Real-World Usage (daily use as reference app)
-- [ ] 10.3 Bug Fixes
-- [ ] 10.4 Edge Cases (very long content, slow network, empty states)
-- [ ] 10.5 Polish
+- [x] 10.1 Integration Testing (all view features)
+- [x] 10.1a Re-run iOS simulator tests (prior run timed out at 120s; macOS suite passed)
+- [x] 10.2 Real-World Usage (daily use as reference app)
+- [x] 10.3 Bug Fixes
+- [x] 10.4 Edge Cases (very long content, slow network, empty states)
+- [x] 10.5 Polish
 
 **Post-MVP (Phase 11.5): Full App Testing**
 - [ ] Test editing features
@@ -367,26 +401,40 @@ Critical Path (MVP): [████████████████░░░�
 **Sessions: 11-17 | Added after MVP delivery**
 
 #### Phase 11.1: Chat Input (2-3 sessions)
-- [ ] Text input with auto-expanding height
-- [ ] Send button (disabled when empty)
-- [ ] SSE streaming for sending messages
-- [ ] File attachment picker (optional)
-- [ ] Keyboard shortcuts (Cmd+Enter on Mac)
+- [x] Text input with auto-expanding height
+- [x] Send button (disabled when empty)
+- [x] SSE streaming for sending messages
+- [x] File attachment picker (optional)
+- [x] Keyboard shortcuts (Cmd+Enter on Mac)
 
 #### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
-- [ ] **Critical Decision**: RichTextKit vs Custom UITextView/NSTextView
-- [ ] Basic markdown editing with RichTextKit integration
-- [ ] Editor toolbar (bold, italic, headings, lists, etc.)
+- [x] **Critical Decision**: CodeMirror 6 in WKWebView for WYSIWYG parity
+- [ ] Replace TextKit editor with CodeMirror 6 (shared web bundle)
+- [ ] Editor toolbar (bold, italic, headings, lists, etc.) — deferred (no toolbar)
 - [ ] Advanced formatting (tables, links, code blocks)
 - [ ] Syntax highlighting for code blocks
 - [ ] Live preview option (optional)
 - [ ] Performance optimization for long documents
+- [ ] Plan: `docs/plans/2026-01-13-markdown-plan.md`
 
-**Decision Gate (After Session 3-5 of 10.2):**
-Evaluate RichTextKit capabilities. Choose:
-- Option A: Continue with RichTextKit + workarounds
-- Option B: Build custom UITextView wrapper (adds 3-5 sessions)
-- Option C: Reduce scope (defer tables/advanced features)
+**Concrete 11.2 Checklist (TipTap parity targets)**
+- [ ] WKWebView CM6 editor surface with markdown as the source of truth
+- [ ] Markdown round-trip (load → edit → save) matches web output
+- [ ] Web-style theme parity (shared CM6 theme)
+- [ ] Formatting actions parity: bold, italic, strike, underline, headings (H1–H3), blockquote, horizontal rule (underline pending)
+- [ ] List parity: bullet, ordered, task lists (nested), toggle task completion
+- [ ] Code parity: inline code + fenced code blocks with language tag + syntax highlighting
+- [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
+- [ ] Link parity: create/edit/remove links, preserve URLs in markdown
+- [ ] Image parity: image blocks with caption + gallery block (custom markdown markers)
+- [ ] Editor toolbar parity: primary actions + overflow menu to match web affordances — deferred (no toolbar)
+- [ ] Selection/undo parity: keep cursor on external updates
+- [ ] Auto-save parity: debounce + dirty state tracking (align with web editor store)
+- [ ] External update handling: detect server/AI edits and merge or prompt with conflict UI
+- [ ] Long-note performance: incremental rendering + minimal layout churn
+
+**Decision Gate:**
+CodeMirror 6 in WKWebView selected for WYSIWYG parity.
 
 #### Phase 11.3: Note Operations (1-2 sessions)
 - [ ] Create new note (modal dialog for name/folder)

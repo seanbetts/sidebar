@@ -1,5 +1,16 @@
 import SwiftUI
 
+private func panelHeaderBackground(_ colorScheme: ColorScheme) -> Color {
+    #if os(macOS)
+    if colorScheme == .light {
+        return DesignTokens.Colors.sidebar
+    }
+    return DesignTokens.Colors.surface
+    #else
+    return DesignTokens.Colors.surface
+    #endif
+}
+
 public struct ConversationsPanel: View {
     @EnvironmentObject private var environment: AppEnvironment
 
@@ -25,11 +36,14 @@ public struct TasksPanel: View {
 
 private struct TasksPanelView: View {
     @State private var searchQuery: String = ""
+    @Environment(\.colorScheme) private var colorScheme
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             SidebarPanelPlaceholder(title: "Tasks")
         }
     }
@@ -37,40 +51,56 @@ private struct TasksPanelView: View {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Tasks") {
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Button {
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add task")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add task")
             }
             SearchField(text: $searchQuery, placeholder: "Search tasks")
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(panelHeaderBackground(colorScheme))
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 }
 
 private struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var searchQuery: String = ""
+    @State private var renameConversationId: String? = nil
+    @State private var renameValue: String = ""
+    @State private var deleteConversationId: String? = nil
+    @State private var deleteConversationTitle: String = ""
+    @FocusState private var renameFieldFocusedId: String?
+    @Environment(\.colorScheme) private var colorScheme
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             Group {
                 if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
-                    VStack(spacing: 12) {
-                        ProgressView()
-                        Text("Loading conversations…")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    SidebarListSkeleton(rowCount: 6, showSubtitle: true)
                 } else if filteredGroups.isEmpty {
                     SidebarPanelPlaceholder(title: searchQuery.isEmpty ? "No conversations" : "No matching conversations")
                 } else {
@@ -78,41 +108,118 @@ private struct ConversationsPanelView: View {
                 }
             }
         }
+        .alert(
+            "Delete conversation",
+            isPresented: isDeleteDialogPresented
+        ) {
+            Button("Delete", role: .destructive) {
+                let targetId = deleteConversationId
+                clearDeleteTarget()
+                Task {
+                    if let id = targetId {
+                        await viewModel.deleteConversation(id: id)
+                    }
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                clearDeleteTarget()
+            }
+        } message: {
+            Text(deleteDialogTitle)
+        }
     }
 
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Chat") {
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    if showNewChatButton {
+                        Button {
+                            Task {
+                                await viewModel.startNewConversation()
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("New chat")
+                    }
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("New chat")
+                .frame(height: 28)
             }
             SearchField(text: $searchQuery, placeholder: "Search chats")
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(panelHeaderBackground(colorScheme))
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var showNewChatButton: Bool {
+        guard viewModel.selectedConversationId != nil else {
+            return false
+        }
+        return !viewModel.isBlankConversation
     }
 
     private var conversationsList: some View {
         List {
             ForEach(filteredGroups) { group in
                 Section(group.title) {
-                    ForEach(group.conversations) { conversation in
+                    ForEach(Array(group.conversations.enumerated()), id: \.element.id) { index, conversation in
+                        let isEditing = renameConversationId == conversation.id
                         SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
                             ConversationRow(
                                 conversation: conversation,
-                                isSelected: viewModel.selectedConversationId == conversation.id
+                                isSelected: viewModel.selectedConversationId == conversation.id,
+                                isEditing: isEditing,
+                                renameValue: $renameValue,
+                                focusedId: $renameFieldFocusedId,
+                                onRename: { beginRename(conversation) },
+                                onRenameSubmit: { commitRename(conversation) },
+                                onRenameCancel: cancelRename,
+                                onDelete: { presentDelete(conversation) }
                             )
                         }
-                        .onTapGesture { Task { await viewModel.selectConversation(id: conversation.id) } }
+                        .onTapGesture {
+                            guard !isEditing else { return }
+                            Task { await viewModel.selectConversation(id: conversation.id) }
+                        }
+                        #if os(iOS)
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            Button("Rename") {
+                                beginRename(conversation)
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button("Delete") {
+                                presentDelete(conversation)
+                            }
+                            .tint(.red)
+                        }
+                        #endif
                     }
                 }
+            }
+        }
+        .transaction { transaction in
+            if deleteConversationId != nil {
+                transaction.disablesAnimations = true
             }
         }
         .listStyle(.sidebar)
@@ -138,60 +245,192 @@ private struct ConversationsPanelView: View {
     }
 
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
+    private var isDeleteDialogPresented: Binding<Bool> {
+        Binding(
+            get: { deleteConversationId != nil },
+            set: { isPresented in
+                if !isPresented {
+                    clearDeleteTarget()
+                }
+            }
+        )
+    }
+
+    private func beginRename(_ conversation: Conversation) {
+        renameConversationId = conversation.id
+        renameValue = conversation.title
+        renameFieldFocusedId = conversation.id
+    }
+
+    private func cancelRename() {
+        renameConversationId = nil
+        renameValue = ""
+        renameFieldFocusedId = nil
+    }
+
+    private func commitRename(_ conversation: Conversation) {
+        let updatedTitle = renameValue
+        cancelRename()
+        Task {
+            await viewModel.renameConversation(id: conversation.id, title: updatedTitle)
+        }
+    }
+
+    private func presentDelete(_ conversation: Conversation) {
+        deleteConversationId = conversation.id
+        let trimmed = conversation.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        deleteConversationTitle = trimmed.isEmpty ? "conversation" : trimmed
+    }
+
+    private func clearDeleteTarget() {
+        deleteConversationId = nil
+        deleteConversationTitle = ""
+    }
+
+    private var deleteDialogTitle: String {
+        let truncated = truncatedDeleteTitle(deleteConversationTitle)
+        return "Delete \"\(truncated)\"?"
+    }
+
+    private func truncatedDeleteTitle(_ title: String) -> String {
+        let maxLength = 32
+        guard title.count > maxLength else {
+            return title
+        }
+        let index = title.index(title.startIndex, offsetBy: maxLength)
+        return "\(title[..<index])..."
+    }
 }
 
-private struct ConversationRow: View {
+private struct ConversationRow: View, Equatable {
     let conversation: Conversation
     let isSelected: Bool
-    @Environment(\.colorScheme) private var colorScheme
+    let isEditing: Bool
+    @Binding var renameValue: String
+    @FocusState.Binding var focusedId: String?
+    let onRename: () -> Void
+    let onRenameSubmit: () -> Void
+    let onRenameCancel: () -> Void
+    let onDelete: () -> Void
+    private let subtitleText: String
+
+    init(
+        conversation: Conversation,
+        isSelected: Bool,
+        isEditing: Bool,
+        renameValue: Binding<String>,
+        focusedId: FocusState<String?>.Binding,
+        onRename: @escaping () -> Void,
+        onRenameSubmit: @escaping () -> Void,
+        onRenameCancel: @escaping () -> Void,
+        onDelete: @escaping () -> Void
+    ) {
+        self.conversation = conversation
+        self.isSelected = isSelected
+        self.isEditing = isEditing
+        self._renameValue = renameValue
+        self._focusedId = focusedId
+        self.onRename = onRename
+        self.onRenameSubmit = onRenameSubmit
+        self.onRenameCancel = onRenameCancel
+        self.onDelete = onDelete
+        let formattedDate = ConversationRow.formattedDate(from: conversation.updatedAt)
+        let count = conversation.messageCount
+        let label = count == 1 ? "1 message" : "\(count) messages"
+        self.subtitleText = "\(formattedDate) | \(label)"
+    }
+
+    static func == (lhs: ConversationRow, rhs: ConversationRow) -> Bool {
+        lhs.isSelected == rhs.isSelected &&
+        lhs.conversation.id == rhs.conversation.id &&
+        lhs.conversation.title == rhs.conversation.title &&
+        lhs.conversation.updatedAt == rhs.conversation.updatedAt &&
+        lhs.conversation.messageCount == rhs.conversation.messageCount &&
+        lhs.isEditing == rhs.isEditing
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(conversation.title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                .lineLimit(1)
-            Text(subtitleText)
-                .font(.caption2)
-                .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
+                if isEditing {
+                    TextField("", text: $renameValue)
+                        .textFieldStyle(.plain)
+                        .font(.subheadline)
+                        .foregroundStyle(primaryTextColor)
+                        .focused($focusedId, equals: conversation.id)
+                        .submitLabel(.done)
+                        .onSubmit(onRenameSubmit)
+                        #if os(macOS)
+                        .onExitCommand(perform: onRenameCancel)
+                        #endif
+                } else {
+                    Text(conversation.title)
+                        .font(.subheadline)
+                        .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                        .lineLimit(1)
+                }
+                Text(subtitleText)
+                    .font(.caption2)
+                    .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
+            }
+            Spacer(minLength: 0)
+            #if os(macOS)
+            if !isEditing {
+                let menu = Menu {
+                    Button("Rename") {
+                        onRename()
+                    }
+                    Button("Delete", role: .destructive) {
+                        onDelete()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                }
+                .menuStyle(.borderlessButton)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Conversation actions")
+
+                if #available(macOS 13.0, *) {
+                    menu.menuIndicator(.hidden)
+                } else {
+                    menu
+                }
+            }
+            #endif
         }
         .accessibilityElement(children: .combine)
     }
 
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        DesignTokens.Colors.textPrimary
     }
 
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary
+        DesignTokens.Colors.textSecondary
     }
 
     private var selectedTextColor: Color {
-        colorScheme == .dark ? Color.black : Color.white
+        DesignTokens.Colors.textPrimary
     }
 
     private var selectedSecondaryText: Color {
-        colorScheme == .dark ? Color.black.opacity(0.7) : Color.white.opacity(0.7)
+        DesignTokens.Colors.textSecondary
     }
 
     private var formattedDate: String {
-        guard let date = DateParsing.parseISO8601(conversation.updatedAt) else {
-            return conversation.updatedAt
+        ConversationRow.formattedDate(from: conversation.updatedAt)
+    }
+    private static func formattedDate(from value: String) -> String {
+        guard let date = DateParsing.parseISO8601(value) else {
+            return value
         }
         return DateFormatter.chatList.string(from: date)
-    }
-
-    private var subtitleText: String {
-        let count = conversation.messageCount
-        let label = count == 1 ? "1 message" : "\(count) messages"
-        return "\(formattedDate) | \(label)"
     }
 }
 
@@ -217,6 +456,9 @@ public struct NotesPanel: View {
 
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
@@ -224,17 +466,11 @@ private struct NotesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
-            Group {
-                if viewModel.tree == nil {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    searchResultsView
-                } else {
-                    notesTreeView
-                }
-            }
+            #if os(macOS)
+            notesPanelContentWithArchive
+            #else
+            notesPanelContent
+            #endif
         }
         .onAppear {
             if !hasLoaded {
@@ -267,6 +503,9 @@ private struct NotesPanelView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add note")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
             }
             SearchField(text: $viewModel.searchQuery, placeholder: "Search notes")
@@ -274,12 +513,30 @@ private struct NotesPanelView: View {
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(panelHeaderBackground(colorScheme))
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
     private var searchResultsView: some View {
         List {
             Section("Results") {
-                if viewModel.isSearching {
+                if let error = viewModel.errorMessage,
+                   !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    SidebarPanelPlaceholder(
+                        title: "Search failed",
+                        subtitle: error,
+                        actionTitle: "Retry"
+                    ) {
+                        viewModel.updateSearch(query: viewModel.searchQuery)
+                    }
+                } else if viewModel.isSearching {
                     HStack(spacing: 12) {
                         ProgressView()
                         Text("Searching…")
@@ -310,6 +567,49 @@ private struct NotesPanelView: View {
         .background(panelBackground)
     }
 
+    private var notesPanelContent: some View {
+        Group {
+            if let error = viewModel.errorMessage, viewModel.tree == nil {
+                SidebarPanelPlaceholder(
+                    title: "Unable to load notes",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    Task { await viewModel.loadTree() }
+                }
+            } else if viewModel.tree == nil {
+                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
+            } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                searchResultsView
+            } else {
+                notesTreeView
+            }
+        }
+    }
+
+    private var notesPanelContentWithArchive: some View {
+        Group {
+            if let error = viewModel.errorMessage, viewModel.tree == nil {
+                SidebarPanelPlaceholder(
+                    title: "Unable to load notes",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    Task { await viewModel.loadTree() }
+                }
+            } else if viewModel.tree == nil {
+                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
+            } else if !viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                searchResultsView
+            } else {
+                VStack(spacing: 0) {
+                    notesTreeListView
+                    notesArchiveSection
+                }
+            }
+        }
+    }
+
     private func buildItems(from nodes: [FileNode]) -> [FileNodeItem] {
         nodes.map { node in
             let children = node.type == .directory ? buildItems(from: node.children ?? []) : nil
@@ -322,7 +622,7 @@ private struct NotesPanelView: View {
         }
     }
 
-    private var notesTreeView: some View {
+    private var notesTreeListView: some View {
         List {
             Section("Pinned") {
                 if pinnedItems.isEmpty {
@@ -344,7 +644,7 @@ private struct NotesPanelView: View {
             Section("Notes") {
                 mainOutlineGroup
             }
-
+#if !os(macOS)
             Section {
                 DisclosureGroup(
                     isExpanded: $isArchiveExpanded,
@@ -354,7 +654,17 @@ private struct NotesPanelView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
-                            archivedOutlineGroup
+                            OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                                NotesTreeRow(
+                                    item: item,
+                                    isSelected: viewModel.selectedNoteId == item.id
+                                ) {
+                                    if item.isFile {
+                                        Task { await viewModel.selectNote(id: item.id) }
+                                    }
+                                }
+                            }
+                            .listRowBackground(rowBackground)
                         }
                     },
                     label: {
@@ -363,6 +673,7 @@ private struct NotesPanelView: View {
                 )
                 .listRowBackground(rowBackground)
             }
+#endif
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
@@ -372,16 +683,20 @@ private struct NotesPanelView: View {
         }
     }
 
+    private var notesTreeView: some View {
+        notesTreeListView
+    }
+
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
     }
 
     private var mainOutlineGroup: some View {
@@ -398,18 +713,44 @@ private struct NotesPanelView: View {
         .listRowBackground(rowBackground)
     }
 
-    private var archivedOutlineGroup: some View {
-        OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-            NotesTreeRow(
-                item: item,
-                isSelected: viewModel.selectedNoteId == item.id
-            ) {
-                if item.isFile {
-                    Task { await viewModel.selectNote(id: item.id) }
+    private var notesArchiveSection: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Divider()
+                .overlay(DesignTokens.Colors.border)
+                .padding(.bottom, DesignTokens.Spacing.xs)
+            DisclosureGroup(
+                isExpanded: $isArchiveExpanded,
+                content: {
+                    if archivedNodes.isEmpty {
+                        Text("No archived notes")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ScrollView {
+                            OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
+                                NotesTreeRow(
+                                    item: item,
+                                    isSelected: viewModel.selectedNoteId == item.id,
+                                    useListStyling: false
+                                ) {
+                                    if item.isFile {
+                                        Task { await viewModel.selectNote(id: item.id) }
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 650)
+                    }
+                },
+                label: {
+                    Label("Archive", systemImage: "archivebox")
+                        .font(.subheadline)
                 }
-            }
+            )
         }
-        .listRowBackground(rowBackground)
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.sm)
+        .background(panelBackground)
     }
 
     private var pinnedItems: [FileNodeItem] {
@@ -498,14 +839,32 @@ private struct NotesTreeRow: View {
     let item: FileNodeItem
     let isSelected: Bool
     let onSelect: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
+    let useListStyling: Bool
+
+    init(
+        item: FileNodeItem,
+        isSelected: Bool,
+        useListStyling: Bool = true,
+        onSelect: @escaping () -> Void
+    ) {
+        self.item = item
+        self.isSelected = isSelected
+        self.useListStyling = useListStyling
+        self.onSelect = onSelect
+    }
 
     var body: some View {
-        let row = SelectableRow(isSelected: isSelected) {
+        let row = SelectableRow(
+            isSelected: isSelected,
+            insets: rowInsets,
+            verticalPadding: rowVerticalPadding,
+            useListStyling: useListStyling
+        ) {
             HStack(spacing: 8) {
                 Image(systemName: item.isFile ? "doc.text" : "folder")
                     .foregroundStyle(isSelected ? selectedTextColor : (item.isFile ? secondaryTextColor : primaryTextColor))
                 Text(item.displayName)
+                    .font(.subheadline)
                     .lineLimit(1)
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
             }
@@ -514,26 +873,55 @@ private struct NotesTreeRow: View {
         if item.isFile {
             row
                 .onTapGesture { onSelect() }
-        } else {
+        } else if useListStyling {
             row
                 .listRowBackground(rowBackground)
+        } else {
+            row
         }
     }
 
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        DesignTokens.Colors.textPrimary
     }
 
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary
+        DesignTokens.Colors.textSecondary
     }
 
     private var selectedTextColor: Color {
-        colorScheme == .dark ? Color.black : Color.white
+        DesignTokens.Colors.textPrimary
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
+    }
+
+    private var rowInsets: EdgeInsets {
+        let horizontalPadding: CGFloat
+        #if os(macOS)
+        horizontalPadding = DesignTokens.Spacing.xs
+        #else
+        horizontalPadding = item.isFile ? DesignTokens.Spacing.sm : DesignTokens.Spacing.xs
+        #endif
+        return EdgeInsets(
+            top: 0,
+            leading: horizontalPadding,
+            bottom: 0,
+            trailing: horizontalPadding
+        )
+    }
+
+    private var rowVerticalPadding: CGFloat {
+        #if os(macOS)
+        return DesignTokens.Spacing.xs
+        #else
+        return item.isFile ? DesignTokens.Spacing.xs : DesignTokens.Spacing.xxs
+        #endif
     }
 }
 
@@ -566,20 +954,28 @@ public struct FilesPanel: View {
 
 private struct FilesPanelView: View {
     @ObservedObject var viewModel: IngestionViewModel
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
+    @State private var listAppeared = false
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             if viewModel.isLoading && viewModel.items.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                SidebarListSkeleton(rowCount: 8, showSubtitle: false)
             } else if let message = viewModel.errorMessage {
-                SidebarPanelPlaceholder(title: message)
+                SidebarPanelPlaceholder(
+                    title: "Unable to load files",
+                    subtitle: message,
+                    actionTitle: "Retry"
+                ) {
+                    Task { await viewModel.load() }
+                }
             } else if filteredReadyItems.isEmpty && filteredProcessingItems.isEmpty && filteredFailedItems.isEmpty {
                 SidebarPanelPlaceholder(title: "No files yet.")
             } else {
@@ -601,32 +997,48 @@ private struct FilesPanelView: View {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Files") {
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Button {
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add file")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add file")
             }
             SearchField(text: $searchQuery, placeholder: "Search files")
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(panelHeaderBackground(colorScheme))
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
     private var filesListView: some View {
         List {
             if !pinnedItems.isEmpty {
                 Section("Pinned") {
-                    ForEach(pinnedItems, id: \.file.id) { item in
+                    ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
                         let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                         if isFolder(item) {
                             row
+                                .staggeredAppear(index: index, isActive: listAppeared)
                         } else {
-                            row.contentShape(Rectangle())
+                            row
+                                .staggeredAppear(index: index, isActive: listAppeared)
                                 .onTapGesture { open(item: item) }
                         }
                     }
@@ -635,21 +1047,31 @@ private struct FilesPanelView: View {
 
             if !categorizedItems.isEmpty {
                 Section("Files") {
-                    ForEach(categoryOrder, id: \.self) { category in
+                    ForEach(Array(categoryOrder.enumerated()), id: \.element) { categoryIndex, category in
                         if let items = categorizedItems[category], !items.isEmpty {
                             DisclosureGroup(
-                                categoryLabels[category] ?? "Files",
                                 isExpanded: bindingForCategory(category)
                             ) {
-                                ForEach(items, id: \.file.id) { item in
+                                ForEach(Array(items.enumerated()), id: \.element.file.id) { itemIndex, item in
                                     let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
                                     if isFolder(item) {
                                         row
+                                            .staggeredAppear(
+                                                index: categoryIndex + itemIndex,
+                                                isActive: listAppeared
+                                            )
                                     } else {
-                                        row.contentShape(Rectangle())
+                                        row
+                                            .staggeredAppear(
+                                                index: categoryIndex + itemIndex,
+                                                isActive: listAppeared
+                                            )
                                             .onTapGesture { open(item: item) }
                                     }
                                 }
+                            } label: {
+                                Text(categoryLabels[category] ?? "Files")
+                                    .font(.subheadline)
                             }
                             .listRowBackground(rowBackground)
                         }
@@ -659,14 +1081,14 @@ private struct FilesPanelView: View {
 
             if !filteredProcessingItems.isEmpty || !filteredFailedItems.isEmpty {
                 Section("Uploads") {
-                    ForEach(filteredProcessingItems, id: \.file.id) { item in
+                    ForEach(Array(filteredProcessingItems.enumerated()), id: \.element.file.id) { index, item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                            .contentShape(Rectangle())
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .onTapGesture { open(item: item) }
                     }
-                    ForEach(filteredFailedItems, id: \.file.id) { item in
+                    ForEach(Array(filteredFailedItems.enumerated()), id: \.element.file.id) { index, item in
                         FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                            .contentShape(Rectangle())
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .onTapGesture { open(item: item) }
                     }
                 }
@@ -677,6 +1099,12 @@ private struct FilesPanelView: View {
         .background(panelBackground)
         .refreshable {
             await viewModel.load()
+        }
+        .onAppear {
+            listAppeared = !viewModel.isLoading
+        }
+        .onChange(of: viewModel.isLoading) { _, isLoading in
+            listAppeared = !isLoading
         }
     }
 
@@ -804,32 +1232,52 @@ private struct FilesPanelView: View {
     }
 
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
     }
 
 }
 
-private struct FilesIngestionRow: View {
+private struct FilesIngestionRow: View, Equatable {
     let item: IngestionListItem
     let isSelected: Bool
-    @Environment(\.colorScheme) private var colorScheme
+    private let displayName: String
+
+    init(item: IngestionListItem, isSelected: Bool) {
+        self.item = item
+        self.isSelected = isSelected
+        self.displayName = stripFileExtension(item.file.filenameOriginal)
+    }
+
+    static func == (lhs: FilesIngestionRow, rhs: FilesIngestionRow) -> Bool {
+        lhs.isSelected == rhs.isSelected &&
+        lhs.item.file.id == rhs.item.file.id &&
+        lhs.item.file.filenameOriginal == rhs.item.file.filenameOriginal &&
+        lhs.item.file.category == rhs.item.file.category &&
+        lhs.item.file.pinned == rhs.item.file.pinned &&
+        lhs.item.file.pinnedOrder == rhs.item.file.pinnedOrder &&
+        lhs.item.job.status == rhs.item.job.status &&
+        lhs.item.job.stage == rhs.item.job.stage &&
+        lhs.item.job.progress == rhs.item.job.progress &&
+        lhs.item.job.errorMessage == rhs.item.job.errorMessage &&
+        lhs.item.recommendedViewer == rhs.item.recommendedViewer
+    }
 
     var body: some View {
-        SelectableRow(isSelected: isSelected) {
+        SelectableRow(isSelected: isSelected, insets: rowInsets) {
             HStack(spacing: 8) {
                 Image(systemName: iconName)
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(stripFileExtension(item.file.filenameOriginal))
-                        .font(.subheadline.weight(.semibold))
+                    Text(displayName)
+                        .font(.subheadline)
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                 }
@@ -858,19 +1306,30 @@ private struct FilesIngestionRow: View {
     }
 
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        DesignTokens.Colors.textPrimary
     }
 
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary
+        DesignTokens.Colors.textSecondary
     }
 
     private var selectedTextColor: Color {
-        colorScheme == .dark ? Color.black : Color.white
+        DesignTokens.Colors.textPrimary
     }
 
-    private var selectedSecondaryText: Color {
-        colorScheme == .dark ? Color.black.opacity(0.7) : Color.white.opacity(0.7)
+    private var rowInsets: EdgeInsets {
+        let horizontalPadding: CGFloat
+        #if os(macOS)
+        horizontalPadding = DesignTokens.Spacing.xs
+        #else
+        horizontalPadding = item.file.category == "folder" ? DesignTokens.Spacing.xs : DesignTokens.Spacing.sm
+        #endif
+        return EdgeInsets(
+            top: 0,
+            leading: horizontalPadding,
+            bottom: 0,
+            trailing: horizontalPadding
+        )
     }
 }
 
@@ -887,17 +1346,24 @@ public struct WebsitesPanel: View {
 
 private struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Environment(\.colorScheme) private var colorScheme
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
     @State private var selection: String? = nil
+    @State private var listAppeared = false
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            #if os(macOS)
+            websitesPanelContentWithArchive
+            #else
             content
+            #endif
         }
         .onAppear {
             if !hasLoaded {
@@ -907,53 +1373,67 @@ private struct WebsitesPanelView: View {
             if selection == nil {
                 selection = viewModel.active?.id
             }
+            listAppeared = !viewModel.isLoading
         }
         .onChange(of: viewModel.active?.id) { _, newValue in
             selection = newValue
+        }
+        .onChange(of: viewModel.isLoading) { _, isLoading in
+            listAppeared = !isLoading
         }
     }
 
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Websites") {
-                Button {
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 28, height: 28)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Button {
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add website")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add website")
             }
             SearchField(text: $searchQuery, placeholder: "Search websites")
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
         .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(panelHeaderBackground(colorScheme))
     }
 
     @ViewBuilder
     private var content: some View {
         if viewModel.isLoading && viewModel.items.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            SidebarListSkeleton(rowCount: 8, showSubtitle: true)
         } else if let error = viewModel.errorMessage {
-            SidebarPanelPlaceholder(title: error)
+            SidebarPanelPlaceholder(
+                title: "Unable to load websites",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                Task { await viewModel.load() }
+            }
         } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
-            List(selection: $selection) {
+            List {
                 Section("Results") {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
-                        ForEach(filteredItems, id: \.id) { item in
+                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
                             WebsiteRow(
                                 item: item,
                                 isSelected: selection == item.id
                             )
-                            .tag(item.id)
-                            .contentShape(Rectangle())
+                            .staggeredAppear(index: index, isActive: listAppeared)
                             .onTapGesture { open(item: item) }
                         }
                     }
@@ -962,8 +1442,11 @@ private struct WebsitesPanelView: View {
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
         } else {
-            List(selection: $selection) {
+            List {
                 if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
                     Section("Pinned") {
                         if pinnedItemsSorted.isEmpty {
@@ -971,13 +1454,12 @@ private struct WebsitesPanelView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
-                            ForEach(pinnedItemsSorted, id: \.id) { item in
+                            ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
                                 WebsiteRow(
                                     item: item,
                                     isSelected: selection == item.id
                                 )
-                                .tag(item.id)
-                                .contentShape(Rectangle())
+                                .staggeredAppear(index: index, isActive: listAppeared)
                                 .onTapGesture { open(item: item) }
                             }
                         }
@@ -989,49 +1471,142 @@ private struct WebsitesPanelView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
-                            ForEach(mainItems, id: \.id) { item in
+                            ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
                                 WebsiteRow(
                                     item: item,
                                     isSelected: selection == item.id
                                 )
-                                .tag(item.id)
-                                .contentShape(Rectangle())
+                                .staggeredAppear(index: index, isActive: listAppeared)
                                 .onTapGesture { open(item: item) }
                             }
                         }
                     }
                 }
-
+#if !os(macOS)
                 Section {
                     DisclosureGroup(
                         isExpanded: $isArchiveExpanded,
                         content: {
-                        if archivedItems.isEmpty {
-                            Text("No archived websites")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(archivedItems, id: \.id) { item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .tag(item.id)
-                                .contentShape(Rectangle())
-                                .onTapGesture { open(item: item) }
+                            if archivedItems.isEmpty {
+                                Text("No archived websites")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
+                                    WebsiteRow(
+                                        item: item,
+                                        isSelected: selection == item.id
+                                    )
+                                    .staggeredAppear(index: index, isActive: listAppeared)
+                                    .onTapGesture { open(item: item) }
+                                }
                             }
-                        }
-                    },
+                        },
                         label: {
                             Label("Archive", systemImage: "archivebox")
                         }
                     )
                     .listRowBackground(rowBackground)
                 }
+#endif
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var websitesPanelContentWithArchive: some View {
+        if viewModel.isLoading && viewModel.items.isEmpty {
+            SidebarListSkeleton(rowCount: 8, showSubtitle: true)
+        } else if let error = viewModel.errorMessage {
+            SidebarPanelPlaceholder(
+                title: "Unable to load websites",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                Task { await viewModel.load() }
+            }
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
+            SidebarPanelPlaceholder(title: "No websites yet.")
+        } else if !searchQuery.trimmed.isEmpty {
+            List {
+                Section("Results") {
+                    if filteredItems.isEmpty {
+                        SidebarPanelPlaceholder(title: "No results.")
+                    } else {
+                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
+                            WebsiteRow(
+                                item: item,
+                                isSelected: selection == item.id
+                            )
+                            .staggeredAppear(index: index, isActive: listAppeared)
+                            .onTapGesture { open(item: item) }
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
+        } else {
+            VStack(spacing: 0) {
+                websitesListView
+                websitesArchiveSection
+            }
+        }
+    }
+
+    private var websitesListView: some View {
+        List {
+            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
+                Section("Pinned") {
+                    if pinnedItemsSorted.isEmpty {
+                        Text("No pinned websites")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
+                                WebsiteRow(
+                                    item: item,
+                                    isSelected: selection == item.id
+                                )
+                                .staggeredAppear(index: index, isActive: listAppeared)
+                                .onTapGesture { open(item: item) }
+                        }
+                    }
+                }
+
+                Section("Websites") {
+                    if mainItems.isEmpty {
+                        Text("No websites saved")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
+                                WebsiteRow(
+                                    item: item,
+                                    isSelected: selection == item.id
+                                )
+                                .staggeredAppear(index: index, isActive: listAppeared)
+                                .onTapGesture { open(item: item) }
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(panelBackground)
+        .refreshable {
+            await viewModel.load()
         }
     }
 
@@ -1075,52 +1650,111 @@ private struct WebsitesPanelView: View {
         }
     }
 
-    private var actionBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
-    }
-
-    private var actionBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
-    }
-
     private var panelBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .underPageBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.sidebar
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
+    }
+
+    private var websitesArchiveSection: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Divider()
+                .overlay(DesignTokens.Colors.border)
+                .padding(.bottom, DesignTokens.Spacing.xs)
+            DisclosureGroup(
+                isExpanded: $isArchiveExpanded,
+                content: {
+                    if archivedItems.isEmpty {
+                        Text("No archived websites")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: DesignTokens.Spacing.xs) {
+                                ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
+                                    WebsiteRow(
+                                        item: item,
+                                        isSelected: selection == item.id,
+                                        useListStyling: false
+                                    )
+                                    .staggeredAppear(index: index, isActive: listAppeared)
+                                    .onTapGesture { open(item: item) }
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 650)
+                    }
+                },
+                label: {
+                    Label("Archive", systemImage: "archivebox")
+                        .font(.subheadline)
+                }
+            )
+        }
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.sm)
+        .background(panelBackground)
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 
 }
 
-private struct WebsiteRow: View {
+private struct WebsiteRow: View, Equatable {
     let item: WebsiteItem
     let isSelected: Bool
-    @Environment(\.colorScheme) private var colorScheme
+    let useListStyling: Bool
+    private let titleText: String
+    private let domainText: String
+
+    init(item: WebsiteItem, isSelected: Bool, useListStyling: Bool = true) {
+        self.item = item
+        self.isSelected = isSelected
+        self.useListStyling = useListStyling
+        self.titleText = item.title.isEmpty ? item.url : item.title
+        self.domainText = WebsiteRow.formatDomain(item.domain)
+    }
+
+    static func == (lhs: WebsiteRow, rhs: WebsiteRow) -> Bool {
+        lhs.isSelected == rhs.isSelected &&
+        lhs.useListStyling == rhs.useListStyling &&
+        lhs.item.id == rhs.item.id &&
+        lhs.item.title == rhs.item.title &&
+        lhs.item.url == rhs.item.url &&
+        lhs.item.domain == rhs.item.domain &&
+        lhs.item.pinned == rhs.item.pinned &&
+        lhs.item.pinnedOrder == rhs.item.pinnedOrder &&
+        lhs.item.archived == rhs.item.archived &&
+        lhs.item.updatedAt == rhs.item.updatedAt
+    }
 
     var body: some View {
-        SelectableRow(isSelected: isSelected) {
+        SelectableRow(
+            isSelected: isSelected,
+            insets: rowInsets,
+            useListStyling: useListStyling
+        ) {
             HStack(spacing: 8) {
                 Image(systemName: "globe")
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(item.title.isEmpty ? item.url : item.title)
-                        .font(.subheadline.weight(.semibold))
+                    Text(titleText)
+                        .font(.subheadline)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
                         .lineLimit(1)
-                    Text(formatDomain(item.domain))
+                    Text(domainText)
                         .font(.caption)
                         .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
                         .lineLimit(1)
@@ -1130,24 +1764,39 @@ private struct WebsiteRow: View {
         }
     }
 
-    private func formatDomain(_ domain: String) -> String {
+    private static func formatDomain(_ domain: String) -> String {
         domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
     }
 
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        DesignTokens.Colors.textPrimary
     }
 
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary
+        DesignTokens.Colors.textSecondary
     }
 
     private var selectedTextColor: Color {
-        colorScheme == .dark ? Color.black : Color.white
+        DesignTokens.Colors.textPrimary
     }
 
     private var selectedSecondaryText: Color {
-        colorScheme == .dark ? Color.black.opacity(0.7) : Color.white.opacity(0.7)
+        DesignTokens.Colors.textSecondary
+    }
+
+    private var rowInsets: EdgeInsets {
+        let horizontalPadding: CGFloat
+        #if os(macOS)
+        horizontalPadding = DesignTokens.Spacing.xs
+        #else
+        horizontalPadding = DesignTokens.Spacing.sm
+        #endif
+        return EdgeInsets(
+            top: 0,
+            leading: horizontalPadding,
+            bottom: 0,
+            trailing: horizontalPadding
+        )
     }
 }
 

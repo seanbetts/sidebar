@@ -3,32 +3,56 @@ import SwiftUI
 struct SelectableRow<Content: View>: View {
     let isSelected: Bool
     let content: Content
-    @Environment(\.colorScheme) private var colorScheme
+    private let rowInsets: EdgeInsets
+    private let useListStyling: Bool
+    private let verticalPadding: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(isSelected: Bool, @ViewBuilder content: () -> Content) {
+    init(
+        isSelected: Bool,
+        insets: EdgeInsets = EdgeInsets(
+            top: 0,
+            leading: DesignTokens.Spacing.sm,
+            bottom: 0,
+            trailing: DesignTokens.Spacing.sm
+        ),
+        verticalPadding: CGFloat = DesignTokens.Spacing.xs,
+        useListStyling: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) {
         self.isSelected = isSelected
+        self.rowInsets = insets
+        self.useListStyling = useListStyling
+        self.verticalPadding = verticalPadding
         self.content = content()
     }
 
     var body: some View {
-        content
-            .padding(.vertical, DesignTokens.Spacing.xs)
+        let rowContent = content
+            .padding(.vertical, verticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowInsets(EdgeInsets(
-                top: 0,
-                leading: DesignTokens.Spacing.sm,
-                bottom: 0,
-                trailing: DesignTokens.Spacing.sm
-            ))
             .contentShape(Rectangle())
-            .listRowBackground(isSelected ? selectionBackground : rowBackground)
-    }
+            .animation(Motion.quick(reduceMotion: reduceMotion), value: isSelected)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
 
-    private var selectionBackground: Color {
-        colorScheme == .dark ? Color.white : Color.black
+        if useListStyling {
+            rowContent
+                .listRowInsets(rowInsets)
+                .listRowBackground(isSelected ? DesignTokens.Colors.selection : rowBackground)
+        } else {
+            rowContent
+                .padding(.leading, rowInsets.leading)
+                .padding(.trailing, rowInsets.trailing)
+                .background(isSelected ? DesignTokens.Colors.selection : rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous))
+        }
     }
 
     private var rowBackground: Color {
-        colorScheme == .dark ? Color.black : Color.platformSystemBackground
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
     }
 }

@@ -7,6 +7,16 @@ public protocol ConversationsProviding {
     func delete(conversationId: String) async throws -> Conversation
 }
 
+public protocol ConversationsAPIProviding {
+    func list() async throws -> [Conversation]
+    func get(id: String) async throws -> ConversationWithMessages
+    func search(query: String, limit: Int) async throws -> [Conversation]
+    func delete(conversationId: String) async throws -> Conversation
+    func create(title: String) async throws -> Conversation
+    func addMessage(conversationId: String, message: ConversationMessageCreate) async throws -> Conversation
+    func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation
+}
+
 public struct ConversationsAPI {
     private let client: APIClient
 
@@ -46,6 +56,7 @@ public struct ConversationsAPI {
 }
 
 extension ConversationsAPI: ConversationsProviding {}
+extension ConversationsAPI: ConversationsAPIProviding {}
 
 public struct ConversationCreateRequest: Codable {
     public let title: String

@@ -493,31 +493,6 @@
 		opacity: 0.7;
 	}
 
-	:global(.website-viewer table) {
-		width: 100%;
-		border-collapse: collapse;
-		margin: 1em 0;
-		font-size: 0.95em;
-	}
-
-	:global(.website-viewer th),
-	:global(.website-viewer td) {
-		border: 1px solid var(--color-border);
-		padding: 0em 0.75em;
-		text-align: left;
-		vertical-align: top;
-	}
-
-	:global(.website-viewer thead th) {
-		background-color: var(--color-muted);
-		color: var(--color-foreground);
-		font-weight: 600;
-	}
-
-	:global(.website-viewer tbody tr:nth-child(even)) {
-		background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
-	}
-
 	/* Code styling */
 	:global(.website-viewer code) {
 		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
@@ -581,7 +556,12 @@
 		display: none;
 	}
 
-	/* Center images by default - higher specificity to override app.css */
+	/* ========================================================================
+	   COMPONENT-SPECIFIC: Larger images for external website content
+	   Website viewer allows larger images (500px vs 350px in editor) since
+	   external content often includes high-quality visuals that benefit from
+	   more screen real estate. Center images by default.
+	   ======================================================================== */
 	:global(.tiptap.website-viewer img) {
 		display: block !important;
 		margin-left: auto;
@@ -590,7 +570,11 @@
 		max-height: 500px;
 	}
 
-	/* Image gallery grid - force 2 images per row */
+	/* ========================================================================
+	   COMPONENT-SPECIFIC: Fixed 2-column gallery layout
+	   Forces exactly 2 images per row (49% width each) for consistent
+	   presentation in website viewer, unlike the flexible grid in the editor.
+	   ======================================================================== */
 	:global(.tiptap.website-viewer .image-gallery-grid) {
 		display: flex;
 		flex-wrap: wrap;
@@ -612,6 +596,12 @@
 		display: none;
 	}
 
+	/* ========================================================================
+	   COMPONENT-SPECIFIC: YouTube transcript button system
+	   Custom feature for fetching and displaying YouTube video transcripts.
+	   Includes multiple states: default, hover, queued (with animated pulse),
+	   busy, and disabled. Uses OKLAB color mixing for hover effects.
+	   ======================================================================== */
 	:global(.website-viewer [data-youtube-video]) {
 		display: flex;
 		flex-direction: column;
