@@ -14,8 +14,9 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 - Native bridge for autosave, selection, formatting commands, and external updates.
 
 ## Theme Sources (CM6)
-- CM6 editor styles (new shared theme file; source of truth).
+- Shared CM6 theme (new source of truth).
 - Existing web tokens: `frontend/src/app.css` (`--color-*`).
+- Web markdown refinements: `docs/MARKDOWN_STYLES.md` (current canonical styling).
 
 ## Theme Mapping (Web -> CM6)
 **Core typography + spacing:**
@@ -31,11 +32,12 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 - Inline: background muted, padding 0.2em 0.4em, radius 0.25em, font-size 0.875em.
 - Block: background muted, padding 1em, radius 0.5em, margin 1em 0, monospace 0.875em.
 
-**Tables:**
+**Tables (per `docs/MARKDOWN_STYLES.md`):**
 - 100% width, collapse, margin 1em 0, font-size 0.95em.
-- Borders: 1px solid border, padding 0 0.75em.
-- Thead muted + 600 weight.
-- Zebra rows: color-mix muted 40%.
+- Borders: 1px solid border with `!important` to ensure visibility.
+- Body padding: 0.5em vertical, 0.75em horizontal.
+- Header: darker OKLAB mix, 0.65em vertical padding, 2px bottom border, weight 600.
+- Zebra rows: OKLAB muted 40% / transparent 60%.
 
 **Links:**
 - Primary color, underlined.
@@ -66,13 +68,13 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 5. External update handling: push server changes into CM6 with conflict prompts.
 
 ### B) Theme Parity (CM6)
-1. Create CM6 theme based on existing web styling.
+1. Create CM6 theme based on `docs/MARKDOWN_STYLES.md` and web tokens.
 2. Map CSS custom properties to native theme tokens.
 3. Keep max width at 85ch in editor.
 
 ### C) Web Styling Consolidation
-1. Reuse CM6 theme in web app for notes editing.
-2. Remove redundant TipTap editor styling for notes (if CM6 replaces TipTap).
+1. Keep `docs/MARKDOWN_STYLES.md` as the canonical styling reference.
+2. Reuse CM6 theme in web app for notes editing (if migrating from TipTap).
 3. Document CM6 theme tokens and extensions.
 
 ## Validation
