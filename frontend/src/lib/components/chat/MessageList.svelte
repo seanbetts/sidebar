@@ -51,16 +51,24 @@
 	}
 </script>
 
-<div
-	bind:this={containerElement}
-	onscroll={handleScroll}
-	class="flex-1 overflow-y-auto p-4 space-y-4"
->
-	{#if messages.length === 0}
-		<div class="h-full"></div>
-	{:else}
-		{#each messages as message (message.id)}
-			<Message {message} {activeTool} />
-		{/each}
-	{/if}
+<div bind:this={containerElement} onscroll={handleScroll} class="flex-1 overflow-y-auto p-4">
+	<div class="messages-container">
+		{#if messages.length === 0}
+			<div class="h-full"></div>
+		{:else}
+			{#each messages as message (message.id)}
+				<Message {message} {activeTool} />
+			{/each}
+		{/if}
+	</div>
 </div>
+
+<style>
+	.messages-container {
+		max-width: 800px;
+		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+</style>
