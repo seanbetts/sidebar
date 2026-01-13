@@ -4,22 +4,20 @@
 Consolidate the SwiftUI Markdown Editor work and the web parity styling goals into a single, actionable plan.
 
 ## Goals
-- Replace the read-only markdown viewer with a native TextKit editor (macOS + iOS).
-- Keep markdown as the source of truth and preserve TipTap parity behavior.
-- Match SwiftUI rendering to the existing web editor theme (not GitHub CSS).
-- Reduce duplication in web markdown styling (shared CSS).
+- Replace the TextKit editor with a CodeMirror 6 WYSIWYG editor in a WKWebView (macOS + iOS).
+- Keep markdown as the source of truth and preserve web parity behavior.
+- Share the same styling between web and native clients (single CM6 theme).
 
 ## Scope
-- SwiftUI editor (TextKit wrapper, formatting actions, autosave, conflict handling).
-- SwiftUI markdown theme that mirrors web styling.
-- Web markdown CSS consolidation (shared styles + documentation).
+- WKWebView-based CM6 editor (shared web bundle + native bridge).
+- Shared CM6 theme (single source of truth for styling).
+- Native bridge for autosave, selection, formatting commands, and external updates.
 
-## Web Theme Parity Sources
-- Editor block styles: `frontend/src/lib/components/editor/MarkdownEditor.svelte`
-- Shared media styles: `frontend/src/app.css`
-- Color tokens: `frontend/src/app.css` (`--color-*`)
+## Theme Sources (CM6)
+- CM6 editor styles (new shared theme file; source of truth).
+- Existing web tokens: `frontend/src/app.css` (`--color-*`).
 
-## Theme Mapping (Web -> SwiftUI)
+## Theme Mapping (Web -> CM6)
 **Core typography + spacing:**
 - Body line-height 1.7, paragraph margins 0.75em.
 - H1 2.0em / 700 / margin-bottom 0.5em.
@@ -47,48 +45,42 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 - Captions 0.85rem, muted, centered.
 - Gallery: flex grid, gap 0.75rem, image width 240px.
 
-**SwiftUI token mapping:**
-- foreground -> `DesignTokens.Colors.textPrimary`
-- muted-foreground -> `DesignTokens.Colors.textSecondary`
-- muted -> `DesignTokens.Colors.muted`
-- border -> `DesignTokens.Colors.border`
-- primary -> `Color.accentColor`
-- radii -> `DesignTokens.Radius`
+**Token mapping:**
+- foreground -> `--color-foreground`
+- muted-foreground -> `--color-muted-foreground`
+- muted -> `--color-muted`
+- border -> `--color-border`
+- primary -> `--color-primary`
 
 ## Implementation Plan
 
-### A) SwiftUI Editor (TextKit)
-1. Add NotesEditorViewModel (content, selection, dirty, save, conflict).
-2. Add cross-platform TextKit wrapper (UITextView/NSTextView):
-   - Text binding + selection tracking
-   - Undo integration
-   - Formatting actions API
-3. Wire NotesDetailView to editor state (loading/empty/error).
-4. Add formatting toolbar (full + overflow on compact).
-5. Autosave with debounce and dirty tracking.
-6. External update handling (reload/keep).
-7. Code block highlighting (regex attributes).
+### A) CodeMirror 6 Editor (WKWebView)
+1. Add CM6 editor bundle (shared build artifact for iOS/macOS).
+2. Build WKWebView container with JS bridge:
+   - Load markdown
+   - Track selection/cursor
+   - Emit change events (debounced autosave)
+   - Apply formatting commands from native UI
+3. Wire NotesDetailView to the webview state (loading/empty/error).
+4. Add CM6 extensions: markdown, tables, task lists, code blocks, links, images.
+5. External update handling: push server changes into CM6 with conflict prompts.
 
-### B) SwiftUI Theme Parity
-1. Build MarkdownTheme constants (fonts, spacing, colors).
-2. Apply theme via NSAttributedString attributes in MarkdownFormatting.
-3. Match list/blockquote indentation with paragraph style.
-4. Keep max width at 85ch in editor.
+### B) Theme Parity (CM6)
+1. Create CM6 theme based on existing web styling.
+2. Map CSS custom properties to native theme tokens.
+3. Keep max width at 85ch in editor.
 
-### C) Web CSS Consolidation
-1. Create `frontend/src/lib/styles/markdown-shared.css`.
-2. Move duplicated table + task list styles into shared file.
-3. Import shared file in `frontend/src/app.css`.
-4. Remove per-component duplicates.
-5. Document variations in `docs/MARKDOWN_STYLES.md`.
+### C) Web Styling Consolidation
+1. Reuse CM6 theme in web app for notes editing.
+2. Remove redundant TipTap editor styling for notes (if CM6 replaces TipTap).
+3. Document CM6 theme tokens and extensions.
 
 ## Validation
 - Edit a note, apply formatting, save, reload; content matches web output.
 - Task lists, tables, links, code blocks persist across reload.
 - Undo/redo works and cursor position is preserved.
-- Visual parity check against web editor (typography, spacing, colors).
+- Visual parity across web + native with shared CM6 theme.
 
 ## Open Questions
-- Inline code size: same as body or slightly smaller?
-- Heading font choices: system with size overrides vs custom fonts?
-- macOS link hover: keep underline or always underline?
+- How do we package the CM6 bundle for iOS/macOS (shared build artifact)?
+- Do we keep TipTap for web or migrate notes editing to CM6 for parity?

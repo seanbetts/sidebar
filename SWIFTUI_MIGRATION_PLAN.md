@@ -408,8 +408,8 @@ Critical Path (MVP): [███████████████████�
 - [x] Keyboard shortcuts (Cmd+Enter on Mac)
 
 #### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
-- [x] **Critical Decision**: Custom UITextView/NSTextView (TextKit) instead of RichTextKit
-- [x] Basic markdown editing with custom TextKit editor
+- [x] **Critical Decision**: CodeMirror 6 in WKWebView for WYSIWYG parity
+- [ ] Replace TextKit editor with CodeMirror 6 (shared web bundle)
 - [ ] Editor toolbar (bold, italic, headings, lists, etc.) — deferred (no toolbar)
 - [ ] Advanced formatting (tables, links, code blocks)
 - [ ] Syntax highlighting for code blocks
@@ -418,26 +418,23 @@ Critical Path (MVP): [███████████████████�
 - [ ] Plan: `docs/plans/2026-01-13-markdown-plan.md`
 
 **Concrete 11.2 Checklist (TipTap parity targets)**
-- [x] Custom TextKit editor surface (UITextView/NSTextView wrappers) with markdown as the source of truth
-- [x] Markdown round-trip (load → edit → save) matches web editor output
-- [ ] Web-style theme parity (match SvelteKit TipTap markdown styling)
+- [ ] WKWebView CM6 editor surface with markdown as the source of truth
+- [ ] Markdown round-trip (load → edit → save) matches web output
+- [ ] Web-style theme parity (shared CM6 theme)
 - [ ] Formatting actions parity: bold, italic, strike, underline, headings (H1–H3), blockquote, horizontal rule (underline pending)
-- [x] List parity: bullet, ordered, task lists (nested), toggle task completion
-- [ ] Code parity: inline code + fenced code blocks with language tag + syntax highlighting (syntax highlighting pending)
-- [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure (row/column edits pending)
-- [ ] Link parity: create/edit/remove links, preserve URLs in markdown (edit/remove pending)
+- [ ] List parity: bullet, ordered, task lists (nested), toggle task completion
+- [ ] Code parity: inline code + fenced code blocks with language tag + syntax highlighting
+- [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
+- [ ] Link parity: create/edit/remove links, preserve URLs in markdown
 - [ ] Image parity: image blocks with caption + gallery block (custom markdown markers)
 - [ ] Editor toolbar parity: primary actions + overflow menu to match web affordances — deferred (no toolbar)
-- [ ] Selection/undo parity: native undo manager integration + preserve cursor on external updates
-- [x] Auto-save parity: debounce + dirty state tracking (align with web editor store)
-- [x] External update handling: detect server/AI edits and merge or prompt with conflict UI
+- [ ] Selection/undo parity: keep cursor on external updates
+- [ ] Auto-save parity: debounce + dirty state tracking (align with web editor store)
+- [ ] External update handling: detect server/AI edits and merge or prompt with conflict UI
 - [ ] Long-note performance: incremental rendering + minimal layout churn
 
-**Decision Gate (After Session 3-5 of 10.2):**
-Evaluate RichTextKit capabilities. Choose:
-- Option A: Continue with RichTextKit + workarounds
-- Option B: Build custom UITextView wrapper (adds 3-5 sessions)
-- Option C: Reduce scope (defer tables/advanced features)
+**Decision Gate:**
+CodeMirror 6 in WKWebView selected for WYSIWYG parity.
 
 #### Phase 11.3: Note Operations (1-2 sessions)
 - [ ] Create new note (modal dialog for name/folder)

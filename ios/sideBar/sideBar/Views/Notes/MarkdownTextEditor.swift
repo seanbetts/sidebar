@@ -34,7 +34,7 @@ private struct MarkdownTextEditorMac: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let textView = NSTextView()
+        let textView = MarkdownNSTextView()
         textView.isRichText = true
         let baseFont = NSFont.preferredFont(forTextStyle: .body)
         textView.font = baseFont
@@ -106,6 +106,20 @@ private struct MarkdownTextEditorMac: NSViewRepresentable {
         }
     }
 }
+
+private final class MarkdownNSTextView: NSTextView {
+    override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
+        let font = typingAttributes[.font] as? NSFont ?? self.font ?? NSFont.preferredFont(forTextStyle: .body)
+        let height = font.ascender - font.descender
+        let adjusted = NSRect(
+            x: rect.origin.x,
+            y: rect.midY - height / 2,
+            width: rect.width,
+            height: height
+        )
+        super.drawInsertionPoint(in: adjusted, color: color, turnedOn: flag)
+    }
+}
 #else
 import UIKit
 
@@ -119,7 +133,7 @@ private struct MarkdownTextEditorIOS: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+        let textView = MarkdownUITextView()
         let baseFont = UIFont.preferredFont(forTextStyle: .body)
         textView.font = baseFont
         textView.typingAttributes = [.font: baseFont]
@@ -179,6 +193,20 @@ private struct MarkdownTextEditorIOS: UIViewRepresentable {
             parent.selection = textView.selectedRange
             lastKnownSelection = textView.selectedRange
         }
+    }
+}
+
+private final class MarkdownUITextView: UITextView {
+    override func caretRect(for position: UITextPosition) -> CGRect {
+        let rect = super.caretRect(for: position)
+        let font = typingAttributes[.font] as? UIFont ?? self.font ?? UIFont.preferredFont(forTextStyle: .body)
+        let height = font.lineHeight
+        return CGRect(
+            x: rect.origin.x,
+            y: rect.midY - height / 2,
+            width: rect.width,
+            height: height
+        )
     }
 }
 #endif
