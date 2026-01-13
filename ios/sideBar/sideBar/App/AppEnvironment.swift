@@ -8,13 +8,11 @@ public final class AppEnvironment: ObservableObject {
     public let chatStore: ChatStore
     public let notesStore: NotesStore
     public let websitesStore: WebsitesStore
-    public let filesStore: FilesStore
     public let ingestionStore: IngestionStore
     public let tasksStore: TasksStore
     public let toastCenter: ToastCenter
     public let chatViewModel: ChatViewModel
     public let notesViewModel: NotesViewModel
-    public let filesViewModel: FilesViewModel
     public let ingestionViewModel: IngestionViewModel
     public let websitesViewModel: WebsitesViewModel
     public let memoriesViewModel: MemoriesViewModel
@@ -40,7 +38,6 @@ public final class AppEnvironment: ObservableObject {
         )
         self.notesStore = NotesStore(api: container.notesAPI, cache: container.cacheClient)
         self.websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
-        self.filesStore = FilesStore(api: container.filesAPI, cache: container.cacheClient)
         self.ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
         self.tasksStore = TasksStore()
         self.toastCenter = ToastCenter()
@@ -56,11 +53,6 @@ public final class AppEnvironment: ObservableObject {
         )
         let temporaryStore = TemporaryFileStore.shared
         self.notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore)
-        self.filesViewModel = FilesViewModel(
-            api: container.filesAPI,
-            store: filesStore,
-            temporaryStore: temporaryStore
-        )
         self.ingestionViewModel = IngestionViewModel(
             api: container.ingestionAPI,
             store: ingestionStore,
@@ -168,12 +160,10 @@ public final class AppEnvironment: ObservableObject {
             chatStore.reset()
             notesStore.reset()
             websitesStore.reset()
-            filesStore.reset()
             ingestionStore.reset()
             tasksStore.reset()
             notesViewModel.clearSelection()
             websitesViewModel.clearSelection()
-            filesViewModel.clearSelection()
             ingestionViewModel.clearSelection()
             sessionExpiryWarning = nil
         }
