@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import type { Message as MessageType } from '$lib/types/chat';
 	import Message from './Message.svelte';
 
@@ -31,11 +31,6 @@
 
 		shouldAutoScroll = isNearBottom;
 	}
-
-	onMount(async () => {
-		await tick();
-		scrollToBottom();
-	});
 
 	$: if (messages.length !== lastMessageCount) {
 		lastMessageCount = messages.length;
