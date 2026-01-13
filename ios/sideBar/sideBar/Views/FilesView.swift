@@ -11,23 +11,58 @@ public struct FilesView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            FilesHeaderView(viewModel: environment.ingestionViewModel)
-            Divider()
+            if environment.isOffline {
+                OfflineBanner()
+            }
+            if !isCompact {
+                FilesHeaderView(viewModel: environment.ingestionViewModel)
+                Divider()
+            }
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        #if !os(macOS)
+        .navigationTitle(fileTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isCompact {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("File options")
+                }
+            }
+        }
+        #endif
     }
 
     @ViewBuilder
     private var content: some View {
-        #if os(macOS)
         FilesDetailContainer(viewModel: environment.ingestionViewModel)
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
         #else
-        if horizontalSizeClass == .compact {
-            IngestionSplitView(viewModel: environment.ingestionViewModel)
-        } else {
-            FilesDetailContainer(viewModel: environment.ingestionViewModel)
+        return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var fileTitle: String {
+        #if os(macOS)
+        return "Files"
+        #else
+        guard horizontalSizeClass == .compact else {
+            return "Files"
         }
+        guard let name = environment.ingestionViewModel.activeMeta?.file.filenameOriginal else {
+            return "Files"
+        }
+        return stripFileExtension(name)
         #endif
     }
 }
@@ -42,7 +77,9 @@ private struct FilesHeaderView: View {
                 .foregroundStyle(.primary)
             Text(activeTitle)
                 .font(.headline)
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(1)
                 .truncationMode(.tail)
             Spacer()
             Button {
@@ -95,12 +132,26 @@ private struct FilesDetailContainer: View {
         if let meta = viewModel.activeMeta {
             IngestionDetailView(viewModel: viewModel, meta: meta)
         } else if let message = viewModel.errorMessage {
-            PlaceholderView(title: message)
+            PlaceholderView(
+                title: "Unable to load file",
+                subtitle: message,
+                actionTitle: viewModel.selectedFileId == nil ? nil : "Retry"
+            ) {
+                guard let selectedId = viewModel.selectedFileId else { return }
+                Task { await viewModel.selectFile(fileId: selectedId) }
+            }
         } else if viewModel.isLoadingContent {
-            ProgressView()
+            LoadingView(message: "Loading file…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.isLoading && viewModel.items.isEmpty {
+            LoadingView(message: "Loading files…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            PlaceholderView(title: "Select a file")
+            PlaceholderView(
+                title: "Select a file",
+                subtitle: "Choose a file from the sidebar to preview it.",
+                iconName: "folder"
+            )
         }
     }
 }

@@ -5,6 +5,7 @@ public protocol AuthSession {
     var accessToken: String? { get }
     var userId: String? { get }
     func signIn(email: String, password: String) async throws
+    func refreshSession() async
     func signOut() async
 }
 
@@ -18,6 +19,9 @@ public final class PlaceholderAuthSession: AuthSession {
     public func signIn(email: String, password: String) async throws {
         _ = email
         _ = password
+    }
+
+    public func refreshSession() async {
     }
 
     public func signOut() async {

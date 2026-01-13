@@ -1,21 +1,23 @@
 import SwiftUI
 import MarkdownUI
 
-struct MemoriesDetailView: View {
+struct MemoriesSettingsDetailView: View {
     @ObservedObject var viewModel: MemoriesViewModel
     @State private var searchQuery: String = ""
     @State private var selection: String? = nil
     @State private var hasLoaded = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 header
-                Divider()
                 listContent
             }
+            .background(DesignTokens.Colors.sidebar)
         } detail: {
             detailContent
+                .background(DesignTokens.Colors.background)
         }
         .navigationSplitViewStyle(.balanced)
         .onAppear {
@@ -38,9 +40,6 @@ struct MemoriesDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Memories")
-                .font(.subheadline.weight(.semibold))
-
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -75,10 +74,15 @@ struct MemoriesDetailView: View {
     @ViewBuilder
     private var listContent: some View {
         if viewModel.isLoading && viewModel.items.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            SidebarListSkeleton(rowCount: 8, showSubtitle: false)
         } else if let error = viewModel.errorMessage {
-            SidebarPanelPlaceholder(title: error)
+            SidebarPanelPlaceholder(
+                title: "Unable to load memories",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                Task { await viewModel.load() }
+            }
         } else if filteredItems.isEmpty {
             SidebarPanelPlaceholder(
                 title: searchQuery.trimmed.isEmpty
@@ -95,44 +99,72 @@ struct MemoriesDetailView: View {
                 }
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(DesignTokens.Colors.sidebar)
+            .refreshable {
+                await viewModel.load()
+            }
         }
     }
 
     @ViewBuilder
     private var detailContent: some View {
         if let memory = viewModel.active {
-            VStack(spacing: 0) {
-                detailHeader(memory: memory)
-                Divider()
+            if horizontalSizeClass == .compact {
                 ScrollView {
                     SideBarMarkdown(text: memory.content)
                         .padding(20)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .navigationTitle(displayName(memory.path))
+                #if !os(macOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+            } else {
+                VStack(spacing: 0) {
+                    detailHeader(memory: memory)
+                    Divider()
+                    ScrollView {
+                        SideBarMarkdown(text: memory.content)
+                            .padding(20)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
             }
         } else if viewModel.isLoadingDetail {
-            ProgressView()
+            LoadingView(message: "Loading memory…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let error = viewModel.errorMessage, viewModel.selectedMemoryId != nil {
+            PlaceholderView(
+                title: "Unable to load memory",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                guard let selectedId = viewModel.selectedMemoryId else { return }
+                Task { await viewModel.selectMemory(id: selectedId) }
+            }
+        } else if viewModel.isLoading && viewModel.items.isEmpty {
+            LoadingView(message: "Loading memories…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.selectedMemoryId != nil {
             PlaceholderView(title: "Memory not available")
         } else {
-            PlaceholderView(title: "Select a memory")
+            PlaceholderView(
+                title: "Select a memory",
+                subtitle: "Choose a memory from the sidebar to open it.",
+                iconName: "bookmark"
+            )
         }
     }
 
     private func detailHeader(memory: MemoryItem) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "brain")
+            Image(systemName: "bookmark")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(memory.path))
                     .font(.headline)
-                if let updated = formattedDate(memory.updatedAt) {
-                    Text(updated)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
             Spacer()
         }
@@ -165,19 +197,11 @@ struct MemoriesDetailView: View {
     }
 
     private var searchFill: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.input
     }
 
     private var searchBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 
     fileprivate static let dateFormatter: DateFormatter = {
@@ -198,12 +222,7 @@ private struct MemoryRow: View {
                 Text(displayName(item.path))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                    .foregroundStyle(isSelected ? Color.white : Color.primary)
-                if let updated = formattedDate(item.updatedAt) {
-                    Text(updated)
-                        .font(.caption)
-                        .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary)
-                }
+                    .foregroundStyle(DesignTokens.Colors.textPrimary)
             }
         }
     }
@@ -221,7 +240,7 @@ private struct MemoryRow: View {
 
     private func formattedDate(_ value: String) -> String? {
         guard let date = DateParsing.parseISO8601(value) else { return nil }
-        return MemoriesDetailView.dateFormatter.string(from: date)
+        return MemoriesSettingsDetailView.dateFormatter.string(from: date)
     }
 
 }

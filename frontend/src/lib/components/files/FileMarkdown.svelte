@@ -50,29 +50,4 @@
 	:global(.file-markdown [contenteditable='false']:focus) {
 		outline: none;
 	}
-
-	:global(.file-markdown table) {
-		width: 100%;
-		border-collapse: collapse;
-		margin: 1em 0;
-		font-size: 0.95em;
-	}
-
-	:global(.file-markdown th),
-	:global(.file-markdown td) {
-		border: 1px solid var(--color-border);
-		padding: 0em 0.75em;
-		text-align: left;
-		vertical-align: top;
-	}
-
-	:global(.file-markdown thead th) {
-		background-color: var(--color-muted);
-		color: var(--color-foreground);
-		font-weight: 600;
-	}
-
-	:global(.file-markdown tbody tr:nth-child(even)) {
-		background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
-	}
 </style>

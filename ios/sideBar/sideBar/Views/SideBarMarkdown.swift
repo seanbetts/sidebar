@@ -3,7 +3,7 @@ import MarkdownUI
 #endif
 import SwiftUI
 
-struct SideBarMarkdown: View {
+struct SideBarMarkdown: View, Equatable {
     let text: String
     let preprocessor: (String) -> String
     private let maxImageSize = CGSize(width: 450, height: 450)
@@ -13,10 +13,14 @@ struct SideBarMarkdown: View {
         self.preprocessor = preprocessor
     }
 
+    static func == (lhs: SideBarMarkdown, rhs: SideBarMarkdown) -> Bool {
+        lhs.text == rhs.text
+    }
+
     var body: some View {
         #if canImport(MarkdownUI)
         Markdown(preprocessor(text))
-            .markdownTheme(.gitHub)
+            .markdownTheme(markdownTheme)
             .markdownBlockStyle(\.codeBlock) { configuration in
                 CodeBlockTextView(text: configuration.content)
                     .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
@@ -24,10 +28,6 @@ struct SideBarMarkdown: View {
                     .background(codeBlockBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .markdownMargin(top: RelativeSize.em(0.25), bottom: RelativeSize.em(0.75))
-            }
-            .markdownTextStyle(\.strikethrough) {
-                StrikethroughStyle(.single)
-                ForegroundColor(.secondary)
             }
             .markdownTextStyle(\.link) {
                 UnderlineStyle(.single)
@@ -39,12 +39,23 @@ struct SideBarMarkdown: View {
     }
 
     private var codeBlockBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.muted
     }
+
+    #if canImport(MarkdownUI)
+    private var markdownTheme: Theme {
+        Theme.gitHub
+            .text {
+                ForegroundColor(.primary)
+                BackgroundColor(nil)
+                FontSize(16)
+            }
+            .strikethrough {
+                StrikethroughStyle(.single)
+                ForegroundColor(.secondary)
+            }
+    }
+    #endif
 
 }
 

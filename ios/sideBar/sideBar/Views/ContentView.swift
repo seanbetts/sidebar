@@ -1,4 +1,5 @@
 import SwiftUI
+import LocalAuthentication
 
 public enum AppSection: String, CaseIterable, Identifiable {
     case chat
@@ -18,6 +19,7 @@ public struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var colorScheme
     #endif
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @State private var sidebarSelection: AppSection? = nil
     @State private var primarySection: AppSection? = nil
@@ -31,6 +33,13 @@ public struct ContentView: View {
     @State private var didSetInitialSelection = false
     @State private var didLoadSettings = false
     @State private var isBiometricUnlocked = false
+    @State private var activeAlert: ActiveAlert?
+    @State private var pendingSessionExpiryAlert = false
+    @State private var pendingBiometricUnavailableAlert = false
+    @State private var isSigningOut = false
+    #if os(iOS)
+    @AppStorage(AppStorageKeys.hasShownBiometricHint) private var hasShownBiometricHint = false
+    #endif
 
     public init() {
     }
@@ -41,31 +50,13 @@ public struct ContentView: View {
         } else if !environment.isAuthenticated {
             LoginView()
         } else {
-            Group {
-                if biometricUnlockEnabled && !isBiometricUnlocked {
-                    BiometricLockView(
-                        onUnlock: { isBiometricUnlocked = true },
-                        onSignOut: {
-                            Task {
-                                await environment.container.authSession.signOut()
-                                environment.refreshAuthState()
-                            }
-                        }
-                    )
-                } else {
-                    GeometryReader { proxy in
-                        mainView
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .overlay(alignment: .top) {
-                                Rectangle()
-                                    .fill(topSafeAreaBackground)
-                                    .frame(height: proxy.safeAreaInsets.top)
-                                    .ignoresSafeArea(edges: .top)
-                                    .allowsHitTesting(false)
-                            }
-                    }
-                }
-            }
+            SignedInContentView(
+                biometricUnlockEnabled: biometricUnlockEnabled,
+                isBiometricUnlocked: $isBiometricUnlocked,
+                topSafeAreaBackground: topSafeAreaBackground,
+                onSignOut: { Task { await environment.beginSignOut() } },
+                mainView: { mainView }
+            )
             #if os(iOS)
             .background(
                 KeyboardShortcutHandler()
@@ -73,29 +64,44 @@ public struct ContentView: View {
                     .frame(width: 0, height: 0)
             )
             #endif
+            .overlay(alignment: .top) {
+                if let toast = environment.toastCenter.toast {
+                    ToastBanner(toast: toast)
+                        .padding(.top, 12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .onTapGesture {
+                            environment.toastCenter.dismiss()
+                        }
+                }
+            }
+            .animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast)
             .onChange(of: scenePhase) { _, newValue in
-                if newValue != .active && biometricUnlockEnabled {
+                if newValue == .background && biometricUnlockEnabled {
                     isBiometricUnlocked = false
+                }
+            }
+            .onChange(of: environment.biometricMonitor.isAvailable) { _, isAvailable in
+                guard biometricUnlockEnabled, !isAvailable, environment.isAuthenticated else { return }
+                enqueueAlertAction {
+                    presentAlert(.biometricUnavailable)
                 }
             }
             .onChange(of: phoneSelection) { _, newValue in
                 sidebarSelection = newValue
                 primarySection = newValue
+                Task { await loadPhoneSectionIfNeeded(newValue) }
             }
             .onReceive(environment.notesViewModel.$selectedNoteId) { newValue in
                 guard newValue != nil else { return }
-                primarySection = .notes
-                lastNonChatSection = .notes
+                handleNonChatSelection(.notes)
             }
             .onReceive(environment.ingestionViewModel.$selectedFileId) { newValue in
                 guard newValue != nil else { return }
-                primarySection = .files
-                lastNonChatSection = .files
+                handleNonChatSelection(.files)
             }
             .onReceive(environment.websitesViewModel.$active) { newValue in
                 guard newValue != nil else { return }
-                primarySection = .websites
-                lastNonChatSection = .websites
+                handleNonChatSelection(.websites)
             }
             .onChange(of: environment.commandSelection) { _, newValue in
                 guard let newValue else { return }
@@ -117,12 +123,29 @@ public struct ContentView: View {
                 environment.commandSelection = nil
             }
             .onChange(of: environment.isAuthenticated) { _, isAuthenticated in
+                activeAlert = nil
+                pendingSessionExpiryAlert = false
+                pendingBiometricUnavailableAlert = false
+                environment.sessionExpiryWarning = nil
+                isSigningOut = false
                 if isAuthenticated {
                     if biometricUnlockEnabled {
                         isBiometricUnlocked = false
                     } else {
                         isBiometricUnlocked = true
                     }
+                    #if os(iOS)
+                    if environment.biometricMonitor.isAvailable
+                        && !biometricUnlockEnabled
+                        && !hasShownBiometricHint {
+                        hasShownBiometricHint = true
+                        enqueueAlertAction {
+                            if activeAlert == nil {
+                                activeAlert = .biometricHint
+                            }
+                        }
+                    }
+                    #endif
                     if !didLoadSettings {
                         didLoadSettings = true
                         Task {
@@ -162,6 +185,110 @@ public struct ContentView: View {
                     .environmentObject(environment)
             }
             #endif
+            .onChange(of: environment.sessionExpiryWarning) { _, newValue in
+                enqueueAlertAction {
+                    guard environment.isAuthenticated, !isSigningOut else { return }
+                    if newValue != nil {
+                        presentAlert(.sessionExpiry)
+                    } else {
+                        pendingSessionExpiryAlert = false
+                    }
+                }
+            }
+            .onChange(of: environment.signOutEvent) { _, _ in
+                enqueueAlertAction {
+                    pendingSessionExpiryAlert = false
+                    pendingBiometricUnavailableAlert = false
+                    activeAlert = nil
+                    isSigningOut = true
+                }
+            }
+            .onChange(of: environment.isAuthenticated) { _, isAuthenticated in
+                guard !isAuthenticated else { return }
+                enqueueAlertAction {
+                    pendingSessionExpiryAlert = false
+                    pendingBiometricUnavailableAlert = false
+                    activeAlert = nil
+                    isSigningOut = false
+                }
+            }
+            .onChange(of: activeAlert) { _, newValue in
+                guard newValue == nil else { return }
+                enqueueAlertAction {
+                    if pendingBiometricUnavailableAlert {
+                        pendingBiometricUnavailableAlert = false
+                        activeAlert = .biometricUnavailable
+                        return
+                    }
+                    if pendingSessionExpiryAlert,
+                       environment.isAuthenticated,
+                       !isSigningOut,
+                       environment.sessionExpiryWarning != nil {
+                        pendingSessionExpiryAlert = false
+                        activeAlert = .sessionExpiry
+                    } else {
+                        pendingSessionExpiryAlert = false
+                    }
+                }
+            }
+            .alert(item: $activeAlert) { alert in
+                switch alert {
+                case .biometricUnavailable:
+                    return Alert(
+                        title: Text("Biometric Unlock Unavailable"),
+                        message: Text("Biometric unlock is no longer available on this device. You can re-enable it in Settings once Face ID or Touch ID is available again."),
+                        dismissButton: .default(Text("OK"))
+                    )
+                case .biometricHint:
+                    return Alert(
+                        title: Text(biometricHintTitle),
+                        message: Text(biometricHintMessage),
+                        primaryButton: .default(Text("Enable in Settings"), action: {
+                            enqueueAlertAction {
+                                isSettingsPresented = true
+                            }
+                        }),
+                        secondaryButton: .cancel()
+                    )
+                case .sessionExpiry:
+                    return Alert(
+                        title: Text("Session Expiring Soon"),
+                        message: Text("Your session will expire soon. Would you like to stay signed in?"),
+                        primaryButton: .default(Text("Stay Signed In"), action: {
+                            enqueueAlertAction {
+                                Task { await environment.container.authSession.refreshSession() }
+                                environment.sessionExpiryWarning = nil
+                            }
+                        }),
+                        secondaryButton: .destructive(Text("Sign Out"), action: {
+                            enqueueAlertAction {
+                                pendingSessionExpiryAlert = false
+                                Task {
+                                    await environment.beginSignOut()
+                                }
+                            }
+                        })
+                    )
+                }
+            }
+        }
+    }
+
+    private var biometricHintTitle: String {
+        switch environment.biometricMonitor.biometryType {
+        case .touchID:
+            return "Enable Touch ID?"
+        default:
+            return "Enable Face ID?"
+        }
+    }
+
+    private var biometricHintMessage: String {
+        switch environment.biometricMonitor.biometryType {
+        case .touchID:
+            return "Unlock sideBar quickly and securely with Touch ID."
+        default:
+            return "Unlock sideBar quickly and securely with Face ID."
         }
     }
 
@@ -176,6 +303,27 @@ public struct ContentView: View {
             splitView
         }
         #endif
+    }
+
+    private func presentAlert(_ alert: ActiveAlert) {
+        if activeAlert == nil {
+            activeAlert = alert
+            return
+        }
+        switch alert {
+        case .biometricUnavailable:
+            pendingBiometricUnavailableAlert = true
+        case .sessionExpiry:
+            pendingSessionExpiryAlert = true
+        case .biometricHint:
+            break
+        }
+    }
+
+    private func enqueueAlertAction(_ action: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            action()
+        }
     }
 
     private var splitView: some View {
@@ -213,32 +361,34 @@ public struct ContentView: View {
         }
         .tint(tabBarTint)
         .overlay(alignment: .bottomTrailing) {
-            GeometryReader { proxy in
-                VStack {
-                    Spacer()
-                    HStack {
+            if phoneSelection != .chat {
+                GeometryReader { proxy in
+                    VStack {
                         Spacer()
-                        Button {
-                            isPhoneScratchpadPresented = true
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 18, weight: .semibold))
-                                .frame(width: 48, height: 48)
+                        HStack {
+                            Spacer()
+                            Button {
+                                isPhoneScratchpadPresented = true
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .frame(width: 48, height: 48)
+                            }
+                            .buttonStyle(.plain)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(separatorColor, lineWidth: 1)
+                            )
+                            .accessibilityLabel("Scratchpad")
+                            .padding(.trailing, 16)
+                            .padding(.bottom, proxy.safeAreaInsets.bottom + 32)
                         }
-                        .buttonStyle(.plain)
-                        .background(.ultraThinMaterial, in: Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(separatorColor, lineWidth: 1)
-                        )
-                        .accessibilityLabel("Scratchpad")
-                        .padding(.trailing, 16)
-                        .padding(.bottom, proxy.safeAreaInsets.bottom + 32)
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .sheet(isPresented: $isPhoneScratchpadPresented) {
             ScratchpadPopoverView(
@@ -249,24 +399,50 @@ public struct ContentView: View {
     }
 
     private func detailView(for section: AppSection?) -> some View {
-        SectionDetailView(section: section)
+        detailViewDefinition(for: section)
     }
 
     private func swapPrimaryAndSecondary() {
-        let temp = primarySection
-        primarySection = secondarySection
-        secondarySection = temp
-        if primarySection != .chat, let primarySection {
-            lastNonChatSection = primarySection
+        let performSwap = {
+            let temp = primarySection
+            primarySection = secondarySection
+            secondarySection = temp
+            if primarySection != .chat, let primarySection {
+                lastNonChatSection = primarySection
+            }
+        }
+        if reduceMotion {
+            performSwap()
+        } else {
+            withAnimation(Motion.standard(reduceMotion: reduceMotion)) {
+                performSwap()
+            }
         }
     }
 
+    private func handleNonChatSelection(_ section: AppSection) {
+        if primarySection == .chat {
+            secondarySection = section
+        } else {
+            primarySection = section
+        }
+        lastNonChatSection = section
+    }
+
     private func phoneTabView(for section: AppSection) -> some View {
-        detailView(for: section)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                SiteHeaderBar(onShowSettings: { isSettingsPresented = true })
-            }
+        NavigationStack {
+            phonePanelView(for: section)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                #if !os(macOS)
+                .toolbar(.hidden, for: .navigationBar)
+                #endif
+                .navigationDestination(item: phoneDetailItemBinding(for: section)) { _ in
+                    detailViewDefinition(for: section)
+                    #if !os(macOS)
+                        .navigationBarTitleDisplayMode(.inline)
+                    #endif
+                }
+        }
     }
 
     private var phoneSections: [AppSection] {
@@ -290,6 +466,101 @@ public struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private func phonePanelView(for section: AppSection) -> some View {
+        sectionDefinition(for: section).panelView()
+    }
+
+    private func phoneDetailItemBinding(for section: AppSection) -> Binding<PhoneDetailRoute?> {
+        sectionDefinition(for: section).phoneSelection()
+    }
+
+    private func detailViewDefinition(for section: AppSection?) -> AnyView {
+        guard let section else {
+            return AnyView(WelcomeEmptyView())
+        }
+        return sectionDefinition(for: section).detailView()
+    }
+
+    private func sectionDefinition(for section: AppSection) -> SectionDefinition {
+        switch section {
+        case .chat:
+            return SectionDefinition(
+                section: .chat,
+                panelView: { AnyView(ConversationsPanel()) },
+                detailView: { AnyView(ChatView()) },
+                phoneSelection: {
+                    Binding(
+                        get: { environment.chatViewModel.selectedConversationId.map(PhoneDetailRoute.init) },
+                        set: { route in
+                            guard route == nil else { return }
+                            Task { await environment.chatViewModel.selectConversation(id: nil) }
+                        }
+                    )
+                }
+            )
+        case .notes:
+            return SectionDefinition(
+                section: .notes,
+                panelView: { AnyView(NotesPanel()) },
+                detailView: { AnyView(NotesView()) },
+                phoneSelection: {
+                    Binding(
+                        get: { environment.notesViewModel.selectedNoteId.map(PhoneDetailRoute.init) },
+                        set: { route in
+                            guard route == nil else { return }
+                            environment.notesViewModel.clearSelection()
+                        }
+                    )
+                }
+            )
+        case .files:
+            return SectionDefinition(
+                section: .files,
+                panelView: { AnyView(FilesPanel()) },
+                detailView: { AnyView(FilesView()) },
+                phoneSelection: {
+                    Binding(
+                        get: { environment.ingestionViewModel.selectedFileId.map(PhoneDetailRoute.init) },
+                        set: { route in
+                            guard route == nil else { return }
+                            environment.ingestionViewModel.clearSelection()
+                        }
+                    )
+                }
+            )
+        case .websites:
+            return SectionDefinition(
+                section: .websites,
+                panelView: { AnyView(WebsitesPanel()) },
+                detailView: { AnyView(WebsitesView()) },
+                phoneSelection: {
+                    Binding(
+                        get: { environment.websitesViewModel.selectedWebsiteId.map(PhoneDetailRoute.init) },
+                        set: { route in
+                            guard route == nil else { return }
+                            environment.websitesViewModel.clearSelection()
+                        }
+                    )
+                }
+            )
+        case .settings:
+            return SectionDefinition(
+                section: .settings,
+                panelView: { AnyView(SettingsView()) },
+                detailView: { AnyView(SettingsView()) },
+                phoneSelection: { Binding(get: { nil }, set: { _ in }) }
+            )
+        case .tasks:
+            return SectionDefinition(
+                section: .tasks,
+                panelView: { AnyView(TasksPanel()) },
+                detailView: { AnyView(TasksView()) },
+                phoneSelection: { Binding(get: { nil }, set: { _ in }) }
+            )
+        }
+    }
+
     private func refreshWeatherIfPossible() async {
         guard environment.isAuthenticated else { return }
         let location = environment.settingsViewModel.settings?.location?.trimmed ?? ""
@@ -297,12 +568,54 @@ public struct ContentView: View {
         await environment.weatherViewModel.load(location: location)
     }
 
+    private func loadPhoneSectionIfNeeded(_ section: AppSection) async {
+        switch section {
+        case .notes:
+            await environment.notesViewModel.loadTree()
+        case .websites:
+            await environment.websitesViewModel.load()
+        case .files:
+            await environment.ingestionViewModel.load()
+        case .chat:
+            await environment.chatViewModel.loadConversations()
+        case .tasks, .settings:
+            break
+        }
+    }
+
     private var topSafeAreaBackground: Color {
         #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
+        return DesignTokens.Colors.background
         #else
-        return Color.platformSystemBackground
+        if isCompact && isPhonePanelListVisible {
+            return DesignTokens.Colors.surface
+        }
+        return DesignTokens.Colors.background
         #endif
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var isPhonePanelListVisible: Bool {
+        guard isCompact else { return false }
+        switch phoneSelection {
+        case .chat:
+            return environment.chatViewModel.selectedConversationId == nil
+        case .notes:
+            return environment.notesViewModel.selectedNoteId == nil
+        case .files:
+            return environment.ingestionViewModel.selectedFileId == nil
+        case .websites:
+            return environment.websitesViewModel.selectedWebsiteId == nil
+        case .tasks, .settings:
+            return true
+        }
     }
 
     private func applyInitialSelectionIfNeeded() {
@@ -320,10 +633,11 @@ public struct ContentView: View {
             isLeftPanelExpanded = false
         }
 #else
-        primarySection = nil
+        primarySection = .notes
         secondarySection = .chat
-        lastNonChatSection = nil
-        isLeftPanelExpanded = false
+        lastNonChatSection = .notes
+        sidebarSelection = .notes
+        isLeftPanelExpanded = true
 #endif
     }
 
@@ -338,28 +652,39 @@ public struct ContentView: View {
 
     private var tabAccessoryBackground: Color {
         #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
+        return DesignTokens.Colors.surface
         #else
-        return Color.platformSecondarySystemBackground
+        return DesignTokens.Colors.surface
         #endif
     }
 
     private var tabAccessoryBorder: Color {
         #if os(macOS)
-        return Color(nsColor: .separatorColor)
+        return DesignTokens.Colors.border
         #else
-        return Color.platformSeparator
+        return DesignTokens.Colors.border
         #endif
     }
 
     private var separatorColor: Color {
         #if os(macOS)
-        return Color(nsColor: .separatorColor)
+        return DesignTokens.Colors.border
         #else
-        return Color.platformSeparator
+        return DesignTokens.Colors.border
         #endif
     }
 
+}
+
+private struct PhoneDetailRoute: Identifiable, Hashable {
+    let id: String
+}
+
+private struct SectionDefinition {
+    let section: AppSection
+    let panelView: () -> AnyView
+    let detailView: () -> AnyView
+    let phoneSelection: () -> Binding<PhoneDetailRoute?>
 }
 
 private extension String {
@@ -390,30 +715,51 @@ public struct ConfigErrorView: View {
     }
 }
 
-public struct SectionDetailView: View {
-    public let section: AppSection?
+private enum ActiveAlert: Identifiable {
+    case biometricUnavailable
+    case biometricHint
+    case sessionExpiry
 
-    public init(section: AppSection?) {
-        self.section = section
+    var id: String {
+        switch self {
+        case .biometricUnavailable:
+            return "biometricUnavailable"
+        case .biometricHint:
+            return "biometricHint"
+        case .sessionExpiry:
+            return "sessionExpiry"
+        }
     }
+}
 
-    public var body: some View {
-        // TODO: Swap placeholders for native views per platform conventions.
-        switch section {
-        case .chat:
-            ChatView()
-        case .notes:
-            NotesView()
-        case .files:
-            FilesView()
-        case .websites:
-            WebsitesView()
-        case .settings:
-            SettingsView()
-        case .tasks:
-            TasksView()
-        case .none:
-            WelcomeEmptyView()
+private struct SignedInContentView<Main: View>: View {
+    let biometricUnlockEnabled: Bool
+    @Binding var isBiometricUnlocked: Bool
+    let topSafeAreaBackground: Color
+    let onSignOut: () -> Void
+    let mainView: () -> Main
+
+    var body: some View {
+        Group {
+            if biometricUnlockEnabled && !isBiometricUnlocked {
+                BiometricLockView(
+                    onUnlock: { isBiometricUnlocked = true },
+                    onSignOut: onSignOut
+                )
+            } else {
+                GeometryReader { proxy in
+                    mainView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .background(DesignTokens.Colors.background)
+                        .overlay(alignment: .top) {
+                            Rectangle()
+                                .fill(topSafeAreaBackground)
+                                .frame(height: proxy.safeAreaInsets.top)
+                                .ignoresSafeArea(edges: .top)
+                                .allowsHitTesting(false)
+                        }
+                }
+            }
         }
     }
 }
@@ -442,15 +788,44 @@ public struct WelcomeEmptyView: View {
 
 public struct PlaceholderView: View {
     public let title: String
+    public let subtitle: String?
+    public let actionTitle: String?
+    public let action: (() -> Void)?
+    public let iconName: String?
 
-    public init(title: String) {
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil,
+        iconName: String? = nil
+    ) {
         self.title = title
+        self.subtitle = subtitle
+        self.actionTitle = actionTitle
+        self.action = action
+        self.iconName = iconName
     }
 
     public var body: some View {
-        VStack {
+        VStack(spacing: 12) {
+            if let iconName {
+                Image(systemName: iconName)
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
             Text(title)
                 .font(.title2)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.bordered)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }

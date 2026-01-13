@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 public struct ChatView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -10,8 +11,23 @@ public struct ChatView: View {
     }
 
     public var body: some View {
-        #if os(macOS)
         ChatDetailView(viewModel: environment.chatViewModel)
+            #if !os(macOS)
+            .navigationTitle(chatTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isCompact {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("New chat")
+                    }
+                }
+            }
+            #endif
             .task {
                 await environment.chatViewModel.loadConversations()
                 environment.chatViewModel.startAutoRefresh()
@@ -19,162 +35,208 @@ public struct ChatView: View {
             .onDisappear {
                 environment.chatViewModel.stopAutoRefresh()
             }
-        #else
-        if horizontalSizeClass == .compact {
-            ChatCompactView(viewModel: environment.chatViewModel)
-        } else {
-            ChatDetailView(viewModel: environment.chatViewModel)
-                .task {
-                    await environment.chatViewModel.loadConversations()
-                    environment.chatViewModel.startAutoRefresh()
-                }
-                .onDisappear {
-                    environment.chatViewModel.stopAutoRefresh()
-                }
+    }
+
+    private var chatTitle: String {
+        guard isCompact,
+              let selectedId = environment.chatViewModel.selectedConversationId,
+              let conversation = environment.chatViewModel.conversations.first(where: { $0.id == selectedId }) else {
+            return "Chat"
         }
+        return conversation.title
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
         #endif
     }
 }
-
-#if !os(macOS)
-private struct ChatCompactView: View {
-    @ObservedObject var viewModel: ChatViewModel
-    @State private var path: [String] = []
-
-    var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.conversations.isEmpty {
-                    ChatEmptyStateView(title: "No conversations", subtitle: "Start a chat on another device.")
-                } else {
-                    List {
-                        ForEach(viewModel.groupedConversations) { group in
-                            Section(group.title) {
-                                ForEach(group.conversations) { conversation in
-                                    NavigationLink(value: conversation.id) {
-                                        CompactConversationRow(conversation: conversation)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                    .refreshable {
-                        await viewModel.refreshConversations()
-                    }
-                }
-            }
-            .navigationTitle("Chat")
-            .task {
-                await viewModel.loadConversations()
-                viewModel.startAutoRefresh()
-                if let selected = viewModel.selectedConversationId, path.isEmpty {
-                    path = [selected]
-                }
-            }
-            .onDisappear {
-                viewModel.stopAutoRefresh()
-            }
-            .navigationDestination(for: String.self) { conversationId in
-                ChatDetailView(viewModel: viewModel)
-                    .task {
-                        await viewModel.selectConversation(id: conversationId)
-                    }
-                    .navigationBarTitleDisplayMode(.inline)
-            }
-        }
-    }
-}
-
-private struct CompactConversationRow: View {
-    let conversation: Conversation
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(conversation.title)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-            Text(subtitleText)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-
-    private var formattedDate: String {
-        guard let date = DateParsing.parseISO8601(conversation.updatedAt) else {
-            return conversation.updatedAt
-        }
-        return DateFormatter.chatListCompact.string(from: date)
-    }
-
-    private var subtitleText: String {
-        let count = conversation.messageCount
-        let label = count == 1 ? "1 message" : "\(count) messages"
-        return "\(formattedDate) | \(label)"
-    }
-}
-#endif
 
 private struct ChatDetailView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var draftMessage: String = ""
     private let inputBarHeight: CGFloat = 60
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var isScratchpadPresented = false
+    #endif
+    @State private var inputMeasuredHeight: CGFloat = 0
+    @State private var attachmentsHeight: CGFloat = 0
+    @State private var isFileImporterPresented = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
-                ChatHeaderView(viewModel: viewModel)
-                Divider()
+                if environment.isOffline {
+                    OfflineBanner()
+                }
+                if !isCompact {
+                    ChatHeaderView(viewModel: viewModel)
+                    Divider()
+                }
                 if viewModel.isLoadingMessages {
-                    ProgressView()
+                    LoadingView(message: "Loading messages…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.selectedConversationId == nil {
-                    EmptyView()
+                    if viewModel.isLoadingConversations && viewModel.conversations.isEmpty {
+                        LoadingView(message: "Loading chats…")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        EmptyView()
+                    }
                 } else if viewModel.messages.isEmpty {
-                    ChatEmptyStateView(title: "No messages", subtitle: "This conversation is empty.")
+                    EmptyView()
                 } else {
-                    ChatMessageListView(viewModel: viewModel)
+                    ChatMessageListView(viewModel: viewModel, bottomInset: messageListBottomInset)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            ChatInputBar(
-                text: $draftMessage,
-                isEnabled: true
-            )
+            VStack(spacing: 8) {
+                attachmentsContainer
+                ChatInputBar(
+                    text: $draftMessage,
+                    measuredHeight: $inputMeasuredHeight,
+                    isEnabled: !viewModel.isStreaming,
+                    isSendEnabled: !viewModel.isStreaming && !viewModel.hasPendingAttachments,
+                    onSend: handleSend,
+                    onAttach: { isFileImporterPresented = true }
+                )
+            }
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
+            #if os(macOS)
+            .frame(maxWidth: 860)
+            .frame(maxWidth: .infinity, alignment: .center)
+            #endif
         }
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: true
+        ) { result in
+            handleFileImport(result)
+        }
+        #if !os(macOS)
+        .overlay(alignment: .bottomTrailing) {
+            if isCompact {
+                Button {
+                    isScratchpadPresented = true
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 48, height: 48)
+                }
+                .buttonStyle(.plain)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(
+                    Circle()
+                        .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                )
+                .accessibilityLabel("Scratchpad")
+                .padding(.trailing, 16)
+                .padding(.bottom, inputBarHeight + 24)
+            }
+        }
+        .sheet(isPresented: $isScratchpadPresented) {
+            ScratchpadPopoverView(
+                api: environment.container.scratchpadAPI,
+                cache: environment.container.cacheClient
+            )
+        }
+        #endif
+    }
+
+    private var messageListBottomInset: CGFloat {
+        max(inputMeasuredHeight, inputBarMinHeight) + attachmentsHeight + 40
+    }
+
+    private var inputBarMinHeight: CGFloat {
+        #if os(macOS)
+        return 84
+        #else
+        return 46
+        #endif
+    }
+
+    private func handleSend() {
+        let message = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else {
+            return
+        }
+        draftMessage = ""
+        Task {
+            await viewModel.sendMessage(text: message)
+        }
+    }
+
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            viewModel.addAttachments(urls: urls)
+        case .failure:
+            environment.toastCenter.show(message: "Failed to attach file")
+        }
+    }
+
+    private var attachmentsContainer: some View {
+        VStack(spacing: 8) {
+            if !viewModel.pendingAttachments.isEmpty {
+                PendingAttachmentsView(
+                    attachments: viewModel.pendingAttachments,
+                    onRetry: { viewModel.retryAttachment(id: $0) },
+                    onDelete: { viewModel.deleteAttachment(id: $0) }
+                )
+            }
+            if !viewModel.readyAttachments.isEmpty {
+                ReadyAttachmentsView(
+                    attachments: viewModel.readyAttachments,
+                    onRemove: { viewModel.removeReadyAttachment(id: $0) }
+                )
+            }
+        }
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: AttachmentHeightPreferenceKey.self, value: proxy.size.height)
+            }
+        )
+        .onPreferenceChange(AttachmentHeightPreferenceKey.self) { height in
+            attachmentsHeight = height
+        }
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
     }
 }
 
 private struct ChatHeaderView: View {
     @ObservedObject var viewModel: ChatViewModel
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 12) {
-                Image(systemName: "bubble")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(selectedTitle)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                Spacer()
-                if viewModel.isStreaming {
-                    Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .labelStyle(.titleAndIcon)
-                }
+        if isCompact {
+            VStack(alignment: .leading, spacing: 6) {
+                headerContent
             }
+            .padding(16)
+            .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
+            .background(headerBackground)
+        } else {
+        VStack(alignment: .leading, spacing: 6) {
+            headerContent
 
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
@@ -193,6 +255,60 @@ private struct ChatHeaderView: View {
         .padding(16)
         .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
         .background(headerBackground)
+        }
+    }
+
+    private var headerContent: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "bubble")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(selectedTitle)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .layoutPriority(1)
+                    .truncationMode(.tail)
+            }
+            Spacer()
+            if viewModel.isStreaming {
+                Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
+            }
+            if showNewChatButton || showCloseButton {
+                HStack(spacing: 8) {
+                    if showNewChatButton {
+                        Button {
+                            Task {
+                                await viewModel.startNewConversation()
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(width: 28, height: 20)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("New chat")
+                    }
+                    if showCloseButton {
+                        Button {
+                            Task {
+                                await viewModel.closeConversation()
+                            }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(width: 28, height: 20)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Close chat")
+                    }
+                }
+            }
+        }
     }
 
     private var selectedTitle: String {
@@ -203,33 +319,79 @@ private struct ChatHeaderView: View {
         return conversation.title
     }
 
-    private var headerBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
+    private var showNewChatButton: Bool {
+        guard viewModel.selectedConversationId != nil else {
+            return false
+        }
+        return !viewModel.isBlankConversation
     }
 
+    private var showCloseButton: Bool {
+        viewModel.selectedConversationId != nil
+    }
+
+    private var headerBackground: Color {
+        DesignTokens.Colors.background
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
 }
 
 private struct ChatMessageListView: View {
     @ObservedObject var viewModel: ChatViewModel
+    let bottomInset: CGFloat
     @State private var shouldScrollToBottom = false
+    @State private var visibleMessageCount: Int = 40
+    @State private var isAutoLoadingMore = false
+    private let pageSize: Int = 40
+    private let maxContentWidth: CGFloat = 860
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(viewModel.messages) { message in
+                    if hasMoreMessages {
+                        VStack(spacing: 6) {
+                            Button {
+                                loadMoreMessages(proxy: proxy)
+                            } label: {
+                                Text(isAutoLoadingMore ? "Loading earlier messages…" : "Load earlier messages")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isAutoLoadingMore)
+                            if isAutoLoadingMore {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .onAppear {
+                            autoLoadMore(proxy: proxy)
+                        }
+                    }
+                    ForEach(visibleMessages) { message in
                         ChatMessageRow(message: message)
                             .id(message.id)
                     }
                     Color.clear
-                        .frame(height: 1)
+                        .frame(height: max(bottomInset, 1))
                         .id("bottom")
                 }
                 .padding(16)
+                #if os(macOS)
+                .frame(maxWidth: maxContentWidth)
+                .frame(maxWidth: .infinity, alignment: .center)
+                #endif
             }
             .task(id: viewModel.selectedConversationId) {
                 guard viewModel.selectedConversationId != nil else {
@@ -243,9 +405,18 @@ private struct ChatMessageListView: View {
                 shouldScrollToBottom = false
             }
             .onChange(of: viewModel.selectedConversationId) { _, _ in
+                visibleMessageCount = pageSize
+                isAutoLoadingMore = false
                 shouldScrollToBottom = true
             }
-            .onChange(of: viewModel.messages.count) { _, _ in
+            .onChange(of: viewModel.messages.count) { oldValue, newValue in
+                if oldValue == 0 {
+                    visibleMessageCount = min(pageSize, newValue)
+                } else if visibleMessageCount >= oldValue {
+                    visibleMessageCount = newValue
+                } else if visibleMessageCount > newValue {
+                    visibleMessageCount = newValue
+                }
                 let shouldJump = shouldScrollToBottom
                 scrollToBottom(proxy: proxy, animated: !shouldJump)
                 if shouldJump {
@@ -259,6 +430,9 @@ private struct ChatMessageListView: View {
             .onChange(of: viewModel.messages.last?.content ?? "") { _, _ in
                 scrollToBottom(proxy: proxy, animated: shouldScrollToBottom == false)
             }
+            .onChange(of: bottomInset) { _, _ in
+                scrollToBottom(proxy: proxy, animated: false)
+            }
             .refreshable {
                 await viewModel.refreshConversations()
                 await viewModel.refreshActiveConversation()
@@ -266,13 +440,63 @@ private struct ChatMessageListView: View {
         }
     }
 
+    private var visibleMessages: [Message] {
+        let total = viewModel.messages.count
+        guard total > visibleMessageCount else {
+            return viewModel.messages
+        }
+        return Array(viewModel.messages.suffix(visibleMessageCount))
+    }
+
+    private var hasMoreMessages: Bool {
+        viewModel.messages.count > visibleMessageCount
+    }
+
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
-        if animated {
-            withAnimation(.easeOut(duration: 0.2)) {
+        if animated && !reduceMotion {
+            withAnimation(Motion.quick(reduceMotion: reduceMotion)) {
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
-        } else {
-            proxy.scrollTo("bottom", anchor: .bottom)
+            return
+        }
+        proxy.scrollTo("bottom", anchor: .bottom)
+    }
+
+    private func loadMoreMessages(proxy: ScrollViewProxy) {
+        loadMoreMessages(proxy: proxy) {}
+    }
+
+    private func autoLoadMore(proxy: ScrollViewProxy) {
+        guard hasMoreMessages, !isAutoLoadingMore else {
+            return
+        }
+        isAutoLoadingMore = true
+        loadMoreMessages(proxy: proxy) {
+            isAutoLoadingMore = false
+        }
+    }
+
+    private func loadMoreMessages(proxy: ScrollViewProxy, completion: @escaping () -> Void) {
+        guard hasMoreMessages else {
+            completion()
+            return
+        }
+        let anchorId = visibleMessages.first?.id
+        visibleMessageCount = min(viewModel.messages.count, visibleMessageCount + pageSize)
+        guard let anchorId else {
+            completion()
+            return
+        }
+        Task { @MainActor in
+            await Task.yield()
+            if reduceMotion {
+                proxy.scrollTo(anchorId, anchor: .top)
+            } else {
+                withAnimation(Motion.quick(reduceMotion: reduceMotion)) {
+                    proxy.scrollTo(anchorId, anchor: .top)
+                }
+            }
+            completion()
         }
     }
 }
@@ -280,6 +504,7 @@ private struct ChatMessageListView: View {
 private struct ChatMessageRow: View {
     let message: Message
     @Environment(\.colorScheme) private var colorScheme
+    private let maxBubbleWidth: CGFloat = 860
 
     var body: some View {
         bubble
@@ -307,7 +532,7 @@ private struct ChatMessageRow: View {
                 .buttonStyle(.plain)
             }
 
-            SideBarMarkdown(text: message.content)
+            SideBarMarkdown(text: message.content, preprocessor: MarkdownRendering.normalizeChatMarkdown)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if message.status == .error, let error = message.error {
@@ -330,8 +555,13 @@ private struct ChatMessageRow: View {
                 .stroke(bubbleBorder, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        #if os(macOS)
+        .frame(maxWidth: maxBubbleWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
+        #else
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity, alignment: .center)
+        #endif
     }
 
     private var formattedTimestamp: String {
@@ -342,29 +572,11 @@ private struct ChatMessageRow: View {
     }
 
     private var bubbleBackground: Color {
-        #if os(macOS)
-        if colorScheme == .dark {
-            return message.role == .assistant
-                ? Color(nsColor: .controlBackgroundColor)
-                : Color(nsColor: .underPageBackgroundColor)
-        }
-        return Color.white
-        #else
-        if colorScheme == .dark {
-            return message.role == .assistant
-                ? Color.platformSecondarySystemBackground
-                : Color.platformSystemGray6
-        }
-        return Color.white
-        #endif
+        message.role == .assistant ? DesignTokens.Colors.surface : DesignTokens.Colors.muted
     }
 
     private var bubbleBorder: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 
     private var rolePillBackground: Color {
@@ -390,11 +602,7 @@ private struct ChatMessageRow: View {
     }
 
     private var pillBorderColor: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color.platformSeparator
-        #endif
+        DesignTokens.Colors.border
     }
 
     private func copyMessage() {
@@ -426,11 +634,7 @@ private struct ToolCallListView: View {
     }
 
     private var toolBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 }
 
@@ -483,11 +687,7 @@ private struct ToolCallRow: View {
     }
 
     private var rowBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .windowBackgroundColor)
-        #else
-        return Color.platformSystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 
     private func formatJSON(_ value: Any) -> String {
@@ -520,11 +720,7 @@ private struct ChatActiveToolBanner: View {
     }
 
     private var bannerBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
+        DesignTokens.Colors.surface
     }
 
     @ViewBuilder
@@ -571,51 +767,42 @@ private struct PromptPreviewView: View {
     }
 
     private var promptBackground: Color {
-        #if os(macOS)
-        return Color(nsColor: .controlBackgroundColor)
-        #else
-        return Color.platformSecondarySystemBackground
-        #endif
-    }
-}
-
-private struct ChatEmptyStateView: View {
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text(title)
-                .font(.headline)
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        DesignTokens.Colors.surface
     }
 }
 
 private struct ChatInputBar: View {
     @Binding var text: String
+    @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
+    let isSendEnabled: Bool
+    let onSend: () -> Void
+    let onAttach: () -> Void
 
-    @State private var textHeight: CGFloat = 0
-    private let minHeight: CGFloat = 46
-    private let maxHeight: CGFloat = 140
     @Environment(\.colorScheme) private var colorScheme
+    private let maxInputWidth: CGFloat = 860
 
     var body: some View {
         ChatInputContainer {
             PlatformChatInputView(
                 text: $text,
-                measuredHeight: $textHeight,
+                measuredHeight: $measuredHeight,
                 isEnabled: isEnabled,
+                isSendEnabled: isSendEnabled,
                 minHeight: minHeight,
-                maxHeight: maxHeight
+                maxHeight: maxHeight,
+                onSend: onSend,
+                onAttach: onAttach
             )
             .frame(height: computedHeight)
             .modifier(GlassEffectModifier())
         }
+        .frame(maxWidth: maxInputWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(DesignTokens.Colors.surface)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(borderColor, lineWidth: 1)
@@ -628,11 +815,7 @@ private struct ChatInputBar: View {
     }
 
     private var borderColor: Color {
-        #if os(macOS)
-        let color = Color(nsColor: .separatorColor)
-        #else
-        let color = Color.platformSeparator
-        #endif
+        let color = DesignTokens.Colors.border
         return colorScheme == .dark ? color.opacity(0.95) : color.opacity(0.7)
     }
 
@@ -641,18 +824,30 @@ private struct ChatInputBar: View {
     }
 
     private var computedHeight: CGFloat {
-        let clamped = min(max(textHeight, minHeight), maxHeight)
+        let clamped = min(max(measuredHeight, minHeight), maxHeight)
         return clamped
+    }
+
+    private var minHeight: CGFloat {
+        #if os(macOS)
+        return 84
+        #else
+        return 46
+        #endif
+    }
+
+    private var maxHeight: CGFloat {
+        #if os(macOS)
+        return 240
+        #else
+        return 140
+        #endif
     }
 }
 
 private struct GlassEffectModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 18.0, macOS 15.0, *) {
-            content.glassEffect(.regular)
-        } else {
-            content
-        }
+        content
     }
 }
 
@@ -660,13 +855,7 @@ private struct ChatInputContainer<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        if #available(iOS 18.0, macOS 15.0, *) {
-            GlassEffectContainer {
-                content()
-            }
-        } else {
-            content()
-        }
+        content()
     }
 }
 
@@ -674,8 +863,11 @@ private struct PlatformChatInputView: View {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
+    let isSendEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
+    let onSend: () -> Void
+    let onAttach: () -> Void
 
     var body: some View {
         #if os(iOS)
@@ -683,16 +875,22 @@ private struct PlatformChatInputView: View {
             text: $text,
             measuredHeight: $measuredHeight,
             isEnabled: isEnabled,
+            isSendEnabled: isSendEnabled,
             minHeight: minHeight,
-            maxHeight: maxHeight
+            maxHeight: maxHeight,
+            onSend: onSend,
+            onAttach: onAttach
         )
         #else
         ChatInputAppKitView(
             text: $text,
             measuredHeight: $measuredHeight,
             isEnabled: isEnabled,
+            isSendEnabled: isSendEnabled,
             minHeight: minHeight,
-            maxHeight: maxHeight
+            maxHeight: maxHeight,
+            onSend: onSend,
+            onAttach: onAttach
         )
         #endif
     }
@@ -703,22 +901,17 @@ private struct ChatInputUIKitView: UIViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
+    let isSendEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
+    let onSend: () -> Void
+    let onAttach: () -> Void
 
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        let effectView: UIVisualEffectView
-        if #available(iOS 18.0, *) {
-            effectView = UIVisualEffectView(effect: nil)
-        } else {
-            effectView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-        }
-        effectView.clipsToBounds = true
-        effectView.layer.cornerRadius = 16
-        effectView.backgroundColor = .clear
-        effectView.isOpaque = false
+    func makeUIView(context: Context) -> UIView {
+        let containerView = UIView()
+        containerView.backgroundColor = .clear
 
-        let textView = UITextView()
+        let textView = ChatInputTextView()
         textView.font = UIFont.preferredFont(forTextStyle: .body)
         textView.backgroundColor = .clear
         textView.textColor = UIColor.label
@@ -726,8 +919,13 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false
         textView.delegate = context.coordinator
+        textView.onShiftEnter = {
+            textView.allowNewlineOnce = true
+            textView.insertText("\n")
+        }
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        textView.accessibilityLabel = "Message"
 
         let placeholderLabel = UILabel()
         placeholderLabel.text = "Ask Anything..."
@@ -738,17 +936,20 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         let attachButton = UIButton(type: .system)
         attachButton.setImage(UIImage(systemName: "paperclip.circle.fill"), for: .normal)
         attachButton.clipsToBounds = true
+        attachButton.accessibilityLabel = "Attach file"
+        attachButton.addTarget(context.coordinator, action: #selector(Coordinator.didTapAttach), for: .touchUpInside)
 
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
         button.layer.cornerRadius = 14
         button.clipsToBounds = true
         button.addTarget(context.coordinator, action: #selector(Coordinator.didTapSend), for: .touchUpInside)
+        button.accessibilityLabel = "Send message"
 
-        effectView.contentView.addSubview(textView)
-        effectView.contentView.addSubview(placeholderLabel)
-        effectView.contentView.addSubview(attachButton)
-        effectView.contentView.addSubview(button)
+        containerView.addSubview(textView)
+        containerView.addSubview(placeholderLabel)
+        containerView.addSubview(attachButton)
+        containerView.addSubview(button)
 
         textView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -759,19 +960,19 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         placeholderCenter.priority = .defaultHigh
 
         NSLayoutConstraint.activate([
-            textView.leadingAnchor.constraint(equalTo: effectView.contentView.leadingAnchor),
-            textView.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor),
-            textView.topAnchor.constraint(equalTo: effectView.contentView.topAnchor),
-            textView.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor),
+            textView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            textView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 44),
             placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -48),
             placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: 8),
-            attachButton.leadingAnchor.constraint(equalTo: effectView.contentView.leadingAnchor, constant: 10),
-            attachButton.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -10),
+            attachButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
+            attachButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
             attachButton.widthAnchor.constraint(equalToConstant: 28),
             attachButton.heightAnchor.constraint(equalToConstant: 28),
-            button.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor, constant: -10),
-            button.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor, constant: -10),
+            button.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            button.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10),
             button.widthAnchor.constraint(equalToConstant: 28),
             button.heightAnchor.constraint(equalToConstant: 28)
         ])
@@ -782,10 +983,10 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         context.coordinator.attachButton = attachButton
         context.coordinator.placeholderLabel = placeholderLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return effectView
+        return containerView
     }
 
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+    func updateUIView(_ uiView: UIView, context: Context) {
         guard let textView = context.coordinator.textView,
               let button = context.coordinator.sendButton,
               let attachButton = context.coordinator.attachButton,
@@ -796,19 +997,26 @@ private struct ChatInputUIKitView: UIViewRepresentable {
             textView.text = text
         }
         textView.isEditable = isEnabled
-        let canSend = isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let canSend = isSendEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         button.isEnabled = canSend
         button.alpha = canSend ? 1.0 : 0.45
         let tintColor: UIColor = .label
         button.backgroundColor = .clear
         button.tintColor = canSend ? tintColor : UIColor.secondaryLabel
-        attachButton.tintColor = UIColor.secondaryLabel
+        attachButton.tintColor = isEnabled ? UIColor.secondaryLabel : UIColor.tertiaryLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         recalculateHeight(for: textView)
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, measuredHeight: $measuredHeight, minHeight: minHeight, maxHeight: maxHeight)
+        Coordinator(
+            text: $text,
+            measuredHeight: $measuredHeight,
+            minHeight: minHeight,
+            maxHeight: maxHeight,
+            onSend: onSend,
+            onAttach: onAttach
+        )
     }
 
     private func recalculateHeight(for textView: UITextView) {
@@ -826,16 +1034,27 @@ private struct ChatInputUIKitView: UIViewRepresentable {
         private var measuredHeight: Binding<CGFloat>
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
+        private let onSend: () -> Void
+        private let onAttach: () -> Void
         weak var textView: UITextView?
         weak var sendButton: UIButton?
         weak var attachButton: UIButton?
         weak var placeholderLabel: UILabel?
 
-        init(text: Binding<String>, measuredHeight: Binding<CGFloat>, minHeight: CGFloat, maxHeight: CGFloat) {
+        init(
+            text: Binding<String>,
+            measuredHeight: Binding<CGFloat>,
+            minHeight: CGFloat,
+            maxHeight: CGFloat,
+            onSend: @escaping () -> Void,
+            onAttach: @escaping () -> Void
+        ) {
             self.text = text
             self.measuredHeight = measuredHeight
             self.minHeight = minHeight
             self.maxHeight = maxHeight
+            self.onSend = onSend
+            self.onAttach = onAttach
         }
 
         func textViewDidChange(_ textView: UITextView) {
@@ -848,7 +1067,28 @@ private struct ChatInputUIKitView: UIViewRepresentable {
             }
         }
 
+        func textView(
+            _ textView: UITextView,
+            shouldChangeTextIn range: NSRange,
+            replacementText text: String
+        ) -> Bool {
+            guard text == "\n" else {
+                return true
+            }
+            if let chatTextView = textView as? ChatInputTextView, chatTextView.allowNewlineOnce {
+                chatTextView.allowNewlineOnce = false
+                return true
+            }
+            onSend()
+            return false
+        }
+
         @objc func didTapSend() {
+            onSend()
+        }
+
+        @objc func didTapAttach() {
+            onAttach()
         }
     }
 }
@@ -859,25 +1099,20 @@ private struct ChatInputAppKitView: NSViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat
     let isEnabled: Bool
+    let isSendEnabled: Bool
     let minHeight: CGFloat
     let maxHeight: CGFloat
+    private let controlBarHeight: CGFloat = 44
+    let onSend: () -> Void
+    let onAttach: () -> Void
 
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let effectView = NSVisualEffectView()
-        if #available(macOS 15.0, *) {
-            effectView.material = .underWindowBackground
-        } else {
-            effectView.material = .hudWindow
-        }
-        effectView.state = .active
-        effectView.blendingMode = .behindWindow
-        effectView.wantsLayer = true
-        effectView.layer?.cornerRadius = 16
+    func makeNSView(context: Context) -> NSView {
+        let containerView = NSView()
 
         let textView = NSTextView()
         textView.font = NSFont.preferredFont(forTextStyle: .body)
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 12, height: 8)
+        textView.textContainerInset = NSSize(width: 16, height: 14)
         textView.textContainer?.lineFragmentPadding = 0
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
@@ -886,6 +1121,11 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.textColor = .labelColor
         textView.string = text
+        textView.setAccessibilityLabel("Message")
+
+        let controlBar = NSView()
+        controlBar.wantsLayer = true
+        controlBar.layer?.backgroundColor = NSColor.clear.cgColor
 
         let placeholderLabel = NSTextField(labelWithString: "Ask Anything...")
         placeholderLabel.font = textView.font
@@ -898,57 +1138,73 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         let attachButton = NSButton()
         attachButton.bezelStyle = .regularSquare
         attachButton.isBordered = false
-        attachButton.image = NSImage(systemSymbolName: "paperclip.circle.fill", accessibilityDescription: nil)
+        attachButton.image = NSImage(
+            systemSymbolName: "paperclip.circle.fill",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(
+            NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+        )
+        attachButton.setAccessibilityLabel("Attach file")
+        attachButton.target = context.coordinator
+        attachButton.action = #selector(Coordinator.didTapAttach)
 
         let button = NSButton()
         button.bezelStyle = .regularSquare
         button.isBordered = false
-        button.image = NSImage(systemSymbolName: "arrow.up.circle.fill", accessibilityDescription: nil)
+        button.image = NSImage(
+            systemSymbolName: "arrow.up.circle.fill",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(
+            NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+        )
         button.wantsLayer = true
-        button.layer?.cornerRadius = 14
+        button.layer?.cornerRadius = 22
         button.target = context.coordinator
         button.action = #selector(Coordinator.didTapSend)
+        button.setAccessibilityLabel("Send message")
 
-        effectView.addSubview(textView)
-        effectView.addSubview(placeholderLabel)
-        effectView.addSubview(attachButton)
-        effectView.addSubview(button)
+        containerView.addSubview(textView)
+        containerView.addSubview(placeholderLabel)
+        containerView.addSubview(controlBar)
+        controlBar.addSubview(attachButton)
+        controlBar.addSubview(button)
         textView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        controlBar.translatesAutoresizingMaskIntoConstraints = false
         attachButton.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
 
-        let placeholderCenter = placeholderLabel.centerYAnchor.constraint(equalTo: textView.centerYAnchor)
-        placeholderCenter.priority = .defaultHigh
-
         NSLayoutConstraint.activate([
-            textView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
-            textView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
-            textView.topAnchor.constraint(equalTo: effectView.topAnchor),
-            textView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
-            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 44),
-            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -48),
-            placeholderLabel.topAnchor.constraint(greaterThanOrEqualTo: textView.topAnchor, constant: 8),
-            attachButton.leadingAnchor.constraint(equalTo: effectView.leadingAnchor, constant: 10),
-            attachButton.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -10),
-            attachButton.widthAnchor.constraint(equalToConstant: 28),
-            attachButton.heightAnchor.constraint(equalToConstant: 28),
-            button.trailingAnchor.constraint(equalTo: effectView.trailingAnchor, constant: -10),
-            button.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -10),
-            button.widthAnchor.constraint(equalToConstant: 28),
-            button.heightAnchor.constraint(equalToConstant: 28)
+            textView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            textView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: controlBar.topAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 16),
+            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: textView.trailingAnchor, constant: -16),
+            placeholderLabel.topAnchor.constraint(equalTo: textView.topAnchor, constant: textView.textContainerInset.height + 2),
+            controlBar.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            controlBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            controlBar.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            controlBar.heightAnchor.constraint(equalToConstant: controlBarHeight),
+            attachButton.leadingAnchor.constraint(equalTo: controlBar.leadingAnchor, constant: 6),
+            attachButton.centerYAnchor.constraint(equalTo: controlBar.centerYAnchor),
+            attachButton.widthAnchor.constraint(equalToConstant: 48),
+            attachButton.heightAnchor.constraint(equalToConstant: 48),
+            button.trailingAnchor.constraint(equalTo: controlBar.trailingAnchor, constant: -6),
+            button.centerYAnchor.constraint(equalTo: controlBar.centerYAnchor),
+            button.widthAnchor.constraint(equalToConstant: 48),
+            button.heightAnchor.constraint(equalToConstant: 48)
         ])
-        placeholderCenter.isActive = true
 
         context.coordinator.textView = textView
         context.coordinator.sendButton = button
         context.coordinator.attachButton = attachButton
         context.coordinator.placeholderLabel = placeholderLabel
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return effectView
+        return containerView
     }
 
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+    func updateNSView(_ nsView: NSView, context: Context) {
         guard let textView = context.coordinator.textView,
               let button = context.coordinator.sendButton,
               let attachButton = context.coordinator.attachButton,
@@ -959,19 +1215,27 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             textView.string = text
         }
         textView.isEditable = isEnabled
-        let canSend = isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let canSend = isSendEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         button.isEnabled = canSend
         button.alphaValue = canSend ? 1.0 : 0.45
         let tintColor: NSColor = .labelColor
         button.layer?.backgroundColor = NSColor.clear.cgColor
         button.contentTintColor = canSend ? tintColor : NSColor.secondaryLabelColor
-        attachButton.contentTintColor = NSColor.secondaryLabelColor
+        attachButton.contentTintColor = isEnabled ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor
         placeholderLabel.isHidden = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         recalculateHeight(for: textView)
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, measuredHeight: $measuredHeight, minHeight: minHeight, maxHeight: maxHeight)
+        Coordinator(
+            text: $text,
+            measuredHeight: $measuredHeight,
+            minHeight: minHeight,
+            maxHeight: maxHeight,
+            controlBarHeight: controlBarHeight,
+            onSend: onSend,
+            onAttach: onAttach
+        )
     }
 
     private func recalculateHeight(for textView: NSTextView) {
@@ -980,7 +1244,8 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         }
         layoutManager.ensureLayout(for: textContainer)
         let usedRect = layoutManager.usedRect(for: textContainer)
-        let height = min(maxHeight, max(minHeight, usedRect.height + textView.textContainerInset.height * 2))
+        let contentHeight = usedRect.height + textView.textContainerInset.height * 2
+        let height = min(maxHeight, max(minHeight, contentHeight + controlBarHeight))
         if measuredHeight != height {
             DispatchQueue.main.async {
                 measuredHeight = height
@@ -993,16 +1258,30 @@ private struct ChatInputAppKitView: NSViewRepresentable {
         private var measuredHeight: Binding<CGFloat>
         private let minHeight: CGFloat
         private let maxHeight: CGFloat
+        private let controlBarHeight: CGFloat
+        private let onSend: () -> Void
+        private let onAttach: () -> Void
         weak var textView: NSTextView?
         weak var sendButton: NSButton?
         weak var attachButton: NSButton?
         weak var placeholderLabel: NSTextField?
 
-        init(text: Binding<String>, measuredHeight: Binding<CGFloat>, minHeight: CGFloat, maxHeight: CGFloat) {
+        init(
+            text: Binding<String>,
+            measuredHeight: Binding<CGFloat>,
+            minHeight: CGFloat,
+            maxHeight: CGFloat,
+            controlBarHeight: CGFloat,
+            onSend: @escaping () -> Void,
+            onAttach: @escaping () -> Void
+        ) {
             self.text = text
             self.measuredHeight = measuredHeight
             self.minHeight = minHeight
             self.maxHeight = maxHeight
+            self.controlBarHeight = controlBarHeight
+            self.onSend = onSend
+            self.onAttach = onAttach
         }
 
         func textDidChange(_ notification: Notification) {
@@ -1014,14 +1293,53 @@ private struct ChatInputAppKitView: NSViewRepresentable {
             }
             layoutManager.ensureLayout(for: textContainer)
             let usedRect = layoutManager.usedRect(for: textContainer)
-            let height = min(maxHeight, max(minHeight, usedRect.height + textView.textContainerInset.height * 2))
+            let contentHeight = usedRect.height + textView.textContainerInset.height * 2
+            let height = min(maxHeight, max(minHeight, contentHeight + controlBarHeight))
             if measuredHeight.wrappedValue != height {
                 measuredHeight.wrappedValue = height
             }
         }
 
-        @objc func didTapSend() {
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
+                return false
+            }
+            if NSEvent.modifierFlags.contains(.shift) {
+                return false
+            }
+            onSend()
+            return true
         }
+
+        @objc func didTapSend() {
+            onSend()
+        }
+
+        @objc func didTapAttach() {
+            onAttach()
+        }
+    }
+}
+#endif
+
+#if os(iOS)
+private final class ChatInputTextView: UITextView {
+    var allowNewlineOnce = false
+    var onShiftEnter: (() -> Void)?
+
+    override var keyCommands: [UIKeyCommand]? {
+        [
+            UIKeyCommand(
+                input: "\r",
+                modifierFlags: .shift,
+                action: #selector(handleShiftEnter)
+            )
+        ]
+    }
+
+    @objc private func handleShiftEnter() {
+        onShiftEnter?()
+        allowNewlineOnce = false
     }
 }
 #endif
@@ -1047,4 +1365,121 @@ private extension DateFormatter {
         formatter.timeStyle = .short
         return formatter
     }()
+}
+
+private struct PendingAttachmentsView: View {
+    let attachments: [ChatAttachmentItem]
+    let onRetry: (String) -> Void
+    let onDelete: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(attachments) { attachment in
+                HStack(spacing: 10) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(attachment.name)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                        Text(statusText(for: attachment))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if attachment.status == .failed {
+                        HStack(spacing: 8) {
+                            Button {
+                                onRetry(attachment.id)
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Retry attachment")
+                            Button {
+                                onDelete(attachment.id)
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Delete attachment")
+                        }
+                    } else {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(DesignTokens.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    private func statusText(for attachment: ChatAttachmentItem) -> String {
+        if let stage = attachment.stage, !stage.isEmpty {
+            return stage
+        }
+        switch attachment.status {
+        case .uploading:
+            return "uploading"
+        case .queued:
+            return "queued"
+        case .failed:
+            return "failed"
+        case .canceled:
+            return "canceled"
+        case .ready:
+            return "ready"
+        }
+    }
+}
+
+private struct ReadyAttachmentsView: View {
+    let attachments: [ChatAttachmentItem]
+    let onRemove: (String) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(attachments) { attachment in
+                    HStack(spacing: 6) {
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(attachment.name)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                        Button {
+                            onRemove(attachment.id)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Remove \(attachment.name)")
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(DesignTokens.Colors.muted)
+                    .clipShape(Capsule())
+                }
+            }
+        }
+    }
+}
+
+private struct AttachmentHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
 }

@@ -12,6 +12,9 @@
 	import { useEditorActions } from '$lib/hooks/useEditorActions';
 	import { useLeaveGuard } from '$lib/hooks/useLeaveGuard';
 
+	// Module-level map to persist scroll positions across remounts
+	const scrollPositions = new Map<string, number>();
+
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
 	let saveTimeout: ReturnType<typeof setTimeout>;
@@ -31,6 +34,7 @@
 	let isCopied = false;
 	let savedIndicatorTimeout: ReturnType<typeof setTimeout> | null = null;
 	let showSavedIndicator = true;
+	let editorScrollElement: HTMLDivElement;
 
 	$: isDirty = $editorStore.isDirty;
 	$: isSaving = $editorStore.isSaving;
@@ -89,6 +93,18 @@
 		});
 		editor = createdEditor;
 		destroyEditor = destroy;
+
+		// Restore scroll position after content is rendered
+		if (currentNoteId && editorScrollElement) {
+			const savedPosition = scrollPositions.get(currentNoteId) ?? 0;
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					if (editorScrollElement) {
+						editorScrollElement.scrollTop = savedPosition;
+					}
+				});
+			});
+		}
 	});
 
 	const { stayOnPage, confirmLeave } = useLeaveGuard({
@@ -117,6 +133,11 @@
 	}
 
 	onDestroy(() => {
+		// Save scroll position before unmounting
+		if (currentNoteId && editorScrollElement) {
+			scrollPositions.set(currentNoteId, editorScrollElement.scrollTop);
+		}
+
 		// Cleanup all timers and subscriptions
 		clearTimeout(saveTimeout);
 		if (copyTimeout) clearTimeout(copyTimeout);
@@ -187,6 +208,33 @@
 	}
 
 	$: lastSavedLabel = formatLastSaved(lastSaved, showSavedIndicator);
+
+	// Save and restore scroll position when switching notes (not on mount/unmount)
+	let previousNoteId: string | null = null;
+	let isInitialMount = true;
+	$: {
+		// Skip the initial mount - onMount handles that
+		if (isInitialMount && currentNoteId) {
+			previousNoteId = currentNoteId;
+			isInitialMount = false;
+		} else if (editorScrollElement && previousNoteId && previousNoteId !== currentNoteId) {
+			// Save previous note's scroll position
+			scrollPositions.set(previousNoteId, editorScrollElement.scrollTop);
+
+			// Restore new note's scroll position
+			if (currentNoteId) {
+				const savedPosition = scrollPositions.get(currentNoteId) ?? 0;
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						if (editorScrollElement) {
+							editorScrollElement.scrollTop = savedPosition;
+						}
+					});
+				});
+			}
+			previousNoteId = currentNoteId;
+		}
+	}
 </script>
 
 <AlertDialog.Root bind:open={isLeaveDialogOpen}>
@@ -295,7 +343,7 @@
 	{/if}
 
 	<!-- TipTap Editor - always rendered -->
-	<div class="editor-scroll" class:hidden={!currentNoteName}>
+	<div bind:this={editorScrollElement} class="editor-scroll" class:hidden={!currentNoteName}>
 		<div bind:this={editorElement} class="tiptap-editor"></div>
 	</div>
 
@@ -364,6 +412,13 @@
 	.empty-state p {
 		font-size: 0.95rem;
 	}
+
+	/* ========================================================================
+	   COMPONENT-SPECIFIC: Standard editor layout
+	   Main note editor uses optimal line length (85ch) for readability and
+	   standard spacing (1.7 line-height, 0.75em margins) for comfortable
+	   long-form writing. This serves as the reference implementation.
+	   ======================================================================== */
 
 	/* TipTap prose styling */
 	:global(.tiptap) {
@@ -468,47 +523,6 @@
 		margin-bottom: 0 !important;
 	}
 
-	:global(.tiptap ul[data-type='taskList']) {
-		list-style: none;
-		padding-left: 0;
-	}
-
-	:global(.tiptap ul[data-type='taskList'] ul[data-type='taskList']) {
-		margin-top: 0;
-		margin-bottom: 0;
-	}
-
-	:global(.tiptap ul[data-type='taskList'] > li) {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.5em;
-	}
-
-	:global(.tiptap ul[data-type='taskList'] > li > label) {
-		margin-top: 0.2em;
-	}
-
-	:global(.tiptap ul[data-type='taskList'] > li > div) {
-		flex: 1;
-	}
-
-	:global(.tiptap ul[data-type='taskList'] > li > div > p) {
-		margin: 0;
-	}
-
-	:global(.tiptap ul[data-type='taskList'] > li > div > p:empty) {
-		display: none;
-	}
-
-	:global(.tiptap ul[data-type='taskList'] > li[data-checked='true'] > div) {
-		color: var(--color-muted-foreground);
-		text-decoration: line-through;
-	}
-
-	:global(.tiptap ul[data-type='taskList'] input[type='checkbox']) {
-		accent-color: #000;
-	}
-
 	:global(.tiptap blockquote) {
 		border-left: 3px solid var(--color-border);
 		padding-left: 1em;
@@ -522,31 +536,6 @@
 		border: none;
 		border-top: 1px solid var(--color-border);
 		margin: 2em 0;
-	}
-
-	:global(.tiptap table) {
-		width: 100%;
-		border-collapse: collapse;
-		margin: 1em 0;
-		font-size: 0.95em;
-	}
-
-	:global(.tiptap th),
-	:global(.tiptap td) {
-		border: 1px solid var(--color-border);
-		padding: 0em 0.75em;
-		text-align: left;
-		vertical-align: top;
-	}
-
-	:global(.tiptap thead th) {
-		background-color: var(--color-muted);
-		color: var(--color-foreground);
-		font-weight: 600;
-	}
-
-	:global(.tiptap tbody tr:nth-child(even)) {
-		background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
 	}
 
 	:global(.tiptap a) {

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UniformTypeIdentifiers
 
 // TODO: Revisit to prefer native-first data sources where applicable.
 
@@ -51,39 +52,51 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public private(set) var isStreaming: Bool = false
     @Published public private(set) var isLoadingConversations: Bool = false
     @Published public private(set) var isLoadingMessages: Bool = false
+    @Published public private(set) var attachments: [ChatAttachmentItem] = []
     @Published public private(set) var errorMessage: String? = nil
     @Published public private(set) var activeTool: ChatActiveTool? = nil
     @Published public private(set) var promptPreview: ChatPromptPreview? = nil
 
     private let chatAPI: ChatAPI
+    private let conversationsAPI: ConversationsAPIProviding
     private let cache: CacheClient
+    private let ingestionAPI: IngestionAPI
     private let themeManager: ThemeManager
     private let streamClient: ChatStreamClient
     private let chatStore: ChatStore
     private let userDefaults: UserDefaults
+    private let toastCenter: ToastCenter?
     private let clock: () -> Date
 
     private var currentStreamMessageId: String?
     private var streamingConversationId: String?
     private var clearActiveToolTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    private var generatingTitleIds = Set<String>()
     private var cancellables = Set<AnyCancellable>()
+    private var attachmentPollTasks: [String: Task<Void, Never>] = [:]
 
     public init(
         chatAPI: ChatAPI,
+        conversationsAPI: ConversationsAPIProviding,
+        ingestionAPI: IngestionAPI,
         cache: CacheClient,
         themeManager: ThemeManager,
         streamClient: ChatStreamClient,
         chatStore: ChatStore,
+        toastCenter: ToastCenter? = nil,
         userDefaults: UserDefaults = .standard,
         clock: @escaping () -> Date = Date.init
     ) {
         self.chatAPI = chatAPI
+        self.conversationsAPI = conversationsAPI
         self.cache = cache
+        self.ingestionAPI = ingestionAPI
         self.themeManager = themeManager
         self.streamClient = streamClient
         self.chatStore = chatStore
         self.userDefaults = userDefaults
+        self.toastCenter = toastCenter
         self.clock = clock
         self.streamClient.handler = self
         self.selectedConversationId = nil
@@ -157,9 +170,33 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         ].filter { !$0.conversations.isEmpty }
     }
 
-    public func loadConversations(force: Bool = false) async {
+    public var isBlankConversation: Bool {
+        guard let selectedId = selectedConversationId else {
+            return false
+        }
+        guard let conversation = conversations.first(where: { $0.id == selectedId }) else {
+            return messages.isEmpty
+        }
+        return conversation.messageCount == 0 && messages.isEmpty
+    }
+
+    public var hasPendingAttachments: Bool {
+        attachments.contains { $0.status != .ready }
+    }
+
+    public var readyAttachments: [ChatAttachmentItem] {
+        attachments.filter { $0.status == .ready }
+    }
+
+    public var pendingAttachments: [ChatAttachmentItem] {
+        attachments.filter { $0.status != .ready }
+    }
+
+    public func loadConversations(force: Bool = false, silent: Bool = false) async {
         errorMessage = nil
-        isLoadingConversations = true
+        if !silent {
+            isLoadingConversations = true
+        }
         do {
             try await chatStore.loadConversations(force: force)
         } catch {
@@ -167,11 +204,13 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
                 errorMessage = error.localizedDescription
             }
         }
-        isLoadingConversations = false
+        if !silent {
+            isLoadingConversations = false
+        }
     }
 
-    public func refreshConversations() async {
-        await loadConversations(force: true)
+    public func refreshConversations(silent: Bool = false) async {
+        await loadConversations(force: true, silent: silent)
     }
 
     public func refreshActiveConversation(silent: Bool = false) async {
@@ -187,7 +226,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             guard let self else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(intervalSeconds * 1_000_000_000))
-                await self.refreshConversations()
+                await self.refreshConversations(silent: true)
                 await self.refreshActiveConversation(silent: true)
             }
         }
@@ -198,10 +237,266 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         refreshTask = nil
     }
 
+    public func sendMessage(text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isStreaming else {
+            return
+        }
+        errorMessage = nil
+        guard !hasPendingAttachments else {
+            return
+        }
+        let userMessageId = UUID().uuidString
+        let assistantMessageId = UUID().uuidString
+        let timestamp = Self.isoTimestamp(from: clock())
+        let attachmentsForMessage = readyAttachments.compactMap { attachment -> ChatAttachment? in
+            guard let fileId = attachment.fileId else { return nil }
+            return ChatAttachment(fileId: fileId, filename: attachment.name)
+        }
+
+        var conversationId = selectedConversationId
+        if conversationId == nil {
+            do {
+                let conversation = try await conversationsAPI.create(title: "New Chat")
+                conversationId = conversation.id
+                selectedConversationId = conversation.id
+                chatStore.upsertConversation(conversation)
+                chatStore.upsertConversationDetail(
+                    ConversationWithMessages(
+                        id: conversation.id,
+                        title: conversation.title,
+                        titleGenerated: conversation.titleGenerated,
+                        createdAt: conversation.createdAt,
+                        updatedAt: conversation.updatedAt,
+                        messageCount: conversation.messageCount,
+                        firstMessage: conversation.firstMessage,
+                        isArchived: conversation.isArchived,
+                        messages: []
+                    )
+                )
+            } catch {
+                errorMessage = error.localizedDescription
+                return
+            }
+        }
+
+        guard let conversationId else {
+            return
+        }
+
+        let userMessage = Message(
+            id: userMessageId,
+            role: .user,
+            content: trimmed,
+            status: .complete,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: timestamp,
+            error: nil
+        )
+        messages.append(userMessage)
+        syncMessagesToStore(conversationId: conversationId, persist: true)
+
+        let assistantMessage = Message(
+            id: assistantMessageId,
+            role: .assistant,
+            content: "",
+            status: .streaming,
+            toolCalls: nil,
+            needsNewline: nil,
+            timestamp: timestamp,
+            error: nil
+        )
+        messages.append(assistantMessage)
+        beginStreamingMessage(assistantMessageId: assistantMessageId)
+        syncMessagesToStore(conversationId: conversationId, persist: true)
+
+        Task { [weak self] in
+            await self?.persistMessage(
+                conversationId: conversationId,
+                message: userMessage
+            )
+        }
+
+        await startStream(
+            request: ChatStreamRequest(
+                message: trimmed,
+                conversationId: conversationId,
+                userMessageId: userMessageId,
+                attachments: attachmentsForMessage.isEmpty ? nil : attachmentsForMessage
+            )
+        )
+        clearAttachments()
+    }
+
+    public func startNewConversation() async {
+        guard !isStreaming else {
+            return
+        }
+        errorMessage = nil
+        stopStream()
+        promptPreview = nil
+        activeTool = nil
+        clearActiveToolTask?.cancel()
+        await cleanupEmptyConversationIfNeeded()
+        clearAttachments()
+        do {
+            let conversation = try await conversationsAPI.create(title: "New Chat")
+            selectedConversationId = conversation.id
+            userDefaults.set(conversation.id, forKey: AppStorageKeys.lastConversationId)
+            messages = []
+            chatStore.upsertConversation(conversation)
+            chatStore.upsertConversationDetail(
+                ConversationWithMessages(
+                    id: conversation.id,
+                    title: conversation.title,
+                    titleGenerated: conversation.titleGenerated,
+                    createdAt: conversation.createdAt,
+                    updatedAt: conversation.updatedAt,
+                    messageCount: conversation.messageCount,
+                    firstMessage: conversation.firstMessage,
+                    isArchived: conversation.isArchived,
+                    messages: []
+                )
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    public func closeConversation() async {
+        guard selectedConversationId != nil else {
+            return
+        }
+        await cleanupEmptyConversationIfNeeded()
+        clearConversationSelection()
+    }
+
+    public func addAttachments(urls: [URL]) {
+        for url in urls {
+            Task { [weak self] in
+                await self?.addAttachment(url: url)
+            }
+        }
+    }
+
+    public func retryAttachment(id: String) {
+        guard let attachment = attachments.first(where: { $0.id == id }),
+              let url = attachment.fileURL else {
+            toastCenter?.show(message: "Re-upload the file to retry")
+            return
+        }
+        updateAttachment(id: id) { item in
+            var updated = item
+            updated.status = .uploading
+            updated.stage = "uploading"
+            updated.fileId = nil
+            return updated
+        }
+        Task { [weak self] in
+            await self?.uploadAttachment(id: id, url: url)
+        }
+    }
+
+    public func deleteAttachment(id: String) {
+        guard let attachment = attachments.first(where: { $0.id == id }) else {
+            return
+        }
+        attachmentPollTasks[id]?.cancel()
+        attachmentPollTasks[id] = nil
+        attachments.removeAll { $0.id == id }
+        if let fileId = attachment.fileId {
+            Task { [weak self] in
+                do {
+                    try await self?.ingestionAPI.delete(fileId: fileId)
+                } catch {
+                    await MainActor.run {
+                        self?.toastCenter?.show(message: "Failed to delete attachment")
+                    }
+                }
+            }
+        }
+    }
+
+    public func removeReadyAttachment(id: String) {
+        attachments.removeAll { $0.id == id }
+    }
+
+    public func renameConversation(id: String, title: String) async {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return
+        }
+        guard let existing = conversations.first(where: { $0.id == id }) else {
+            return
+        }
+        guard existing.title != trimmed else {
+            return
+        }
+        let previousTitle = existing.title
+        let previousGenerated = existing.titleGenerated
+        chatStore.updateConversationTitle(
+            id: id,
+            title: trimmed,
+            titleGenerated: false
+        )
+        do {
+            let updated = try await conversationsAPI.update(
+                conversationId: id,
+                updates: ConversationUpdateRequest(title: trimmed, titleGenerated: false, isArchived: nil)
+            )
+            chatStore.updateConversationTitle(
+                id: id,
+                title: updated.title,
+                titleGenerated: updated.titleGenerated
+            )
+        } catch {
+            chatStore.updateConversationTitle(
+                id: id,
+                title: previousTitle,
+                titleGenerated: previousGenerated
+            )
+            errorMessage = error.localizedDescription
+            toastCenter?.show(message: "Failed to rename conversation")
+        }
+    }
+
+    public func deleteConversation(id: String) async {
+        let wasSelected = selectedConversationId == id
+        let existing = chatStore.conversations.first(where: { $0.id == id })
+        let existingDetail = chatStore.conversationDetails[id]
+        let previousMessages = messages
+        let previousPromptPreview = promptPreview
+        let previousActiveTool = activeTool
+        chatStore.removeConversation(id: id)
+        if wasSelected {
+            clearConversationSelection()
+        }
+        do {
+            _ = try await conversationsAPI.delete(conversationId: id)
+        } catch {
+            if let existing {
+                chatStore.upsertConversation(existing)
+            }
+            if let existingDetail {
+                chatStore.upsertConversationDetail(existingDetail)
+            }
+            if wasSelected {
+                selectedConversationId = id
+                messages = existingDetail?.messages ?? previousMessages
+                promptPreview = previousPromptPreview
+                activeTool = previousActiveTool
+            }
+            errorMessage = error.localizedDescription
+            toastCenter?.show(message: "Failed to delete conversation")
+        }
+    }
+
     public func selectConversation(id: String?) async {
         guard selectedConversationId != id else {
             return
         }
+        await cleanupEmptyConversationIfNeeded()
         selectedConversationId = id
         promptPreview = nil
         activeTool = nil
@@ -331,6 +626,156 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             && currentLast.status == incomingLast.status
     }
 
+    private func cleanupEmptyConversationIfNeeded() async {
+        guard let conversationId = selectedConversationId else {
+            return
+        }
+        guard !isStreaming, !isLoadingMessages else {
+            return
+        }
+        guard messages.isEmpty else {
+            return
+        }
+        if let detail = chatStore.conversationDetails[conversationId], detail.messageCount > 0 {
+            return
+        }
+        if let conversation = chatStore.conversations.first(where: { $0.id == conversationId }),
+           conversation.messageCount > 0 {
+            return
+        }
+        do {
+            _ = try await conversationsAPI.delete(conversationId: conversationId)
+            chatStore.removeConversation(id: conversationId)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func clearConversationSelection() {
+        stopStream()
+        selectedConversationId = nil
+        messages = []
+        promptPreview = nil
+        activeTool = nil
+        clearActiveToolTask?.cancel()
+        userDefaults.removeObject(forKey: AppStorageKeys.lastConversationId)
+        clearAttachments()
+    }
+
+    private func clearAttachments() {
+        attachments.removeAll()
+        attachmentPollTasks.values.forEach { $0.cancel() }
+        attachmentPollTasks = [:]
+    }
+
+    private func addAttachment(url: URL) async {
+        let id = UUID().uuidString
+        let name = url.lastPathComponent
+        attachments.append(
+            ChatAttachmentItem(
+                id: id,
+                name: name,
+                status: .uploading,
+                stage: "uploading",
+                fileURL: url
+            )
+        )
+        await uploadAttachment(id: id, url: url)
+    }
+
+    private func uploadAttachment(id: String, url: URL) async {
+        let access = url.startAccessingSecurityScopedResource()
+        defer {
+            if access {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            let mimeType = mimeTypeFor(url: url)
+            let fileId = try await ingestionAPI.upload(
+                fileData: data,
+                filename: url.lastPathComponent,
+                mimeType: mimeType
+            )
+            updateAttachment(id: id) { item in
+                var updated = item
+                updated.status = .queued
+                updated.stage = "queued"
+                updated.fileId = fileId
+                return updated
+            }
+            startAttachmentPolling(id: id, fileId: fileId)
+        } catch {
+            updateAttachment(id: id) { item in
+                var updated = item
+                updated.status = .failed
+                updated.stage = "failed"
+                return updated
+            }
+            toastCenter?.show(message: "Attachment upload failed")
+        }
+    }
+
+    private func startAttachmentPolling(id: String, fileId: String) {
+        attachmentPollTasks[id]?.cancel()
+        let task = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            while !Task.isCancelled {
+                do {
+                    guard let self else { return }
+                    let meta = try await ingestionAPI.getMeta(fileId: fileId)
+                    let status = meta.job.status ?? "queued"
+                    let stage = meta.job.stage
+                    let resolvedStatus: ChatAttachmentStatus
+                    switch status {
+                    case "ready":
+                        resolvedStatus = .ready
+                    case "failed":
+                        resolvedStatus = .failed
+                    case "canceled":
+                        resolvedStatus = .canceled
+                    default:
+                        resolvedStatus = .queued
+                    }
+                    await MainActor.run {
+                        self.updateAttachment(id: id) { item in
+                            var updated = item
+                            updated.status = resolvedStatus
+                            updated.stage = stage ?? status
+                            return updated
+                        }
+                    }
+                    if resolvedStatus == .ready || resolvedStatus == .failed || resolvedStatus == .canceled {
+                        return
+                    }
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                } catch {
+                    await MainActor.run {
+                        self?.toastCenter?.show(message: "Attachment status failed")
+                    }
+                    return
+                }
+            }
+        }
+        attachmentPollTasks[id] = task
+    }
+
+    private func updateAttachment(id: String, update: (ChatAttachmentItem) -> ChatAttachmentItem) {
+        guard let index = attachments.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+        attachments[index] = update(attachments[index])
+    }
+
+    private func mimeTypeFor(url: URL) -> String {
+        if let type = UTType(filenameExtension: url.pathExtension),
+           let mime = type.preferredMIMEType {
+            return mime
+        }
+        return "application/octet-stream"
+    }
+
     private func syncMessagesToStore(conversationId: String?, persist: Bool = false) {
         guard let conversationId else {
             return
@@ -457,6 +902,14 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             )
         }
         syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId, persist: true)
+        if let conversationId = streamingConversationId ?? selectedConversationId,
+           let assistantMessage = messages.first(where: { $0.id == messageId }) {
+            Task { [weak self] in
+                await self?.persistMessage(conversationId: conversationId, message: assistantMessage)
+                await self?.refreshConversations(silent: true)
+                await self?.generateConversationTitleIfNeeded(conversationId: conversationId)
+            }
+        }
         isStreaming = false
         streamingConversationId = nil
         currentStreamMessageId = nil
@@ -616,6 +1069,71 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             return [:]
         }
         return dict.mapValues { AnyCodable($0) }
+    }
+
+    private func persistMessage(conversationId: String, message: Message) async {
+        do {
+            let updated = try await conversationsAPI.addMessage(
+                conversationId: conversationId,
+                message: ConversationMessageCreate(
+                    id: message.id,
+                    role: message.role.rawValue,
+                    content: message.content,
+                    status: message.status.rawValue,
+                    timestamp: message.timestamp,
+                    toolCalls: message.toolCalls?.map { AnyCodable($0) },
+                    error: message.error
+                )
+            )
+            await MainActor.run { [chatStore] in
+                chatStore.upsertConversation(updated)
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static func isoTimestamp(from date: Date) -> String {
+        isoFormatter.string(from: date)
+    }
+
+    private func generateConversationTitleIfNeeded(conversationId: String) async {
+        guard let conversation = chatStore.conversations.first(where: { $0.id == conversationId }) else {
+            return
+        }
+        guard !conversation.titleGenerated else {
+            return
+        }
+        guard !generatingTitleIds.contains(conversationId) else {
+            return
+        }
+        guard messages.count == 2 else {
+            return
+        }
+        generatingTitleIds.insert(conversationId)
+        defer { generatingTitleIds.remove(conversationId) }
+        do {
+            let response = try await chatAPI.generateTitle(conversationId: conversationId)
+            await MainActor.run { [chatStore] in
+                chatStore.updateConversationTitle(
+                    id: conversationId,
+                    title: response.title,
+                    titleGenerated: response.fallback == false
+                )
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     private func prefixForToken(message: Message, token: String) -> String {

@@ -22,12 +22,24 @@ public struct IngestionDetailView: View {
     private var viewer: some View {
         Group {
             if viewModel.isSelecting || viewModel.isLoadingContent {
-                ProgressView()
+                LoadingView(message: "Loading preview…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state)
             } else if let error = viewModel.errorMessage {
-                PlaceholderView(title: error)
+                PlaceholderView(
+                    title: "Unable to load preview",
+                    subtitle: error,
+                    actionTitle: "Retry"
+                ) {
+                    Task {
+                        if let kind = viewModel.selectedDerivativeKind {
+                            await viewModel.selectDerivative(kind: kind)
+                        } else {
+                            await viewModel.loadMeta(fileId: meta.file.id)
+                        }
+                    }
+                }
             } else {
                 PlaceholderView(title: "Preview unavailable")
             }
@@ -35,21 +47,4 @@ public struct IngestionDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-}
-
-private struct OfflineBanner: View {
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "wifi.slash")
-            Text("Offline - showing cached data")
-                .font(.subheadline.weight(.semibold))
-        }
-        .foregroundStyle(.primary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.yellow.opacity(0.2))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal, 12)
-    }
 }

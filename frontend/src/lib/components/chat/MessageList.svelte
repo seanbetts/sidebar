@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, afterUpdate, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import type { Message as MessageType } from '$lib/types/chat';
 	import Message from './Message.svelte';
 
@@ -32,18 +32,6 @@
 		shouldAutoScroll = isNearBottom;
 	}
 
-	// Auto-scroll when messages update
-	afterUpdate(() => {
-		if (shouldAutoScroll) {
-			scrollToBottom();
-		}
-	});
-
-	onMount(async () => {
-		await tick();
-		scrollToBottom();
-	});
-
 	$: if (messages.length !== lastMessageCount) {
 		lastMessageCount = messages.length;
 		shouldAutoScroll = true;
@@ -52,13 +40,15 @@
 </script>
 
 <div bind:this={containerElement} onscroll={handleScroll} class="message-list">
-	{#if messages.length === 0}
-		<div class="h-full"></div>
-	{:else}
-		{#each messages as message (message.id)}
-			<Message {message} {activeTool} />
-		{/each}
-	{/if}
+	<div class="messages-container">
+		{#if messages.length === 0}
+			<div class="h-full"></div>
+		{:else}
+			{#each messages as message (message.id)}
+				<Message {message} {activeTool} />
+			{/each}
+		{/if}
+	</div>
 </div>
 
 <style>
@@ -68,9 +58,14 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		padding: 1rem;
+		-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+	}
+
+	.messages-container {
+		max-width: 800px;
+		margin: 0 auto;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
-		-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 	}
 </style>
