@@ -36,6 +36,7 @@ public struct ContentView: View {
     @State private var activeAlert: ActiveAlert?
     @State private var pendingSessionExpiryAlert = false
     @State private var pendingBiometricUnavailableAlert = false
+    @State private var isSigningOut = false
     #if os(iOS)
     @AppStorage(AppStorageKeys.hasShownBiometricHint) private var hasShownBiometricHint = false
     #endif
@@ -141,6 +142,11 @@ public struct ContentView: View {
                 environment.commandSelection = nil
             }
             .onChange(of: environment.isAuthenticated) { _, isAuthenticated in
+                activeAlert = nil
+                pendingSessionExpiryAlert = false
+                pendingBiometricUnavailableAlert = false
+                environment.sessionExpiryWarning = nil
+                isSigningOut = false
                 if isAuthenticated {
                     if biometricUnlockEnabled {
                         isBiometricUnlocked = false
@@ -200,6 +206,7 @@ public struct ContentView: View {
             #endif
             .onChange(of: environment.sessionExpiryWarning) { _, newValue in
                 enqueueAlertAction {
+                    guard environment.isAuthenticated, !isSigningOut else { return }
                     if newValue != nil {
                         presentAlert(.sessionExpiry)
                     } else {
@@ -215,7 +222,10 @@ public struct ContentView: View {
                         activeAlert = .biometricUnavailable
                         return
                     }
-                    if pendingSessionExpiryAlert, environment.sessionExpiryWarning != nil {
+                    if pendingSessionExpiryAlert,
+                       environment.isAuthenticated,
+                       !isSigningOut,
+                       environment.sessionExpiryWarning != nil {
                         pendingSessionExpiryAlert = false
                         activeAlert = .sessionExpiry
                     } else {
@@ -254,11 +264,16 @@ public struct ContentView: View {
                         }),
                         secondaryButton: .destructive(Text("Sign Out"), action: {
                             enqueueAlertAction {
+                                isSigningOut = true
+                                pendingSessionExpiryAlert = false
+                                environment.sessionExpiryWarning = nil
                                 Task {
                                     await environment.container.authSession.signOut()
                                     environment.refreshAuthState()
+                                    await MainActor.run {
+                                        isSigningOut = false
+                                    }
                                 }
-                                environment.sessionExpiryWarning = nil
                             }
                         })
                     )
