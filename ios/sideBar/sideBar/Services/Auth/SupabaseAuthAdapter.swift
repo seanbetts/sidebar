@@ -169,6 +169,10 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     }
 
     public func refreshSession() async {
+        guard accessToken != nil, userId != nil, supabase.auth.currentSession != nil else {
+            sessionExpiryWarning = nil
+            return
+        }
         if let task = refreshInFlightTask {
             _ = await task.value
             return
