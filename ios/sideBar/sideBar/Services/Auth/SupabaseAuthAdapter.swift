@@ -212,6 +212,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         userId = nil
         try? stateStore.clear()
         sessionExpiryWarning = nil
+        lastSessionExpiryDate = nil
         warningTask?.cancel()
         refreshScheduleTask?.cancel()
         refreshInFlightTask?.cancel()
@@ -234,6 +235,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         guard let session else {
             restoreSession(accessToken: nil, userId: nil)
             sessionExpiryWarning = nil
+            lastSessionExpiryDate = nil
             warningTask?.cancel()
             refreshScheduleTask?.cancel()
             refreshInFlightTask?.cancel()
