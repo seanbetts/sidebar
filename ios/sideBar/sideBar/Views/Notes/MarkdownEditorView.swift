@@ -3,6 +3,7 @@ import SwiftUI
 struct MarkdownEditorView: View {
     @ObservedObject var viewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
+    let showsCompactStatus: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,6 +35,13 @@ struct MarkdownEditorView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .overlay(alignment: .topTrailing) {
+            if showsCompactStatus {
+                SaveStatusView(editorViewModel: viewModel)
+                    .padding(.top, 12)
+                    .padding(.trailing, 16)
+            }
         }
     }
 }

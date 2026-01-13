@@ -89,6 +89,7 @@ private struct NotesDetailView: View {
                 .layoutPriority(1)
                 .truncationMode(.tail)
             Spacer()
+            SaveStatusView(editorViewModel: environment.notesEditorViewModel)
             Button {
             } label: {
                 Image(systemName: "line.3.horizontal")
@@ -107,7 +108,8 @@ private struct NotesDetailView: View {
             if viewModel.activeNote != nil {
                 MarkdownEditorView(
                     viewModel: environment.notesEditorViewModel,
-                    maxContentWidth: contentMaxWidth
+                    maxContentWidth: contentMaxWidth,
+                    showsCompactStatus: isCompact
                 )
             } else if viewModel.selectedNoteId != nil {
                 if let error = viewModel.errorMessage {
