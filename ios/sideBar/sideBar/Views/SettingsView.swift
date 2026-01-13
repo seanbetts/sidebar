@@ -199,6 +199,7 @@ private struct SettingsTabsView: View {
 private struct ProfileSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.dismiss) private var dismiss
     @State private var isImagePickerPresented = false
     @State private var profileImage: Image?
     @State private var isProfileImageImporterPresented = false
@@ -260,9 +261,12 @@ private struct ProfileSettingsView: View {
 
             Section {
                 Button(role: .destructive) {
-                    Task {
-                        await environment.container.authSession.signOut()
-                        environment.refreshAuthState()
+                    #if os(iOS)
+                    dismiss()
+                    #endif
+                    Task { @MainActor in
+                        await Task.yield()
+                        await environment.beginSignOut()
                     }
                 } label: {
                     Text("Sign Out")

@@ -50,32 +50,13 @@ public struct ContentView: View {
         } else if !environment.isAuthenticated {
             LoginView()
         } else {
-            Group {
-                if biometricUnlockEnabled && !isBiometricUnlocked {
-                    BiometricLockView(
-                        onUnlock: { isBiometricUnlocked = true },
-                        onSignOut: {
-                            Task {
-                                await environment.container.authSession.signOut()
-                                environment.refreshAuthState()
-                            }
-                        }
-                    )
-                } else {
-                    GeometryReader { proxy in
-                        mainView
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .background(DesignTokens.Colors.background)
-                            .overlay(alignment: .top) {
-                                Rectangle()
-                                    .fill(topSafeAreaBackground)
-                                    .frame(height: proxy.safeAreaInsets.top)
-                                    .ignoresSafeArea(edges: .top)
-                                    .allowsHitTesting(false)
-                            }
-                    }
-                }
-            }
+            SignedInContentView(
+                biometricUnlockEnabled: biometricUnlockEnabled,
+                isBiometricUnlocked: $isBiometricUnlocked,
+                topSafeAreaBackground: topSafeAreaBackground,
+                onSignOut: { Task { await environment.beginSignOut() } },
+                mainView: { mainView }
+            )
             #if os(iOS)
             .background(
                 KeyboardShortcutHandler()
@@ -214,6 +195,23 @@ public struct ContentView: View {
                     }
                 }
             }
+            .onChange(of: environment.signOutEvent) { _, _ in
+                enqueueAlertAction {
+                    pendingSessionExpiryAlert = false
+                    pendingBiometricUnavailableAlert = false
+                    activeAlert = nil
+                    isSigningOut = true
+                }
+            }
+            .onChange(of: environment.isAuthenticated) { _, isAuthenticated in
+                guard !isAuthenticated else { return }
+                enqueueAlertAction {
+                    pendingSessionExpiryAlert = false
+                    pendingBiometricUnavailableAlert = false
+                    activeAlert = nil
+                    isSigningOut = false
+                }
+            }
             .onChange(of: activeAlert) { _, newValue in
                 guard newValue == nil else { return }
                 enqueueAlertAction {
@@ -264,15 +262,9 @@ public struct ContentView: View {
                         }),
                         secondaryButton: .destructive(Text("Sign Out"), action: {
                             enqueueAlertAction {
-                                isSigningOut = true
                                 pendingSessionExpiryAlert = false
-                                environment.sessionExpiryWarning = nil
                                 Task {
-                                    await environment.container.authSession.signOut()
-                                    environment.refreshAuthState()
-                                    await MainActor.run {
-                                        isSigningOut = false
-                                    }
+                                    await environment.beginSignOut()
                                 }
                             }
                         })
@@ -736,6 +728,38 @@ private enum ActiveAlert: Identifiable {
             return "biometricHint"
         case .sessionExpiry:
             return "sessionExpiry"
+        }
+    }
+}
+
+private struct SignedInContentView<Main: View>: View {
+    let biometricUnlockEnabled: Bool
+    @Binding var isBiometricUnlocked: Bool
+    let topSafeAreaBackground: Color
+    let onSignOut: () -> Void
+    let mainView: () -> Main
+
+    var body: some View {
+        Group {
+            if biometricUnlockEnabled && !isBiometricUnlocked {
+                BiometricLockView(
+                    onUnlock: { isBiometricUnlocked = true },
+                    onSignOut: onSignOut
+                )
+            } else {
+                GeometryReader { proxy in
+                    mainView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .background(DesignTokens.Colors.background)
+                        .overlay(alignment: .top) {
+                            Rectangle()
+                                .fill(topSafeAreaBackground)
+                                .frame(height: proxy.safeAreaInsets.top)
+                                .ignoresSafeArea(edges: .top)
+                                .allowsHitTesting(false)
+                        }
+                }
+            }
         }
     }
 }

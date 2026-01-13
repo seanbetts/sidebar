@@ -28,6 +28,7 @@ public final class AppEnvironment: ObservableObject {
     @Published public private(set) var isOffline: Bool = false
     @Published public var commandSelection: AppSection? = nil
     @Published public var sessionExpiryWarning: Date?
+    @Published public private(set) var signOutEvent: UUID?
     private var cancellables = Set<AnyCancellable>()
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
@@ -180,6 +181,13 @@ public final class AppEnvironment: ObservableObject {
             biometricMonitor.stopMonitoring()
         }
         realtimeClientStopStart()
+    }
+
+    public func beginSignOut() async {
+        signOutEvent = UUID()
+        sessionExpiryWarning = nil
+        await container.authSession.signOut()
+        refreshAuthState()
     }
 
     private func realtimeClientStopStart() {
