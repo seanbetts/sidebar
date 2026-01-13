@@ -131,7 +131,10 @@ public enum MarkdownFormatting {
             attributed.addAttribute(.font, value: codeFont(), range: attributed.fullRange)
             return attributed
         }
-        if let attributed = try? AttributedString(markdown: text) {
+        let options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace
+        )
+        if let attributed = try? AttributedString(markdown: text, options: options) {
             return NSMutableAttributedString(attributed)
         }
         return NSMutableAttributedString(string: text)
