@@ -419,6 +419,7 @@ Critical Path (MVP): [███████████████████�
 **Concrete 11.2 Checklist (TipTap parity targets)**
 - [ ] Custom TextKit editor surface (UITextView/NSTextView wrappers) with markdown as the source of truth
 - [ ] Markdown round-trip (load → edit → save) matches web editor output
+- [ ] Web-style theme parity (match SvelteKit TipTap markdown styling)
 - [ ] Formatting actions parity: bold, italic, strike, underline, headings (H1–H3), blockquote, horizontal rule
 - [ ] List parity: bullet, ordered, task lists (nested), toggle task completion
 - [ ] Code parity: inline code + fenced code blocks with language tag + syntax highlighting
