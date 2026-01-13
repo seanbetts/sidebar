@@ -47,8 +47,6 @@
 <div bind:this={editorElement}></div>
 
 <style>
-	@import '$lib/styles/markdown-shared.css';
-
 	:global(.file-markdown [contenteditable='false']:focus) {
 		outline: none;
 	}
