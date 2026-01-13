@@ -16,8 +16,6 @@
 	import { ArrowLeftRight } from 'lucide-svelte';
 
 	const siteHeaderData = useSiteHeaderData();
-	let currentDate = '';
-	let currentTime = '';
 	let liveLocation = '';
 	let weatherTemp = '';
 	let weatherCode: number | null = null;
@@ -37,8 +35,7 @@
 	} | null = null;
 	let tooltipsEnabled = false;
 
-	$: ({ currentDate, currentTime, liveLocation, weatherTemp, weatherCode, weatherIsDay } =
-		$siteHeaderData);
+	$: ({ liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
 	$: ({ status: bridgeStatus, lastSeenAt: bridgeSeenAt } = $thingsStatus);
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
@@ -237,16 +234,14 @@
 	</div>
 	<div class="actions">
 		<div class="datetime-group">
-			<span class="date">{currentDate}</span>
-			<span class="time">{currentTime}</span>
-			{#if liveLocation}
-				<span class="location">{liveLocation}</span>
-			{/if}
 			{#if weatherTemp}
 				<span class="weather">
 					<svelte:component this={resolveWeatherIcon(weatherCode, weatherIsDay)} size={16} />
 					<span class="weather-temp">{weatherTemp}</span>
 				</span>
+			{/if}
+			{#if liveLocation}
+				<span class="location">{liveLocation}</span>
 			{/if}
 		</div>
 		<Tooltip disabled={!tooltipsEnabled}>
@@ -368,12 +363,11 @@
 	}
 
 	.datetime-group {
-		display: grid;
-		grid-template-columns: auto auto;
-		row-gap: 0.1rem;
-		column-gap: 0.8rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
 		margin-right: 1.25rem;
-		align-items: center;
+		align-items: flex-end;
 	}
 
 	.things-status {
@@ -407,22 +401,6 @@
 
 	.things-status .dot.loading {
 		background: #f59e0b;
-	}
-
-	.datetime-group .date {
-		text-align: right;
-	}
-
-	.datetime-group .location {
-		text-align: right;
-	}
-
-	.datetime-group .time {
-		text-align: right;
-	}
-
-	.datetime-group .weather {
-		justify-self: end;
 	}
 
 	.location {
@@ -463,18 +441,5 @@
 		.things-status {
 			display: none;
 		}
-	}
-
-	.date {
-		font-size: 0.75rem;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--color-muted-foreground);
-	}
-
-	.time {
-		font-size: 0.95rem;
-		font-weight: 600;
-		color: var(--color-foreground);
 	}
 </style>
