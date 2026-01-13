@@ -40,17 +40,9 @@
 .scratchpad-editor th,
 .scratchpad-editor td {
   border: 1px solid var(--color-border) !important;
+  padding: 0.5em 0.75em !important;
   text-align: left;
   vertical-align: top;
-}
-
-/* Tighter padding for body cells */
-.tiptap td,
-.chat-markdown td,
-.file-markdown td,
-.website-viewer td,
-.scratchpad-editor td {
-  padding: 0.35em 0.75em !important;
 }
 
 .tiptap thead th,
