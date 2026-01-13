@@ -244,6 +244,8 @@
 </Popover.Root>
 
 <style>
+	@import '$lib/styles/markdown-shared.css';
+
 	.scratchpad-popover {
 		width: 100%;
 		max-width: 100%;
@@ -298,6 +300,12 @@
 		color: var(--color-foreground);
 	}
 
+	/* ========================================================================
+	   COMPONENT-SPECIFIC: Tighter spacing for compact popover layout
+	   Scratchpad uses reduced margins (0.5em vs 0.75em) and tighter line
+	   height (1.6 vs 1.7) to maximize content density within the constrained
+	   popover viewport (max 720px height).
+	   ======================================================================== */
 	:global(.scratchpad-editor p) {
 		margin: 0.5em 0;
 		line-height: 1.6;
@@ -317,64 +325,7 @@
 		margin: 0;
 	}
 
-	:global(.scratchpad-editor ul[data-type='taskList']) {
-		list-style: none;
-		padding-left: 0;
-	}
-
-	:global(.scratchpad-editor ul[data-type='taskList'] ul[data-type='taskList']) {
-		margin-top: 0;
-		margin-bottom: 0;
-	}
-
-	:global(.scratchpad-editor ul[data-type='taskList'] > li) {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.5em;
-	}
-
-	:global(.scratchpad-editor ul[data-type='taskList'] > li > label) {
-		margin-top: 0.2em;
-	}
-
-	:global(.scratchpad-editor ul[data-type='taskList'] > li > div) {
-		flex: 1;
-	}
-
-	:global(.scratchpad-editor ul[data-type='taskList'] > li > div > p) {
-		margin: 0;
-	}
-
-	:global(.scratchpad-editor ul[data-type='taskList'] > li[data-checked='true'] > div) {
-		color: var(--color-muted-foreground);
-		text-decoration: line-through;
-	}
-
-	:global(.scratchpad-editor table) {
-		width: 100%;
-		border-collapse: collapse;
-		margin: 1em 0;
-		font-size: 0.95em;
-	}
-
-	:global(.scratchpad-editor th),
-	:global(.scratchpad-editor td) {
-		border: 1px solid var(--color-border);
-		padding: 0em 0.75em;
-		text-align: left;
-		vertical-align: top;
-	}
-
-	:global(.scratchpad-editor thead th) {
-		background-color: var(--color-muted);
-		color: var(--color-foreground);
-		font-weight: 600;
-	}
-
-	:global(.scratchpad-editor tbody tr:nth-child(even)) {
-		background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
-	}
-
+	/* Component-specific: Tighter spacing for compact popover layout */
 	:global(.scratchpad-editor hr) {
 		border: none;
 		border-top: 1px solid var(--color-border);
