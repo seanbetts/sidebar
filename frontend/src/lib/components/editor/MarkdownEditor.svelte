@@ -93,6 +93,18 @@
 		});
 		editor = createdEditor;
 		destroyEditor = destroy;
+
+		// Restore scroll position after content is rendered
+		if (currentNoteId && editorScrollElement) {
+			const savedPosition = scrollPositions.get(currentNoteId) ?? 0;
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					if (editorScrollElement) {
+						editorScrollElement.scrollTop = savedPosition;
+					}
+				});
+			});
+		}
 	});
 
 	const { stayOnPage, confirmLeave } = useLeaveGuard({
@@ -121,6 +133,11 @@
 	}
 
 	onDestroy(() => {
+		// Save scroll position before unmounting
+		if (currentNoteId && editorScrollElement) {
+			scrollPositions.set(currentNoteId, editorScrollElement.scrollTop);
+		}
+
 		// Cleanup all timers and subscriptions
 		clearTimeout(saveTimeout);
 		if (copyTimeout) clearTimeout(copyTimeout);
@@ -192,21 +209,31 @@
 
 	$: lastSavedLabel = formatLastSaved(lastSaved, showSavedIndicator);
 
-	// Save scroll position when note changes
+	// Save and restore scroll position when switching notes (not on mount/unmount)
 	let previousNoteId: string | null = null;
+	let isInitialMount = true;
 	$: {
-		if (editorScrollElement && previousNoteId && previousNoteId !== currentNoteId) {
+		// Skip the initial mount - onMount handles that
+		if (isInitialMount && currentNoteId) {
+			previousNoteId = currentNoteId;
+			isInitialMount = false;
+		} else if (editorScrollElement && previousNoteId && previousNoteId !== currentNoteId) {
+			// Save previous note's scroll position
 			scrollPositions.set(previousNoteId, editorScrollElement.scrollTop);
+
+			// Restore new note's scroll position
+			if (currentNoteId) {
+				const savedPosition = scrollPositions.get(currentNoteId) ?? 0;
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						if (editorScrollElement) {
+							editorScrollElement.scrollTop = savedPosition;
+						}
+					});
+				});
+			}
+			previousNoteId = currentNoteId;
 		}
-		if (editorScrollElement && currentNoteId && currentNoteId !== previousNoteId) {
-			const savedPosition = scrollPositions.get(currentNoteId) ?? 0;
-			tick().then(() => {
-				if (editorScrollElement) {
-					editorScrollElement.scrollTop = savedPosition;
-				}
-			});
-		}
-		previousNoteId = currentNoteId;
 	}
 </script>
 
