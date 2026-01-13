@@ -36,16 +36,24 @@ All markdown components use shared styles defined in:
 ### What's Shared
 
 **Tables** (all 5 components):
-- Consistent borders, padding, and font sizing
-- Header row styling with muted background
-- Even-row striping using OKLAB color mixing
-- Zero vertical padding (horizontal only: 0.75em)
+- Consistent borders (1px solid) with `!important` to ensure visibility
+- Body cell padding: `0.5em` vertical, `0.75em` horizontal
+- Header cells: Enhanced visual distinction with:
+  - Darker background using OKLAB color mixing (8% foreground blended in)
+  - Increased padding: `0.65em` vertical (vs `0.5em` for body cells)
+  - Thicker bottom border: `2px` (vs `1px` for other borders)
+  - Bold font weight (600)
+- Even-row striping using OKLAB color mixing (40% muted, 60% transparent)
+- Smaller font size: `0.95em`
 
 **Task Lists** (editor and scratchpad only):
-- Flexbox layout for checkbox alignment
+- Flexbox layout for checkbox alignment with `!important` flags
+- `list-style: none !important` to remove bullet points
+- `display: flex !important` for inline checkbox and text
 - Strikethrough + muted color for completed items
+- Completed items fade with `opacity: 0.6` for visual de-emphasis
 - Theme-aware checkbox accent color (uses `var(--color-foreground)`)
-- Nested task list support
+- Nested task list support with proper indentation
 
 ## Component Variations
 
@@ -256,6 +264,41 @@ frontend/src/lib/
 - **Image Loading**: Consider lazy loading for galleries with many images
 - **Editor Instances**: TipTap instances are properly destroyed on unmount
 
+## Implementation Notes
+
+### CSS Import Method
+**Important**: Shared styles are imported via `app.css`, NOT within component `<style>` blocks.
+
+Svelte's component `<style>` blocks don't properly process `@import` statements, which would prevent shared styles from loading. The correct approach:
+
+```css
+/* ✅ Correct: app.css */
+@import "./lib/styles/markdown-shared.css";
+
+/* ❌ Wrong: Component <style> blocks */
+<style>
+  @import '$lib/styles/markdown-shared.css'; /* This doesn't work! */
+</style>
+```
+
+### Use of `!important`
+Several styles use `!important` to override TipTap's default styles and ensure consistent rendering:
+
+- **Table borders**: Ensures borders are always visible across all themes
+- **Table padding**: Prevents default padding from being overridden
+- **Task list styling**: Removes default bullet points and ensures flexbox layout
+- **Completed task color**: Ensures proper muted color on checked items
+- **Header background**: Ensures darker background isn't overridden
+
+This is intentional and necessary for reliable cross-component styling.
+
+### Styling Strategy
+1. **Global import**: Shared styles loaded once in `app.css`
+2. **Specificity**: Use class selectors (`.tiptap`, `.chat-markdown`, etc.)
+3. **Override protection**: `!important` on critical properties
+4. **OKLAB mixing**: For perceptually uniform color blending
+5. **Theme variables**: All colors use CSS custom properties
+
 ## Future Considerations
 
 ### Potential Optimizations
@@ -271,5 +314,16 @@ frontend/src/lib/
 
 ---
 
-**Last Updated**: 2026-01-13
+**Last Updated**: 2026-01-13 (22:30 UTC)
 **Maintained By**: Frontend Team
+
+## Change Log
+
+### 2026-01-13
+- Initial consolidation of duplicate markdown styles into shared file
+- Fixed table border visibility and padding issues
+- Enhanced table header visual distinction (darker bg, thicker border, more padding)
+- Fixed task list rendering (removed bullet points, inline layout)
+- Added opacity fade to completed tasks (0.6)
+- Fixed CSS import method (moved to app.css from component blocks)
+- Updated documentation with implementation notes and styling strategy
