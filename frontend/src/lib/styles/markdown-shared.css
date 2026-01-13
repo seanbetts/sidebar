@@ -50,9 +50,11 @@
 .file-markdown thead th,
 .website-viewer thead th,
 .scratchpad-editor thead th {
-  background-color: var(--color-muted);
+  background-color: color-mix(in oklab, var(--color-muted) 80%, var(--color-foreground) 8%) !important;
   color: var(--color-foreground);
   font-weight: 600;
+  padding: 0.65em 0.75em !important;
+  border-bottom: 2px solid var(--color-border) !important;
 }
 
 /* Striped rows using OKLAB color mixing for perceptually uniform blending */
