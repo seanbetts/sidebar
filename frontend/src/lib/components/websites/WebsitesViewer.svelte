@@ -462,8 +462,6 @@
 </div>
 
 <style>
-	@import '$lib/styles/markdown-shared.css';
-
 	.website-pane {
 		display: flex;
 		flex-direction: column;

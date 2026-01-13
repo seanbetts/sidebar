@@ -413,8 +413,6 @@
 		font-size: 0.95rem;
 	}
 
-	@import '$lib/styles/markdown-shared.css';
-
 	/* ========================================================================
 	   COMPONENT-SPECIFIC: Standard editor layout
 	   Main note editor uses optimal line length (85ch) for readability and

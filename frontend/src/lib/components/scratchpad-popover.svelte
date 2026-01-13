@@ -244,8 +244,6 @@
 </Popover.Root>
 
 <style>
-	@import '$lib/styles/markdown-shared.css';
-
 	.scratchpad-popover {
 		width: 100%;
 		max-width: 100%;

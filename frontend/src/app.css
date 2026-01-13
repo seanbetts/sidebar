@@ -2,6 +2,8 @@
 
 @import "tw-animate-css";
 
+@import "./lib/styles/markdown-shared.css";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
