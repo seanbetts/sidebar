@@ -416,6 +416,21 @@ Critical Path (MVP): [███████████████████�
 - [ ] Live preview option (optional)
 - [ ] Performance optimization for long documents
 
+**Concrete 11.2 Checklist (TipTap parity targets)**
+- [ ] Custom TextKit editor surface (UITextView/NSTextView wrappers) with markdown as the source of truth
+- [ ] Markdown round-trip (load → edit → save) matches web editor output
+- [ ] Formatting actions parity: bold, italic, strike, underline, headings (H1–H3), blockquote, horizontal rule
+- [ ] List parity: bullet, ordered, task lists (nested), toggle task completion
+- [ ] Code parity: inline code + fenced code blocks with language tag + syntax highlighting
+- [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
+- [ ] Link parity: create/edit/remove links, preserve URLs in markdown
+- [ ] Image parity: image blocks with caption + gallery block (custom markdown markers)
+- [ ] Editor toolbar parity: primary actions + overflow menu to match web affordances
+- [ ] Selection/undo parity: native undo manager integration + preserve cursor on external updates
+- [ ] Auto-save parity: debounce + dirty state tracking (align with web editor store)
+- [ ] External update handling: detect server/AI edits and merge or prompt with conflict UI
+- [ ] Long-note performance: incremental rendering + minimal layout churn
+
 **Decision Gate (After Session 3-5 of 10.2):**
 Evaluate RichTextKit capabilities. Choose:
 - Option A: Continue with RichTextKit + workarounds
