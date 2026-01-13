@@ -23,10 +23,12 @@ public final class AppEnvironment: ObservableObject {
     private let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
     private let networkMonitor: NetworkMonitor
+    public let biometricMonitor: BiometricMonitor
 
     @Published public private(set) var isAuthenticated: Bool = false
     @Published public private(set) var isOffline: Bool = false
     @Published public var commandSelection: AppSection? = nil
+    @Published public var sessionExpiryWarning: Date?
     private var cancellables = Set<AnyCancellable>()
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
@@ -74,6 +76,7 @@ public final class AppEnvironment: ObservableObject {
         self.weatherViewModel = WeatherViewModel(api: container.weatherAPI)
         self.realtimeClient = container.makeRealtimeClient(handler: nil)
         self.networkMonitor = NetworkMonitor()
+        self.biometricMonitor = BiometricMonitor()
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
 
@@ -81,6 +84,22 @@ public final class AppEnvironment: ObservableObject {
             authAdapter.$accessToken
                 .sink { [weak self] _token in
                     self?.refreshAuthState()
+                }
+                .store(in: &cancellables)
+
+            authAdapter.$authError
+                .compactMap { $0 }
+                .sink { [weak self, weak authAdapter] event in
+                    self?.toastCenter.show(message: event.message)
+                    authAdapter?.clearAuthError()
+                }
+                .store(in: &cancellables)
+
+            authAdapter.$sessionExpiryWarning
+                .sink { [weak self] warning in
+                    DispatchQueue.main.async {
+                        self?.sessionExpiryWarning = warning
+                    }
                 }
                 .store(in: &cancellables)
         }
@@ -136,6 +155,9 @@ public final class AppEnvironment: ObservableObject {
         }
         realtimeClientStopStart()
         observeSelectionChanges()
+        if isAuthenticated {
+            biometricMonitor.startMonitoring()
+        }
     }
 
     public func refreshAuthState() {
@@ -153,6 +175,12 @@ public final class AppEnvironment: ObservableObject {
             websitesViewModel.clearSelection()
             filesViewModel.clearSelection()
             ingestionViewModel.clearSelection()
+            sessionExpiryWarning = nil
+        }
+        if isAuthenticated {
+            biometricMonitor.startMonitoring()
+        } else {
+            biometricMonitor.stopMonitoring()
         }
         realtimeClientStopStart()
     }
