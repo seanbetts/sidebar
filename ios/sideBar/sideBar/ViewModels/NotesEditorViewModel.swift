@@ -197,11 +197,14 @@ public final class NotesEditorViewModel: ObservableObject {
             saveTask?.cancel()
             saveTask = Task { [weak self] in
                 guard let self else { return }
-                try? await Task.sleep(nanoseconds: self.autosaveDelaySeconds)
-                self.saveTask = nil
-                Task { [weak self] in
-                    await self?.saveIfNeeded()
+                do {
+                    try await Task.sleep(nanoseconds: self.autosaveDelaySeconds)
+                } catch {
+                    return
                 }
+                guard !Task.isCancelled else { return }
+                self.saveTask = nil
+                await self.saveIfNeeded()
             }
         } else {
             pendingSaveRequested = true

@@ -52,9 +52,9 @@ public enum MarkdownFormatting {
 
         while index < nsText.length {
             let lineRange = nsText.lineRange(for: NSRange(location: index, length: 0))
-            let lineText = nsText.substring(with: lineRange)
+            let lineInfo = trimmedLine(from: nsText, range: lineRange)
             let blockKind = attributedText.attribute(blockAttribute, at: lineRange.location, effectiveRange: nil) as? String
-            var inlineSource = attributedText.attributedSubstring(from: lineRange)
+            var inlineSource = attributedText.attributedSubstring(from: lineInfo.contentRange)
             if let blockKind, blockKind.hasPrefix("task:") {
                 inlineSource = stripTaskMarker(from: inlineSource)
             }
@@ -65,7 +65,7 @@ public enum MarkdownFormatting {
                     output.append("```")
                     isInCodeBlock = true
                 }
-                output.append(lineText)
+                output.append(lineInfo.content)
             } else {
                 if isInCodeBlock {
                     output.append("```")
@@ -147,6 +147,21 @@ public enum MarkdownFormatting {
             return attributed.attributedSubstring(from: range)
         }
         return attributed
+    }
+
+    private static func trimmedLine(from text: NSString, range: NSRange) -> (content: String, contentRange: NSRange) {
+        let lineText = text.substring(with: range)
+        if lineText.hasSuffix("\r\n") {
+            let trimmedRange = NSRange(location: range.location, length: max(0, range.length - 2))
+            let trimmedText = text.substring(with: trimmedRange)
+            return (trimmedText, trimmedRange)
+        }
+        if lineText.hasSuffix("\n") {
+            let trimmedRange = NSRange(location: range.location, length: max(0, range.length - 1))
+            let trimmedText = text.substring(with: trimmedRange)
+            return (trimmedText, trimmedRange)
+        }
+        return (lineText, range)
     }
 
     private static func serializeInline(_ attributed: NSAttributedString) -> String {
