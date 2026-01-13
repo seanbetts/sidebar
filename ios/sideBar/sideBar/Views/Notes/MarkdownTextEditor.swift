@@ -42,6 +42,9 @@ private struct MarkdownTextEditorMac: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 20, height: 16)
         textView.textContainer?.lineFragmentPadding = 0
         textView.isEditable = isEditable
+        textView.isSelectable = true
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.heightTracksTextView = false
         textView.delegate = context.coordinator
         textView.drawsBackground = false
 
@@ -125,6 +128,7 @@ private struct MarkdownTextEditorIOS: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.backgroundColor = .clear
         textView.isEditable = isEditable
+        textView.isSelectable = true
         textView.isScrollEnabled = true
         textView.delegate = context.coordinator
         return textView
