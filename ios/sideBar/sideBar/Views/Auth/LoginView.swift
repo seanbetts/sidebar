@@ -181,8 +181,7 @@ public struct LoginView: View {
             SecureFieldWithToggle(
                 title: "Password",
                 text: $password,
-                textContentType: .password,
-                onSubmit: handleSubmit
+                textContentType: .password
             )
             .focused($focusedField, equals: .password)
             .submitLabel(.go)
@@ -246,7 +245,6 @@ public struct LoginView: View {
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
         .tint(.accentColor)
-        .keyboardShortcut(.defaultAction)
         .disabled(isSigningIn || email.isEmpty || password.isEmpty)
         .accessibilitySortPriority(1)
     }

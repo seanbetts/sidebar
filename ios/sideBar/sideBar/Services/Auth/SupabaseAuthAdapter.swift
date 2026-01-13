@@ -99,6 +99,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
     private var lastSessionExpiryDate: Date?
     private var lastRefreshAttempt: Date?
+    private var sessionWarningToken = UUID()
 
     public init(config: EnvironmentConfig, stateStore: AuthStateStore) {
         self.stateStore = stateStore
@@ -210,6 +211,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         warningTask?.cancel()
         refreshScheduleTask?.cancel()
         refreshInFlightTask?.cancel()
+        sessionWarningToken = UUID()
         logger.notice("Signed out")
     }
 
@@ -234,34 +236,37 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             return
         }
 
-        if session.isExpired {
+        let resolvedExpiry = Self.sessionExpiryDate(from: session)
+        if resolvedExpiry <= Date() {
             Task { await refreshSession() }
             return
         }
 
         restoreSession(accessToken: session.accessToken, userId: session.user.id.uuidString)
         updateLastAuthTimestamp(Date())
-        scheduleSessionManagement(for: session)
+        scheduleSessionManagement(for: session, expiresAt: resolvedExpiry)
     }
 
-    private func scheduleSessionManagement(for session: Session) {
+    private func scheduleSessionManagement(for session: Session, expiresAt: Date) {
         warningTask?.cancel()
         refreshScheduleTask?.cancel()
         sessionExpiryWarning = nil
+        sessionWarningToken = UUID()
+        let warningToken = sessionWarningToken
 
-        let expiresAtDate = Self.resolveExpiryDate(from: session.expiresAt)
         let now = Date()
-        if expiresAtDate <= now {
+        if expiresAt <= now {
             Task { await refreshSession() }
             return
         }
-        lastSessionExpiryDate = expiresAtDate
-        let warningDelay = expiresAtDate.addingTimeInterval(-sessionWarningLeadTime).timeIntervalSinceNow
+        lastSessionExpiryDate = expiresAt
+        let warningDelay = expiresAt.addingTimeInterval(-sessionWarningLeadTime).timeIntervalSinceNow
         if warningDelay > 5 {
             warningTask = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(warningDelay))
                 await MainActor.run {
-                    self?.sessionExpiryWarning = expiresAtDate
+                    guard let self, self.sessionWarningToken == warningToken else { return }
+                    self.sessionExpiryWarning = expiresAt
                 }
             }
         }
@@ -301,6 +306,51 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         return .unknown(error.localizedDescription)
     }
 
+    static func sessionExpiryDate(from session: Session) -> Date {
+        if let jwtExpiry = jwtExpiryDate(from: session.accessToken) {
+            return jwtExpiry
+        }
+        return resolveExpiryDate(from: session.expiresAt)
+    }
+
+    static func jwtExpiryDate(from accessToken: String) -> Date? {
+        guard let payloadData = decodeJwtPayload(accessToken) else {
+            return nil
+        }
+        guard
+            let jsonObject = try? JSONSerialization.jsonObject(with: payloadData, options: []),
+            let payload = jsonObject as? [String: Any]
+        else {
+            return nil
+        }
+        if let exp = payload["exp"] as? TimeInterval {
+            return Date(timeIntervalSince1970: exp)
+        }
+        if let expString = payload["exp"] as? String,
+           let exp = TimeInterval(expString) {
+            return Date(timeIntervalSince1970: exp)
+        }
+        return nil
+    }
+
+    private static func decodeJwtPayload(_ token: String) -> Data? {
+        let segments = token.split(separator: ".")
+        guard segments.count >= 2 else { return nil }
+        let payload = String(segments[1])
+        return base64UrlDecode(payload)
+    }
+
+    private static func base64UrlDecode(_ value: String) -> Data? {
+        var base64 = value
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let padding = 4 - (base64.count % 4)
+        if padding < 4 {
+            base64.append(String(repeating: "=", count: padding))
+        }
+        return Data(base64Encoded: base64)
+    }
+
     private static func resolveExpiryDate(from expiresAt: TimeInterval) -> Date {
         let epochThreshold: TimeInterval = 1_000_000_000
         if expiresAt > epochThreshold {
@@ -308,6 +358,7 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
         return Date(timeIntervalSinceNow: max(expiresAt, 0))
     }
+
 
     private func shouldAllowOfflineAccess(hasStoredToken: Bool) -> Bool {
         let lastAuthTimestamp = UserDefaults.standard.double(forKey: lastAuthTimestampKey)

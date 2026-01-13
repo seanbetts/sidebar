@@ -14,20 +14,17 @@ public struct SecureFieldWithToggle: View {
     let title: String
     @Binding var text: String
     var textContentType: PlatformTextContentType?
-    var onSubmit: (() -> Void)?
 
     @State private var isSecure = true
 
     public init(
         title: String,
         text: Binding<String>,
-        textContentType: PlatformTextContentType? = nil,
-        onSubmit: (() -> Void)? = nil
+        textContentType: PlatformTextContentType? = nil
     ) {
         self.title = title
         self._text = text
         self.textContentType = textContentType
-        self.onSubmit = onSubmit
     }
 
     public var body: some View {
@@ -35,11 +32,9 @@ public struct SecureFieldWithToggle: View {
             if isSecure {
                 SecureField(title, text: $text)
                     .textContentType(textContentType)
-                    .onSubmit { onSubmit?() }
             } else {
                 TextField(title, text: $text)
                     .textContentType(textContentType)
-                    .onSubmit { onSubmit?() }
             }
 
             Button {
