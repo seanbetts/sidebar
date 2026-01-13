@@ -1,5 +1,4 @@
 import SwiftUI
-import MarkdownUI
 
 public struct NotesView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -105,13 +104,11 @@ private struct NotesDetailView: View {
 
     @ViewBuilder
     private var content: some View {
-            if let note = viewModel.activeNote {
-                ScrollView {
-                    SideBarMarkdown(text: strippedContent(note: note))
-                        .frame(maxWidth: contentMaxWidth, alignment: .leading)
-                        .padding(20)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
+            if viewModel.activeNote != nil {
+                MarkdownEditorView(
+                    viewModel: environment.notesEditorViewModel,
+                    maxContentWidth: contentMaxWidth
+                )
             } else if viewModel.selectedNoteId != nil {
                 if let error = viewModel.errorMessage {
                     PlaceholderView(
@@ -157,22 +154,6 @@ private struct NotesDetailView: View {
             return String(name.dropLast(3))
         }
         return name
-    }
-
-    private func strippedContent(note: NotePayload) -> String {
-        let title = displayTitle
-        let trimmed = note.content.trimmingCharacters(in: .whitespacesAndNewlines)
-        let heading = "# \(title)"
-        if trimmed.hasPrefix(heading) {
-            let lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
-            if lines.first?.trimmingCharacters(in: .whitespacesAndNewlines) == heading {
-                let remaining = lines.dropFirst()
-                let stripped = remaining.drop(while: { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
-                    .joined(separator: "\n")
-                return stripped.isEmpty ? note.content : stripped
-            }
-        }
-        return note.content
     }
 
     private var isCompact: Bool {

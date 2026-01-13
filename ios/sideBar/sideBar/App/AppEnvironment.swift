@@ -13,6 +13,7 @@ public final class AppEnvironment: ObservableObject {
     public let toastCenter: ToastCenter
     public let chatViewModel: ChatViewModel
     public let notesViewModel: NotesViewModel
+    public let notesEditorViewModel: NotesEditorViewModel
     public let ingestionViewModel: IngestionViewModel
     public let websitesViewModel: WebsitesViewModel
     public let memoriesViewModel: MemoriesViewModel
@@ -53,6 +54,12 @@ public final class AppEnvironment: ObservableObject {
         )
         let temporaryStore = TemporaryFileStore.shared
         self.notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore)
+        self.notesEditorViewModel = NotesEditorViewModel(
+            api: container.notesAPI,
+            notesStore: notesStore,
+            notesViewModel: notesViewModel,
+            toastCenter: toastCenter
+        )
         self.ingestionViewModel = IngestionViewModel(
             api: container.ingestionAPI,
             store: ingestionStore,
