@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, afterUpdate, tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import type { Message as MessageType } from '$lib/types/chat';
 	import Message from './Message.svelte';
 
@@ -31,13 +31,6 @@
 
 		shouldAutoScroll = isNearBottom;
 	}
-
-	// Auto-scroll when messages update
-	afterUpdate(() => {
-		if (shouldAutoScroll) {
-			scrollToBottom();
-		}
-	});
 
 	onMount(async () => {
 		await tick();
