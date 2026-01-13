@@ -12,6 +12,9 @@
 	import { useEditorActions } from '$lib/hooks/useEditorActions';
 	import { useLeaveGuard } from '$lib/hooks/useLeaveGuard';
 
+	// Module-level map to persist scroll positions across remounts
+	const scrollPositions = new Map<string, number>();
+
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
 	let saveTimeout: ReturnType<typeof setTimeout>;
@@ -31,6 +34,7 @@
 	let isCopied = false;
 	let savedIndicatorTimeout: ReturnType<typeof setTimeout> | null = null;
 	let showSavedIndicator = true;
+	let editorScrollElement: HTMLDivElement;
 
 	$: isDirty = $editorStore.isDirty;
 	$: isSaving = $editorStore.isSaving;
@@ -187,6 +191,23 @@
 	}
 
 	$: lastSavedLabel = formatLastSaved(lastSaved, showSavedIndicator);
+
+	// Save scroll position when note changes
+	let previousNoteId: string | null = null;
+	$: {
+		if (editorScrollElement && previousNoteId && previousNoteId !== currentNoteId) {
+			scrollPositions.set(previousNoteId, editorScrollElement.scrollTop);
+		}
+		if (editorScrollElement && currentNoteId && currentNoteId !== previousNoteId) {
+			const savedPosition = scrollPositions.get(currentNoteId) ?? 0;
+			tick().then(() => {
+				if (editorScrollElement) {
+					editorScrollElement.scrollTop = savedPosition;
+				}
+			});
+		}
+		previousNoteId = currentNoteId;
+	}
 </script>
 
 <AlertDialog.Root bind:open={isLeaveDialogOpen}>
@@ -295,7 +316,7 @@
 	{/if}
 
 	<!-- TipTap Editor - always rendered -->
-	<div class="editor-scroll" class:hidden={!currentNoteName}>
+	<div bind:this={editorScrollElement} class="editor-scroll" class:hidden={!currentNoteName}>
 		<div bind:this={editorElement} class="tiptap-editor"></div>
 	</div>
 
