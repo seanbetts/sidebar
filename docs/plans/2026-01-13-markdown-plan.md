@@ -77,6 +77,59 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 2. Reuse CM6 theme in web app for notes editing (if migrating from TipTap).
 3. Document CM6 theme tokens and extensions.
 
+---
+
+## CM6 + WKWebView Integration Draft
+
+### 1) Bundle + Build Pipeline
+- Create a standalone CM6 bundle in `frontend/` (Vite build output).
+- Output a single `editor.html` + `editor.js` + `editor.css` with hashed assets disabled for iOS bundling.
+- Add a CI step to copy the bundle into `ios/sideBar/sideBar/Resources/CodeMirror/`.
+- Add a version stamp (`editor-version.json`) to invalidate native caches.
+
+### 2) Web Editor Surface
+- Single root `<div id="editor">` with CM6 view.
+- Initialize with:
+  - Markdown extension set (tables, task lists, fenced code, links, images).
+  - Theme from `docs/MARKDOWN_STYLES.md` tokens.
+  - Placeholder behavior (“Start writing…”).
+- API surface in JS:
+  - `setMarkdown(text)`
+  - `getMarkdown()`
+  - `setReadOnly(isReadOnly)`
+  - `focus()`
+  - `applyCommand(name, payload)`
+
+### 3) Native Bridge (Swift)
+- WKWebView wrapper view with message handlers:
+  - `editorReady`
+  - `contentChanged`
+  - `selectionChanged`
+  - `linkTapped` (if needed)
+- Debounced save on native side (align with current autosave logic).
+- Push external updates: compare version, prompt conflict UI if dirty.
+
+### 4) Editor Commands
+- Command map (native -> JS):
+  - bold/italic/strike/heading/list/blockquote/hr
+  - task toggle
+  - insert table
+  - insert link
+  - insert code block
+- Keep toolbar deferred for now; use keyboard shortcuts and menu actions only.
+
+### 5) State + Lifecycle
+- Load note content on `editorReady`.
+- Persist scroll/selection on note switch.
+- Tear down webview on note change to avoid stale state.
+
+### 6) Validation Checklist
+- Round‑trip markdown correctness (save + reload).
+- Table + task list rendering parity.
+- Inline/code block parity.
+- Links and images parity.
+- iOS + macOS consistency (font sizes, line height, spacing).
+
 ## Validation
 - Edit a note, apply formatting, save, reload; content matches web output.
 - Task lists, tables, links, code blocks persist across reload.
