@@ -375,13 +375,9 @@ private struct GeneralSettingsView: View {
                 Toggle(biometricLabel, isOn: $biometricUnlockEnabled)
                     .disabled(!canUseDeviceAuth)
                 if !canUseDeviceAuth {
-                    Text("Set a device passcode to enable biometric unlock.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if biometryType == .none {
-                    Text("Biometric unlock will fall back to device passcode.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("Set up Face ID or Touch ID to enable biometric unlock.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
             Section("Weather") {
@@ -417,7 +413,7 @@ private struct GeneralSettingsView: View {
 
     private func evaluateBiometricSupport() {
         let context = LAContext()
-        canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
+        canUseDeviceAuth = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         biometryType = context.biometryType
     }

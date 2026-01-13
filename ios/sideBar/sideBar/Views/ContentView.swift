@@ -1,4 +1,5 @@
 import SwiftUI
+import LocalAuthentication
 
 public enum AppSection: String, CaseIterable, Identifiable {
     case chat
@@ -32,6 +33,12 @@ public struct ContentView: View {
     @State private var didSetInitialSelection = false
     @State private var didLoadSettings = false
     @State private var isBiometricUnlocked = false
+    @State private var activeAlert: ActiveAlert?
+    @State private var pendingSessionExpiryAlert = false
+    @State private var pendingBiometricUnavailableAlert = false
+    #if os(iOS)
+    @AppStorage(AppStorageKeys.hasShownBiometricHint) private var hasShownBiometricHint = false
+    #endif
 
     public init() {
     }
@@ -87,8 +94,14 @@ public struct ContentView: View {
             }
             .animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast)
             .onChange(of: scenePhase) { _, newValue in
-                if newValue != .active && biometricUnlockEnabled {
+                if newValue == .background && biometricUnlockEnabled {
                     isBiometricUnlocked = false
+                }
+            }
+            .onChange(of: environment.biometricMonitor.isAvailable) { _, isAvailable in
+                guard biometricUnlockEnabled, !isAvailable, environment.isAuthenticated else { return }
+                enqueueAlertAction {
+                    presentAlert(.biometricUnavailable)
                 }
             }
             .onChange(of: phoneSelection) { _, newValue in
@@ -134,6 +147,18 @@ public struct ContentView: View {
                     } else {
                         isBiometricUnlocked = true
                     }
+                    #if os(iOS)
+                    if environment.biometricMonitor.isAvailable
+                        && !biometricUnlockEnabled
+                        && !hasShownBiometricHint {
+                        hasShownBiometricHint = true
+                        enqueueAlertAction {
+                            if activeAlert == nil {
+                                activeAlert = .biometricHint
+                            }
+                        }
+                    }
+                    #endif
                     if !didLoadSettings {
                         didLoadSettings = true
                         Task {
@@ -173,6 +198,90 @@ public struct ContentView: View {
                     .environmentObject(environment)
             }
             #endif
+            .onChange(of: environment.sessionExpiryWarning) { _, newValue in
+                enqueueAlertAction {
+                    if newValue != nil {
+                        presentAlert(.sessionExpiry)
+                    } else {
+                        pendingSessionExpiryAlert = false
+                    }
+                }
+            }
+            .onChange(of: activeAlert) { _, newValue in
+                guard newValue == nil else { return }
+                enqueueAlertAction {
+                    if pendingBiometricUnavailableAlert {
+                        pendingBiometricUnavailableAlert = false
+                        activeAlert = .biometricUnavailable
+                        return
+                    }
+                    if pendingSessionExpiryAlert, environment.sessionExpiryWarning != nil {
+                        pendingSessionExpiryAlert = false
+                        activeAlert = .sessionExpiry
+                    } else {
+                        pendingSessionExpiryAlert = false
+                    }
+                }
+            }
+            .alert(item: $activeAlert) { alert in
+                switch alert {
+                case .biometricUnavailable:
+                    return Alert(
+                        title: Text("Biometric Unlock Unavailable"),
+                        message: Text("Biometric unlock is no longer available on this device. You can re-enable it in Settings once Face ID or Touch ID is available again."),
+                        dismissButton: .default(Text("OK"))
+                    )
+                case .biometricHint:
+                    return Alert(
+                        title: Text(biometricHintTitle),
+                        message: Text(biometricHintMessage),
+                        primaryButton: .default(Text("Enable in Settings"), action: {
+                            enqueueAlertAction {
+                                isSettingsPresented = true
+                            }
+                        }),
+                        secondaryButton: .cancel()
+                    )
+                case .sessionExpiry:
+                    return Alert(
+                        title: Text("Session Expiring Soon"),
+                        message: Text("Your session will expire soon. Would you like to stay signed in?"),
+                        primaryButton: .default(Text("Stay Signed In"), action: {
+                            enqueueAlertAction {
+                                Task { await environment.container.authSession.refreshSession() }
+                                environment.sessionExpiryWarning = nil
+                            }
+                        }),
+                        secondaryButton: .destructive(Text("Sign Out"), action: {
+                            enqueueAlertAction {
+                                Task {
+                                    await environment.container.authSession.signOut()
+                                    environment.refreshAuthState()
+                                }
+                                environment.sessionExpiryWarning = nil
+                            }
+                        })
+                    )
+                }
+            }
+        }
+    }
+
+    private var biometricHintTitle: String {
+        switch environment.biometricMonitor.biometryType {
+        case .touchID:
+            return "Enable Touch ID?"
+        default:
+            return "Enable Face ID?"
+        }
+    }
+
+    private var biometricHintMessage: String {
+        switch environment.biometricMonitor.biometryType {
+        case .touchID:
+            return "Unlock sideBar quickly and securely with Touch ID."
+        default:
+            return "Unlock sideBar quickly and securely with Face ID."
         }
     }
 
@@ -187,6 +296,27 @@ public struct ContentView: View {
             splitView
         }
         #endif
+    }
+
+    private func presentAlert(_ alert: ActiveAlert) {
+        if activeAlert == nil {
+            activeAlert = alert
+            return
+        }
+        switch alert {
+        case .biometricUnavailable:
+            pendingBiometricUnavailableAlert = true
+        case .sessionExpiry:
+            pendingSessionExpiryAlert = true
+        case .biometricHint:
+            break
+        }
+    }
+
+    private func enqueueAlertAction(_ action: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            action()
+        }
     }
 
     private var splitView: some View {
@@ -575,6 +705,23 @@ public struct ConfigErrorView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(24)
+    }
+}
+
+private enum ActiveAlert: Identifiable {
+    case biometricUnavailable
+    case biometricHint
+    case sessionExpiry
+
+    var id: String {
+        switch self {
+        case .biometricUnavailable:
+            return "biometricUnavailable"
+        case .biometricHint:
+            return "biometricHint"
+        case .sessionExpiry:
+            return "sessionExpiry"
+        }
     }
 }
 

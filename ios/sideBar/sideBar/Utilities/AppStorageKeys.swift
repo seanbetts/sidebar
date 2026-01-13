@@ -9,4 +9,6 @@ public enum AppStorageKeys {
     public static let themeMode = "sidebar.themeMode"
     public static let biometricUnlockEnabled = "sidebar.biometricUnlockEnabled"
     public static let weatherUsesFahrenheit = "sidebar.weatherUsesFahrenheit"
+    public static let lastAuthTimestamp = "sidebar.lastAuthTimestamp"
+    public static let hasShownBiometricHint = "sidebar.hasShownBiometricHint"
 }

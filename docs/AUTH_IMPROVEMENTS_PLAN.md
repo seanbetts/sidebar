@@ -2,7 +2,7 @@
 
 **Project:** sideBar iOS/macOS App
 **Date:** 2026-01-13
-**Status:** Planning Phase
+**Status:** Implemented (Phases 1-5 complete; advanced items partially complete)
 
 ---
 
@@ -371,7 +371,7 @@ private func refreshSession() async {
 
 ## Security Improvements
 
-### 7. Add Encryption Layer Over Keychain
+### 7. Add Encryption Layer Over Keychain ✅
 
 **Priority:** Medium
 **Effort:** 4-6 hours
@@ -400,7 +400,7 @@ private func encryptData(_ data: Data) throws -> Data {
 
 ---
 
-### 8. Add Biometric-Bound Keychain Access
+### 8. Add Biometric-Bound Keychain Access ⏸️ (Deferred)
 
 **Priority:** Medium
 **Effort:** 2 hours
@@ -428,9 +428,11 @@ attributes[kSecAttrAccessControl as String] = accessControl
 - User must authenticate even after relaunch
 - May be too aggressive for some use cases
 
+**Decision:** Deferred to avoid double biometric prompts alongside the existing lock screen.
+
 ---
 
-### 9. Implement Rate Limiting Detection
+### 9. Implement Rate Limiting Detection ✅
 
 **Priority:** Low-Medium
 **Effort:** 1 hour
@@ -462,7 +464,7 @@ private func handleSignInError(_ error: Error) {
 
 ---
 
-### 10. Add Security Event Logging
+### 10. Add Security Event Logging ✅
 
 **Priority:** Low
 **Effort:** 2-3 hours
@@ -1202,11 +1204,11 @@ triggerHaptic(.success)
 **Time:** Variable
 
 #### Consider:
-29. ⏸️ Encryption layer over keychain (4-6 hours)
+29. ✅ Encryption layer over keychain (4-6 hours)
 30. ⏸️ Apple Sign In / OAuth (6-8 hours)
-31. ⏸️ Offline mode with cached credentials (3-4 hours)
-32. ⏸️ Security event logging (2-3 hours)
-33. ⏸️ Rate limiting UI feedback (1-2 hours)
+31. ✅ Offline mode with cached credentials (3-4 hours)
+32. ✅ Security event logging (2-3 hours)
+33. ✅ Rate limiting UI feedback (1-2 hours)
 
 ---
 
