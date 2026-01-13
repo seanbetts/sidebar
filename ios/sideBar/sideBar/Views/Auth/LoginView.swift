@@ -142,7 +142,7 @@ public struct LoginView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 18)
             TextField("Email", text: $email)
-                .textContentType(.emailAddress)
+                .textContentType(.username)
         #if canImport(UIKit)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
