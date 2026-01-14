@@ -5,6 +5,7 @@ struct MarkdownEditorView: View {
     let maxContentWidth: CGFloat
     let showsCompactStatus: Bool
     @StateObject private var editorHandle = CodeMirrorEditorHandle()
+    @State private var isEditing = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,12 +25,20 @@ struct MarkdownEditorView: View {
                     Spacer(minLength: 0)
                     CodeMirrorEditorView(
                         markdown: viewModel.content,
-                        isReadOnly: viewModel.isReadOnly,
+                        isReadOnly: viewModel.isReadOnly || !isEditing,
                         handle: editorHandle,
                         onContentChanged: viewModel.handleUserMarkdownEdit
                     )
                     .frame(maxWidth: maxContentWidth)
                     Spacer(minLength: 0)
+                }
+                if !isEditing && !viewModel.isReadOnly {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            isEditing = true
+                            editorHandle.focus()
+                        }
                 }
                 if viewModel.content.isEmpty {
                     Text("Start writing...")
@@ -46,6 +55,9 @@ struct MarkdownEditorView: View {
                     .padding(.top, 12)
                     .padding(.trailing, 16)
             }
+        }
+        .onChange(of: viewModel.currentNoteId) { _, _ in
+            isEditing = false
         }
     }
 }

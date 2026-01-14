@@ -1,4 +1,4 @@
-import { EditorState, Compartment, RangeSetBuilder } from '@codemirror/state';
+import { EditorState, Compartment, RangeSetBuilder, Transaction } from '@codemirror/state';
 import { Decoration, EditorView, keymap, ViewPlugin, WidgetType } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import {
@@ -929,6 +929,8 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 const livePreviewPlugin = ViewPlugin.fromClass(
 	class {
 		decorations = Decoration.none;
+		private revealUntil = 0;
+		private revealTimeout: number | null = null;
 
 		constructor(view: EditorView) {
 			this.decorations = this.buildDecorations(view);
@@ -940,18 +942,34 @@ const livePreviewPlugin = ViewPlugin.fromClass(
 			selectionSet: boolean;
 			view: EditorView;
 		}) {
+			if (update.selectionSet) {
+				this.scheduleReveal(update.view);
+			}
 			if (update.docChanged || update.viewportChanged || update.selectionSet) {
 				this.decorations = this.buildDecorations(update.view);
 			}
+		}
+
+		private scheduleReveal(view: EditorView) {
+			this.revealUntil = Date.now() + 2000;
+			if (this.revealTimeout) {
+				window.clearTimeout(this.revealTimeout);
+			}
+			this.revealTimeout = window.setTimeout(() => {
+				this.revealTimeout = null;
+				view.dispatch({ annotations: Transaction.userEvent.of('live-preview') });
+			}, 2000);
 		}
 
 		private buildDecorations(view: EditorView) {
 			const builder = new RangeSetBuilder<Decoration>();
 			const selection = view.state.selection;
 			const tree = syntaxTree(view.state);
+			const revealActive = Date.now() < this.revealUntil;
 			const shouldRevealRange = (from: number, to: number) =>
-				selection.ranges.some((range) => range.from <= to && range.to >= from);
+				revealActive && selection.ranges.some((range) => range.from <= to && range.to >= from);
 			const shouldRevealLine = (from: number) => {
+				if (!revealActive) return false;
 				const line = view.state.doc.lineAt(from);
 				return selection.ranges.some((range) => range.from <= line.to && range.to >= line.from);
 			};
