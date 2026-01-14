@@ -162,6 +162,7 @@ const highlightStyle = HighlightStyle.define([
 	{ tag: tags.heading3, fontWeight: '600', fontSize: '1.25em' },
 	{ tag: tags.strong, fontWeight: '700' },
 	{ tag: tags.emphasis, fontStyle: 'italic' },
+	{ tag: tags.strikethrough, textDecoration: 'line-through' },
 	{
 		tag: tags.code,
 		fontFamily:
@@ -171,9 +172,13 @@ const highlightStyle = HighlightStyle.define([
 		borderRadius: '0.25em',
 		padding: '0.15em 0.35em'
 	},
+	{ tag: tags.listMark, color: 'var(--color-muted-foreground)' },
+	{ tag: tags.list, color: 'var(--color-foreground)' },
 	{ tag: tags.link, color: 'var(--color-primary)', textDecoration: 'underline' },
 	{ tag: tags.url, color: 'var(--color-primary)', textDecoration: 'underline' },
 	{ tag: tags.quote, color: 'var(--color-muted-foreground)' },
+	{ tag: tags.contentSeparator, color: 'var(--color-border)' },
+	{ tag: tags.separator, color: 'var(--color-border)' },
 	{ tag: tags.meta, color: 'var(--color-muted-foreground)' }
 ]);
 
