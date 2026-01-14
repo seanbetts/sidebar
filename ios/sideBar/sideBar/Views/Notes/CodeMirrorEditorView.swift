@@ -60,6 +60,7 @@ struct CodeMirrorEditorView: View {
 private enum CodeMirrorBridge {
     static let editorReady = "editorReady"
     static let contentChanged = "contentChanged"
+    static let jsError = "jsError"
 }
 
 private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
@@ -137,6 +138,8 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
             }
             debounceWorkItem = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
+        case CodeMirrorBridge.jsError:
+            logger.error("CodeMirror JS error: \(String(describing: message.body), privacy: .public)")
         default:
             break
         }
@@ -234,8 +237,29 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        let errorScript = WKUserScript(
+            source: """
+            window.addEventListener('error', function(event) {
+              window.webkit?.messageHandlers?.jsError?.postMessage({
+                message: event.message || 'Unknown error',
+                source: event.filename || '',
+                line: event.lineno || 0,
+                column: event.colno || 0
+              });
+            });
+            window.addEventListener('unhandledrejection', function(event) {
+              window.webkit?.messageHandlers?.jsError?.postMessage({
+                message: event.reason && event.reason.message ? event.reason.message : String(event.reason || 'Unhandled rejection')
+              });
+            });
+            """,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        configuration.userContentController.addUserScript(errorScript)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.editorReady)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.contentChanged)
+        configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.jsError)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
@@ -251,6 +275,7 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
     static func dismantleNSView(_ nsView: WKWebView, coordinator: CodeMirrorCoordinator) {
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.editorReady)
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.contentChanged)
+        nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.jsError)
     }
 }
 #else
@@ -267,8 +292,29 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        let errorScript = WKUserScript(
+            source: """
+            window.addEventListener('error', function(event) {
+              window.webkit?.messageHandlers?.jsError?.postMessage({
+                message: event.message || 'Unknown error',
+                source: event.filename || '',
+                line: event.lineno || 0,
+                column: event.colno || 0
+              });
+            });
+            window.addEventListener('unhandledrejection', function(event) {
+              window.webkit?.messageHandlers?.jsError?.postMessage({
+                message: event.reason && event.reason.message ? event.reason.message : String(event.reason || 'Unhandled rejection')
+              });
+            });
+            """,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        configuration.userContentController.addUserScript(errorScript)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.editorReady)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.contentChanged)
+        configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.jsError)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
@@ -286,6 +332,7 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
     static func dismantleUIView(_ uiView: WKWebView, coordinator: CodeMirrorCoordinator) {
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.editorReady)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.contentChanged)
+        uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.jsError)
     }
 }
 #endif
