@@ -136,6 +136,7 @@
 .scratchpad-editor p {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
+  line-height: 1.7;
 }
 
 /* ============================================================================
@@ -219,4 +220,141 @@
   margin-top: 1rem;
   margin-bottom: 0.3rem;
   color: var(--color-foreground);
+}
+
+/* ============================================================================
+   LIST STYLES
+   Applied to all markdown components for consistent list formatting
+   ============================================================================ */
+
+.tiptap ul,
+.tiptap ol,
+.chat-markdown ul,
+.chat-markdown ol,
+.file-markdown ul,
+.file-markdown ol,
+.website-viewer ul,
+.website-viewer ol,
+.scratchpad-editor ul,
+.scratchpad-editor ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.5em;
+}
+
+/* Nested lists should have no extra margin */
+.tiptap li > ul,
+.tiptap li > ol,
+.chat-markdown li > ul,
+.chat-markdown li > ol,
+.file-markdown li > ul,
+.file-markdown li > ol,
+.website-viewer li > ul,
+.website-viewer li > ol,
+.scratchpad-editor li > ul,
+.scratchpad-editor li > ol {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.tiptap ul,
+.chat-markdown ul,
+.file-markdown ul,
+.website-viewer ul,
+.scratchpad-editor ul {
+  list-style-type: disc;
+}
+
+.tiptap ol,
+.chat-markdown ol,
+.file-markdown ol,
+.website-viewer ol,
+.scratchpad-editor ol {
+  list-style-type: decimal;
+}
+
+.tiptap li,
+.chat-markdown li,
+.file-markdown li,
+.website-viewer li,
+.scratchpad-editor li {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.4;
+}
+
+.tiptap li p,
+.chat-markdown li p,
+.file-markdown li p,
+.website-viewer li p,
+.scratchpad-editor li p {
+  margin: 0;
+}
+
+/* ============================================================================
+   CODE STYLES
+   Applied to all markdown components for consistent code formatting
+   ============================================================================ */
+
+.tiptap code,
+.chat-markdown code,
+.file-markdown code,
+.website-viewer code,
+.scratchpad-editor code {
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-size: 0.875em;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
+}
+
+.tiptap strong,
+.chat-markdown strong,
+.file-markdown strong,
+.website-viewer strong,
+.scratchpad-editor strong {
+  font-weight: 700;
+}
+
+.tiptap pre,
+.chat-markdown pre,
+.file-markdown pre,
+.website-viewer pre,
+.scratchpad-editor pre {
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.tiptap pre code,
+.chat-markdown pre code,
+.file-markdown pre code,
+.website-viewer pre code,
+.scratchpad-editor pre code {
+  background-color: transparent;
+  padding: 0;
+  font-size: 0.875em;
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   BLOCKQUOTE STYLES
+   Applied to all markdown components for consistent quote formatting
+   ============================================================================ */
+
+.tiptap blockquote,
+.chat-markdown blockquote,
+.file-markdown blockquote,
+.website-viewer blockquote,
+.scratchpad-editor blockquote {
+  border-left: 3px solid var(--color-border);
+  padding-left: 1em;
+  margin-left: 0;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  color: var(--color-muted-foreground);
 }
