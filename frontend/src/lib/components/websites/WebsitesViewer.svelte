@@ -517,32 +517,6 @@
 		line-height: 1.5;
 	}
 
-	/* Heading hierarchy - use higher specificity to override .tiptap styles */
-	:global(.tiptap.website-viewer h1) {
-		font-size: 2em;
-		font-weight: 700;
-		margin: 0.67em 0 !important;
-	}
-
-	:global(.tiptap.website-viewer h2) {
-		font-size: 1.5em;
-		font-weight: 600;
-		margin: 0.75em 0 !important;
-	}
-
-	:global(.tiptap.website-viewer h3) {
-		font-size: 1.17em;
-		font-weight: 600;
-		margin: 0.83em 0 !important;
-	}
-
-	:global(.tiptap.website-viewer h4),
-	:global(.tiptap.website-viewer h5),
-	:global(.tiptap.website-viewer h6) {
-		font-weight: 600;
-		margin: 0.83em 0 !important;
-	}
-
 	/* Blockquote accent */
 	:global(.tiptap.website-viewer blockquote) {
 		border-left: 3px solid var(--color-border);
