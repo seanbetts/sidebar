@@ -159,7 +159,7 @@ Critical Path (MVP): [███████████████████�
 | Phase | Status | Sessions | Complete | Full App Required |
 |-------|--------|----------|----------|-------------------|
 | **11.1 Chat Input** | ✅ Complete | 2 / 2-3 | 100% | ✅ Yes |
-| **11.2 Markdown Editor** | ⬜ Not Started | 0 / 6-9 | 0% | ✅ Yes |
+| **11.2 Markdown Editor** | 🟨 In Progress | 3 / 6-9 | 35% | ✅ Yes |
 | **11.3 Note Operations** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
 | **11.4 Content Creation** | ⬜ Not Started | 0 / 1 | 0% | ✅ Yes |
 | **11.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
@@ -245,7 +245,7 @@ Critical Path (MVP): [███████████████████�
 - Use native text selection, share sheet, and Quick Look for attachments.
 
 **Post-MVP (Phases 10.2-10.3): Editing Capabilities**
-- [ ] 4.2 Native Markdown Editor (RichTextKit or custom)
+- [ ] 4.2 Native Markdown Editor (CodeMirror 6 WKWebView)
 - [ ] 4.3 Editor Toolbar (15+ formatting options)
 - [ ] 4.4 Save/Dirty State (auto-save, dirty indicator)
 - [ ] 4.5 Note Operations (create, rename, move, delete, pin)
@@ -409,27 +409,27 @@ Critical Path (MVP): [███████████████████�
 
 #### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
 - [x] **Critical Decision**: CodeMirror 6 in WKWebView for WYSIWYG parity
-- [ ] Replace TextKit editor with CodeMirror 6 (shared web bundle)
+- [x] Replace TextKit editor with CodeMirror 6 (shared web bundle)
 - [ ] Editor toolbar (bold, italic, headings, lists, etc.) — deferred (no toolbar)
-- [ ] Advanced formatting (tables, links, code blocks)
+- [x] Advanced formatting rendering (tables, links, code blocks)
 - [ ] Syntax highlighting for code blocks
 - [ ] Live preview option (optional)
 - [ ] Performance optimization for long documents
 - [ ] Plan: `docs/plans/2026-01-13-markdown-plan.md`
 
 **Concrete 11.2 Checklist (TipTap parity targets)**
-- [ ] WKWebView CM6 editor surface with markdown as the source of truth
-- [ ] Markdown round-trip (load → edit → save) matches web output
-- [ ] Web-style theme parity (shared CM6 theme)
+- [x] WKWebView CM6 editor surface with markdown as the source of truth
+- [x] Markdown round-trip (load → edit → save) matches web output
+- [x] Web-style theme parity (shared CM6 theme)
 - [ ] Formatting actions parity: bold, italic, strike, underline, headings (H1–H3), blockquote, horizontal rule (underline pending)
-- [ ] List parity: bullet, ordered, task lists (nested), toggle task completion
+- [x] List parity: bullet, ordered, task lists (nested), toggle task completion
 - [ ] Code parity: inline code + fenced code blocks with language tag + syntax highlighting
 - [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
-- [ ] Link parity: create/edit/remove links, preserve URLs in markdown
-- [ ] Image parity: image blocks with caption + gallery block (custom markdown markers)
+- [x] Link parity: autolinks + external open, preserve URLs in markdown
+- [x] Image parity: image blocks with caption (gallery block pending)
 - [ ] Editor toolbar parity: primary actions + overflow menu to match web affordances — deferred (no toolbar)
 - [ ] Selection/undo parity: keep cursor on external updates
-- [ ] Auto-save parity: debounce + dirty state tracking (align with web editor store)
+- [x] Auto-save debounce wired (dirty state tracking pending)
 - [ ] External update handling: detect server/AI edits and merge or prompt with conflict UI
 - [ ] Long-note performance: incremental rendering + minimal layout churn
 
@@ -512,7 +512,7 @@ This plan takes a **two-phase delivery approach**: ship a read-only viewer app f
 - Validates architecture before investing in markdown editor (7-10 sessions)
 - Proves SSE streaming, real-time sync, and multi-platform layouts work
 - Markdown editor is explicitly called out as "highest complexity" in original plan
-- Can make informed decision on RichTextKit vs custom solution after MVP
+- Validate CodeMirror 6 WKWebView editor integration before full parity work
 
 **3. Natural Architecture Validation**
 - MVVM architecture proven in production use
@@ -646,16 +646,16 @@ When ready to resume (estimated 11-17 additional sessions):
 | Component | Sessions | Complexity | Notes |
 |-----------|----------|------------|-------|
 | Chat Input | 2-3 | Medium | Text editor, send button, SSE for sending |
-| Markdown Editor | 6-9 | **Very High** | RichTextKit or custom solution, critical decision point |
+| Markdown Editor | 6-9 | **Very High** | CodeMirror 6 WKWebView (shared bundle), parity + bridge work |
 | Note Operations | 1-2 | Low | Create, rename, move, delete with API calls |
 | Content Creation | 1 | Low | Save websites, edit memories, scratchpad |
 | Full Testing | 1-2 | Medium | End-to-end capability parity validation (native UX) |
 
 **Critical Decision in Phase 11.2:**
-After 3-5 sessions evaluating RichTextKit for markdown editing:
-- Continue with RichTextKit + workarounds
-- Build custom UITextView/NSTextView wrapper (+3-5 sessions)
-- Reduce scope (defer tables/advanced formatting)
+CodeMirror 6 in WKWebView selected. Remaining scope decisions:
+- Implement toolbar + formatting command bridge
+- Decide how much table editing (insert/row/column actions) is required for parity
+- Defer optional features (live preview, advanced syntax highlighting) if needed
 
 ### Why This Works for Your Project
 
@@ -1162,23 +1162,13 @@ class ConversationsViewModel: ObservableObject {
 **4.2 Native Markdown Editor**
 This is the most complex component. Approach:
 
-**Option A**: Use `TextEditor` + **RichTextKit** library
-- Open-source, maintained library
-- Provides toolbar, formatting commands
-- Markdown syntax support
-- Customizable
+**Selected**: CodeMirror 6 in `WKWebView` (shared web bundle)
+- Markdown remains the source of truth
+- Shared CM6 theme for web/native parity
+- Native bridge for autosave, selection, and formatting commands
+- Shared build artifact copied into iOS/macOS resources
 
-**Option B**: Use `TextEditor` + **MarkdownEditor** library
-- Specifically designed for markdown
-- Live preview option
-- Syntax highlighting
-
-**Option C**: Build custom using `UITextView`/`NSTextView` wrapper
-- Full control
-- Most work
-- Best performance potential
-
-**Recommendation**: Start with RichTextKit (Option A), fall back to custom if needed.
+**Fallback**: Use `TextEditor` only if CM6 parity is blocked by platform limitations.
 
 **4.3 Editor Toolbar**
 Replicate TipTap toolbar:
@@ -1255,19 +1245,18 @@ channel = supabase.channel("notes")
 Given the complexity of this phase, here's a suggested breakdown:
 
 - **Sessions 1-2**: File tree browser implementation with expand/collapse, search, and context menus
-- **Sessions 3-5**: RichTextKit integration, basic markdown editing, and toolbar setup
+- **Sessions 3-5**: CodeMirror bundle integration, WKWebView bridge, base markdown editing
 - **Session 6-7**: Advanced formatting features (tables, links, code blocks) and customization
 - **Session 8-9**: Save/dirty state, auto-save debouncing, and note operations (create, rename, move, delete)
 - **Session 10**: Real-time sync, conflict handling, and integration testing
 
 **Critical Decision Point (After Session 5)**:
-Evaluate RichTextKit capabilities. If major feature gaps exist (especially for tables or complex formatting):
-- **Option A**: Continue with RichTextKit + workarounds for missing features
-- **Option B**: Switch to custom UITextView/NSTextView solution (adds 3-5 sessions)
-- **Option C**: Reduce scope (defer tables, advanced formatting to post-launch)
+Validate CM6 parity gaps (tables, formatting commands). If major gaps exist:
+- **Option A**: Extend CM6 command bridge and toolbar scope
+- **Option B**: Reduce scope (defer advanced table editing to post-launch)
 
 ### Technical Decisions
-- **Editor library**: RichTextKit (extensible, maintained)
+- **Editor library**: CodeMirror 6 WKWebView bundle (shared with web)
 - **Conflict resolution**: Last-write-wins with user notification
 - **Tree state**: Persist expanded folders to UserDefaults
 
@@ -1787,10 +1776,10 @@ Same pattern as notes/conversations.
 **Challenge**: SwiftUI's TextEditor is basic. Building markdown editing with formatting toolbar is complex.
 
 **Mitigation**:
-- Start with **RichTextKit** library (proven, open-source)
-- If insufficient, evaluate **MarkdownEditor** library
-- If both fail, allocate extra sessions for custom UITextView wrapper
-- Consider hybrid: simple editing in native, complex editing in WebView
+- Use **CodeMirror 6** in a WKWebView with a shared web bundle
+- Keep markdown as the single source of truth (round-trip fidelity)
+- Use a native bridge for autosave, selection, and formatting commands
+- Defer complex toolbar/command scope if parity gaps remain
 
 **Fallback**: Temporarily use TextEditor with markdown syntax (no toolbar) to unblock other work, then enhance.
 
@@ -1950,13 +1939,12 @@ You can parallelize:
 
 ## Key Decisions Requiring Input During Development
 
-1. **Markdown Editor Evaluation** (Week 5-6, after Phase 4 Session 5) - **CRITICAL**
-   - Evaluate RichTextKit capabilities for tables, advanced formatting
+1. **Markdown Editor Scope** (Week 5-6, after Phase 4 Session 5) - **CRITICAL**
+   - Validate CM6 parity gaps (tables, toolbar commands, syntax highlighting)
    - If major gaps exist, choose between:
-     - **Option A**: Continue with RichTextKit + workarounds (maintains timeline)
-     - **Option B**: Build custom UITextView/NSTextView wrapper (adds 3-5 sessions)
-     - **Option C**: Reduce scope - defer tables/advanced features to post-launch
-   - This decision impacts timeline by up to 1 month if custom solution needed
+     - **Option A**: Expand CM6 command bridge + toolbar scope (maintains timeline)
+     - **Option B**: Reduce scope - defer advanced table editing to post-launch
+   - This decision impacts timeline and polish for Phase 11.2
 
 2. **iPhone Navigation Pattern** (Week 11-12)
    - Tab bar vs. hamburger menu vs. gesture-based navigation
@@ -1986,7 +1974,7 @@ You can parallelize:
 - **MarkdownUI**: Markdown rendering (MIT license)
 
 ### Strongly Recommended
-- **RichTextKit**: Markdown editor with toolbar (MIT license)
+- **CodeMirror 6** (web bundle): WKWebView-based editor for markdown parity
 - **Kingfisher** or **SDWebImageSwiftUI**: Image loading/caching
 
 ### Optional
