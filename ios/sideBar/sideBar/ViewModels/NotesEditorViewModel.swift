@@ -133,6 +133,9 @@ public final class NotesEditorViewModel: ObservableObject {
     public func dismissExternalUpdate() {
         pendingExternalContent = nil
         hasExternalUpdate = false
+        if isDirty {
+            scheduleAutosave()
+        }
     }
 
     public func saveNow() {
@@ -200,7 +203,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     private func scheduleAutosave() {
-        guard isDirty, currentNoteId != nil, !isReadOnly else { return }
+        guard isDirty, currentNoteId != nil, !isReadOnly, !hasExternalUpdate else { return }
         if !isSaveInProgress {
             saveTask?.cancel()
             saveTask = Task { [weak self] in
@@ -220,7 +223,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     private func saveIfNeeded() async {
-        guard isDirty, let noteId = currentNoteId, !isReadOnly else { return }
+        guard isDirty, let noteId = currentNoteId, !isReadOnly, !hasExternalUpdate else { return }
         if isSaveInProgress {
             pendingSaveRequested = true
             return
@@ -294,6 +297,8 @@ public final class NotesEditorViewModel: ObservableObject {
         if isDirty, incoming != content {
             pendingExternalContent = incoming
             hasExternalUpdate = true
+            saveTask?.cancel()
+            pendingSaveRequested = false
             return
         }
 
