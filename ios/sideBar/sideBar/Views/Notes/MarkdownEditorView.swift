@@ -30,15 +30,15 @@ struct MarkdownEditorView: View {
                         onContentChanged: viewModel.handleUserMarkdownEdit
                     )
                     .frame(maxWidth: maxContentWidth)
-                    Spacer(minLength: 0)
-                }
-                if !isEditing && !viewModel.isReadOnly {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            isEditing = true
-                            editorHandle.focus()
+                    .simultaneousGesture(
+                        TapGesture().onEnded {
+                            if !isEditing && !viewModel.isReadOnly {
+                                isEditing = true
+                                editorHandle.focus()
+                            }
                         }
+                    )
+                    Spacer(minLength: 0)
                 }
                 if viewModel.content.isEmpty {
                     Text("Start writing...")
