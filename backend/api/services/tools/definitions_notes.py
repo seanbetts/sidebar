@@ -19,15 +19,13 @@ def get_notes_definitions() -> dict:
                 "properties": {
                     "title": {
                         "type": "string",
-                        "description": (
-                            "Optional note title (defaults to first line of content)"
-                        ),
+                        "description": "Note title",
                     },
                     "content": {"type": "string", "description": "Markdown content"},
                     "folder": {"type": "string", "description": "Optional folder path"},
                     "tags": {"type": "array", "items": {"type": "string"}},
                 },
-                "required": ["content"],
+                "required": ["title", "content"],
             },
             "skill": "notes",
             "script": "save_markdown.py",
