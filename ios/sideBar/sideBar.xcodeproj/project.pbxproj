@@ -298,15 +298,19 @@
 			files = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/sideBar/Resources/CodeMirror",
+				"$(SRCROOT)/sideBar/Resources/CodeMirror/editor.html",
+				"$(SRCROOT)/sideBar/Resources/CodeMirror/editor.css",
+				"$(SRCROOT)/sideBar/Resources/CodeMirror/editor.js",
 			);
 			name = "Copy CodeMirror Bundle";
 			outputPaths = (
-				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/CodeMirror",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/CodeMirror/editor.html",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/CodeMirror/editor.css",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/CodeMirror/editor.js",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nSOURCE_DIR=\"$SRCROOT/sideBar/Resources/CodeMirror\"\nDEST_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/CodeMirror\"\n\nif [ ! -d \"$SOURCE_DIR\" ]; then\n  echo \"CodeMirror bundle not found at $SOURCE_DIR\" >&2\n  exit 1\nfi\n\nmkdir -p \"$DEST_DIR\"\n/usr/bin/rsync -a --delete \"$SOURCE_DIR/\" \"$DEST_DIR/\"\n";
+			shellScript = "set -e\nSOURCE_DIR=\"$SRCROOT/sideBar/Resources/CodeMirror\"\nDEST_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/CodeMirror\"\n\nif [ ! -d \"$SOURCE_DIR\" ]; then\n  echo \"CodeMirror bundle not found at $SOURCE_DIR\" >&2\n  exit 1\nfi\n\nmkdir -p \"$DEST_DIR\"\n/bin/cp -f \"$SOURCE_DIR/editor.html\" \"$DEST_DIR/editor.html\"\n/bin/cp -f \"$SOURCE_DIR/editor.css\" \"$DEST_DIR/editor.css\"\n/bin/cp -f \"$SOURCE_DIR/editor.js\" \"$DEST_DIR/editor.js\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
