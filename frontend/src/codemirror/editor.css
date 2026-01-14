@@ -1,17 +1,21 @@
 :root {
   color-scheme: light dark;
-  --sb-background: #ffffff;
-  --sb-foreground: #1f1f1f;
-  --sb-muted: #f2f2f2;
-  --sb-border: #e1e1e1;
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.145 0 0);
+  --color-muted: oklch(0.97 0 0);
+  --color-muted-foreground: oklch(0.556 0 0);
+  --color-border: oklch(0.922 0 0);
+  --color-primary: oklch(0.205 0 0);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --sb-background: #141414;
-    --sb-foreground: #f2f2f2;
-    --sb-muted: #1f1f1f;
-    --sb-border: #2a2a2a;
+    --color-background: oklch(0.145 0 0);
+    --color-foreground: oklch(0.985 0 0);
+    --color-muted: oklch(0.269 0 0);
+    --color-muted-foreground: oklch(0.708 0 0);
+    --color-border: oklch(1 0 0 / 10%);
+    --color-primary: oklch(0.922 0 0);
   }
 }
 
@@ -26,8 +30,8 @@ body {
 }
 
 body {
-  background: var(--sb-background);
-  color: var(--sb-foreground);
+  background: var(--color-background);
+  color: var(--color-foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -45,7 +49,15 @@ body {
 }
 
 .cm-content {
+  max-width: 85ch;
+  margin: 0 auto;
   line-height: 1.7;
+  color: var(--color-foreground);
+  caret-color: var(--color-foreground);
+}
+
+.cm-line {
+  padding: 0.15em 0;
 }
 
 .cm-focused {
@@ -53,6 +65,43 @@ body {
 }
 
 .cm-gutters {
-  background: var(--sb-muted);
-  border-right: 1px solid var(--sb-border);
+  background: var(--color-muted);
+  border-right: 1px solid var(--color-border);
+}
+
+.cm-content .cm-header {
+  font-weight: 700;
+}
+
+.cm-content .cm-strong {
+  font-weight: 700;
+}
+
+.cm-content .cm-emphasis {
+  font-style: italic;
+}
+
+.cm-content .cm-link,
+.cm-content .cm-url {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.cm-content .cm-quote {
+  color: var(--color-muted-foreground);
+}
+
+.cm-content .cm-hr {
+  color: var(--color-border);
+}
+
+.cm-content .cm-inline-code,
+.cm-content .cm-code {
+  background-color: var(--color-muted);
+  border-radius: 0.25em;
+  font-family:
+    ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono",
+    monospace;
+  font-size: 0.875em;
+  padding: 0.15em 0.35em;
 }

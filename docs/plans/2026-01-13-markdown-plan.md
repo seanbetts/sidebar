@@ -146,4 +146,4 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 - [x] WKWebView wrapper added and Notes editor swapped to CodeMirror view.
 - [x] Autosave wired to contentChanged events.
 - [x] Bundle copy step automated (`scripts/build-codemirror.sh`).
-- [ ] CM6 theme parity + markdown extensions beyond base `markdown()` configured.
+- [ ] CM6 theme parity + markdown extensions beyond base `markdown()` configured (base token mapping now in editor.css).
