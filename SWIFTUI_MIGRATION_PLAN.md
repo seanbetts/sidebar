@@ -413,7 +413,7 @@ Critical Path (MVP): [███████████████████�
 - [x] Editor toolbar (bold, italic, headings, lists, etc.)
 - [x] Advanced formatting rendering (tables, links, code blocks)
 - [x] Syntax highlighting for code blocks
-- [ ] Live preview option (optional)
+- [x] Live preview option (soft-hide markdown markers)
 - [ ] Performance optimization for long documents
 - [ ] Plan: `docs/plans/2026-01-13-markdown-plan.md`
 

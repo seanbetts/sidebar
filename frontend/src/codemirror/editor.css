@@ -66,6 +66,14 @@ body {
   padding: 0;
 }
 
+.cm-live-hide {
+  display: none;
+}
+
+.cm-live-fade {
+  opacity: 0.2;
+}
+
 .cm-line.cm-blank-line {
   line-height: 0;
   margin: 0;
