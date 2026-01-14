@@ -191,6 +191,24 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
 extension CodeMirrorCoordinator: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         logger.info("CodeMirror webview didFinish navigation")
+        evaluateJavaScript("window.editorAPI != null") { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let value):
+                self.logger.info("CodeMirror editorAPI present: \(String(describing: value), privacy: .public)")
+            case .failure(let error):
+                self.logger.error("CodeMirror editorAPI check failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+        evaluateJavaScript("document.readyState") { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let value):
+                self.logger.info("CodeMirror document.readyState: \(String(describing: value), privacy: .public)")
+            case .failure(let error):
+                self.logger.error("CodeMirror readyState check failed: \(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
