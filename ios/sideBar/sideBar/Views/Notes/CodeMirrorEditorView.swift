@@ -233,6 +233,9 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.editorReady)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.contentChanged)
 
@@ -265,6 +268,9 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.editorReady)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.contentChanged)
 
