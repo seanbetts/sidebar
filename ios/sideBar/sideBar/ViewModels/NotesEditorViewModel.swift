@@ -59,6 +59,14 @@ public final class NotesEditorViewModel: ObservableObject {
         scheduleAutosave()
     }
 
+    public func handleUserMarkdownEdit(_ updated: String) {
+        content = updated
+        attributedContent = MarkdownFormatting.render(markdown: updated)
+        isDirty = content != baselineContent
+        saveError = nil
+        scheduleAutosave()
+    }
+
     public func applyBold() {
         applyInline(prefix: "**", suffix: "**", placeholder: "bold")
     }

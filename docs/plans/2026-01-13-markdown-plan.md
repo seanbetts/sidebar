@@ -84,7 +84,7 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 ### 1) Bundle + Build Pipeline
 - Create a standalone CM6 bundle in `frontend/` (Vite build output).
 - Output a single `editor.html` + `editor.js` + `editor.css` with hashed assets disabled for iOS bundling.
-- Add a CI step to copy the bundle into `ios/sideBar/sideBar/Resources/CodeMirror/`.
+- Add a CI step to copy the bundle into `ios/sideBar/sideBar/Resources/CodeMirror/` (script: `scripts/build-codemirror.sh`).
 - Add a version stamp (`editor-version.json`) to invalidate native caches.
 
 ### 2) Web Editor Surface
@@ -139,3 +139,11 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 ## Open Questions
 - How do we package the CM6 bundle for iOS/macOS (shared build artifact)?
 - Do we keep TipTap for web or migrate notes editing to CM6 for parity?
+
+## Iteration 1 Status (2026-01-13)
+- [x] CM6 bundle skeleton created (`frontend/src/codemirror` + Vite build config).
+- [x] JS bridge implemented: `editorReady`, debounced `contentChanged`, editor API.
+- [x] WKWebView wrapper added and Notes editor swapped to CodeMirror view.
+- [x] Autosave wired to contentChanged events.
+- [x] Bundle copy step automated (`scripts/build-codemirror.sh`).
+- [ ] CM6 theme parity + markdown extensions beyond base `markdown()` configured.

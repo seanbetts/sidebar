@@ -4,6 +4,7 @@ struct MarkdownEditorView: View {
     @ObservedObject var viewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
     let showsCompactStatus: Bool
+    @StateObject private var editorHandle = CodeMirrorEditorHandle()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,18 +17,16 @@ struct MarkdownEditorView: View {
             ZStack(alignment: .topLeading) {
                 HStack {
                     Spacer(minLength: 0)
-                    MarkdownTextEditor(
-                        attributedText: Binding(
-                            get: { viewModel.attributedContent },
-                            set: { viewModel.handleUserEdit($0) }
-                        ),
-                        selection: $viewModel.selectedRange,
-                        isEditable: !viewModel.isReadOnly
+                    CodeMirrorEditorView(
+                        markdown: viewModel.content,
+                        isReadOnly: viewModel.isReadOnly,
+                        handle: editorHandle,
+                        onContentChanged: viewModel.handleUserMarkdownEdit
                     )
                     .frame(maxWidth: maxContentWidth)
                     Spacer(minLength: 0)
                 }
-                if viewModel.attributedContent.string.isEmpty {
+                if viewModel.content.isEmpty {
                     Text("Start writing...")
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 24)
