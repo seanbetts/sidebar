@@ -35,6 +35,37 @@ All markdown components use shared styles defined in:
 
 ### What's Shared
 
+**Headings** (all 5 components):
+- **H1**: 2em, bold (700), margin-top: 0, margin-bottom: 0.3rem
+- **H2**: 1.5em, semibold (600), margin-top: 1rem, margin-bottom: 0.3rem
+- **H3**: 1.25em, semibold (600), margin-top: 1rem, margin-bottom: 0.3rem
+- **H4**: 1.125em, semibold (600), margin-top: 1rem, margin-bottom: 0.3rem
+- **H5**: 1.0625em, semibold (600), margin-top: 1rem, margin-bottom: 0.3rem
+- **H6**: 1em, semibold (600), margin-top: 1rem, margin-bottom: 0.3rem
+- All headers use `line-height: 1.3` and `rem` units for consistent absolute spacing
+- H2-H6 use uniform 1rem top margin for predictable hierarchy
+
+**Paragraphs** (all 5 components):
+- Margins: 0.5rem top and bottom (rem units for consistency)
+- Line height: 1.7 (comfortable reading)
+
+**Lists** (all 5 components):
+- ul/ol margins: 0.5rem top/bottom, 1.5em padding-left
+- Nested lists: No extra margin (margin: 0)
+- List items: margin: 0, line-height: 1.4 (tighter than paragraphs)
+- Paragraphs within list items: margin: 0
+- List style types: disc for ul, decimal for ol
+
+**Code Blocks** (all 5 components):
+- Inline code: muted background, 0.2em/0.4em padding, 0.875em font-size, monospace font
+- Strong text: font-weight: 700
+- Pre blocks: muted background, 1em padding, rounded corners, overflow-x auto, 1em margins
+- Pre code: transparent background, no padding, line-height: 1.5
+
+**Blockquotes** (all 5 components):
+- 3px left border, 1em padding-left, 1em top/bottom margins
+- Muted foreground color for subtle appearance
+
 **Tables** (all 5 components):
 - Consistent borders (1px solid) with `!important` to ensure visibility
 - Body cell padding: `0.5em` vertical, `0.75em` horizontal
@@ -62,9 +93,8 @@ All markdown components use shared styles defined in:
 
 **Key Characteristics**:
 - Max width: `85ch` (optimal line length for readability)
-- Line height: `1.7` (comfortable reading)
-- Paragraph margins: `0.75em` (standard spacing)
 - Full editing capabilities including task lists
+- Component-specific: italic (`em`) and horizontal rule (`hr`) styling only
 
 **Location**: `/frontend/src/lib/components/editor/MarkdownEditor.svelte`
 
@@ -96,10 +126,8 @@ All markdown components use shared styles defined in:
 
 **Key Characteristics**:
 - Max height: `min(85vh, 720px)` (constrained by popover)
-- Line height: `1.6` (tighter than editor's 1.7)
-- Paragraph margins: `0.5em` (tighter than editor's 0.75em)
-- List margins: `0.5em` (tighter spacing)
-- Optimized for density in small space
+- Component-specific: horizontal rule (`hr`) styling only
+- Uses all shared styles for consistent markdown rendering
 
 **Location**: `/frontend/src/lib/components/scratchpad-popover.svelte`
 
@@ -109,8 +137,8 @@ All markdown components use shared styles defined in:
 **Key Characteristics**:
 - Read-only display
 - Prose styling classes
-- Minimal component-specific overrides
-- No task lists or custom extensions
+- Uses all shared styles with no component-specific overrides
+- Task lists supported
 
 **Location**: `/frontend/src/lib/components/chat/ChatMarkdown.svelte`
 
@@ -120,8 +148,9 @@ All markdown components use shared styles defined in:
 **Key Characteristics**:
 - Read-only display
 - Prose styling classes
+- Uses all shared styles with no component-specific overrides
 - Supports image galleries and captions
-- No task lists
+- Task lists supported
 
 **Location**: `/frontend/src/lib/components/files/FileMarkdown.svelte`
 
@@ -307,17 +336,45 @@ This is intentional and necessary for reliable cross-component styling.
 3. **Mermaid Diagrams**: Support diagram rendering
 4. **Table Editing**: Enhance table manipulation in editor
 
-### Consolidation Opportunities
-- Minimal duplication remains (by design for component-specific needs)
+### Consolidation Status
+- ✅ **Complete**: All core markdown styles fully consolidated as of 2026-01-14
+- Remaining component-specific styles are intentional (images, galleries, YouTube features, hr)
 - Monitor for new patterns that could be extracted to shared styles
 - Consider component-level CSS modules if specificity conflicts arise
 
 ---
 
-**Last Updated**: 2026-01-13 (22:30 UTC)
+**Last Updated**: 2026-01-14
 **Maintained By**: Frontend Team
 
 ## Change Log
+
+### 2026-01-14
+- Added complete H1-H6 heading hierarchy to shared styles
+  - H4: 1.125em, H5: 1.0625em, H6: 1em (all headers now styled)
+  - All headers use semibold (600) except H1 (bold 700)
+  - Consistent line-height: 1.3 across all heading levels
+- Normalized header spacing with rem units
+  - Switched from em to rem for predictable absolute spacing
+  - H2-H6 top margin: 1rem (was 1.5em, which varied by header size)
+  - All header bottom margins: 0.3rem (was 0.5rem)
+- Standardized paragraph margins and line-height
+  - Added 0.5rem top/bottom margins to shared styles (rem units)
+  - Added line-height: 1.7 to shared styles
+  - Removed duplicates from MarkdownEditor (was 0.75em) and scratchpad (was 0.5em)
+- Standardized all list styles across components
+  - ul/ol margins: 0.5rem, padding: 1.5em
+  - List items: line-height 1.4 (tighter than paragraphs)
+  - Nested lists: margin 0
+  - Paragraphs in lists: margin 0
+- Standardized code block styles
+  - Inline code: muted background, 0.2em/0.4em padding, monospace font
+  - Pre blocks: muted background, 1em padding, rounded corners
+  - Pre code: line-height 1.5
+- Standardized blockquote styles
+  - 3px left border, 1em padding/margins, muted color
+- Complete consolidation: All components now use shared styles for paragraphs, lists, code, and blockquotes
+- Updated documentation to reflect comprehensive standardization
 
 ### 2026-01-13
 - Initial consolidation of duplicate markdown styles into shared file
