@@ -412,7 +412,7 @@ Critical Path (MVP): [███████████████████�
 - [x] Replace TextKit editor with CodeMirror 6 (shared web bundle)
 - [x] Editor toolbar (bold, italic, headings, lists, etc.)
 - [x] Advanced formatting rendering (tables, links, code blocks)
-- [ ] Syntax highlighting for code blocks
+- [x] Syntax highlighting for code blocks
 - [ ] Live preview option (optional)
 - [ ] Performance optimization for long documents
 - [ ] Plan: `docs/plans/2026-01-13-markdown-plan.md`
@@ -423,7 +423,7 @@ Critical Path (MVP): [███████████████████�
 - [x] Web-style theme parity (shared CM6 theme)
 - [ ] Formatting actions parity: bold, italic, strike, underline, headings (H1–H3), blockquote, horizontal rule (underline pending)
 - [x] List parity: bullet, ordered, task lists (nested), toggle task completion
-- [ ] Code parity: inline code + fenced code blocks with language tag + syntax highlighting
+- [x] Code parity: inline code + fenced code blocks with language tag + syntax highlighting
 - [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
 - [x] Link parity: autolinks + external open, preserve URLs in markdown
 - [x] Image parity: image blocks with caption (gallery block pending)
