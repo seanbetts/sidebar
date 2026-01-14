@@ -1,10 +1,10 @@
 import { EditorState, Compartment, RangeSetBuilder } from '@codemirror/state';
 import { Decoration, EditorView, keymap, ViewPlugin } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { indentOnInput, syntaxHighlighting } from '@codemirror/language';
+import { HighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
-import { HighlightStyle, tags } from '@codemirror/highlight';
 import { GFM } from '@lezer/markdown';
+import { tags } from '@lezer/highlight';
 
 type WebKitMessageHandler = {
 	postMessage: (payload: unknown) => void;
