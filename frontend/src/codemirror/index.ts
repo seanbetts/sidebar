@@ -1,8 +1,9 @@
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { indentOnInput } from '@codemirror/language';
+import { indentOnInput, syntaxHighlighting } from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
+import { HighlightStyle, tags } from '@codemirror/highlight';
 
 type WebKitMessageHandler = {
 	postMessage: (payload: unknown) => void;
@@ -99,9 +100,89 @@ const updateListener = EditorView.updateListener.of((update) => {
 	}, debounceMs);
 });
 
+const editorTheme = EditorView.theme(
+	{
+		'&': {
+			backgroundColor: 'var(--color-background)',
+			color: 'var(--color-foreground)'
+		},
+		'.cm-content': {
+			fontFamily:
+				'-apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, system-ui, sans-serif',
+			lineHeight: '1.7'
+		},
+		'.cm-content .cm-line': {
+			padding: '0.15em 0'
+		},
+		'.cm-gutters': {
+			backgroundColor: 'var(--color-muted)',
+			color: 'var(--color-muted-foreground)',
+			borderRight: '1px solid var(--color-border)'
+		},
+		'.cm-cursor, .cm-dropCursor': {
+			borderLeftColor: 'var(--color-foreground)'
+		},
+		'&.cm-focused .cm-selectionBackground, ::selection': {
+			backgroundColor: 'color-mix(in oklab, var(--color-primary) 30%, transparent)'
+		},
+		'.cm-activeLine': {
+			backgroundColor: 'color-mix(in oklab, var(--color-muted) 60%, transparent)'
+		}
+	},
+	{ dark: false }
+);
+
+const editorThemeDark = EditorView.theme(
+	{
+		'&': {
+			backgroundColor: 'var(--color-background)',
+			color: 'var(--color-foreground)'
+		},
+		'.cm-gutters': {
+			backgroundColor: 'var(--color-muted)',
+			color: 'var(--color-muted-foreground)',
+			borderRight: '1px solid var(--color-border)'
+		},
+		'.cm-cursor, .cm-dropCursor': {
+			borderLeftColor: 'var(--color-foreground)'
+		},
+		'&.cm-focused .cm-selectionBackground, ::selection': {
+			backgroundColor: 'color-mix(in oklab, var(--color-primary) 30%, transparent)'
+		},
+		'.cm-activeLine': {
+			backgroundColor: 'color-mix(in oklab, var(--color-muted) 50%, transparent)'
+		}
+	},
+	{ dark: true }
+);
+
+const highlightStyle = HighlightStyle.define([
+	{ tag: tags.heading1, fontWeight: '700', fontSize: '2em' },
+	{ tag: tags.heading2, fontWeight: '600', fontSize: '1.5em' },
+	{ tag: tags.heading3, fontWeight: '600', fontSize: '1.25em' },
+	{ tag: tags.strong, fontWeight: '700' },
+	{ tag: tags.emphasis, fontStyle: 'italic' },
+	{
+		tag: tags.code,
+		fontFamily:
+			'ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace',
+		fontSize: '0.875em',
+		backgroundColor: 'var(--color-muted)',
+		borderRadius: '0.25em',
+		padding: '0.15em 0.35em'
+	},
+	{ tag: tags.link, color: 'var(--color-primary)', textDecoration: 'underline' },
+	{ tag: tags.url, color: 'var(--color-primary)', textDecoration: 'underline' },
+	{ tag: tags.quote, color: 'var(--color-muted-foreground)' },
+	{ tag: tags.meta, color: 'var(--color-muted-foreground)' }
+]);
+
 const state = EditorState.create({
 	doc: '',
 	extensions: [
+		editorTheme,
+		editorThemeDark,
+		syntaxHighlighting(highlightStyle),
 		readOnlyCompartment.of([EditorState.readOnly.of(false), EditorView.editable.of(true)]),
 		history(),
 		indentOnInput(),

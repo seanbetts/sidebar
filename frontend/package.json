@@ -58,6 +58,7 @@
 	},
 	"dependencies": {
 		"@codemirror/commands": "^6.10.1",
+		"@codemirror/highlight": "^0.19.8",
 		"@codemirror/lang-markdown": "^6.3.2",
 		"@codemirror/language": "^6.11.3",
 		"@codemirror/state": "^6.5.2",
