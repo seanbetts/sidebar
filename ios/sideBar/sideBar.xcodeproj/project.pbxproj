@@ -130,6 +130,7 @@
 			buildPhases = (
 				14C84A442F10562300FE0C16 /* Sources */,
 				14E0AB1A2F20000000BEEF01 /* Generate SideBarConfig.plist */,
+				14E0AB1A2F30000000BEEF02 /* Copy CodeMirror Bundle */,
 				14C84A452F10562300FE0C16 /* Frameworks */,
 				14C84A462F10562300FE0C16 /* Resources */,
 			);
@@ -290,6 +291,22 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -e\nCONFIG_PLIST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/SideBarConfig.plist\"\nexport CONFIG_PLIST\n/usr/bin/python3 - <<'PY'\nimport os\nimport pathlib\nimport plistlib\nfrom typing import Dict\n\n\ndef parse_xcconfig(path: str) -> Dict[str, str]:\n    if not path or not os.path.exists(path):\n        return {}\n    values: Dict[str, str] = {}\n    with open(path, \"r\", encoding=\"utf-8\") as handle:\n        for line in handle:\n            stripped = line.strip()\n            if not stripped or stripped.startswith(\"//\"):\n                continue\n            if stripped.startswith(\"#include\"):\n                continue\n            if \"=\" not in stripped:\n                continue\n            key, value = stripped.split(\"=\", 1)\n            key = key.strip()\n            value = value.strip().strip('\"')\n            values[key] = value\n    return values\n\n\ndef normalize(value: str) -> str:\n    return value.replace(\"\\\\/\", \"/\").strip()\n\n\nbase_path = os.environ.get(\"SCRIPT_INPUT_FILE_0\", \"\")\nlocal_path = os.environ.get(\"SCRIPT_INPUT_FILE_1\", \"\")\nbase_config = parse_xcconfig(base_path)\nlocal_config = parse_xcconfig(local_path)\nmerged_config = {**base_config, **local_config}\n\n\ndef read_value(key: str) -> str:\n    env_value = os.environ.get(key, \"\")\n    if env_value.strip():\n        return normalize(env_value)\n    config_value = merged_config.get(key, \"\")\n    return normalize(config_value)\n\n\npayload = {\n    \"API_BASE_URL\": read_value(\"API_BASE_URL\"),\n    \"SUPABASE_URL\": read_value(\"SUPABASE_URL\"),\n    \"SUPABASE_ANON_KEY\": read_value(\"SUPABASE_ANON_KEY\"),\n}\n\npath = pathlib.Path(os.environ[\"CONFIG_PLIST\"])\npath.parent.mkdir(parents=True, exist_ok=True)\nwith path.open(\"wb\") as handle:\n    plistlib.dump(payload, handle)\nPY\n";
+		};
+		14E0AB1A2F30000000BEEF02 /* Copy CodeMirror Bundle */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/sideBar/Resources/CodeMirror",
+			);
+			name = "Copy CodeMirror Bundle";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/CodeMirror",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nSOURCE_DIR=\"$SRCROOT/sideBar/Resources/CodeMirror\"\nDEST_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/CodeMirror\"\n\nif [ ! -d \"$SOURCE_DIR\" ]; then\n  echo \"CodeMirror bundle not found at $SOURCE_DIR\" >&2\n  exit 1\nfi\n\nmkdir -p \"$DEST_DIR\"\n/usr/bin/rsync -a --delete \"$SOURCE_DIR/\" \"$DEST_DIR/\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
