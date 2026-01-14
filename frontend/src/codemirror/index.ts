@@ -146,14 +146,12 @@ const editorTheme = EditorView.theme(
 		},
 		'.cm-task-item--checked::before': {
 			backgroundColor: 'var(--color-muted)',
-			borderColor: 'var(--color-border)'
-		},
-		'.cm-task-item--checked::after': {
-			content: '"x"',
-			position: 'absolute',
-			left: '0.45em',
-			top: '0.18em',
-			fontSize: '0.9em',
+			borderColor: 'var(--color-border)',
+			backgroundImage:
+				'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 16 16\\" stroke=\\"currentColor\\" stroke-width=\\"2\\" fill=\\"none\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><path d=\\"M4 8l3 3 5-6\\"/></svg>")',
+			backgroundRepeat: 'no-repeat',
+			backgroundPosition: 'center',
+			backgroundSize: '0.7em 0.7em',
 			color: 'var(--color-muted-foreground)'
 		},
 		'.cm-line.cm-table-row': {
@@ -224,14 +222,12 @@ const editorThemeDark = EditorView.theme(
 		},
 		'.cm-task-item--checked::before': {
 			backgroundColor: 'var(--color-muted)',
-			borderColor: 'var(--color-border)'
-		},
-		'.cm-task-item--checked::after': {
-			content: '"x"',
-			position: 'absolute',
-			left: '0.45em',
-			top: '0.18em',
-			fontSize: '0.9em',
+			borderColor: 'var(--color-border)',
+			backgroundImage:
+				'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 16 16\\" stroke=\\"currentColor\\" stroke-width=\\"2\\" fill=\\"none\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><path d=\\"M4 8l3 3 5-6\\"/></svg>")',
+			backgroundRepeat: 'no-repeat',
+			backgroundPosition: 'center',
+			backgroundSize: '0.7em 0.7em',
 			color: 'var(--color-muted-foreground)'
 		},
 		'.cm-line.cm-table-row': {
@@ -316,12 +312,13 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 		private buildDecorations(view: EditorView) {
 			const builder = new RangeSetBuilder<Decoration>();
 			const tableSeparatorRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
-			const tableRowRegex = /^\s*\|?.+\|.+/;
+			const tableRowRegex = /^\s*\|[^|]+\|[^|]+/;
 			const taskRegex = /^\s*[-*+]\s+\[( |x|X)\]\s+/;
 
 			for (const { from, to } of view.visibleRanges) {
 				let pos = from;
 				let pendingTableHeader = false;
+				let inTable = false;
 				let tableRowIndex = 0;
 				while (pos <= to) {
 					const line = view.state.doc.lineAt(pos);
@@ -343,12 +340,14 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 
 					if (isSeparator) {
 						builder.add(line.from, line.from, tableSeparatorDecoration);
+						inTable = true;
 					}
 
-					if (isTableRow) {
+					if (isTableRow && (inTable || pendingTableHeader)) {
 						if (pendingTableHeader) {
 							builder.add(line.from, line.from, tableHeaderDecoration);
 							pendingTableHeader = false;
+							inTable = true;
 							tableRowIndex = 0;
 						} else {
 							const decoration =
@@ -359,6 +358,7 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					} else if (!isSeparator) {
 						tableRowIndex = 0;
 						pendingTableHeader = false;
+						inTable = false;
 					}
 
 					if (isBlockquote) {
