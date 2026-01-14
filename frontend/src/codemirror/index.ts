@@ -41,6 +41,11 @@ const markdownLinkRegex = /\[([^\]]+)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
 const angleLinkRegex = /<((?:https?:\/\/|mailto:)[^>\s]+)>/g;
 const bareUrlRegex = /(?:https?:\/\/|www\.)[^\s)]+/g;
 const emailRegex = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const headingRegex = /^(\s*)(#{1,6})\s+/;
+const bulletListRegex = /^(\s*)([-*+])\s+/;
+const orderedListRegex = /^(\s*)(\d+)\.\s+/;
+const taskListRegex = /^(\s*)([-*+])\s+\[( |x|X)\]\s+/;
+const blockquoteRegex = /^(\s*)>\s+/;
 
 /** Post a message to the native WKWebView bridge if available. */
 function postToNative(handlerName: string, payload: unknown) {
@@ -83,10 +88,293 @@ function focus() {
 	view?.focus();
 }
 
-/** Apply a command by name. Returns false when not supported. */
-function applyCommand(_command: string, _payload?: unknown): boolean {
+function getSelection() {
+	if (!view) return null;
+	return view.state.selection.main;
+}
+
+function dispatchChanges(
+	changes: { from: number; to: number; insert: string }[],
+	selection?: { anchor: number; head: number }
+) {
+	if (!view) return;
+	view.dispatch({
+		changes,
+		selection,
+		scrollIntoView: true,
+		userEvent: 'input'
+	});
+}
+
+function toggleInlineWrap(prefix: string, suffix: string, placeholder: string) {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	const doc = view.state.doc;
+	const from = selection.from;
+	const to = selection.to;
+	const selected = doc.sliceString(from, to);
+	if (selection.empty) {
+		const insert = `${prefix}${placeholder}${suffix}`;
+		dispatchChanges([{ from, to, insert }], {
+			anchor: from + prefix.length,
+			head: from + prefix.length + placeholder.length
+		});
+		return true;
+	}
+	if (selected.startsWith(prefix) && selected.endsWith(suffix)) {
+		const stripped = selected.slice(prefix.length, selected.length - suffix.length);
+		dispatchChanges([{ from, to, insert: stripped }], {
+			anchor: from,
+			head: from + stripped.length
+		});
+		return true;
+	}
+	dispatchChanges([{ from, to, insert: `${prefix}${selected}${suffix}` }], {
+		anchor: from + prefix.length,
+		head: to + prefix.length
+	});
+	return true;
+}
+
+function getLinesInRange(from: number, to: number) {
+	if (!view) return [];
+	const lines = [];
+	let pos = from;
+	while (pos <= to) {
+		const line = view.state.doc.lineAt(pos);
+		lines.push(line);
+		if (line.to >= to) break;
+		pos = line.to + 1;
+	}
+	return lines;
+}
+
+function toggleLinePrefix(prefix: string, removeRegex: RegExp) {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	const lines = getLinesInRange(selection.from, selection.to);
+	const changes: { from: number; to: number; insert: string }[] = [];
+	for (let index = lines.length - 1; index >= 0; index -= 1) {
+		const line = lines[index];
+		const match = removeRegex.exec(line.text);
+		if (match) {
+			const start = line.from + match[1].length;
+			const end = line.from + match[0].length;
+			changes.push({ from: start, to: end, insert: '' });
+		} else {
+			const indent = /^(\s*)/.exec(line.text)?.[1] ?? '';
+			const insertAt = line.from + indent.length;
+			changes.push({ from: insertAt, to: insertAt, insert: prefix });
+		}
+	}
+	if (changes.length) {
+		dispatchChanges(changes);
+		return true;
+	}
 	return false;
 }
+
+function toggleHeading(level: number) {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	const prefix = `${'#'.repeat(level)} `;
+	const lines = getLinesInRange(selection.from, selection.to);
+	const changes: { from: number; to: number; insert: string }[] = [];
+	for (let index = lines.length - 1; index >= 0; index -= 1) {
+		const line = lines[index];
+		const match = headingRegex.exec(line.text);
+		if (match && match[2].length === level) {
+			const start = line.from + match[1].length;
+			const end = line.from + match[0].length;
+			changes.push({ from: start, to: end, insert: '' });
+		} else if (match) {
+			const start = line.from + match[1].length;
+			const end = line.from + match[0].length;
+			changes.push({ from: start, to: end, insert: prefix });
+		} else {
+			const indent = /^(\s*)/.exec(line.text)?.[1] ?? '';
+			const insertAt = line.from + indent.length;
+			changes.push({ from: insertAt, to: insertAt, insert: prefix });
+		}
+	}
+	if (changes.length) {
+		dispatchChanges(changes);
+		return true;
+	}
+	return false;
+}
+
+function toggleBulletList() {
+	return toggleLinePrefix('- ', bulletListRegex);
+}
+
+function toggleOrderedList() {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	const lines = getLinesInRange(selection.from, selection.to);
+	const changes: { from: number; to: number; insert: string }[] = [];
+	for (let index = lines.length - 1; index >= 0; index -= 1) {
+		const line = lines[index];
+		const match = orderedListRegex.exec(line.text);
+		if (match) {
+			const start = line.from + match[1].length;
+			const end = line.from + match[0].length;
+			changes.push({ from: start, to: end, insert: '' });
+		} else {
+			const indent = /^(\s*)/.exec(line.text)?.[1] ?? '';
+			const insertAt = line.from + indent.length;
+			changes.push({ from: insertAt, to: insertAt, insert: '1. ' });
+		}
+	}
+	if (changes.length) {
+		dispatchChanges(changes);
+		return true;
+	}
+	return false;
+}
+
+function toggleTaskList() {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	const lines = getLinesInRange(selection.from, selection.to);
+	const changes: { from: number; to: number; insert: string }[] = [];
+	for (let index = lines.length - 1; index >= 0; index -= 1) {
+		const line = lines[index];
+		const match = taskListRegex.exec(line.text);
+		if (match) {
+			const start = line.from + match[1].length;
+			const end = line.from + match[0].length;
+			changes.push({ from: start, to: end, insert: '' });
+			continue;
+		}
+		const bulletMatch = bulletListRegex.exec(line.text);
+		if (bulletMatch) {
+			const start = line.from + bulletMatch[1].length;
+			const end = line.from + bulletMatch[0].length;
+			changes.push({ from: start, to: end, insert: '- [ ] ' });
+			continue;
+		}
+		const indent = /^(\s*)/.exec(line.text)?.[1] ?? '';
+		const insertAt = line.from + indent.length;
+		changes.push({ from: insertAt, to: insertAt, insert: '- [ ] ' });
+	}
+	if (changes.length) {
+		dispatchChanges(changes);
+		return true;
+	}
+	return false;
+}
+
+function toggleBlockquote() {
+	return toggleLinePrefix('> ', blockquoteRegex);
+}
+
+function insertHorizontalRule() {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	dispatchChanges([{ from: selection.from, to: selection.to, insert: '\n---\n' }]);
+	return true;
+}
+
+function insertLink() {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	const doc = view.state.doc;
+	const from = selection.from;
+	const to = selection.to;
+	const selected = doc.sliceString(from, to);
+	const label = selected || 'link';
+	const url = 'https://';
+	const insert = `[${label}](${url})`;
+	const urlStart = from + label.length + 3;
+	dispatchChanges([{ from, to, insert }], { anchor: urlStart, head: urlStart + url.length });
+	return true;
+}
+
+function insertCodeBlock() {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	const doc = view.state.doc;
+	const from = selection.from;
+	const to = selection.to;
+	const selected = doc.sliceString(from, to);
+	if (selected) {
+		const insert = `\n\`\`\`\n${selected}\n\`\`\`\n`;
+		dispatchChanges([{ from, to, insert }], {
+			anchor: from + 5,
+			head: from + 5 + selected.length
+		});
+		return true;
+	}
+	const insert = '\n```\n\n```\n';
+	const cursor = from + 5;
+	dispatchChanges([{ from, to, insert }], { anchor: cursor, head: cursor });
+	return true;
+}
+
+function insertTable() {
+	const selection = getSelection();
+	if (!selection || !view) return false;
+	const from = selection.from;
+	const to = selection.to;
+	const insert = '\n| Header | Header |\n| --- | --- |\n| Cell | Cell |\n';
+	const headerStart = from + 3;
+	dispatchChanges([{ from, to, insert }], { anchor: headerStart, head: headerStart + 6 });
+	return true;
+}
+
+function applyCommand(command: string, _payload?: unknown): boolean {
+	if (!view) return false;
+	if (view.state.facet(EditorState.readOnly)) return false;
+	switch (command) {
+		case 'bold':
+			return toggleInlineWrap('**', '**', 'bold');
+		case 'italic':
+			return toggleInlineWrap('*', '*', 'italic');
+		case 'strike':
+			return toggleInlineWrap('~~', '~~', 'strike');
+		case 'inlineCode':
+			return toggleInlineWrap('`', '`', 'code');
+		case 'heading1':
+			return toggleHeading(1);
+		case 'heading2':
+			return toggleHeading(2);
+		case 'heading3':
+			return toggleHeading(3);
+		case 'bulletList':
+			return toggleBulletList();
+		case 'orderedList':
+			return toggleOrderedList();
+		case 'taskList':
+			return toggleTaskList();
+		case 'blockquote':
+			return toggleBlockquote();
+		case 'hr':
+			return insertHorizontalRule();
+		case 'link':
+			return insertLink();
+		case 'codeBlock':
+			return insertCodeBlock();
+		case 'table':
+			return insertTable();
+		default:
+			return false;
+	}
+}
+
+const formattingKeymap = keymap.of([
+	{ key: 'Mod-b', run: () => applyCommand('bold') },
+	{ key: 'Mod-i', run: () => applyCommand('italic') },
+	{ key: 'Mod-Shift-x', run: () => applyCommand('strike') },
+	{ key: 'Mod-`', run: () => applyCommand('inlineCode') },
+	{ key: 'Mod-Alt-1', run: () => applyCommand('heading1') },
+	{ key: 'Mod-Alt-2', run: () => applyCommand('heading2') },
+	{ key: 'Mod-Alt-3', run: () => applyCommand('heading3') },
+	{ key: 'Mod-Shift-7', run: () => applyCommand('orderedList') },
+	{ key: 'Mod-Shift-8', run: () => applyCommand('bulletList') },
+	{ key: 'Mod-Shift-9', run: () => applyCommand('blockquote') },
+	{ key: 'Mod-Shift-k', run: () => applyCommand('link') }
+]);
 
 function applyCaretOverride() {
 	const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
@@ -600,6 +888,7 @@ function initializeEditor() {
 			indentOnInput(),
 			markdown({ extensions: [GFM, Autolink], addKeymap: true }),
 			keymap.of([...defaultKeymap, ...historyKeymap]),
+			formattingKeymap,
 			EditorView.lineWrapping,
 			markdownLinePlugin,
 			taskToggleHandler,

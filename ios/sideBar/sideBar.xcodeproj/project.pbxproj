@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0A12F21000000BEEF02 /* MarkdownUI */; };
 		1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */; };
-		14E0AB222F30000000BEEF06 /* CodeMirror in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB212F30000000BEEF06 /* CodeMirror */; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
 		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
@@ -17,6 +16,7 @@
 		14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
 		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
 		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+		14E0AB222F30000000BEEF06 /* sideBar/Resources/CodeMirror in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB212F30000000BEEF06 /* sideBar/Resources/CodeMirror */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,12 +38,12 @@
 
 /* Begin PBXFileReference section */
 		1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SideBar.local.xcconfig; sourceTree = "<group>"; };
-		14E0AB212F30000000BEEF06 /* CodeMirror */ = {isa = PBXFileReference; lastKnownFileType = folder; path = sideBar/Resources/CodeMirror; sourceTree = "<group>"; };
 		14C84A482F10562300FE0C16 /* sideBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sideBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A552F10562500FE0C16 /* sideBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14DFA3272F10F45E001DAF5B /* SideBarCache.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = SideBarCache.xcdatamodel; sourceTree = "<group>"; };
 		14DFA3372F115A0A001DAF5B /* Config/SideBar.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/SideBar.xcconfig; sourceTree = "<group>"; };
+		14E0AB212F30000000BEEF06 /* sideBar/Resources/CodeMirror */ = {isa = PBXFileReference; lastKnownFileType = folder; path = sideBar/Resources/CodeMirror; sourceTree = "<group>"; };
 		4F1D2A6D2FF2A6A100A0B2C3 /* sideBar/sideBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = sideBar/sideBar.entitlements; sourceTree = "<group>"; };
 		87939F14DC374DD684951468 /* sideBar/Base.lproj/SideBarLaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = sideBar/Base.lproj/SideBarLaunchScreen.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -110,6 +110,7 @@
 				14C84A622F10562500FE0C16 /* sideBarUITests */,
 				14C84A492F10562300FE0C16 /* Products */,
 				1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */,
+				14E6F4CB2F179BA4005B8045 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -121,6 +122,14 @@
 				14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		14E6F4CB2F179BA4005B8045 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				14E0AB212F30000000BEEF06 /* sideBar/Resources/CodeMirror */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -255,7 +264,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				14E0AB222F30000000BEEF06 /* CodeMirror in Resources */,
+				14E0AB222F30000000BEEF06 /* sideBar/Resources/CodeMirror in Resources */,
 				1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

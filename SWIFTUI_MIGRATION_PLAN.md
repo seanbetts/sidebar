@@ -410,7 +410,7 @@ Critical Path (MVP): [███████████████████�
 #### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
 - [x] **Critical Decision**: CodeMirror 6 in WKWebView for WYSIWYG parity
 - [x] Replace TextKit editor with CodeMirror 6 (shared web bundle)
-- [ ] Editor toolbar (bold, italic, headings, lists, etc.) — deferred (no toolbar)
+- [x] Editor toolbar (bold, italic, headings, lists, etc.)
 - [x] Advanced formatting rendering (tables, links, code blocks)
 - [ ] Syntax highlighting for code blocks
 - [ ] Live preview option (optional)
@@ -427,7 +427,7 @@ Critical Path (MVP): [███████████████████�
 - [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
 - [x] Link parity: autolinks + external open, preserve URLs in markdown
 - [x] Image parity: image blocks with caption (gallery block pending)
-- [ ] Editor toolbar parity: primary actions + overflow menu to match web affordances — deferred (no toolbar)
+- [x] Editor toolbar parity: primary actions (overflow menu pending)
 - [ ] Selection/undo parity: keep cursor on external updates
 - [x] Auto-save debounce wired (dirty state tracking pending)
 - [ ] External update handling: detect server/AI edits and merge or prompt with conflict UI
