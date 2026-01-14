@@ -679,6 +679,20 @@ const tableSeparatorDecoration = Decoration.line({ class: 'cm-table-separator' }
 const tableStartDecoration = Decoration.line({ class: 'cm-table-start' });
 const tableEndDecoration = Decoration.line({ class: 'cm-table-end' });
 const livePreviewHideDecoration = Decoration.mark({ class: 'cm-live-hide' });
+const listMarkerDecoration = Decoration.mark({ class: 'cm-list-marker' });
+
+class ListMarkerWidget extends WidgetType {
+	constructor(private marker: string) {
+		super();
+	}
+
+	toDOM() {
+		const span = document.createElement('span');
+		span.className = 'cm-list-marker-widget';
+		span.textContent = this.marker;
+		return span;
+	}
+}
 
 const markdownLinePlugin = ViewPlugin.fromClass(
 	class {
@@ -882,6 +896,23 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					if (taskMatch) {
 						const isChecked = taskMatch[1].toLowerCase() == 'x';
 						builder.add(line.from, line.from, isChecked ? taskCheckedDecoration : taskDecoration);
+						const indentMatch = /^(\s*)/.exec(text);
+						const markerStart = line.from + (indentMatch ? indentMatch[1].length : 0);
+						builder.add(markerStart, line.from + taskMatch[0].length, listMarkerDecoration);
+					} else if (listMatch) {
+						const marker = listMatch[2];
+						if (!marker.endsWith('.')) {
+							const markerStart = line.from + listMatch[1].length;
+							const markerEnd = line.from + listMatch[0].length;
+							builder.add(
+								markerStart,
+								markerEnd,
+								Decoration.replace({
+									widget: new ListMarkerWidget('• '),
+									side: 1
+								})
+							);
+						}
 					}
 
 					if (isBlank) {

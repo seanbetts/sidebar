@@ -137,19 +137,25 @@ body {
 }
 
 .cm-line.cm-list-item {
-  display: list-item;
+  display: block;
   line-height: 1.4;
   margin: 0;
-  padding-left: 1.5em;
-  list-style-position: outside;
+  padding-left: 0;
 }
 
 .cm-line.cm-list-item.cm-list-unordered {
-  list-style-type: disc;
 }
 
 .cm-line.cm-list-item.cm-list-ordered {
-  list-style-type: decimal;
+}
+
+.cm-list-marker {
+  color: transparent;
+  font-size: 0;
+}
+
+.cm-list-marker-widget {
+  color: currentColor;
 }
 
 .cm-line.cm-list-start {
