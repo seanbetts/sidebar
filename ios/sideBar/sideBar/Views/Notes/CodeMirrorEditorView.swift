@@ -194,11 +194,11 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
 extension CodeMirrorCoordinator: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         logger.info("CodeMirror webview didFinish navigation")
-        evaluateJavaScript("window.editorAPI != null") { [weak self] result in
+        evaluateJavaScript("typeof window.editorAPI") { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let value):
-                self.logger.info("CodeMirror editorAPI present: \(String(describing: value), privacy: .public)")
+                self.logger.info("CodeMirror editorAPI type: \(String(describing: value), privacy: .public)")
             case .failure(let error):
                 self.logger.error("CodeMirror editorAPI check failed: \(String(describing: error), privacy: .public)")
             }
@@ -210,6 +210,24 @@ extension CodeMirrorCoordinator: WKNavigationDelegate {
                 self.logger.info("CodeMirror document.readyState: \(String(describing: value), privacy: .public)")
             case .failure(let error):
                 self.logger.error("CodeMirror readyState check failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+        evaluateJavaScript("document.getElementById('editor') != null") { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let value):
+                self.logger.info("CodeMirror editor element present: \(String(describing: value), privacy: .public)")
+            case .failure(let error):
+                self.logger.error("CodeMirror editor element check failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+        evaluateJavaScript("document.currentScript && document.currentScript.src") { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let value):
+                self.logger.info("CodeMirror currentScript src: \(String(describing: value), privacy: .public)")
+            case .failure(let error):
+                self.logger.error("CodeMirror currentScript check failed: \(String(describing: error), privacy: .public)")
             }
         }
     }
@@ -240,17 +258,25 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
         let errorScript = WKUserScript(
             source: """
             window.addEventListener('error', function(event) {
-              window.webkit?.messageHandlers?.jsError?.postMessage({
-                message: event.message || 'Unknown error',
-                source: event.filename || '',
-                line: event.lineno || 0,
-                column: event.colno || 0
-              });
+              try {
+                window.webkit?.messageHandlers?.jsError?.postMessage({
+                  message: event.message || 'Unknown error',
+                  source: event.filename || '',
+                  line: event.lineno || 0,
+                  column: event.colno || 0
+                });
+              } catch (e) {
+                window.webkit?.messageHandlers?.jsError?.postMessage({ message: 'Error handler failed' });
+              }
             });
             window.addEventListener('unhandledrejection', function(event) {
-              window.webkit?.messageHandlers?.jsError?.postMessage({
-                message: event.reason && event.reason.message ? event.reason.message : String(event.reason || 'Unhandled rejection')
-              });
+              try {
+                window.webkit?.messageHandlers?.jsError?.postMessage({
+                  message: event.reason && event.reason.message ? event.reason.message : String(event.reason || 'Unhandled rejection')
+                });
+              } catch (e) {
+                window.webkit?.messageHandlers?.jsError?.postMessage({ message: 'Rejection handler failed' });
+              }
             });
             """,
             injectionTime: .atDocumentStart,
@@ -295,17 +321,25 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
         let errorScript = WKUserScript(
             source: """
             window.addEventListener('error', function(event) {
-              window.webkit?.messageHandlers?.jsError?.postMessage({
-                message: event.message || 'Unknown error',
-                source: event.filename || '',
-                line: event.lineno || 0,
-                column: event.colno || 0
-              });
+              try {
+                window.webkit?.messageHandlers?.jsError?.postMessage({
+                  message: event.message || 'Unknown error',
+                  source: event.filename || '',
+                  line: event.lineno || 0,
+                  column: event.colno || 0
+                });
+              } catch (e) {
+                window.webkit?.messageHandlers?.jsError?.postMessage({ message: 'Error handler failed' });
+              }
             });
             window.addEventListener('unhandledrejection', function(event) {
-              window.webkit?.messageHandlers?.jsError?.postMessage({
-                message: event.reason && event.reason.message ? event.reason.message : String(event.reason || 'Unhandled rejection')
-              });
+              try {
+                window.webkit?.messageHandlers?.jsError?.postMessage({
+                  message: event.reason && event.reason.message ? event.reason.message : String(event.reason || 'Unhandled rejection')
+                });
+              } catch (e) {
+                window.webkit?.messageHandlers?.jsError?.postMessage({ message: 'Rejection handler failed' });
+              }
             });
             """,
             injectionTime: .atDocumentStart,
