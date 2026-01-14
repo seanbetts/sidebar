@@ -14,6 +14,8 @@ export default defineConfig({
 		rollupOptions: {
 			input: path.resolve(__dirname, 'src/codemirror/editor.html'),
 			output: {
+				format: 'iife',
+				inlineDynamicImports: true,
 				entryFileNames: 'editor.js',
 				chunkFileNames: 'editor.js',
 				assetFileNames: 'editor.css'
