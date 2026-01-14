@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0A12F21000000BEEF02 /* MarkdownUI */; };
 		1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */; };
+		14E0AB1C2F30000000BEEF03 /* editor.html in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB1B2F30000000BEEF03 /* editor.html */; };
+		14E0AB1E2F30000000BEEF04 /* editor.css in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB1D2F30000000BEEF04 /* editor.css */; };
+		14E0AB202F30000000BEEF05 /* editor.js in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB1F2F30000000BEEF05 /* editor.js */; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
 		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
@@ -37,6 +40,9 @@
 
 /* Begin PBXFileReference section */
 		1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SideBar.local.xcconfig; sourceTree = "<group>"; };
+		14E0AB1B2F30000000BEEF03 /* editor.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = sideBar/Resources/CodeMirror/editor.html; sourceTree = "<group>"; };
+		14E0AB1D2F30000000BEEF04 /* editor.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = sideBar/Resources/CodeMirror/editor.css; sourceTree = "<group>"; };
+		14E0AB1F2F30000000BEEF05 /* editor.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = sideBar/Resources/CodeMirror/editor.js; sourceTree = "<group>"; };
 		14C84A482F10562300FE0C16 /* sideBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sideBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A552F10562500FE0C16 /* sideBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -130,7 +136,6 @@
 			buildPhases = (
 				14C84A442F10562300FE0C16 /* Sources */,
 				14E0AB1A2F20000000BEEF01 /* Generate SideBarConfig.plist */,
-				14E0AB1A2F30000000BEEF02 /* Copy CodeMirror Bundle */,
 				14C84A452F10562300FE0C16 /* Frameworks */,
 				14C84A462F10562300FE0C16 /* Resources */,
 			);
@@ -254,6 +259,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				14E0AB1C2F30000000BEEF03 /* editor.html in Resources */,
+				14E0AB1E2F30000000BEEF04 /* editor.css in Resources */,
+				14E0AB202F30000000BEEF05 /* editor.js in Resources */,
 				1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -291,26 +299,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -e\nCONFIG_PLIST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/SideBarConfig.plist\"\nexport CONFIG_PLIST\n/usr/bin/python3 - <<'PY'\nimport os\nimport pathlib\nimport plistlib\nfrom typing import Dict\n\n\ndef parse_xcconfig(path: str) -> Dict[str, str]:\n    if not path or not os.path.exists(path):\n        return {}\n    values: Dict[str, str] = {}\n    with open(path, \"r\", encoding=\"utf-8\") as handle:\n        for line in handle:\n            stripped = line.strip()\n            if not stripped or stripped.startswith(\"//\"):\n                continue\n            if stripped.startswith(\"#include\"):\n                continue\n            if \"=\" not in stripped:\n                continue\n            key, value = stripped.split(\"=\", 1)\n            key = key.strip()\n            value = value.strip().strip('\"')\n            values[key] = value\n    return values\n\n\ndef normalize(value: str) -> str:\n    return value.replace(\"\\\\/\", \"/\").strip()\n\n\nbase_path = os.environ.get(\"SCRIPT_INPUT_FILE_0\", \"\")\nlocal_path = os.environ.get(\"SCRIPT_INPUT_FILE_1\", \"\")\nbase_config = parse_xcconfig(base_path)\nlocal_config = parse_xcconfig(local_path)\nmerged_config = {**base_config, **local_config}\n\n\ndef read_value(key: str) -> str:\n    env_value = os.environ.get(key, \"\")\n    if env_value.strip():\n        return normalize(env_value)\n    config_value = merged_config.get(key, \"\")\n    return normalize(config_value)\n\n\npayload = {\n    \"API_BASE_URL\": read_value(\"API_BASE_URL\"),\n    \"SUPABASE_URL\": read_value(\"SUPABASE_URL\"),\n    \"SUPABASE_ANON_KEY\": read_value(\"SUPABASE_ANON_KEY\"),\n}\n\npath = pathlib.Path(os.environ[\"CONFIG_PLIST\"])\npath.parent.mkdir(parents=True, exist_ok=True)\nwith path.open(\"wb\") as handle:\n    plistlib.dump(payload, handle)\nPY\n";
-		};
-		14E0AB1A2F30000000BEEF02 /* Copy CodeMirror Bundle */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/sideBar/Resources/CodeMirror/editor.html",
-				"$(SRCROOT)/sideBar/Resources/CodeMirror/editor.css",
-				"$(SRCROOT)/sideBar/Resources/CodeMirror/editor.js",
-			);
-			name = "Copy CodeMirror Bundle";
-			outputPaths = (
-				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/CodeMirror/editor.html",
-				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/CodeMirror/editor.css",
-				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/CodeMirror/editor.js",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\nSOURCE_DIR=\"$SRCROOT/sideBar/Resources/CodeMirror\"\nDEST_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/CodeMirror\"\n\nif [ ! -d \"$SOURCE_DIR\" ]; then\n  echo \"CodeMirror bundle not found at $SOURCE_DIR\" >&2\n  exit 1\nfi\n\nmkdir -p \"$DEST_DIR\"\n/bin/cp -f \"$SOURCE_DIR/editor.html\" \"$DEST_DIR/editor.html\"\n/bin/cp -f \"$SOURCE_DIR/editor.css\" \"$DEST_DIR/editor.css\"\n/bin/cp -f \"$SOURCE_DIR/editor.js\" \"$DEST_DIR/editor.js\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
