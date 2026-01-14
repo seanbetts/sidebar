@@ -298,29 +298,6 @@
 		color: var(--color-foreground);
 	}
 
-	/* ========================================================================
-	   COMPONENT-SPECIFIC: Tighter line-height for compact popover layout
-	   Scratchpad uses tighter line-height (1.6 vs 1.7) to maximize content
-	   density within the constrained popover viewport (max 720px height).
-	   ======================================================================== */
-	:global(.scratchpad-editor p) {
-		line-height: 1.6;
-	}
-
-	:global(.scratchpad-editor ul),
-	:global(.scratchpad-editor ol) {
-		margin: 0.5em 0;
-		padding-left: 1.5em;
-	}
-
-	:global(.scratchpad-editor li) {
-		margin: 0;
-	}
-
-	:global(.scratchpad-editor li p) {
-		margin: 0;
-	}
-
 	/* Component-specific: Tighter spacing for compact popover layout */
 	:global(.scratchpad-editor hr) {
 		border: none;
