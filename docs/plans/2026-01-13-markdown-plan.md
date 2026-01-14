@@ -146,4 +146,10 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 - [x] WKWebView wrapper added and Notes editor swapped to CodeMirror view.
 - [x] Autosave wired to contentChanged events.
 - [x] Bundle copy step automated (`scripts/build-codemirror.sh`).
-- [ ] CM6 theme parity + markdown extensions beyond base `markdown()` configured (base token mapping now in editor.css).
+- [x] CM6 loads in WKWebView and renders note content (iOS + macOS).
+- [ ] CM6 theme parity + markdown extensions beyond base `markdown()` configured (needs full parity pass vs `docs/MARKDOWN_STYLES.md`).
+
+## Remaining Work (Post-Iteration 1)
+- [ ] Validate markdown extensions (tables, task lists, fenced code, links, images) against web behavior.
+- [ ] Complete CM6 theme parity with `docs/MARKDOWN_STYLES.md` (spacing, headings, lists, blockquote, HR, tables, inline/code blocks).
+- [ ] Review CSS token mapping against `frontend/src/app.css` and remove redundant styles.
