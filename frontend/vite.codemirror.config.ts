@@ -5,9 +5,6 @@ export default defineConfig({
 	root: path.resolve(__dirname, 'src/codemirror'),
 	base: './',
 	publicDir: false,
-	esbuild: {
-		tsconfig: path.resolve(__dirname, 'tsconfig.codemirror.json')
-	},
 	build: {
 		outDir: path.resolve(__dirname, 'dist/codemirror'),
 		emptyOutDir: true,
