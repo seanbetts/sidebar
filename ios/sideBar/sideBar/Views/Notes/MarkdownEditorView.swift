@@ -14,6 +14,11 @@ struct MarkdownEditorView: View {
                     onKeep: viewModel.dismissExternalUpdate
                 )
             }
+            if !viewModel.isReadOnly {
+                MarkdownFormattingToolbar(isReadOnly: viewModel.isReadOnly) { command in
+                    editorHandle.applyCommand(command)
+                }
+            }
             ZStack(alignment: .topLeading) {
                 HStack {
                     Spacer(minLength: 0)
