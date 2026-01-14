@@ -1,9 +1,9 @@
 import { EditorState, Compartment, RangeSetBuilder } from '@codemirror/state';
-import { Decoration, EditorView, keymap, ViewPlugin } from '@codemirror/view';
+import { Decoration, EditorView, keymap, ViewPlugin, WidgetType } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { HighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
-import { GFM } from '@lezer/markdown';
+import { Autolink, GFM } from '@lezer/markdown';
 import { tags } from '@lezer/highlight';
 
 type WebKitMessageHandler = {
@@ -34,6 +34,13 @@ let view: EditorView | null = null;
 let suppressChangeEvent = false;
 let debounceTimer: number | undefined;
 const debounceMs = 250;
+const taskToggleRegex = /^(\s*[-*+]\s+)\[( |x|X)\](\s+)/;
+const lightCaretColor = '#6b6b6b';
+const darkCaretColor = '#c9c9c9';
+const markdownLinkRegex = /\[([^\]]+)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
+const angleLinkRegex = /<((?:https?:\/\/|mailto:)[^>\s]+)>/g;
+const bareUrlRegex = /(?:https?:\/\/|www\.)[^\s)]+/g;
+const emailRegex = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 /** Post a message to the native WKWebView bridge if available. */
 function postToNative(handlerName: string, payload: unknown) {
@@ -81,6 +88,47 @@ function applyCommand(_command: string, _payload?: unknown): boolean {
 	return false;
 }
 
+function applyCaretOverride() {
+	const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+	const caretColor = prefersDark ? darkCaretColor : lightCaretColor;
+	document.documentElement.style.setProperty('--color-caret', caretColor);
+	const styleId = 'cm-caret-override';
+	let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+	if (!styleEl) {
+		styleEl = document.createElement('style');
+		styleEl.id = styleId;
+		document.head.appendChild(styleEl);
+	}
+	styleEl.textContent = `
+		.cm-content { caret-color: ${caretColor} !important; }
+		.cm-editor .cm-cursor,
+		.cm-editor .cm-dropCursor { border-left: 2px solid ${caretColor} !important; }
+	`;
+}
+
+function findLinkAt(text: string, offset: number): string | null {
+	const findMatch = (regex: RegExp, extractor: (match: RegExpExecArray) => string) => {
+		regex.lastIndex = 0;
+		let match = regex.exec(text);
+		while (match) {
+			const start = match.index;
+			const end = start + match[0].length;
+			if (offset >= start && offset <= end) {
+				return extractor(match);
+			}
+			match = regex.exec(text);
+		}
+		return null;
+	};
+
+	return (
+		findMatch(markdownLinkRegex, (match) => match[2]) ??
+		findMatch(angleLinkRegex, (match) => match[1]) ??
+		findMatch(bareUrlRegex, (match) => match[0]) ??
+		findMatch(emailRegex, (match) => `mailto:${match[0]}`)
+	);
+}
+
 const updateListener = EditorView.updateListener.of((update) => {
 	if (!update.docChanged) return;
 	if (suppressChangeEvent) {
@@ -95,6 +143,47 @@ const updateListener = EditorView.updateListener.of((update) => {
 	}, debounceMs);
 });
 
+const taskToggleHandler = EditorView.domEventHandlers({
+	mousedown: (event, view) => {
+		if (event.button !== 0) return false;
+		if (view.state.facet(EditorState.readOnly)) return false;
+		const coords = { x: event.clientX, y: event.clientY };
+		const pos = view.posAtCoords(coords);
+		if (pos == null) return false;
+		const line = view.state.doc.lineAt(pos);
+		const match = taskToggleRegex.exec(line.text);
+		if (!match) return false;
+		const lineStart = view.coordsAtPos(line.from);
+		if (lineStart && event.clientX > lineStart.left + 24) return false;
+		const statePos = line.from + match[1].length + 1;
+		const nextState = match[2].toLowerCase() === 'x' ? ' ' : 'x';
+		view.dispatch({
+			changes: { from: statePos, to: statePos + 1, insert: nextState }
+		});
+		view.focus();
+		event.preventDefault();
+		return true;
+	}
+});
+
+const linkClickHandler = EditorView.domEventHandlers({
+	click: (event, view) => {
+		if (event.defaultPrevented) return false;
+		const isReadOnly = view.state.facet(EditorState.readOnly);
+		if (!isReadOnly && !event.metaKey && !event.ctrlKey) return false;
+		const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+		if (pos == null) return false;
+		const line = view.state.doc.lineAt(pos);
+		const offset = pos - line.from;
+		const href = findLinkAt(line.text, offset);
+		if (!href) return false;
+		const resolvedHref = href.startsWith('www.') ? `https://${href}` : href;
+		postToNative('linkTapped', { href: resolvedHref });
+		event.preventDefault();
+		return true;
+	}
+});
+
 const editorTheme = EditorView.theme(
 	{
 		'&': {
@@ -106,16 +195,13 @@ const editorTheme = EditorView.theme(
 				'-apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, system-ui, sans-serif',
 			lineHeight: '1.7'
 		},
-		'.cm-content .cm-line': {
-			padding: '0.15em 0'
-		},
 		'.cm-gutters': {
 			backgroundColor: 'var(--color-muted)',
 			color: 'var(--color-muted-foreground)',
 			borderRight: '1px solid var(--color-border)'
 		},
 		'.cm-cursor, .cm-dropCursor': {
-			borderLeftColor: 'var(--color-foreground)'
+			borderLeftColor: 'var(--color-caret)'
 		},
 		'&.cm-focused .cm-selectionBackground, ::selection': {
 			backgroundColor: 'color-mix(in oklab, var(--color-primary) 30%, transparent)'
@@ -139,7 +225,7 @@ const editorThemeDark = EditorView.theme(
 			borderRight: '1px solid var(--color-border)'
 		},
 		'.cm-cursor, .cm-dropCursor': {
-			borderLeftColor: 'var(--color-foreground)'
+			borderLeftColor: 'var(--color-caret)'
 		},
 		'&.cm-focused .cm-selectionBackground, ::selection': {
 			backgroundColor: 'color-mix(in oklab, var(--color-primary) 30%, transparent)'
@@ -163,9 +249,9 @@ const highlightStyle = HighlightStyle.define([
 	{ tag: tags.strikethrough, textDecoration: 'line-through' },
 	{
 		tag: tags.monospace,
-		fontFamily:
-			'ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace',
+		fontFamily: '"SF Mono", Monaco, "Cascadia Code", "Courier New", monospace',
 		fontSize: '0.875em',
+		color: 'var(--color-foreground)',
 		backgroundColor: 'var(--color-muted)',
 		borderRadius: '0.25em',
 		padding: '0.2em 0.4em'
@@ -177,6 +263,46 @@ const highlightStyle = HighlightStyle.define([
 	{ tag: tags.separator, color: 'var(--color-border)' },
 	{ tag: tags.meta, color: 'var(--color-muted-foreground)' }
 ]);
+
+type ImageWidgetConfig = {
+	src: string;
+	alt: string;
+	title: string;
+};
+
+class ImageWidget extends WidgetType {
+	constructor(private config: ImageWidgetConfig) {
+		super();
+	}
+
+	eq(other: ImageWidget) {
+		return (
+			this.config.src === other.config.src &&
+			this.config.alt === other.config.alt &&
+			this.config.title === other.config.title
+		);
+	}
+
+	toDOM() {
+		const figure = document.createElement('figure');
+		figure.className = 'cm-media-widget';
+
+		const image = document.createElement('img');
+		image.src = this.config.src;
+		image.alt = this.config.alt;
+		image.loading = 'lazy';
+		image.decoding = 'async';
+		figure.appendChild(image);
+
+		if (this.config.title) {
+			const caption = document.createElement('figcaption');
+			caption.textContent = this.config.title;
+			figure.appendChild(caption);
+		}
+
+		return figure;
+	}
+}
 
 const blockquoteDecoration = Decoration.line({ class: 'cm-blockquote' });
 const blockquoteStartDecoration = Decoration.line({ class: 'cm-blockquote cm-blockquote-start' });
@@ -192,15 +318,21 @@ const hrDecoration = Decoration.line({ class: 'cm-hr' });
 const listDecoration = Decoration.line({ class: 'cm-list-item' });
 const listStartDecoration = Decoration.line({ class: 'cm-list-item cm-list-start' });
 const listEndDecoration = Decoration.line({ class: 'cm-list-item cm-list-end' });
+const listNestedDecoration = Decoration.line({ class: 'cm-list-item cm-list-nested' });
+const orderedListDecoration = Decoration.line({ class: 'cm-list-item cm-list-ordered' });
+const unorderedListDecoration = Decoration.line({ class: 'cm-list-item cm-list-unordered' });
 const taskDecoration = Decoration.line({ class: 'cm-task-item' });
 const taskCheckedDecoration = Decoration.line({ class: 'cm-task-item cm-task-item--checked' });
 const codeBlockDecoration = Decoration.line({ class: 'cm-code-block' });
 const codeBlockStartDecoration = Decoration.line({ class: 'cm-code-block cm-code-block--start' });
 const codeBlockEndDecoration = Decoration.line({ class: 'cm-code-block cm-code-block--end' });
+const mediaDecoration = Decoration.line({ class: 'cm-media-line' });
 const tableRowDecoration = Decoration.line({ class: 'cm-table-row' });
 const tableRowEvenDecoration = Decoration.line({ class: 'cm-table-row cm-table-row--even' });
 const tableHeaderDecoration = Decoration.line({ class: 'cm-table-row cm-table-header' });
 const tableSeparatorDecoration = Decoration.line({ class: 'cm-table-separator' });
+const tableStartDecoration = Decoration.line({ class: 'cm-table-start' });
+const tableEndDecoration = Decoration.line({ class: 'cm-table-end' });
 
 const markdownLinePlugin = ViewPlugin.fromClass(
 	class {
@@ -220,10 +352,11 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 			const builder = new RangeSetBuilder<Decoration>();
 			const headingRegex = /^\s{0,3}(#{1,6})\s+/;
 			const hrRegex = /^\s*(\*{3,}|-{3,}|_{3,})\s*$/;
-			const listRegex = /^\s*(?:[-*+]|\d+\.)\s+/;
+			const listRegex = /^(\s*)((?:[-*+])|(?:\d+\.))\s+/;
 			const fenceRegex = /^(\s*)(`{3,}|~{3,})/;
+			const imageRegex = /^\s*!\[([^\]]*)]\(([^)\s]+)(?:\s+["']([^"']*)["'])?\)\s*$/;
 			const tableSeparatorRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
-			const tableRowRegex = /^\s*\|[^|]+\|[^|]+/;
+			const tableRowRegex = /^\s*\|?[^|]+\|[^|]+(?:\|[^|]+)*\|?\s*$/;
 			const taskRegex = /^\s*[-*+]\s+\[( |x|X)\]\s+/;
 
 			for (const { from, to } of view.visibleRanges) {
@@ -231,6 +364,7 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 				let pendingTableHeader = false;
 				let inTable = false;
 				let tableRowIndex = 0;
+				let lastTableRowFrom: number | null = null;
 				let inFence = false;
 				let fenceMarker = '';
 				let fenceSize = 0;
@@ -266,10 +400,13 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					}
 
 					const headingMatch = headingRegex.exec(text);
+					const listMatch = listRegex.exec(text);
 					const isBlockquote = /^\s*>\s?/.test(text);
 					const taskMatch = taskRegex.exec(text);
-					const isListItem = listRegex.test(text);
+					const isListItem = listMatch != null;
 					const isHr = hrRegex.test(text);
+					const imageMatch = imageRegex.exec(text);
+					const isImage = imageMatch != null;
 					const isBlank = /^\s*$/.test(text);
 					const isSeparator = tableSeparatorRegex.test(text);
 					const isTableRow = tableRowRegex.test(text) && !isSeparator;
@@ -291,13 +428,23 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					}
 
 					if (isListItem || taskMatch) {
-						if (!inList) {
+						const indent = listMatch ? listMatch[1].length : 0;
+						const marker = listMatch ? listMatch[2] : '';
+						if (marker && marker.endsWith('.')) {
+							builder.add(line.from, line.from, orderedListDecoration);
+						} else if (marker) {
+							builder.add(line.from, line.from, unorderedListDecoration);
+						}
+						if (indent > 0) {
+							builder.add(line.from, line.from, listNestedDecoration);
+						} else if (!inList) {
 							builder.add(line.from, line.from, listStartDecoration);
 							inList = true;
+							lastListLineFrom = line.from;
 						} else {
 							builder.add(line.from, line.from, listDecoration);
+							lastListLineFrom = line.from;
 						}
-						lastListLineFrom = line.from;
 					} else if (inList) {
 						if (lastListLineFrom != null) {
 							builder.add(lastListLineFrom, lastListLineFrom, listEndDecoration);
@@ -336,6 +483,20 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						builder.add(line.from, line.from, hrDecoration);
 					}
 
+					if (isImage && imageMatch) {
+						builder.add(line.from, line.from, mediaDecoration);
+						const [, alt, src, title] = imageMatch;
+						builder.add(
+							line.to,
+							line.to,
+							Decoration.widget({
+								widget: new ImageWidget({ src, alt, title: title ?? '' }),
+								block: true,
+								side: 1
+							})
+						);
+					}
+
 					if (isTableRow) {
 						const nextPos = line.to + 1;
 						if (nextPos <= to) {
@@ -352,6 +513,9 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					}
 
 					if (isTableRow && (inTable || pendingTableHeader)) {
+						if (lastTableRowFrom == null) {
+							builder.add(line.from, line.from, tableStartDecoration);
+						}
 						if (pendingTableHeader) {
 							builder.add(line.from, line.from, tableHeaderDecoration);
 							pendingTableHeader = false;
@@ -363,7 +527,12 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 							builder.add(line.from, line.from, decoration);
 							tableRowIndex += 1;
 						}
+						lastTableRowFrom = line.from;
 					} else if (!isSeparator) {
+						if (lastTableRowFrom != null) {
+							builder.add(lastTableRowFrom, lastTableRowFrom, tableEndDecoration);
+						}
+						lastTableRowFrom = null;
 						tableRowIndex = 0;
 						pendingTableHeader = false;
 						inTable = false;
@@ -395,6 +564,9 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 				if (inList && lastListLineFrom != null) {
 					builder.add(lastListLineFrom, lastListLineFrom, listEndDecoration);
 				}
+				if (inTable && lastTableRowFrom != null) {
+					builder.add(lastTableRowFrom, lastTableRowFrom, tableEndDecoration);
+				}
 			}
 			return builder.finish();
 		}
@@ -410,6 +582,7 @@ function initializeEditor() {
 		postToNative('jsError', { message: 'Missing editor root element' });
 		return;
 	}
+	applyCaretOverride();
 
 	const state = EditorState.create({
 		doc: '',
@@ -420,10 +593,12 @@ function initializeEditor() {
 			readOnlyCompartment.of([EditorState.readOnly.of(false), EditorView.editable.of(true)]),
 			history(),
 			indentOnInput(),
-			markdown({ extensions: [GFM] }),
+			markdown({ extensions: [GFM, Autolink], addKeymap: true }),
 			keymap.of([...defaultKeymap, ...historyKeymap]),
 			EditorView.lineWrapping,
 			markdownLinePlugin,
+			taskToggleHandler,
+			linkClickHandler,
 			updateListener
 		]
 	});

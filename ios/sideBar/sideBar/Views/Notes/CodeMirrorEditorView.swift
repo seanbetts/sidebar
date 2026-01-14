@@ -2,6 +2,11 @@ import Combine
 import SwiftUI
 import WebKit
 import os
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 final class CodeMirrorEditorHandle: ObservableObject {
     let objectWillChange = ObservableObjectPublisher()
@@ -60,6 +65,7 @@ struct CodeMirrorEditorView: View {
 private enum CodeMirrorBridge {
     static let editorReady = "editorReady"
     static let contentChanged = "contentChanged"
+    static let linkTapped = "linkTapped"
     static let jsError = "jsError"
 }
 
@@ -137,6 +143,12 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
             }
             debounceWorkItem = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
+        case CodeMirrorBridge.linkTapped:
+            guard let body = message.body as? [String: Any],
+                  let href = body["href"] as? String else {
+                return
+            }
+            openExternalLink(href)
         case CodeMirrorBridge.jsError:
             logger.error("CodeMirror JS error: \(String(describing: message.body), privacy: .public)")
         default:
@@ -167,6 +179,20 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private func applyCommand(_ command: String, payload: Any?) {
         let payloadValue = payload.map { jsonEncoded($0) } ?? "null"
         evaluateJavaScript("window.editorAPI?.applyCommand(\(jsonEncoded(command)), \(payloadValue))")
+    }
+
+    private func openExternalLink(_ href: String) {
+        guard let url = URL(string: href) else {
+            logger.error("CodeMirror link invalid: \(href, privacy: .public)")
+            return
+        }
+        DispatchQueue.main.async {
+            #if os(macOS)
+            NSWorkspace.shared.open(url)
+            #else
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            #endif
+        }
     }
 
     private func evaluateJavaScript(_ script: String, completion: ((Result<Any, Error>) -> Void)? = nil) {
@@ -280,6 +306,7 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
         configuration.userContentController.addUserScript(errorScript)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.editorReady)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.contentChanged)
+        configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.linkTapped)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.jsError)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -296,6 +323,7 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
     static func dismantleNSView(_ nsView: WKWebView, coordinator: CodeMirrorCoordinator) {
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.editorReady)
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.contentChanged)
+        nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.linkTapped)
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.jsError)
     }
 }
@@ -345,6 +373,7 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
         configuration.userContentController.addUserScript(errorScript)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.editorReady)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.contentChanged)
+        configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.linkTapped)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.jsError)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -363,6 +392,7 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
     static func dismantleUIView(_ uiView: WKWebView, coordinator: CodeMirrorCoordinator) {
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.editorReady)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.contentChanged)
+        uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.linkTapped)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.jsError)
     }
 }
