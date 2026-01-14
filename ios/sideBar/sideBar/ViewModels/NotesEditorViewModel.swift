@@ -127,7 +127,7 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let pending = pendingExternalContent else { return }
         pendingExternalContent = nil
         hasExternalUpdate = false
-        updateContentFromServer(pending)
+        updateContentFromServer(pending, preserveSelection: true)
     }
 
     public func dismissExternalUpdate() {
@@ -280,6 +280,7 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
 
+        let isSameNote = note.id == currentNoteId
         if note.id == currentNoteId, note.content == content {
             if ignoreNextStoreUpdate {
                 ignoreNextStoreUpdate = false
@@ -302,7 +303,7 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
 
-        updateContentFromServer(incoming)
+        updateContentFromServer(incoming, preserveSelection: isSameNote)
         if let modified = note.modified {
             lastSaved = Date(timeIntervalSince1970: modified)
         } else {
@@ -310,13 +311,21 @@ public final class NotesEditorViewModel: ObservableObject {
         }
     }
 
-    private func updateContentFromServer(_ updated: String) {
+    private func updateContentFromServer(_ updated: String, preserveSelection: Bool = false) {
         content = updated
         attributedContent = MarkdownFormatting.render(markdown: updated)
         baselineContent = updated
         isDirty = false
         hasExternalUpdate = false
         pendingExternalContent = nil
-        selectedRange = NSRange(location: 0, length: 0)
+        if preserveSelection {
+            let updatedLength = (updated as NSString).length
+            let clampedLocation = min(selectedRange.location, updatedLength)
+            let maxLength = max(0, updatedLength - clampedLocation)
+            let clampedLength = min(selectedRange.length, maxLength)
+            selectedRange = NSRange(location: clampedLocation, length: clampedLength)
+        } else {
+            selectedRange = NSRange(location: 0, length: 0)
+        }
     }
 }
