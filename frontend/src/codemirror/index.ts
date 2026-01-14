@@ -699,48 +699,48 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 			const headingRegex = /^\s{0,3}(#{1,6})\s+/;
 			const hrRegex = /^\s*(\*{3,}|-{3,}|_{3,})\s*$/;
 			const listRegex = /^(\s*)((?:[-*+])|(?:\d+\.))\s+/;
-			const fenceRegex = /^(\s*)(`{3,}|~{3,})/;
 			const imageRegex = /^\s*!\[([^\]]*)]\(([^)\s]+)(?:\s+["']([^"']*)["'])?\)\s*$/;
 			const tableSeparatorRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
 			const tableRowRegex = /^\s*\|?[^|]+\|[^|]+(?:\|[^|]+)*\|?\s*$/;
 			const taskRegex = /^\s*[-*+]\s+\[( |x|X)\]\s+/;
+			const tree = syntaxTree(view.state);
+			const doc = view.state.doc;
+			const isTableSeparator = (value: string) => tableSeparatorRegex.test(value);
+			const isTableRow = (value: string) => tableRowRegex.test(value) && !isTableSeparator(value);
+			const isTableLine = (value: string) => isTableRow(value) || isTableSeparator(value);
+			const getLine = (number: number) =>
+				number >= 1 && number <= doc.lines ? doc.line(number) : null;
 
 			for (const { from, to } of view.visibleRanges) {
 				let pos = from;
-				let pendingTableHeader = false;
-				let inTable = false;
-				let tableRowIndex = 0;
-				let lastTableRowFrom: number | null = null;
-				let inFence = false;
-				let fenceMarker = '';
-				let fenceSize = 0;
-				let inBlockquote = false;
-				let lastBlockquoteLineFrom: number | null = null;
-				let inList = false;
-				let lastListLineFrom: number | null = null;
 				while (pos <= to) {
 					const line = view.state.doc.lineAt(pos);
 					const text = line.text;
-					const fenceMatch = fenceRegex.exec(text);
-					if (fenceMatch) {
-						const marker = fenceMatch[2];
-						if (!inFence) {
-							inFence = true;
-							fenceMarker = marker[0];
-							fenceSize = marker.length;
+					const lineNumber = line.number;
+					const node = tree.resolveInner(line.from, 1);
+					const inCodeBlock =
+						node.name === 'FencedCode' ||
+						node.name === 'CodeBlock' ||
+						node.matchContext(['FencedCode']) ||
+						node.matchContext(['CodeBlock']);
+					if (inCodeBlock) {
+						let codeNode = node.node;
+						while (
+							codeNode.parent &&
+							codeNode.name !== 'FencedCode' &&
+							codeNode.name !== 'CodeBlock'
+						) {
+							codeNode = codeNode.parent;
+						}
+						const codeLineStart = view.state.doc.lineAt(codeNode.from);
+						const codeLineEnd = view.state.doc.lineAt(Math.max(codeNode.to - 1, codeNode.from));
+						if (line.from === codeLineStart.from) {
 							builder.add(line.from, line.from, codeBlockStartDecoration);
-						} else if (marker[0] == fenceMarker && marker.length >= fenceSize) {
-							inFence = false;
+						} else if (line.from === codeLineEnd.from) {
 							builder.add(line.from, line.from, codeBlockEndDecoration);
 						} else {
 							builder.add(line.from, line.from, codeBlockDecoration);
 						}
-						pos = line.to + 1;
-						continue;
-					}
-
-					if (inFence) {
-						builder.add(line.from, line.from, codeBlockDecoration);
 						pos = line.to + 1;
 						continue;
 					}
@@ -754,23 +754,32 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					const imageMatch = imageRegex.exec(text);
 					const isImage = imageMatch != null;
 					const isBlank = /^\s*$/.test(text);
-					const isSeparator = tableSeparatorRegex.test(text);
-					const isTableRow = tableRowRegex.test(text) && !isSeparator;
+					const isSeparator = isTableSeparator(text);
+					const isRow = isTableRow(text);
+					const isTable = isTableLine(text);
+					const prevLine = getLine(lineNumber - 1);
+					const nextLine = getLine(lineNumber + 1);
+					const prevIsBlockquote = prevLine ? /^\s*>\s?/.test(prevLine.text) : false;
+					const nextIsBlockquote = nextLine ? /^\s*>\s?/.test(nextLine.text) : false;
+					const prevIsListItem = prevLine
+						? listRegex.test(prevLine.text) || taskRegex.test(prevLine.text)
+						: false;
+					const nextIsListItem = nextLine
+						? listRegex.test(nextLine.text) || taskRegex.test(nextLine.text)
+						: false;
+					const prevIsTableLine = prevLine ? isTableLine(prevLine.text) : false;
+					const nextIsTableLine = nextLine ? isTableLine(nextLine.text) : false;
+					const nextIsSeparator = nextLine ? isTableSeparator(nextLine.text) : false;
 
 					if (isBlockquote) {
-						if (!inBlockquote) {
-							builder.add(line.from, line.from, blockquoteStartDecoration);
-							inBlockquote = true;
-						} else {
-							builder.add(line.from, line.from, blockquoteDecoration);
+						builder.add(
+							line.from,
+							line.from,
+							!prevIsBlockquote ? blockquoteStartDecoration : blockquoteDecoration
+						);
+						if (!nextIsBlockquote) {
+							builder.add(line.from, line.from, blockquoteEndDecoration);
 						}
-						lastBlockquoteLineFrom = line.from;
-					} else if (inBlockquote) {
-						if (lastBlockquoteLineFrom != null) {
-							builder.add(lastBlockquoteLineFrom, lastBlockquoteLineFrom, blockquoteEndDecoration);
-						}
-						inBlockquote = false;
-						lastBlockquoteLineFrom = null;
 					}
 
 					if (isListItem || taskMatch) {
@@ -783,20 +792,15 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						}
 						if (indent > 0) {
 							builder.add(line.from, line.from, listNestedDecoration);
-						} else if (!inList) {
+						}
+						if (!prevIsListItem) {
 							builder.add(line.from, line.from, listStartDecoration);
-							inList = true;
-							lastListLineFrom = line.from;
 						} else {
 							builder.add(line.from, line.from, listDecoration);
-							lastListLineFrom = line.from;
 						}
-					} else if (inList) {
-						if (lastListLineFrom != null) {
-							builder.add(lastListLineFrom, lastListLineFrom, listEndDecoration);
+						if (!nextIsListItem) {
+							builder.add(line.from, line.from, listEndDecoration);
 						}
-						inList = false;
-						lastListLineFrom = null;
 					}
 
 					if (headingMatch) {
@@ -843,45 +847,36 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						);
 					}
 
-					if (isTableRow) {
-						const nextPos = line.to + 1;
-						if (nextPos <= to) {
-							const nextLine = view.state.doc.lineAt(nextPos);
-							if (tableSeparatorRegex.test(nextLine.text)) {
-								pendingTableHeader = true;
-							}
-						}
-					}
-
 					if (isSeparator) {
 						builder.add(line.from, line.from, tableSeparatorDecoration);
-						inTable = true;
 					}
 
-					if (isTableRow && (inTable || pendingTableHeader)) {
-						if (lastTableRowFrom == null) {
+					if (isRow) {
+						if (!prevIsTableLine) {
 							builder.add(line.from, line.from, tableStartDecoration);
 						}
-						if (pendingTableHeader) {
+						if (nextIsSeparator) {
 							builder.add(line.from, line.from, tableHeaderDecoration);
-							pendingTableHeader = false;
-							inTable = true;
-							tableRowIndex = 0;
 						} else {
+							let tableRowIndex = 0;
+							let scanLineNumber = lineNumber - 1;
+							while (scanLineNumber >= 1) {
+								const scanLine = getLine(scanLineNumber);
+								if (!scanLine || !isTableLine(scanLine.text)) {
+									break;
+								}
+								if (isTableRow(scanLine.text)) {
+									tableRowIndex += 1;
+								}
+								scanLineNumber -= 1;
+							}
 							const decoration =
 								tableRowIndex % 2 === 1 ? tableRowEvenDecoration : tableRowDecoration;
 							builder.add(line.from, line.from, decoration);
-							tableRowIndex += 1;
 						}
-						lastTableRowFrom = line.from;
-					} else if (!isSeparator) {
-						if (lastTableRowFrom != null) {
-							builder.add(lastTableRowFrom, lastTableRowFrom, tableEndDecoration);
+						if (!nextIsTableLine) {
+							builder.add(line.from, line.from, tableEndDecoration);
 						}
-						lastTableRowFrom = null;
-						tableRowIndex = 0;
-						pendingTableHeader = false;
-						inTable = false;
 					}
 
 					if (taskMatch) {
@@ -901,21 +896,12 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						!taskMatch &&
 						!isHr &&
 						!isSeparator &&
-						!isTableRow
+						!isTable
 					) {
 						builder.add(line.from, line.from, paragraphDecoration);
 					}
 
 					pos = line.to + 1;
-				}
-				if (inBlockquote && lastBlockquoteLineFrom != null) {
-					builder.add(lastBlockquoteLineFrom, lastBlockquoteLineFrom, blockquoteEndDecoration);
-				}
-				if (inList && lastListLineFrom != null) {
-					builder.add(lastListLineFrom, lastListLineFrom, listEndDecoration);
-				}
-				if (inTable && lastTableRowFrom != null) {
-					builder.add(lastTableRowFrom, lastTableRowFrom, tableEndDecoration);
 				}
 			}
 			return builder.finish();
@@ -1038,7 +1024,6 @@ function initializeEditor() {
 			formattingKeymap,
 			EditorView.lineWrapping,
 			markdownLinePlugin,
-			livePreviewPlugin,
 			taskToggleHandler,
 			linkClickHandler,
 			updateListener
