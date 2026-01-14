@@ -5,7 +5,8 @@ import {
 	HighlightStyle,
 	LanguageDescription,
 	indentOnInput,
-	syntaxHighlighting
+	syntaxHighlighting,
+	syntaxTree
 } from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
 import { javascript } from '@codemirror/lang-javascript';
@@ -677,6 +678,7 @@ const tableHeaderDecoration = Decoration.line({ class: 'cm-table-row cm-table-he
 const tableSeparatorDecoration = Decoration.line({ class: 'cm-table-separator' });
 const tableStartDecoration = Decoration.line({ class: 'cm-table-start' });
 const tableEndDecoration = Decoration.line({ class: 'cm-table-end' });
+const livePreviewHideDecoration = Decoration.mark({ class: 'cm-live-hide' });
 
 const markdownLinePlugin = ViewPlugin.fromClass(
 	class {
@@ -924,6 +926,78 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 	}
 );
 
+const livePreviewPlugin = ViewPlugin.fromClass(
+	class {
+		decorations = Decoration.none;
+
+		constructor(view: EditorView) {
+			this.decorations = this.buildDecorations(view);
+		}
+
+		update(update: {
+			docChanged: boolean;
+			viewportChanged: boolean;
+			selectionSet: boolean;
+			view: EditorView;
+		}) {
+			if (update.docChanged || update.viewportChanged || update.selectionSet) {
+				this.decorations = this.buildDecorations(update.view);
+			}
+		}
+
+		private buildDecorations(view: EditorView) {
+			const builder = new RangeSetBuilder<Decoration>();
+			const selection = view.state.selection;
+			const tree = syntaxTree(view.state);
+			const shouldRevealRange = (from: number, to: number) =>
+				selection.ranges.some((range) => range.from <= to && range.to >= from);
+			const shouldRevealLine = (from: number) => {
+				const line = view.state.doc.lineAt(from);
+				return selection.ranges.some((range) => range.from <= line.to && range.to >= line.from);
+			};
+
+			for (const { from, to } of view.visibleRanges) {
+				tree.iterate({
+					from,
+					to,
+					enter: (node) => {
+						const name = node.name;
+						if (name === 'HeaderMark') {
+							if (!shouldRevealLine(node.from)) {
+								builder.add(node.from, node.to, livePreviewHideDecoration);
+							}
+							return;
+						}
+						if (name === 'EmphasisMark' || name === 'LinkMark' || name === 'CodeMark') {
+							if (!shouldRevealRange(node.from, node.to)) {
+								builder.add(node.from, node.to, livePreviewHideDecoration);
+							}
+							return;
+						}
+						if (name === 'URL' || name === 'LinkTitle') {
+							if (node.matchContext(['Link']) || node.matchContext(['Image'])) {
+								let parent = node.node.parent;
+								while (parent && parent.name !== 'Link' && parent.name !== 'Image') {
+									parent = parent.parent;
+								}
+								const parentFrom = parent?.from ?? node.from;
+								const parentTo = parent?.to ?? node.to;
+								if (!shouldRevealRange(parentFrom, parentTo)) {
+									builder.add(node.from, node.to, livePreviewHideDecoration);
+								}
+							}
+						}
+					}
+				});
+			}
+			return builder.finish();
+		}
+	},
+	{
+		decorations: (value) => value.decorations
+	}
+);
+
 function initializeEditor() {
 	const root = document.getElementById('editor');
 	if (!root) {
@@ -946,6 +1020,7 @@ function initializeEditor() {
 			formattingKeymap,
 			EditorView.lineWrapping,
 			markdownLinePlugin,
+			livePreviewPlugin,
 			taskToggleHandler,
 			linkClickHandler,
 			updateListener
