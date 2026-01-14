@@ -1,6 +1,7 @@
 import Combine
 import SwiftUI
 import WebKit
+import os
 
 final class CodeMirrorEditorHandle: ObservableObject {
     let objectWillChange = ObservableObjectPublisher()
@@ -70,6 +71,7 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private var isReady = false
     private var debounceWorkItem: DispatchWorkItem?
     private let debounceInterval: TimeInterval = 0.3
+    private let logger = Logger(subsystem: "sideBar", category: "CodeMirrorEditor")
 
     init(onContentChanged: @escaping (String) -> Void) {
         self.onContentChanged = onContentChanged
@@ -77,6 +79,7 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
 
     func attach(webView: WKWebView, handle: CodeMirrorEditorHandle) {
         self.webView = webView
+        webView.navigationDelegate = self
         handle.setMarkdownHandler = { [weak self] text in
             self?.setMarkdown(text)
         }
@@ -163,6 +166,7 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private func evaluateJavaScript(_ script: String, completion: ((Result<Any, Error>) -> Void)? = nil) {
         webView?.evaluateJavaScript(script) { value, error in
             if let error {
+                self.logger.error("JS eval failed: \(String(describing: error), privacy: .public)")
                 completion?(.failure(error))
                 return
             }
@@ -176,6 +180,20 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
             return "null"
         }
         return string
+    }
+}
+
+extension CodeMirrorCoordinator: WKNavigationDelegate {
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        logger.info("CodeMirror webview didFinish navigation")
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        logger.error("CodeMirror webview navigation failed: \(String(describing: error), privacy: .public)")
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        logger.error("CodeMirror webview provisional navigation failed: \(String(describing: error), privacy: .public)")
     }
 }
 
@@ -249,6 +267,8 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
 
 private func loadEditor(in webView: WKWebView) {
     guard let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html", subdirectory: "CodeMirror") else {
+        let logger = Logger(subsystem: "sideBar", category: "CodeMirrorEditor")
+        logger.error("CodeMirror editor.html missing from bundle")
         return
     }
     webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
