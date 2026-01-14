@@ -125,6 +125,55 @@ const editorTheme = EditorView.theme(
 			paddingLeft: '1em',
 			color: 'var(--color-muted-foreground)'
 		},
+		'.cm-task-item': {
+			paddingLeft: '2em',
+			position: 'relative'
+		},
+		'.cm-task-item::before': {
+			content: '""',
+			position: 'absolute',
+			left: '0.2em',
+			top: '0.35em',
+			width: '0.9em',
+			height: '0.9em',
+			border: '1px solid var(--color-border)',
+			borderRadius: '0.2em',
+			backgroundColor: 'var(--color-background)'
+		},
+		'.cm-task-item--checked': {
+			color: 'var(--color-muted-foreground)',
+			textDecoration: 'line-through'
+		},
+		'.cm-task-item--checked::before': {
+			backgroundColor: 'var(--color-muted)',
+			borderColor: 'var(--color-border)'
+		},
+		'.cm-task-item--checked::after': {
+			content: '"x"',
+			position: 'absolute',
+			left: '0.45em',
+			top: '0.18em',
+			fontSize: '0.9em',
+			color: 'var(--color-muted-foreground)'
+		},
+		'.cm-line.cm-table-row': {
+			boxShadow:
+				'inset 0 -1px 0 var(--color-border), inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border)',
+			fontSize: '0.95em',
+			padding: '0.35em 0.75em'
+		},
+		'.cm-line.cm-table-row--even': {
+			backgroundColor: 'color-mix(in oklab, var(--color-muted) 40%, transparent)'
+		},
+		'.cm-line.cm-table-header': {
+			backgroundColor: 'color-mix(in oklab, var(--color-foreground) 8%, transparent)',
+			fontWeight: '600',
+			boxShadow:
+				'inset 0 -2px 0 var(--color-border), inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border)'
+		},
+		'.cm-line.cm-table-separator': {
+			color: 'var(--color-border)'
+		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-foreground)'
 		},
@@ -153,6 +202,55 @@ const editorThemeDark = EditorView.theme(
 			borderLeft: '3px solid var(--color-border)',
 			paddingLeft: '1em',
 			color: 'var(--color-muted-foreground)'
+		},
+		'.cm-task-item': {
+			paddingLeft: '2em',
+			position: 'relative'
+		},
+		'.cm-task-item::before': {
+			content: '""',
+			position: 'absolute',
+			left: '0.2em',
+			top: '0.35em',
+			width: '0.9em',
+			height: '0.9em',
+			border: '1px solid var(--color-border)',
+			borderRadius: '0.2em',
+			backgroundColor: 'var(--color-background)'
+		},
+		'.cm-task-item--checked': {
+			color: 'var(--color-muted-foreground)',
+			textDecoration: 'line-through'
+		},
+		'.cm-task-item--checked::before': {
+			backgroundColor: 'var(--color-muted)',
+			borderColor: 'var(--color-border)'
+		},
+		'.cm-task-item--checked::after': {
+			content: '"x"',
+			position: 'absolute',
+			left: '0.45em',
+			top: '0.18em',
+			fontSize: '0.9em',
+			color: 'var(--color-muted-foreground)'
+		},
+		'.cm-line.cm-table-row': {
+			boxShadow:
+				'inset 0 -1px 0 var(--color-border), inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border)',
+			fontSize: '0.95em',
+			padding: '0.35em 0.75em'
+		},
+		'.cm-line.cm-table-row--even': {
+			backgroundColor: 'color-mix(in oklab, var(--color-muted) 40%, transparent)'
+		},
+		'.cm-line.cm-table-header': {
+			backgroundColor: 'color-mix(in oklab, var(--color-foreground) 8%, transparent)',
+			fontWeight: '600',
+			boxShadow:
+				'inset 0 -2px 0 var(--color-border), inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border)'
+		},
+		'.cm-line.cm-table-separator': {
+			color: 'var(--color-border)'
 		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-foreground)'
@@ -194,8 +292,14 @@ const highlightStyle = HighlightStyle.define([
 ]);
 
 const blockquoteDecoration = Decoration.line({ class: 'cm-blockquote' });
+const taskDecoration = Decoration.line({ class: 'cm-task-item' });
+const taskCheckedDecoration = Decoration.line({ class: 'cm-task-item cm-task-item--checked' });
+const tableRowDecoration = Decoration.line({ class: 'cm-table-row' });
+const tableRowEvenDecoration = Decoration.line({ class: 'cm-table-row cm-table-row--even' });
+const tableHeaderDecoration = Decoration.line({ class: 'cm-table-row cm-table-header' });
+const tableSeparatorDecoration = Decoration.line({ class: 'cm-table-separator' });
 
-const blockquotePlugin = ViewPlugin.fromClass(
+const markdownLinePlugin = ViewPlugin.fromClass(
 	class {
 		decorations = Decoration.none;
 
@@ -211,13 +315,61 @@ const blockquotePlugin = ViewPlugin.fromClass(
 
 		private buildDecorations(view: EditorView) {
 			const builder = new RangeSetBuilder<Decoration>();
+			const tableSeparatorRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
+			const tableRowRegex = /^\s*\|?.+\|.+/;
+			const taskRegex = /^\s*[-*+]\s+\[( |x|X)\]\s+/;
+
 			for (const { from, to } of view.visibleRanges) {
 				let pos = from;
+				let pendingTableHeader = false;
+				let tableRowIndex = 0;
 				while (pos <= to) {
 					const line = view.state.doc.lineAt(pos);
-					if (/^\s*>\s?/.test(line.text)) {
+					const text = line.text;
+					const isBlockquote = /^\s*>\s?/.test(text);
+					const taskMatch = taskRegex.exec(text);
+					const isSeparator = tableSeparatorRegex.test(text);
+					const isTableRow = tableRowRegex.test(text) && !isSeparator;
+
+					if (isTableRow) {
+						const nextPos = line.to + 1;
+						if (nextPos <= to) {
+							const nextLine = view.state.doc.lineAt(nextPos);
+							if (tableSeparatorRegex.test(nextLine.text)) {
+								pendingTableHeader = true;
+							}
+						}
+					}
+
+					if (isSeparator) {
+						builder.add(line.from, line.from, tableSeparatorDecoration);
+					}
+
+					if (isTableRow) {
+						if (pendingTableHeader) {
+							builder.add(line.from, line.from, tableHeaderDecoration);
+							pendingTableHeader = false;
+							tableRowIndex = 0;
+						} else {
+							const decoration =
+								tableRowIndex % 2 === 1 ? tableRowEvenDecoration : tableRowDecoration;
+							builder.add(line.from, line.from, decoration);
+							tableRowIndex += 1;
+						}
+					} else if (!isSeparator) {
+						tableRowIndex = 0;
+						pendingTableHeader = false;
+					}
+
+					if (isBlockquote) {
 						builder.add(line.from, line.from, blockquoteDecoration);
 					}
+
+					if (taskMatch) {
+						const isChecked = taskMatch[1].toLowerCase() == 'x';
+						builder.add(line.from, line.from, isChecked ? taskCheckedDecoration : taskDecoration);
+					}
+
 					pos = line.to + 1;
 				}
 			}
@@ -241,7 +393,7 @@ const state = EditorState.create({
 		markdown({ extensions: [GFM] }),
 		keymap.of([...defaultKeymap, ...historyKeymap]),
 		EditorView.lineWrapping,
-		blockquotePlugin,
+		markdownLinePlugin,
 		updateListener
 	]
 });
