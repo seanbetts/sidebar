@@ -17,22 +17,27 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 - Shared CM6 theme (new source of truth).
 - Existing web tokens: `frontend/src/app.css` (`--color-*`).
 - Web markdown refinements: `docs/MARKDOWN_STYLES.md` (current canonical styling).
+- Shared web rules: `frontend/src/lib/styles/markdown-shared.css` (single source for shared markdown CSS).
 
 ## Theme Mapping (Web -> CM6)
-**Core typography + spacing:**
-- Body line-height 1.7, paragraph margins 0.75em.
-- H1 2.0em / 700 / margin-bottom 0.5em.
-- H2 1.5em / 600 / margin 0.5em 0.
-- H3 1.25em / 600 / margin 0.5em 0.
-- Lists: padding-left 1.5em, line-height 1.4, margins 0.75em 0.
+**Core typography + spacing (shared in `markdown-shared.css`):**
+- Body line-height 1.7, paragraph margins 0.5rem top/bottom.
+- H1 2.0em / 700 / margin-top 0, margin-bottom 0.3rem.
+- H2 1.5em / 600 / margin-top 1rem, margin-bottom 0.3rem.
+- H3 1.25em / 600 / margin-top 1rem, margin-bottom 0.3rem.
+- H4 1.125em / 600 / margin-top 1rem, margin-bottom 0.3rem.
+- H5 1.0625em / 600 / margin-top 1rem, margin-bottom 0.3rem.
+- H6 1.0em / 600 / margin-top 1rem, margin-bottom 0.3rem.
+- All headings use `line-height: 1.3`.
+- Lists: padding-left 1.5em, line-height 1.4, margins 0.5rem 0.
 - Blockquote: left border 3px, padding-left 1em, margin 1em 0, muted color.
 - Horizontal rule: 1px border, margin 2em 0.
 
 **Inline code + blocks:**
-- Inline: background muted, padding 0.2em 0.4em, radius 0.25em, font-size 0.875em.
-- Block: background muted, padding 1em, radius 0.5em, margin 1em 0, monospace 0.875em.
+- Inline: background muted, padding 0.2em 0.4em, radius 0.25em, font-size 0.875em, monospace.
+- Block: background muted, padding 1em, radius 0.5em, margin 1em 0, monospace 0.875em, overflow-x auto.
 
-**Tables (per `docs/MARKDOWN_STYLES.md`):**
+**Tables (per `docs/MARKDOWN_STYLES.md` + shared CSS):**
 - 100% width, collapse, margin 1em 0, font-size 0.95em.
 - Borders: 1px solid border with `!important` to ensure visibility.
 - Body padding: 0.5em vertical, 0.75em horizontal.
@@ -68,9 +73,10 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 5. External update handling: push server changes into CM6 with conflict prompts.
 
 ### B) Theme Parity (CM6)
-1. Create CM6 theme based on `docs/MARKDOWN_STYLES.md` and web tokens.
+1. Create CM6 theme based on `docs/MARKDOWN_STYLES.md` and `frontend/src/lib/styles/markdown-shared.css`.
 2. Map CSS custom properties to native theme tokens.
 3. Keep max width at 85ch in editor.
+4. Ensure heading levels H1-H6 and list spacing match shared CSS (rem-based margins).
 
 ### C) Web Styling Consolidation
 1. Keep `docs/MARKDOWN_STYLES.md` as the canonical styling reference.
@@ -151,5 +157,6 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 
 ## Remaining Work (Post-Iteration 1)
 - [ ] Validate markdown extensions (tables, task lists, fenced code, links, images) against web behavior.
-- [ ] Complete CM6 theme parity with `docs/MARKDOWN_STYLES.md` (spacing, headings, lists, blockquote, HR, tables, inline/code blocks).
+- [ ] Complete CM6 theme parity with `docs/MARKDOWN_STYLES.md` and `frontend/src/lib/styles/markdown-shared.css`.
+- [ ] Align heading levels H1-H6, list spacing, and paragraph margins with shared CSS.
 - [ ] Review CSS token mapping against `frontend/src/app.css` and remove redundant styles.
