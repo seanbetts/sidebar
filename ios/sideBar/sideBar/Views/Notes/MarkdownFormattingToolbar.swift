@@ -25,7 +25,9 @@ struct MarkdownFormattingToolbar: View {
             GeometryReader { proxy in
                 Color.clear
                     .onAppear { availableWidth = proxy.size.width }
-                    .onChange(of: proxy.size.width) { availableWidth = $0 }
+                    .onChange(of: proxy.size.width) { _, newValue in
+                        availableWidth = newValue
+                    }
             }
         )
         .disabled(isReadOnly)
