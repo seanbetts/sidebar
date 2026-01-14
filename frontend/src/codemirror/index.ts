@@ -29,12 +29,6 @@ declare global {
 	}
 }
 
-const root = document.getElementById('editor');
-
-if (!root) {
-	throw new Error('Missing editor root element');
-}
-
 const readOnlyCompartment = new Compartment();
 let view: EditorView | null = null;
 let suppressChangeEvent = false;
@@ -269,7 +263,7 @@ const highlightStyle = HighlightStyle.define([
 	{ tag: tags.emphasis, fontStyle: 'italic' },
 	{ tag: tags.strikethrough, textDecoration: 'line-through' },
 	{
-		tag: tags.code,
+		tag: tags.monospace,
 		fontFamily:
 			'ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace',
 		fontSize: '0.875em',
@@ -277,7 +271,6 @@ const highlightStyle = HighlightStyle.define([
 		borderRadius: '0.25em',
 		padding: '0.15em 0.35em'
 	},
-	{ tag: tags.listMark, color: 'var(--color-muted-foreground)' },
 	{ tag: tags.list, color: 'var(--color-foreground)' },
 	{ tag: tags.link, color: 'var(--color-primary)', textDecoration: 'underline' },
 	{ tag: tags.url, color: 'var(--color-primary)', textDecoration: 'underline' },
@@ -381,34 +374,48 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 	}
 );
 
-const state = EditorState.create({
-	doc: '',
-	extensions: [
-		editorTheme,
-		editorThemeDark,
-		syntaxHighlighting(highlightStyle),
-		readOnlyCompartment.of([EditorState.readOnly.of(false), EditorView.editable.of(true)]),
-		history(),
-		indentOnInput(),
-		markdown({ extensions: [GFM] }),
-		keymap.of([...defaultKeymap, ...historyKeymap]),
-		EditorView.lineWrapping,
-		markdownLinePlugin,
-		updateListener
-	]
-});
+function initializeEditor() {
+	const root = document.getElementById('editor');
+	if (!root) {
+		postToNative('jsError', { message: 'Missing editor root element' });
+		return;
+	}
 
-view = new EditorView({
-	state,
-	parent: root
-});
+	const state = EditorState.create({
+		doc: '',
+		extensions: [
+			editorTheme,
+			editorThemeDark,
+			syntaxHighlighting(highlightStyle),
+			readOnlyCompartment.of([EditorState.readOnly.of(false), EditorView.editable.of(true)]),
+			history(),
+			indentOnInput(),
+			markdown({ extensions: [GFM] }),
+			keymap.of([...defaultKeymap, ...historyKeymap]),
+			EditorView.lineWrapping,
+			markdownLinePlugin,
+			updateListener
+		]
+	});
 
-window.editorAPI = {
-	setMarkdown,
-	getMarkdown,
-	setReadOnly,
-	focus,
-	applyCommand
-};
+	view = new EditorView({
+		state,
+		parent: root
+	});
 
-postToNative('editorReady', {});
+	window.editorAPI = {
+		setMarkdown,
+		getMarkdown,
+		setReadOnly,
+		focus,
+		applyCommand
+	};
+
+	postToNative('editorReady', {});
+}
+
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', initializeEditor, { once: true });
+} else {
+	initializeEditor();
+}

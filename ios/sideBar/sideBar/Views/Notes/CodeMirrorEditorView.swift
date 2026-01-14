@@ -66,6 +66,7 @@ private enum CodeMirrorBridge {
 private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private let onContentChanged: (String) -> Void
     private var webView: WKWebView?
+    private var schemeHandler: CodeMirrorSchemeHandler?
     private var lastKnownMarkdown = ""
     private var pendingMarkdown: String?
     private var pendingReadOnly: Bool?
@@ -78,8 +79,9 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
         self.onContentChanged = onContentChanged
     }
 
-    func attach(webView: WKWebView, handle: CodeMirrorEditorHandle) {
+    func attach(webView: WKWebView, handle: CodeMirrorEditorHandle, schemeHandler: CodeMirrorSchemeHandler) {
         self.webView = webView
+        self.schemeHandler = schemeHandler
         webView.navigationDelegate = self
         handle.setMarkdownHandler = { [weak self] text in
             self?.setMarkdown(text)
@@ -99,15 +101,12 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     }
 
     func update(markdown: String, isReadOnly: Bool) {
-        logger.info("CodeMirror update markdown length: \(markdown.count)")
         if isReady {
             if markdown != lastKnownMarkdown {
-                logger.info("CodeMirror send markdown length: \(markdown.count)")
                 setMarkdown(markdown)
             }
             setReadOnly(isReadOnly)
         } else {
-            logger.info("CodeMirror pending markdown length: \(markdown.count)")
             pendingMarkdown = markdown
             pendingReadOnly = isReadOnly
         }
@@ -147,7 +146,6 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
 
     private func setMarkdown(_ text: String) {
         lastKnownMarkdown = text
-        logger.info("CodeMirror setMarkdown invoked length: \(text.count)")
         evaluateJavaScript("window.editorAPI?.setMarkdown(\(jsonEncoded(text)))")
     }
 
@@ -183,9 +181,40 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     }
 
     private func jsonEncoded(_ value: Any) -> String {
+        if let string = value as? String {
+            return jsonEncodedScalar(string)
+        }
+        if let number = value as? NSNumber {
+            return jsonEncodedScalar(number)
+        }
+        if let array = value as? [Any] {
+            return jsonEncodedObject(array) ?? "null"
+        }
+        if let dict = value as? [String: Any] {
+            return jsonEncodedObject(dict) ?? "null"
+        }
+        if value is NSNull {
+            return "null"
+        }
+        return "null"
+    }
+
+    private func jsonEncodedScalar(_ value: Any) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: [value], options: []),
+              var string = String(data: data, encoding: .utf8) else {
+            return "null"
+        }
+        if string.hasPrefix("[") && string.hasSuffix("]") {
+            string.removeFirst()
+            string.removeLast()
+        }
+        return string
+    }
+
+    private func jsonEncodedObject(_ value: Any) -> String? {
         guard let data = try? JSONSerialization.data(withJSONObject: value, options: []),
               let string = String(data: data, encoding: .utf8) else {
-            return "null"
+            return nil
         }
         return string
     }
@@ -194,42 +223,6 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
 extension CodeMirrorCoordinator: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         logger.info("CodeMirror webview didFinish navigation")
-        evaluateJavaScript("typeof window.editorAPI") { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let value):
-                self.logger.info("CodeMirror editorAPI type: \(String(describing: value), privacy: .public)")
-            case .failure(let error):
-                self.logger.error("CodeMirror editorAPI check failed: \(String(describing: error), privacy: .public)")
-            }
-        }
-        evaluateJavaScript("document.readyState") { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let value):
-                self.logger.info("CodeMirror document.readyState: \(String(describing: value), privacy: .public)")
-            case .failure(let error):
-                self.logger.error("CodeMirror readyState check failed: \(String(describing: error), privacy: .public)")
-            }
-        }
-        evaluateJavaScript("document.getElementById('editor') != null") { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let value):
-                self.logger.info("CodeMirror editor element present: \(String(describing: value), privacy: .public)")
-            case .failure(let error):
-                self.logger.error("CodeMirror editor element check failed: \(String(describing: error), privacy: .public)")
-            }
-        }
-        evaluateJavaScript("document.currentScript && document.currentScript.src") { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let value):
-                self.logger.info("CodeMirror currentScript src: \(String(describing: value), privacy: .public)")
-            case .failure(let error):
-                self.logger.error("CodeMirror currentScript check failed: \(String(describing: error), privacy: .public)")
-            }
-        }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -255,6 +248,8 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        let schemeHandler = CodeMirrorSchemeHandler()
+        configuration.setURLSchemeHandler(schemeHandler, forURLScheme: "codemirror")
         let errorScript = WKUserScript(
             source: """
             window.addEventListener('error', function(event) {
@@ -289,7 +284,7 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
-        context.coordinator.attach(webView: webView, handle: handle)
+        context.coordinator.attach(webView: webView, handle: handle, schemeHandler: schemeHandler)
         loadEditor(in: webView)
         return webView
     }
@@ -318,6 +313,8 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        let schemeHandler = CodeMirrorSchemeHandler()
+        configuration.setURLSchemeHandler(schemeHandler, forURLScheme: "codemirror")
         let errorScript = WKUserScript(
             source: """
             window.addEventListener('error', function(event) {
@@ -354,7 +351,7 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
-        context.coordinator.attach(webView: webView, handle: handle)
+        context.coordinator.attach(webView: webView, handle: handle, schemeHandler: schemeHandler)
         loadEditor(in: webView)
         return webView
     }
@@ -372,10 +369,63 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
 #endif
 
 private func loadEditor(in webView: WKWebView) {
-    guard let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html", subdirectory: "CodeMirror") else {
+    guard let url = URL(string: "codemirror://editor.html") else {
         let logger = Logger(subsystem: "sideBar", category: "CodeMirrorEditor")
-        logger.error("CodeMirror editor.html missing from bundle")
+        logger.error("CodeMirror editor URL invalid")
         return
     }
-    webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
+    webView.load(URLRequest(url: url))
+}
+
+private final class CodeMirrorSchemeHandler: NSObject, WKURLSchemeHandler {
+    private let logger = Logger(subsystem: "sideBar", category: "CodeMirrorSchemeHandler")
+
+    func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
+        guard let url = urlSchemeTask.request.url else {
+            urlSchemeTask.didFailWithError(URLError(.badURL))
+            return
+        }
+
+        let path = url.path.isEmpty ? "editor.html" : url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let bundlePath = Bundle.main.path(forResource: path, ofType: nil, inDirectory: "CodeMirror")
+
+        guard let bundlePath else {
+            logger.error("CodeMirror resource missing: \(path, privacy: .public)")
+            urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
+            return
+        }
+
+        do {
+            let data = try Data(contentsOf: URL(fileURLWithPath: bundlePath))
+            let mimeType = mimeTypeForPath(path)
+            let response = URLResponse(
+                url: url,
+                mimeType: mimeType,
+                expectedContentLength: data.count,
+                textEncodingName: mimeType.hasPrefix("text/") ? "utf-8" : nil
+            )
+            urlSchemeTask.didReceive(response)
+            urlSchemeTask.didReceive(data)
+            urlSchemeTask.didFinish()
+        } catch {
+            logger.error("CodeMirror resource read failed: \(error.localizedDescription, privacy: .public)")
+            urlSchemeTask.didFailWithError(error)
+        }
+    }
+
+    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
+    }
+
+    private func mimeTypeForPath(_ path: String) -> String {
+        if path.hasSuffix(".html") {
+            return "text/html"
+        }
+        if path.hasSuffix(".css") {
+            return "text/css"
+        }
+        if path.hasSuffix(".js") {
+            return "application/javascript"
+        }
+        return "application/octet-stream"
+    }
 }
