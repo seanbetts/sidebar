@@ -153,10 +153,16 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 - [x] Autosave wired to contentChanged events.
 - [x] Bundle copy step automated (`scripts/build-codemirror.sh`).
 - [x] CM6 loads in WKWebView and renders note content (iOS + macOS).
-- [ ] CM6 theme parity + markdown extensions beyond base `markdown()` configured (needs full parity pass vs `docs/MARKDOWN_STYLES.md`).
+- [x] CM6 theme parity aligned with `docs/MARKDOWN_STYLES.md` and `frontend/src/lib/styles/markdown-shared.css`.
 
-## Remaining Work (Post-Iteration 1)
+## Iteration 2 Status (2026-01-15)
+- [x] Enabled CM6 markdown keymap for GFM editing parity.
+- [x] Updated table parsing to support optional leading/trailing pipes.
+- [x] Added inline image preview widget with caption support (title attribute).
+- [x] Enabled autolink parsing for plain URLs and emails.
+- [x] Added click-to-toggle task list checkboxes.
+- [x] Link clicks open externally when read-only or cmd/ctrl-click.
+
+## Remaining Work
 - [ ] Validate markdown extensions (tables, task lists, fenced code, links, images) against web behavior.
-- [ ] Complete CM6 theme parity with `docs/MARKDOWN_STYLES.md` and `frontend/src/lib/styles/markdown-shared.css`.
-- [ ] Align heading levels H1-H6, list spacing, and paragraph margins with shared CSS.
 - [ ] Review CSS token mapping against `frontend/src/app.css` and remove redundant styles.
