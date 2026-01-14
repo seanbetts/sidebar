@@ -427,7 +427,7 @@ Critical Path (MVP): [███████████████████�
 - [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
 - [x] Link parity: autolinks + external open, preserve URLs in markdown
 - [x] Image parity: image blocks with caption (gallery block pending)
-- [x] Editor toolbar parity: primary actions (overflow menu pending)
+- [x] Editor toolbar parity: primary actions + compact overflow menu
 - [ ] Selection/undo parity: keep cursor on external updates
 - [x] Auto-save debounce wired (dirty state tracking pending)
 - [ ] External update handling: detect server/AI edits and merge or prompt with conflict UI
