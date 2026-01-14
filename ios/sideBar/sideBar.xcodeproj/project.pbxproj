@@ -9,9 +9,7 @@
 /* Begin PBXBuildFile section */
 		14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0A12F21000000BEEF02 /* MarkdownUI */; };
 		1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */; };
-		14E0AB1C2F30000000BEEF03 /* editor.html in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB1B2F30000000BEEF03 /* editor.html */; };
-		14E0AB1E2F30000000BEEF04 /* editor.css in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB1D2F30000000BEEF04 /* editor.css */; };
-		14E0AB202F30000000BEEF05 /* editor.js in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB1F2F30000000BEEF05 /* editor.js */; };
+		14E0AB222F30000000BEEF06 /* CodeMirror in Resources */ = {isa = PBXBuildFile; fileRef = 14E0AB212F30000000BEEF06 /* CodeMirror */; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
 		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
@@ -40,9 +38,7 @@
 
 /* Begin PBXFileReference section */
 		1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SideBar.local.xcconfig; sourceTree = "<group>"; };
-		14E0AB1B2F30000000BEEF03 /* editor.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = sideBar/Resources/CodeMirror/editor.html; sourceTree = "<group>"; };
-		14E0AB1D2F30000000BEEF04 /* editor.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = sideBar/Resources/CodeMirror/editor.css; sourceTree = "<group>"; };
-		14E0AB1F2F30000000BEEF05 /* editor.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = sideBar/Resources/CodeMirror/editor.js; sourceTree = "<group>"; };
+		14E0AB212F30000000BEEF06 /* CodeMirror */ = {isa = PBXFileReference; lastKnownFileType = folder; path = sideBar/Resources/CodeMirror; sourceTree = "<group>"; };
 		14C84A482F10562300FE0C16 /* sideBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sideBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A552F10562500FE0C16 /* sideBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C84A5F2F10562500FE0C16 /* sideBarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = sideBarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -259,9 +255,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				14E0AB1C2F30000000BEEF03 /* editor.html in Resources */,
-				14E0AB1E2F30000000BEEF04 /* editor.css in Resources */,
-				14E0AB202F30000000BEEF05 /* editor.js in Resources */,
+				14E0AB222F30000000BEEF06 /* CodeMirror in Resources */,
 				1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
