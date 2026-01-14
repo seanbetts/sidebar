@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "svelte-kit sync && vite build",
+		"build:codemirror": "vite build --config vite.codemirror.config.ts",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -56,6 +57,11 @@
 		"vitest": "^3.2.4"
 	},
 	"dependencies": {
+		"@codemirror/commands": "^6.10.1",
+		"@codemirror/lang-markdown": "^6.3.2",
+		"@codemirror/language": "^6.11.3",
+		"@codemirror/state": "^6.5.2",
+		"@codemirror/view": "^6.38.1",
 		"@sentry/sveltekit": "^10.32.1",
 		"@supabase/ssr": "^0.1.0",
 		"@supabase/supabase-js": "^2.39.0",
