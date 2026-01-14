@@ -67,6 +67,16 @@ body {
   padding: 0;
 }
 
+.cm-line.cm-blank-line {
+  line-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.cm-line.cm-blank-line.cm-activeLine {
+  line-height: 1.7;
+}
+
 .cm-line.cm-paragraph {
   margin: 0.5rem 0;
   line-height: 1.7;

@@ -157,7 +157,7 @@
 				TaskList,
 				TaskItem.configure({ nested: true }),
 				TableKit,
-				Markdown
+				Markdown.configure({ html: true })
 			],
 			content: '',
 			editable: true,
