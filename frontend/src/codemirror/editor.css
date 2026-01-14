@@ -53,7 +53,6 @@ body {
 .cm-content {
   max-width: 85ch;
   margin: 0 auto;
-  line-height: 1.7;
   color: var(--color-foreground);
   caret-color: var(--color-caret);
 }
@@ -332,9 +331,4 @@ body {
 
 .cm-focused {
   outline: none;
-}
-
-.cm-gutters {
-  background: var(--color-muted);
-  border-right: 1px solid var(--color-border);
 }

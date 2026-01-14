@@ -165,4 +165,4 @@ Consolidate the SwiftUI Markdown Editor work and the web parity styling goals in
 
 ## Remaining Work
 - [ ] Validate markdown extensions (tables, task lists, fenced code, links, images) against web behavior.
-- [ ] Review CSS token mapping against `frontend/src/app.css` and remove redundant styles.
+- [x] Review CSS token mapping against `frontend/src/app.css` and remove redundant styles.
