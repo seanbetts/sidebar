@@ -324,7 +324,7 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
     @staticmethod
     def rename_note(db: Session, user_id: str, note_id: str, new_name: str) -> dict:
-        """Rename a note and update its content title.
+        """Rename a note (updates title only, content unchanged).
 
         Args:
             db: Database session.
@@ -355,7 +355,6 @@ class NotesWorkspaceService(WorkspaceService[Note]):
 
         title = Path(new_name).stem
         note.title = title
-        note.content = NotesService.update_content_title(note.content, title)
         note.updated_at = datetime.now(UTC)
         db.commit()
         return NotesWorkspaceService.build_note_payload(note, include_content=True)
