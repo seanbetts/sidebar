@@ -114,58 +114,6 @@ const editorTheme = EditorView.theme(
 			color: 'var(--color-muted-foreground)',
 			borderRight: '1px solid var(--color-border)'
 		},
-		'.cm-blockquote': {
-			borderLeft: '3px solid var(--color-border)',
-			paddingLeft: '1em',
-			color: 'var(--color-muted-foreground)'
-		},
-		'.cm-task-item': {
-			paddingLeft: '2em',
-			position: 'relative'
-		},
-		'.cm-task-item::before': {
-			content: '""',
-			position: 'absolute',
-			left: '0.2em',
-			top: '0.35em',
-			width: '0.9em',
-			height: '0.9em',
-			border: '1px solid var(--color-border)',
-			borderRadius: '0.2em',
-			backgroundColor: 'var(--color-background)'
-		},
-		'.cm-task-item--checked': {
-			color: 'var(--color-muted-foreground)',
-			textDecoration: 'line-through'
-		},
-		'.cm-task-item--checked::before': {
-			backgroundColor: 'var(--color-muted)',
-			borderColor: 'var(--color-border)',
-			backgroundImage:
-				'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 16 16\\" stroke=\\"currentColor\\" stroke-width=\\"2\\" fill=\\"none\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><path d=\\"M4 8l3 3 5-6\\"/></svg>")',
-			backgroundRepeat: 'no-repeat',
-			backgroundPosition: 'center',
-			backgroundSize: '0.7em 0.7em',
-			color: 'var(--color-muted-foreground)'
-		},
-		'.cm-line.cm-table-row': {
-			boxShadow:
-				'inset 0 -1px 0 var(--color-border), inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border)',
-			fontSize: '0.95em',
-			padding: '0.35em 0.75em'
-		},
-		'.cm-line.cm-table-row--even': {
-			backgroundColor: 'color-mix(in oklab, var(--color-muted) 40%, transparent)'
-		},
-		'.cm-line.cm-table-header': {
-			backgroundColor: 'color-mix(in oklab, var(--color-foreground) 8%, transparent)',
-			fontWeight: '600',
-			boxShadow:
-				'inset 0 -2px 0 var(--color-border), inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border)'
-		},
-		'.cm-line.cm-table-separator': {
-			color: 'var(--color-border)'
-		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-foreground)'
 		},
@@ -190,58 +138,6 @@ const editorThemeDark = EditorView.theme(
 			color: 'var(--color-muted-foreground)',
 			borderRight: '1px solid var(--color-border)'
 		},
-		'.cm-blockquote': {
-			borderLeft: '3px solid var(--color-border)',
-			paddingLeft: '1em',
-			color: 'var(--color-muted-foreground)'
-		},
-		'.cm-task-item': {
-			paddingLeft: '2em',
-			position: 'relative'
-		},
-		'.cm-task-item::before': {
-			content: '""',
-			position: 'absolute',
-			left: '0.2em',
-			top: '0.35em',
-			width: '0.9em',
-			height: '0.9em',
-			border: '1px solid var(--color-border)',
-			borderRadius: '0.2em',
-			backgroundColor: 'var(--color-background)'
-		},
-		'.cm-task-item--checked': {
-			color: 'var(--color-muted-foreground)',
-			textDecoration: 'line-through'
-		},
-		'.cm-task-item--checked::before': {
-			backgroundColor: 'var(--color-muted)',
-			borderColor: 'var(--color-border)',
-			backgroundImage:
-				'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 16 16\\" stroke=\\"currentColor\\" stroke-width=\\"2\\" fill=\\"none\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><path d=\\"M4 8l3 3 5-6\\"/></svg>")',
-			backgroundRepeat: 'no-repeat',
-			backgroundPosition: 'center',
-			backgroundSize: '0.7em 0.7em',
-			color: 'var(--color-muted-foreground)'
-		},
-		'.cm-line.cm-table-row': {
-			boxShadow:
-				'inset 0 -1px 0 var(--color-border), inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border)',
-			fontSize: '0.95em',
-			padding: '0.35em 0.75em'
-		},
-		'.cm-line.cm-table-row--even': {
-			backgroundColor: 'color-mix(in oklab, var(--color-muted) 40%, transparent)'
-		},
-		'.cm-line.cm-table-header': {
-			backgroundColor: 'color-mix(in oklab, var(--color-foreground) 8%, transparent)',
-			fontWeight: '600',
-			boxShadow:
-				'inset 0 -2px 0 var(--color-border), inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border)'
-		},
-		'.cm-line.cm-table-separator': {
-			color: 'var(--color-border)'
-		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-foreground)'
 		},
@@ -256,9 +152,12 @@ const editorThemeDark = EditorView.theme(
 );
 
 const highlightStyle = HighlightStyle.define([
-	{ tag: tags.heading1, fontWeight: '700', fontSize: '2em' },
-	{ tag: tags.heading2, fontWeight: '600', fontSize: '1.5em' },
-	{ tag: tags.heading3, fontWeight: '600', fontSize: '1.25em' },
+	{ tag: tags.heading1, fontWeight: '700' },
+	{ tag: tags.heading2, fontWeight: '600' },
+	{ tag: tags.heading3, fontWeight: '600' },
+	{ tag: tags.heading4, fontWeight: '600' },
+	{ tag: tags.heading5, fontWeight: '600' },
+	{ tag: tags.heading6, fontWeight: '600' },
 	{ tag: tags.strong, fontWeight: '700' },
 	{ tag: tags.emphasis, fontStyle: 'italic' },
 	{ tag: tags.strikethrough, textDecoration: 'line-through' },
@@ -269,9 +168,8 @@ const highlightStyle = HighlightStyle.define([
 		fontSize: '0.875em',
 		backgroundColor: 'var(--color-muted)',
 		borderRadius: '0.25em',
-		padding: '0.15em 0.35em'
+		padding: '0.2em 0.4em'
 	},
-	{ tag: tags.list, color: 'var(--color-foreground)' },
 	{ tag: tags.link, color: 'var(--color-primary)', textDecoration: 'underline' },
 	{ tag: tags.url, color: 'var(--color-primary)', textDecoration: 'underline' },
 	{ tag: tags.quote, color: 'var(--color-muted-foreground)' },
@@ -281,8 +179,19 @@ const highlightStyle = HighlightStyle.define([
 ]);
 
 const blockquoteDecoration = Decoration.line({ class: 'cm-blockquote' });
+const heading1Decoration = Decoration.line({ class: 'cm-heading cm-heading-1' });
+const heading2Decoration = Decoration.line({ class: 'cm-heading cm-heading-2' });
+const heading3Decoration = Decoration.line({ class: 'cm-heading cm-heading-3' });
+const heading4Decoration = Decoration.line({ class: 'cm-heading cm-heading-4' });
+const heading5Decoration = Decoration.line({ class: 'cm-heading cm-heading-5' });
+const heading6Decoration = Decoration.line({ class: 'cm-heading cm-heading-6' });
+const hrDecoration = Decoration.line({ class: 'cm-hr' });
+const listDecoration = Decoration.line({ class: 'cm-list-item' });
 const taskDecoration = Decoration.line({ class: 'cm-task-item' });
 const taskCheckedDecoration = Decoration.line({ class: 'cm-task-item cm-task-item--checked' });
+const codeBlockDecoration = Decoration.line({ class: 'cm-code-block' });
+const codeBlockStartDecoration = Decoration.line({ class: 'cm-code-block cm-code-block--start' });
+const codeBlockEndDecoration = Decoration.line({ class: 'cm-code-block cm-code-block--end' });
 const tableRowDecoration = Decoration.line({ class: 'cm-table-row' });
 const tableRowEvenDecoration = Decoration.line({ class: 'cm-table-row cm-table-row--even' });
 const tableHeaderDecoration = Decoration.line({ class: 'cm-table-row cm-table-header' });
@@ -304,6 +213,10 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 
 		private buildDecorations(view: EditorView) {
 			const builder = new RangeSetBuilder<Decoration>();
+			const headingRegex = /^\s{0,3}(#{1,6})\s+/;
+			const hrRegex = /^\s*(\*{3,}|-{3,}|_{3,})\s*$/;
+			const listRegex = /^\s*(?:[-*+]|\d+\.)\s+/;
+			const fenceRegex = /^(\s*)(`{3,}|~{3,})/;
 			const tableSeparatorRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
 			const tableRowRegex = /^\s*\|[^|]+\|[^|]+/;
 			const taskRegex = /^\s*[-*+]\s+\[( |x|X)\]\s+/;
@@ -313,13 +226,77 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 				let pendingTableHeader = false;
 				let inTable = false;
 				let tableRowIndex = 0;
+				let inFence = false;
+				let fenceMarker = '';
+				let fenceSize = 0;
 				while (pos <= to) {
 					const line = view.state.doc.lineAt(pos);
 					const text = line.text;
+					const fenceMatch = fenceRegex.exec(text);
+					if (fenceMatch) {
+						const marker = fenceMatch[2];
+						if (!inFence) {
+							inFence = true;
+							fenceMarker = marker[0];
+							fenceSize = marker.length;
+							builder.add(line.from, line.from, codeBlockStartDecoration);
+						} else if (marker[0] == fenceMarker && marker.length >= fenceSize) {
+							inFence = false;
+							builder.add(line.from, line.from, codeBlockEndDecoration);
+						} else {
+							builder.add(line.from, line.from, codeBlockDecoration);
+						}
+						pos = line.to + 1;
+						continue;
+					}
+
+					if (inFence) {
+						builder.add(line.from, line.from, codeBlockDecoration);
+						pos = line.to + 1;
+						continue;
+					}
+
+					const headingMatch = headingRegex.exec(text);
 					const isBlockquote = /^\s*>\s?/.test(text);
 					const taskMatch = taskRegex.exec(text);
+					const isListItem = listRegex.test(text);
+					const isHr = hrRegex.test(text);
 					const isSeparator = tableSeparatorRegex.test(text);
 					const isTableRow = tableRowRegex.test(text) && !isSeparator;
+
+					if (headingMatch) {
+						const level = headingMatch[1].length;
+						switch (level) {
+							case 1:
+								builder.add(line.from, line.from, heading1Decoration);
+								break;
+							case 2:
+								builder.add(line.from, line.from, heading2Decoration);
+								break;
+							case 3:
+								builder.add(line.from, line.from, heading3Decoration);
+								break;
+							case 4:
+								builder.add(line.from, line.from, heading4Decoration);
+								break;
+							case 5:
+								builder.add(line.from, line.from, heading5Decoration);
+								break;
+							case 6:
+								builder.add(line.from, line.from, heading6Decoration);
+								break;
+							default:
+								break;
+						}
+					}
+
+					if (isHr) {
+						builder.add(line.from, line.from, hrDecoration);
+					}
+
+					if (isListItem || taskMatch) {
+						builder.add(line.from, line.from, listDecoration);
+					}
 
 					if (isTableRow) {
 						const nextPos = line.to + 1;
