@@ -1,9 +1,10 @@
-import { EditorState, Compartment } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
+import { EditorState, Compartment, RangeSetBuilder } from '@codemirror/state';
+import { Decoration, EditorView, keymap, ViewPlugin } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { indentOnInput, syntaxHighlighting } from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
 import { HighlightStyle, tags } from '@codemirror/highlight';
+import { GFM } from '@lezer/markdown';
 
 type WebKitMessageHandler = {
 	postMessage: (payload: unknown) => void;
@@ -119,6 +120,11 @@ const editorTheme = EditorView.theme(
 			color: 'var(--color-muted-foreground)',
 			borderRight: '1px solid var(--color-border)'
 		},
+		'.cm-blockquote': {
+			borderLeft: '3px solid var(--color-border)',
+			paddingLeft: '1em',
+			color: 'var(--color-muted-foreground)'
+		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-foreground)'
 		},
@@ -142,6 +148,11 @@ const editorThemeDark = EditorView.theme(
 			backgroundColor: 'var(--color-muted)',
 			color: 'var(--color-muted-foreground)',
 			borderRight: '1px solid var(--color-border)'
+		},
+		'.cm-blockquote': {
+			borderLeft: '3px solid var(--color-border)',
+			paddingLeft: '1em',
+			color: 'var(--color-muted-foreground)'
 		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-foreground)'
@@ -182,6 +193,42 @@ const highlightStyle = HighlightStyle.define([
 	{ tag: tags.meta, color: 'var(--color-muted-foreground)' }
 ]);
 
+const blockquoteDecoration = Decoration.line({ class: 'cm-blockquote' });
+
+const blockquotePlugin = ViewPlugin.fromClass(
+	class {
+		decorations = Decoration.none;
+
+		constructor(view: EditorView) {
+			this.decorations = this.buildDecorations(view);
+		}
+
+		update(update: { docChanged: boolean; viewportChanged: boolean; view: EditorView }) {
+			if (update.docChanged || update.viewportChanged) {
+				this.decorations = this.buildDecorations(update.view);
+			}
+		}
+
+		private buildDecorations(view: EditorView) {
+			const builder = new RangeSetBuilder<Decoration>();
+			for (const { from, to } of view.visibleRanges) {
+				let pos = from;
+				while (pos <= to) {
+					const line = view.state.doc.lineAt(pos);
+					if (/^\s*>\s?/.test(line.text)) {
+						builder.add(line.from, line.from, blockquoteDecoration);
+					}
+					pos = line.to + 1;
+				}
+			}
+			return builder.finish();
+		}
+	},
+	{
+		decorations: (value) => value.decorations
+	}
+);
+
 const state = EditorState.create({
 	doc: '',
 	extensions: [
@@ -191,9 +238,10 @@ const state = EditorState.create({
 		readOnlyCompartment.of([EditorState.readOnly.of(false), EditorView.editable.of(true)]),
 		history(),
 		indentOnInput(),
-		markdown(),
+		markdown({ extensions: [GFM] }),
 		keymap.of([...defaultKeymap, ...historyKeymap]),
 		EditorView.lineWrapping,
+		blockquotePlugin,
 		updateListener
 	]
 });
