@@ -25,6 +25,34 @@ mkdir -p "${resources_dir}"
 if [[ -f "${output_dir}/editor.html" ]]; then
   /usr/bin/perl -0pi -e 's/\s+crossorigin//g' "${output_dir}/editor.html"
   /usr/bin/perl -0pi -e 's/type="module"//g' "${output_dir}/editor.html"
+  if [[ -f "${output_dir}/editor.js" ]]; then
+    CODEMIRROR_DIST="${output_dir}" /usr/bin/python3 - <<'PY'
+from pathlib import Path
+import os
+import re
+
+output_dir = Path(os.environ["CODEMIRROR_DIST"])
+html_path = output_dir / "editor.html"
+js_path = output_dir / "editor.js"
+
+html = html_path.read_text(encoding="utf-8")
+js = js_path.read_text(encoding="utf-8").replace("</script>", "<\\/script>")
+
+needle = 'src="./editor.js"'
+idx = html.find(needle)
+if idx == -1:
+    raise SystemExit("Could not inline CodeMirror bundle: script src not found")
+
+start = html.rfind("<script", 0, idx)
+end = html.find("</script>", idx)
+if start == -1 or end == -1:
+    raise SystemExit("Could not inline CodeMirror bundle: script tag not found")
+
+replacement = f"<script>{js}</script>"
+html = html[:start] + replacement + html[end + len("</script>"):]
+html_path.write_text(html, encoding="utf-8")
+PY
+  fi
 fi
 
 cp -R "${output_dir}/"* "${resources_dir}/"
