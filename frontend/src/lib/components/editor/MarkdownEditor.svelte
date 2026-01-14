@@ -427,30 +427,6 @@
 		color: var(--color-foreground);
 	}
 
-	:global(.tiptap h1) {
-		font-size: 2em;
-		font-weight: 700;
-		margin-top: 0;
-		margin-bottom: 0.5em;
-		color: var(--color-foreground);
-	}
-
-	:global(.tiptap h2) {
-		font-size: 1.5em;
-		font-weight: 600;
-		margin-top: 0.5em;
-		margin-bottom: 0.5em;
-		color: var(--color-foreground);
-	}
-
-	:global(.tiptap h3) {
-		font-size: 1.25em;
-		font-weight: 600;
-		margin-top: 0.5em;
-		margin-bottom: 0.5em;
-		color: var(--color-foreground);
-	}
-
 	:global(.tiptap p) {
 		margin-top: 0.75em;
 		margin-bottom: 0.75em;
