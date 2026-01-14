@@ -22,6 +22,10 @@ if [[ ! -d "${output_dir}" ]]; then
 fi
 
 mkdir -p "${resources_dir}"
+if [[ -f "${output_dir}/editor.html" ]]; then
+  /usr/bin/perl -0pi -e 's/\s+crossorigin//g' "${output_dir}/editor.html"
+fi
+
 cp -R "${output_dir}/"* "${resources_dir}/"
 
 echo "CodeMirror bundle copied to ${resources_dir}"
