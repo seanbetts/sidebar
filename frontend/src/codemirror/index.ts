@@ -1,8 +1,21 @@
 import { EditorState, Compartment, RangeSetBuilder } from '@codemirror/state';
 import { Decoration, EditorView, keymap, ViewPlugin, WidgetType } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { HighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language';
+import {
+	HighlightStyle,
+	LanguageDescription,
+	indentOnInput,
+	syntaxHighlighting
+} from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
+import { javascript } from '@codemirror/lang-javascript';
+import { json } from '@codemirror/lang-json';
+import { html } from '@codemirror/lang-html';
+import { css } from '@codemirror/lang-css';
+import { python } from '@codemirror/lang-python';
+import { sql } from '@codemirror/lang-sql';
+import { yaml } from '@codemirror/lang-yaml';
+import { xml } from '@codemirror/lang-xml';
 import { Autolink, GFM } from '@lezer/markdown';
 import { tags } from '@lezer/highlight';
 
@@ -46,6 +59,48 @@ const bulletListRegex = /^(\s*)([-*+])\s+/;
 const orderedListRegex = /^(\s*)(\d+)\.\s+/;
 const taskListRegex = /^(\s*)([-*+])\s+\[( |x|X)\]\s+/;
 const blockquoteRegex = /^(\s*)>\s+/;
+const codeLanguages = [
+	LanguageDescription.of({
+		name: 'JavaScript',
+		alias: ['js', 'jsx', 'ts', 'tsx', 'typescript'],
+		support: javascript({ typescript: true, jsx: true })
+	}),
+	LanguageDescription.of({
+		name: 'JSON',
+		alias: ['jsonc'],
+		support: json()
+	}),
+	LanguageDescription.of({
+		name: 'HTML',
+		alias: ['htm'],
+		support: html()
+	}),
+	LanguageDescription.of({
+		name: 'CSS',
+		alias: ['scss', 'sass', 'less'],
+		support: css()
+	}),
+	LanguageDescription.of({
+		name: 'Python',
+		alias: ['py'],
+		support: python()
+	}),
+	LanguageDescription.of({
+		name: 'SQL',
+		alias: ['sqlite', 'postgres', 'mysql'],
+		support: sql()
+	}),
+	LanguageDescription.of({
+		name: 'YAML',
+		alias: ['yml'],
+		support: yaml()
+	}),
+	LanguageDescription.of({
+		name: 'XML',
+		alias: ['svg', 'plist'],
+		support: xml()
+	})
+];
 
 /** Post a message to the native WKWebView bridge if available. */
 function postToNative(handlerName: string, payload: unknown) {
@@ -886,7 +941,7 @@ function initializeEditor() {
 			readOnlyCompartment.of([EditorState.readOnly.of(false), EditorView.editable.of(true)]),
 			history(),
 			indentOnInput(),
-			markdown({ extensions: [GFM, Autolink], addKeymap: true }),
+			markdown({ extensions: [GFM, Autolink], addKeymap: true, codeLanguages }),
 			keymap.of([...defaultKeymap, ...historyKeymap]),
 			formattingKeymap,
 			EditorView.lineWrapping,
