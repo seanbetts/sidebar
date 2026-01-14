@@ -179,14 +179,19 @@ const highlightStyle = HighlightStyle.define([
 ]);
 
 const blockquoteDecoration = Decoration.line({ class: 'cm-blockquote' });
+const blockquoteStartDecoration = Decoration.line({ class: 'cm-blockquote cm-blockquote-start' });
+const blockquoteEndDecoration = Decoration.line({ class: 'cm-blockquote cm-blockquote-end' });
 const heading1Decoration = Decoration.line({ class: 'cm-heading cm-heading-1' });
 const heading2Decoration = Decoration.line({ class: 'cm-heading cm-heading-2' });
 const heading3Decoration = Decoration.line({ class: 'cm-heading cm-heading-3' });
 const heading4Decoration = Decoration.line({ class: 'cm-heading cm-heading-4' });
 const heading5Decoration = Decoration.line({ class: 'cm-heading cm-heading-5' });
 const heading6Decoration = Decoration.line({ class: 'cm-heading cm-heading-6' });
+const paragraphDecoration = Decoration.line({ class: 'cm-paragraph' });
 const hrDecoration = Decoration.line({ class: 'cm-hr' });
 const listDecoration = Decoration.line({ class: 'cm-list-item' });
+const listStartDecoration = Decoration.line({ class: 'cm-list-item cm-list-start' });
+const listEndDecoration = Decoration.line({ class: 'cm-list-item cm-list-end' });
 const taskDecoration = Decoration.line({ class: 'cm-task-item' });
 const taskCheckedDecoration = Decoration.line({ class: 'cm-task-item cm-task-item--checked' });
 const codeBlockDecoration = Decoration.line({ class: 'cm-code-block' });
@@ -229,6 +234,10 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 				let inFence = false;
 				let fenceMarker = '';
 				let fenceSize = 0;
+				let inBlockquote = false;
+				let lastBlockquoteLineFrom: number | null = null;
+				let inList = false;
+				let lastListLineFrom: number | null = null;
 				while (pos <= to) {
 					const line = view.state.doc.lineAt(pos);
 					const text = line.text;
@@ -261,8 +270,41 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					const taskMatch = taskRegex.exec(text);
 					const isListItem = listRegex.test(text);
 					const isHr = hrRegex.test(text);
+					const isBlank = /^\s*$/.test(text);
 					const isSeparator = tableSeparatorRegex.test(text);
 					const isTableRow = tableRowRegex.test(text) && !isSeparator;
+
+					if (isBlockquote) {
+						if (!inBlockquote) {
+							builder.add(line.from, line.from, blockquoteStartDecoration);
+							inBlockquote = true;
+						} else {
+							builder.add(line.from, line.from, blockquoteDecoration);
+						}
+						lastBlockquoteLineFrom = line.from;
+					} else if (inBlockquote) {
+						if (lastBlockquoteLineFrom != null) {
+							builder.add(lastBlockquoteLineFrom, lastBlockquoteLineFrom, blockquoteEndDecoration);
+						}
+						inBlockquote = false;
+						lastBlockquoteLineFrom = null;
+					}
+
+					if (isListItem || taskMatch) {
+						if (!inList) {
+							builder.add(line.from, line.from, listStartDecoration);
+							inList = true;
+						} else {
+							builder.add(line.from, line.from, listDecoration);
+						}
+						lastListLineFrom = line.from;
+					} else if (inList) {
+						if (lastListLineFrom != null) {
+							builder.add(lastListLineFrom, lastListLineFrom, listEndDecoration);
+						}
+						inList = false;
+						lastListLineFrom = null;
+					}
 
 					if (headingMatch) {
 						const level = headingMatch[1].length;
@@ -292,10 +334,6 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 
 					if (isHr) {
 						builder.add(line.from, line.from, hrDecoration);
-					}
-
-					if (isListItem || taskMatch) {
-						builder.add(line.from, line.from, listDecoration);
 					}
 
 					if (isTableRow) {
@@ -331,16 +369,31 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						inTable = false;
 					}
 
-					if (isBlockquote) {
-						builder.add(line.from, line.from, blockquoteDecoration);
-					}
-
 					if (taskMatch) {
 						const isChecked = taskMatch[1].toLowerCase() == 'x';
 						builder.add(line.from, line.from, isChecked ? taskCheckedDecoration : taskDecoration);
 					}
 
+					if (
+						!isBlank &&
+						!headingMatch &&
+						!isBlockquote &&
+						!isListItem &&
+						!taskMatch &&
+						!isHr &&
+						!isSeparator &&
+						!isTableRow
+					) {
+						builder.add(line.from, line.from, paragraphDecoration);
+					}
+
 					pos = line.to + 1;
+				}
+				if (inBlockquote && lastBlockquoteLineFrom != null) {
+					builder.add(lastBlockquoteLineFrom, lastBlockquoteLineFrom, blockquoteEndDecoration);
+				}
+				if (inList && lastListLineFrom != null) {
+					builder.add(lastListLineFrom, lastListLineFrom, listEndDecoration);
 				}
 			}
 			return builder.finish();

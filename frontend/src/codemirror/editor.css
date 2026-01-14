@@ -60,6 +60,11 @@ body {
   padding: 0.15em 0;
 }
 
+.cm-line.cm-paragraph {
+  margin: 0.5rem 0;
+  line-height: 1.7;
+}
+
 .cm-line.cm-heading {
   padding: 0;
   line-height: 1.3;
@@ -109,6 +114,16 @@ body {
 
 .cm-line.cm-list-item {
   line-height: 1.4;
+  margin: 0;
+  padding-left: 1.5em;
+}
+
+.cm-line.cm-list-start {
+  margin-top: 0.5rem;
+}
+
+.cm-line.cm-list-end {
+  margin-bottom: 0.5rem;
 }
 
 .cm-line.cm-hr {
@@ -121,8 +136,15 @@ body {
 .cm-line.cm-blockquote {
   border-left: 3px solid var(--color-border);
   padding-left: 1em;
-  margin: 1em 0;
   color: var(--color-muted-foreground);
+}
+
+.cm-line.cm-blockquote-start {
+  margin-top: 1em;
+}
+
+.cm-line.cm-blockquote-end {
+  margin-bottom: 1em;
 }
 
 .cm-line.cm-task-item {
