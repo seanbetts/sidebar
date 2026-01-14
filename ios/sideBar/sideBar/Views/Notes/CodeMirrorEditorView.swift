@@ -98,12 +98,15 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     }
 
     func update(markdown: String, isReadOnly: Bool) {
+        logger.info("CodeMirror update markdown length: \(markdown.count)")
         if isReady {
             if markdown != lastKnownMarkdown {
+                logger.info("CodeMirror send markdown length: \(markdown.count)")
                 setMarkdown(markdown)
             }
             setReadOnly(isReadOnly)
         } else {
+            logger.info("CodeMirror pending markdown length: \(markdown.count)")
             pendingMarkdown = markdown
             pendingReadOnly = isReadOnly
         }
@@ -113,6 +116,7 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
         switch message.name {
         case CodeMirrorBridge.editorReady:
             isReady = true
+            logger.info("CodeMirror editorReady received")
             if let pendingMarkdown {
                 setMarkdown(pendingMarkdown)
                 self.pendingMarkdown = nil
@@ -140,6 +144,7 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
 
     private func setMarkdown(_ text: String) {
         lastKnownMarkdown = text
+        logger.info("CodeMirror setMarkdown invoked length: \(text.count)")
         evaluateJavaScript("window.editorAPI?.setMarkdown(\(jsonEncoded(text)))")
     }
 
