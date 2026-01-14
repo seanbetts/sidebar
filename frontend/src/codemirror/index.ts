@@ -327,6 +327,7 @@ const codeBlockDecoration = Decoration.line({ class: 'cm-code-block' });
 const codeBlockStartDecoration = Decoration.line({ class: 'cm-code-block cm-code-block--start' });
 const codeBlockEndDecoration = Decoration.line({ class: 'cm-code-block cm-code-block--end' });
 const mediaDecoration = Decoration.line({ class: 'cm-media-line' });
+const blankLineDecoration = Decoration.line({ class: 'cm-blank-line' });
 const tableRowDecoration = Decoration.line({ class: 'cm-table-row' });
 const tableRowEvenDecoration = Decoration.line({ class: 'cm-table-row cm-table-row--even' });
 const tableHeaderDecoration = Decoration.line({ class: 'cm-table-row cm-table-header' });
@@ -541,6 +542,10 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					if (taskMatch) {
 						const isChecked = taskMatch[1].toLowerCase() == 'x';
 						builder.add(line.from, line.from, isChecked ? taskCheckedDecoration : taskDecoration);
+					}
+
+					if (isBlank) {
+						builder.add(line.from, line.from, blankLineDecoration);
 					}
 
 					if (
