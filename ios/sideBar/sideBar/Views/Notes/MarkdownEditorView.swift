@@ -6,6 +6,7 @@ struct MarkdownEditorView: View {
     let showsCompactStatus: Bool
     @StateObject private var editorHandle = CodeMirrorEditorHandle()
     @State private var isEditing = false
+    @State private var editorFrame: CGRect = .zero
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,31 +16,10 @@ struct MarkdownEditorView: View {
                     onKeep: viewModel.dismissExternalUpdate
                 )
             }
-            if isEditing && !viewModel.isReadOnly {
-                MarkdownFormattingToolbar(isReadOnly: viewModel.isReadOnly, onClose: {
-                    isEditing = false
-                }) { command in
-                    editorHandle.applyCommand(command)
-                }
-            }
             ZStack(alignment: .topLeading) {
                 HStack {
                     Spacer(minLength: 0)
-                    CodeMirrorEditorView(
-                        markdown: viewModel.content,
-                        isReadOnly: viewModel.isReadOnly || !isEditing,
-                        handle: editorHandle,
-                        onContentChanged: viewModel.handleUserMarkdownEdit
-                    )
-                    .frame(maxWidth: maxContentWidth)
-                    .simultaneousGesture(
-                        TapGesture().onEnded {
-                            if !isEditing && !viewModel.isReadOnly {
-                                isEditing = true
-                                editorHandle.focus()
-                            }
-                        }
-                    )
+                    editorSurface
                     Spacer(minLength: 0)
                 }
                 if viewModel.content.isEmpty {
@@ -50,7 +30,29 @@ struct MarkdownEditorView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .top) {
+                if isEditing && !viewModel.isReadOnly {
+                    MarkdownFormattingToolbar(isReadOnly: viewModel.isReadOnly, onClose: {
+                        isEditing = false
+                    }) { command in
+                        editorHandle.applyCommand(command)
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(1)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: isEditing)
+            .gesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .named("editorSurface"))
+                    .onEnded { value in
+                        guard isEditing, !viewModel.isReadOnly else { return }
+                        if !editorFrame.contains(value.location) {
+                            isEditing = false
+                        }
+                    }
+            )
         }
+        .coordinateSpace(name: "editorSurface")
         .overlay(alignment: .topTrailing) {
             if showsCompactStatus {
                 SaveStatusView(editorViewModel: viewModel)
@@ -61,6 +63,40 @@ struct MarkdownEditorView: View {
         .onChange(of: viewModel.currentNoteId) { _, _ in
             isEditing = false
         }
+        .onChange(of: viewModel.isReadOnly) { _, newValue in
+            if newValue {
+                isEditing = false
+            }
+        }
+    }
+
+    private var editorSurface: some View {
+        CodeMirrorEditorView(
+            markdown: viewModel.content,
+            isReadOnly: viewModel.isReadOnly || !isEditing,
+            handle: editorHandle,
+            onContentChanged: viewModel.handleUserMarkdownEdit
+        )
+        .frame(maxWidth: maxContentWidth)
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        editorFrame = proxy.frame(in: .named("editorSurface"))
+                    }
+                    .onChange(of: proxy.size) { _, _ in
+                        editorFrame = proxy.frame(in: .named("editorSurface"))
+                    }
+            }
+        )
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                if !isEditing && !viewModel.isReadOnly {
+                    isEditing = true
+                    editorHandle.focus()
+                }
+            }
+        )
     }
 }
 
