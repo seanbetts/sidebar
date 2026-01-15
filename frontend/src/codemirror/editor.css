@@ -186,7 +186,7 @@ body {
 .cm-line.cm-blockquote {
   border-left: 3px solid var(--color-border);
   padding-left: 1em;
-  margin-left: 0;
+  margin-left: calc((var(--blockquote-depth, 1) - 1) * 1em);
   color: var(--color-muted-foreground);
 }
 

@@ -648,9 +648,6 @@ class ImageWidget extends WidgetType {
 	}
 }
 
-const blockquoteDecoration = Decoration.line({ class: 'cm-blockquote' });
-const blockquoteStartDecoration = Decoration.line({ class: 'cm-blockquote cm-blockquote-start' });
-const blockquoteEndDecoration = Decoration.line({ class: 'cm-blockquote cm-blockquote-end' });
 const heading1Decoration = Decoration.line({ class: 'cm-heading cm-heading-1' });
 const heading2Decoration = Decoration.line({ class: 'cm-heading cm-heading-2' });
 const heading3Decoration = Decoration.line({ class: 'cm-heading cm-heading-3' });
@@ -731,8 +728,33 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 				endLineFrom: number;
 			}> = [];
 			const codeBlockRangeKeys = new Set<string>();
+			const blockquoteDecorations = new Map<string, Decoration>();
 			const visibleFrom = view.visibleRanges[0]?.from ?? 0;
 			const visibleTo = view.visibleRanges[view.visibleRanges.length - 1]?.to ?? 0;
+			const getBlockquoteDecoration = (depth: number, isStart: boolean, isEnd: boolean) => {
+				const key = `${depth}-${isStart ? 's' : 'm'}-${isEnd ? 'e' : 'm'}`;
+				const cached = blockquoteDecorations.get(key);
+				if (cached) {
+					return cached;
+				}
+
+				let className = 'cm-blockquote';
+				if (isStart) {
+					className += ' cm-blockquote-start';
+				}
+				if (isEnd) {
+					className += ' cm-blockquote-end';
+				}
+
+				const decoration = Decoration.line({
+					attributes: {
+						class: className,
+						style: `--blockquote-depth: ${Math.max(depth, 1)}`
+					}
+				});
+				blockquoteDecorations.set(key, decoration);
+				return decoration;
+			};
 
 			if (visibleTo > visibleFrom) {
 				tree.iterate({
@@ -818,14 +840,13 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					const nextIsSeparator = nextLine ? isTableSeparator(nextLine.text) : false;
 
 					if (isBlockquote) {
+						const depthMatch = /^(\s*(?:>\s*)+)/.exec(text);
+						const depth = depthMatch ? (depthMatch[1].match(/>/g) ?? []).length : 1;
 						builder.add(
 							line.from,
 							line.from,
-							!prevIsBlockquote ? blockquoteStartDecoration : blockquoteDecoration
+							getBlockquoteDecoration(depth, !prevIsBlockquote, !nextIsBlockquote)
 						);
-						if (!nextIsBlockquote) {
-							builder.add(line.from, line.from, blockquoteEndDecoration);
-						}
 					}
 
 					if (isListItem || taskMatch) {
