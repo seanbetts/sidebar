@@ -316,48 +316,6 @@ body {
   text-align: center;
 }
 
-.cm-line.cm-table-row {
-  box-shadow:
-    inset 0 -1px 0 var(--color-border),
-    inset 1px 0 0 var(--color-border),
-    inset -1px 0 0 var(--color-border);
-  font-size: 0.95em;
-  padding: 0.5em 0.75em;
-}
-
-.cm-line.cm-table-start {
-  margin-top: 1em;
-}
-
-.cm-line.cm-table-end {
-  margin-bottom: 1em;
-}
-
-.cm-line.cm-table-row--even {
-  background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
-}
-
-.cm-line.cm-table-header {
-  background-color: color-mix(in oklab, var(--color-muted) 80%, var(--color-foreground) 8%);
-  font-weight: 600;
-  box-shadow:
-    inset 0 -2px 0 var(--color-border),
-    inset 1px 0 0 var(--color-border),
-    inset -1px 0 0 var(--color-border);
-  padding: 0.65em 0.75em;
-}
-
-.cm-line.cm-table-separator {
-  color: var(--color-border);
-}
-
-.cm-line.cm-table-header .cm-content {
-  font-weight: 600;
-}
-
-.cm-line.cm-table-header {
-  font-weight: 600;
-}
 
 .cm-focused {
   outline: none;
