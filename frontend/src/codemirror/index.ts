@@ -724,33 +724,65 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 			const isTableLine = (value: string) => isTableRow(value) || isTableSeparator(value);
 			const getLine = (number: number) =>
 				number >= 1 && number <= doc.lines ? doc.line(number) : null;
+			const codeBlockRanges: Array<{
+				from: number;
+				to: number;
+				startLineFrom: number;
+				endLineFrom: number;
+			}> = [];
+			const codeBlockRangeKeys = new Set<string>();
+			const visibleFrom = view.visibleRanges[0]?.from ?? 0;
+			const visibleTo = view.visibleRanges[view.visibleRanges.length - 1]?.to ?? 0;
+
+			if (visibleTo > visibleFrom) {
+				tree.iterate({
+					from: visibleFrom,
+					to: visibleTo,
+					enter: (node) => {
+						if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') {
+							return;
+						}
+
+						const key = `${node.from}-${node.to}`;
+						if (codeBlockRangeKeys.has(key)) {
+							return false;
+						}
+
+						const startLine = doc.lineAt(node.from);
+						const endLine = doc.lineAt(Math.max(node.to - 1, node.from));
+						codeBlockRanges.push({
+							from: node.from,
+							to: node.to,
+							startLineFrom: startLine.from,
+							endLineFrom: endLine.from
+						});
+						codeBlockRangeKeys.add(key);
+						return false;
+					}
+				});
+			}
+
+			codeBlockRanges.sort((left, right) => left.from - right.from);
 
 			for (const { from, to } of view.visibleRanges) {
 				let pos = from;
+				let codeBlockIndex = 0;
 				while (pos <= to) {
 					const line = view.state.doc.lineAt(pos);
 					const text = line.text;
 					const lineNumber = line.number;
-					const node = tree.resolveInner(line.from, 1);
-					const inCodeBlock =
-						node.name === 'FencedCode' ||
-						node.name === 'CodeBlock' ||
-						node.matchContext(['FencedCode']) ||
-						node.matchContext(['CodeBlock']);
+					while (
+						codeBlockIndex < codeBlockRanges.length &&
+						codeBlockRanges[codeBlockIndex].to < line.from
+					) {
+						codeBlockIndex += 1;
+					}
+					const codeBlock = codeBlockRanges[codeBlockIndex];
+					const inCodeBlock = codeBlock && codeBlock.from <= line.to && codeBlock.to >= line.from;
 					if (inCodeBlock) {
-						let codeNode = node.node;
-						while (
-							codeNode.parent &&
-							codeNode.name !== 'FencedCode' &&
-							codeNode.name !== 'CodeBlock'
-						) {
-							codeNode = codeNode.parent;
-						}
-						const codeLineStart = view.state.doc.lineAt(codeNode.from);
-						const codeLineEnd = view.state.doc.lineAt(Math.max(codeNode.to - 1, codeNode.from));
-						if (line.from === codeLineStart.from) {
+						if (line.from === codeBlock.startLineFrom) {
 							builder.add(line.from, line.from, codeBlockStartDecoration);
-						} else if (line.from === codeLineEnd.from) {
+						} else if (line.from === codeBlock.endLineFrom) {
 							builder.add(line.from, line.from, codeBlockEndDecoration);
 						} else {
 							builder.add(line.from, line.from, codeBlockDecoration);
