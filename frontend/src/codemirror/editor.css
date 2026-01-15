@@ -316,6 +316,52 @@ body {
   text-align: center;
 }
 
+.cm-table-preview-wrapper {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+.cm-table-preview {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.cm-table-preview th,
+.cm-table-preview td {
+  border: 1px solid var(--color-border);
+  padding: 0.5em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.cm-table-preview thead th {
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.cm-code-block-preview {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.75rem;
+  background-color: var(--color-muted);
+  border-radius: 0.5rem;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Courier New", monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+.cm-code-block-preview pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.cm-code-block-preview code {
+  font-family: inherit;
+}
+
 
 .cm-focused {
   outline: none;
