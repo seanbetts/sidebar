@@ -415,6 +415,8 @@ Critical Path (MVP): [███████████████████�
 - [x] Syntax highlighting for code blocks
 - [ ] Live preview behavior: hide markdown markers everywhere except the caret line
 - [ ] Read-only notes rendering uses CodeMirror (no MarkdownUI) to keep styling identical
+- [ ] Tables render as HTML when the caret is outside the table, raw markdown when inside
+- [ ] Code blocks render with the styled block wrapper when the caret is outside, raw markdown when inside
 - [ ] Performance optimization for long documents
 - [ ] Plan: `docs/plans/2026-01-15-live-preview-fix-plan.md`
 
