@@ -694,6 +694,7 @@ class ListMarkerWidget extends WidgetType {
 const markdownLinePlugin = ViewPlugin.fromClass(
 	class {
 		decorations = Decoration.none;
+		private lastEmptyDecorationReport = 0;
 
 		constructor(view: EditorView) {
 			this.decorations = this.buildDecorations(view);
@@ -706,467 +707,556 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 		}
 
 		private buildDecorations(view: EditorView) {
-			const builder = new RangeSetBuilder<Decoration>();
-			const tree = syntaxTree(view.state);
-			const doc = view.state.doc;
-			const getLine = (number: number) =>
-				number >= 1 && number <= doc.lines ? doc.line(number) : null;
-			const codeBlockRanges: Array<{
-				from: number;
-				to: number;
-				startLineFrom: number;
-				endLineFrom: number;
-			}> = [];
-			const codeBlockRangeKeys = new Set<string>();
-			const headingLevelsByLine = new Map<number, number>();
-			const blockquoteDepthsByLine = new Map<number, number>();
-			const listInfoByLine = new Map<number, { ordered: boolean; depth: number }>();
-			const listMarkersByLine = new Map<number, { from: number; to: number; text: string }>();
-			const taskMarkersByLine = new Map<number, { from: number; to: number; checked: boolean }>();
-			const hrLines = new Set<number>();
-			const imageByLine = new Map<number, { src: string; alt: string; title: string }>();
-			const paragraphLines = new Set<number>();
-			const tableRowLines = new Set<number>();
-			const tableHeaderLines = new Set<number>();
-			const tableDelimiterLines = new Set<number>();
-			const blockquoteDecorations = new Map<string, Decoration>();
-			const visibleFrom = view.visibleRanges[0]?.from ?? 0;
-			const visibleTo = view.visibleRanges[view.visibleRanges.length - 1]?.to ?? 0;
-			const getBlockquoteDecoration = (depth: number, isStart: boolean, isEnd: boolean) => {
-				const key = `${depth}-${isStart ? 's' : 'm'}-${isEnd ? 'e' : 'm'}`;
-				const cached = blockquoteDecorations.get(key);
-				if (cached) {
-					return cached;
-				}
-
-				let className = 'cm-blockquote';
-				if (isStart) {
-					className += ' cm-blockquote-start';
-				}
-				if (isEnd) {
-					className += ' cm-blockquote-end';
-				}
-
-				const decoration = Decoration.line({
-					attributes: {
-						class: className,
-						style: `--blockquote-depth: ${Math.max(depth, 1)}`
+			try {
+				const builder = new RangeSetBuilder<Decoration>();
+				const pending: Array<{ from: number; to: number; decoration: Decoration }> = [];
+				const addDecoration = (from: number, to: number, decoration: Decoration) => {
+					pending.push({ from, to, decoration });
+				};
+				const tree = syntaxTree(view.state);
+				const doc = view.state.doc;
+				const getLine = (number: number) =>
+					number >= 1 && number <= doc.lines ? doc.line(number) : null;
+				const codeBlockRanges: Array<{
+					from: number;
+					to: number;
+					startLineFrom: number;
+					endLineFrom: number;
+				}> = [];
+				const codeBlockRangeKeys = new Set<string>();
+				const headingLevelsByLine = new Map<number, number>();
+				const blockquoteDepthsByLine = new Map<number, number>();
+				const listInfoByLine = new Map<number, { ordered: boolean; depth: number }>();
+				const listMarkersByLine = new Map<number, { from: number; to: number; text: string }>();
+				const taskMarkersByLine = new Map<number, { from: number; to: number; checked: boolean }>();
+				const hrLines = new Set<number>();
+				const imageByLine = new Map<number, { src: string; alt: string; title: string }>();
+				const paragraphLines = new Set<number>();
+				const tableRowLines = new Set<number>();
+				const tableHeaderLines = new Set<number>();
+				const tableDelimiterLines = new Set<number>();
+				const blockquoteDecorations = new Map<string, Decoration>();
+				const visibleFrom = view.visibleRanges[0]?.from ?? 0;
+				const visibleTo = view.visibleRanges[view.visibleRanges.length - 1]?.to ?? 0;
+				const getBlockquoteDecoration = (depth: number, isStart: boolean, isEnd: boolean) => {
+					const key = `${depth}-${isStart ? 's' : 'm'}-${isEnd ? 'e' : 'm'}`;
+					const cached = blockquoteDecorations.get(key);
+					if (cached) {
+						return cached;
 					}
-				});
-				blockquoteDecorations.set(key, decoration);
-				return decoration;
-			};
-			const addLineRange = (from: number, to: number, handler: (lineNumber: number) => void) => {
-				const startLine = doc.lineAt(from).number;
-				const endLine = doc.lineAt(Math.max(to - 1, from)).number;
-				for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
-					handler(lineNumber);
-				}
-			};
-			const getAncestorDepth = (node: { node: { parent: any; name: string } }, name: string) => {
-				let depth = 0;
-				let current = node.node;
-				while (current) {
-					if (current.name === name) {
-						depth += 1;
-					}
-					current = current.parent;
-				}
-				return depth;
-			};
-			const findAncestorName = (node: { node: { parent: any; name: string } }, names: string[]) => {
-				let current = node.node.parent;
-				while (current) {
-					if (names.includes(current.name)) {
-						return current.name;
-					}
-					current = current.parent;
-				}
-				return null;
-			};
-			const headingLevels: Record<string, number> = {
-				ATXHeading1: 1,
-				ATXHeading2: 2,
-				ATXHeading3: 3,
-				ATXHeading4: 4,
-				ATXHeading5: 5,
-				ATXHeading6: 6,
-				SetextHeading1: 1,
-				SetextHeading2: 2
-			};
-			const readLabelText = (from: number, to: number) => {
-				const value = doc.sliceString(from, to);
-				if (value.startsWith('[') && value.endsWith(']')) {
-					return value.slice(1, -1);
-				}
-				return value;
-			};
-			const readTitleText = (from: number, to: number) => {
-				const value = doc.sliceString(from, to);
-				const first = value[0];
-				const last = value[value.length - 1];
-				if (first && last && first === last && (first === '"' || first === "'")) {
-					return value.slice(1, -1);
-				}
-				return value;
-			};
-			const isQuoteOnlyLine = (text: string) => {
-				const trimmed = text.trim();
-				if (!trimmed) return false;
-				for (const char of trimmed) {
-					if (char !== '>') return false;
-				}
-				return true;
-			};
 
-			if (visibleTo > visibleFrom) {
-				tree.iterate({
-					from: visibleFrom,
-					to: visibleTo,
-					enter: (node) => {
-						if (headingLevels[node.name]) {
-							const lineNumber = doc.lineAt(node.from).number;
-							headingLevelsByLine.set(lineNumber, headingLevels[node.name]);
-							return;
+					let className = 'cm-blockquote';
+					if (isStart) {
+						className += ' cm-blockquote-start';
+					}
+					if (isEnd) {
+						className += ' cm-blockquote-end';
+					}
+
+					const decoration = Decoration.line({
+						attributes: {
+							class: className,
+							style: `--blockquote-depth: ${Math.max(depth, 1)}`
 						}
-
-						if (node.name === 'HorizontalRule') {
-							const lineNumber = doc.lineAt(node.from).number;
-							hrLines.add(lineNumber);
-							return;
+					});
+					blockquoteDecorations.set(key, decoration);
+					return decoration;
+				};
+				const addLineRange = (from: number, to: number, handler: (lineNumber: number) => void) => {
+					const startLine = doc.lineAt(from).number;
+					const endLine = doc.lineAt(Math.max(to - 1, from)).number;
+					for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+						handler(lineNumber);
+					}
+				};
+				const getAncestorDepth = (node: { node: { parent: any; name: string } }, name: string) => {
+					let depth = 0;
+					let current = node.node;
+					while (current) {
+						if (current.name === name) {
+							depth += 1;
 						}
+						current = current.parent;
+					}
+					return depth;
+				};
+				const findAncestorName = (
+					node: { node: { parent: any; name: string } },
+					names: string[]
+				) => {
+					let current = node.node.parent;
+					while (current) {
+						if (names.includes(current.name)) {
+							return current.name;
+						}
+						current = current.parent;
+					}
+					return null;
+				};
+				const headingLevels: Record<string, number> = {
+					ATXHeading1: 1,
+					ATXHeading2: 2,
+					ATXHeading3: 3,
+					ATXHeading4: 4,
+					ATXHeading5: 5,
+					ATXHeading6: 6,
+					SetextHeading1: 1,
+					SetextHeading2: 2
+				};
+				const readLabelText = (from: number, to: number) => {
+					const value = doc.sliceString(from, to);
+					if (value.startsWith('[') && value.endsWith(']')) {
+						return value.slice(1, -1);
+					}
+					return value;
+				};
+				const readTitleText = (from: number, to: number) => {
+					const value = doc.sliceString(from, to);
+					const first = value[0];
+					const last = value[value.length - 1];
+					if (first && last && first === last && (first === '"' || first === "'")) {
+						return value.slice(1, -1);
+					}
+					return value;
+				};
+				const isQuoteOnlyLine = (text: string) => {
+					const trimmed = text.trim();
+					if (!trimmed) return false;
+					for (const char of trimmed) {
+						if (char !== '>') return false;
+					}
+					return true;
+				};
 
-						if (node.name === 'Image') {
-							const lineNumber = doc.lineAt(node.from).number;
-							const imageNode = node.node;
-							const labelNode = imageNode.getChild('LinkLabel');
-							const urlNode = imageNode.getChild('URL');
-							const titleNode = imageNode.getChild('LinkTitle');
-							const alt = labelNode ? readLabelText(labelNode.from, labelNode.to) : '';
-							const src = urlNode ? doc.sliceString(urlNode.from, urlNode.to) : '';
-							const title = titleNode ? readTitleText(titleNode.from, titleNode.to) : '';
-							if (src) {
-								imageByLine.set(lineNumber, { src, alt, title });
+				if (visibleTo > visibleFrom) {
+					tree.iterate({
+						from: visibleFrom,
+						to: visibleTo,
+						enter: (node) => {
+							if (headingLevels[node.name]) {
+								const lineNumber = doc.lineAt(node.from).number;
+								headingLevelsByLine.set(lineNumber, headingLevels[node.name]);
+								return;
 							}
-							return;
-						}
 
-						if (node.name === 'Paragraph') {
-							addLineRange(node.from, node.to, (lineNumber) => {
-								paragraphLines.add(lineNumber);
-							});
-							return;
-						}
+							if (node.name === 'HorizontalRule') {
+								const lineNumber = doc.lineAt(node.from).number;
+								hrLines.add(lineNumber);
+								return;
+							}
 
-						if (node.name === 'Blockquote') {
-							const depth = getAncestorDepth(node, 'Blockquote');
-							addLineRange(node.from, node.to, (lineNumber) => {
-								const current = blockquoteDepthsByLine.get(lineNumber) ?? 0;
-								if (depth > current) {
-									blockquoteDepthsByLine.set(lineNumber, depth);
+							if (node.name === 'Image') {
+								const lineNumber = doc.lineAt(node.from).number;
+								const imageNode = node.node;
+								const labelNode = imageNode.getChild('LinkLabel');
+								const urlNode = imageNode.getChild('URL');
+								const titleNode = imageNode.getChild('LinkTitle');
+								const alt = labelNode ? readLabelText(labelNode.from, labelNode.to) : '';
+								const src = urlNode ? doc.sliceString(urlNode.from, urlNode.to) : '';
+								const title = titleNode ? readTitleText(titleNode.from, titleNode.to) : '';
+								if (src) {
+									imageByLine.set(lineNumber, { src, alt, title });
 								}
-							});
-							return;
-						}
+								return;
+							}
 
-						if (node.name === 'ListItem') {
-							const lineNumber = doc.lineAt(node.from).number;
-							const depth = getAncestorDepth(node, 'ListItem');
-							const listType = findAncestorName(node, ['OrderedList', 'BulletList']);
-							listInfoByLine.set(lineNumber, {
-								ordered: listType === 'OrderedList',
-								depth
-							});
-							return;
-						}
+							if (node.name === 'Paragraph') {
+								addLineRange(node.from, node.to, (lineNumber) => {
+									paragraphLines.add(lineNumber);
+								});
+								return;
+							}
 
-						if (node.name === 'ListMark') {
-							const lineNumber = doc.lineAt(node.from).number;
-							listMarkersByLine.set(lineNumber, {
-								from: node.from,
-								to: node.to,
-								text: doc.sliceString(node.from, node.to)
-							});
-							return;
-						}
+							if (node.name === 'Blockquote') {
+								const depth = getAncestorDepth(node, 'Blockquote');
+								addLineRange(node.from, node.to, (lineNumber) => {
+									const current = blockquoteDepthsByLine.get(lineNumber) ?? 0;
+									if (depth > current) {
+										blockquoteDepthsByLine.set(lineNumber, depth);
+									}
+								});
+								return;
+							}
 
-						if (node.name === 'TaskMarker') {
-							const lineNumber = doc.lineAt(node.from).number;
-							const markerText = doc.sliceString(node.from, node.to);
-							const checked = markerText.toLowerCase().includes('x');
-							taskMarkersByLine.set(lineNumber, { from: node.from, to: node.to, checked });
-							if (!listInfoByLine.has(lineNumber)) {
+							if (node.name === 'ListItem') {
+								const lineNumber = doc.lineAt(node.from).number;
 								const depth = getAncestorDepth(node, 'ListItem');
 								const listType = findAncestorName(node, ['OrderedList', 'BulletList']);
 								listInfoByLine.set(lineNumber, {
 									ordered: listType === 'OrderedList',
 									depth
 								});
+								return;
 							}
-							return;
-						}
 
-						if (node.name === 'TableRow') {
-							const lineNumber = doc.lineAt(node.from).number;
-							tableRowLines.add(lineNumber);
-							return;
-						}
+							if (node.name === 'ListMark') {
+								const lineNumber = doc.lineAt(node.from).number;
+								listMarkersByLine.set(lineNumber, {
+									from: node.from,
+									to: node.to,
+									text: doc.sliceString(node.from, node.to)
+								});
+								return;
+							}
 
-						if (node.name === 'TableHeader') {
-							const lineNumber = doc.lineAt(node.from).number;
-							tableHeaderLines.add(lineNumber);
-							return;
-						}
+							if (node.name === 'TaskMarker') {
+								const lineNumber = doc.lineAt(node.from).number;
+								const markerText = doc.sliceString(node.from, node.to);
+								const checked = markerText.toLowerCase().includes('x');
+								taskMarkersByLine.set(lineNumber, { from: node.from, to: node.to, checked });
+								if (!listInfoByLine.has(lineNumber)) {
+									const depth = getAncestorDepth(node, 'ListItem');
+									const listType = findAncestorName(node, ['OrderedList', 'BulletList']);
+									listInfoByLine.set(lineNumber, {
+										ordered: listType === 'OrderedList',
+										depth
+									});
+								}
+								return;
+							}
 
-						if (node.name === 'TableDelimiter') {
-							const lineNumber = doc.lineAt(node.from).number;
-							tableDelimiterLines.add(lineNumber);
-							return;
-						}
+							if (node.name === 'TableRow') {
+								const lineNumber = doc.lineAt(node.from).number;
+								tableRowLines.add(lineNumber);
+								return;
+							}
 
-						if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') {
-							return;
-						}
+							if (node.name === 'TableHeader') {
+								const lineNumber = doc.lineAt(node.from).number;
+								tableHeaderLines.add(lineNumber);
+								return;
+							}
 
-						const key = `${node.from}-${node.to}`;
-						if (codeBlockRangeKeys.has(key)) {
+							if (node.name === 'TableDelimiter') {
+								const lineNumber = doc.lineAt(node.from).number;
+								tableDelimiterLines.add(lineNumber);
+								return;
+							}
+
+							if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') {
+								return;
+							}
+
+							const key = `${node.from}-${node.to}`;
+							if (codeBlockRangeKeys.has(key)) {
+								return false;
+							}
+
+							const startLine = doc.lineAt(node.from);
+							const endLine = doc.lineAt(Math.max(node.to - 1, node.from));
+							codeBlockRanges.push({
+								from: node.from,
+								to: node.to,
+								startLineFrom: startLine.from,
+								endLineFrom: endLine.from
+							});
+							codeBlockRangeKeys.add(key);
 							return false;
 						}
+					});
+				}
 
-						const startLine = doc.lineAt(node.from);
-						const endLine = doc.lineAt(Math.max(node.to - 1, node.from));
-						codeBlockRanges.push({
-							from: node.from,
-							to: node.to,
-							startLineFrom: startLine.from,
-							endLineFrom: endLine.from
-						});
-						codeBlockRangeKeys.add(key);
-						return false;
-					}
-				});
-			}
+				codeBlockRanges.sort((left, right) => left.from - right.from);
 
-			codeBlockRanges.sort((left, right) => left.from - right.from);
-
-			for (const { from, to } of view.visibleRanges) {
-				let pos = from;
-				let codeBlockIndex = 0;
-				while (pos <= to) {
-					const line = view.state.doc.lineAt(pos);
-					const text = line.text;
-					const lineNumber = line.number;
-					while (
-						codeBlockIndex < codeBlockRanges.length &&
-						codeBlockRanges[codeBlockIndex].to < line.from
-					) {
-						codeBlockIndex += 1;
-					}
-					const codeBlock = codeBlockRanges[codeBlockIndex];
-					const inCodeBlock = codeBlock && codeBlock.from <= line.to && codeBlock.to >= line.from;
-					if (inCodeBlock) {
-						if (line.from === codeBlock.startLineFrom) {
-							builder.add(line.from, line.from, codeBlockStartDecoration);
-						} else if (line.from === codeBlock.endLineFrom) {
-							builder.add(line.from, line.from, codeBlockEndDecoration);
-						} else {
-							builder.add(line.from, line.from, codeBlockDecoration);
+				for (const { from, to } of view.visibleRanges) {
+					let pos = from;
+					let codeBlockIndex = 0;
+					while (pos <= to) {
+						const line = view.state.doc.lineAt(pos);
+						const text = line.text;
+						const lineNumber = line.number;
+						while (
+							codeBlockIndex < codeBlockRanges.length &&
+							codeBlockRanges[codeBlockIndex].to < line.from
+						) {
+							codeBlockIndex += 1;
 						}
-						pos = line.to + 1;
-						continue;
-					}
-
-					const headingLevel = headingLevelsByLine.get(lineNumber);
-					const listInfo = listInfoByLine.get(lineNumber) ?? null;
-					const listMarker = listMarkersByLine.get(lineNumber) ?? null;
-					const taskInfo = taskMarkersByLine.get(lineNumber) ?? null;
-					const blockquoteDepth = blockquoteDepthsByLine.get(lineNumber) ?? 0;
-					const isBlockquote = blockquoteDepth > 0;
-					const isListItem = listInfo != null || taskInfo != null;
-					const isHr = hrLines.has(lineNumber);
-					const imageInfo = imageByLine.get(lineNumber) ?? null;
-					const isImage = imageInfo != null;
-					const isSeparator = tableDelimiterLines.has(lineNumber);
-					const isRow = tableRowLines.has(lineNumber) || tableHeaderLines.has(lineNumber);
-					const isTable = isRow || isSeparator;
-					const isBlank = text.trim().length === 0 || (isBlockquote && isQuoteOnlyLine(text));
-					const prevIsBlockquote = (blockquoteDepthsByLine.get(lineNumber - 1) ?? 0) > 0;
-					const nextIsBlockquote = (blockquoteDepthsByLine.get(lineNumber + 1) ?? 0) > 0;
-					const prevIsListItem =
-						listInfoByLine.has(lineNumber - 1) || taskMarkersByLine.has(lineNumber - 1);
-					const nextIsListItem =
-						listInfoByLine.has(lineNumber + 1) || taskMarkersByLine.has(lineNumber + 1);
-					const prevIsTableLine =
-						tableRowLines.has(lineNumber - 1) ||
-						tableHeaderLines.has(lineNumber - 1) ||
-						tableDelimiterLines.has(lineNumber - 1);
-					const nextIsTableLine =
-						tableRowLines.has(lineNumber + 1) ||
-						tableHeaderLines.has(lineNumber + 1) ||
-						tableDelimiterLines.has(lineNumber + 1);
-					const nextIsSeparator = tableDelimiterLines.has(lineNumber + 1);
-
-					if (isBlockquote) {
-						builder.add(
-							line.from,
-							line.from,
-							getBlockquoteDecoration(blockquoteDepth, !prevIsBlockquote, !nextIsBlockquote)
-						);
-					}
-
-					if (isListItem) {
-						// Calculate indent for both regular lists and task lists
-						const markerText = listMarker?.text ?? '';
-						const isOrdered = listInfo?.ordered ?? (markerText.trim().endsWith('.') ? true : false);
-						if (isOrdered) {
-							builder.add(line.from, line.from, orderedListDecoration);
-						} else if (listInfo) {
-							builder.add(line.from, line.from, unorderedListDecoration);
-						}
-						if ((listInfo?.depth ?? 0) > 1) {
-							builder.add(line.from, line.from, listNestedDecoration);
-						}
-						if (!prevIsListItem) {
-							builder.add(line.from, line.from, listStartDecoration);
-						} else {
-							builder.add(line.from, line.from, listDecoration);
-						}
-						if (!nextIsListItem) {
-							builder.add(line.from, line.from, listEndDecoration);
-						}
-					}
-
-					if (headingLevel) {
-						const level = headingLevel;
-						switch (level) {
-							case 1:
-								builder.add(line.from, line.from, heading1Decoration);
-								break;
-							case 2:
-								builder.add(line.from, line.from, heading2Decoration);
-								break;
-							case 3:
-								builder.add(line.from, line.from, heading3Decoration);
-								break;
-							case 4:
-								builder.add(line.from, line.from, heading4Decoration);
-								break;
-							case 5:
-								builder.add(line.from, line.from, heading5Decoration);
-								break;
-							case 6:
-								builder.add(line.from, line.from, heading6Decoration);
-								break;
-							default:
-								break;
-						}
-					}
-
-					if (isHr) {
-						builder.add(line.from, line.from, hrDecoration);
-					}
-
-					if (isImage && imageInfo) {
-						builder.add(line.from, line.from, mediaDecoration);
-						builder.add(
-							line.to,
-							line.to,
-							Decoration.widget({
-								widget: new ImageWidget({
-									src: imageInfo.src,
-									alt: imageInfo.alt,
-									title: imageInfo.title
-								}),
-								block: true,
-								side: 1
-							})
-						);
-					}
-
-					if (isSeparator) {
-						builder.add(line.from, line.from, tableSeparatorDecoration);
-					}
-
-					if (isRow) {
-						if (!prevIsTableLine) {
-							builder.add(line.from, line.from, tableStartDecoration);
-						}
-						if (nextIsSeparator) {
-							builder.add(line.from, line.from, tableHeaderDecoration);
-						} else {
-							let tableRowIndex = 0;
-							let scanLineNumber = lineNumber - 1;
-							while (scanLineNumber >= 1) {
-								const scanLine = getLine(scanLineNumber);
-								if (!scanLine) {
-									break;
-								}
-								const scanLineIsTable =
-									tableRowLines.has(scanLineNumber) ||
-									tableHeaderLines.has(scanLineNumber) ||
-									tableDelimiterLines.has(scanLineNumber);
-								if (!scanLineIsTable) {
-									break;
-								}
-								if (tableRowLines.has(scanLineNumber)) {
-									tableRowIndex += 1;
-								}
-								scanLineNumber -= 1;
+						const codeBlock = codeBlockRanges[codeBlockIndex];
+						const inCodeBlock = codeBlock && codeBlock.from <= line.to && codeBlock.to >= line.from;
+						if (inCodeBlock) {
+							if (line.from === codeBlock.startLineFrom) {
+								addDecoration(line.from, line.from, codeBlockStartDecoration);
+							} else if (line.from === codeBlock.endLineFrom) {
+								addDecoration(line.from, line.from, codeBlockEndDecoration);
+							} else {
+								addDecoration(line.from, line.from, codeBlockDecoration);
 							}
-							const decoration =
-								tableRowIndex % 2 === 1 ? tableRowEvenDecoration : tableRowDecoration;
-							builder.add(line.from, line.from, decoration);
+							pos = line.to + 1;
+							continue;
 						}
-						if (!nextIsTableLine) {
-							builder.add(line.from, line.from, tableEndDecoration);
-						}
-					}
 
-					if (taskInfo) {
-						builder.add(
-							line.from,
-							line.from,
-							taskInfo.checked ? taskCheckedDecoration : taskDecoration
-						);
-						const markerStart = listMarker?.from ?? taskInfo.from;
-						const markerEnd = taskInfo.to;
-						builder.add(markerStart, markerEnd, listMarkerDecoration);
-					} else if (listMarker) {
-						const markerText = listMarker.text.trim();
-						if (!markerText.endsWith('.')) {
-							builder.add(
-								listMarker.from,
-								listMarker.to,
-								Decoration.replace({
-									widget: new ListMarkerWidget('• '),
+						const headingLevel = headingLevelsByLine.get(lineNumber);
+						const listInfo = listInfoByLine.get(lineNumber) ?? null;
+						const listMarker = listMarkersByLine.get(lineNumber) ?? null;
+						const taskInfo = taskMarkersByLine.get(lineNumber) ?? null;
+						const blockquoteDepth = blockquoteDepthsByLine.get(lineNumber) ?? 0;
+						const isBlockquote = blockquoteDepth > 0;
+						const isListItem = listInfo != null || taskInfo != null;
+						const isHr = hrLines.has(lineNumber);
+						const imageInfo = imageByLine.get(lineNumber) ?? null;
+						const isImage = imageInfo != null;
+						const isSeparator = tableDelimiterLines.has(lineNumber);
+						const isRow = tableRowLines.has(lineNumber) || tableHeaderLines.has(lineNumber);
+						const isTable = isRow || isSeparator;
+						const isBlank = text.trim().length === 0 || (isBlockquote && isQuoteOnlyLine(text));
+						const prevIsBlockquote = (blockquoteDepthsByLine.get(lineNumber - 1) ?? 0) > 0;
+						const nextIsBlockquote = (blockquoteDepthsByLine.get(lineNumber + 1) ?? 0) > 0;
+						const prevIsListItem =
+							listInfoByLine.has(lineNumber - 1) || taskMarkersByLine.has(lineNumber - 1);
+						const nextIsListItem =
+							listInfoByLine.has(lineNumber + 1) || taskMarkersByLine.has(lineNumber + 1);
+						const prevIsTableLine =
+							tableRowLines.has(lineNumber - 1) ||
+							tableHeaderLines.has(lineNumber - 1) ||
+							tableDelimiterLines.has(lineNumber - 1);
+						const nextIsTableLine =
+							tableRowLines.has(lineNumber + 1) ||
+							tableHeaderLines.has(lineNumber + 1) ||
+							tableDelimiterLines.has(lineNumber + 1);
+						const nextIsSeparator = tableDelimiterLines.has(lineNumber + 1);
+
+						if (isBlockquote) {
+							addDecoration(
+								line.from,
+								line.from,
+								getBlockquoteDecoration(blockquoteDepth, !prevIsBlockquote, !nextIsBlockquote)
+							);
+						}
+
+						if (isListItem) {
+							// Calculate indent for both regular lists and task lists
+							const markerText = listMarker?.text ?? '';
+							const isOrdered =
+								listInfo?.ordered ?? (markerText.trim().endsWith('.') ? true : false);
+							if (isOrdered) {
+								addDecoration(line.from, line.from, orderedListDecoration);
+							} else if (listInfo) {
+								addDecoration(line.from, line.from, unorderedListDecoration);
+							}
+							if ((listInfo?.depth ?? 0) > 1) {
+								addDecoration(line.from, line.from, listNestedDecoration);
+							}
+							if (!prevIsListItem) {
+								addDecoration(line.from, line.from, listStartDecoration);
+							} else {
+								addDecoration(line.from, line.from, listDecoration);
+							}
+							if (!nextIsListItem) {
+								addDecoration(line.from, line.from, listEndDecoration);
+							}
+						}
+
+						if (headingLevel) {
+							const level = headingLevel;
+							switch (level) {
+								case 1:
+									addDecoration(line.from, line.from, heading1Decoration);
+									break;
+								case 2:
+									addDecoration(line.from, line.from, heading2Decoration);
+									break;
+								case 3:
+									addDecoration(line.from, line.from, heading3Decoration);
+									break;
+								case 4:
+									addDecoration(line.from, line.from, heading4Decoration);
+									break;
+								case 5:
+									addDecoration(line.from, line.from, heading5Decoration);
+									break;
+								case 6:
+									addDecoration(line.from, line.from, heading6Decoration);
+									break;
+								default:
+									break;
+							}
+						}
+
+						if (isHr) {
+							addDecoration(line.from, line.from, hrDecoration);
+						}
+
+						if (isImage && imageInfo) {
+							addDecoration(line.from, line.from, mediaDecoration);
+							addDecoration(
+								line.to,
+								line.to,
+								Decoration.widget({
+									widget: new ImageWidget({
+										src: imageInfo.src,
+										alt: imageInfo.alt,
+										title: imageInfo.title
+									}),
 									side: 1
 								})
 							);
 						}
-					}
 
-					if (isBlank) {
-						builder.add(line.from, line.from, blankLineDecoration);
-					}
+						if (isSeparator) {
+							addDecoration(line.from, line.from, tableSeparatorDecoration);
+						}
 
-					if (
-						!isBlank &&
-						!headingLevel &&
-						!isBlockquote &&
-						!isListItem &&
-						!taskInfo &&
-						!isHr &&
-						!isSeparator &&
-						!isTable &&
-						paragraphLines.has(lineNumber)
-					) {
-						builder.add(line.from, line.from, paragraphDecoration);
-					}
+						if (isRow) {
+							if (!prevIsTableLine) {
+								addDecoration(line.from, line.from, tableStartDecoration);
+							}
+							if (nextIsSeparator) {
+								addDecoration(line.from, line.from, tableHeaderDecoration);
+							} else {
+								let tableRowIndex = 0;
+								let scanLineNumber = lineNumber - 1;
+								while (scanLineNumber >= 1) {
+									const scanLine = getLine(scanLineNumber);
+									if (!scanLine) {
+										break;
+									}
+									const scanLineIsTable =
+										tableRowLines.has(scanLineNumber) ||
+										tableHeaderLines.has(scanLineNumber) ||
+										tableDelimiterLines.has(scanLineNumber);
+									if (!scanLineIsTable) {
+										break;
+									}
+									if (tableRowLines.has(scanLineNumber)) {
+										tableRowIndex += 1;
+									}
+									scanLineNumber -= 1;
+								}
+								const decoration =
+									tableRowIndex % 2 === 1 ? tableRowEvenDecoration : tableRowDecoration;
+								addDecoration(line.from, line.from, decoration);
+							}
+							if (!nextIsTableLine) {
+								addDecoration(line.from, line.from, tableEndDecoration);
+							}
+						}
 
+						if (taskInfo) {
+							addDecoration(
+								line.from,
+								line.from,
+								taskInfo.checked ? taskCheckedDecoration : taskDecoration
+							);
+							const markerStart = listMarker?.from ?? taskInfo.from;
+							const markerEnd = taskInfo.to;
+							addDecoration(markerStart, markerEnd, listMarkerDecoration);
+						} else if (listMarker) {
+							const markerText = listMarker.text.trim();
+							if (!markerText.endsWith('.')) {
+								addDecoration(
+									listMarker.from,
+									listMarker.to,
+									Decoration.replace({
+										widget: new ListMarkerWidget('• '),
+										side: 1
+									})
+								);
+							}
+						}
+
+						if (isBlank) {
+							addDecoration(line.from, line.from, blankLineDecoration);
+						}
+
+						if (
+							!isBlank &&
+							!headingLevel &&
+							!isBlockquote &&
+							!isListItem &&
+							!taskInfo &&
+							!isHr &&
+							!isSeparator &&
+							!isTable &&
+							paragraphLines.has(lineNumber)
+						) {
+							addDecoration(line.from, line.from, paragraphDecoration);
+						}
+
+						pos = line.to + 1;
+					}
+				}
+				const decorationCount = pending.length;
+				pending.sort((left, right) => {
+					if (left.from !== right.from) return left.from - right.from;
+					const leftStart = (left.decoration as { startSide?: number }).startSide ?? 0;
+					const rightStart = (right.decoration as { startSide?: number }).startSide ?? 0;
+					if (leftStart !== rightStart) return leftStart - rightStart;
+					if (left.to !== right.to) return left.to - right.to;
+					const leftEnd = (left.decoration as { endSide?: number }).endSide ?? 0;
+					const rightEnd = (right.decoration as { endSide?: number }).endSide ?? 0;
+					return leftEnd - rightEnd;
+				});
+				for (const entry of pending) {
+					builder.add(entry.from, entry.to, entry.decoration);
+				}
+
+				if (decorationCount === 0 && view.state.doc.length > 0 && view.visibleRanges.length > 0) {
+					const now = Date.now();
+					if (now - this.lastEmptyDecorationReport > 2000) {
+						this.lastEmptyDecorationReport = now;
+						this.reportDecorationIssue(view, 'decorations-empty', 'Line decorations missing', {
+							docLength: view.state.doc.length
+						});
+					}
+				}
+				return builder.finish();
+			} catch (error) {
+				this.reportDecorationIssue(
+					view,
+					'decorations-error',
+					'Decoration pipeline threw while building line decorations',
+					{ error: this.serializeError(error) }
+				);
+				return this.decorations;
+			}
+		}
+
+		private reportDecorationIssue(
+			view: EditorView,
+			type: string,
+			message: string,
+			details: Record<string, unknown> = {}
+		) {
+			const snapshot = this.captureViewportSnapshot(view);
+			postToNative('jsError', {
+				type,
+				message,
+				...details,
+				snapshot
+			});
+		}
+
+		private captureViewportSnapshot(view: EditorView) {
+			const ranges = view.visibleRanges.map((range) => ({ from: range.from, to: range.to }));
+			const selection = view.state.selection.main;
+			const doc = view.state.doc;
+			const samples: Array<{ line: number; from: number; to: number; text: string }> = [];
+			const maxSamples = 6;
+			for (const range of view.visibleRanges) {
+				let pos = range.from;
+				while (pos <= range.to && samples.length < maxSamples) {
+					const line = doc.lineAt(pos);
+					const text = line.text.length > 160 ? `${line.text.slice(0, 157)}...` : line.text;
+					samples.push({ line: line.number, from: line.from, to: line.to, text });
 					pos = line.to + 1;
 				}
+				if (samples.length >= maxSamples) {
+					break;
+				}
 			}
-			return builder.finish();
+			return {
+				docLength: doc.length,
+				selection: { from: selection.from, to: selection.to },
+				visibleRanges: ranges,
+				sampleLines: samples
+			};
+		}
+
+		private serializeError(error: unknown) {
+			if (error instanceof Error) {
+				return { name: error.name, message: error.message, stack: error.stack };
+			}
+			return { message: String(error) };
 		}
 	},
 	{
@@ -1230,13 +1320,13 @@ const livePreviewPlugin = ViewPlugin.fromClass(
 						const name = node.name;
 						if (name === 'HeaderMark') {
 							if (!shouldRevealLine(node.from)) {
-								builder.add(node.from, node.to, livePreviewHideDecoration);
+								addDecoration(node.from, node.to, livePreviewHideDecoration);
 							}
 							return;
 						}
 						if (name === 'EmphasisMark' || name === 'LinkMark' || name === 'CodeMark') {
 							if (!shouldRevealRange(node.from, node.to)) {
-								builder.add(node.from, node.to, livePreviewHideDecoration);
+								addDecoration(node.from, node.to, livePreviewHideDecoration);
 							}
 							return;
 						}
@@ -1249,7 +1339,7 @@ const livePreviewPlugin = ViewPlugin.fromClass(
 								const parentFrom = parent?.from ?? node.from;
 								const parentTo = parent?.to ?? node.to;
 								if (!shouldRevealRange(parentFrom, parentTo)) {
-									builder.add(node.from, node.to, livePreviewHideDecoration);
+									addDecoration(node.from, node.to, livePreviewHideDecoration);
 								}
 							}
 						}
