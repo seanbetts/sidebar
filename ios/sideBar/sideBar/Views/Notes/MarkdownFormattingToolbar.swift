@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MarkdownFormattingToolbar: View {
     let isReadOnly: Bool
+    let onClose: () -> Void
     let onCommand: (String) -> Void
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -9,14 +10,27 @@ struct MarkdownFormattingToolbar: View {
     @State private var availableWidth: CGFloat = 0
 
     var body: some View {
-        Group {
-            if isCompact {
-                compactToolbar
-            } else {
-                fullToolbar
+        HStack(spacing: 0) {
+            Group {
+                if isCompact {
+                    compactToolbar
+                } else {
+                    fullToolbar
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .disabled(isReadOnly)
+            .opacity(isReadOnly ? 0.4 : 1)
+
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close editor")
+            .padding(.trailing, 12)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .overlay(alignment: .bottom) {
             Divider()
@@ -30,8 +44,6 @@ struct MarkdownFormattingToolbar: View {
                     }
             }
         )
-        .disabled(isReadOnly)
-        .opacity(isReadOnly ? 0.4 : 1)
     }
 
     private var isCompact: Bool {
