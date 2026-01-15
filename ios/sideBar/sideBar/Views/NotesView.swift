@@ -10,7 +10,10 @@ public struct NotesView: View {
     }
 
     public var body: some View {
-        NotesDetailView(viewModel: environment.notesViewModel)
+        NotesDetailView(
+            viewModel: environment.notesViewModel,
+            editorViewModel: environment.notesEditorViewModel
+        )
             #if !os(macOS)
             .navigationTitle(noteTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -57,8 +60,10 @@ public struct NotesView: View {
 
 private struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
+    @ObservedObject var editorViewModel: NotesEditorViewModel
     private let contentMaxWidth: CGFloat = 800
     @EnvironmentObject private var environment: AppEnvironment
+    @StateObject private var editorHandle = CodeMirrorEditorHandle()
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -72,44 +77,66 @@ private struct NotesDetailView: View {
                 header
                 Divider()
             }
-            content
+            contentWithToolbar
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "text.document")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
-            Text(displayTitle)
-                .font(.headline)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .layoutPriority(1)
-                .truncationMode(.tail)
-            Spacer()
-            SaveStatusView(editorViewModel: environment.notesEditorViewModel)
-            Button {
-            } label: {
-                Image(systemName: "line.3.horizontal")
+        ZStack(alignment: .bottomLeading) {
+            HStack(spacing: 12) {
+                Image(systemName: "text.document")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.primary)
+                Text(displayTitle)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .layoutPriority(1)
+                    .truncationMode(.tail)
+                Spacer()
+                SaveStatusView(editorViewModel: editorViewModel)
+                Button {
+                } label: {
+                    Image(systemName: "line.3.horizontal")
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 16, weight: .semibold))
+                .imageScale(.medium)
+                .accessibilityLabel("Note options")
             }
-            .buttonStyle(.plain)
-            .font(.system(size: 16, weight: .semibold))
-            .imageScale(.medium)
-            .accessibilityLabel("Note options")
+            .padding(16)
+            if isEditingToolbarVisible {
+                GeometryReader { proxy in
+                    Color(.secondarySystemBackground)
+                        .overlay(alignment: .center) {
+                            MarkdownFormattingToolbar(isReadOnly: editorViewModel.isReadOnly, onClose: {
+                                editorViewModel.isEditing = false
+                            }) { command in
+                                editorHandle.applyCommand(command)
+                            }
+                            .background(Color.clear)
+                        }
+                        .frame(height: proxy.size.height)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
         }
-        .padding(16)
-        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
+        .frame(maxWidth: .infinity)
+        .frame(height: LayoutMetrics.contentHeaderMinHeight)
+        .animation(.easeInOut(duration: 0.2), value: editorViewModel.isEditing)
     }
 
     @ViewBuilder
     private var content: some View {
             if viewModel.activeNote != nil {
                 MarkdownEditorView(
-                    viewModel: environment.notesEditorViewModel,
+                    viewModel: editorViewModel,
                     maxContentWidth: contentMaxWidth,
-                    showsCompactStatus: isCompact
+                    showsCompactStatus: isCompact,
+                    editorHandle: editorHandle,
+                    isEditing: isEditingBinding,
+                    editorFrame: editorFrameBinding
                 )
             } else if viewModel.selectedNoteId != nil {
                 if let error = viewModel.errorMessage {
@@ -148,6 +175,33 @@ private struct NotesDetailView: View {
             }
         }
 
+    private var contentWithToolbar: some View {
+        content
+            .overlay(alignment: .top) {
+                if isCompact && isEditingToolbarVisible {
+                    GeometryReader { proxy in
+                        Color(.secondarySystemBackground)
+                            .overlay(alignment: .center) {
+                                MarkdownFormattingToolbar(
+                                    isReadOnly: editorViewModel.isReadOnly,
+                                    onClose: {
+                                        editorViewModel.isEditing = false
+                                    }
+                                ) { command in
+                                    editorHandle.applyCommand(command)
+                                }
+                                .background(Color.clear)
+                            }
+                            .frame(height: min(proxy.size.height, LayoutMetrics.contentHeaderMinHeight))
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .zIndex(1)
+                    }
+                    .frame(height: LayoutMetrics.contentHeaderMinHeight)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: editorViewModel.isEditing)
+    }
+
     private var displayTitle: String {
         guard let name = viewModel.activeNote?.name else {
             return "Notes"
@@ -164,6 +218,24 @@ private struct NotesDetailView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private var isEditingToolbarVisible: Bool {
+        editorViewModel.isEditing && !editorViewModel.isReadOnly
+    }
+
+    private var isEditingBinding: Binding<Bool> {
+        Binding(
+            get: { editorViewModel.isEditing },
+            set: { editorViewModel.isEditing = $0 }
+        )
+    }
+
+    private var editorFrameBinding: Binding<CGRect> {
+        Binding(
+            get: { editorViewModel.editorFrame },
+            set: { editorViewModel.editorFrame = $0 }
+        )
     }
 
 }
