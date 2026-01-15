@@ -15,6 +15,8 @@ final class CodeMirrorEditorHandle: ObservableObject {
     fileprivate var setReadOnlyHandler: ((Bool) -> Void)?
     fileprivate var focusHandler: (() -> Void)?
     fileprivate var applyCommandHandler: ((String, Any?) -> Void)?
+    fileprivate var setSelectionAtHandler: ((CGPoint) -> Void)?
+    fileprivate var setSelectionAtDeferredHandler: ((CGPoint) -> Void)?
 
     func setMarkdown(_ text: String) {
         setMarkdownHandler?(text)
@@ -34,6 +36,14 @@ final class CodeMirrorEditorHandle: ObservableObject {
 
     func applyCommand(_ command: String, payload: Any? = nil) {
         applyCommandHandler?(command, payload)
+    }
+
+    func setSelectionAt(x: CGFloat, y: CGFloat) {
+        setSelectionAtHandler?(CGPoint(x: x, y: y))
+    }
+
+    func setSelectionAtDeferred(x: CGFloat, y: CGFloat) {
+        setSelectionAtDeferredHandler?(CGPoint(x: x, y: y))
     }
 }
 
@@ -103,6 +113,12 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
         }
         handle.applyCommandHandler = { [weak self] command, payload in
             self?.applyCommand(command, payload: payload)
+        }
+        handle.setSelectionAtHandler = { [weak self] point in
+            self?.setSelectionAt(point)
+        }
+        handle.setSelectionAtDeferredHandler = { [weak self] point in
+            self?.setSelectionAtDeferred(point)
         }
     }
 
@@ -190,6 +206,18 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private func applyCommand(_ command: String, payload: Any?) {
         let payloadValue = payload.map { jsonEncoded($0) } ?? "null"
         evaluateJavaScript("window.editorAPI?.applyCommand(\(jsonEncoded(command)), \(payloadValue))")
+    }
+
+    private func setSelectionAt(_ point: CGPoint) {
+        let payload = ["x": point.x, "y": point.y]
+        let payloadValue = jsonEncoded(payload)
+        evaluateJavaScript("window.editorAPI?.setSelectionAtCoords?.(\(payloadValue))")
+    }
+
+    private func setSelectionAtDeferred(_ point: CGPoint) {
+        let payload = ["x": point.x, "y": point.y]
+        let payloadValue = jsonEncoded(payload)
+        evaluateJavaScript("window.editorAPI?.setSelectionAtCoordsDeferred?.(\(payloadValue))")
     }
 
     private func openExternalLink(_ href: String) {

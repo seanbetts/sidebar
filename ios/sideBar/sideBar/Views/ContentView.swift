@@ -738,6 +738,7 @@ private struct SignedInContentView<Main: View>: View {
     let topSafeAreaBackground: Color
     let onSignOut: () -> Void
     let mainView: () -> Main
+    @EnvironmentObject private var environment: AppEnvironment
 
     var body: some View {
         Group {
@@ -751,6 +752,17 @@ private struct SignedInContentView<Main: View>: View {
                     mainView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .background(DesignTokens.Colors.background)
+                        .coordinateSpace(name: "appRoot")
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 0, coordinateSpace: .named("appRoot"))
+                                .onEnded { value in
+                                    guard environment.notesEditorViewModel.isEditing else { return }
+                                    let editorFrame = environment.notesEditorViewModel.editorFrame
+                                    if editorFrame != .zero && !editorFrame.contains(value.location) {
+                                        environment.notesEditorViewModel.isEditing = false
+                                    }
+                                }
+                        )
                         .overlay(alignment: .top) {
                             Rectangle()
                                 .fill(topSafeAreaBackground)
