@@ -797,7 +797,15 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					}
 
 					if (isListItem || taskMatch) {
-						const indent = listMatch ? listMatch[1].length : 0;
+						// Calculate indent for both regular lists and task lists
+						let indent = 0;
+						if (listMatch) {
+							indent = listMatch[1].length;
+						} else if (taskMatch) {
+							// Extract leading whitespace for task items
+							const leadingWhitespace = /^(\s*)/.exec(text);
+							indent = leadingWhitespace ? leadingWhitespace[1].length : 0;
+						}
 						const marker = listMatch ? listMatch[2] : '';
 						if (marker && marker.endsWith('.')) {
 							builder.add(line.from, line.from, orderedListDecoration);
