@@ -31,10 +31,8 @@ struct MarkdownFormattingToolbar: View {
             .accessibilityLabel("Close editor")
             .padding(.trailing, 12)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
         .overlay(
             GeometryReader { proxy in
                 Color.clear

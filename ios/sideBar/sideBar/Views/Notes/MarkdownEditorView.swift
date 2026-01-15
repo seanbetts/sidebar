@@ -4,9 +4,9 @@ struct MarkdownEditorView: View {
     @ObservedObject var viewModel: NotesEditorViewModel
     let maxContentWidth: CGFloat
     let showsCompactStatus: Bool
-    @StateObject private var editorHandle = CodeMirrorEditorHandle()
-    @State private var isEditing = false
-    @State private var editorFrame: CGRect = .zero
+    @ObservedObject var editorHandle: CodeMirrorEditorHandle
+    @Binding var isEditing: Bool
+    @Binding var editorFrame: CGRect
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,27 +30,6 @@ struct MarkdownEditorView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay(alignment: .top) {
-                if isEditing && !viewModel.isReadOnly {
-                    MarkdownFormattingToolbar(isReadOnly: viewModel.isReadOnly, onClose: {
-                        isEditing = false
-                    }) { command in
-                        editorHandle.applyCommand(command)
-                    }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(1)
-                }
-            }
-            .animation(.easeInOut(duration: 0.2), value: isEditing)
-            .gesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .named("editorSurface"))
-                    .onEnded { value in
-                        guard isEditing, !viewModel.isReadOnly else { return }
-                        if !editorFrame.contains(value.location) {
-                            isEditing = false
-                        }
-                    }
-            )
         }
         .coordinateSpace(name: "editorSurface")
         .overlay(alignment: .topTrailing) {
@@ -68,6 +47,13 @@ struct MarkdownEditorView: View {
                 isEditing = false
             }
         }
+        .onChange(of: isEditing) { _, newValue in
+            guard newValue, !viewModel.isReadOnly else { return }
+            if let coords = viewModel.pendingCaretCoords {
+                viewModel.pendingCaretCoords = nil
+                editorHandle.setSelectionAtDeferred(x: coords.x, y: coords.y)
+            }
+        }
     }
 
     private var editorSurface: some View {
@@ -82,20 +68,25 @@ struct MarkdownEditorView: View {
             GeometryReader { proxy in
                 Color.clear
                     .onAppear {
-                        editorFrame = proxy.frame(in: .named("editorSurface"))
+                        editorFrame = proxy.frame(in: .named("appRoot"))
                     }
                     .onChange(of: proxy.size) { _, _ in
-                        editorFrame = proxy.frame(in: .named("editorSurface"))
+                        editorFrame = proxy.frame(in: .named("appRoot"))
                     }
             }
         )
         .simultaneousGesture(
-            TapGesture().onEnded {
-                if !isEditing && !viewModel.isReadOnly {
-                    isEditing = true
-                    editorHandle.focus()
+            DragGesture(minimumDistance: 0, coordinateSpace: .named("appRoot"))
+                .onEnded { value in
+                    guard !viewModel.isReadOnly else { return }
+                    if !isEditing {
+                        let localX = value.location.x - editorFrame.origin.x
+                        let localY = value.location.y - editorFrame.origin.y
+                        viewModel.pendingCaretCoords = CGPoint(x: localX, y: localY)
+                        isEditing = true
+                        editorHandle.focus()
+                    }
                 }
-            }
         )
     }
 }

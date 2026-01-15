@@ -157,6 +157,26 @@ function focus() {
 	view?.focus();
 }
 
+function setSelectionAtCoords(coords: { x: number; y: number }) {
+	if (!view) return;
+	const rect = view.dom.getBoundingClientRect();
+	const pos = view.posAtCoords({ x: rect.left + coords.x, y: rect.top + coords.y });
+	if (pos == null) return;
+	view.dispatch({
+		selection: { anchor: pos, head: pos },
+		userEvent: 'select.pointer'
+	});
+}
+
+function setSelectionAtCoordsDeferred(coords: { x: number; y: number }) {
+	if (!view) return;
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => {
+			setSelectionAtCoords(coords);
+		});
+	});
+}
+
 function getSelection() {
 	if (!view) return null;
 	return view.state.selection.main;
@@ -1608,7 +1628,9 @@ function initializeEditor() {
 		getMarkdown,
 		setReadOnly,
 		focus,
-		applyCommand
+		applyCommand,
+		setSelectionAtCoords,
+		setSelectionAtCoordsDeferred
 	};
 
 	postToNative('editorReady', {});
