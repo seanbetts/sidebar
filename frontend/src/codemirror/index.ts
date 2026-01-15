@@ -816,12 +816,13 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 					const headingMatch = headingRegex.exec(text);
 					const listMatch = listRegex.exec(text);
 					const isBlockquote = /^\s*>\s?/.test(text);
+					const isBlockquoteBlank = /^\s*(?:>\s*)+$/.test(text);
 					const taskMatch = taskRegex.exec(text);
 					const isListItem = listMatch != null;
 					const isHr = hrRegex.test(text);
 					const imageMatch = imageRegex.exec(text);
 					const isImage = imageMatch != null;
-					const isBlank = /^\s*$/.test(text);
+					const isBlank = /^\s*$/.test(text) || isBlockquoteBlank;
 					const isSeparator = isTableSeparator(text);
 					const isRow = isTableRow(text);
 					const isTable = isTableLine(text);
