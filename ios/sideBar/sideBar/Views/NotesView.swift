@@ -106,6 +106,8 @@ private struct NotesDetailView: View {
                 .accessibilityLabel("Note options")
             }
             .padding(16)
+            .opacity(isEditingToolbarVisible ? 0 : 1)
+            .allowsHitTesting(!isEditingToolbarVisible)
             if isEditingToolbarVisible {
                 GeometryReader { proxy in
                     Color(.secondarySystemBackground)
@@ -118,7 +120,8 @@ private struct NotesDetailView: View {
                             .background(Color.clear)
                         }
                         .frame(height: proxy.size.height)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .transition(.opacity)
+                        .zIndex(1)
                 }
             }
         }
@@ -193,7 +196,7 @@ private struct NotesDetailView: View {
                                 .background(Color.clear)
                             }
                             .frame(height: min(proxy.size.height, LayoutMetrics.contentHeaderMinHeight))
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .transition(.opacity)
                             .zIndex(1)
                     }
                     .frame(height: LayoutMetrics.contentHeaderMinHeight)
