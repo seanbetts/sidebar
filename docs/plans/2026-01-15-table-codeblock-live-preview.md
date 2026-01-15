@@ -15,3 +15,9 @@ Render tables and code blocks when the caret is outside, and show raw markdown w
 - Code blocks render with the styled wrapper in read-only and when caret is outside the block.
 - Raw markdown shows only when caret is inside the table/code block.
 - No scroll-induced decoration drop or CM exceptions.
+
+## Open Issues (Investigate)
+- Edit toolbar flicker on appearance (likely tied to caret placement race).
+- Caret sometimes lands at the wrong position on tap-to-edit.
+- Keyboard up/down navigation jumps to unexpected lines (left/right behaves).
+- Hypothesis: fixing reliable vertical caret navigation may resolve the flicker + placement issues.
