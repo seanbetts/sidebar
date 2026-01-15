@@ -25,7 +25,7 @@
 .scratchpad-editor table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1em 0;
+  margin: 0.75rem 0;
   font-size: 0.95em;
 }
 
@@ -39,8 +39,8 @@
 .website-viewer td,
 .scratchpad-editor th,
 .scratchpad-editor td {
-  border: 1px solid var(--color-border) !important;
-  padding: 0.5em 0.75em !important;
+  border: 1px solid var(--color-border);
+  padding: 0.5em 0.75em;
   text-align: left;
   vertical-align: top;
 }
@@ -50,20 +50,10 @@
 .file-markdown thead th,
 .website-viewer thead th,
 .scratchpad-editor thead th {
-  background-color: color-mix(in oklab, var(--color-muted) 80%, var(--color-foreground) 8%) !important;
+  background-color: var(--color-muted);
   color: var(--color-foreground);
   font-weight: 600;
-  padding: 0.65em 0.75em !important;
-  border-bottom: 2px solid var(--color-border) !important;
-}
-
-/* Striped rows using OKLAB color mixing for perceptually uniform blending */
-.tiptap tbody tr:nth-child(even),
-.chat-markdown tbody tr:nth-child(even),
-.file-markdown tbody tr:nth-child(even),
-.website-viewer tbody tr:nth-child(even),
-.scratchpad-editor tbody tr:nth-child(even) {
-  background-color: color-mix(in oklab, var(--color-muted) 40%, transparent);
+  border-bottom: 2px solid var(--color-border);
 }
 
 /* ============================================================================

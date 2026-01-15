@@ -669,12 +669,6 @@ const codeBlockStartDecoration = Decoration.line({ class: 'cm-code-block cm-code
 const codeBlockEndDecoration = Decoration.line({ class: 'cm-code-block cm-code-block--end' });
 const mediaDecoration = Decoration.line({ class: 'cm-media-line' });
 const blankLineDecoration = Decoration.line({ class: 'cm-blank-line' });
-const tableRowDecoration = Decoration.line({ class: 'cm-table-row' });
-const tableRowEvenDecoration = Decoration.line({ class: 'cm-table-row cm-table-row--even' });
-const tableHeaderDecoration = Decoration.line({ class: 'cm-table-row cm-table-header' });
-const tableSeparatorDecoration = Decoration.line({ class: 'cm-table-separator' });
-const tableStartDecoration = Decoration.line({ class: 'cm-table-start' });
-const tableEndDecoration = Decoration.line({ class: 'cm-table-end' });
 const livePreviewHideDecoration = Decoration.mark({ class: 'cm-live-hide' });
 const listMarkerDecoration = Decoration.mark({ class: 'cm-list-marker' });
 
@@ -715,8 +709,6 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 				};
 				const tree = syntaxTree(view.state);
 				const doc = view.state.doc;
-				const getLine = (number: number) =>
-					number >= 1 && number <= doc.lines ? doc.line(number) : null;
 				const codeBlockRanges: Array<{
 					from: number;
 					to: number;
@@ -995,9 +987,10 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						const isHr = hrLines.has(lineNumber);
 						const imageInfo = imageByLine.get(lineNumber) ?? null;
 						const isImage = imageInfo != null;
-						const isSeparator = tableDelimiterLines.has(lineNumber);
-						const isRow = tableRowLines.has(lineNumber) || tableHeaderLines.has(lineNumber);
-						const isTable = isRow || isSeparator;
+						const isTable =
+							tableRowLines.has(lineNumber) ||
+							tableHeaderLines.has(lineNumber) ||
+							tableDelimiterLines.has(lineNumber);
 						const isBlank = text.trim().length === 0 || (isBlockquote && isQuoteOnlyLine(text));
 						const prevIsBlockquote = (blockquoteDepthsByLine.get(lineNumber - 1) ?? 0) > 0;
 						const nextIsBlockquote = (blockquoteDepthsByLine.get(lineNumber + 1) ?? 0) > 0;
@@ -1005,15 +998,6 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 							listInfoByLine.has(lineNumber - 1) || taskMarkersByLine.has(lineNumber - 1);
 						const nextIsListItem =
 							listInfoByLine.has(lineNumber + 1) || taskMarkersByLine.has(lineNumber + 1);
-						const prevIsTableLine =
-							tableRowLines.has(lineNumber - 1) ||
-							tableHeaderLines.has(lineNumber - 1) ||
-							tableDelimiterLines.has(lineNumber - 1);
-						const nextIsTableLine =
-							tableRowLines.has(lineNumber + 1) ||
-							tableHeaderLines.has(lineNumber + 1) ||
-							tableDelimiterLines.has(lineNumber + 1);
-						const nextIsSeparator = tableDelimiterLines.has(lineNumber + 1);
 
 						if (isBlockquote) {
 							addDecoration(
@@ -1092,45 +1076,6 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 							);
 						}
 
-						if (isSeparator) {
-							addDecoration(line.from, line.from, tableSeparatorDecoration);
-						}
-
-						if (isRow) {
-							if (!prevIsTableLine) {
-								addDecoration(line.from, line.from, tableStartDecoration);
-							}
-							if (nextIsSeparator) {
-								addDecoration(line.from, line.from, tableHeaderDecoration);
-							} else {
-								let tableRowIndex = 0;
-								let scanLineNumber = lineNumber - 1;
-								while (scanLineNumber >= 1) {
-									const scanLine = getLine(scanLineNumber);
-									if (!scanLine) {
-										break;
-									}
-									const scanLineIsTable =
-										tableRowLines.has(scanLineNumber) ||
-										tableHeaderLines.has(scanLineNumber) ||
-										tableDelimiterLines.has(scanLineNumber);
-									if (!scanLineIsTable) {
-										break;
-									}
-									if (tableRowLines.has(scanLineNumber)) {
-										tableRowIndex += 1;
-									}
-									scanLineNumber -= 1;
-								}
-								const decoration =
-									tableRowIndex % 2 === 1 ? tableRowEvenDecoration : tableRowDecoration;
-								addDecoration(line.from, line.from, decoration);
-							}
-							if (!nextIsTableLine) {
-								addDecoration(line.from, line.from, tableEndDecoration);
-							}
-						}
-
 						if (taskInfo) {
 							addDecoration(
 								line.from,
@@ -1165,7 +1110,6 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 							!isListItem &&
 							!taskInfo &&
 							!isHr &&
-							!isSeparator &&
 							!isTable &&
 							paragraphLines.has(lineNumber)
 						) {
