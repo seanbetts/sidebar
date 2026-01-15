@@ -150,7 +150,18 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
             }
             openExternalLink(href)
         case CodeMirrorBridge.jsError:
-            logger.error("CodeMirror JS error: \(String(describing: message.body), privacy: .public)")
+            if let body = message.body as? [String: Any] {
+                let messageText = body["message"] as? String ?? "Unknown error"
+                let type = body["type"] as? String ?? "error"
+                logger.error("CodeMirror JS error (\(type, privacy: .public)): \(messageText, privacy: .public)")
+                logger.error("CodeMirror JS error payload: \(String(describing: body), privacy: .public)")
+                if let data = try? JSONSerialization.data(withJSONObject: body, options: [.prettyPrinted]),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    logger.error("CodeMirror JS error payload JSON: \(jsonString, privacy: .public)")
+                }
+            } else {
+                logger.error("CodeMirror JS error: \(String(describing: message.body), privacy: .public)")
+            }
         default:
             break
         }
