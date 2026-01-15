@@ -1,5 +1,18 @@
-import { EditorState, Compartment, RangeSetBuilder, Transaction } from '@codemirror/state';
-import { Decoration, EditorView, keymap, ViewPlugin, WidgetType } from '@codemirror/view';
+import {
+	EditorState,
+	Compartment,
+	RangeSetBuilder,
+	StateField,
+	Transaction
+} from '@codemirror/state';
+import {
+	Decoration,
+	DecorationSet,
+	EditorView,
+	keymap,
+	ViewPlugin,
+	WidgetType
+} from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import {
 	HighlightStyle,
@@ -648,6 +661,91 @@ class ImageWidget extends WidgetType {
 	}
 }
 
+type TablePreviewConfig = {
+	headers: string[];
+	rows: string[][];
+};
+
+class TablePreviewWidget extends WidgetType {
+	constructor(private config: TablePreviewConfig) {
+		super();
+	}
+
+	eq(other: TablePreviewWidget) {
+		return (
+			this.config.headers.join('|') === other.config.headers.join('|') &&
+			this.config.rows.map((row) => row.join('|')).join('\n') ===
+				other.config.rows.map((row) => row.join('|')).join('\n')
+		);
+	}
+
+	toDOM() {
+		const table = document.createElement('table');
+		table.className = 'cm-table-preview';
+
+		if (this.config.headers.length > 0) {
+			const thead = document.createElement('thead');
+			const row = document.createElement('tr');
+			for (const header of this.config.headers) {
+				const cell = document.createElement('th');
+				cell.textContent = header;
+				row.appendChild(cell);
+			}
+			thead.appendChild(row);
+			table.appendChild(thead);
+		}
+
+		if (this.config.rows.length > 0) {
+			const tbody = document.createElement('tbody');
+			for (const rowData of this.config.rows) {
+				const row = document.createElement('tr');
+				for (const value of rowData) {
+					const cell = document.createElement('td');
+					cell.textContent = value;
+					row.appendChild(cell);
+				}
+				tbody.appendChild(row);
+			}
+			table.appendChild(tbody);
+		}
+
+		const wrapper = document.createElement('div');
+		wrapper.className = 'cm-table-preview-wrapper';
+		wrapper.appendChild(table);
+		return wrapper;
+	}
+}
+
+type CodeBlockPreviewConfig = {
+	code: string;
+	language: string;
+};
+
+class CodeBlockPreviewWidget extends WidgetType {
+	constructor(private config: CodeBlockPreviewConfig) {
+		super();
+	}
+
+	eq(other: CodeBlockPreviewWidget) {
+		return this.config.code === other.config.code && this.config.language === other.config.language;
+	}
+
+	toDOM() {
+		const wrapper = document.createElement('div');
+		wrapper.className = 'cm-code-block-preview';
+		if (this.config.language) {
+			wrapper.dataset.language = this.config.language;
+		}
+
+		const pre = document.createElement('pre');
+		const code = document.createElement('code');
+		code.textContent = this.config.code;
+		pre.appendChild(code);
+		wrapper.appendChild(pre);
+		return wrapper;
+	}
+}
+
 const heading1Decoration = Decoration.line({ class: 'cm-heading cm-heading-1' });
 const heading2Decoration = Decoration.line({ class: 'cm-heading cm-heading-2' });
 const heading3Decoration = Decoration.line({ class: 'cm-heading cm-heading-3' });
@@ -684,6 +782,179 @@ class ListMarkerWidget extends WidgetType {
 		return span;
 	}
 }
+
+const tableDelimiterRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
+
+const splitTableLine = (line: string) => {
+	let trimmed = line.trim();
+	if (trimmed.startsWith('|')) trimmed = trimmed.slice(1);
+	if (trimmed.endsWith('|')) trimmed = trimmed.slice(0, -1);
+
+	const cells: string[] = [];
+	let current = '';
+	let inCode = false;
+	for (let i = 0; i < trimmed.length; i += 1) {
+		const char = trimmed[i];
+		const next = trimmed[i + 1];
+		if (char === '\\' && next === '|') {
+			current += '|';
+			i += 1;
+			continue;
+		}
+		if (char === '`') {
+			inCode = !inCode;
+			current += char;
+			continue;
+		}
+		if (char === '|' && !inCode) {
+			cells.push(current.trim());
+			current = '';
+			continue;
+		}
+		current += char;
+	}
+	cells.push(current.trim());
+	return cells;
+};
+
+const parseTableLines = (lines: string[]) => {
+	const delimiterIndex = lines.findIndex((line) => tableDelimiterRegex.test(line));
+	if (delimiterIndex <= 0) return null;
+
+	let headerIndex = delimiterIndex - 1;
+	while (headerIndex > 0 && lines[headerIndex].trim().length === 0) {
+		headerIndex -= 1;
+	}
+	const headerLine = lines[headerIndex];
+	const headers = splitTableLine(headerLine);
+	const rows: string[][] = [];
+	for (let i = delimiterIndex + 1; i < lines.length; i += 1) {
+		if (!lines[i].trim()) continue;
+		rows.push(splitTableLine(lines[i]));
+	}
+
+	const columnCount = Math.max(headers.length, ...rows.map((row) => row.length), 0);
+	const normalizedHeaders = headers.slice(0, columnCount);
+	while (normalizedHeaders.length < columnCount) normalizedHeaders.push('');
+	const normalizedRows = rows.map((row) => {
+		const normalized = row.slice(0, columnCount);
+		while (normalized.length < columnCount) normalized.push('');
+		return normalized;
+	});
+
+	return { headers: normalizedHeaders, rows: normalizedRows };
+};
+
+const buildBlockPreviewDecorations = (state: EditorState) => {
+	const builder = new RangeSetBuilder<Decoration>();
+	const pending: Array<{ from: number; to: number; decoration: Decoration }> = [];
+	const addDecoration = (from: number, to: number, decoration: Decoration) => {
+		pending.push({ from, to, decoration });
+	};
+	const doc = state.doc;
+	const tree = syntaxTree(state);
+	const selection = state.selection;
+	const isReadOnly = state.facet(EditorState.readOnly);
+	const selectionIntersects = (from: number, to: number) =>
+		selection.ranges.some((range) => range.from <= to && range.to >= from);
+
+	tree.iterate({
+		enter: (node) => {
+			if (node.name === 'Table') {
+				if (!isReadOnly && selectionIntersects(node.from, node.to)) {
+					return false;
+				}
+				const startLine = doc.lineAt(node.from).number;
+				const endLine = doc.lineAt(Math.max(node.to - 1, node.from)).number;
+				const lines: string[] = [];
+				for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+					lines.push(doc.line(lineNumber).text);
+				}
+				const parsed = parseTableLines(lines);
+				if (!parsed) {
+					return false;
+				}
+				addDecoration(
+					node.from,
+					node.to,
+					Decoration.replace({
+						block: true,
+						widget: new TablePreviewWidget(parsed)
+					})
+				);
+				return false;
+			}
+
+			if (node.name === 'FencedCode' || node.name === 'CodeBlock') {
+				if (!isReadOnly && selectionIntersects(node.from, node.to)) {
+					return false;
+				}
+				const startLine = doc.lineAt(node.from).number;
+				const endLine = doc.lineAt(Math.max(node.to - 1, node.from)).number;
+				const lines: string[] = [];
+				for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+					lines.push(doc.line(lineNumber).text);
+				}
+
+				let language = '';
+				let contentLines = lines;
+				if (node.name === 'FencedCode') {
+					const fenceMatch = /^\s*(```+|~~~+)\s*([^\s`~]+)?/.exec(lines[0] ?? '');
+					language = fenceMatch?.[2] ?? '';
+					contentLines = lines.slice(1, -1);
+				} else {
+					const indents = contentLines
+						.filter((line) => line.trim().length > 0)
+						.map((line) => line.match(/^\s+/)?.[0].length ?? 0);
+					const minIndent = indents.length > 0 ? Math.min(...indents) : 0;
+					if (minIndent > 0) {
+						contentLines = contentLines.map((line) => line.slice(minIndent));
+					}
+				}
+
+				addDecoration(
+					node.from,
+					node.to,
+					Decoration.replace({
+						block: true,
+						widget: new CodeBlockPreviewWidget({
+							code: contentLines.join('\n'),
+							language
+						})
+					})
+				);
+				return false;
+			}
+		}
+	});
+
+	pending.sort((left, right) => {
+		if (left.from !== right.from) return left.from - right.from;
+		const leftStart = (left.decoration as { startSide?: number }).startSide ?? 0;
+		const rightStart = (right.decoration as { startSide?: number }).startSide ?? 0;
+		if (leftStart !== rightStart) return leftStart - rightStart;
+		if (left.to !== right.to) return left.to - right.to;
+		const leftEnd = (left.decoration as { endSide?: number }).endSide ?? 0;
+		const rightEnd = (right.decoration as { endSide?: number }).endSide ?? 0;
+		return leftEnd - rightEnd;
+	});
+	for (const entry of pending) {
+		builder.add(entry.from, entry.to, entry.decoration);
+	}
+
+	return builder.finish();
+};
+
+const blockPreviewField = StateField.define<DecorationSet>({
+	create: (state) => buildBlockPreviewDecorations(state),
+	update: (decorations, transaction) => {
+		if (transaction.docChanged || transaction.selection) {
+			return buildBlockPreviewDecorations(transaction.state);
+		}
+		return decorations;
+	},
+	provide: (field) => EditorView.decorations.from(field)
+});
 
 const markdownLinePlugin = ViewPlugin.fromClass(
 	class {
@@ -1319,6 +1590,7 @@ function initializeEditor() {
 			keymap.of([...defaultKeymap, ...historyKeymap]),
 			formattingKeymap,
 			EditorView.lineWrapping,
+			blockPreviewField,
 			markdownLinePlugin,
 			taskToggleHandler,
 			linkClickHandler,
