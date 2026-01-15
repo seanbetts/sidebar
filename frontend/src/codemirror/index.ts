@@ -707,18 +707,8 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 
 		private buildDecorations(view: EditorView) {
 			const builder = new RangeSetBuilder<Decoration>();
-			const headingRegex = /^\s{0,3}(#{1,6})\s+/;
-			const hrRegex = /^\s*(\*{3,}|-{3,}|_{3,})\s*$/;
-			const listRegex = /^(\s*)((?:[-*+])|(?:\d+\.))\s+/;
-			const imageRegex = /^\s*!\[([^\]]*)]\(([^)\s]+)(?:\s+["']([^"']*)["'])?\)\s*$/;
-			const tableSeparatorRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
-			const tableRowRegex = /^\s*\|?[^|]+\|[^|]+(?:\|[^|]+)*\|?\s*$/;
-			const taskRegex = /^\s*[-*+]\s+\[( |x|X)\]\s+/;
 			const tree = syntaxTree(view.state);
 			const doc = view.state.doc;
-			const isTableSeparator = (value: string) => tableSeparatorRegex.test(value);
-			const isTableRow = (value: string) => tableRowRegex.test(value) && !isTableSeparator(value);
-			const isTableLine = (value: string) => isTableRow(value) || isTableSeparator(value);
 			const getLine = (number: number) =>
 				number >= 1 && number <= doc.lines ? doc.line(number) : null;
 			const codeBlockRanges: Array<{
@@ -728,6 +718,17 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 				endLineFrom: number;
 			}> = [];
 			const codeBlockRangeKeys = new Set<string>();
+			const headingLevelsByLine = new Map<number, number>();
+			const blockquoteDepthsByLine = new Map<number, number>();
+			const listInfoByLine = new Map<number, { ordered: boolean; depth: number }>();
+			const listMarkersByLine = new Map<number, { from: number; to: number; text: string }>();
+			const taskMarkersByLine = new Map<number, { from: number; to: number; checked: boolean }>();
+			const hrLines = new Set<number>();
+			const imageByLine = new Map<number, { src: string; alt: string; title: string }>();
+			const paragraphLines = new Set<number>();
+			const tableRowLines = new Set<number>();
+			const tableHeaderLines = new Set<number>();
+			const tableDelimiterLines = new Set<number>();
 			const blockquoteDecorations = new Map<string, Decoration>();
 			const visibleFrom = view.visibleRanges[0]?.from ?? 0;
 			const visibleTo = view.visibleRanges[view.visibleRanges.length - 1]?.to ?? 0;
@@ -755,12 +756,174 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 				blockquoteDecorations.set(key, decoration);
 				return decoration;
 			};
+			const addLineRange = (from: number, to: number, handler: (lineNumber: number) => void) => {
+				const startLine = doc.lineAt(from).number;
+				const endLine = doc.lineAt(Math.max(to - 1, from)).number;
+				for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+					handler(lineNumber);
+				}
+			};
+			const getAncestorDepth = (node: { node: { parent: any; name: string } }, name: string) => {
+				let depth = 0;
+				let current = node.node;
+				while (current) {
+					if (current.name === name) {
+						depth += 1;
+					}
+					current = current.parent;
+				}
+				return depth;
+			};
+			const findAncestorName = (node: { node: { parent: any; name: string } }, names: string[]) => {
+				let current = node.node.parent;
+				while (current) {
+					if (names.includes(current.name)) {
+						return current.name;
+					}
+					current = current.parent;
+				}
+				return null;
+			};
+			const headingLevels: Record<string, number> = {
+				ATXHeading1: 1,
+				ATXHeading2: 2,
+				ATXHeading3: 3,
+				ATXHeading4: 4,
+				ATXHeading5: 5,
+				ATXHeading6: 6,
+				SetextHeading1: 1,
+				SetextHeading2: 2
+			};
+			const readLabelText = (from: number, to: number) => {
+				const value = doc.sliceString(from, to);
+				if (value.startsWith('[') && value.endsWith(']')) {
+					return value.slice(1, -1);
+				}
+				return value;
+			};
+			const readTitleText = (from: number, to: number) => {
+				const value = doc.sliceString(from, to);
+				const first = value[0];
+				const last = value[value.length - 1];
+				if (first && last && first === last && (first === '"' || first === "'")) {
+					return value.slice(1, -1);
+				}
+				return value;
+			};
+			const isQuoteOnlyLine = (text: string) => {
+				const trimmed = text.trim();
+				if (!trimmed) return false;
+				for (const char of trimmed) {
+					if (char !== '>') return false;
+				}
+				return true;
+			};
 
 			if (visibleTo > visibleFrom) {
 				tree.iterate({
 					from: visibleFrom,
 					to: visibleTo,
 					enter: (node) => {
+						if (headingLevels[node.name]) {
+							const lineNumber = doc.lineAt(node.from).number;
+							headingLevelsByLine.set(lineNumber, headingLevels[node.name]);
+							return;
+						}
+
+						if (node.name === 'HorizontalRule') {
+							const lineNumber = doc.lineAt(node.from).number;
+							hrLines.add(lineNumber);
+							return;
+						}
+
+						if (node.name === 'Image') {
+							const lineNumber = doc.lineAt(node.from).number;
+							const imageNode = node.node;
+							const labelNode = imageNode.getChild('LinkLabel');
+							const urlNode = imageNode.getChild('URL');
+							const titleNode = imageNode.getChild('LinkTitle');
+							const alt = labelNode ? readLabelText(labelNode.from, labelNode.to) : '';
+							const src = urlNode ? doc.sliceString(urlNode.from, urlNode.to) : '';
+							const title = titleNode ? readTitleText(titleNode.from, titleNode.to) : '';
+							if (src) {
+								imageByLine.set(lineNumber, { src, alt, title });
+							}
+							return;
+						}
+
+						if (node.name === 'Paragraph') {
+							addLineRange(node.from, node.to, (lineNumber) => {
+								paragraphLines.add(lineNumber);
+							});
+							return;
+						}
+
+						if (node.name === 'Blockquote') {
+							const depth = getAncestorDepth(node, 'Blockquote');
+							addLineRange(node.from, node.to, (lineNumber) => {
+								const current = blockquoteDepthsByLine.get(lineNumber) ?? 0;
+								if (depth > current) {
+									blockquoteDepthsByLine.set(lineNumber, depth);
+								}
+							});
+							return;
+						}
+
+						if (node.name === 'ListItem') {
+							const lineNumber = doc.lineAt(node.from).number;
+							const depth = getAncestorDepth(node, 'ListItem');
+							const listType = findAncestorName(node, ['OrderedList', 'BulletList']);
+							listInfoByLine.set(lineNumber, {
+								ordered: listType === 'OrderedList',
+								depth
+							});
+							return;
+						}
+
+						if (node.name === 'ListMark') {
+							const lineNumber = doc.lineAt(node.from).number;
+							listMarkersByLine.set(lineNumber, {
+								from: node.from,
+								to: node.to,
+								text: doc.sliceString(node.from, node.to)
+							});
+							return;
+						}
+
+						if (node.name === 'TaskMarker') {
+							const lineNumber = doc.lineAt(node.from).number;
+							const markerText = doc.sliceString(node.from, node.to);
+							const checked = markerText.toLowerCase().includes('x');
+							taskMarkersByLine.set(lineNumber, { from: node.from, to: node.to, checked });
+							if (!listInfoByLine.has(lineNumber)) {
+								const depth = getAncestorDepth(node, 'ListItem');
+								const listType = findAncestorName(node, ['OrderedList', 'BulletList']);
+								listInfoByLine.set(lineNumber, {
+									ordered: listType === 'OrderedList',
+									depth
+								});
+							}
+							return;
+						}
+
+						if (node.name === 'TableRow') {
+							const lineNumber = doc.lineAt(node.from).number;
+							tableRowLines.add(lineNumber);
+							return;
+						}
+
+						if (node.name === 'TableHeader') {
+							const lineNumber = doc.lineAt(node.from).number;
+							tableHeaderLines.add(lineNumber);
+							return;
+						}
+
+						if (node.name === 'TableDelimiter') {
+							const lineNumber = doc.lineAt(node.from).number;
+							tableDelimiterLines.add(lineNumber);
+							return;
+						}
+
 						if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') {
 							return;
 						}
@@ -813,60 +976,54 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						continue;
 					}
 
-					const headingMatch = headingRegex.exec(text);
-					const listMatch = listRegex.exec(text);
-					const isBlockquote = /^\s*>\s?/.test(text);
-					const isBlockquoteBlank = /^\s*(?:>\s*)+$/.test(text);
-					const taskMatch = taskRegex.exec(text);
-					const isListItem = listMatch != null;
-					const isHr = hrRegex.test(text);
-					const imageMatch = imageRegex.exec(text);
-					const isImage = imageMatch != null;
-					const isBlank = /^\s*$/.test(text) || isBlockquoteBlank;
-					const isSeparator = isTableSeparator(text);
-					const isRow = isTableRow(text);
-					const isTable = isTableLine(text);
-					const prevLine = getLine(lineNumber - 1);
-					const nextLine = getLine(lineNumber + 1);
-					const prevIsBlockquote = prevLine ? /^\s*>\s?/.test(prevLine.text) : false;
-					const nextIsBlockquote = nextLine ? /^\s*>\s?/.test(nextLine.text) : false;
-					const prevIsListItem = prevLine
-						? listRegex.test(prevLine.text) || taskRegex.test(prevLine.text)
-						: false;
-					const nextIsListItem = nextLine
-						? listRegex.test(nextLine.text) || taskRegex.test(nextLine.text)
-						: false;
-					const prevIsTableLine = prevLine ? isTableLine(prevLine.text) : false;
-					const nextIsTableLine = nextLine ? isTableLine(nextLine.text) : false;
-					const nextIsSeparator = nextLine ? isTableSeparator(nextLine.text) : false;
+					const headingLevel = headingLevelsByLine.get(lineNumber);
+					const listInfo = listInfoByLine.get(lineNumber) ?? null;
+					const listMarker = listMarkersByLine.get(lineNumber) ?? null;
+					const taskInfo = taskMarkersByLine.get(lineNumber) ?? null;
+					const blockquoteDepth = blockquoteDepthsByLine.get(lineNumber) ?? 0;
+					const isBlockquote = blockquoteDepth > 0;
+					const isListItem = listInfo != null || taskInfo != null;
+					const isHr = hrLines.has(lineNumber);
+					const imageInfo = imageByLine.get(lineNumber) ?? null;
+					const isImage = imageInfo != null;
+					const isSeparator = tableDelimiterLines.has(lineNumber);
+					const isRow = tableRowLines.has(lineNumber) || tableHeaderLines.has(lineNumber);
+					const isTable = isRow || isSeparator;
+					const isBlank = text.trim().length === 0 || (isBlockquote && isQuoteOnlyLine(text));
+					const prevIsBlockquote = (blockquoteDepthsByLine.get(lineNumber - 1) ?? 0) > 0;
+					const nextIsBlockquote = (blockquoteDepthsByLine.get(lineNumber + 1) ?? 0) > 0;
+					const prevIsListItem =
+						listInfoByLine.has(lineNumber - 1) || taskMarkersByLine.has(lineNumber - 1);
+					const nextIsListItem =
+						listInfoByLine.has(lineNumber + 1) || taskMarkersByLine.has(lineNumber + 1);
+					const prevIsTableLine =
+						tableRowLines.has(lineNumber - 1) ||
+						tableHeaderLines.has(lineNumber - 1) ||
+						tableDelimiterLines.has(lineNumber - 1);
+					const nextIsTableLine =
+						tableRowLines.has(lineNumber + 1) ||
+						tableHeaderLines.has(lineNumber + 1) ||
+						tableDelimiterLines.has(lineNumber + 1);
+					const nextIsSeparator = tableDelimiterLines.has(lineNumber + 1);
 
 					if (isBlockquote) {
-						const depthMatch = /^(\s*(?:>\s*)+)/.exec(text);
-						const depth = depthMatch ? (depthMatch[1].match(/>/g) ?? []).length : 1;
 						builder.add(
 							line.from,
 							line.from,
-							getBlockquoteDecoration(depth, !prevIsBlockquote, !nextIsBlockquote)
+							getBlockquoteDecoration(blockquoteDepth, !prevIsBlockquote, !nextIsBlockquote)
 						);
 					}
 
-					if (isListItem || taskMatch) {
+					if (isListItem) {
 						// Calculate indent for both regular lists and task lists
-						let indent = 0;
-						if (listMatch) {
-							indent = listMatch[1].length;
-						} else if (taskMatch) {
-							// Extract leading whitespace for task items
-							const leadingWhitespace = /^(\s*)/.exec(text);
-							indent = leadingWhitespace ? leadingWhitespace[1].length : 0;
-						}
-						const marker = listMatch ? listMatch[2] : '';
-						if (marker && marker.endsWith('.')) {
+						const markerText = listMarker?.text ?? '';
+						const isOrdered = listInfo?.ordered ?? (markerText.trim().endsWith('.') ? true : false);
+						if (isOrdered) {
 							builder.add(line.from, line.from, orderedListDecoration);
-						} else if (marker) {
+						} else if (listInfo) {
 							builder.add(line.from, line.from, unorderedListDecoration);
 						}
-						if (indent > 0) {
+						if ((listInfo?.depth ?? 0) > 1) {
 							builder.add(line.from, line.from, listNestedDecoration);
 						}
 						if (!prevIsListItem) {
@@ -879,8 +1036,8 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						}
 					}
 
-					if (headingMatch) {
-						const level = headingMatch[1].length;
+					if (headingLevel) {
+						const level = headingLevel;
 						switch (level) {
 							case 1:
 								builder.add(line.from, line.from, heading1Decoration);
@@ -909,14 +1066,17 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						builder.add(line.from, line.from, hrDecoration);
 					}
 
-					if (isImage && imageMatch) {
+					if (isImage && imageInfo) {
 						builder.add(line.from, line.from, mediaDecoration);
-						const [, alt, src, title] = imageMatch;
 						builder.add(
 							line.to,
 							line.to,
 							Decoration.widget({
-								widget: new ImageWidget({ src, alt, title: title ?? '' }),
+								widget: new ImageWidget({
+									src: imageInfo.src,
+									alt: imageInfo.alt,
+									title: imageInfo.title
+								}),
 								block: true,
 								side: 1
 							})
@@ -938,10 +1098,17 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 							let scanLineNumber = lineNumber - 1;
 							while (scanLineNumber >= 1) {
 								const scanLine = getLine(scanLineNumber);
-								if (!scanLine || !isTableLine(scanLine.text)) {
+								if (!scanLine) {
 									break;
 								}
-								if (isTableRow(scanLine.text)) {
+								const scanLineIsTable =
+									tableRowLines.has(scanLineNumber) ||
+									tableHeaderLines.has(scanLineNumber) ||
+									tableDelimiterLines.has(scanLineNumber);
+								if (!scanLineIsTable) {
+									break;
+								}
+								if (tableRowLines.has(scanLineNumber)) {
 									tableRowIndex += 1;
 								}
 								scanLineNumber -= 1;
@@ -955,20 +1122,21 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 						}
 					}
 
-					if (taskMatch) {
-						const isChecked = taskMatch[1].toLowerCase() == 'x';
-						builder.add(line.from, line.from, isChecked ? taskCheckedDecoration : taskDecoration);
-						const indentMatch = /^(\s*)/.exec(text);
-						const markerStart = line.from + (indentMatch ? indentMatch[1].length : 0);
-						builder.add(markerStart, line.from + taskMatch[0].length, listMarkerDecoration);
-					} else if (listMatch) {
-						const marker = listMatch[2];
-						if (!marker.endsWith('.')) {
-							const markerStart = line.from + listMatch[1].length;
-							const markerEnd = line.from + listMatch[0].length;
+					if (taskInfo) {
+						builder.add(
+							line.from,
+							line.from,
+							taskInfo.checked ? taskCheckedDecoration : taskDecoration
+						);
+						const markerStart = listMarker?.from ?? taskInfo.from;
+						const markerEnd = taskInfo.to;
+						builder.add(markerStart, markerEnd, listMarkerDecoration);
+					} else if (listMarker) {
+						const markerText = listMarker.text.trim();
+						if (!markerText.endsWith('.')) {
 							builder.add(
-								markerStart,
-								markerEnd,
+								listMarker.from,
+								listMarker.to,
 								Decoration.replace({
 									widget: new ListMarkerWidget('• '),
 									side: 1
@@ -983,13 +1151,14 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 
 					if (
 						!isBlank &&
-						!headingMatch &&
+						!headingLevel &&
 						!isBlockquote &&
 						!isListItem &&
-						!taskMatch &&
+						!taskInfo &&
 						!isHr &&
 						!isSeparator &&
-						!isTable
+						!isTable &&
+						paragraphLines.has(lineNumber)
 					) {
 						builder.add(line.from, line.from, paragraphDecoration);
 					}
