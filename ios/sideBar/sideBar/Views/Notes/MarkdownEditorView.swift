@@ -15,8 +15,10 @@ struct MarkdownEditorView: View {
                     onKeep: viewModel.dismissExternalUpdate
                 )
             }
-            if !viewModel.isReadOnly {
-                MarkdownFormattingToolbar(isReadOnly: viewModel.isReadOnly) { command in
+            if isEditing && !viewModel.isReadOnly {
+                MarkdownFormattingToolbar(isReadOnly: viewModel.isReadOnly, onClose: {
+                    isEditing = false
+                }) { command in
                     editorHandle.applyCommand(command)
                 }
             }
