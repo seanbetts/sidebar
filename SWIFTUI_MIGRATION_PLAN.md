@@ -408,14 +408,15 @@ Critical Path (MVP): [███████████████████�
 - [x] Keyboard shortcuts (Cmd+Enter on Mac)
 
 #### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
-- [x] **Critical Decision**: CodeMirror 6 in WKWebView for WYSIWYG parity
+- [x] **Critical Decision**: CodeMirror 6 in WKWebView for both read-only and edit parity
 - [x] Replace TextKit editor with CodeMirror 6 (shared web bundle)
 - [x] Editor toolbar (bold, italic, headings, lists, etc.)
 - [x] Advanced formatting rendering (tables, links, code blocks)
 - [x] Syntax highlighting for code blocks
-- [x] Live preview option (soft-hide markdown markers)
+- [ ] Live preview behavior: hide markdown markers everywhere except the caret line
+- [ ] Read-only notes rendering uses CodeMirror (no MarkdownUI) to keep styling identical
 - [ ] Performance optimization for long documents
-- [ ] Plan: `docs/plans/2026-01-13-markdown-plan.md`
+- [ ] Plan: `docs/plans/2026-01-15-live-preview-fix-plan.md`
 
 **Concrete 11.2 Checklist (TipTap parity targets)**
 - [x] WKWebView CM6 editor surface with markdown as the source of truth
@@ -434,7 +435,7 @@ Critical Path (MVP): [███████████████████�
 - [ ] Long-note performance: incremental rendering + minimal layout churn
 
 **Decision Gate:**
-CodeMirror 6 in WKWebView selected for WYSIWYG parity.
+CodeMirror 6 in WKWebView selected as the single renderer for read-only and edit modes.
 
 #### Phase 11.3: Note Operations (1-2 sessions)
 - [ ] Create new note (modal dialog for name/folder)
@@ -652,10 +653,11 @@ When ready to resume (estimated 11-17 additional sessions):
 | Full Testing | 1-2 | Medium | End-to-end capability parity validation (native UX) |
 
 **Critical Decision in Phase 11.2:**
-CodeMirror 6 in WKWebView selected. Remaining scope decisions:
+CodeMirror 6 in WKWebView selected as the single renderer (read-only + edit). Remaining scope decisions:
 - Implement toolbar + formatting command bridge
 - Decide how much table editing (insert/row/column actions) is required for parity
-- Defer optional features (live preview, advanced syntax highlighting) if needed
+- Live preview is required: hide markdown markers except the caret line
+- Advanced syntax highlighting can be deferred if needed
 
 ### Why This Works for Your Project
 
