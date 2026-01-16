@@ -61,7 +61,7 @@ public struct NotesView: View {
 private struct NotesDetailView: View {
     @ObservedObject var viewModel: NotesViewModel
     @ObservedObject var editorViewModel: NotesEditorViewModel
-    private let contentMaxWidth: CGFloat = 800
+    private let contentMaxWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
     @EnvironmentObject private var environment: AppEnvironment
     @StateObject private var editorHandle = CodeMirrorEditorHandle()
     #if !os(macOS)
