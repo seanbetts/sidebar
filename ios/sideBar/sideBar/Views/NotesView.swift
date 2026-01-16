@@ -157,7 +157,7 @@ private struct NotesDetailView: View {
             Text(archiveAlertMessage)
         }
         .toolbar {
-            if isCompact {
+            if isCompact, viewModel.activeNote != nil {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     noteActionsMenu
                     closeButton
@@ -179,9 +179,11 @@ private struct NotesDetailView: View {
                     .layoutPriority(1)
                     .truncationMode(.tail)
                 Spacer()
-                SaveStatusView(editorViewModel: editorViewModel)
-                noteActionsMenu
-                closeButton
+                if viewModel.activeNote != nil {
+                    SaveStatusView(editorViewModel: editorViewModel)
+                    noteActionsMenu
+                    closeButton
+                }
             }
             .padding(16)
             .opacity(isEditingToolbarVisible ? 0 : 1)
