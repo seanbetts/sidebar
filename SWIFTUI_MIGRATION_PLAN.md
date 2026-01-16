@@ -416,6 +416,7 @@ Critical Path (MVP): [███████████████████�
 - [ ] Reading mode: polished markdown rendering (renderer TBD)
 - [ ] Editing mode stays raw markdown until read-mode styling is locked
 - [ ] Live preview behavior (caret-line raw markdown) deferred
+- [ ] Edit-mode guardrails documented (no line-geometry changes; token-only styling; marker fade before collapse)
 - [ ] Performance optimization for long documents
 - [ ] Plan: `docs/plans/2026-01-15-live-preview-fix-plan.md`
 
