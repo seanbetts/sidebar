@@ -92,7 +92,7 @@ Images/embeds:
 
 ## Steps
 - [x] Decide the read-mode renderer (MarkdownUI vs CodeMirror read-only).
-- [ ] Implement and polish read-mode styling (tables, code blocks, headings, lists, blockquotes).
+- [ ] Implement and polish read-mode styling (tables, code blocks, headings, lists, blockquotes, image captions).
 - [x] Keep edit mode raw markdown with minimal styling.
 - [ ] Validate read-mode rendering across iOS/iPad/macOS.
 - [ ] Revisit live preview (caret-line raw markdown + inline marker hiding).
@@ -106,3 +106,4 @@ Images/embeds:
 - Caret placement + vertical navigation still unstable in edit mode.
 - Toolbar flicker tied to edit-mode selection timing.
 - Tap/scroll gesture thresholds need validation on long notes (avoid entering edit mode during scroll).
+- Read-mode: verify code blocks, table headers, links, and image captions match web styling.
