@@ -21,7 +21,7 @@ struct SideBarMarkdownContainer: View {
             .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth, alignment: .leading)
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .top)
     }
 }
 

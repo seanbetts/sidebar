@@ -293,15 +293,27 @@ private typealias PlatformColor = UIColor
 
 private extension PlatformFont {
     var isBold: Bool {
-        fontDescriptor.symbolicTraits.contains(.traitBold)
+        #if os(macOS)
+        return fontDescriptor.symbolicTraits.contains(.bold)
+        #else
+        return fontDescriptor.symbolicTraits.contains(.traitBold)
+        #endif
     }
 
     var isItalic: Bool {
-        fontDescriptor.symbolicTraits.contains(.traitItalic)
+        #if os(macOS)
+        return fontDescriptor.symbolicTraits.contains(.italic)
+        #else
+        return fontDescriptor.symbolicTraits.contains(.traitItalic)
+        #endif
     }
 
     var isMonospace: Bool {
-        fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
+        #if os(macOS)
+        return fontDescriptor.symbolicTraits.contains(.monoSpace)
+        #else
+        return fontDescriptor.symbolicTraits.contains(.traitMonoSpace)
+        #endif
     }
 }
 
