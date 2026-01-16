@@ -14,13 +14,7 @@ import {
 	WidgetType
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import {
-	HighlightStyle,
-	LanguageDescription,
-	indentOnInput,
-	syntaxHighlighting,
-	syntaxTree
-} from '@codemirror/language';
+import { LanguageDescription, indentOnInput, syntaxTree } from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
@@ -31,7 +25,6 @@ import { sql } from '@codemirror/lang-sql';
 import { yaml } from '@codemirror/lang-yaml';
 import { xml } from '@codemirror/lang-xml';
 import { Autolink, GFM } from '@lezer/markdown';
-import { tags } from '@lezer/highlight';
 
 type WebKitMessageHandler = {
 	postMessage: (payload: unknown) => void;
@@ -613,33 +606,6 @@ const editorThemeDark = EditorView.theme(
 	},
 	{ dark: true }
 );
-
-const highlightStyle = HighlightStyle.define([
-	{ tag: tags.heading1, fontWeight: '700' },
-	{ tag: tags.heading2, fontWeight: '600' },
-	{ tag: tags.heading3, fontWeight: '600' },
-	{ tag: tags.heading4, fontWeight: '600' },
-	{ tag: tags.heading5, fontWeight: '600' },
-	{ tag: tags.heading6, fontWeight: '600' },
-	{ tag: tags.strong, fontWeight: '700' },
-	{ tag: tags.emphasis, fontStyle: 'italic' },
-	{ tag: tags.strikethrough, textDecoration: 'line-through' },
-	{
-		tag: tags.monospace,
-		fontFamily: '"SF Mono", Monaco, "Cascadia Code", "Courier New", monospace',
-		fontSize: '0.875em',
-		color: 'var(--color-foreground)',
-		backgroundColor: 'var(--color-muted)',
-		borderRadius: '0.25em',
-		padding: '0.2em 0.4em'
-	},
-	{ tag: tags.link, color: 'var(--color-primary)', textDecoration: 'underline' },
-	{ tag: tags.url, color: 'var(--color-primary)', textDecoration: 'underline' },
-	{ tag: tags.quote, color: 'var(--color-muted-foreground)' },
-	{ tag: tags.contentSeparator, color: 'var(--color-border)' },
-	{ tag: tags.separator, color: 'var(--color-border)' },
-	{ tag: tags.meta, color: 'var(--color-muted-foreground)' }
-]);
 
 type ImageWidgetConfig = {
 	src: string;
@@ -1602,7 +1568,6 @@ function initializeEditor() {
 		extensions: [
 			editorTheme,
 			editorThemeDark,
-			syntaxHighlighting(highlightStyle),
 			readOnlyCompartment.of([EditorState.readOnly.of(false), EditorView.editable.of(true)]),
 			history(),
 			indentOnInput(),
@@ -1610,8 +1575,6 @@ function initializeEditor() {
 			keymap.of([...defaultKeymap, ...historyKeymap]),
 			formattingKeymap,
 			EditorView.lineWrapping,
-			blockPreviewField,
-			markdownLinePlugin,
 			taskToggleHandler,
 			linkClickHandler,
 			updateListener
