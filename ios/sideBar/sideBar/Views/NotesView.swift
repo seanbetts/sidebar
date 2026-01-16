@@ -164,16 +164,6 @@ private struct NotesDetailView: View {
                 }
             }
         }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .named("appRoot"))
-                .onEnded { value in
-                    guard editorViewModel.isEditing else { return }
-                    let editorFrame = editorViewModel.editorFrame
-                    if editorFrame != .zero && !editorFrame.contains(value.location) {
-                        editorViewModel.isEditing = false
-                    }
-                }
-        )
     }
 
     private var header: some View {
