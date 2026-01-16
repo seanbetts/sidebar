@@ -16,3 +16,15 @@ CodeMirror is the single renderer for both read-only and edit modes. Only the ca
 7. Rebuild CM6 bundle and sync iOS resources.
 8. Validate cursor navigation, line spacing, and formatting retention on iPad.
 9. Update `SWIFTUI_MIGRATION_PLAN.md` and remove this plan doc when complete.
+
+## Exit Criteria
+- Tables render as HTML in read-only and when caret is outside the table.
+- Code blocks render with the styled wrapper in read-only and when caret is outside the block.
+- Raw markdown shows only when caret is inside the table/code block.
+- No scroll-induced decoration drop or CM exceptions.
+
+## Open Issues (Investigate)
+- Edit toolbar flicker on appearance (likely tied to caret placement race).
+- Caret sometimes lands at the wrong position on tap-to-edit.
+- Keyboard up/down navigation jumps to unexpected lines (left/right behaves).
+- Hypothesis: fixing reliable vertical caret navigation may resolve the flicker + placement issues.
