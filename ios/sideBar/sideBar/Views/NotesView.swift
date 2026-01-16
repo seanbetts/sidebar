@@ -110,7 +110,7 @@ private struct NotesDetailView: View {
             .allowsHitTesting(!isEditingToolbarVisible)
             if isEditingToolbarVisible {
                 GeometryReader { proxy in
-                    Color(.secondarySystemBackground)
+                    Color.platformSecondarySystemBackground
                         .overlay(alignment: .center) {
                             MarkdownFormattingToolbar(isReadOnly: editorViewModel.isReadOnly, onClose: {
                                 editorViewModel.isEditing = false
@@ -183,7 +183,7 @@ private struct NotesDetailView: View {
             .overlay(alignment: .top) {
                 if isCompact && isEditingToolbarVisible {
                     GeometryReader { proxy in
-                        Color(.secondarySystemBackground)
+                        Color.platformSecondarySystemBackground
                             .overlay(alignment: .center) {
                                 MarkdownFormattingToolbar(
                                     isReadOnly: editorViewModel.isReadOnly,

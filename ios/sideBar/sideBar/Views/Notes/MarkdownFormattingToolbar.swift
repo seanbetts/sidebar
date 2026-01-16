@@ -32,7 +32,7 @@ struct MarkdownFormattingToolbar: View {
             .padding(.trailing, 12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
+        .background(toolbarBackgroundColor)
         .overlay(
             GeometryReader { proxy in
                 Color.clear
@@ -49,6 +49,14 @@ struct MarkdownFormattingToolbar: View {
         return false
         #else
         return horizontalSizeClass == .compact || availableWidth < 560
+        #endif
+    }
+
+    private var toolbarBackgroundColor: Color {
+        #if os(macOS)
+        return Color(NSColor.windowBackgroundColor)
+        #else
+        return Color(.secondarySystemBackground)
         #endif
     }
 
@@ -132,8 +140,16 @@ struct MarkdownFormattingToolbar: View {
     @ViewBuilder
     private func toolbarDivider() -> some View {
         Rectangle()
-            .fill(Color(.separator))
+            .fill(toolbarDividerColor)
             .frame(width: 1, height: 20)
             .padding(.horizontal, 2)
+    }
+
+    private var toolbarDividerColor: Color {
+        #if os(macOS)
+        return Color(NSColor.separatorColor)
+        #else
+        return Color(.separator)
+        #endif
     }
 }
