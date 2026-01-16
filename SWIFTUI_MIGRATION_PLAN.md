@@ -472,12 +472,12 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 
 #### MVP Milestones (Read-Only App)
 
-- [ ] **Milestone 1**: Authentication & API calls working (End of Phase 1)
-- [ ] **Milestone 2**: Can view conversations with real-time updates (End of Phase 3)
-- [ ] **Milestone 3**: Can read notes in file tree (End of Phase 4)
-- [ ] **Milestone 4**: Can view all file types (End of Phase 5)
-- [ ] **Milestone 5**: All view features implemented (End of Phase 7)
-- [ ] **Milestone 6**: App feels polished on all platforms (End of Phase 9)
+- [x] **Milestone 1**: Authentication & API calls working (End of Phase 1)
+- [x] **Milestone 2**: Can view conversations with real-time updates (End of Phase 3)
+- [x] **Milestone 3**: Can read notes in file tree (End of Phase 4)
+- [x] **Milestone 4**: Can view all file types (End of Phase 5)
+- [x] **Milestone 5**: All view features implemented (End of Phase 7)
+- [x] **Milestone 6**: App feels polished on all platforms (End of Phase 9)
 - [ ] **MVP COMPLETE**: Read-only app ready for daily reference use (End of Phase 10)
 
 **MVP Decision Gate**: Evaluate whether to:
@@ -488,7 +488,7 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 #### Post-MVP Milestones (Full App)
 
 - [x] **Milestone 7**: Can send chat messages (End of Phase 11.1)
-- [ ] **Milestone 8**: Can create and edit notes (End of Phase 11.2-11.3)
+- [x] **Milestone 8**: Can create and edit notes (End of Phase 11.2-11.3)
 - [ ] **Milestone 9**: Can create content everywhere (End of Phase 11.4)
 - [ ] **FULL APP COMPLETE**: Capability parity with native UX (End of Phase 11.5)
 
@@ -1860,48 +1860,48 @@ Same pattern as notes/conversations.
 - Day 1-2: Project setup, auth, models
 - Day 3-4: API service layer
 - Day 5-6: Cache layer, theme system
-- **Milestone**: Can authenticate and make API calls
+- **Milestone**: ✅ Can authenticate and make API calls
 
 ### Week 3-4: Navigation & Chat (Phases 2-3)
 - Day 1-2: Main navigation, sidebar
 - Day 3-4: Split view layout, toolbars
 - Day 5-8: Chat interface, SSE streaming, message rendering
-- **Milestone**: Can send/receive messages with streaming
+- **Milestone**: ✅ Can send/receive messages with streaming
 
 ### Week 5-6: Note Editor (Phase 4)
 - Day 1-2: File tree browser
 - Day 3-5: Markdown editor with toolbar
 - Day 6-7: Save/dirty state, operations
-- **Milestone**: Can create/edit notes
+- **Milestone**: ✅ Can create/edit notes
 
 ### Week 7-8: File Viewing (Phase 5, uploads deferred)
 - Day 1-2: File tree
 - Day 3-4: PDF viewer, image viewer
 - Day 5-6: Audio/video, spreadsheets
-- **Milestone**: Can view file types (uploads deferred)
+- **Milestone**: ✅ Can view file types (uploads deferred)
 
 ### Week 9: Website & Additional Features (Phases 6-7)
 - Day 1-2: Website archival
 - Day 3-4: Memory management, scratchpad
 - Day 5: Settings, weather
-- **Milestone**: All features implemented
+- **Milestone**: ✅ All features implemented
 
 ### Week 10: Cache-First Sync Architecture (Phase 8)
 - Day 1-2: Store layer + cache-first reads
 - Day 3-4: SSE/Realtime cache updates + revalidation
-- **Milestone**: Cache-first architecture in place
+- **Milestone**: ✅ Cache-first architecture in place
 
 ### Week 11-12: Platform Optimization (Phase 9)
 - Day 1-2: iPhone narrow-scope layout
 - Day 3-4: iPad/Mac optimizations
 - Day 5-6: Animations, performance
 - Day 7-8: Accessibility, error handling
-- **Milestone**: App feels polished on all platforms
+- **Milestone**: ✅ App feels polished on all platforms
 
 ### Week 13: Testing & Refinement (Phase 10)
 - Day 1-3: Integration testing, bug fixes
 - Day 4-5: Real-world usage, polish
-- **Milestone**: App ready for daily use
+- **Milestone**: ✅ App ready for daily use
 
 ---
 
