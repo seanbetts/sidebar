@@ -106,3 +106,31 @@ Images/embeds:
 
 ## Open Issues (Investigate)
 - Edit-mode: tap-to-caret should map to the correct document position when entering edit mode; currently lands on top-of-note content even when tapping deep in the note.
+
+## Next Investigation: Tap-to-Caret Mapping (Edit Mode)
+
+Goal: when tapping in read mode, enter edit mode with the caret mapped to the tapped content position (same paragraph/line), without scroll jump.
+
+Candidate approaches to test (lowest risk first):
+1) Use a hidden CM6 read-only overlay for hit-testing.
+   - Keep a lightweight CodeMirror view in read-only mode behind the MarkdownUI view.
+   - Map tap coordinates to a CM position via `posAtCoords`, then pass that to the edit view on activation.
+   - Pros: uses CM’s own geometry mapping; avoids manual text layout math.
+   - Cons: extra view to keep in sync; needs careful layout/scroll alignment.
+
+2) Inline CM6 for read mode (single view toggle).
+   - Use CM6 for both read/edit, but keep read mode styling minimal (raw markdown).
+   - On tap, just switch editable state and set selection at `posAtCoords`.
+   - Pros: single source of truth for geometry; no handoff.
+   - Cons: loses MarkdownUI read-mode styling unless we add a CM6 renderer.
+
+3) MarkdownUI hit-testing with layout manager → string index.
+   - Use `TextLayout`/`TextRenderer` or attributed string layout to map tap to character index.
+   - Convert attributed index to markdown offset; enter edit mode at that offset.
+   - Pros: no extra CM view.
+   - Cons: hard to keep mapping accurate for markdown transformations (links, images, tables).
+
+Minimum success criteria:
+- Tap in read mode at end/middle of note enters edit mode with caret on the same line.
+- No jump to top of note.
+- Scroll position stays stable (same content in view).
