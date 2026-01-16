@@ -54,7 +54,11 @@ public final class AppEnvironment: ObservableObject {
             toastCenter: toastCenter
         )
         let temporaryStore = TemporaryFileStore.shared
-        self.notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore)
+        self.notesViewModel = NotesViewModel(
+            api: container.notesAPI,
+            store: notesStore,
+            toastCenter: toastCenter
+        )
         self.notesEditorViewModel = NotesEditorViewModel(
             api: container.notesAPI,
             notesStore: notesStore,

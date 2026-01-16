@@ -13,15 +13,18 @@ public final class NotesViewModel: ObservableObject {
 
     private let api: any NotesProviding
     private let store: NotesStore
+    private let toastCenter: ToastCenter
     private var searchTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     public init(
         api: any NotesProviding,
-        store: NotesStore
+        store: NotesStore,
+        toastCenter: ToastCenter
     ) {
         self.api = api
         self.store = store
+        self.toastCenter = toastCenter
 
         store.$tree
             .sink { [weak self] tree in
@@ -47,6 +50,14 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 
+    public func refreshTree(force: Bool = false) async {
+        do {
+            try await store.loadTree(force: force)
+        } catch {
+            toastCenter.show(message: "Failed to refresh notes")
+        }
+    }
+
     public func loadNote(id: String) async {
         errorMessage = nil
         selectedNoteId = id
@@ -68,12 +79,167 @@ public final class NotesViewModel: ObservableObject {
         store.clearActiveNote()
     }
 
+    public func noteNode(id: String) -> FileNode? {
+        findNode(id: id, in: tree?.children ?? [])
+    }
+
     public func applyRealtimeEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) async {
         let noteId = payload.record?.id ?? payload.oldRecord?.id
         if payload.eventType == .delete, selectedNoteId == noteId {
             selectedNoteId = nil
         }
         await store.applyRealtimeEvent(payload)
+    }
+
+    public func createNote(title: String, folder: String?) async -> NotePayload? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return nil
+        }
+        let filename = trimmed.lowercased().hasSuffix(".md") ? trimmed : "\(trimmed).md"
+        let pathPrefix = folder?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let fullPath = pathPrefix.isEmpty ? filename : "\(pathPrefix)/\(filename)"
+        do {
+            let created = try await api.createNote(
+                request: NoteCreateRequest(content: "", title: trimmed, path: fullPath, folder: pathPrefix.isEmpty ? nil : pathPrefix)
+            )
+            store.applyEditorUpdate(created)
+            selectedNoteId = created.path
+            await refreshTree(force: true)
+            return created
+        } catch {
+            toastCenter.show(message: "Failed to create note")
+            return nil
+        }
+    }
+
+    public func createFolder(path: String) async -> Bool {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !normalized.isEmpty else {
+            return false
+        }
+        do {
+            try await api.createFolder(path: normalized)
+            await refreshTree(force: true)
+            return true
+        } catch {
+            toastCenter.show(message: "Failed to create folder")
+            return false
+        }
+    }
+
+    public func renameNote(id: String, newName: String) async {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return
+        }
+        let filename = trimmed.lowercased().hasSuffix(".md") ? trimmed : "\(trimmed).md"
+        let currentName = noteNode(id: id)?.name ?? activeNote?.name
+        guard filename.lowercased() != currentName?.lowercased() else {
+            return
+        }
+        do {
+            let updated = try await api.renameNote(id: id, newName: filename)
+            store.applyEditorUpdate(updated)
+            if selectedNoteId != updated.path {
+                selectedNoteId = updated.path
+            }
+            await refreshTree(force: true)
+        } catch {
+            toastCenter.show(message: "Failed to rename note")
+        }
+    }
+
+    public func moveNote(id: String, folder: String) async {
+        do {
+            let updated = try await api.moveNote(id: id, folder: folder)
+            store.applyEditorUpdate(updated)
+            if selectedNoteId != updated.path {
+                selectedNoteId = updated.path
+            }
+            await refreshTree(force: true)
+        } catch {
+            toastCenter.show(message: "Failed to move note")
+        }
+    }
+
+    public func setArchived(id: String, archived: Bool) async {
+        do {
+            _ = try await api.archiveNote(id: id, archived: archived)
+            if archived, selectedNoteId == id {
+                clearSelection()
+            }
+            await refreshTree(force: true)
+        } catch {
+            toastCenter.show(message: archived ? "Failed to archive note" : "Failed to unarchive note")
+        }
+    }
+
+    public func setPinned(id: String, pinned: Bool) async {
+        do {
+            _ = try await api.pinNote(id: id, pinned: pinned)
+            await refreshTree(force: true)
+        } catch {
+            toastCenter.show(message: pinned ? "Failed to pin note" : "Failed to unpin note")
+        }
+    }
+
+    public func deleteNote(id: String) async {
+        do {
+            _ = try await api.deleteNote(id: id)
+            if selectedNoteId == id {
+                clearSelection()
+            }
+            store.invalidateNote(id: id)
+            await refreshTree(force: true)
+        } catch {
+            toastCenter.show(message: "Failed to delete note")
+        }
+    }
+
+    public func renameFolder(path: String, newName: String) async {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let normalized = normalizeFolderPath(path)
+        guard !normalized.isEmpty else { return }
+        do {
+            try await api.renameFolder(oldPath: normalized, newName: trimmed)
+            if let selected = selectedNoteId {
+                let parent = parentFolderPath(normalized)
+                let updatedPrefix = parent.isEmpty ? trimmed : "\(parent)/\(trimmed)"
+                // Check if selected note is inside this folder (with proper boundary check)
+                let folderPrefix = normalized + "/"
+                if selected.hasPrefix(folderPrefix) {
+                    let suffix = selected.dropFirst(folderPrefix.count)
+                    selectedNoteId = updatedPrefix + "/" + suffix
+                } else if selected == normalized {
+                    // Edge case: selected path equals the folder path
+                    selectedNoteId = updatedPrefix
+                }
+            }
+            await refreshTree(force: true)
+        } catch {
+            toastCenter.show(message: "Failed to rename folder")
+        }
+    }
+
+    public func deleteFolder(path: String) async {
+        let normalized = normalizeFolderPath(path)
+        guard !normalized.isEmpty else { return }
+        do {
+            try await api.deleteFolder(path: normalized)
+            if let selected = selectedNoteId {
+                // Check with proper boundary (folder prefix or exact match)
+                let folderPrefix = normalized + "/"
+                if selected.hasPrefix(folderPrefix) || selected == normalized {
+                    clearSelection()
+                }
+            }
+            await refreshTree(force: true)
+        } catch {
+            toastCenter.show(message: "Failed to delete folder")
+        }
     }
 
     public func updateSearch(query: String) {
@@ -102,5 +268,31 @@ public final class NotesViewModel: ObservableObject {
             searchResults = []
             isSearching = false
         }
+    }
+
+    private func findNode(id: String, in nodes: [FileNode]) -> FileNode? {
+        for node in nodes {
+            if node.path == id {
+                return node
+            }
+            if let children = node.children, let found = findNode(id: id, in: children) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func normalizeFolderPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("folder:") {
+            let start = trimmed.index(trimmed.startIndex, offsetBy: 7)
+            return String(trimmed[start...]).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        }
+        return trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    private func parentFolderPath(_ path: String) -> String {
+        guard let lastSlash = path.lastIndex(of: "/") else { return "" }
+        return String(path[..<lastSlash])
     }
 }

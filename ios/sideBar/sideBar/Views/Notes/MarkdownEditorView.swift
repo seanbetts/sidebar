@@ -22,12 +22,6 @@ struct MarkdownEditorView: View {
                     editorSurface
                     Spacer(minLength: 0)
                 }
-                if viewModel.content.isEmpty {
-                    Text("Start writing...")
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 20)
-                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -40,7 +34,16 @@ struct MarkdownEditorView: View {
             }
         }
         .onChange(of: viewModel.currentNoteId) { _, _ in
-            isEditing = false
+            if viewModel.wantsEditingOnNextLoad {
+                viewModel.wantsEditingOnNextLoad = false
+                isEditing = true
+                // Delay focus to allow CodeMirrorEditorView to be created first
+                DispatchQueue.main.async {
+                    editorHandle.focus()
+                }
+            } else {
+                isEditing = false
+            }
         }
         .onChange(of: viewModel.isReadOnly) { _, newValue in
             if newValue {
@@ -53,7 +56,13 @@ struct MarkdownEditorView: View {
                 viewModel.pendingCaretCoords = nil
                 editorHandle.setSelectionAtDeferred(x: coords.x, y: coords.y)
             }
+            editorHandle.focus()
         }
+        #if os(macOS)
+        .onExitCommand {
+            isEditing = false
+        }
+        #endif
     }
 
     private var editorSurface: some View {
@@ -63,7 +72,10 @@ struct MarkdownEditorView: View {
                     markdown: viewModel.content,
                     isReadOnly: false,
                     handle: editorHandle,
-                    onContentChanged: viewModel.handleUserMarkdownEdit
+                    onContentChanged: viewModel.handleUserMarkdownEdit,
+                    onEscape: {
+                        isEditing = false
+                    }
                 )
                 .frame(maxWidth: maxContentWidth)
             } else {

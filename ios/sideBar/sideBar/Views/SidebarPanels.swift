@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 private func panelHeaderBackground(_ colorScheme: ColorScheme) -> Color {
     #if os(macOS)
@@ -80,6 +81,7 @@ private struct TasksPanelView: View {
         return horizontalSizeClass == .compact
         #endif
     }
+
 }
 
 private struct ConversationsPanelView: View {
@@ -456,12 +458,23 @@ public struct NotesPanel: View {
 
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
+    @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
     @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
+    @State private var isNewNotePresented = false
+    @State private var isNewFolderPresented = false
+    @State private var newNoteName: String = ""
+    @State private var newFolderName: String = ""
+    @State private var newFolderParent: String = ""
+    @State private var isCreatingNote = false
+    @State private var isCreatingFolder = false
+    @State private var renameTarget: FileNodeItem? = nil
+    @State private var renameValue: String = ""
+    @State private var deleteTarget: FileNodeItem? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -481,6 +494,58 @@ private struct NotesPanelView: View {
         .onChange(of: viewModel.searchQuery) { _, newValue in
             viewModel.updateSearch(query: newValue)
         }
+        .sheet(isPresented: $isNewNotePresented) {
+            NewNoteSheet(
+                name: $newNoteName,
+                isSaving: isCreatingNote,
+                onCreate: createNote
+            )
+        }
+        .sheet(isPresented: $isNewFolderPresented) {
+            NewFolderSheet(
+                name: $newFolderName,
+                selectedFolder: $newFolderParent,
+                options: folderOptions,
+                isSaving: isCreatingFolder,
+                onCreate: createFolder
+            )
+        }
+        .alert(renameDialogTitle, isPresented: isRenameDialogPresented) {
+            TextField(renameDialogPlaceholder, text: $renameValue)
+                .submitLabel(.done)
+                .onSubmit {
+                    commitRename()
+                }
+            Button("Rename") {
+                commitRename()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                renameTarget = nil
+                renameValue = ""
+            }
+        }
+        .alert(deleteDialogTitle, isPresented: isDeleteDialogPresented) {
+            Button("Delete", role: .destructive) {
+                let target = deleteTarget
+                deleteTarget = nil
+                Task {
+                    if let target {
+                        if target.isFile {
+                            await viewModel.deleteNote(id: target.id)
+                        } else {
+                            await viewModel.deleteFolder(path: target.id)
+                        }
+                    }
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                deleteTarget = nil
+            }
+        } message: {
+            Text(deleteDialogMessage)
+        }
     }
 
     private var header: some View {
@@ -488,6 +553,9 @@ private struct NotesPanelView: View {
             PanelHeader(title: "Notes") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Button {
+                        newFolderName = ""
+                        newFolderParent = ""
+                        isNewFolderPresented = true
                     } label: {
                         Image(systemName: "folder")
                             .font(.system(size: 14, weight: .semibold))
@@ -496,6 +564,8 @@ private struct NotesPanelView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add folder")
                     Button {
+                        newNoteName = ""
+                        isNewNotePresented = true
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .semibold))
@@ -522,6 +592,107 @@ private struct NotesPanelView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private var folderOptions: [NotesFolderOption] {
+        NotesFolderOption.build(from: viewModel.tree?.children ?? [])
+    }
+
+    private func createNote() {
+        let trimmed = newNoteName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isCreatingNote else { return }
+        isCreatingNote = true
+        Task {
+            let created = await viewModel.createNote(title: trimmed, folder: nil)
+            await MainActor.run {
+                isCreatingNote = false
+                if created != nil {
+                    isNewNotePresented = false
+                    environment.notesEditorViewModel.requestEditingOnNextLoad()
+                }
+            }
+        }
+    }
+
+    private func createFolder() {
+        let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isCreatingFolder else { return }
+        isCreatingFolder = true
+        Task {
+            let destination = newFolderParent.isEmpty ? trimmed : "\(newFolderParent)/\(trimmed)"
+            let created = await viewModel.createFolder(path: destination)
+            await MainActor.run {
+                isCreatingFolder = false
+                if created {
+                    isNewFolderPresented = false
+                }
+            }
+        }
+    }
+
+    private var isRenameDialogPresented: Binding<Bool> {
+        Binding(
+            get: { renameTarget != nil },
+            set: { isPresented in
+                if !isPresented {
+                    renameTarget = nil
+                    renameValue = ""
+                }
+            }
+        )
+    }
+
+    private var isDeleteDialogPresented: Binding<Bool> {
+        Binding(
+            get: { deleteTarget != nil },
+            set: { isPresented in
+                if !isPresented {
+                    deleteTarget = nil
+                }
+            }
+        )
+    }
+
+    private var renameDialogTitle: String {
+        renameTarget?.isFile == true ? "Rename note" : "Rename folder"
+    }
+
+    private var renameDialogPlaceholder: String {
+        renameTarget?.isFile == true ? "Note name" : "Folder name"
+    }
+
+    private var deleteDialogTitle: String {
+        deleteTarget?.isFile == true ? "Delete note" : "Delete folder"
+    }
+
+    private var deleteDialogMessage: String {
+        deleteTarget?.isFile == true
+            ? "This will remove the note and cannot be undone."
+            : "This will remove the folder and its contents."
+    }
+
+    private func beginRename(for item: FileNodeItem) {
+        renameTarget = item
+        renameValue = item.displayName
+    }
+
+    private func confirmDelete(for item: FileNodeItem) {
+        deleteTarget = item
+    }
+
+    private func commitRename() {
+        let target = renameTarget
+        let updated = renameValue
+        renameTarget = nil
+        renameValue = ""
+        guard let target else { return }
+        Task {
+            if target.isFile {
+                await viewModel.renameNote(id: target.id, newName: updated)
+            } else {
+                await viewModel.renameFolder(path: target.id, newName: updated)
+            }
+        }
     }
 
     private var searchResultsView: some View {
@@ -557,6 +728,10 @@ private struct NotesPanelView: View {
                             isSelected: viewModel.selectedNoteId == node.path
                         ) {
                             Task { await viewModel.selectNote(id: node.path) }
+                        } onRename: {
+                            beginRename(for: FileNodeItem(id: node.path, name: node.name, type: node.type, children: nil))
+                        } onDelete: {
+                            confirmDelete(for: FileNodeItem(id: node.path, name: node.name, type: node.type, children: nil))
                         }
                     }
                 }
@@ -636,6 +811,10 @@ private struct NotesPanelView: View {
                             isSelected: viewModel.selectedNoteId == item.id
                         ) {
                             Task { await viewModel.selectNote(id: item.id) }
+                        } onRename: {
+                            beginRename(for: item)
+                        } onDelete: {
+                            confirmDelete(for: item)
                         }
                     }
                 }
@@ -662,6 +841,10 @@ private struct NotesPanelView: View {
                                     if item.isFile {
                                         Task { await viewModel.selectNote(id: item.id) }
                                     }
+                                } onRename: {
+                                    beginRename(for: item)
+                                } onDelete: {
+                                    confirmDelete(for: item)
                                 }
                             }
                             .listRowBackground(rowBackground)
@@ -708,6 +891,10 @@ private struct NotesPanelView: View {
                 if item.isFile {
                     Task { await viewModel.selectNote(id: item.id) }
                 }
+            } onRename: {
+                beginRename(for: item)
+            } onDelete: {
+                confirmDelete(for: item)
             }
         }
         .listRowBackground(rowBackground)
@@ -736,6 +923,10 @@ private struct NotesPanelView: View {
                                     if item.isFile {
                                         Task { await viewModel.selectNote(id: item.id) }
                                     }
+                                } onRename: {
+                                    beginRename(for: item)
+                                } onDelete: {
+                                    confirmDelete(for: item)
                                 }
                             }
                         }
@@ -808,7 +999,7 @@ private struct NotesPanelView: View {
         nodes.compactMap { node in
             if node.type == .directory {
                 let children = filterNodes(node.children ?? [], includeArchived: includeArchived)
-                if children.isEmpty {
+                if !includeArchived && node.name.lowercased() == "archive" {
                     return nil
                 }
                 return FileNode(
@@ -835,26 +1026,162 @@ private struct NotesPanelView: View {
     }
 }
 
+private struct NotesFolderOption: Identifiable, Hashable {
+    let id: String
+    let label: String
+    let value: String
+    let depth: Int
+
+    static func build(from nodes: [FileNode]) -> [NotesFolderOption] {
+        var options: [NotesFolderOption] = [
+            NotesFolderOption(id: "", label: "Notes", value: "", depth: 0)
+        ]
+
+        func walk(_ items: [FileNode], depth: Int) {
+            for item in items {
+                guard item.type == .directory else { continue }
+                if item.name.lowercased() == "archive" { continue }
+                let folderPath = item.path.replacingOccurrences(of: "folder:", with: "")
+                options.append(
+                    NotesFolderOption(
+                        id: folderPath,
+                        label: item.name,
+                        value: folderPath,
+                        depth: depth
+                    )
+                )
+                if let children = item.children, !children.isEmpty {
+                    walk(children, depth: depth + 1)
+                }
+            }
+        }
+
+        walk(nodes, depth: 1)
+        return options
+    }
+}
+
+private struct NewNoteSheet: View {
+    @Binding var name: String
+    let isSaving: Bool
+    let onCreate: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var isNameFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Note") {
+                    TextField("Title", text: $name)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            onCreate()
+                        }
+                        .focused($isNameFocused)
+                }
+            }
+            .navigationTitle("New Note")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") {
+                        onCreate()
+                    }
+                    .disabled(isSaving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .onAppear {
+            isNameFocused = true
+        }
+    }
+}
+
+private struct NewFolderSheet: View {
+    @Binding var name: String
+    @Binding var selectedFolder: String
+    let options: [NotesFolderOption]
+    let isSaving: Bool
+    let onCreate: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var isNameFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Folder") {
+                    TextField("Folder name", text: $name)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            onCreate()
+                        }
+                        .focused($isNameFocused)
+                }
+                Section("Location") {
+                    Picker("Location", selection: $selectedFolder) {
+                        ForEach(options) { option in
+                            Text(optionLabel(option))
+                                .tag(option.value)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("New Folder")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") {
+                        onCreate()
+                    }
+                    .disabled(isSaving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .onAppear {
+            isNameFocused = true
+        }
+    }
+
+    private func optionLabel(_ option: NotesFolderOption) -> String {
+        let indent = String(repeating: "  ", count: max(0, option.depth))
+        return indent + option.label
+    }
+}
+
 private struct NotesTreeRow: View {
     let item: FileNodeItem
     let isSelected: Bool
     let onSelect: () -> Void
+    let onRename: (() -> Void)?
+    let onDelete: (() -> Void)?
     let useListStyling: Bool
 
     init(
         item: FileNodeItem,
         isSelected: Bool,
         useListStyling: Bool = true,
-        onSelect: @escaping () -> Void
+        onSelect: @escaping () -> Void,
+        onRename: (() -> Void)? = nil,
+        onDelete: (() -> Void)? = nil
     ) {
         self.item = item
         self.isSelected = isSelected
         self.useListStyling = useListStyling
         self.onSelect = onSelect
+        self.onRename = onRename
+        self.onDelete = onDelete
     }
 
     var body: some View {
-        let row = SelectableRow(
+        let rowContent = SelectableRow(
             isSelected: isSelected,
             insets: rowInsets,
             verticalPadding: rowVerticalPadding,
@@ -869,13 +1196,22 @@ private struct NotesTreeRow: View {
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
             }
         }
+        let row = rowContent
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if item.isFile {
+                    onSelect()
+                }
+            }
+            .applyNoteSwipeActions(onRename: onRename, onDelete: onDelete)
 
-        if item.isFile {
-            row
-                .onTapGesture { onSelect() }
-        } else if useListStyling {
-            row
-                .listRowBackground(rowBackground)
+        styledRow(row)
+    }
+
+    @ViewBuilder
+    private func styledRow<Content: View>(_ row: Content) -> some View {
+        if useListStyling {
+            row.listRowBackground(rowBackground)
         } else {
             row
         }
@@ -921,6 +1257,33 @@ private struct NotesTreeRow: View {
         return DesignTokens.Spacing.xs
         #else
         return item.isFile ? DesignTokens.Spacing.xs : DesignTokens.Spacing.xxs
+        #endif
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyNoteSwipeActions(onRename: (() -> Void)?, onDelete: (() -> Void)?) -> some View {
+        #if os(iOS)
+        self
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                if let onRename {
+                    Button("Rename") {
+                        onRename()
+                    }
+                    .tint(.blue)
+                }
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                if let onDelete {
+                    Button("Delete") {
+                        onDelete()
+                    }
+                    .tint(.red)
+                }
+            }
+        #else
+        self
         #endif
     }
 }

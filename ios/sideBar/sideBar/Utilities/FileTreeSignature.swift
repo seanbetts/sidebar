@@ -26,6 +26,7 @@ enum FileTreeSignature {
         let archived = node.archived.map { String($0) } ?? "nil"
         let folderMarker = node.folderMarker.map { String($0) } ?? "nil"
         return [
+            node.name,
             node.path,
             node.type.rawValue,
             size,
