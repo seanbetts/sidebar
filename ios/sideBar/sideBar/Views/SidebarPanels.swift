@@ -91,7 +91,6 @@ private struct ConversationsPanelView: View {
     @State private var renameValue: String = ""
     @State private var deleteConversationId: String? = nil
     @State private var deleteConversationTitle: String = ""
-    @FocusState private var renameFieldFocusedId: String?
     @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -108,6 +107,20 @@ private struct ConversationsPanelView: View {
                 } else {
                     conversationsList
                 }
+            }
+        }
+        .alert("Rename chat", isPresented: isRenameDialogPresented) {
+            TextField("Chat name", text: $renameValue)
+                .submitLabel(.done)
+                .onSubmit {
+                    commitRename()
+                }
+            Button("Rename") {
+                commitRename()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                clearRenameTarget()
             }
         }
         .alert(
@@ -182,23 +195,16 @@ private struct ConversationsPanelView: View {
         List {
             ForEach(filteredGroups) { group in
                 Section(group.title) {
-                    ForEach(Array(group.conversations.enumerated()), id: \.element.id) { index, conversation in
-                        let isEditing = renameConversationId == conversation.id
+                    ForEach(group.conversations) { conversation in
                         SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
                             ConversationRow(
                                 conversation: conversation,
                                 isSelected: viewModel.selectedConversationId == conversation.id,
-                                isEditing: isEditing,
-                                renameValue: $renameValue,
-                                focusedId: $renameFieldFocusedId,
                                 onRename: { beginRename(conversation) },
-                                onRenameSubmit: { commitRename(conversation) },
-                                onRenameCancel: cancelRename,
                                 onDelete: { presentDelete(conversation) }
                             )
                         }
                         .onTapGesture {
-                            guard !isEditing else { return }
                             Task { await viewModel.selectConversation(id: conversation.id) }
                         }
                         #if os(iOS)
@@ -250,6 +256,17 @@ private struct ConversationsPanelView: View {
         DesignTokens.Colors.sidebar
     }
 
+    private var isRenameDialogPresented: Binding<Bool> {
+        Binding(
+            get: { renameConversationId != nil },
+            set: { isPresented in
+                if !isPresented {
+                    clearRenameTarget()
+                }
+            }
+        )
+    }
+
     private var isDeleteDialogPresented: Binding<Bool> {
         Binding(
             get: { deleteConversationId != nil },
@@ -264,20 +281,21 @@ private struct ConversationsPanelView: View {
     private func beginRename(_ conversation: Conversation) {
         renameConversationId = conversation.id
         renameValue = conversation.title
-        renameFieldFocusedId = conversation.id
     }
 
-    private func cancelRename() {
+    private func clearRenameTarget() {
         renameConversationId = nil
         renameValue = ""
-        renameFieldFocusedId = nil
     }
 
-    private func commitRename(_ conversation: Conversation) {
+    private func commitRename() {
+        let targetId = renameConversationId
         let updatedTitle = renameValue
-        cancelRename()
-        Task {
-            await viewModel.renameConversation(id: conversation.id, title: updatedTitle)
+        clearRenameTarget()
+        if let id = targetId {
+            Task {
+                await viewModel.renameConversation(id: id, title: updatedTitle)
+            }
         }
     }
 
@@ -310,34 +328,19 @@ private struct ConversationsPanelView: View {
 private struct ConversationRow: View, Equatable {
     let conversation: Conversation
     let isSelected: Bool
-    let isEditing: Bool
-    @Binding var renameValue: String
-    @FocusState.Binding var focusedId: String?
     let onRename: () -> Void
-    let onRenameSubmit: () -> Void
-    let onRenameCancel: () -> Void
     let onDelete: () -> Void
     private let subtitleText: String
 
     init(
         conversation: Conversation,
         isSelected: Bool,
-        isEditing: Bool,
-        renameValue: Binding<String>,
-        focusedId: FocusState<String?>.Binding,
         onRename: @escaping () -> Void,
-        onRenameSubmit: @escaping () -> Void,
-        onRenameCancel: @escaping () -> Void,
         onDelete: @escaping () -> Void
     ) {
         self.conversation = conversation
         self.isSelected = isSelected
-        self.isEditing = isEditing
-        self._renameValue = renameValue
-        self._focusedId = focusedId
         self.onRename = onRename
-        self.onRenameSubmit = onRenameSubmit
-        self.onRenameCancel = onRenameCancel
         self.onDelete = onDelete
         let formattedDate = ConversationRow.formattedDate(from: conversation.updatedAt)
         let count = conversation.messageCount
@@ -350,59 +353,43 @@ private struct ConversationRow: View, Equatable {
         lhs.conversation.id == rhs.conversation.id &&
         lhs.conversation.title == rhs.conversation.title &&
         lhs.conversation.updatedAt == rhs.conversation.updatedAt &&
-        lhs.conversation.messageCount == rhs.conversation.messageCount &&
-        lhs.isEditing == rhs.isEditing
+        lhs.conversation.messageCount == rhs.conversation.messageCount
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 6) {
-                if isEditing {
-                    TextField("", text: $renameValue)
-                        .textFieldStyle(.plain)
-                        .font(.subheadline)
-                        .foregroundStyle(primaryTextColor)
-                        .focused($focusedId, equals: conversation.id)
-                        .submitLabel(.done)
-                        .onSubmit(onRenameSubmit)
-                        #if os(macOS)
-                        .onExitCommand(perform: onRenameCancel)
-                        #endif
-                } else {
-                    Text(conversation.title)
-                        .font(.subheadline)
-                        .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                        .lineLimit(1)
-                }
+                Text(conversation.title)
+                    .font(.subheadline)
+                    .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                    .lineLimit(1)
                 Text(subtitleText)
                     .font(.caption2)
                     .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
             }
             Spacer(minLength: 0)
             #if os(macOS)
-            if !isEditing {
-                let menu = Menu {
-                    Button("Rename") {
-                        onRename()
-                    }
-                    Button("Delete", role: .destructive) {
-                        onDelete()
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
+            let menu = Menu {
+                Button("Rename") {
+                    onRename()
                 }
-                .menuStyle(.borderlessButton)
-                .buttonStyle(.plain)
-                .accessibilityLabel("Conversation actions")
+                Button("Delete", role: .destructive) {
+                    onDelete()
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+            }
+            .menuStyle(.borderlessButton)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Conversation actions")
 
-                if #available(macOS 13.0, *) {
-                    menu.menuIndicator(.hidden)
-                } else {
-                    menu
-                }
+            if #available(macOS 13.0, *) {
+                menu.menuIndicator(.hidden)
+            } else {
+                menu
             }
             #endif
         }

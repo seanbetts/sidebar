@@ -266,7 +266,7 @@ private struct ChatHeaderView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(selectedTitle)
                     .font(.headline)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .multilineTextAlignment(.leading)
                     .layoutPriority(1)
                     .truncationMode(.tail)
