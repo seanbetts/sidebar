@@ -753,16 +753,6 @@ private struct SignedInContentView<Main: View>: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .background(DesignTokens.Colors.background)
                         .coordinateSpace(name: "appRoot")
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 0, coordinateSpace: .named("appRoot"))
-                                .onEnded { value in
-                                    guard environment.notesEditorViewModel.isEditing else { return }
-                                    let editorFrame = environment.notesEditorViewModel.editorFrame
-                                    if editorFrame != .zero && !editorFrame.contains(value.location) {
-                                        environment.notesEditorViewModel.isEditing = false
-                                    }
-                                }
-                        )
                         .overlay(alignment: .top) {
                             Rectangle()
                                 .fill(topSafeAreaBackground)
