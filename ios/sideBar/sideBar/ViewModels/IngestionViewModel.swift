@@ -159,7 +159,7 @@ public final class IngestionViewModel: ObservableObject {
             case .markdown, .text, .json:
                 let rawText = String(decoding: data, as: UTF8.self)
                 let shouldStrip = derivative.kind == "ai_md" || kind == .markdown
-                let text = shouldStrip ? stripFrontmatter(rawText) : rawText
+                let text = shouldStrip ? MarkdownRendering.stripFrontmatter(rawText) : rawText
                 let fileURL = try temporaryStore.store(data: data, filename: filename)
                 viewerState = FileViewerState(
                     title: meta.file.filenameOriginal,
@@ -234,26 +234,6 @@ public final class IngestionViewModel: ObservableObject {
             }
             return nil
         }
-    }
-
-    private func stripFrontmatter(_ content: String) -> String {
-        let marker = "---"
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix(marker) else { return content }
-        let parts = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
-        guard let first = parts.first, first.trimmingCharacters(in: .whitespacesAndNewlines) == marker else {
-            return content
-        }
-        var endIndex: Int? = nil
-        for (index, line) in parts.enumerated().dropFirst() {
-            if line.trimmingCharacters(in: .whitespacesAndNewlines) == marker {
-                endIndex = index
-                break
-            }
-        }
-        guard let endIndex else { return content }
-        let body = parts.dropFirst(endIndex + 1).joined(separator: "\n")
-        return body.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func overrideKindIfMarkdown(

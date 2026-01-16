@@ -504,7 +504,7 @@ private struct ChatMessageListView: View {
 private struct ChatMessageRow: View {
     let message: Message
     @Environment(\.colorScheme) private var colorScheme
-    private let maxBubbleWidth: CGFloat = 860
+    private let maxBubbleWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
 
     var body: some View {
         bubble
@@ -532,7 +532,7 @@ private struct ChatMessageRow: View {
                 .buttonStyle(.plain)
             }
 
-            SideBarMarkdown(text: message.content, preprocessor: MarkdownRendering.normalizeChatMarkdown)
+            SideBarMarkdown(text: message.content)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if message.status == .error, let error = message.error {
@@ -548,20 +548,16 @@ private struct ChatMessageRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(12)
+        .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+        .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
         .background(bubbleBackground)
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(bubbleBorder, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        #if os(macOS)
         .frame(maxWidth: maxBubbleWidth)
         .frame(maxWidth: .infinity, alignment: .center)
-        #else
-        .frame(maxWidth: 520)
-        .frame(maxWidth: .infinity, alignment: .center)
-        #endif
     }
 
     private var formattedTimestamp: String {

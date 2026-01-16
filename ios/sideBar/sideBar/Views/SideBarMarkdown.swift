@@ -3,14 +3,33 @@ import MarkdownUI
 #endif
 import SwiftUI
 
+struct SideBarMarkdownLayout {
+    static let maxContentWidth: CGFloat = 800
+    static let horizontalPadding: CGFloat = 20
+    static let verticalPadding: CGFloat = 16
+    static let blockSpacing: CGFloat = 16
+    static let gallerySpacing: CGFloat = 12
+    static let galleryMinImageWidth: CGFloat = 150
+    static let maxImageSize = CGSize(width: 450, height: 450)
+}
+
+struct SideBarMarkdownContainer: View {
+    let text: String
+
+    var body: some View {
+        SideBarMarkdown(text: text)
+            .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth, alignment: .leading)
+            .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+            .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+}
+
 struct SideBarMarkdown: View, Equatable {
     let text: String
-    let preprocessor: (String) -> String
-    private let maxImageSize = CGSize(width: 450, height: 450)
 
-    init(text: String, preprocessor: @escaping (String) -> String = MarkdownRendering.normalizeNoteMarkdown) {
+    init(text: String) {
         self.text = text
-        self.preprocessor = preprocessor
     }
 
     static func == (lhs: SideBarMarkdown, rhs: SideBarMarkdown) -> Bool {
@@ -19,19 +38,38 @@ struct SideBarMarkdown: View, Equatable {
 
     var body: some View {
         #if canImport(MarkdownUI)
-        Markdown(preprocessor(text))
-            .markdownTheme(markdownTheme)
-            .markdownTextStyle(\.link) {
-                ForegroundColor(.accentColor)
-                UnderlineStyle(.single)
+        let blocks = MarkdownRendering.normalizedBlocks(from: text)
+        if blocks.isEmpty {
+            styledMarkdown(text)
+        } else {
+            VStack(alignment: .leading, spacing: SideBarMarkdownLayout.blockSpacing) {
+                ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                    switch block {
+                    case .markdown(let content):
+                        styledMarkdown(content)
+                    case .gallery(let gallery):
+                        MarkdownGalleryView(gallery: gallery)
+                    }
+                }
             }
-            .markdownImageProvider(CappedImageProvider(maxSize: maxImageSize))
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
         #else
         Text(text)
         #endif
     }
 
     #if canImport(MarkdownUI)
+    private func styledMarkdown(_ content: String) -> some View {
+        Markdown(content)
+            .markdownTheme(markdownTheme)
+            .markdownTextStyle(\.link) {
+                ForegroundColor(.accentColor)
+                UnderlineStyle(.single)
+            }
+            .markdownImageProvider(CappedImageProvider(maxSize: SideBarMarkdownLayout.maxImageSize))
+    }
+
     private var markdownTheme: Theme {
         Theme()
             .text {
@@ -131,7 +169,7 @@ struct SideBarMarkdown: View, Equatable {
                 } else {
                     configuration.label
                         .fixedSize(horizontal: false, vertical: true)
-                        .relativeLineSpacing(.em(0.7))
+                        .relativeLineSpacing(.em(0.2))
                         .markdownMargin(top: .rem(0.5), bottom: .rem(0.5))
                 }
             }
@@ -158,6 +196,7 @@ struct SideBarMarkdown: View, Equatable {
                         .relativePadding(.leading, length: .em(1))
                 }
                 .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .markdownMargin(top: .em(1), bottom: .em(1))
             }
             .codeBlock { configuration in
@@ -258,3 +297,104 @@ private struct CappedImageProvider: ImageProvider {
     }
 }
 #endif
+
+private struct MarkdownGalleryView: View {
+    let gallery: MarkdownRendering.MarkdownGallery
+
+    private let gridSpacing: CGFloat = SideBarMarkdownLayout.gallerySpacing
+    private let minImageWidth: CGFloat = SideBarMarkdownLayout.galleryMinImageWidth
+    @State private var availableWidth: CGFloat = 0
+
+    var body: some View {
+        let rows = chunked(gallery.imageUrls, size: columns(for: availableWidth))
+        let imageWidth = imageWidth(for: availableWidth)
+        VStack(alignment: .center, spacing: gridSpacing) {
+            ForEach(rows.indices, id: \.self) { rowIndex in
+                HStack(spacing: gridSpacing) {
+                    ForEach(rows[rowIndex], id: \.self) { urlString in
+                        MarkdownGalleryImageView(
+                            urlString: urlString,
+                            maxSize: CGSize(
+                                width: imageWidth,
+                                height: SideBarMarkdownLayout.maxImageSize.height
+                            )
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            if let caption = gallery.caption, !caption.isEmpty {
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        availableWidth = proxy.size.width
+                    }
+                    .onChange(of: proxy.size.width) { _, newValue in
+                        availableWidth = newValue
+                    }
+            }
+        )
+    }
+
+    private func columns(for availableWidth: CGFloat) -> Int {
+        let effectiveWidth = max(availableWidth, minImageWidth)
+        let count = Int((effectiveWidth + gridSpacing) / (minImageWidth + gridSpacing))
+        return max(1, count)
+    }
+
+    private func imageWidth(for availableWidth: CGFloat) -> CGFloat {
+        let effectiveWidth = max(availableWidth, minImageWidth)
+        let columnCount = columns(for: availableWidth)
+        let totalSpacing = gridSpacing * CGFloat(max(columnCount - 1, 0))
+        let columnWidth = (effectiveWidth - totalSpacing) / CGFloat(columnCount)
+        return min(columnWidth, SideBarMarkdownLayout.maxImageSize.width)
+    }
+
+    private func chunked(_ items: [String], size: Int) -> [[String]] {
+        guard size > 0 else { return [items] }
+        var chunks: [[String]] = []
+        var index = 0
+        while index < items.count {
+            let end = min(index + size, items.count)
+            chunks.append(Array(items[index..<end]))
+            index = end
+        }
+        return chunks
+    }
+}
+
+private struct MarkdownGalleryImageView: View {
+    let urlString: String
+    let maxSize: CGSize
+
+    var body: some View {
+        if let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
+                case .failure:
+                    Image(systemName: "photo")
+                        .font(.system(size: 32, weight: .regular))
+                        .foregroundStyle(.secondary)
+                case .empty:
+                    ProgressView()
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+}

@@ -3,19 +3,19 @@ import Foundation
 public enum MarkdownRendering {
     public nonisolated static let imageCaptionMarker = "^caption:"
 
-    public struct WebsiteGallery {
+    public struct MarkdownGallery {
         public let imageUrls: [String]
         public let caption: String?
 
-        public init(imageUrls: [String], caption: String?) {
+        public nonisolated init(imageUrls: [String], caption: String?) {
             self.imageUrls = imageUrls
             self.caption = caption
         }
     }
 
-    public enum WebsiteContentBlock {
+    public enum MarkdownContentBlock {
         case markdown(String)
-        case gallery(WebsiteGallery)
+        case gallery(MarkdownGallery)
     }
 
     public nonisolated static func normalizeTaskLists(_ text: String) -> String {
@@ -56,30 +56,56 @@ public enum MarkdownRendering {
         return updated.joined(separator: "\n")
     }
 
-    public nonisolated static func normalizeNoteMarkdown(_ text: String) -> String {
+    public nonisolated static func stripFrontmatter(_ content: String) -> String {
+        let marker = "---"
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix(marker) else { return content }
+        let parts = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
+        guard let first = parts.first, first.trimmingCharacters(in: .whitespacesAndNewlines) == marker else {
+            return content
+        }
+        var endIndex: Int? = nil
+        for (index, line) in parts.enumerated().dropFirst() {
+            if line.trimmingCharacters(in: .whitespacesAndNewlines) == marker {
+                endIndex = index
+                break
+            }
+        }
+        guard let endIndex else { return content }
+        let body = parts.dropFirst(endIndex + 1).joined(separator: "\n")
+        return body.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public nonisolated static func normalizeMarkdownText(_ text: String) -> String {
         let normalized = normalizeTaskLists(text)
         return normalizeImageCaptions(normalized)
     }
 
-    public nonisolated static func normalizeWebsiteMarkdown(_ text: String) -> String {
-        let replaced = replaceGalleryBlocks(in: text)
-        return normalizeImageCaptions(normalizeTaskLists(replaced))
+    public nonisolated static func normalizedBlocks(from text: String) -> [MarkdownContentBlock] {
+        let stripped = stripFrontmatter(text)
+        let blocks = splitMarkdownContent(stripped)
+        return blocks.compactMap { block in
+            switch block {
+            case .markdown(let markdown):
+                let normalized = normalizeMarkdownText(markdown)
+                guard !normalized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    return nil
+                }
+                return .markdown(normalized)
+            case .gallery:
+                return block
+            }
+        }
     }
 
-    public nonisolated static func normalizeChatMarkdown(_ text: String) -> String {
-        let normalized = normalizeImageCaptions(normalizeTaskLists(text))
-        return preserveLineBreaks(in: normalized)
-    }
-
-    @MainActor
-    public static func splitWebsiteContent(_ text: String) -> [WebsiteContentBlock] {
+    public nonisolated static func splitMarkdownContent(_ text: String) -> [MarkdownContentBlock] {
         let galleryRegex = makeGalleryRegex()
         let matches = galleryRegex.matches(in: text, range: NSRange(location: 0, length: text.utf16.count))
         guard !matches.isEmpty else {
             return [.markdown(text)]
         }
 
-        var blocks: [WebsiteContentBlock] = []
+        var blocks: [MarkdownContentBlock] = []
         var currentIndex = text.startIndex
 
         for match in matches {
@@ -91,7 +117,7 @@ public enum MarkdownRendering {
             if let gallery = parseGalleryBlock(block) {
                 blocks.append(.gallery(gallery))
             } else {
-                blocks.append(.markdown(block))
+                appendMarkdownIfNeeded(block, to: &blocks)
             }
 
             currentIndex = range.upperBound
@@ -153,27 +179,6 @@ public enum MarkdownRendering {
         return try! NSRegularExpression(pattern: pattern, options: [])
     }
 
-    private nonisolated static func preserveLineBreaks(in text: String) -> String {
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
-        guard lines.count > 1 else { return text }
-
-        var updated: [String] = []
-        updated.reserveCapacity(lines.count)
-
-        for (index, line) in lines.enumerated() {
-            let lineText = String(line)
-            if index == lines.count - 1 {
-                updated.append(lineText)
-            } else if lineText.isEmpty {
-                updated.append(lineText)
-            } else {
-                updated.append("\(lineText)  ")
-            }
-        }
-
-        return updated.joined(separator: "\n")
-    }
-
     private nonisolated static func makeGalleryCaptionRegex() -> NSRegularExpression {
         let pattern = #"data-caption=\"([^\"]*)\""#
         return try! NSRegularExpression(pattern: pattern, options: [])
@@ -184,48 +189,13 @@ public enum MarkdownRendering {
         return try! NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
     }
 
-    private nonisolated static func replaceGalleryBlocks(in text: String) -> String {
-        let galleryRegex = makeGalleryRegex()
-        let matches = galleryRegex.matches(in: text, range: NSRange(location: 0, length: text.utf16.count))
-        guard !matches.isEmpty else { return text }
-
-        var output = text
-        for match in matches.reversed() {
-            guard let range = Range(match.range, in: output) else { continue }
-            let block = String(output[range])
-            let replacement = renderGalleryMarkdown(from: block)
-            output.replaceSubrange(range, with: replacement)
-        }
-        return output
-    }
-
-    private nonisolated static func renderGalleryMarkdown(from block: String) -> String {
-        let captionRegex = makeGalleryCaptionRegex()
-        let imageRegex = makeGalleryImageRegex()
-        let caption = extractFirstMatch(in: block, regex: captionRegex)
-        let imageUrls = extractImageUrls(in: block, regex: imageRegex)
-
-        var lines: [String] = imageUrls.map { url in
-            "![](\(url))"
-        }
-
-        if let caption, !caption.isEmpty {
-            lines.append("")
-            lines.append("_\(caption)_")
-            lines.append("")
-        }
-
-        return lines.joined(separator: "\n")
-    }
-
-    @MainActor
-    private static func parseGalleryBlock(_ block: String) -> WebsiteGallery? {
+    private nonisolated static func parseGalleryBlock(_ block: String) -> MarkdownGallery? {
         let captionRegex = makeGalleryCaptionRegex()
         let imageRegex = makeGalleryImageRegex()
         let caption = extractFirstMatch(in: block, regex: captionRegex)
         let imageUrls = extractImageUrls(in: block, regex: imageRegex)
         guard !imageUrls.isEmpty else { return nil }
-        return WebsiteGallery(imageUrls: imageUrls, caption: caption)
+        return MarkdownGallery(imageUrls: imageUrls, caption: caption)
     }
 
     private nonisolated static func extractFirstMatch(in text: String, regex: NSRegularExpression) -> String? {
@@ -245,7 +215,7 @@ public enum MarkdownRendering {
             }
     }
 
-    private nonisolated static func appendMarkdownIfNeeded(_ text: String, to blocks: inout [WebsiteContentBlock]) {
+    private nonisolated static func appendMarkdownIfNeeded(_ text: String, to blocks: inout [MarkdownContentBlock]) {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         blocks.append(.markdown(text))
     }

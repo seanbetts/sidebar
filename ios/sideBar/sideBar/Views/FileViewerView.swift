@@ -57,8 +57,6 @@ public struct FileViewerView: View {
     private var markdownView: some View {
         ScrollView {
             MarkdownView(text: state.text ?? "")
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -133,7 +131,7 @@ private struct MarkdownView: View {
 
     var body: some View {
         #if canImport(MarkdownUI)
-        SideBarMarkdown(text: text)
+        SideBarMarkdownContainer(text: text)
         #else
         Text(text)
         #endif

@@ -1,5 +1,4 @@
 import SwiftUI
-import MarkdownUI
 
 public struct WebsitesView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -57,9 +56,6 @@ private struct WebsitesDetailView: View {
     @ObservedObject var viewModel: WebsitesViewModel
     @Environment(\.openURL) private var openURL
     @State private var safariURL: URL? = nil
-    @State private var scrollWidth: CGFloat = 0
-    private let contentMaxWidth: CGFloat = 800
-    private let contentHorizontalPadding: CGFloat = 20
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -126,36 +122,7 @@ private struct WebsitesDetailView: View {
     private var content: some View {
         if let website = viewModel.active {
             ScrollView {
-                let blocks = MarkdownRendering.splitWebsiteContent(stripFrontmatter(website.content))
-                VStack(alignment: .leading, spacing: 16) {
-                    ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                        switch block {
-                        case .markdown(let text):
-                            SideBarMarkdown(text: text, preprocessor: MarkdownRendering.normalizeWebsiteMarkdown)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        case .gallery(let gallery):
-                            WebsiteGalleryView(
-                                gallery: gallery,
-                                availableWidth: galleryWidth
-                            )
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-                .frame(maxWidth: contentMaxWidth, alignment: .leading)
-                .padding(contentHorizontalPadding)
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .background(
-                GeometryReader { proxy in
-                    Color.clear
-                        .preference(key: ContentWidthPreferenceKey.self, value: proxy.size.width)
-                }
-            )
-            .onPreferenceChange(ContentWidthPreferenceKey.self) { width in
-                if width > 0, scrollWidth != width {
-                    scrollWidth = width
-                }
+                SideBarMarkdownContainer(text: website.content)
             }
         } else if viewModel.isLoadingDetail {
             LoadingView(message: "Loading website…")
@@ -229,26 +196,6 @@ private struct WebsitesDetailView: View {
         return URL(string: urlString)
     }
 
-    private func stripFrontmatter(_ content: String) -> String {
-        let marker = "---"
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix(marker) else { return content }
-        let parts = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
-        guard let first = parts.first, first.trimmingCharacters(in: .whitespacesAndNewlines) == marker else {
-            return content
-        }
-        var endIndex: Int? = nil
-        for (index, line) in parts.enumerated().dropFirst() {
-            if line.trimmingCharacters(in: .whitespacesAndNewlines) == marker {
-                endIndex = index
-                break
-            }
-        }
-        guard let endIndex else { return content }
-        let body = parts.dropFirst(endIndex + 1).joined(separator: "\n")
-        return body.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     private func formatDomain(_ domain: String) -> String {
         domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
     }
@@ -270,108 +217,4 @@ private struct WebsitesDetailView: View {
         formatter.timeStyle = .none
         return formatter
     }()
-
-    private var galleryWidth: CGFloat {
-        let available = scrollWidth - (contentHorizontalPadding * 2)
-        if available > 0 {
-            return min(contentMaxWidth, available)
-        }
-        return contentMaxWidth
-    }
-}
-
-private struct WebsiteGalleryView: View {
-    let gallery: MarkdownRendering.WebsiteGallery
-    let availableWidth: CGFloat
-    private let gridSpacing: CGFloat = 12
-    private let minImageWidth: CGFloat = 150
-    private let maxImageSize = CGSize(width: 450, height: 450)
-
-    var body: some View {
-        VStack(alignment: .center, spacing: gridSpacing) {
-            ForEach(rows.indices, id: \.self) { rowIndex in
-                HStack(spacing: gridSpacing) {
-                    ForEach(rows[rowIndex], id: \.self) { urlString in
-                        GalleryImageView(
-                            urlString: urlString,
-                            maxSize: CGSize(width: imageWidth, height: maxImageSize.height)
-                        )
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-            if let caption = gallery.caption, !caption.isEmpty {
-                Text(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var columns: Int {
-        let effectiveWidth = max(availableWidth, minImageWidth)
-        let count = Int((effectiveWidth + gridSpacing) / (minImageWidth + gridSpacing))
-        return max(1, count)
-    }
-
-    private var imageWidth: CGFloat {
-        let effectiveWidth = max(availableWidth, minImageWidth)
-        let totalSpacing = gridSpacing * CGFloat(max(columns - 1, 0))
-        let columnWidth = (effectiveWidth - totalSpacing) / CGFloat(columns)
-        return min(columnWidth, maxImageSize.width)
-    }
-
-    private var rows: [[String]] {
-        chunked(gallery.imageUrls, size: columns)
-    }
-
-    private func chunked(_ items: [String], size: Int) -> [[String]] {
-        guard size > 0 else { return [items] }
-        var chunks: [[String]] = []
-        var index = 0
-        while index < items.count {
-            let end = min(index + size, items.count)
-            chunks.append(Array(items[index..<end]))
-            index = end
-        }
-        return chunks
-    }
-}
-
-private struct GalleryImageView: View {
-    let urlString: String
-    let maxSize: CGSize
-
-    var body: some View {
-        if let url = URL(string: urlString) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
-                case .failure:
-                    Image(systemName: "photo")
-                        .font(.system(size: 32, weight: .regular))
-                        .foregroundStyle(.secondary)
-                case .empty:
-                    ProgressView()
-                @unknown default:
-                    EmptyView()
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-    }
-}
-
-private struct ContentWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
 }

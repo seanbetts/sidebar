@@ -68,11 +68,7 @@ struct MarkdownEditorView: View {
                 .frame(maxWidth: maxContentWidth)
             } else {
                 ScrollView {
-                    SideBarMarkdown(text: viewModel.content)
-                        .frame(maxWidth: maxContentWidth, alignment: .leading)
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 16)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    SideBarMarkdownContainer(text: viewModel.content)
                 }
             }
         }
