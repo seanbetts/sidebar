@@ -33,15 +33,21 @@ struct MarkdownEditorView: View {
                     .padding(.trailing, 16)
             }
         }
-        .onChange(of: viewModel.currentNoteId) { _, _ in
-            if viewModel.wantsEditingOnNextLoad {
-                viewModel.wantsEditingOnNextLoad = false
-                isEditing = true
-                // Delay focus to allow CodeMirrorEditorView to be created first
-                DispatchQueue.main.async {
+        .task(id: viewModel.currentNoteId) {
+            // Using task(id:) instead of onChange so it fires both on appear and on change
+            // Small delay to ensure sheet has dismissed and view hierarchy is stable
+            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+            await MainActor.run {
+                if viewModel.wantsEditingOnNextLoad {
+                    viewModel.wantsEditingOnNextLoad = false
+                    isEditing = true
                     editorHandle.focus()
                 }
-            } else {
+            }
+        }
+        .onChange(of: viewModel.currentNoteId) { _, _ in
+            // Only reset editing state when switching notes (not for wantsEditingOnNextLoad case)
+            if !viewModel.wantsEditingOnNextLoad {
                 isEditing = false
             }
         }

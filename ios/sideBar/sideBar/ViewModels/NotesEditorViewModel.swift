@@ -292,10 +292,20 @@ public final class NotesEditorViewModel: ObservableObject {
         }
 
         let isSameNote = note.id == currentNoteId
-        if note.id == currentNoteId, note.content == content {
-            if ignoreNextStoreUpdate {
-                ignoreNextStoreUpdate = false
+
+        // If we just saved, ignore this update to prevent false "external update" detection
+        // The server response might have slightly different content (whitespace normalization)
+        if ignoreNextStoreUpdate, isSameNote {
+            ignoreNextStoreUpdate = false
+            baselineContent = note.content
+            if let modified = note.modified {
+                lastSaved = Date(timeIntervalSince1970: modified)
             }
+            isDirty = false
+            return
+        }
+
+        if isSameNote, note.content == content {
             baselineContent = content
             if let modified = note.modified {
                 lastSaved = Date(timeIntervalSince1970: modified)

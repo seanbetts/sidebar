@@ -139,8 +139,23 @@ public final class NotesViewModel: ObservableObject {
         guard filename.lowercased() != currentName?.lowercased() else {
             return
         }
+        // The server expects the note's UUID, not the path
+        // If renaming the active note, use its UUID; otherwise load the note first
+        let noteUuid: String
+        if activeNote?.path == id, let uuid = activeNote?.id {
+            noteUuid = uuid
+        } else {
+            // Need to load the note to get its UUID
+            do {
+                let note = try await api.getNote(id: id)
+                noteUuid = note.id
+            } catch {
+                toastCenter.show(message: "Failed to rename note")
+                return
+            }
+        }
         do {
-            let updated = try await api.renameNote(id: id, newName: filename)
+            let updated = try await api.renameNote(id: noteUuid, newName: filename)
             store.applyEditorUpdate(updated)
             if selectedNoteId != updated.path {
                 selectedNoteId = updated.path

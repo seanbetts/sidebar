@@ -46,8 +46,7 @@ public struct NotesAPI {
     }
 
     public func getNote(id: String) async throws -> NotePayload {
-        let encodedId = urlEncodePath(id)
-        return try await client.request("notes/\(encodedId)")
+        try await client.request("notes/\(id)")
     }
 
     public func createNote(request: NoteCreateRequest) async throws -> NotePayload {
@@ -55,29 +54,24 @@ public struct NotesAPI {
     }
 
     public func updateNote(id: String, content: String) async throws -> NotePayload {
-        let encodedId = urlEncodePath(id)
-        return try await client.request("notes/\(encodedId)", method: "PATCH", body: NoteUpdateRequest(content: content))
+        try await client.request("notes/\(id)", method: "PATCH", body: NoteUpdateRequest(content: content))
     }
 
     public func renameNote(id: String, newName: String) async throws -> NotePayload {
-        let encodedId = urlEncodePath(id)
-        let payload = ["newName": newName]
-        return try await client.request("notes/\(encodedId)/rename", method: "PATCH", body: payload)
+        struct RenamePayload: Encodable { let newName: String }
+        return try await client.request("notes/\(id)/rename", method: "PATCH", body: RenamePayload(newName: newName))
     }
 
     public func moveNote(id: String, folder: String) async throws -> NotePayload {
-        let encodedId = urlEncodePath(id)
-        return try await client.request("notes/\(encodedId)/move", method: "PATCH", body: MoveRequest(folder: folder))
+        try await client.request("notes/\(id)/move", method: "PATCH", body: MoveRequest(folder: folder))
     }
 
     public func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
-        let encodedId = urlEncodePath(id)
-        return try await client.request("notes/\(encodedId)/archive", method: "PATCH", body: ArchiveRequest(archived: archived))
+        try await client.request("notes/\(id)/archive", method: "PATCH", body: ArchiveRequest(archived: archived))
     }
 
     public func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
-        let encodedId = urlEncodePath(id)
-        return try await client.request("notes/\(encodedId)/pin", method: "PATCH", body: PinRequest(pinned: pinned))
+        try await client.request("notes/\(id)/pin", method: "PATCH", body: PinRequest(pinned: pinned))
     }
 
     public func updatePinnedOrder(ids: [String]) async throws {
@@ -86,16 +80,7 @@ public struct NotesAPI {
     }
 
     public func deleteNote(id: String) async throws -> NotePayload {
-        let encodedId = urlEncodePath(id)
-        return try await client.request("notes/\(encodedId)", method: "DELETE")
-    }
-
-    private func urlEncodePath(_ path: String) -> String {
-        // Encode the entire path as a single URL path component
-        // This ensures forward slashes in the note path are escaped
-        var allowed = CharacterSet.urlPathAllowed
-        allowed.remove("/")
-        return path.addingPercentEncoding(withAllowedCharacters: allowed) ?? path
+        try await client.request("notes/\(id)", method: "DELETE")
     }
 
     public func createFolder(path: String) async throws {
