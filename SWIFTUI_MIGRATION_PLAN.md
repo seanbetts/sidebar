@@ -217,7 +217,7 @@ Critical Path (MVP): [███████████████████�
 - [x] 3.2 Chat Window Layout
 - [x] 3.3 SSE Streaming Implementation (for cross-device updates)
 - [x] 3.4 Message List
-- [x] 3.5 Message Rendering (AttributedString for now)
+- [x] 3.5 Message Rendering (MarkdownUI with unified theme + preprocessing)
 - [x] 3.6 Tool Call Visualization
 - [x] 3.6a SSE UI Event Handling (note/website/theme/scratchpad/prompt/tool_start/tool_end)
 - [x] 3.8 Real-time Conversation Sync
@@ -236,6 +236,7 @@ Critical Path (MVP): [███████████████████�
 **MVP Scope: Read-Only Note Viewer**
 - [x] 4.1 File Tree Browser (expand/collapse, search, navigation)
 - [x] 4.2 Read-Only Note Viewer (MarkdownUI rendering)
+- [x] 4.2b Unified Markdown Rendering (single MarkdownUI theme + preprocessing across notes/websites/files/chats)
 - [x] 4.2a Scratchpad Note Mapping (special title + realtime updates)
 - [x] 4.6 Search Notes
 - [x] 4.7 Real-time Sync (see updates from other devices)
@@ -276,7 +277,7 @@ Critical Path (MVP): [███████████████████�
 #### Phase 6: Website Viewer (1-2 sessions MVP, 2-3 full)
 **MVP Scope: Read-Only Website Viewer**
 - [x] 6.1 Website List (search, pinned, archived)
-- [x] 6.2 Website Viewer (WKWebView or MarkdownUI)
+- [x] 6.2 Website Viewer (MarkdownUI with unified theme + gallery rendering)
 - [x] 6.4 Website Operations (view only - pin/unpin, open in Safari)
 - [x] 6.5 Real-time Sync
 
@@ -408,15 +409,15 @@ Critical Path (MVP): [███████████████████�
 - [x] Keyboard shortcuts (Cmd+Enter on Mac)
 
 #### Phase 11.2: Markdown Editor (6-9 sessions) - MOST COMPLEX
-- [x] **Critical Decision**: CodeMirror 6 in WKWebView for both read-only and edit parity
+- [x] **Critical Decision**: MarkdownUI for read-only; CodeMirror 6 in WKWebView for editing
 - [x] Replace TextKit editor with CodeMirror 6 (shared web bundle)
 - [x] Editor toolbar (bold, italic, headings, lists, etc.)
 - [x] Advanced formatting rendering (tables, links, code blocks)
 - [x] Syntax highlighting for code blocks
-- [ ] Reading mode: polished markdown rendering (renderer TBD)
-- [ ] Editing mode stays raw markdown until read-mode styling is locked
+- [x] Reading mode: polished markdown rendering (MarkdownUI + unified theme)
+- [x] Editing mode stays raw markdown until read-mode styling is locked
 - [ ] Live preview behavior (caret-line raw markdown) deferred
-- [ ] Edit-mode guardrails documented (no line-geometry changes; token-only styling; marker fade before collapse)
+- [x] Edit-mode guardrails documented (no line-geometry changes; token-only styling; marker fade before collapse)
 - [ ] Performance optimization for long documents
 - [ ] Plan: `docs/plans/2026-01-15-live-preview-fix-plan.md`
 
@@ -437,7 +438,7 @@ Critical Path (MVP): [███████████████████�
 - [ ] Long-note performance: incremental rendering + minimal layout churn
 
 **Decision Gate:**
-CodeMirror 6 in WKWebView selected as the single renderer for read-only and edit modes.
+MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode renderer.
 
 #### Phase 11.3: Note Operations (1-2 sessions)
 - [ ] Create new note (modal dialog for name/folder)
