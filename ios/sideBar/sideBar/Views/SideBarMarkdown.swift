@@ -13,11 +13,32 @@ struct SideBarMarkdownLayout {
     static let maxImageSize = CGSize(width: 450, height: 450)
 }
 
+struct SideBarMarkdownStyle: Equatable {
+    let codeBackground: Color
+    let codeBlockBackground: Color
+
+    static let `default` = SideBarMarkdownStyle(
+        codeBackground: DesignTokens.Colors.muted,
+        codeBlockBackground: DesignTokens.Colors.muted
+    )
+
+    static let chat = SideBarMarkdownStyle(
+        codeBackground: DesignTokens.Colors.background,
+        codeBlockBackground: DesignTokens.Colors.background
+    )
+}
+
 struct SideBarMarkdownContainer: View {
     let text: String
+    let style: SideBarMarkdownStyle
+
+    init(text: String, style: SideBarMarkdownStyle = .default) {
+        self.text = text
+        self.style = style
+    }
 
     var body: some View {
-        SideBarMarkdown(text: text)
+        SideBarMarkdown(text: text, style: style)
             .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth, alignment: .leading)
             .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
             .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
@@ -27,13 +48,15 @@ struct SideBarMarkdownContainer: View {
 
 struct SideBarMarkdown: View, Equatable {
     let text: String
+    let style: SideBarMarkdownStyle
 
-    init(text: String) {
+    init(text: String, style: SideBarMarkdownStyle = .default) {
         self.text = text
+        self.style = style
     }
 
     static func == (lhs: SideBarMarkdown, rhs: SideBarMarkdown) -> Bool {
-        lhs.text == rhs.text
+        lhs.text == rhs.text && lhs.style == rhs.style
     }
 
     var body: some View {
@@ -88,7 +111,7 @@ struct SideBarMarkdown: View, Equatable {
                 FontFamilyVariant(.monospaced)
                 FontSize(.em(0.875))
                 ForegroundColor(DesignTokens.Colors.textPrimary)
-                BackgroundColor(DesignTokens.Colors.muted)
+                BackgroundColor(style.codeBackground)
             }
             .link {
                 ForegroundColor(.accentColor)
@@ -213,7 +236,7 @@ struct SideBarMarkdown: View, Equatable {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
                 }
-                .background(DesignTokens.Colors.muted)
+                .background(style.codeBlockBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)

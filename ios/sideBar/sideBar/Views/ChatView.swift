@@ -532,7 +532,7 @@ private struct ChatMessageRow: View {
                 .buttonStyle(.plain)
             }
 
-            SideBarMarkdown(text: message.content)
+            SideBarMarkdown(text: message.content, style: .chat)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if message.status == .error, let error = message.error {
