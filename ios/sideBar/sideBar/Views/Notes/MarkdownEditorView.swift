@@ -57,13 +57,25 @@ struct MarkdownEditorView: View {
     }
 
     private var editorSurface: some View {
-        CodeMirrorEditorView(
-            markdown: viewModel.content,
-            isReadOnly: viewModel.isReadOnly || !isEditing,
-            handle: editorHandle,
-            onContentChanged: viewModel.handleUserMarkdownEdit
-        )
-        .frame(maxWidth: maxContentWidth)
+        ZStack(alignment: .topLeading) {
+            if isEditing && !viewModel.isReadOnly {
+                CodeMirrorEditorView(
+                    markdown: viewModel.content,
+                    isReadOnly: false,
+                    handle: editorHandle,
+                    onContentChanged: viewModel.handleUserMarkdownEdit
+                )
+                .frame(maxWidth: maxContentWidth)
+            } else {
+                ScrollView {
+                    SideBarMarkdown(text: viewModel.content)
+                        .frame(maxWidth: maxContentWidth, alignment: .leading)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+        }
         .background(
             GeometryReader { proxy in
                 Color.clear
@@ -75,10 +87,17 @@ struct MarkdownEditorView: View {
                     }
             }
         )
+        .contentShape(Rectangle())
         .simultaneousGesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .named("appRoot"))
                 .onEnded { value in
                     guard !viewModel.isReadOnly else { return }
+                    let dragDistance = hypot(value.translation.width, value.translation.height)
+                    let predictedDistance = hypot(
+                        value.predictedEndTranslation.width,
+                        value.predictedEndTranslation.height
+                    )
+                    guard dragDistance < 6, predictedDistance < 12 else { return }
                     if !isEditing {
                         let localX = value.location.x - editorFrame.origin.x
                         let localY = value.location.y - editorFrame.origin.y
