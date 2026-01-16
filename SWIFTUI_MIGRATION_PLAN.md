@@ -123,18 +123,24 @@ These gaps are additive and do not change the MVP-first strategy, but they shoul
 ### Overall Progress
 
 **Current Target**: Phase 11 (Editing Capabilities)
-**Status**: Phase 11.1 complete (Chat Input)
-**Sessions Completed (Implementation)**: 26 / 24-36 (MVP) or 26 / 38-54 (Full App)
+**Status**: Phase 11.2 in progress; Phase 11.3 complete (Note Operations)
+**Sessions Completed (Implementation)**: 28 / 24-36 (MVP) or 28 / 38-54 (Full App)
 **Hours Logged (Implementation)**: TBD / 96-144 (MVP) or TBD / 165-292 (Full App)
 **Weeks Elapsed (Implementation)**: 0 / 8-13 (MVP) or 0 / 13-19 (Full App)
 
 ```
 MVP Progress:      [████████████████████] 100%
-Full App Progress: [████████████░░░░░░░░] 60%
+Full App Progress: [█████████████░░░░░░░] 65%
 
 Critical Path (MVP): [████████████████████] 100%
 (Phases 1 → 2 → 3-Modified → 4-Reduced → 5 → 6-Modified → 7-Modified → 8 → 9 → 10)
 ```
+
+### Recent Implementation Updates (Jan 2026)
+
+- Notes: operations solidified (create/move/rename/delete/pin/archive), UUID-based rename, swipe actions fixed, and tap-to-exit edit gesture removed.
+- Chat: rename uses alert flow and title truncates to one line.
+- Shared UI: `ContentHeaderRow` introduced for consistent title bars across content types.
 
 ### Phase Completion Status
 
@@ -159,8 +165,8 @@ Critical Path (MVP): [███████████████████�
 | Phase | Status | Sessions | Complete | Full App Required |
 |-------|--------|----------|----------|-------------------|
 | **11.1 Chat Input** | ✅ Complete | 2 / 2-3 | 100% | ✅ Yes |
-| **11.2 Markdown Editor** | 🟨 In Progress | 3 / 6-9 | 35% | ✅ Yes |
-| **11.3 Note Operations** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
+| **11.2 Markdown Editor** | 🟨 In Progress | 3 / 6-9 | 50% | ✅ Yes |
+| **11.3 Note Operations** | ✅ Complete | 2 / 1-2 | 100% | ✅ Yes |
 | **11.4 Content Creation** | ⬜ Not Started | 0 / 1 | 0% | ✅ Yes |
 | **11.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
 | **POST-MVP TOTAL** | | **11-17** | | |
@@ -247,10 +253,10 @@ Critical Path (MVP): [███████████████████�
 - Use native text selection, share sheet, and Quick Look for attachments.
 
 **Post-MVP (Phases 10.2-10.3): Editing Capabilities**
-- [ ] 4.2 Native Markdown Editor (CodeMirror 6 WKWebView)
-- [ ] 4.3 Editor Toolbar (15+ formatting options)
-- [ ] 4.4 Save/Dirty State (auto-save, dirty indicator)
-- [ ] 4.5 Note Operations (create, rename, move, delete, pin)
+- [x] 4.2 Native Markdown Editor (CodeMirror 6 WKWebView)
+- [x] 4.3 Editor Toolbar (15+ formatting options)
+- [x] 4.4 Save/Dirty State (auto-save, dirty indicator)
+- [x] 4.5 Note Operations (create, rename, move, delete, pin)
 
 #### Phase 5: File Viewing (4-6 sessions)
 **MVP Scope: Full (already read-only)**
@@ -326,7 +332,7 @@ Critical Path (MVP): [███████████████████�
 - [x] 8.4 Background revalidation for list endpoints only
 - [x] 8.5 Offline-first reading via persistent cache
 - [x] 8.6 Design tokens defined (spacing, radius, sizes, colors, animations)
-- [x] 8.7 Shared components (PanelHeader, SearchField, SelectableRow, EmptyState, Loading)
+- [x] 8.7 Shared components (PanelHeader, ContentHeaderRow, SearchField, SelectableRow, EmptyState, Loading)
 - [x] 8.8 Utilities/extensions centralized (DateFormatter, String, Image)
 - [x] 8.9 Style modifiers (glass button, card, pill)
 - [x] 8.10 Migrate duplicated panel headers and selection styling
@@ -434,22 +440,22 @@ Critical Path (MVP): [███████████████████�
 - [x] Image parity: image blocks with caption (gallery block pending)
 - [x] Editor toolbar parity: primary actions + compact overflow menu
 - [ ] Selection/undo parity: keep cursor on external updates
-- [x] Auto-save debounce wired (dirty state tracking pending)
-- [ ] External update handling: detect server/AI edits and merge or prompt with conflict UI
+- [x] Auto-save debounce wired with dirty state tracking
+- [x] External update handling: banner with reload/keep actions
 - [ ] Long-note performance: incremental rendering + minimal layout churn
 
 **Decision Gate:**
 MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode renderer.
 
 #### Phase 11.3: Note Operations (1-2 sessions)
-- [ ] Create new note (modal dialog for name/folder)
-- [ ] Rename note (alert with text input)
-- [ ] Move to folder (picker sheet)
-- [ ] Delete note (confirmation alert)
-- [ ] Pin/unpin toggle
-- [ ] Archive/unarchive
-- [ ] Save with dirty state tracking
-- [ ] Auto-save with 2-second debounce
+- [x] Create new note (modal dialog for name/folder)
+- [x] Rename note (alert with text input)
+- [x] Move to folder (picker sheet)
+- [x] Delete note (confirmation alert)
+- [x] Pin/unpin toggle
+- [x] Archive/unarchive
+- [x] Save with dirty state tracking
+- [x] Auto-save with 1.5-second debounce
 
 #### Phase 11.4: Content Creation (1 session)
 - [ ] Save websites (URL input sheet with validation)
@@ -481,7 +487,7 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 
 #### Post-MVP Milestones (Full App)
 
-- [ ] **Milestone 7**: Can send chat messages (End of Phase 11.1)
+- [x] **Milestone 7**: Can send chat messages (End of Phase 11.1)
 - [ ] **Milestone 8**: Can create and edit notes (End of Phase 11.2-11.3)
 - [ ] **Milestone 9**: Can create content everywhere (End of Phase 11.4)
 - [ ] **FULL APP COMPLETE**: Capability parity with native UX (End of Phase 11.5)
@@ -497,6 +503,8 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 | 2026-01-09 | 1.3 | 1 | TBD | Added config plist generation + runtime error screen to avoid hard crashes when config is missing |
 | 2026-01-10 | 3-4 | 1 | TBD | Chat viewer refinements + notes viewer updates (search wiring, scratchpad hidden in list, note header tweaks) |
 | 2026-01-10 | 4.7 | 1 | TBD | Notes realtime sync (Supabase realtime channel + view model refresh) |
+| 2026-01-16 | 11.3 | 1 | TBD | Notes operations: rename via UUID, swipe actions fixed, remove tap-to-exit edit gesture |
+| 2026-01-16 | 8.5 | 1 | TBD | ContentHeaderRow shared across chat/notes/files/websites; chat rename alert + title truncation |
 
 ---
 
@@ -614,17 +622,19 @@ At the end of Phase 10 (MVP Testing), evaluate:
 - Fix performance bottlenecks
 - Polish before adding editing complexity
 
-### MVP Delivery Contents
+### Current Delivery Contents
 
-**What You Can Do With MVP:**
+**What You Can Do Now:**
 ```
 ✅ Open app on iPhone/iPad/Mac
 ✅ Log in with Supabase auth
 ✅ View all conversations
 ✅ Read all messages with markdown rendering
+✅ Send chat messages
 ✅ See tool calls and streaming updates from other devices
 ✅ Browse note file tree
 ✅ Read notes with syntax highlighting
+✅ Create and edit notes (rename, move, delete, pin, archive)
 ✅ Search across all notes
 ✅ View PDFs with zoom/scroll
 ✅ Play videos and audio
@@ -637,8 +647,6 @@ At the end of Phase 10 (MVP Testing), evaluate:
 
 **What You Can't Do (Yet):**
 ```
-❌ Send chat messages
-❌ Create/edit notes
 ❌ Save new websites
 ❌ Add/edit memories
 ❌ Edit scratchpad
@@ -646,15 +654,15 @@ At the end of Phase 10 (MVP Testing), evaluate:
 
 ### Post-MVP Phase 11 Breakdown
 
-When ready to resume (estimated 11-17 additional sessions):
+Remaining work (estimated 8-12 additional sessions):
 
 | Component | Sessions | Complexity | Notes |
 |-----------|----------|------------|-------|
-| Chat Input | 2-3 | Medium | Text editor, send button, SSE for sending |
-| Markdown Editor | 6-9 | **Very High** | CodeMirror 6 WKWebView (shared bundle), parity + bridge work |
-| Note Operations | 1-2 | Low | Create, rename, move, delete with API calls |
-| Content Creation | 1 | Low | Save websites, edit memories, scratchpad |
-| Full Testing | 1-2 | Medium | End-to-end capability parity validation (native UX) |
+| Chat Input | 2-3 | Medium | Complete (text editor, send button, SSE for sending) |
+| Markdown Editor | 6-9 | **Very High** | In progress (CodeMirror 6 WKWebView + parity work) |
+| Note Operations | 1-2 | Low | Complete (create, rename, move, delete, pin, archive) |
+| Content Creation | 1 | Low | Not started (save websites, edit memories, scratchpad) |
+| Full Testing | 1-2 | Medium | Not started (end-to-end capability parity validation) |
 
 **Critical Decision in Phase 11.2:**
 MarkdownUI is the read-only renderer; CodeMirror 6 in WKWebView is the edit-mode renderer. Remaining scope decisions:
@@ -1201,19 +1209,19 @@ class NoteEditorViewModel: ObservableObject {
   func contentDidChange() {
     isDirty = true
 
-    // Debounce save (2 seconds)
+    // Debounce save (1.5 seconds)
     saveWorkItem?.cancel()
     let workItem = DispatchWorkItem {
       await self.save()
     }
     saveWorkItem = workItem
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: workItem)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: workItem)
   }
 }
 ```
 
 - Visual dirty indicator (* in title)
-- Auto-save with 2-second debounce
+- Auto-save with 1.5-second debounce
 - Confirm navigation if unsaved changes
 
 **4.5 Note Operations**
@@ -1591,7 +1599,7 @@ Same pattern as notes/conversations.
 
 **8.5 Design System Foundation**
 - Design tokens (spacing, colors, sizing, typography).
-- Shared components: PanelHeader, SearchField, SelectableRow, EmptyStateView, LoadingView.
+- Shared components: PanelHeader, SearchField, SelectableRow, EmptyStateView, LoadingView, ContentHeaderRow.
 - Utilities & extensions (DateFormatter, String, Image).
 - Style modifiers (glass button, card, pill).
 
@@ -1606,6 +1614,7 @@ Same pattern as notes/conversations.
 
 **8.5b Reusable Components (Phase 2)**
 - `Design/Components/PanelHeader.swift` (highest value; replaces duplicated headers)
+- `Design/Components/ContentHeaderRow.swift` (replaces duplicated detail title rows)
 - `Design/Components/SearchField.swift`
 - `Design/Components/SelectableRow.swift`
 - `Design/Components/EmptyStateView.swift`
@@ -1623,6 +1632,7 @@ Same pattern as notes/conversations.
 
 **8.5e Migration Checklist**
 - Replace panel headers in Conversations/Notes/Files/Websites panels.
+- Replace detail title rows in Chat/Notes/Files/Websites with ContentHeaderRow.
 - Move all hardcoded colors to tokens in new code.
 - Migrate selection styling to SelectableRow.
 - Consolidate empty/loading states.
@@ -1630,7 +1640,7 @@ Same pattern as notes/conversations.
 ### Technical Decisions
 - **Persistence**: Core Data or file-backed cache with Codable payloads.
 - **Diffing**: lightweight message/version checks before publishing.
-- **Design scope**: prioritize PanelHeader + tokens before Phase 9 polish.
+- **Design scope**: prioritize PanelHeader + ContentHeaderRow + tokens before Phase 9 polish.
 
 ### Risks & Challenges
 - **State consistency** across domains and event streams.
