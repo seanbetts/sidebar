@@ -95,7 +95,8 @@ Images/embeds:
 - [x] Implement and polish read-mode styling (tables, code blocks, headings, lists, blockquotes, image captions).
 - [x] Keep edit mode raw markdown with minimal styling.
 - [x] Unify read-mode markdown rendering across notes/websites/files/chats (one theme, one preprocessing path, shared layout).
-- [ ] Validate read-mode rendering across iOS/iPad/macOS.
+- [x] Adjust chat-specific code styling for contrast against chat bubble backgrounds.
+- [x] Validate read-mode rendering across iOS/iPad/macOS.
 - [ ] Revisit live preview (caret-line raw markdown + inline marker hiding).
 
 ## Exit Criteria
