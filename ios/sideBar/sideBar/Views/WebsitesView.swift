@@ -83,26 +83,15 @@ private struct WebsitesDetailView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Image(systemName: "globe")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(displayTitle)
-                    .font(.headline)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .layoutPriority(1)
-                    .truncationMode(.tail)
-                if let subtitle = subtitleText {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-            }
-            Spacer()
+        ContentHeaderRow(
+            iconName: "globe",
+            title: displayTitle,
+            subtitle: subtitleText,
+            titleLineLimit: 2,
+            subtitleLineLimit: 2,
+            alignment: .firstTextBaseline,
+            titleSubtitleAlignment: .firstTextBaseline
+        ) {
             Button {
             } label: {
                 Image(systemName: "line.3.horizontal")

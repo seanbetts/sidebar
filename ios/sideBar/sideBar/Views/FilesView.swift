@@ -71,17 +71,10 @@ private struct FilesHeaderView: View {
     @ObservedObject var viewModel: IngestionViewModel
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: iconName)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
-            Text(activeTitle)
-                .font(.headline)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .layoutPriority(1)
-                .truncationMode(.tail)
-            Spacer()
+        ContentHeaderRow(
+            iconName: iconName,
+            title: activeTitle
+        ) {
             Button {
             } label: {
                 Image(systemName: "line.3.horizontal")

@@ -227,84 +227,85 @@ private struct ChatHeaderView: View {
     #endif
 
     var body: some View {
-        if isCompact {
+        if showExtendedContent {
             VStack(alignment: .leading, spacing: 6) {
                 headerContent
+
+                if let errorMessage = viewModel.errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                if let activeTool = viewModel.activeTool {
+                    ChatActiveToolBanner(activeTool: activeTool)
+                }
+
+                if let promptPreview = viewModel.promptPreview {
+                    PromptPreviewView(promptPreview: promptPreview)
+                }
             }
             .padding(16)
             .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
             .background(headerBackground)
         } else {
-        VStack(alignment: .leading, spacing: 6) {
             headerContent
-
-            if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-
-            if let activeTool = viewModel.activeTool {
-                ChatActiveToolBanner(activeTool: activeTool)
-            }
-
-            if let promptPreview = viewModel.promptPreview {
-                PromptPreviewView(promptPreview: promptPreview)
-            }
-        }
-        .padding(16)
-        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
-        .background(headerBackground)
+                .padding(16)
+                .frame(height: LayoutMetrics.contentHeaderMinHeight)
+                .background(headerBackground)
         }
     }
 
+    private var showExtendedContent: Bool {
+        if isCompact {
+            return false
+        }
+        return viewModel.errorMessage != nil ||
+            viewModel.activeTool != nil ||
+            viewModel.promptPreview != nil
+    }
+
     private var headerContent: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "bubble")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(selectedTitle)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .multilineTextAlignment(.leading)
-                    .layoutPriority(1)
-                    .truncationMode(.tail)
-            }
-            Spacer()
-            if viewModel.isStreaming {
-                Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .labelStyle(.titleAndIcon)
-            }
-            if showNewChatButton || showCloseButton {
-                HStack(spacing: 8) {
-                    if showNewChatButton {
-                        Button {
-                            Task {
-                                await viewModel.startNewConversation()
+        ContentHeaderRow(
+            iconName: "bubble",
+            title: selectedTitle,
+            titleLineLimit: 1
+        ) {
+            HStack(spacing: 12) {
+                if viewModel.isStreaming {
+                    Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.titleAndIcon)
+                }
+                if showNewChatButton || showCloseButton {
+                    HStack(spacing: 8) {
+                        if showNewChatButton {
+                            Button {
+                                Task {
+                                    await viewModel.startNewConversation()
+                                }
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .frame(width: 28, height: 20)
                             }
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .semibold))
-                                .frame(width: 28, height: 20)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("New chat")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("New chat")
-                    }
-                    if showCloseButton {
-                        Button {
-                            Task {
-                                await viewModel.closeConversation()
+                        if showCloseButton {
+                            Button {
+                                Task {
+                                    await viewModel.closeConversation()
+                                }
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .frame(width: 28, height: 20)
                             }
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 14, weight: .semibold))
-                                .frame(width: 28, height: 20)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Close chat")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Close chat")
                     }
                 }
             }
