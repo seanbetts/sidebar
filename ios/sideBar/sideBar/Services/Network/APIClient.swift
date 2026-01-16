@@ -33,7 +33,7 @@ public final class APIClient {
         self.decoder = JSONDecoder()
         self.decoder.keyDecodingStrategy = .convertFromSnakeCase
         self.encoder = JSONEncoder()
-        self.encoder.keyEncodingStrategy = .convertToSnakeCase
+        self.encoder.keyEncodingStrategy = .useDefaultKeys
     }
 
     public func request<T: Decodable>(

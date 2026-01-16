@@ -818,36 +818,16 @@ private struct NotesPanelView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(pinnedItems) { item in
-                        Button {
+                        NotesTreeRow(
+                            item: item,
+                            isSelected: viewModel.selectedNoteId == item.id
+                        ) {
                             Task { await viewModel.selectNote(id: item.id) }
-                        } label: {
-                            NotesTreeRow(
-                                item: item,
-                                isSelected: viewModel.selectedNoteId == item.id
-                            ) {
-                                Task { await viewModel.selectNote(id: item.id) }
-                            } onRename: {
-                                beginRename(for: item)
-                            } onDelete: {
-                                confirmDelete(for: item)
-                            }
+                        } onRename: {
+                            beginRename(for: item)
+                        } onDelete: {
+                            confirmDelete(for: item)
                         }
-                        .buttonStyle(.plain)
-                        .listRowBackground(rowBackground)
-                        #if os(iOS)
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button("Rename") {
-                                beginRename(for: item)
-                            }
-                            .tint(.blue)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button("Delete") {
-                                confirmDelete(for: item)
-                            }
-                            .tint(.red)
-                        }
-                        #endif
                     }
                 }
             }
@@ -866,39 +846,18 @@ private struct NotesPanelView: View {
                                 .foregroundStyle(.secondary)
                         } else {
                             OutlineGroup(buildItems(from: archivedNodes), children: \.children) { item in
-                                Button {
+                                NotesTreeRow(
+                                    item: item,
+                                    isSelected: viewModel.selectedNoteId == item.id
+                                ) {
                                     if item.isFile {
                                         Task { await viewModel.selectNote(id: item.id) }
                                     }
-                                } label: {
-                                    NotesTreeRow(
-                                        item: item,
-                                        isSelected: viewModel.selectedNoteId == item.id
-                                    ) {
-                                        if item.isFile {
-                                            Task { await viewModel.selectNote(id: item.id) }
-                                        }
-                                    } onRename: {
-                                        beginRename(for: item)
-                                    } onDelete: {
-                                        confirmDelete(for: item)
-                                    }
+                                } onRename: {
+                                    beginRename(for: item)
+                                } onDelete: {
+                                    confirmDelete(for: item)
                                 }
-                                .buttonStyle(.plain)
-                                #if os(iOS)
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                    Button("Rename") {
-                                        beginRename(for: item)
-                                    }
-                                    .tint(.blue)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button("Delete") {
-                                        confirmDelete(for: item)
-                                    }
-                                    .tint(.red)
-                                }
-                                #endif
                             }
                             .listRowBackground(rowBackground)
                         }
@@ -937,39 +896,18 @@ private struct NotesPanelView: View {
 
     private var mainOutlineGroup: some View {
         OutlineGroup(buildItems(from: mainNodes), children: \.children) { item in
-            Button {
+            NotesTreeRow(
+                item: item,
+                isSelected: viewModel.selectedNoteId == item.id
+            ) {
                 if item.isFile {
                     Task { await viewModel.selectNote(id: item.id) }
                 }
-            } label: {
-                NotesTreeRow(
-                    item: item,
-                    isSelected: viewModel.selectedNoteId == item.id
-                ) {
-                    if item.isFile {
-                        Task { await viewModel.selectNote(id: item.id) }
-                    }
-                } onRename: {
-                    beginRename(for: item)
-                } onDelete: {
-                    confirmDelete(for: item)
-                }
+            } onRename: {
+                beginRename(for: item)
+            } onDelete: {
+                confirmDelete(for: item)
             }
-            .buttonStyle(.plain)
-            #if os(iOS)
-            .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                Button("Rename") {
-                    beginRename(for: item)
-                }
-                .tint(.blue)
-            }
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                Button("Delete") {
-                    confirmDelete(for: item)
-                }
-                .tint(.red)
-            }
-            #endif
         }
         .listRowBackground(rowBackground)
     }
@@ -1215,7 +1153,7 @@ private struct NotesTreeRow: View {
     }
 
     var body: some View {
-        SelectableRow(
+        let row = SelectableRow(
             isSelected: isSelected,
             insets: rowInsets,
             verticalPadding: rowVerticalPadding,
@@ -1230,6 +1168,34 @@ private struct NotesTreeRow: View {
                     .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
             }
         }
+
+        Group {
+            if item.isFile {
+                row.onTapGesture {
+                    onSelect()
+                }
+            } else {
+                row
+            }
+        }
+        #if os(iOS)
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let onRename {
+                Button("Rename") {
+                    onRename()
+                }
+                .tint(.blue)
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if let onDelete {
+                Button("Delete") {
+                    onDelete()
+                }
+                .tint(.red)
+            }
+        }
+        #endif
     }
 
     private var primaryTextColor: Color {
