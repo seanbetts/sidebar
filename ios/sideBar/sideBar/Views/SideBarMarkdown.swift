@@ -199,12 +199,20 @@ struct SideBarMarkdown: View, Equatable {
             .list { configuration in
                 configuration.label
                     .markdownMargin(top: .rem(0.5), bottom: .rem(0.5))
-                    .relativePadding(.leading, length: .em(1.5))
+                    .relativePadding(.leading, length: .em(0))
             }
             .listItem { configuration in
                 configuration.label
-                    .relativeLineSpacing(.em(0.4))
+                    .relativeLineSpacing(.em(0.2))
                     .markdownMargin(top: .zero, bottom: .zero)
+            }
+            .bulletedListMarker(.disc)
+            .taskListMarker { configuration in
+                Image(systemName: configuration.isCompleted ? "checkmark.square.fill" : "square")
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+                    .imageScale(.small)
+                    .relativeFrame(minWidth: .em(1.5), alignment: .trailing)
             }
             .blockquote { configuration in
                 HStack(spacing: 0) {
@@ -275,7 +283,7 @@ struct SideBarMarkdown: View, Equatable {
                 Divider()
                     .frame(height: 1)
                     .overlay(DesignTokens.Colors.border)
-                    .markdownMargin(top: .rem(1.5), bottom: .rem(0.5))
+                    .markdownMargin(top: .rem(1.5), bottom: .rem(1.5))
             }
     }
     #endif
