@@ -1,30 +1,23 @@
 # CM6 Live Preview Fix Plan
 
 ## Goal
-Stabilize live preview marker hiding while keeping read-only and edit styling identical (except the caret line).
+Ship a polished reading experience first, while keeping editing raw markdown. Live preview and edit styling parity will return after the read-mode experience is solid.
 
 ## Scope
-CodeMirror is the single renderer for both read-only and edit modes. Only the caret line shows raw markdown. Start with inline markers and heading marks; keep block markers visible until validated. Tables render as HTML when the caret is outside the table, and revert to raw markdown when the caret is inside. Code blocks render with the styled block wrapper unless the caret is inside.
+Reading mode: rich markdown rendering with consistent styling. Editing mode: raw markdown (no live preview) until read-mode styling is stable.
 
 ## Steps
-- [ ] Implement inline marker collapsing for EmphasisMark/CodeMark/LinkMark (and LinkMark/URL/title) using CSS, reveal only on the caret line.
-- [ ] Replace heading `HeaderMark` with a zero-width widget via `Decoration.replace`, reveal only on the caret line.
-- [x] Keep block markers (lists, blockquotes, fences) visible for now; revisit after stability.
-- [x] Implement table rendering as a block widget when the caret is outside table ranges; show raw markdown when inside.
-- [x] Implement code block rendering with the styled block wrapper when the caret is outside the block; show raw markdown when inside.
-- [x] Ensure read-only mode uses the same CodeMirror renderer and CSS as edit mode.
-- [x] Rebuild CM6 bundle and sync iOS resources.
-- [ ] Validate cursor navigation, line spacing, and formatting retention on iPad.
-- [ ] Update `SWIFTUI_MIGRATION_PLAN.md` and remove this plan doc when complete.
+- [ ] Decide the read-mode renderer (MarkdownUI vs CodeMirror read-only).
+- [ ] Implement and polish read-mode styling (tables, code blocks, headings, lists, blockquotes).
+- [ ] Keep edit mode raw markdown with minimal styling.
+- [ ] Validate read-mode rendering across iOS/iPad/macOS.
+- [ ] Revisit live preview (caret-line raw markdown + inline marker hiding).
 
 ## Exit Criteria
-- Tables render as HTML in read-only and when caret is outside the table.
-- Code blocks render with the styled wrapper in read-only and when caret is outside the block.
-- Raw markdown shows only when caret is inside the table/code block.
-- No scroll-induced decoration drop or CM exceptions.
+- Read mode looks polished and consistent across platforms.
+- Edit mode remains stable and predictable with raw markdown.
+- Known caret/navigation bugs are no longer blocking progress.
 
 ## Open Issues (Investigate)
-- Edit toolbar flicker on appearance (likely tied to caret placement race).
-- Caret sometimes lands at the wrong position on tap-to-edit.
-- Keyboard up/down navigation jumps to unexpected lines (left/right behaves).
-- Hypothesis: fixing reliable vertical caret navigation may resolve the flicker + placement issues.
+- Caret placement + vertical navigation still unstable in edit mode.
+- Toolbar flicker tied to edit-mode selection timing.

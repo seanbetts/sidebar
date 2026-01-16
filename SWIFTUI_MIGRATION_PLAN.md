@@ -413,10 +413,9 @@ Critical Path (MVP): [███████████████████�
 - [x] Editor toolbar (bold, italic, headings, lists, etc.)
 - [x] Advanced formatting rendering (tables, links, code blocks)
 - [x] Syntax highlighting for code blocks
-- [ ] Live preview behavior: hide markdown markers everywhere except the caret line
-- [ ] Read-only notes rendering uses CodeMirror (no MarkdownUI) to keep styling identical
-- [ ] Tables render as HTML when the caret is outside the table, raw markdown when inside
-- [ ] Code blocks render with the styled block wrapper when the caret is outside, raw markdown when inside
+- [ ] Reading mode: polished markdown rendering (renderer TBD)
+- [ ] Editing mode stays raw markdown until read-mode styling is locked
+- [ ] Live preview behavior (caret-line raw markdown) deferred
 - [ ] Performance optimization for long documents
 - [ ] Plan: `docs/plans/2026-01-15-live-preview-fix-plan.md`
 
