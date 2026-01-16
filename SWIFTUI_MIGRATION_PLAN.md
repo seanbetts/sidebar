@@ -426,10 +426,10 @@ Critical Path (MVP): [███████████████████�
 - [x] WKWebView CM6 editor surface with markdown as the source of truth
 - [x] Markdown round-trip (load → edit → save) matches web output
 - [x] Web-style theme parity (shared CM6 theme)
-- [ ] Formatting actions parity: bold, italic, strike, underline, headings (H1–H3), blockquote, horizontal rule (underline pending)
+- [x] Formatting actions parity: bold, italic, strike, underline, headings (H1–H3), blockquote, horizontal rule (underline pending)
 - [x] List parity: bullet, ordered, task lists (nested), toggle task completion
 - [x] Code parity: inline code + fenced code blocks with language tag + syntax highlighting
-- [ ] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
+- [x] Table parity: insert table, add/remove rows & columns, maintain markdown table structure
 - [x] Link parity: autolinks + external open, preserve URLs in markdown
 - [x] Image parity: image blocks with caption (gallery block pending)
 - [x] Editor toolbar parity: primary actions + compact overflow menu
@@ -657,10 +657,10 @@ When ready to resume (estimated 11-17 additional sessions):
 | Full Testing | 1-2 | Medium | End-to-end capability parity validation (native UX) |
 
 **Critical Decision in Phase 11.2:**
-CodeMirror 6 in WKWebView selected as the single renderer (read-only + edit). Remaining scope decisions:
+MarkdownUI is the read-only renderer; CodeMirror 6 in WKWebView is the edit-mode renderer. Remaining scope decisions:
 - Implement toolbar + formatting command bridge
 - Decide how much table editing (insert/row/column actions) is required for parity
-- Live preview is required: hide markdown markers except the caret line
+- Live preview is deferred until read-mode styling is fully locked
 - Advanced syntax highlighting can be deferred if needed
 
 ### Why This Works for Your Project
@@ -1173,6 +1173,7 @@ This is the most complex component. Approach:
 - Shared CM6 theme for web/native parity
 - Native bridge for autosave, selection, and formatting commands
 - Shared build artifact copied into iOS/macOS resources
+- Read-only uses MarkdownUI with the unified theme; edit mode stays raw markdown until live preview is revisited
 
 **Fallback**: Use `TextEditor` only if CM6 parity is blocked by platform limitations.
 

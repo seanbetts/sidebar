@@ -105,7 +105,4 @@ Images/embeds:
 - Known caret/navigation bugs are no longer blocking progress.
 
 ## Open Issues (Investigate)
-- Caret placement + vertical navigation still unstable in edit mode.
-- Toolbar flicker tied to edit-mode selection timing.
-- Tap/scroll gesture thresholds need validation on long notes (avoid entering edit mode during scroll).
-- Read-mode: verify spacing/typography vs web styling (line-height, padding, heading scale).
+- Edit-mode: tap-to-caret should map to the correct document position when entering edit mode; currently lands on top-of-note content even when tapping deep in the note.
