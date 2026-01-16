@@ -18,6 +18,7 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public var editorFrame: CGRect = .zero
     @Published public var pendingCaretCoords: CGPoint? = nil
     @Published public private(set) var hasExternalUpdate: Bool = false
+    @Published public var wantsEditingOnNextLoad: Bool = false
 
     private let api: any NotesProviding
     private let notesStore: NotesStore
@@ -53,6 +54,12 @@ public final class NotesEditorViewModel: ObservableObject {
 
     public func updateSelection(_ range: NSRange) {
         selectedRange = range
+    }
+
+    public func requestEditingOnNextLoad() {
+        wantsEditingOnNextLoad = true
+        pendingCaretCoords = nil
+        selectedRange = NSRange(location: 0, length: 0)
     }
 
     public func handleUserEdit(_ updated: NSAttributedString) {

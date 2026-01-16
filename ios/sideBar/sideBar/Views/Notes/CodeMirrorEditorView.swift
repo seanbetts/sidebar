@@ -52,6 +52,7 @@ struct CodeMirrorEditorView: View {
     let isReadOnly: Bool
     let handle: CodeMirrorEditorHandle
     let onContentChanged: (String) -> Void
+    let onEscape: (() -> Void)?
 
     var body: some View {
         #if os(macOS)
@@ -59,14 +60,16 @@ struct CodeMirrorEditorView: View {
             markdown: markdown,
             isReadOnly: isReadOnly,
             handle: handle,
-            onContentChanged: onContentChanged
+            onContentChanged: onContentChanged,
+            onEscape: onEscape
         )
         #else
         CodeMirrorEditorIOS(
             markdown: markdown,
             isReadOnly: isReadOnly,
             handle: handle,
-            onContentChanged: onContentChanged
+            onContentChanged: onContentChanged,
+            onEscape: onEscape
         )
         #endif
     }
@@ -77,22 +80,26 @@ private enum CodeMirrorBridge {
     static let contentChanged = "contentChanged"
     static let linkTapped = "linkTapped"
     static let jsError = "jsError"
+    static let escapePressed = "escapePressed"
 }
 
 private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private let onContentChanged: (String) -> Void
+    private let onEscape: (() -> Void)?
     private var webView: WKWebView?
     private var schemeHandler: CodeMirrorSchemeHandler?
     private var lastKnownMarkdown = ""
     private var pendingMarkdown: String?
     private var pendingReadOnly: Bool?
+    private var pendingFocus = false
     private var isReady = false
     private var debounceWorkItem: DispatchWorkItem?
     private let debounceInterval: TimeInterval = 0.3
     private let logger = Logger(subsystem: "sideBar", category: "CodeMirrorEditor")
 
-    init(onContentChanged: @escaping (String) -> Void) {
+    init(onContentChanged: @escaping (String) -> Void, onEscape: (() -> Void)?) {
         self.onContentChanged = onContentChanged
+        self.onEscape = onEscape
     }
 
     func attach(webView: WKWebView, handle: CodeMirrorEditorHandle, schemeHandler: CodeMirrorSchemeHandler) {
@@ -109,7 +116,7 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
             self?.setReadOnly(isReadOnly)
         }
         handle.focusHandler = { [weak self] in
-            self?.evaluateJavaScript("window.editorAPI?.focus?.()")
+            self?.requestFocus()
         }
         handle.applyCommandHandler = { [weak self] command, payload in
             self?.applyCommand(command, payload: payload)
@@ -147,6 +154,10 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
                 setReadOnly(pendingReadOnly)
                 self.pendingReadOnly = nil
             }
+            if pendingFocus {
+                pendingFocus = false
+                evaluateJavaScript("window.editorAPI?.focus?.()")
+            }
         case CodeMirrorBridge.contentChanged:
             guard let body = message.body as? [String: Any],
                   let text = body["text"] as? String else {
@@ -177,6 +188,10 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
                 }
             } else {
                 logger.error("CodeMirror JS error: \(String(describing: message.body), privacy: .public)")
+            }
+        case CodeMirrorBridge.escapePressed:
+            DispatchQueue.main.async { [weak self] in
+                self?.onEscape?()
             }
         default:
             break
@@ -218,6 +233,14 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
         let payload = ["x": point.x, "y": point.y]
         let payloadValue = jsonEncoded(payload)
         evaluateJavaScript("window.editorAPI?.setSelectionAtCoordsDeferred?.(\(payloadValue))")
+    }
+
+    private func requestFocus() {
+        guard isReady else {
+            pendingFocus = true
+            return
+        }
+        evaluateJavaScript("window.editorAPI?.focus?.()")
     }
 
     private func openExternalLink(_ href: String) {
@@ -305,9 +328,10 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
     let isReadOnly: Bool
     let handle: CodeMirrorEditorHandle
     let onContentChanged: (String) -> Void
+    let onEscape: (() -> Void)?
 
     func makeCoordinator() -> CodeMirrorCoordinator {
-        CodeMirrorCoordinator(onContentChanged: onContentChanged)
+        CodeMirrorCoordinator(onContentChanged: onContentChanged, onEscape: onEscape)
     }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -347,6 +371,7 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.contentChanged)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.linkTapped)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.jsError)
+        configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.escapePressed)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
@@ -364,6 +389,7 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.contentChanged)
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.linkTapped)
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.jsError)
+        nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.escapePressed)
     }
 }
 #else
@@ -372,9 +398,10 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
     let isReadOnly: Bool
     let handle: CodeMirrorEditorHandle
     let onContentChanged: (String) -> Void
+    let onEscape: (() -> Void)?
 
     func makeCoordinator() -> CodeMirrorCoordinator {
-        CodeMirrorCoordinator(onContentChanged: onContentChanged)
+        CodeMirrorCoordinator(onContentChanged: onContentChanged, onEscape: onEscape)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -414,6 +441,7 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.contentChanged)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.linkTapped)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.jsError)
+        configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.escapePressed)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
@@ -433,6 +461,7 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.contentChanged)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.linkTapped)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.jsError)
+        uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.escapePressed)
     }
 }
 #endif
