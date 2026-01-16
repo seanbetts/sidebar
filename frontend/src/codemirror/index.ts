@@ -766,6 +766,19 @@ class CodeBlockPreviewWidget extends WidgetType {
 	}
 }
 
+class ListMarkerWidget extends WidgetType {
+	constructor(private marker: string) {
+		super();
+	}
+
+	toDOM() {
+		const span = document.createElement('span');
+		span.className = 'cm-list-marker-widget';
+		span.textContent = this.marker;
+		return span;
+	}
+}
+
 const heading1Decoration = Decoration.line({ class: 'cm-heading cm-heading-1' });
 const heading2Decoration = Decoration.line({ class: 'cm-heading cm-heading-2' });
 const heading3Decoration = Decoration.line({ class: 'cm-heading cm-heading-3' });
@@ -789,19 +802,6 @@ const mediaDecoration = Decoration.line({ class: 'cm-media-line' });
 const blankLineDecoration = Decoration.line({ class: 'cm-blank-line' });
 const livePreviewHideDecoration = Decoration.mark({ class: 'cm-live-hide' });
 const listMarkerDecoration = Decoration.mark({ class: 'cm-list-marker' });
-
-class ListMarkerWidget extends WidgetType {
-	constructor(private marker: string) {
-		super();
-	}
-
-	toDOM() {
-		const span = document.createElement('span');
-		span.className = 'cm-list-marker-widget';
-		span.textContent = this.marker;
-		return span;
-	}
-}
 
 const tableDelimiterRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
 
