@@ -131,7 +131,7 @@ private struct WebsitesDetailView: View {
                     ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                         switch block {
                         case .markdown(let text):
-                            SideBarMarkdown(text: text)
+                            SideBarMarkdown(text: text, preprocessor: MarkdownRendering.normalizeWebsiteMarkdown)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         case .gallery(let gallery):
                             WebsiteGalleryView(

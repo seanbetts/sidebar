@@ -8,7 +8,7 @@ struct SideBarMarkdown: View, Equatable {
     let preprocessor: (String) -> String
     private let maxImageSize = CGSize(width: 450, height: 450)
 
-    init(text: String, preprocessor: @escaping (String) -> String = MarkdownRendering.normalizeTaskLists) {
+    init(text: String, preprocessor: @escaping (String) -> String = MarkdownRendering.normalizeNoteMarkdown) {
         self.text = text
         self.preprocessor = preprocessor
     }
@@ -21,14 +21,6 @@ struct SideBarMarkdown: View, Equatable {
         #if canImport(MarkdownUI)
         Markdown(preprocessor(text))
             .markdownTheme(markdownTheme)
-            .markdownBlockStyle(\.codeBlock) { configuration in
-                CodeBlockTextView(text: configuration.content)
-                    .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
-                    .padding(16)
-                    .background(codeBlockBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .markdownMargin(top: .rem(1), bottom: .rem(1))
-            }
             .markdownTextStyle(\.link) {
                 ForegroundColor(.accentColor)
                 UnderlineStyle(.single)
@@ -37,10 +29,6 @@ struct SideBarMarkdown: View, Equatable {
         #else
         Text(text)
         #endif
-    }
-
-    private var codeBlockBackground: Color {
-        DesignTokens.Colors.muted
     }
 
     #if canImport(MarkdownUI)
@@ -66,6 +54,7 @@ struct SideBarMarkdown: View, Equatable {
             }
             .link {
                 ForegroundColor(.accentColor)
+                UnderlineStyle(.single)
             }
             .heading1 { configuration in
                 configuration.label
@@ -128,10 +117,23 @@ struct SideBarMarkdown: View, Equatable {
                     }
             }
             .paragraph { configuration in
-                configuration.label
-                    .fixedSize(horizontal: false, vertical: true)
-                    .relativeLineSpacing(.em(0.7))
-                    .markdownMargin(top: .rem(0.5), bottom: .rem(0.5))
+                let rawMarkdown = configuration.content.renderMarkdown()
+                let trimmed = rawMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.hasPrefix(MarkdownRendering.imageCaptionMarker) {
+                    let caption = trimmed
+                        .dropFirst(MarkdownRendering.imageCaptionMarker.count)
+                        .trimmingCharacters(in: .whitespaces)
+                    Text(caption)
+                        .font(.footnote)
+                        .foregroundStyle(DesignTokens.Colors.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .markdownMargin(top: .rem(0.25), bottom: .rem(0.75))
+                } else {
+                    configuration.label
+                        .fixedSize(horizontal: false, vertical: true)
+                        .relativeLineSpacing(.em(0.7))
+                        .markdownMargin(top: .rem(0.5), bottom: .rem(0.5))
+                }
             }
             .list { configuration in
                 configuration.label
@@ -158,6 +160,28 @@ struct SideBarMarkdown: View, Equatable {
                 .fixedSize(horizontal: false, vertical: true)
                 .markdownMargin(top: .em(1), bottom: .em(1))
             }
+            .codeBlock { configuration in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    configuration.label
+                        .fixedSize(horizontal: false, vertical: true)
+                        .relativeLineSpacing(.em(0.5))
+                        .markdownTextStyle {
+                            FontFamilyVariant(.monospaced)
+                            FontSize(.em(0.875))
+                            ForegroundColor(DesignTokens.Colors.textPrimary)
+                            BackgroundColor(nil)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                }
+                .background(DesignTokens.Colors.muted)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(DesignTokens.Colors.border, lineWidth: 1)
+                )
+                .markdownMargin(top: .rem(1), bottom: .rem(1))
+            }
             .table { configuration in
                 configuration.label
                     .fixedSize(horizontal: false, vertical: true)
@@ -171,105 +195,31 @@ struct SideBarMarkdown: View, Equatable {
                     .markdownMargin(top: .rem(0.75), bottom: .rem(0.75))
             }
             .tableCell { configuration in
-                configuration.label
+                let isHeader = configuration.row == 0
+                return configuration.label
                     .markdownTextStyle {
-                        if configuration.row == 0 {
+                        if isHeader {
                             FontWeight(.semibold)
                         }
                         BackgroundColor(nil)
                     }
-                    .fixedSize(horizontal: false, vertical: true)
                     .relativeLineSpacing(.em(0.7))
                     .relativePadding(.horizontal, length: .em(0.75))
-                    .relativePadding(.vertical, length: configuration.row == 0 ? .em(0.65) : .em(0.5))
-                    .background(configuration.row == 0 ? DesignTokens.Colors.muted : Color.clear)
+                    .relativePadding(.vertical, length: isHeader ? .em(0.65) : .em(0.5))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .background(isHeader ? DesignTokens.Colors.muted : Color.clear)
+            }
+            .thematicBreak {
+                Divider()
+                    .frame(height: 1)
+                    .overlay(DesignTokens.Colors.border)
+                    .markdownMargin(top: .rem(1.5), bottom: .rem(0.5))
             }
     }
     #endif
 
 }
 
-#if os(iOS)
-private struct CodeBlockTextView: UIViewRepresentable {
-    let text: String
-
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.isScrollEnabled = false
-        textView.backgroundColor = .clear
-        textView.textContainerInset = .zero
-        textView.textContainer.lineFragmentPadding = 0
-        textView.textContainer.lineBreakMode = .byCharWrapping
-        textView.textContainer.widthTracksTextView = true
-        textView.textContainer.heightTracksTextView = true
-        let baseFont = UIFont.preferredFont(forTextStyle: .body)
-        textView.font = UIFont.monospacedSystemFont(
-            ofSize: baseFont.pointSize * 0.875,
-            weight: .regular
-        )
-        textView.textColor = UIColor.label
-        return textView
-    }
-
-    func updateUIView(_ uiView: UITextView, context: Context) {
-        let baseFont = UIFont.preferredFont(forTextStyle: .body)
-        let font = UIFont.monospacedSystemFont(
-            ofSize: baseFont.pointSize * 0.875,
-            weight: .regular
-        )
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = baseFont.pointSize * 0.5
-        let attributes: [NSAttributedString.Key: Any] = [
-            .paragraphStyle: paragraphStyle,
-            .font: font,
-            .foregroundColor: UIColor.label
-        ]
-        let attributed = NSAttributedString(string: text, attributes: attributes)
-        if uiView.attributedText.string != text || uiView.attributedText.length == 0 {
-            uiView.attributedText = attributed
-        } else {
-            uiView.typingAttributes = attributes
-        }
-    }
-}
-#elseif os(macOS)
-private struct CodeBlockTextView: NSViewRepresentable {
-    let text: String
-
-    func makeNSView(context: Context) -> NSTextView {
-        let textView = NSTextView()
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 0, height: 0)
-        textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainer?.lineBreakMode = .byCharWrapping
-        textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.heightTracksTextView = false
-        let baseFont = NSFont.preferredFont(forTextStyle: .body)
-        textView.font = NSFont.monospacedSystemFont(
-            ofSize: baseFont.pointSize * 0.875,
-            weight: .regular
-        )
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = baseFont.pointSize * 0.5
-        textView.defaultParagraphStyle = paragraphStyle
-        textView.textColor = .labelColor
-        textView.string = text
-        return textView
-    }
-
-    func updateNSView(_ nsView: NSTextView, context: Context) {
-        if nsView.string != text {
-            nsView.string = text
-        }
-    }
-}
-#endif
 
 #if canImport(MarkdownUI)
 private struct CappedImageProvider: ImageProvider {

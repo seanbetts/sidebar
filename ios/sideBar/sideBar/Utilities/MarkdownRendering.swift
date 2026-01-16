@@ -1,6 +1,8 @@
 import Foundation
 
 public enum MarkdownRendering {
+    public nonisolated static let imageCaptionMarker = "^caption:"
+
     public struct WebsiteGallery {
         public let imageUrls: [String]
         public let caption: String?
@@ -54,13 +56,18 @@ public enum MarkdownRendering {
         return updated.joined(separator: "\n")
     }
 
+    public nonisolated static func normalizeNoteMarkdown(_ text: String) -> String {
+        let normalized = normalizeTaskLists(text)
+        return normalizeImageCaptions(normalized)
+    }
+
     public nonisolated static func normalizeWebsiteMarkdown(_ text: String) -> String {
         let replaced = replaceGalleryBlocks(in: text)
-        return normalizeTaskLists(replaced)
+        return normalizeImageCaptions(normalizeTaskLists(replaced))
     }
 
     public nonisolated static func normalizeChatMarkdown(_ text: String) -> String {
-        let normalized = normalizeTaskLists(text)
+        let normalized = normalizeImageCaptions(normalizeTaskLists(text))
         return preserveLineBreaks(in: normalized)
     }
 
@@ -114,6 +121,36 @@ public enum MarkdownRendering {
     private nonisolated static func makeGalleryRegex() -> NSRegularExpression {
         let pattern = #"<figure\s+class=\"image-gallery\"[^>]*>.*?</figure>"#
         return try! NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+    }
+
+    private nonisolated static func normalizeImageCaptions(_ text: String) -> String {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+        var updated: [String] = []
+        let regex = makeImageCaptionRegex()
+
+        for lineSlice in lines {
+            let line = String(lineSlice)
+            let range = NSRange(location: 0, length: line.utf16.count)
+            if let match = regex.firstMatch(in: line, range: range) {
+                let imageRange = match.range(at: 1)
+                let captionRange = match.range(at: 3)
+                if let image = Range(imageRange, in: line),
+                   let caption = Range(captionRange, in: line) {
+                    updated.append(String(line[image]))
+                    updated.append("")
+                    let captionText = String(line[caption]).trimmingCharacters(in: .whitespaces)
+                    updated.append("\(imageCaptionMarker) \(captionText)")
+                    continue
+                }
+            }
+            updated.append(line)
+        }
+        return updated.joined(separator: "\n")
+    }
+
+    private nonisolated static func makeImageCaptionRegex() -> NSRegularExpression {
+        let pattern = #"^\s*(!\[[^\]]*\]\([^)]+\))\s*([*_])(.+?)\2\s*$"#
+        return try! NSRegularExpression(pattern: pattern, options: [])
     }
 
     private nonisolated static func preserveLineBreaks(in text: String) -> String {
