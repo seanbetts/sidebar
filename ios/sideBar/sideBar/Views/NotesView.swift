@@ -168,17 +168,10 @@ private struct NotesDetailView: View {
 
     private var header: some View {
         ZStack(alignment: .bottomLeading) {
-            HStack(spacing: 12) {
-                Image(systemName: "text.document")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                Text(displayTitle)
-                    .font(.headline)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .layoutPriority(1)
-                    .truncationMode(.tail)
-                Spacer()
+            ContentHeaderRow(
+                iconName: "text.document",
+                title: displayTitle
+            ) {
                 if viewModel.activeNote != nil {
                     SaveStatusView(editorViewModel: editorViewModel)
                     noteActionsMenu
