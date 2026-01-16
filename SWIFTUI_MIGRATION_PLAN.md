@@ -218,6 +218,7 @@ Critical Path (MVP): [███████████████████�
 - [x] 3.3 SSE Streaming Implementation (for cross-device updates)
 - [x] 3.4 Message List
 - [x] 3.5 Message Rendering (MarkdownUI with unified theme + preprocessing)
+- [x] 3.5a Chat-specific code styling for contrast against bubble backgrounds
 - [x] 3.6 Tool Call Visualization
 - [x] 3.6a SSE UI Event Handling (note/website/theme/scratchpad/prompt/tool_start/tool_end)
 - [x] 3.8 Real-time Conversation Sync
