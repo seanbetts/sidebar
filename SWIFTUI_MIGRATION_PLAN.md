@@ -478,7 +478,7 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 - [x] **Milestone 4**: Can view all file types (End of Phase 5)
 - [x] **Milestone 5**: All view features implemented (End of Phase 7)
 - [x] **Milestone 6**: App feels polished on all platforms (End of Phase 9)
-- [ ] **MVP COMPLETE**: Read-only app ready for daily reference use (End of Phase 10)
+- [x] **MVP COMPLETE**: Read-only app ready for daily reference use (End of Phase 10)
 
 **MVP Decision Gate**: Evaluate whether to:
 1. Ship MVP and take break before Phase 11

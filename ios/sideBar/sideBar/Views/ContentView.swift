@@ -393,7 +393,8 @@ public struct ContentView: View {
         .sheet(isPresented: $isPhoneScratchpadPresented) {
             ScratchpadPopoverView(
                 api: environment.container.scratchpadAPI,
-                cache: environment.container.cacheClient
+                cache: environment.container.cacheClient,
+                scratchpadStore: environment.scratchpadStore
             )
         }
     }

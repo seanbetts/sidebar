@@ -10,6 +10,7 @@ public final class AppEnvironment: ObservableObject {
     public let websitesStore: WebsitesStore
     public let ingestionStore: IngestionStore
     public let tasksStore: TasksStore
+    public let scratchpadStore: ScratchpadStore
     public let toastCenter: ToastCenter
     public let chatViewModel: ChatViewModel
     public let notesViewModel: NotesViewModel
@@ -42,6 +43,7 @@ public final class AppEnvironment: ObservableObject {
         self.websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
         self.ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
         self.tasksStore = TasksStore()
+        self.scratchpadStore = ScratchpadStore()
         self.toastCenter = ToastCenter()
         self.chatViewModel = ChatViewModel(
             chatAPI: container.chatAPI,
@@ -51,7 +53,8 @@ public final class AppEnvironment: ObservableObject {
             themeManager: themeManager,
             streamClient: container.makeChatStreamClient(handler: nil),
             chatStore: chatStore,
-            toastCenter: toastCenter
+            toastCenter: toastCenter,
+            scratchpadStore: scratchpadStore
         )
         let temporaryStore = TemporaryFileStore.shared
         self.notesViewModel = NotesViewModel(
@@ -262,6 +265,11 @@ public final class AppEnvironment: ObservableObject {
 
 extension AppEnvironment: RealtimeEventHandler {
     public func handleNoteEvent(_ payload: RealtimePayload<NoteRealtimeRecord>) {
+        let title = payload.record?.title ?? payload.oldRecord?.title
+        if title == ScratchpadConstants.title {
+            scratchpadStore.bump()
+            return
+        }
         Task {
             await notesViewModel.applyRealtimeEvent(payload)
         }

@@ -151,7 +151,8 @@ public struct SiteHeaderBar: View {
                 .popover(isPresented: $isScratchpadPresented) {
                     ScratchpadPopoverView(
                         api: environment.container.scratchpadAPI,
-                        cache: environment.container.cacheClient
+                        cache: environment.container.cacheClient,
+                        scratchpadStore: environment.scratchpadStore
                     )
                     .frame(minWidth: 360, minHeight: 280)
                 }

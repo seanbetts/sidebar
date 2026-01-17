@@ -3,57 +3,89 @@ import MarkdownUI
 
 public struct ScratchpadPopoverView: View {
     @StateObject private var viewModel: ScratchpadViewModel
+    @ObservedObject private var scratchpadStore: ScratchpadStore
     @State private var draft: String = ""
-    @State private var headingPrefix: String?
     @State private var isEditing = false
     @State private var isSaving: Bool = false
+    @State private var isLoading: Bool = false
+    @State private var isUpdatingContent: Bool = false
+    @State private var hasUserEdits: Bool = false
+    @State private var lastSavedContent: String = ""
     @State private var hasLoaded = false
+    @State private var readModeHeight: CGFloat = 0
     @State private var saveTask: Task<Void, Never>?
     @FocusState private var isEditorFocused: Bool
 
-    public init(api: any ScratchpadProviding, cache: CacheClient) {
+    public init(api: any ScratchpadProviding, cache: CacheClient, scratchpadStore: ScratchpadStore) {
         _viewModel = StateObject(wrappedValue: ScratchpadViewModel(api: api, cache: cache))
+        _scratchpadStore = ObservedObject(wrappedValue: scratchpadStore)
     }
 
     public var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
-                Text("✏️ Scratchpad")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                ScratchpadHeaderRow(
+                    isSaving: isSaving,
+                    errorMessage: viewModel.errorMessage
+                )
                 Divider()
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
 
-                Group {
-                    if isEditing {
-                        TextEditor(text: $draft)
-                            .font(.body)
-                            .focused($isEditorFocused)
-                            .accessibilityLabel("Scratchpad text")
-                            .accessibilityHint("Enter notes for your scratchpad.")
-                    } else {
-                        ScrollView {
-                            SideBarMarkdown(text: draft.isEmpty ? "_Start typing to capture thoughts._" : draft)
+                ZStack {
+                    Group {
+                        if isEditing {
+                            TextEditor(text: $draft)
+                                .font(.body)
+                                .focused($isEditorFocused)
+                                .scrollContentBackground(.hidden)
+                                .background(Color.clear)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityLabel("Scratchpad text")
+                                .accessibilityHint("Enter notes for your scratchpad.")
+                        } else {
+                            ScrollView {
+                                SideBarMarkdown(
+                                    text: draft.isEmpty ? ScratchpadConstants.placeholder : draft
+                                )
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .textSelection(.enabled)
-                        }
-                        .onTapGesture {
-                            isEditing = true
-                            isEditorFocused = true
+                            }
+                            .background(Color.clear)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .onTapGesture {
+                                isEditing = true
+                                isEditorFocused = true
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear.preference(key: ScratchpadContentHeightKey.self, value: proxy.size.height)
+                        }
+                    )
+                    .onPreferenceChange(ScratchpadContentHeightKey.self) { height in
+                        guard !isEditing, height > 0 else { return }
+                        readModeHeight = height
+                    }
+                    .frame(
+                        minHeight: isEditing && readModeHeight > 0 ? readModeHeight : nil
+                    )
+
+                    if isLoading && !hasLoaded {
+                        ProgressView("Loading...")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 16)
             .padding(.top, 16)
             .padding(.bottom, 24)
         }
         .onChange(of: draft) { _, _ in
+            guard hasLoaded, !isUpdatingContent else { return }
+            hasUserEdits = true
             scheduleSave()
         }
         .onChange(of: isEditorFocused) { _, isFocused in
@@ -61,53 +93,107 @@ public struct ScratchpadPopoverView: View {
                 isEditing = false
             }
         }
+        .onReceive(scratchpadStore.$version) { _ in
+            refreshScratchpad()
+        }
+        .onDisappear {
+            saveTask?.cancel()
+            if hasUserEdits {
+                Task {
+                    await saveDraftIfNeeded(force: true)
+                }
+            }
+        }
         .task {
+            refreshScratchpad()
+        }
+    }
+
+    @MainActor
+    private func scheduleSave() {
+        saveTask?.cancel()
+        saveTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            await saveDraftIfNeeded(force: false)
+        }
+    }
+
+    @MainActor
+    private func refreshScratchpad() {
+        guard !isLoading else { return }
+        isLoading = true
+        if !hasLoaded, let cached = viewModel.cachedScratchpad() {
+            applyScratchpadContent(cached.content)
+            hasLoaded = true
+        }
+        Task { @MainActor in
+            defer { isLoading = false }
             await viewModel.load()
             let content = viewModel.scratchpad?.content ?? ""
-            let stripped = stripHeading(from: content)
-            headingPrefix = stripped.heading
-            draft = stripped.content
+            applyScratchpadContent(content)
             hasLoaded = true
         }
     }
 
-    private func scheduleSave() {
-        guard hasLoaded else { return }
-        saveTask?.cancel()
-        saveTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 700_000_000)
-            await saveDraft()
-        }
+    @MainActor
+    private func applyScratchpadContent(_ content: String) {
+        let stripped = ScratchpadFormatting.stripHeading(content)
+        guard stripped != draft else { return }
+        isUpdatingContent = true
+        hasUserEdits = false
+        lastSavedContent = content
+        draft = stripped
+        isUpdatingContent = false
     }
 
-    private func saveDraft() async {
+    @MainActor
+    private func saveDraftIfNeeded(force: Bool) async {
         guard !isSaving else { return }
+        guard force || hasUserEdits else { return }
         isSaving = true
-        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let payload: String
-        if let headingPrefix {
-            payload = trimmed.isEmpty ? headingPrefix : "\(headingPrefix)\n\n\(draft)"
-        } else {
-            payload = draft
+        let cleaned = ScratchpadFormatting.removeEmptyTaskItems(draft)
+        let payload = ScratchpadFormatting.withHeading(cleaned)
+        if payload != lastSavedContent {
+            await viewModel.update(content: payload, mode: .replace)
+            if viewModel.errorMessage == nil {
+                lastSavedContent = payload
+                hasUserEdits = false
+            }
         }
-        await viewModel.update(content: payload, mode: .replace)
         isSaving = false
     }
+}
 
-    private func stripHeading(from value: String) -> (heading: String?, content: String) {
-        let lines = value.split(separator: "\n", omittingEmptySubsequences: false)
-        guard let first = lines.first?.trimmingCharacters(in: .whitespacesAndNewlines),
-              first.hasPrefix("#") else {
-            return (nil, value)
+private struct ScratchpadHeaderRow: View {
+    let isSaving: Bool
+    let errorMessage: String?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(ScratchpadConstants.title)
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(1)
+            if isSaving {
+                statusText("Saving...", color: .secondary)
+            } else if let errorMessage {
+                statusText(errorMessage, color: .red)
+            }
         }
-        let headingLine = first.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalized = headingLine.lowercased()
-        guard normalized == "# scratchpad" || normalized == "# ✏️ scratchpad" else {
-            return (nil, value)
-        }
-        let remainder = lines.dropFirst()
-        let stripped = remainder.drop(while: { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
-            .joined(separator: "\n")
-        return (headingLine, stripped)
+    }
+
+    private func statusText(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(color)
+            .lineLimit(1)
+    }
+}
+
+private struct ScratchpadContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
