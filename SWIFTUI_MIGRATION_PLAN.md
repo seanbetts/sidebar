@@ -141,6 +141,7 @@ Critical Path (MVP): [███████████████████�
 - Notes: operations solidified (create/move/rename/delete/pin/archive), UUID-based rename, swipe actions fixed, and tap-to-exit edit gesture removed.
 - Chat: rename uses alert flow and title truncates to one line.
 - Shared UI: `ContentHeaderRow` introduced for consistent title bars across content types.
+- Scratchpad: caching, autosave, and realtime refresh parity with web.
 
 ### Phase Completion Status
 
@@ -167,7 +168,7 @@ Critical Path (MVP): [███████████████████�
 | **11.1 Chat Input** | ✅ Complete | 2 / 2-3 | 100% | ✅ Yes |
 | **11.2 Markdown Editor** | 🟨 In Progress | 3 / 6-9 | 50% | ✅ Yes |
 | **11.3 Note Operations** | ✅ Complete | 2 / 1-2 | 100% | ✅ Yes |
-| **11.4 Content Creation** | ⬜ Not Started | 0 / 1 | 0% | ✅ Yes |
+| **11.4 Content Creation** | 🟨 In Progress | 1 / 1 | 33% | ✅ Yes |
 | **11.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
 | **POST-MVP TOTAL** | | **11-17** | | |
 
@@ -322,7 +323,7 @@ Critical Path (MVP): [███████████████████�
 
 **Post-MVP (Phase 11.4): Editing**
 - [ ] 7.1 Memory Management (add, edit, delete memories)
-- [ ] 7.2 Scratchpad (editable with auto-save)
+- [x] 7.2 Scratchpad (editable with auto-save)
 
 #### Phase 8: Cache-First Sync Architecture (2-3 sessions)
 **MVP Scope: Full**
@@ -460,7 +461,7 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 #### Phase 11.4: Content Creation (1 session)
 - [ ] Save websites (URL input sheet with validation)
 - [ ] Add/edit/delete memories
-- [ ] Editable scratchpad with auto-save
+- [x] Editable scratchpad with auto-save
 
 #### Phase 11.5: Full App Testing (1-2 sessions)
 - [ ] Test all editing workflows
@@ -505,6 +506,7 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 | 2026-01-10 | 4.7 | 1 | TBD | Notes realtime sync (Supabase realtime channel + view model refresh) |
 | 2026-01-16 | 11.3 | 1 | TBD | Notes operations: rename via UUID, swipe actions fixed, remove tap-to-exit edit gesture |
 | 2026-01-16 | 8.5 | 1 | TBD | ContentHeaderRow shared across chat/notes/files/websites; chat rename alert + title truncation |
+| 2026-01-16 | 11.4 | 1 | TBD | Scratchpad parity: caching, autosave, realtime refresh, sizing fixes |
 
 ---
 
@@ -578,7 +580,6 @@ Even read-only, the app provides genuine utility:
 - Note creation/editing/deletion
 - Website saving
 - Memory editing
-- Scratchpad editing
 
 ---
 
@@ -643,13 +644,13 @@ At the end of Phase 10 (MVP Testing), evaluate:
 ✅ Check your memories
 ✅ See real-time updates from other devices
 ✅ Use offline (cached content)
+✅ Edit scratchpad
 ```
 
 **What You Can't Do (Yet):**
 ```
 ❌ Save new websites
 ❌ Add/edit memories
-❌ Edit scratchpad
 ```
 
 ### Post-MVP Phase 11 Breakdown
@@ -661,7 +662,7 @@ Remaining work (estimated 8-12 additional sessions):
 | Chat Input | 2-3 | Medium | Complete (text editor, send button, SSE for sending) |
 | Markdown Editor | 6-9 | **Very High** | In progress (CodeMirror 6 WKWebView + parity work) |
 | Note Operations | 1-2 | Low | Complete (create, rename, move, delete, pin, archive) |
-| Content Creation | 1 | Low | Not started (save websites, edit memories, scratchpad) |
+| Content Creation | 1 | Low | In progress (save websites, edit memories) |
 | Full Testing | 1-2 | Medium | Not started (end-to-end capability parity validation) |
 
 **Critical Decision in Phase 11.2:**
