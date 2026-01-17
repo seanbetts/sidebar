@@ -68,6 +68,7 @@ public struct ScratchpadPopoverView: View {
                         readModeHeight = height
                     }
                     .frame(
+                        maxWidth: .infinity,
                         minHeight: isEditing && readModeHeight > 0 ? readModeHeight : nil
                     )
 

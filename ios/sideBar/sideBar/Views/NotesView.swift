@@ -174,8 +174,10 @@ private struct NotesDetailView: View {
             ) {
                 if viewModel.activeNote != nil {
                     SaveStatusView(editorViewModel: editorViewModel)
-                    noteActionsMenu
-                    closeButton
+                    HStack(spacing: 16) {
+                        noteActionsMenu
+                        closeButton
+                    }
                 }
             }
             .padding(16)
@@ -316,7 +318,7 @@ private struct NotesDetailView: View {
                 moveSelection = currentFolderPath
                 isMoveSheetPresented = true
             } label: {
-                Label("Move", systemImage: "folder")
+                Label("Move", systemImage: "arrow.forward.folder")
             }
             Button {
                 copyMarkdown()
