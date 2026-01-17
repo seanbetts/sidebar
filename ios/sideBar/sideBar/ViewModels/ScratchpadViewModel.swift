@@ -16,9 +16,13 @@ public final class ScratchpadViewModel: ObservableObject {
         self.cache = cache
     }
 
+    public func cachedScratchpad() -> ScratchpadResponse? {
+        cache.get(key: CacheKeys.scratchpad)
+    }
+
     public func load() async {
         errorMessage = nil
-        let cached: ScratchpadResponse? = cache.get(key: CacheKeys.scratchpad)
+        let cached = cachedScratchpad()
         if let cached {
             scratchpad = cached
         }

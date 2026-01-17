@@ -67,6 +67,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     private let userDefaults: UserDefaults
     private let toastCenter: ToastCenter?
     private let clock: () -> Date
+    private let scratchpadStore: ScratchpadStore?
 
     private var currentStreamMessageId: String?
     private var streamingConversationId: String?
@@ -86,7 +87,8 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         chatStore: ChatStore,
         toastCenter: ToastCenter? = nil,
         userDefaults: UserDefaults = .standard,
-        clock: @escaping () -> Date = Date.init
+        clock: @escaping () -> Date = Date.init,
+        scratchpadStore: ScratchpadStore? = nil
     ) {
         self.chatAPI = chatAPI
         self.conversationsAPI = conversationsAPI
@@ -98,6 +100,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         self.userDefaults = userDefaults
         self.toastCenter = toastCenter
         self.clock = clock
+        self.scratchpadStore = scratchpadStore
         self.streamClient.handler = self
         self.selectedConversationId = nil
 
@@ -577,8 +580,10 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             handleThemeSet(event)
         case .scratchpadUpdated:
             cache.remove(key: CacheKeys.scratchpad)
+            scratchpadStore?.bump()
         case .scratchpadCleared:
             cache.remove(key: CacheKeys.scratchpad)
+            scratchpadStore?.bump()
         case .promptPreview:
             handlePromptPreview(event)
         case .toolStart:

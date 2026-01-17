@@ -98,6 +98,26 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertNil(cachedTree)
     }
 
+    func testScratchpadUpdateClearsCacheAndBumpsStore() {
+        let cache = TestCacheClient()
+        let store = ScratchpadStore()
+        let cached = ScratchpadResponse(id: "s1", title: ScratchpadConstants.title, content: "Cached", updatedAt: nil)
+        cache.set(key: CacheKeys.scratchpad, value: cached, ttlSeconds: 60)
+        let viewModel = makeViewModel(
+            api: MockConversationsAPI(listResult: .success([])),
+            cache: cache,
+            scratchpadStore: store
+        )
+
+        let initialVersion = store.version
+        let event = ChatStreamEvent(type: .scratchpadUpdated, data: nil)
+        viewModel.handle(event: event)
+
+        let cachedScratchpad: ScratchpadResponse? = cache.get(key: CacheKeys.scratchpad)
+        XCTAssertNil(cachedScratchpad)
+        XCTAssertEqual(store.version, initialVersion + 1)
+    }
+
     func testLoadConversationSortsMessagesByTimestamp() async {
         let cache = TestCacheClient()
         let messages = [
@@ -142,7 +162,11 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.messages.last?.id, "msg-2")
     }
 
-    private func makeViewModel(api: MockConversationsAPI, cache: CacheClient) -> ChatViewModel {
+    private func makeViewModel(
+        api: MockConversationsAPI,
+        cache: CacheClient,
+        scratchpadStore: ScratchpadStore? = nil
+    ) -> ChatViewModel {
         let chatAPI = ChatAPI(client: Self.sharedAPIClient)
         let themeManager = Self.sharedThemeManager
         let streamClient = MockChatStreamClient()
@@ -159,7 +183,8 @@ final class ChatViewModelTests: XCTestCase {
             streamClient: streamClient,
             chatStore: chatStore,
             userDefaults: defaults,
-            clock: { Date(timeIntervalSince1970: 0) }
+            clock: { Date(timeIntervalSince1970: 0) },
+            scratchpadStore: scratchpadStore
         )
         Self.retainedViewModels.append(viewModel)
         return viewModel
