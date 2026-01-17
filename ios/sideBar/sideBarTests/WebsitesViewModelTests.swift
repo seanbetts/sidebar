@@ -101,6 +101,27 @@ final class WebsitesViewModelTests: XCTestCase {
         let cached: WebsitesResponse? = cache.get(key: CacheKeys.websitesList)
         XCTAssertEqual(cached?.items.first?.id, "site-1")
     }
+
+    func testSaveWebsiteLoadsDetailAndSelects() async {
+        let detail = makeDetail(id: "site-1")
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [])),
+            getResult: .success(detail),
+            saveResult: .success(WebsiteSaveResponse(
+                success: true,
+                data: WebsiteSaveData(id: "site-1", title: "Site", url: "https://example.com", domain: "example.com")
+            ))
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(api: api, store: store)
+
+        let saved = await viewModel.saveWebsite(url: "https://example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(viewModel.selectedWebsiteId, "site-1")
+        XCTAssertEqual(viewModel.active?.id, "site-1")
+    }
 }
 
 private enum MockError: Error {
@@ -110,15 +131,18 @@ private enum MockError: Error {
 private struct MockWebsitesAPI: WebsitesProviding {
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
+    let saveResult: Result<WebsiteSaveResponse, Error>
     let pinResult: Result<WebsiteItem, Error>
 
     init(
         listResult: Result<WebsitesResponse, Error> = .failure(MockError.forced),
         getResult: Result<WebsiteDetail, Error> = .failure(MockError.forced),
+        saveResult: Result<WebsiteSaveResponse, Error> = .failure(MockError.forced),
         pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced)
     ) {
         self.listResult = listResult
         self.getResult = getResult
+        self.saveResult = saveResult
         self.pinResult = pinResult
     }
 
@@ -129,6 +153,11 @@ private struct MockWebsitesAPI: WebsitesProviding {
     func get(id: String) async throws -> WebsiteDetail {
         _ = id
         return try getResult.get()
+    }
+
+    func save(url: String) async throws -> WebsiteSaveResponse {
+        _ = url
+        return try saveResult.get()
     }
 
     func pin(id: String, pinned: Bool) async throws -> WebsiteItem {

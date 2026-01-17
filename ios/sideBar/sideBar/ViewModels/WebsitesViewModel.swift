@@ -11,6 +11,8 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingDetail: Bool = false
     @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var isSavingWebsite: Bool = false
+    @Published public private(set) var saveErrorMessage: String? = nil
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
@@ -67,6 +69,33 @@ public final class WebsitesViewModel: ObservableObject {
     public func clearSelection() {
         selectedWebsiteId = nil
         store.clearActive()
+    }
+
+    public func saveWebsite(url: String) async -> Bool {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return false
+        }
+        saveErrorMessage = nil
+        isSavingWebsite = true
+        defer { isSavingWebsite = false }
+        do {
+            let response = try await api.save(url: trimmed)
+            guard response.success, let data = response.data else {
+                saveErrorMessage = "Failed to save website"
+                return false
+            }
+            store.invalidateList()
+            selectedWebsiteId = data.id
+            try await store.loadDetail(id: data.id, force: true)
+            Task { [weak self] in
+                try? await self?.store.loadList(force: true)
+            }
+            return true
+        } catch {
+            saveErrorMessage = error.localizedDescription
+            return false
+        }
     }
 
     public func setPinned(id: String, pinned: Bool) async {

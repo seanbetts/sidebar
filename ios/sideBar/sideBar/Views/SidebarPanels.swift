@@ -1650,6 +1650,7 @@ public struct WebsitesPanel: View {
 
 private struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
+    @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -1659,6 +1660,9 @@ private struct WebsitesPanelView: View {
     @State private var isArchiveExpanded = false
     @State private var selection: String? = nil
     @State private var listAppeared = false
+    @State private var isNewWebsitePresented = false
+    @State private var newWebsiteUrl: String = ""
+    @State private var saveErrorMessage: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1685,6 +1689,20 @@ private struct WebsitesPanelView: View {
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
         }
+        .sheet(isPresented: $isNewWebsitePresented) {
+            NewWebsiteSheet(
+                url: $newWebsiteUrl,
+                isSaving: viewModel.isSavingWebsite,
+                onSave: saveWebsite
+            )
+        }
+        .alert("Unable to save website", isPresented: isSaveErrorPresented) {
+            Button("OK", role: .cancel) {
+                saveErrorMessage = nil
+            }
+        } message: {
+            Text(saveErrorMessage ?? "Failed to save website. Please try again.")
+        }
     }
 
     private var header: some View {
@@ -1692,6 +1710,8 @@ private struct WebsitesPanelView: View {
             PanelHeader(title: "Websites") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Button {
+                        newWebsiteUrl = ""
+                        isNewWebsitePresented = true
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .semibold))
@@ -2014,6 +2034,84 @@ private struct WebsitesPanelView: View {
         #endif
     }
 
+    private var isSaveErrorPresented: Binding<Bool> {
+        Binding(
+            get: { saveErrorMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    saveErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func saveWebsite() {
+        let url = newWebsiteUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard WebsiteURLValidator.isValid(url) else {
+            saveErrorMessage = "Enter a valid URL."
+            return
+        }
+        Task {
+            let saved = await viewModel.saveWebsite(url: url)
+            if saved {
+                environment.notesViewModel.clearSelection()
+                environment.ingestionViewModel.clearSelection()
+                newWebsiteUrl = ""
+                isNewWebsitePresented = false
+            } else {
+                saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
+            }
+        }
+    }
+}
+
+private struct NewWebsiteSheet: View {
+    @Binding var url: String
+    let isSaving: Bool
+    let onSave: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                Text("Paste a URL to save it to your archive.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                TextField("https://example.com", text: $url)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                if !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isValidUrl {
+                    Text("Enter a valid URL.")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, DesignTokens.Spacing.md)
+            .padding(.top, DesignTokens.Spacing.md)
+            .navigationTitle("Save a website")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .disabled(isSaving)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSaving ? "Saving..." : "Save") {
+                        onSave()
+                    }
+                    .disabled(isSaving || !isValidUrl)
+                }
+            }
+        }
+    }
+
+    private var isValidUrl: Bool {
+        WebsiteURLValidator.isValid(url)
+    }
 }
 
 private struct WebsiteRow: View, Equatable {
