@@ -3,6 +3,7 @@ import Foundation
 public protocol WebsitesProviding {
     func list() async throws -> WebsitesResponse
     func get(id: String) async throws -> WebsiteDetail
+    func save(url: String) async throws -> WebsiteSaveResponse
     func pin(id: String, pinned: Bool) async throws -> WebsiteItem
 }
 
@@ -25,6 +26,11 @@ public struct WebsitesAPI {
 
     public func get(id: String) async throws -> WebsiteDetail {
         try await client.request("websites/\(id)")
+    }
+
+    public func save(url: String) async throws -> WebsiteSaveResponse {
+        struct SaveRequest: Codable { let url: String }
+        return try await client.request("websites/save", method: "POST", body: SaveRequest(url: url))
     }
 
     public func quickSave(url: String, title: String? = nil) async throws -> WebsiteQuickSaveResponse {
