@@ -52,7 +52,7 @@ private struct TasksPanelView: View {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Tasks") {
-                HStack(spacing: DesignTokens.Spacing.xs) {
+                HStack(spacing: 30) {
                     Button {
                     } label: {
                         Image(systemName: "plus")

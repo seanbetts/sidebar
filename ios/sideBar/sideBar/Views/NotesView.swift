@@ -174,7 +174,7 @@ private struct NotesDetailView: View {
             ) {
                 if viewModel.activeNote != nil {
                     SaveStatusView(editorViewModel: editorViewModel)
-                    HStack(spacing: 16) {
+                    HStack(spacing: 30) {
                         noteActionsMenu
                         closeButton
                     }
