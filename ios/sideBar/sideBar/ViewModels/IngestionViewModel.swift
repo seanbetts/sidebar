@@ -74,14 +74,18 @@ public final class IngestionViewModel: ObservableObject {
     public func selectFile(fileId: String) async {
         isSelecting = true
         defer { isSelecting = false }
-        selectedFileId = fileId
-        viewerState = nil
-        selectedDerivativeKind = nil
+        prepareSelection(fileId: fileId)
         await loadMeta(fileId: fileId)
         guard let meta = activeMeta else { return }
         if let kind = preferredDerivativeKind(for: meta) {
             await selectDerivative(kind: kind)
         }
+    }
+
+    public func prepareSelection(fileId: String) {
+        selectedFileId = fileId
+        viewerState = nil
+        selectedDerivativeKind = nil
     }
 
     public func selectDerivative(kind: String) async {

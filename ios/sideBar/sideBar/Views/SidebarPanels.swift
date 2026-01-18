@@ -1427,6 +1427,7 @@ private struct FilesPanelView: View {
     }
 
     private func open(fileId: String) {
+        viewModel.prepareSelection(fileId: fileId)
         Task { await viewModel.selectFile(fileId: fileId) }
     }
 
