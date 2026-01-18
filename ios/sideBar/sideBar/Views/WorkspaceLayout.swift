@@ -65,7 +65,6 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         .frame(maxHeight: .infinity)
                         .background(panelBackground)
                         .transition(.opacity)
-                        .clipped()
                         .zIndex(-1)
                 }
 
