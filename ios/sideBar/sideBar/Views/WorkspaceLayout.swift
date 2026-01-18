@@ -53,19 +53,13 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         selection = section
                     }
                 )
-                    .frame(width: railWidth)
-                    .frame(maxHeight: .infinity)
-
-                Rectangle()
-                    .fill(DesignTokens.Colors.border)
-                    .frame(width: 1)
-                    .frame(maxHeight: .infinity)
 
                 if isLeftPanelExpanded {
                     panelView(for: selection)
                         .frame(width: widths.leftPanel)
                         .frame(maxHeight: .infinity)
                         .background(panelBackground)
+                        .ignoresSafeArea()
                         .transition(.opacity)
                         .zIndex(-1)
                 }
@@ -77,6 +71,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         mainContent()
                             .frame(width: widths.main)
                             .frame(maxHeight: .infinity)
+                            .ignoresSafeArea()
 
                         resizeHandle(
                             width: dividerWidth,
@@ -102,10 +97,11 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         rightSidebar()
                             .frame(width: widths.right)
                             .frame(maxHeight: .infinity)
+                            .ignoresSafeArea()
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.smooth(duration: 0.3), value: isLeftPanelExpanded)
         }
     }

@@ -272,9 +272,14 @@ public struct SiteHeaderBar: View {
     }
 
     private var ingestionStatusText: String {
-        let activeCount = environment.ingestionViewModel.activeUploadItems.count
-        if activeCount > 0 {
-            return activeCount == 1 ? "1 Upload" : "\(activeCount) Uploads"
+        let activeItems = environment.ingestionViewModel.activeUploadItems
+        if let label = activeItems
+            .map({ ingestionStatusLabel(for: $0.job) ?? "Processing" })
+            .first(where: { $0 != "Processing" }) {
+            return label
+        }
+        if !activeItems.isEmpty {
+            return "Processing"
         }
         let failedCount = environment.ingestionViewModel.failedUploadItems.count
         return failedCount == 1 ? "1 Failed" : "\(failedCount) Failed"

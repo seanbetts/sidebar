@@ -572,10 +572,10 @@ private struct FilesProcessingView: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            ProgressView()
+                .scaleEffect(1.1)
             if let progress = item.job.progress {
                 ProgressView(value: progress)
-            } else {
-                ProgressView()
             }
             Text(statusTitle)
                 .font(.headline)

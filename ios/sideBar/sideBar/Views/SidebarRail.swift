@@ -63,7 +63,18 @@ public struct SidebarRail: View {
         .frame(width: 56)
         .frame(maxHeight: .infinity)
         .padding(.vertical, 12)
-        .background(railBackground)
+        .background(
+            Rectangle()
+                .fill(railBackground)
+                .ignoresSafeArea()
+                .overlay(
+                    Rectangle()
+                        .fill(Color(.separator))
+                        .frame(width: 1)
+                        .ignoresSafeArea(),
+                    alignment: .trailing
+                )
+        )
         .onAppear {
             guard environment.isAuthenticated,
                   environment.settingsViewModel.profileImageData == nil else { return }
