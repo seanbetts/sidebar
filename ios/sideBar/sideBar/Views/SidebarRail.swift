@@ -66,12 +66,12 @@ public struct SidebarRail: View {
         .background(
             Rectangle()
                 .fill(railBackground)
-                .ignoresSafeArea()
+                .ignoresSafeArea(.all, edges: .bottom)
                 .overlay(
                     Rectangle()
                         .fill(Color(.separator))
                         .frame(width: 1)
-                        .ignoresSafeArea(),
+                        .ignoresSafeArea(.all, edges: .bottom),
                     alignment: .trailing
                 )
         )

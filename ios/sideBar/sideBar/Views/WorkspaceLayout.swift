@@ -59,7 +59,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         .frame(width: widths.leftPanel)
                         .frame(maxHeight: .infinity)
                         .background(panelBackground)
-                        .ignoresSafeArea()
+                        .ignoresSafeArea(.all, edges: .bottom)
                         .transition(.opacity)
                         .zIndex(-1)
                 }
@@ -71,7 +71,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         mainContent()
                             .frame(width: widths.main)
                             .frame(maxHeight: .infinity)
-                            .ignoresSafeArea()
+                            .ignoresSafeArea(.all, edges: .bottom)
 
                         resizeHandle(
                             width: dividerWidth,
@@ -97,7 +97,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         rightSidebar()
                             .frame(width: widths.right)
                             .frame(maxHeight: .infinity)
-                            .ignoresSafeArea()
+                            .ignoresSafeArea(.all, edges: .bottom)
                     }
                 }
             }
@@ -178,12 +178,12 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         ZStack {
             Rectangle()
                 .fill(handleBackground)
-                .ignoresSafeArea()
+                .ignoresSafeArea(.all, edges: .bottom)
             Rectangle()
                 .fill(handleBorder)
                 .frame(width: 1)
                 .offset(x: -(width / 2) + 0.5)
-                .ignoresSafeArea()
+                .ignoresSafeArea(.all, edges: .bottom)
             Capsule()
                 .fill(handleGrabber)
                 .frame(width: 3, height: 28)
