@@ -178,10 +178,12 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         ZStack {
             Rectangle()
                 .fill(handleBackground)
+                .ignoresSafeArea()
             Rectangle()
                 .fill(handleBorder)
                 .frame(width: 1)
                 .offset(x: -(width / 2) + 0.5)
+                .ignoresSafeArea()
             Capsule()
                 .fill(handleGrabber)
                 .frame(width: 3, height: 28)
