@@ -28,7 +28,6 @@ from api.models.user_settings import UserSettings
 from api.routers import (
     chat,
     conversations,
-    files,
     health,
     ingestion,
     memories,
@@ -248,7 +247,6 @@ app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(metrics.router)
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["conversations"])
-app.include_router(files.router, prefix="/api/v1", tags=["files"])
 app.include_router(ingestion.router, prefix="/api/v1", tags=["ingestion"])
 app.include_router(notes.router, prefix="/api/v1", tags=["notes"])
 app.include_router(websites.router, prefix="/api/v1", tags=["websites"])
@@ -268,7 +266,6 @@ app.include_router(chat.router, prefix="/api", tags=["chat-legacy"], deprecated=
 app.include_router(
     conversations.router, prefix="/api", tags=["conversations-legacy"], deprecated=True
 )
-app.include_router(files.router, prefix="/api", tags=["files-legacy"], deprecated=True)
 app.include_router(
     ingestion.router, prefix="/api", tags=["ingestion-legacy"], deprecated=True
 )
