@@ -1693,7 +1693,7 @@ private struct WebsitesPanelView: View {
             TextField(
                 "",
                 text: $newWebsiteUrl,
-                prompt: Text("https://example.com").foregroundStyle(.secondary)
+                prompt: Text("example.com").foregroundStyle(.secondary)
             )
             .textInputAutocapitalization(.never)
             .keyboardType(.URL)

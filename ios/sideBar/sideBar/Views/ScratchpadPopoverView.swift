@@ -60,7 +60,7 @@ public struct ScratchpadPopoverView: View {
                     }
                 }
             }
-            .frame(idealWidth: 360)
+            .frame(idealWidth: 450)
             .padding(.horizontal, 16)
             .padding(.top, 16)
             .padding(.bottom, 24)
