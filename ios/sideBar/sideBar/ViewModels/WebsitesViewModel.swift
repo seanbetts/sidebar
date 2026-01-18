@@ -44,7 +44,9 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func load() async {
-        isLoading = true
+        if items.isEmpty {
+            isLoading = true
+        }
         errorMessage = nil
         do {
             try await store.loadList()
