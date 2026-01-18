@@ -486,9 +486,9 @@ private struct SkillsSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Skills available to the assistant.")
+                Text("Manage installed skills and permissions here.")
                     .foregroundStyle(.secondary)
-                Toggle("Enable All", isOn: Binding(
+                Toggle("Enable all", isOn: Binding(
                     get: { allSkillsEnabled },
                     set: { isEnabled in
                         Task { await viewModel.setAllSkillsEnabled(isEnabled) }
