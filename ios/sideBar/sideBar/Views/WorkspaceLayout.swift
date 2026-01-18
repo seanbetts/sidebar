@@ -37,7 +37,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     public var body: some View {
         GeometryReader { proxy in
             let widths = layoutWidths(for: proxy)
-            HStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 0) {
                 SidebarRail(
                     selection: $selection,
                     onTogglePanel: toggleLeftPanel,
@@ -54,12 +54,15 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                     }
                 )
                     .frame(width: railWidth)
+                    .frame(maxHeight: .infinity)
 
                 Divider()
+                    .frame(maxHeight: .infinity)
 
                 if isLeftPanelExpanded {
                     panelView(for: selection)
                         .frame(width: widths.leftPanel)
+                        .frame(maxHeight: .infinity)
                         .background(panelBackground)
                         .transition(.opacity)
                         .clipped()
