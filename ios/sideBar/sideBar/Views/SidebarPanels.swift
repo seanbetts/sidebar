@@ -1261,6 +1261,7 @@ public struct FilesPanel: View {
 }
 
 private struct FilesPanelView: View {
+    @EnvironmentObject private var environment: AppEnvironment
     @ObservedObject var viewModel: IngestionViewModel
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -1270,6 +1271,9 @@ private struct FilesPanelView: View {
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
     @State private var listAppeared = false
+    @State private var isDeleteAlertPresented = false
+    @State private var deleteTarget: IngestionListItem? = nil
+    @State private var pinTarget: IngestionListItem? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1291,6 +1295,16 @@ private struct FilesPanelView: View {
             }
         }
         .frame(maxHeight: .infinity)
+        .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
+            Button("Delete", role: .destructive) {
+                confirmDelete()
+            }
+            Button("Cancel", role: .cancel) {
+                clearDeleteTarget()
+            }
+        } message: {
+            Text("This will remove the file and cannot be undone.")
+        }
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -1341,7 +1355,12 @@ private struct FilesPanelView: View {
             if !pinnedItems.isEmpty {
                 Section("Pinned") {
                     ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
-                        let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                        let row = FilesIngestionRow(
+                            item: item,
+                            isSelected: viewModel.selectedFileId == item.file.id,
+                            onPinToggle: pinAction(for: item),
+                            onDelete: deleteAction(for: item)
+                        )
                         if isFolder(item) {
                             row
                                 .staggeredAppear(index: index, isActive: listAppeared)
@@ -1362,7 +1381,12 @@ private struct FilesPanelView: View {
                                 isExpanded: bindingForCategory(category)
                             ) {
                                 ForEach(Array(items.enumerated()), id: \.element.file.id) { itemIndex, item in
-                                    let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                                    let row = FilesIngestionRow(
+                                        item: item,
+                                        isSelected: viewModel.selectedFileId == item.file.id,
+                                        onPinToggle: pinAction(for: item),
+                                        onDelete: deleteAction(for: item)
+                                    )
                                     if isFolder(item) {
                                         row
                                             .staggeredAppear(
@@ -1396,12 +1420,22 @@ private struct FilesPanelView: View {
             if !filteredProcessingItems.isEmpty || !filteredFailedItems.isEmpty {
                 Section("Uploads") {
                     ForEach(Array(filteredProcessingItems.enumerated()), id: \.element.file.id) { index, item in
-                        FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                        FilesIngestionRow(
+                            item: item,
+                            isSelected: viewModel.selectedFileId == item.file.id,
+                            onPinToggle: pinAction(for: item),
+                            onDelete: deleteAction(for: item)
+                        )
                             .staggeredAppear(index: index, isActive: listAppeared)
                             .onTapGesture { open(item: item) }
                     }
                     ForEach(Array(filteredFailedItems.enumerated()), id: \.element.file.id) { index, item in
-                        FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
+                        FilesIngestionRow(
+                            item: item,
+                            isSelected: viewModel.selectedFileId == item.file.id,
+                            onPinToggle: pinAction(for: item),
+                            onDelete: deleteAction(for: item)
+                        )
                             .staggeredAppear(index: index, isActive: listAppeared)
                             .onTapGesture { open(item: item) }
                     }
@@ -1429,6 +1463,61 @@ private struct FilesPanelView: View {
     private func open(fileId: String) {
         viewModel.prepareSelection(fileId: fileId)
         Task { await viewModel.selectFile(fileId: fileId) }
+    }
+
+    private func pinAction(for item: IngestionListItem) -> (() -> Void)? {
+        guard item.file.category != "folder" else {
+            return nil
+        }
+        return {
+            pinTarget = item
+            Task { await togglePin() }
+        }
+    }
+
+    private func deleteAction(for item: IngestionListItem) -> (() -> Void)? {
+        guard item.file.category != "folder" else {
+            return nil
+        }
+        return {
+            presentDelete(for: item)
+        }
+    }
+
+    private func togglePin() async {
+        guard let item = pinTarget else { return }
+        let isPinned = item.file.pinned ?? false
+        await viewModel.togglePinned(fileId: item.file.id, pinned: !isPinned)
+        pinTarget = nil
+    }
+
+    private func presentDelete(for item: IngestionListItem) {
+        deleteTarget = item
+        isDeleteAlertPresented = true
+    }
+
+    private func confirmDelete() {
+        guard let item = deleteTarget else { return }
+        Task {
+            let success = await viewModel.deleteFile(fileId: item.file.id)
+            if !success {
+                environment.toastCenter.show(message: "Failed to delete file")
+            }
+        }
+        clearDeleteTarget()
+    }
+
+    private func clearDeleteTarget() {
+        deleteTarget = nil
+        isDeleteAlertPresented = false
+    }
+
+    private var deleteDialogTitle: String {
+        guard let deleteTarget else {
+            return "Delete file"
+        }
+        let name = stripFileExtension(deleteTarget.file.filenameOriginal)
+        return "Delete \"\(name)\"?"
     }
 
     private func isFolder(_ item: IngestionListItem) -> Bool {
@@ -1584,11 +1673,20 @@ private struct FilesPanelView: View {
 private struct FilesIngestionRow: View, Equatable {
     let item: IngestionListItem
     let isSelected: Bool
+    let onPinToggle: (() -> Void)?
+    let onDelete: (() -> Void)?
     private let displayName: String
 
-    init(item: IngestionListItem, isSelected: Bool) {
+    init(
+        item: IngestionListItem,
+        isSelected: Bool,
+        onPinToggle: (() -> Void)? = nil,
+        onDelete: (() -> Void)? = nil
+    ) {
         self.item = item
         self.isSelected = isSelected
+        self.onPinToggle = onPinToggle
+        self.onDelete = onDelete
         self.displayName = stripFileExtension(item.file.filenameOriginal)
     }
 
@@ -1620,6 +1718,25 @@ private struct FilesIngestionRow: View, Equatable {
                 Spacer()
             }
         }
+        #if os(iOS)
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let onPinToggle {
+                let title = (item.file.pinned ?? false) ? "Unpin" : "Pin"
+                Button(title) {
+                    onPinToggle()
+                }
+                .tint(.blue)
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if let onDelete {
+                Button("Delete") {
+                    onDelete()
+                }
+                .tint(.red)
+            }
+        }
+        #endif
     }
 
     private var iconName: String {

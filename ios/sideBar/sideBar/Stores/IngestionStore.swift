@@ -101,6 +101,30 @@ public final class IngestionStore: ObservableObject {
         persistListCache()
     }
 
+    public func updatePinned(fileId: String, pinned: Bool) {
+        if let index = items.firstIndex(where: { $0.file.id == fileId }) {
+            let existing = items[index]
+            let updatedFile = updatingPinned(existing.file, pinned: pinned)
+            items[index] = IngestionListItem(file: updatedFile, job: existing.job, recommendedViewer: existing.recommendedViewer)
+        }
+        if let meta = activeMeta, meta.file.id == fileId {
+            let updatedFile = updatingPinned(meta.file, pinned: pinned)
+            let updatedMeta = IngestionMetaResponse(
+                file: updatedFile,
+                job: meta.job,
+                derivatives: meta.derivatives,
+                recommendedViewer: meta.recommendedViewer
+            )
+            activeMeta = updatedMeta
+            cache.set(
+                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
+                value: updatedMeta,
+                ttlSeconds: CachePolicy.ingestionMeta
+            )
+        }
+        persistListCache()
+    }
+
     private func refreshList() async {
         guard !isRefreshingList else {
             return
@@ -170,6 +194,23 @@ public final class IngestionStore: ObservableObject {
             items.append(item)
         }
         persistListCache()
+    }
+
+    private func updatingPinned(_ file: IngestedFileMeta, pinned: Bool) -> IngestedFileMeta {
+        IngestedFileMeta(
+            id: file.id,
+            filenameOriginal: file.filenameOriginal,
+            path: file.path,
+            mimeOriginal: file.mimeOriginal,
+            sizeBytes: file.sizeBytes,
+            sha256: file.sha256,
+            pinned: pinned,
+            pinnedOrder: file.pinnedOrder,
+            category: file.category,
+            sourceUrl: file.sourceUrl,
+            sourceMetadata: file.sourceMetadata,
+            createdAt: file.createdAt
+        )
     }
 
     private func applyMetaUpdate(_ incoming: IngestionMetaResponse, persist: Bool) {
