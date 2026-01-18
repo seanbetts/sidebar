@@ -5,6 +5,7 @@ public protocol IngestionProviding {
     func getMeta(fileId: String) async throws -> IngestionMetaResponse
     func getContent(fileId: String, kind: String, range: String?) async throws -> Data
     func pin(fileId: String, pinned: Bool) async throws
+    func delete(fileId: String) async throws
 }
 
 public struct IngestionAPI {

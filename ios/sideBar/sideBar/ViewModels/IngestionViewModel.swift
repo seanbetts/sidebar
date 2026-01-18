@@ -49,11 +49,11 @@ public final class IngestionViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    public func load() async {
+    public func load(force: Bool = false) async {
         isLoading = true
         errorMessage = nil
         do {
-            try await store.loadList()
+            try await store.loadList(force: force)
         } catch {
             if items.isEmpty {
                 errorMessage = error.localizedDescription
@@ -97,10 +97,22 @@ public final class IngestionViewModel: ObservableObject {
 
     public func togglePinned(fileId: String, pinned: Bool) async {
         errorMessage = nil
+        let previousPinned: Bool? = {
+            if let item = items.first(where: { $0.file.id == fileId }) {
+                return item.file.pinned
+            }
+            if let meta = activeMeta, meta.file.id == fileId {
+                return meta.file.pinned
+            }
+            return nil
+        }()
+        store.updatePinned(fileId: fileId, pinned: pinned)
         do {
             try await api.pin(fileId: fileId, pinned: pinned)
-            await load()
         } catch {
+            if let previousPinned {
+                store.updatePinned(fileId: fileId, pinned: previousPinned)
+            }
             errorMessage = error.localizedDescription
         }
     }
@@ -125,6 +137,19 @@ public final class IngestionViewModel: ObservableObject {
         selectedDerivativeKind = nil
         viewerState = nil
         errorMessage = nil
+    }
+
+    public func deleteFile(fileId: String) async -> Bool {
+        do {
+            try await api.delete(fileId: fileId)
+            if selectedFileId == fileId {
+                clearSelection()
+            }
+            await load(force: true)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
