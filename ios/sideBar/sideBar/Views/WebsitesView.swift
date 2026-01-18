@@ -87,24 +87,21 @@ private struct WebsitesDetailView: View {
             iconName: "globe",
             title: displayTitle,
             subtitle: subtitleText,
-            titleLineLimit: 2,
-            subtitleLineLimit: 2,
-            alignment: .firstTextBaseline,
-            titleSubtitleAlignment: .firstTextBaseline
+            titleLineLimit: 1,
+            subtitleLineLimit: 1
         ) {
             Button {
             } label: {
                 Image(systemName: "line.3.horizontal")
-                    .frame(width: 28, height: 28)
+                    .frame(width: 28, height: 20)
             }
             .buttonStyle(.plain)
             .font(.system(size: 16, weight: .semibold))
             .imageScale(.medium)
             .accessibilityLabel("Website options")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
-        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
+        .padding(16)
+        .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
 
     @ViewBuilder

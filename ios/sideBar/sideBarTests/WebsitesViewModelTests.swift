@@ -103,10 +103,11 @@ final class WebsitesViewModelTests: XCTestCase {
     }
 
     func testSaveWebsiteLoadsDetailAndSelects() async {
+        let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
-            listResult: .success(WebsitesResponse(items: [])),
+            listResult: .success(WebsitesResponse(items: [item])),
             getResult: .success(detail),
             saveResult: .success(WebsiteSaveResponse(
                 success: true,
@@ -119,15 +120,17 @@ final class WebsitesViewModelTests: XCTestCase {
         let saved = await viewModel.saveWebsite(url: "https://example.com")
 
         XCTAssertTrue(saved)
+        XCTAssertEqual(viewModel.items.first?.id, "site-1")
         XCTAssertEqual(viewModel.selectedWebsiteId, "site-1")
         XCTAssertEqual(viewModel.active?.id, "site-1")
     }
 
     func testSaveWebsiteNormalizesUrl() async {
+        let item = makeItem(id: "site-1")
         let detail = makeDetail(id: "site-1")
         let cache = InMemoryCacheClient()
         let api = MockWebsitesAPI(
-            listResult: .success(WebsitesResponse(items: [])),
+            listResult: .success(WebsitesResponse(items: [item])),
             getResult: .success(detail),
             saveResult: .success(WebsiteSaveResponse(
                 success: true,
