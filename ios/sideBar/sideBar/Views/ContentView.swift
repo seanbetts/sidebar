@@ -99,7 +99,7 @@ public struct ContentView: View {
                 guard newValue != nil else { return }
                 handleNonChatSelection(.files)
             }
-            .onReceive(environment.websitesViewModel.$active) { newValue in
+            .onReceive(environment.websitesViewModel.$selectedWebsiteId) { newValue in
                 guard newValue != nil else { return }
                 handleNonChatSelection(.websites)
             }

@@ -1690,14 +1690,18 @@ private struct WebsitesPanelView: View {
             listAppeared = !isLoading
         }
         .alert("Save a website", isPresented: $isNewWebsitePresented) {
-            TextField("https://example.com", text: $newWebsiteUrl)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.URL)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-                .onSubmit {
-                    saveWebsite()
-                }
+            TextField(
+                "",
+                text: $newWebsiteUrl,
+                prompt: Text("https://example.com").foregroundStyle(.secondary)
+            )
+            .textInputAutocapitalization(.never)
+            .keyboardType(.URL)
+            .autocorrectionDisabled()
+            .submitLabel(.done)
+            .onSubmit {
+                saveWebsite()
+            }
             Button(viewModel.isSavingWebsite ? "Saving..." : "Save") {
                 saveWebsite()
             }
@@ -1706,8 +1710,6 @@ private struct WebsitesPanelView: View {
             Button("Cancel", role: .cancel) {
                 newWebsiteUrl = ""
             }
-        } message: {
-            Text("Paste a URL to save it to your archive.")
         }
         .alert("Unable to save website", isPresented: isSaveErrorPresented) {
             Button("OK", role: .cancel) {
