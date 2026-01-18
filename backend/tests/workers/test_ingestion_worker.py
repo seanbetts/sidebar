@@ -24,7 +24,7 @@ def _make_youtube_ingested_file(test_db, file_id):
     record = IngestedFile(
         id=file_id,
         user_id="test-user",
-        filename_original="YouTube video",
+        filename_original="YouTube Video",
         mime_original="video/youtube",
         size_bytes=0,
         sha256=None,
