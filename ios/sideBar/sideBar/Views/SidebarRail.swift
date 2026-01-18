@@ -31,7 +31,7 @@ public struct SidebarRail: View {
     public var body: some View {
         VStack(spacing: 16) {
             Button(action: { onTogglePanel?() }) {
-                Image(systemName: "line.3.horizontal")
+                Image(systemName: "sidebar.left")
                     .font(.system(size: 18, weight: .semibold))
                     .frame(width: 32, height: 32)
             }

@@ -10,15 +10,18 @@ public struct SiteHeaderBar: View {
     private let onSwapContent: (() -> Void)?
     private let onToggleSidebar: (() -> Void)?
     private let onShowSettings: (() -> Void)?
+    private let isLeftPanelExpanded: Bool
 
     public init(
         onSwapContent: (() -> Void)? = nil,
         onToggleSidebar: (() -> Void)? = nil,
-        onShowSettings: (() -> Void)? = nil
+        onShowSettings: (() -> Void)? = nil,
+        isLeftPanelExpanded: Bool = true
     ) {
         self.onSwapContent = onSwapContent
         self.onToggleSidebar = onToggleSidebar
         self.onShowSettings = onShowSettings
+        self.isLeftPanelExpanded = isLeftPanelExpanded
     }
 
     public var body: some View {
@@ -49,15 +52,17 @@ public struct SiteHeaderBar: View {
 
     private var brandView: some View {
         HStack(spacing: 10) {
-            Image("AppLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 32, height: 32)
-            Rectangle()
-                .fill(Color.primary)
-                .frame(width: 4, height: 35)
-                .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
-                .opacity(0.9)
+            if isCompact || isLeftPanelExpanded {
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
+                Rectangle()
+                    .fill(Color.primary)
+                    .frame(width: 4, height: 35)
+                    .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+                    .opacity(0.9)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text("sideBar")
                     .font(.headline.weight(.bold))

@@ -341,7 +341,7 @@ private struct NotesDetailView: View {
                 Label("Delete", systemImage: "trash")
             }
         } label: {
-            Image(systemName: "line.3.horizontal")
+            Image(systemName: "ellipsis.circle")
         }
         .buttonStyle(.plain)
         .font(.system(size: 16, weight: .semibold))

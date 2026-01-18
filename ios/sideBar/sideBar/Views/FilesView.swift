@@ -29,7 +29,7 @@ public struct FilesView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                     } label: {
-                        Image(systemName: "line.3.horizontal")
+                        Image(systemName: "ellipsis.circle")
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("File options")
@@ -77,7 +77,7 @@ private struct FilesHeaderView: View {
         ) {
             Button {
             } label: {
-                Image(systemName: "line.3.horizontal")
+                Image(systemName: "ellipsis.circle")
             }
             .buttonStyle(.plain)
             .font(.system(size: 16, weight: .semibold))

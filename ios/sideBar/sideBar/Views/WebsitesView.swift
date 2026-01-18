@@ -19,7 +19,7 @@ public struct WebsitesView: View {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
                         } label: {
-                            Image(systemName: "line.3.horizontal")
+                            Image(systemName: "ellipsis.circle")
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Website options")
@@ -94,7 +94,7 @@ private struct WebsitesDetailView: View {
         ) {
             Button {
             } label: {
-                Image(systemName: "line.3.horizontal")
+                Image(systemName: "ellipsis.circle")
                     .frame(width: 28, height: 20)
             }
             .buttonStyle(.plain)
