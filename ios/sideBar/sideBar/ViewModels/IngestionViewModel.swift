@@ -152,6 +152,16 @@ public final class IngestionViewModel: ObservableObject {
         }
     }
 
+    public func renameFile(fileId: String, filename: String) async -> Bool {
+        do {
+            try await api.rename(fileId: fileId, filename: filename)
+            store.updateFilename(fileId: fileId, filename: filename)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
         let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }
         let nonAI = candidates.filter { $0.kind != "ai_md" }

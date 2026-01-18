@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 public struct FilesView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -25,13 +26,9 @@ public struct FilesView: View {
         .navigationTitle(fileTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if isCompact {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                        HeaderActionButton(
-                            systemName: "ellipsis.circle",
-                            accessibilityLabel: "File options",
-                            action: {}
-                        )
+            if isCompact, hasActiveSelection {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    FilesHeaderActions(viewModel: environment.ingestionViewModel)
                 }
             }
         }
@@ -74,6 +71,10 @@ public struct FilesView: View {
         }
         return environment.ingestionViewModel.items.first { $0.file.id == selectedId }?.file.filenameOriginal
     }
+
+    private var hasActiveSelection: Bool {
+        environment.ingestionViewModel.selectedFileId != nil
+    }
 }
 
 private struct FilesHeaderView: View {
@@ -84,11 +85,9 @@ private struct FilesHeaderView: View {
             iconName: iconName,
             title: activeTitle
         ) {
-            HeaderActionButton(
-                systemName: "ellipsis.circle",
-                accessibilityLabel: "File options",
-                action: {}
-            )
+            if viewModel.selectedFileId != nil {
+                FilesHeaderActions(viewModel: viewModel)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
@@ -159,6 +158,252 @@ private struct FilesHeaderView: View {
             return nil
         }
         return viewModel.items.first { $0.file.id == selectedId }?.recommendedViewer
+    }
+}
+
+private struct FilesHeaderActions: View {
+    @ObservedObject var viewModel: IngestionViewModel
+    @EnvironmentObject private var environment: AppEnvironment
+    @State private var isRenameSheetPresented = false
+    @State private var renameValue: String = ""
+    @State private var isDeleteAlertPresented = false
+    @State private var exportDocument: BinaryFileDocument?
+    @State private var isExporting = false
+    @State private var exportFilename: String = "file"
+
+    var body: some View {
+        HeaderActionRow {
+            fileActionsMenu
+            closeButton
+        }
+        .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
+            Button("Delete", role: .destructive) {
+                Task { await deleteActiveFile() }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will remove the file and cannot be undone.")
+        }
+        .sheet(isPresented: $isRenameSheetPresented) {
+            RenameItemSheet(
+                title: "Rename File",
+                placeholder: "File name",
+                text: $renameValue
+            ) { newName in
+                Task { await renameFile(to: newName) }
+            }
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .data,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
+        }
+    }
+
+    private var fileActionsMenu: some View {
+        #if os(macOS)
+        Menu {
+            Button {
+                Task { await togglePin() }
+            } label: {
+                Label(pinActionTitle, systemImage: pinIconName)
+            }
+            Button {
+                beginRename()
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button {
+                copyFileContent()
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+            Button {
+                Task { await downloadFile() }
+            } label: {
+                Label("Download", systemImage: "square.and.arrow.down")
+            }
+            Button(role: .destructive) {
+                isDeleteAlertPresented = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        } label: {
+            HeaderActionIcon(systemName: "ellipsis.circle")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("File options")
+        .disabled(viewModel.selectedFileId == nil)
+        #else
+        UIKitMenuButton(
+            systemImage: "ellipsis.circle",
+            accessibilityLabel: "File options",
+            items: [
+                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    Task { await togglePin() }
+                },
+                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    beginRename()
+                },
+                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyFileContent()
+                },
+                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    Task { await downloadFile() }
+                },
+                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ]
+        )
+        .frame(width: 28, height: 20)
+        .accessibilityLabel("File options")
+        .disabled(viewModel.selectedFileId == nil)
+        #endif
+    }
+
+    private var closeButton: some View {
+        HeaderActionButton(
+            systemName: "xmark",
+            accessibilityLabel: "Close file",
+            action: {
+                viewModel.clearSelection()
+            },
+            isDisabled: viewModel.selectedFileId == nil
+        )
+    }
+
+    private var pinActionTitle: String {
+        isPinned ? "Unpin" : "Pin"
+    }
+
+    private var pinIconName: String {
+        isPinned ? "pin.slash" : "pin"
+    }
+
+    private var isPinned: Bool {
+        if let meta = viewModel.activeMeta {
+            return meta.file.pinned ?? false
+        }
+        guard let selectedId = viewModel.selectedFileId else { return false }
+        return viewModel.items.first { $0.file.id == selectedId }?.file.pinned ?? false
+    }
+
+    private var selectedFilenameOriginal: String? {
+        if let name = viewModel.activeMeta?.file.filenameOriginal {
+            return name
+        }
+        guard let selectedId = viewModel.selectedFileId else {
+            return nil
+        }
+        return viewModel.items.first { $0.file.id == selectedId }?.file.filenameOriginal
+    }
+
+    private var deleteDialogTitle: String {
+        guard let name = selectedFilenameOriginal else {
+            return "Delete file"
+        }
+        return "Delete \"\(stripFileExtension(name))\"?"
+    }
+
+    private func togglePin() async {
+        guard let selectedId = viewModel.selectedFileId else { return }
+        await viewModel.togglePinned(fileId: selectedId, pinned: !isPinned)
+    }
+
+    private func beginRename() {
+        guard let name = selectedFilenameOriginal else { return }
+        renameValue = stripFileExtension(name)
+        isRenameSheetPresented = true
+    }
+
+    private func renameFile(to newName: String) async {
+        guard let selectedId = viewModel.selectedFileId else { return }
+        let originalName = selectedFilenameOriginal ?? newName
+        let updatedName = applyFileExtension(originalName: originalName, newName: newName)
+        let success = await viewModel.renameFile(fileId: selectedId, filename: updatedName)
+        if !success {
+            environment.toastCenter.show(message: "Failed to rename file")
+        }
+    }
+
+    private func copyFileContent() {
+        guard let text = viewModel.viewerState?.text, !text.isEmpty else {
+            environment.toastCenter.show(message: "Copy unavailable for this file")
+            return
+        }
+        #if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        #else
+        UIPasteboard.general.string = text
+        #endif
+    }
+
+    private func downloadFile() async {
+        guard let meta = viewModel.activeMeta else {
+            environment.toastCenter.show(message: "Download unavailable")
+            return
+        }
+        let kind = viewModel.selectedDerivativeKind
+            ?? meta.recommendedViewer
+            ?? meta.derivatives.first?.kind
+        guard let kind else {
+            environment.toastCenter.show(message: "Download unavailable")
+            return
+        }
+        do {
+            let data = try await environment.container.ingestionAPI.getContent(
+                fileId: meta.file.id,
+                kind: kind,
+                range: nil
+            )
+            exportDocument = BinaryFileDocument(data: data)
+            exportFilename = meta.file.filenameOriginal
+            isExporting = true
+        } catch {
+            environment.toastCenter.show(message: "Failed to download file")
+        }
+    }
+
+    private func deleteActiveFile() async {
+        guard let selectedId = viewModel.selectedFileId else { return }
+        let success = await viewModel.deleteFile(fileId: selectedId)
+        if !success {
+            environment.toastCenter.show(message: "Failed to delete file")
+        }
+    }
+
+    private func applyFileExtension(originalName: String, newName: String) -> String {
+        guard let extensionMatch = originalName.range(of: "\\.[^./]+$", options: .regularExpression) else {
+            return newName
+        }
+        let ext = String(originalName[extensionMatch])
+        if newName.hasSuffix(ext) {
+            return newName
+        }
+        return newName + ext
+    }
+}
+
+private struct BinaryFileDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.data] }
+
+    var data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        self.data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }
 
