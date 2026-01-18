@@ -145,6 +145,8 @@ Critical Path (MVP): [███████████████████�
 - Websites: save flow (alert + validation), optimistic "Reading" states, and header truncation adjustments.
 - Files: upload manager + YouTube ingestion, optimistic processing UI, header pill status stages, and auto-open ready files with alert fallback.
 - Files: PDF viewer controls (page, zoom, fit width/height) + YouTube embed fix + responsive PDF fit/zoom.
+- Files: PDF resize animation matched to sidebar timing; zoom persists across pages with % indicator.
+- Settings: light/dark background alignment + Memories list row styling parity.
 
 ### Phase Completion Status
 
@@ -171,7 +173,7 @@ Critical Path (MVP): [███████████████████�
 | **11.1 Chat Input** | ✅ Complete | 2 / 2-3 | 100% | ✅ Yes |
 | **11.2 Markdown Editor** | 🟨 In Progress | 3 / 6-9 | 50% | ✅ Yes |
 | **11.3 Note Operations** | ✅ Complete | 2 / 1-2 | 100% | ✅ Yes |
-| **11.4 Content Creation** | 🟨 In Progress | 2 / 3 | 67% | ✅ Yes |
+| **11.4 Content Creation** | 🟨 In Progress | 4 / 3 | 67% | ✅ Yes |
 | **11.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
 | **POST-MVP TOTAL** | | **11-17** | | |
 
@@ -515,6 +517,8 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 | 2026-01-17 | 11.4 | 1 | TBD | Websites save flow (alert + validation), optimistic "Reading" states, header tweaks |
 | 2026-01-18 | 11.4 | 2 | TBD | File uploads + YouTube ingestion, processing UI, auto-open ready files |
 | 2026-01-19 | 11.4 | 1 | TBD | PDF controls (page/zoom/fit), responsive fit on resize, YouTube embed fix |
+| 2026-01-20 | 11.4 | 1 | TBD | PDF zoom persistence + resize animation timing, title bar zoom indicator |
+| 2026-01-20 | 11.4 | 1 | TBD | Settings light/dark background alignment, Memories row styling parity |
 
 ---
 
