@@ -153,10 +153,9 @@ public final class WebsitesViewModel: ObservableObject {
     private func makePendingWebsite(from url: URL) -> PendingWebsiteItem {
         let host = url.host ?? url.absoluteString
         let domain = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
-        let title = host.isEmpty ? url.absoluteString : host
         return PendingWebsiteItem(
             id: "pending-\(UUID().uuidString)",
-            title: title,
+            title: "Reading...",
             domain: domain,
             url: url.absoluteString
         )
