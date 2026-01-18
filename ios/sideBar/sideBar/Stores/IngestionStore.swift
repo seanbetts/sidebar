@@ -433,6 +433,7 @@ public final class IngestionStore: ObservableObject {
             return
         }
         activeMeta = incoming
+        updateFilenameForItems(fileId: incoming.file.id, filename: incoming.file.filenameOriginal)
         if persist {
             cache.set(
                 key: CacheKeys.ingestionMeta(fileId: incoming.file.id),
@@ -460,5 +461,34 @@ public final class IngestionStore: ObservableObject {
             value: IngestionListResponse(items: remoteItems),
             ttlSeconds: CachePolicy.ingestionList
         )
+    }
+
+    private func updateFilenameForItems(fileId: String, filename: String) {
+        var didUpdate = false
+        if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
+            let existing = remoteItems[index]
+            if existing.file.filenameOriginal != filename {
+                let updatedFile = updatingFilename(existing.file, filename: filename)
+                remoteItems[index] = IngestionListItem(
+                    file: updatedFile,
+                    job: existing.job,
+                    recommendedViewer: existing.recommendedViewer
+                )
+                didUpdate = true
+            }
+        }
+        if let local = localItems[fileId], local.file.filenameOriginal != filename {
+            let updatedFile = updatingFilename(local.file, filename: filename)
+            localItems[fileId] = IngestionListItem(
+                file: updatedFile,
+                job: local.job,
+                recommendedViewer: local.recommendedViewer
+            )
+            didUpdate = true
+        }
+        if didUpdate {
+            items = mergeItems(remoteItems)
+            persistListCache()
+        }
     }
 }

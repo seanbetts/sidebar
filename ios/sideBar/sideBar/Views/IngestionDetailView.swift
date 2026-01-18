@@ -29,6 +29,10 @@ public struct IngestionDetailView: View {
                     title: "Processing file…",
                     subtitle: processingDetail
                 )
+                .overlay(
+                    ProgressView()
+                        .scaleEffect(1.1)
+                )
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state)
             } else if let error = viewModel.errorMessage {
