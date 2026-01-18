@@ -109,10 +109,6 @@ private struct IngestionCenterRow: View {
         if let message = item.job.userMessage, !message.isEmpty {
             return message
         }
-        if let stage = item.job.stage, !stage.isEmpty {
-            return stage.replacingOccurrences(of: "_", with: " ").capitalized
-        }
-        let status = item.job.status ?? "processing"
-        return status.replacingOccurrences(of: "_", with: " ").capitalized
+        return ingestionStatusLabel(for: item.job) ?? "Processing"
     }
 }

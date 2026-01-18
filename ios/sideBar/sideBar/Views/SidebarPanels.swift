@@ -1853,19 +1853,7 @@ private struct FilesIngestionRow: View, Equatable {
         if status.isEmpty || status == "ready" {
             return nil
         }
-        if status == "failed" {
-            return "Failed"
-        }
-        if status == "canceled" {
-            return "Canceled"
-        }
-        if status == "uploading" {
-            return "Uploading..."
-        }
-        if let stage = item.job.stage, !stage.isEmpty {
-            return stage.replacingOccurrences(of: "_", with: " ").capitalized
-        }
-        return "Processing..."
+        return ingestionStatusLabel(for: item.job) ?? "Processing"
     }
 
     private var statusTextColor: Color {
