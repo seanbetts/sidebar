@@ -32,7 +32,9 @@ public struct IngestionDetailView: View {
                         title: "Processing file…",
                         subtitle: processingDetail
                     )
+                    .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state)
             } else if let error = viewModel.errorMessage {
