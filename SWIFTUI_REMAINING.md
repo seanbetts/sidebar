@@ -20,7 +20,7 @@ Finish the remaining SwiftUI parity work with a short, focused checklist.
 4) Addendum parity gaps
 - [ ] Things integration scope (macOS/iOS native API plan + placeholder states).
 - [x] Skills settings parity in Settings.
-- [ ] SSE UI event coverage beyond tokens/tool calls.
+- [x] SSE UI event coverage beyond tokens/tool calls.
 
 ## Notes
 - Ingestion Center and cancel/pause/resume are deferred unless needed.
