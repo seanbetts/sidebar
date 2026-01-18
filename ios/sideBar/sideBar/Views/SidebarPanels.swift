@@ -1350,18 +1350,18 @@ private struct FilesPanelView: View {
         .onChange(of: categoriesWithItems) { _, _ in
             initializeExpandedCategoriesIfNeeded()
         }
-        .onChange(of: viewModel.items) { _, newItems in
-            let newIds = Set(newItems.map { $0.file.id })
-            let addedIds = newIds.subtracting(knownFileIds)
+        .onChange(of: viewModel.items.map { $0.file.id }) { _, newIds in
+            let newIdSet = Set(newIds)
+            let addedIds = newIdSet.subtracting(knownFileIds)
             if !addedIds.isEmpty {
-                for item in newItems where addedIds.contains(item.file.id) {
+                for item in viewModel.items where addedIds.contains(item.file.id) {
                     if item.file.mimeOriginal.lowercased().contains("youtube") {
                         expandedCategories.insert("video")
                         break
                     }
                 }
             }
-            knownFileIds = newIds
+            knownFileIds = newIdSet
         }
     }
 
