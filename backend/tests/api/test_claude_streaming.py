@@ -191,6 +191,84 @@ async def test_stream_with_tools_emits_memory_event():
 
 
 @pytest.mark.asyncio
+async def test_stream_with_tools_emits_note_pinned_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"note_id": "note-1"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class PinNoteToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            return "Pin Note"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {"success": True, "data": {"id": "note-1", "pinned": True}}
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=PinNoteToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert any(item["type"] == "note_pinned" for item in output)
+
+
+@pytest.mark.asyncio
+async def test_stream_with_tools_emits_ingestion_updated_event():
+    events = [
+        SimpleNamespace(
+            type="content_block_start",
+            content_block=SimpleNamespace(
+                type="tool_use", id="tool-1", name="test_tool"
+            ),
+        ),
+        SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(
+                type="input_json_delta", partial_json='{"path": "files/test.txt"}'
+            ),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+
+    class WriteFileToolMapper(DummyToolMapper):
+        def get_tool_display_name(self, name):
+            return "Write File"
+
+        async def execute_tool(self, name, input, allowed_skills=None, context=None):
+            return {"success": True, "data": {"file_id": "file-123"}}
+
+    output = []
+    async for event in stream_with_tools(
+        client=FakeClient(events),
+        tool_mapper=WriteFileToolMapper(),
+        model="test-model",
+        message="Hi",
+        conversation_history=[],
+        allowed_skills=[],
+    ):
+        output.append(event)
+
+    assert any(item["type"] == "ingestion_updated" for item in output)
+
+
+@pytest.mark.asyncio
 async def test_stream_with_tools_emits_error_on_exception():
     events = [
         SimpleNamespace(

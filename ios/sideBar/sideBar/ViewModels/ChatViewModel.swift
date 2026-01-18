@@ -61,6 +61,9 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     private let conversationsAPI: ConversationsAPIProviding
     private let cache: CacheClient
     private let ingestionAPI: IngestionAPI
+    private let notesStore: NotesStore?
+    private let websitesStore: WebsitesStore?
+    private let ingestionStore: IngestionStore?
     private let themeManager: ThemeManager
     private let streamClient: ChatStreamClient
     private let chatStore: ChatStore
@@ -82,6 +85,9 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         conversationsAPI: ConversationsAPIProviding,
         ingestionAPI: IngestionAPI,
         cache: CacheClient,
+        notesStore: NotesStore? = nil,
+        websitesStore: WebsitesStore? = nil,
+        ingestionStore: IngestionStore? = nil,
         themeManager: ThemeManager,
         streamClient: ChatStreamClient,
         chatStore: ChatStore,
@@ -94,6 +100,9 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         self.conversationsAPI = conversationsAPI
         self.cache = cache
         self.ingestionAPI = ingestionAPI
+        self.notesStore = notesStore
+        self.websitesStore = websitesStore
+        self.ingestionStore = ingestionStore
         self.themeManager = themeManager
         self.streamClient = streamClient
         self.chatStore = chatStore
@@ -570,12 +579,22 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
             handleNoteCreate(event)
         case .noteUpdated:
             handleNoteUpdate(event)
+        case .notePinned:
+            handleNotePinned(event)
+        case .noteMoved:
+            handleNoteMoved(event)
         case .noteDeleted:
             handleNoteDelete(event)
         case .websiteSaved:
             handleWebsiteSaved(event)
+        case .websitePinned:
+            handleWebsitePinned(event)
+        case .websiteArchived:
+            handleWebsiteArchived(event)
         case .websiteDeleted:
             handleWebsiteDeleted(event)
+        case .ingestionUpdated:
+            handleIngestionUpdated(event)
         case .themeSet:
             handleThemeSet(event)
         case .scratchpadUpdated:
@@ -925,6 +944,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         if let id = stringValue(from: event.data, key: "id") {
             cache.remove(key: CacheKeys.note(id: id))
         }
+        refreshNotesTree()
     }
 
     private func handleNoteUpdate(_ event: ChatStreamEvent) {
@@ -932,6 +952,7 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         if let id = stringValue(from: event.data, key: "id") {
             cache.remove(key: CacheKeys.note(id: id))
         }
+        refreshNotesTree()
     }
 
     private func handleNoteDelete(_ event: ChatStreamEvent) {
@@ -939,6 +960,23 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         if let id = stringValue(from: event.data, key: "id") {
             cache.remove(key: CacheKeys.note(id: id))
         }
+        refreshNotesTree()
+    }
+
+    private func handleNotePinned(_ event: ChatStreamEvent) {
+        cache.remove(key: CacheKeys.notesTree)
+        if let id = stringValue(from: event.data, key: "id") {
+            cache.remove(key: CacheKeys.note(id: id))
+        }
+        refreshNotesTree()
+    }
+
+    private func handleNoteMoved(_ event: ChatStreamEvent) {
+        cache.remove(key: CacheKeys.notesTree)
+        if let id = stringValue(from: event.data, key: "id") {
+            cache.remove(key: CacheKeys.note(id: id))
+        }
+        refreshNotesTree()
     }
 
     private func handleWebsiteSaved(_ event: ChatStreamEvent) {
@@ -946,12 +984,69 @@ public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
         if let id = stringValue(from: event.data, key: "id") {
             cache.remove(key: CacheKeys.websiteDetail(id: id))
         }
+        refreshWebsitesList()
+    }
+
+    private func handleWebsitePinned(_ event: ChatStreamEvent) {
+        cache.remove(key: CacheKeys.websitesList)
+        if let id = stringValue(from: event.data, key: "id") {
+            cache.remove(key: CacheKeys.websiteDetail(id: id))
+        }
+        refreshWebsitesList()
+    }
+
+    private func handleWebsiteArchived(_ event: ChatStreamEvent) {
+        cache.remove(key: CacheKeys.websitesList)
+        if let id = stringValue(from: event.data, key: "id") {
+            cache.remove(key: CacheKeys.websiteDetail(id: id))
+        }
+        refreshWebsitesList()
     }
 
     private func handleWebsiteDeleted(_ event: ChatStreamEvent) {
         cache.remove(key: CacheKeys.websitesList)
         if let id = stringValue(from: event.data, key: "id") {
             cache.remove(key: CacheKeys.websiteDetail(id: id))
+        }
+        refreshWebsitesList()
+    }
+
+    private func handleIngestionUpdated(_ event: ChatStreamEvent) {
+        cache.remove(key: CacheKeys.ingestionList)
+        let fileId = stringValue(from: event.data, key: "file_id")
+        if let fileId {
+            cache.remove(key: CacheKeys.ingestionMeta(fileId: fileId))
+        }
+        refreshIngestionList(fileId: fileId)
+    }
+
+    private func refreshNotesTree() {
+        guard let notesStore else {
+            return
+        }
+        Task {
+            try? await notesStore.loadTree(force: true)
+        }
+    }
+
+    private func refreshWebsitesList() {
+        guard let websitesStore else {
+            return
+        }
+        Task {
+            try? await websitesStore.loadList(force: true)
+        }
+    }
+
+    private func refreshIngestionList(fileId: String?) {
+        guard let ingestionStore else {
+            return
+        }
+        Task {
+            try? await ingestionStore.loadList(force: true)
+            if let fileId, ingestionStore.activeMeta?.file.id == fileId {
+                try? await ingestionStore.loadMeta(fileId: fileId, force: true)
+            }
         }
     }
 

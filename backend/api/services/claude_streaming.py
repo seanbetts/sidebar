@@ -303,6 +303,22 @@ async def stream_with_tools(
                                             "title": result_data.get("title"),
                                         },
                                     }
+                                elif display_name == "Pin Note":
+                                    yield {
+                                        "type": "note_pinned",
+                                        "data": {
+                                            "id": result_data.get("id"),
+                                            "pinned": result_data.get("pinned"),
+                                        },
+                                    }
+                                elif display_name == "Move Note":
+                                    yield {
+                                        "type": "note_moved",
+                                        "data": {
+                                            "id": result_data.get("id"),
+                                            "folder": result_data.get("folder"),
+                                        },
+                                    }
                                 elif display_name in {
                                     "Transcribe Audio",
                                     "Transcribe YouTube",
@@ -326,6 +342,22 @@ async def stream_with_tools(
                                             "url": result_data.get("url"),
                                         },
                                     }
+                                elif display_name == "Pin Website":
+                                    yield {
+                                        "type": "website_pinned",
+                                        "data": {
+                                            "id": result_data.get("id"),
+                                            "pinned": result_data.get("pinned"),
+                                        },
+                                    }
+                                elif display_name == "Archive Website":
+                                    yield {
+                                        "type": "website_archived",
+                                        "data": {
+                                            "id": result_data.get("id"),
+                                            "archived": result_data.get("archived"),
+                                        },
+                                    }
                                 elif display_name == "Delete Note":
                                     yield {
                                         "type": "note_deleted",
@@ -335,6 +367,13 @@ async def stream_with_tools(
                                     yield {
                                         "type": "website_deleted",
                                         "data": {"id": result_data.get("id")},
+                                    }
+                                elif display_name in {"Write File", "Download YouTube"}:
+                                    yield {
+                                        "type": "ingestion_updated",
+                                        "data": {
+                                            "file_id": result_data.get("file_id"),
+                                        },
                                     }
                                 elif display_name == "Set UI Theme":
                                     yield {
