@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import UniformTypeIdentifiers
 
 private func panelHeaderBackground(_ colorScheme: ColorScheme) -> Color {
     #if os(macOS)
@@ -1274,6 +1275,9 @@ private struct FilesPanelView: View {
     @State private var isDeleteAlertPresented = false
     @State private var deleteTarget: IngestionListItem? = nil
     @State private var pinTarget: IngestionListItem? = nil
+    @State private var isFileImporterPresented = false
+    @State private var isYouTubeAlertPresented = false
+    @State private var newYouTubeUrl: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1305,6 +1309,31 @@ private struct FilesPanelView: View {
         } message: {
             Text("This will remove the file and cannot be undone.")
         }
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: true
+        ) { result in
+            handleFileImport(result)
+        }
+        .alert("Add YouTube video", isPresented: $isYouTubeAlertPresented) {
+            TextField("youtube.com", text: $newYouTubeUrl)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit {
+                    addYouTube()
+                }
+            Button(viewModel.isIngestingYouTube ? "Adding..." : "Add") {
+                addYouTube()
+            }
+            .disabled(viewModel.isIngestingYouTube || newYouTubeUrl.trimmed.isEmpty)
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                newYouTubeUrl = ""
+            }
+        }
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -1322,6 +1351,17 @@ private struct FilesPanelView: View {
             PanelHeader(title: "Files") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Button {
+                        newYouTubeUrl = ""
+                        isYouTubeAlertPresented = true
+                    } label: {
+                        Image(systemName: "play.rectangle")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add YouTube video")
+                    Button {
+                        isFileImporterPresented = true
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .semibold))
@@ -1510,6 +1550,28 @@ private struct FilesPanelView: View {
     private func clearDeleteTarget() {
         deleteTarget = nil
         isDeleteAlertPresented = false
+    }
+
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            viewModel.addUploads(urls: urls)
+        case .failure:
+            environment.toastCenter.show(message: "Failed to add files")
+        }
+    }
+
+    private func addYouTube() {
+        let url = newYouTubeUrl.trimmed
+        guard !url.isEmpty else { return }
+        Task {
+            let success = await viewModel.ingestYouTube(url: url)
+            if !success {
+                environment.toastCenter.show(message: "Failed to add YouTube video")
+            }
+            newYouTubeUrl = ""
+            isYouTubeAlertPresented = false
+        }
     }
 
     private var deleteDialogTitle: String {
@@ -1873,7 +1935,7 @@ private struct WebsitesPanelView: View {
             listAppeared = !isLoading
         }
         .alert("Save a website", isPresented: $isNewWebsitePresented) {
-            TextField("https://www.example.com", text: $newWebsiteUrl)
+            TextField("example.com", text: $newWebsiteUrl)
                 .textInputAutocapitalization(.never)
                 .keyboardType(.URL)
                 .autocorrectionDisabled()
