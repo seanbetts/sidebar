@@ -1382,6 +1382,7 @@ private struct FilesPanelView: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: categoryIconName(category))
                                         .foregroundStyle(.secondary)
+                                        .frame(width: 20, alignment: .center)
                                     Text(categoryLabels[category] ?? "Files")
                                 }
                                 .font(.subheadline)
