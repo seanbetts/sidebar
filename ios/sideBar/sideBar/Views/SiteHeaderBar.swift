@@ -12,17 +12,20 @@ public struct SiteHeaderBar: View {
     private let onToggleSidebar: (() -> Void)?
     private let onShowSettings: (() -> Void)?
     private let isLeftPanelExpanded: Bool
+    private let shouldAnimateSidebar: Bool
 
     public init(
         onSwapContent: (() -> Void)? = nil,
         onToggleSidebar: (() -> Void)? = nil,
         onShowSettings: (() -> Void)? = nil,
-        isLeftPanelExpanded: Bool = true
+        isLeftPanelExpanded: Bool = true,
+        shouldAnimateSidebar: Bool = true
     ) {
         self.onSwapContent = onSwapContent
         self.onToggleSidebar = onToggleSidebar
         self.onShowSettings = onShowSettings
         self.isLeftPanelExpanded = isLeftPanelExpanded
+        self.shouldAnimateSidebar = shouldAnimateSidebar
     }
 
     public var body: some View {
@@ -118,7 +121,7 @@ public struct SiteHeaderBar: View {
                 #endif
             }
         }
-        .animation(.smooth(duration: 0.3), value: isLeftPanelExpanded)
+        .animation(shouldAnimateSidebar ? .smooth(duration: 0.3) : nil, value: isLeftPanelExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
             if isCompact {
