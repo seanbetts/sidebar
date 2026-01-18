@@ -113,7 +113,7 @@ private struct WebsitesDetailView: View {
                 SideBarMarkdownContainer(text: website.content)
             }
         } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
-            LoadingView(message: "Reading website…")
+            LoadingView(message: "Reading...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
             PlaceholderView(
