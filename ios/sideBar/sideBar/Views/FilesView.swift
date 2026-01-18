@@ -58,11 +58,21 @@ public struct FilesView: View {
         guard horizontalSizeClass == .compact else {
             return "Files"
         }
-        guard let name = environment.ingestionViewModel.activeMeta?.file.filenameOriginal else {
+        guard let name = selectedFilenameOriginal else {
             return "Files"
         }
         return stripFileExtension(name)
         #endif
+    }
+
+    private var selectedFilenameOriginal: String? {
+        if let name = environment.ingestionViewModel.activeMeta?.file.filenameOriginal {
+            return name
+        }
+        guard let selectedId = environment.ingestionViewModel.selectedFileId else {
+            return nil
+        }
+        return environment.ingestionViewModel.items.first { $0.file.id == selectedId }?.file.filenameOriginal
     }
 }
 
@@ -85,20 +95,20 @@ private struct FilesHeaderView: View {
     }
 
     private var activeTitle: String {
-        if let name = viewModel.activeMeta?.file.filenameOriginal {
+        if let name = selectedFilenameOriginal {
             return stripFileExtension(name)
         }
         return "Files"
     }
 
     private var iconName: String {
-        if viewModel.activeMeta?.file.category == "reports" {
+        if selectedCategory == "reports" {
             return "chart.line.text.clipboard"
         }
-        if viewModel.activeMeta?.file.category == "presentations" {
+        if selectedCategory == "presentations" {
             return "rectangle.on.rectangle.angled"
         }
-        guard let viewer = viewModel.activeMeta?.recommendedViewer else {
+        guard let viewer = selectedRecommendedViewer else {
             return "folder"
         }
         switch viewer {
@@ -120,6 +130,36 @@ private struct FilesHeaderView: View {
             return "doc"
         }
     }
+
+    private var selectedFilenameOriginal: String? {
+        if let name = viewModel.activeMeta?.file.filenameOriginal {
+            return name
+        }
+        guard let selectedId = viewModel.selectedFileId else {
+            return nil
+        }
+        return viewModel.items.first { $0.file.id == selectedId }?.file.filenameOriginal
+    }
+
+    private var selectedCategory: String? {
+        if let category = viewModel.activeMeta?.file.category {
+            return category
+        }
+        guard let selectedId = viewModel.selectedFileId else {
+            return nil
+        }
+        return viewModel.items.first { $0.file.id == selectedId }?.file.category
+    }
+
+    private var selectedRecommendedViewer: String? {
+        if let viewer = viewModel.activeMeta?.recommendedViewer {
+            return viewer
+        }
+        guard let selectedId = viewModel.selectedFileId else {
+            return nil
+        }
+        return viewModel.items.first { $0.file.id == selectedId }?.recommendedViewer
+    }
 }
 
 private struct FilesDetailContainer: View {
@@ -137,7 +177,7 @@ private struct FilesDetailContainer: View {
                 guard let selectedId = viewModel.selectedFileId else { return }
                 Task { await viewModel.selectFile(fileId: selectedId) }
             }
-        } else if viewModel.isLoadingContent {
+        } else if viewModel.isSelecting || viewModel.selectedFileId != nil {
             LoadingView(message: "Loading file…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.isLoading && viewModel.items.isEmpty {
