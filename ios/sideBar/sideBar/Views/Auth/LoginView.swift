@@ -151,6 +151,11 @@ public struct LoginView: View {
                 .focused($focusedField, equals: .email)
                 .submitLabel(.next)
             if !email.isEmpty {
+                Image(systemName: isValidEmail ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(isValidEmail ? .green : .orange)
+                    .font(.callout)
+            }
+            if !email.isEmpty {
                 Button {
                     email = ""
                 } label: {
@@ -159,11 +164,6 @@ public struct LoginView: View {
                 }
                 .buttonStyle(.plain)
                 .transition(.scale.combined(with: .opacity))
-            }
-            if !email.isEmpty {
-                Image(systemName: isValidEmail ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(isValidEmail ? .green : .orange)
-                    .font(.callout)
             }
         }
         .padding(.vertical, 10)
@@ -244,7 +244,8 @@ public struct LoginView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .tint(.accentColor)
+        .tint(.white)
+        .foregroundStyle(.black)
         .disabled(isSigningIn || email.isEmpty || password.isEmpty)
         .accessibilitySortPriority(1)
     }
