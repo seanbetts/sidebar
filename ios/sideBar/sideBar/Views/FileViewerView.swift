@@ -244,14 +244,14 @@ public final class PDFViewerController: ObservableObject {
         guard let pdfView else { return }
         guard pdfView.maxScaleFactor > 0 else { return }
         zoomMultiplier = min(zoomMultiplier * 1.2, 6)
-        applyScaleForCurrentPage()
+        _ = applyScaleForCurrentPage()
     }
 
     func zoomOut() {
         guard let pdfView else { return }
         guard pdfView.maxScaleFactor > 0 else { return }
         zoomMultiplier = max(zoomMultiplier / 1.2, 0.2)
-        applyScaleForCurrentPage()
+        _ = applyScaleForCurrentPage()
     }
 
     func setFitMode(_ mode: FitMode) {

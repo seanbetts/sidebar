@@ -591,16 +591,16 @@ private struct PdfHeaderControls: View {
                 .foregroundStyle(.secondary)
                 .frame(minWidth: isCompact ? 44 : 56)
             PdfControlButton(
-                systemName: "arrow.up.and.down",
+                systemName: "distribute.vertical",
                 accessibilityLabel: "Fit to height",
-                isActive: controller.fitMode == .height
+                isActive: false
             ) {
                 controller.setFitMode(.height)
             }
             PdfControlButton(
-                systemName: "arrow.left.and.right",
+                systemName: "distribute.horizontal",
                 accessibilityLabel: "Fit to width",
-                isActive: controller.fitMode == .width
+                isActive: false
             ) {
                 controller.setFitMode(.width)
             }
