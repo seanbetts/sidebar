@@ -96,7 +96,7 @@ public struct FileViewerView: View {
     private var pdfView: some View {
         if let url = state.fileURL {
             if let pdfController {
-                PDFViewer(url: url, controller: pdfController)
+                PDFViewerContainer(url: url, controller: pdfController)
             } else {
                 PDFKitView(url: url)
             }
@@ -208,6 +208,7 @@ public final class PDFViewerController: ObservableObject {
     fileprivate weak var pdfView: PDFView?
     private var observers: [NSObjectProtocol] = []
     private var fitRetryWorkItem: DispatchWorkItem?
+    private var containerSize: CGSize = .zero
 
     deinit {
         cleanupObservers()
@@ -230,6 +231,7 @@ public final class PDFViewerController: ObservableObject {
         scale = 1
         fitMode = .height
         zoomMultiplier = 1
+        containerSize = .zero
     }
 
     func goToPreviousPage() {
@@ -267,6 +269,12 @@ public final class PDFViewerController: ObservableObject {
         }
         fitRetryWorkItem = workItem
         DispatchQueue.main.async(execute: workItem)
+    }
+
+    func updateContainerSize(_ size: CGSize) {
+        guard size.width > 0, size.height > 0 else { return }
+        containerSize = size
+        scheduleFitAndRefresh()
     }
 
     private func reapplyZoomForCurrentPage() {
@@ -379,12 +387,12 @@ public final class PDFViewerController: ObservableObject {
         guard let pdfView,
               let page = pdfView.currentPage else { return nil }
         let pageBounds = page.bounds(for: .cropBox)
-        let containerSize = pdfView.bounds.size
-        guard pageBounds.width > 0, pageBounds.height > 0, containerSize.width > 0, containerSize.height > 0 else {
+        let size = containerSize.width > 0 ? containerSize : pdfView.bounds.size
+        guard pageBounds.width > 0, pageBounds.height > 0, size.width > 0, size.height > 0 else {
             return nil
         }
-        let widthScale = containerSize.width / pageBounds.width
-        let heightScale = containerSize.height / pageBounds.height
+        let widthScale = size.width / pageBounds.width
+        let heightScale = size.height / pageBounds.height
         let baseScale: CGFloat
         switch fitMode {
         case .auto:
@@ -400,6 +408,23 @@ public final class PDFViewerController: ObservableObject {
 }
 
 #if os(macOS)
+private struct PDFViewerContainer: View {
+    let url: URL
+    let controller: PDFViewerController
+
+    var body: some View {
+        GeometryReader { proxy in
+            PDFViewer(url: url, controller: controller)
+                .onChange(of: proxy.size) { _, _ in
+                    controller.updateContainerSize(proxy.size)
+                }
+                .onAppear {
+                    controller.updateContainerSize(proxy.size)
+                }
+        }
+    }
+}
+
 private struct PDFViewer: NSViewRepresentable {
     let url: URL
     let controller: PDFViewerController
@@ -505,6 +530,23 @@ private struct QuickLookPreview: NSViewRepresentable {
     }
 }
 #else
+private struct PDFViewerContainer: View {
+    let url: URL
+    let controller: PDFViewerController
+
+    var body: some View {
+        GeometryReader { proxy in
+            PDFViewer(url: url, controller: controller)
+                .onChange(of: proxy.size) { _, _ in
+                    controller.updateContainerSize(proxy.size)
+                }
+                .onAppear {
+                    controller.updateContainerSize(proxy.size)
+                }
+        }
+    }
+}
+
 private struct PDFViewer: UIViewRepresentable {
     let url: URL
     let controller: PDFViewerController
