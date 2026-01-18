@@ -203,12 +203,15 @@ public final class PDFViewerController: ObservableObject {
     @Published private(set) var canNext: Bool = false
     @Published private(set) var scale: CGFloat = 1
     @Published private(set) var fitMode: FitMode = .height
+    @Published private(set) var zoomMultiplier: CGFloat = 1
 
     fileprivate weak var pdfView: PDFView?
     private var observers: [NSObjectProtocol] = []
+    private var fitRetryWorkItem: DispatchWorkItem?
 
     deinit {
         cleanupObservers()
+        fitRetryWorkItem?.cancel()
     }
 
     func attach(pdfView: PDFView) {
@@ -226,43 +229,53 @@ public final class PDFViewerController: ObservableObject {
         canNext = false
         scale = 1
         fitMode = .height
+        zoomMultiplier = 1
     }
 
     func goToPreviousPage() {
         pdfView?.goToPreviousPage(nil)
-        refreshState()
     }
 
     func goToNextPage() {
         pdfView?.goToNextPage(nil)
-        refreshState()
     }
 
     func zoomIn() {
         guard let pdfView else { return }
-        let next = min(pdfView.maxScaleFactor, pdfView.scaleFactor * 1.2)
-        pdfView.scaleFactor = next
-        scale = next
+        guard pdfView.maxScaleFactor > 0 else { return }
+        zoomMultiplier = min(zoomMultiplier * 1.2, 6)
+        applyScaleForCurrentPage()
     }
 
     func zoomOut() {
         guard let pdfView else { return }
-        let next = max(pdfView.minScaleFactor, pdfView.scaleFactor / 1.2)
-        pdfView.scaleFactor = next
-        scale = next
+        guard pdfView.maxScaleFactor > 0 else { return }
+        zoomMultiplier = max(zoomMultiplier / 1.2, 0.2)
+        applyScaleForCurrentPage()
     }
 
     func setFitMode(_ mode: FitMode) {
         fitMode = mode
-        applyFitMode()
+        zoomMultiplier = 1
+        scheduleFitAndRefresh()
     }
 
     func scheduleFitAndRefresh() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.applyFitMode()
-            self.refreshState()
+        fitRetryWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.applyFitWithRetry(attempt: 0)
         }
+        fitRetryWorkItem = workItem
+        DispatchQueue.main.async(execute: workItem)
+    }
+
+    private func reapplyZoomForCurrentPage() {
+        fitRetryWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.applyZoomWithRetry(attempt: 0)
+        }
+        fitRetryWorkItem = workItem
+        DispatchQueue.main.async(execute: workItem)
     }
 
     private func configure(pdfView: PDFView) {
@@ -270,22 +283,25 @@ public final class PDFViewerController: ObservableObject {
         pdfView.displayMode = .singlePageContinuous
         pdfView.displayDirection = .vertical
         pdfView.usePageViewController(true, withViewOptions: nil)
-        pdfView.minScaleFactor = pdfView.scaleFactorForSizeToFit * 0.5
-        pdfView.maxScaleFactor = pdfView.scaleFactorForSizeToFit * 4.0
-        applyFitMode()
+        let baseScale = pdfView.scaleFactorForSizeToFit
+        if baseScale > 0 {
+            pdfView.minScaleFactor = max(baseScale * 0.5, 0.1)
+            pdfView.maxScaleFactor = max(baseScale * 4.0, pdfView.minScaleFactor)
+        }
+        scheduleFitAndRefresh()
     }
 
     private func observe(pdfView: PDFView) {
         cleanupObservers()
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: .PDFViewPageChanged, object: pdfView, queue: .main) { [weak self] _ in
-            self?.refreshState()
+            self?.reapplyZoomForCurrentPage()
         })
         observers.append(center.addObserver(forName: .PDFViewScaleChanged, object: pdfView, queue: .main) { [weak self] _ in
             self?.refreshState()
         })
         observers.append(center.addObserver(forName: .PDFViewDocumentChanged, object: pdfView, queue: .main) { [weak self] _ in
-            self?.refreshState()
+            self?.scheduleFitAndRefresh()
         })
     }
 
@@ -310,27 +326,76 @@ public final class PDFViewerController: ObservableObject {
         scale = pdfView.scaleFactor
     }
 
-    private func applyFitMode() {
+    private func applyFitWithRetry(attempt: Int) {
+        guard applyScaleForCurrentPage() else {
+            if attempt < 5 {
+                let delay = 0.1 * Double(attempt + 1)
+                let workItem = DispatchWorkItem { [weak self] in
+                    self?.applyFitWithRetry(attempt: attempt + 1)
+                }
+                fitRetryWorkItem = workItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+            }
+            return
+        }
+        refreshState()
+    }
+
+    private func applyZoomWithRetry(attempt: Int) {
+        guard applyScaleForCurrentPage() else {
+            if attempt < 5 {
+                let delay = 0.1 * Double(attempt + 1)
+                let workItem = DispatchWorkItem { [weak self] in
+                    self?.applyZoomWithRetry(attempt: attempt + 1)
+                }
+                fitRetryWorkItem = workItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+            }
+            return
+        }
+        refreshState()
+    }
+
+    private func applyScaleForCurrentPage() -> Bool {
         guard let pdfView,
-              let page = pdfView.currentPage else { return }
+              let page = pdfView.currentPage else { return false }
         let pageBounds = page.bounds(for: .cropBox)
         let containerSize = pdfView.bounds.size
         guard pageBounds.width > 0, pageBounds.height > 0, containerSize.width > 0, containerSize.height > 0 else {
-            return
+            return false
+        }
+        guard let baseScale = baseScaleForCurrentPage() else { return false }
+        let targetScale = baseScale * zoomMultiplier
+        let minScale = max(pdfView.minScaleFactor, 0.1)
+        let maxScale = max(pdfView.maxScaleFactor, minScale)
+        let clamped = min(max(targetScale, minScale), maxScale)
+        guard clamped.isFinite, clamped > 0 else { return false }
+        pdfView.scaleFactor = clamped
+        scale = clamped
+        return true
+    }
+
+    private func baseScaleForCurrentPage() -> CGFloat? {
+        guard let pdfView,
+              let page = pdfView.currentPage else { return nil }
+        let pageBounds = page.bounds(for: .cropBox)
+        let containerSize = pdfView.bounds.size
+        guard pageBounds.width > 0, pageBounds.height > 0, containerSize.width > 0, containerSize.height > 0 else {
+            return nil
         }
         let widthScale = containerSize.width / pageBounds.width
         let heightScale = containerSize.height / pageBounds.height
-        let targetScale: CGFloat
+        let baseScale: CGFloat
         switch fitMode {
         case .auto:
-            targetScale = min(widthScale, heightScale)
+            baseScale = min(widthScale, heightScale)
         case .width:
-            targetScale = widthScale
+            baseScale = widthScale
         case .height:
-            targetScale = min(heightScale, widthScale)
+            baseScale = min(heightScale, widthScale)
         }
-        pdfView.scaleFactor = targetScale
-        scale = targetScale
+        guard baseScale.isFinite, baseScale > 0 else { return nil }
+        return baseScale
     }
 }
 
