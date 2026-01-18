@@ -88,7 +88,9 @@ private struct WebsitesDetailView: View {
             title: displayTitle,
             subtitle: subtitleText,
             titleLineLimit: 1,
-            subtitleLineLimit: 1
+            subtitleLineLimit: 1,
+            titleLayoutPriority: 0,
+            subtitleLayoutPriority: 1
         ) {
             Button {
             } label: {
@@ -110,8 +112,8 @@ private struct WebsitesDetailView: View {
             ScrollView {
                 SideBarMarkdownContainer(text: website.content)
             }
-        } else if viewModel.isLoadingDetail {
-            LoadingView(message: "Loading website…")
+        } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
+            LoadingView(message: "Reading website…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
             PlaceholderView(

@@ -120,6 +120,8 @@ public final class WebsitesViewModel: ObservableObject {
             )
             store.invalidateList()
             selectedWebsiteId = data.id
+            isLoadingDetail = true
+            defer { isLoadingDetail = false }
             try await store.loadDetail(id: data.id, force: true)
             Task { [weak self] in
                 try? await self?.store.loadList(force: true)

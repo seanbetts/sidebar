@@ -6,6 +6,8 @@ struct ContentHeaderRow<Trailing: View>: View {
     let subtitle: String?
     let titleLineLimit: Int
     let subtitleLineLimit: Int
+    let titleLayoutPriority: Double
+    let subtitleLayoutPriority: Double
     let alignment: VerticalAlignment
     let titleSubtitleAlignment: VerticalAlignment
     let trailing: Trailing
@@ -16,6 +18,8 @@ struct ContentHeaderRow<Trailing: View>: View {
         subtitle: String? = nil,
         titleLineLimit: Int = 2,
         subtitleLineLimit: Int = 2,
+        titleLayoutPriority: Double = 1,
+        subtitleLayoutPriority: Double = 0,
         alignment: VerticalAlignment = .center,
         titleSubtitleAlignment: VerticalAlignment = .center,
         @ViewBuilder trailing: () -> Trailing = { EmptyView() }
@@ -25,6 +29,8 @@ struct ContentHeaderRow<Trailing: View>: View {
         self.subtitle = subtitle
         self.titleLineLimit = titleLineLimit
         self.subtitleLineLimit = subtitleLineLimit
+        self.titleLayoutPriority = titleLayoutPriority
+        self.subtitleLayoutPriority = subtitleLayoutPriority
         self.alignment = alignment
         self.titleSubtitleAlignment = titleSubtitleAlignment
         self.trailing = trailing()
@@ -40,7 +46,7 @@ struct ContentHeaderRow<Trailing: View>: View {
                     .font(.headline)
                     .lineLimit(titleLineLimit)
                     .multilineTextAlignment(.leading)
-                    .layoutPriority(1)
+                    .layoutPriority(titleLayoutPriority)
                     .truncationMode(.tail)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
@@ -48,6 +54,7 @@ struct ContentHeaderRow<Trailing: View>: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(subtitleLineLimit)
                         .multilineTextAlignment(.leading)
+                        .layoutPriority(subtitleLayoutPriority)
                 }
             }
             Spacer()
