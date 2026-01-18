@@ -299,58 +299,45 @@ private struct NotesDetailView: View {
     }
 
     private var noteActionsMenu: some View {
+        #if os(macOS)
         Menu {
             Button {
-                MenuActionScheduler.perform {
-                    guard let noteId = viewModel.activeNote?.path else { return }
-                    Task {
-                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
-                    }
+                guard let noteId = viewModel.activeNote?.path else { return }
+                Task {
+                    await viewModel.setPinned(id: noteId, pinned: !isPinned)
                 }
             } label: {
                 Label(pinActionTitle, systemImage: pinIconName)
             }
             Button {
-                MenuActionScheduler.perform {
-                    renameValue = displayTitle
-                    isRenameDialogPresented = true
-                }
+                renameValue = displayTitle
+                isRenameDialogPresented = true
             } label: {
                 Label("Rename", systemImage: "pencil")
             }
             Button {
-                MenuActionScheduler.perform {
-                    moveSelection = currentFolderPath
-                    isMoveSheetPresented = true
-                }
+                moveSelection = currentFolderPath
+                isMoveSheetPresented = true
             } label: {
                 Label("Move", systemImage: "arrow.forward.folder")
             }
             Button {
-                MenuActionScheduler.perform {
-                    copyMarkdown()
-                }
+                copyMarkdown()
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
             Button {
-                MenuActionScheduler.perform {
-                    exportMarkdown()
-                }
+                exportMarkdown()
             } label: {
                 Label("Download", systemImage: "square.and.arrow.down")
             }
             Button {
-                MenuActionScheduler.perform {
-                    isArchiveAlertPresented = true
-                }
+                isArchiveAlertPresented = true
             } label: {
                 Label(archiveMenuTitle, systemImage: archiveIconName)
             }
             Button(role: .destructive) {
-                MenuActionScheduler.perform {
-                    isDeleteAlertPresented = true
-                }
+                isDeleteAlertPresented = true
             } label: {
                 Label("Delete", systemImage: "trash")
             }
@@ -360,6 +347,43 @@ private struct NotesDetailView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Note options")
         .disabled(viewModel.activeNote == nil)
+        #else
+        UIKitMenuButton(
+            systemImage: "ellipsis.circle",
+            accessibilityLabel: "Note options",
+            items: [
+                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let noteId = viewModel.activeNote?.path else { return }
+                    Task {
+                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
+                    }
+                },
+                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = displayTitle
+                    isRenameDialogPresented = true
+                },
+                MenuActionItem(title: "Move", systemImage: "arrow.forward.folder", role: nil) {
+                    moveSelection = currentFolderPath
+                    isMoveSheetPresented = true
+                },
+                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyMarkdown()
+                },
+                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportMarkdown()
+                },
+                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    isArchiveAlertPresented = true
+                },
+                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ]
+        )
+        .frame(width: 28, height: 20)
+        .accessibilityLabel("Note options")
+        .disabled(viewModel.activeNote == nil)
+        #endif
     }
 
     private var closeButton: some View {

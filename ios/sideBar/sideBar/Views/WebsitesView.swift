@@ -207,50 +207,39 @@ private struct WebsitesDetailView: View {
     }
 
     private var websiteActionsMenu: some View {
+        #if os(macOS)
         Menu {
             Button {
-                MenuActionScheduler.perform {
-                    guard let websiteId = viewModel.active?.id else { return }
-                    Task {
-                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
-                    }
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
                 }
             } label: {
                 Label(pinActionTitle, systemImage: pinIconName)
             }
             Button {
-                MenuActionScheduler.perform {
-                    renameValue = viewModel.active?.title ?? ""
-                    isRenameDialogPresented = true
-                }
+                renameValue = viewModel.active?.title ?? ""
+                isRenameDialogPresented = true
             } label: {
                 Label("Rename", systemImage: "pencil")
             }
             Button {
-                MenuActionScheduler.perform {
-                    copyWebsiteContent()
-                }
+                copyWebsiteContent()
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
             Button {
-                MenuActionScheduler.perform {
-                    exportWebsite()
-                }
+                exportWebsite()
             } label: {
                 Label("Download", systemImage: "square.and.arrow.down")
             }
             Button {
-                MenuActionScheduler.perform {
-                    isArchiveAlertPresented = true
-                }
+                isArchiveAlertPresented = true
             } label: {
                 Label(archiveMenuTitle, systemImage: archiveIconName)
             }
             Button(role: .destructive) {
-                MenuActionScheduler.perform {
-                    isDeleteAlertPresented = true
-                }
+                isDeleteAlertPresented = true
             } label: {
                 Label("Delete", systemImage: "trash")
             }
@@ -260,6 +249,39 @@ private struct WebsitesDetailView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Website options")
         .disabled(viewModel.active == nil)
+        #else
+        UIKitMenuButton(
+            systemImage: "ellipsis.circle",
+            accessibilityLabel: "Website options",
+            items: [
+                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let websiteId = viewModel.active?.id else { return }
+                    Task {
+                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                    }
+                },
+                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = viewModel.active?.title ?? ""
+                    isRenameDialogPresented = true
+                },
+                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyWebsiteContent()
+                },
+                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportWebsite()
+                },
+                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    isArchiveAlertPresented = true
+                },
+                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ]
+        )
+        .frame(width: 28, height: 20)
+        .accessibilityLabel("Website options")
+        .disabled(viewModel.active == nil)
+        #endif
     }
 
     private var closeButton: some View {
