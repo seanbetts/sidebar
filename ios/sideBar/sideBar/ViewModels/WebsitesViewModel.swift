@@ -74,13 +74,18 @@ public final class WebsitesViewModel: ObservableObject {
     public func saveWebsite(url: String) async -> Bool {
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
+            saveErrorMessage = "Enter a valid URL."
+            return false
+        }
+        guard let normalized = WebsiteURLValidator.normalizedCandidate(trimmed) else {
+            saveErrorMessage = "Enter a valid URL."
             return false
         }
         saveErrorMessage = nil
         isSavingWebsite = true
         defer { isSavingWebsite = false }
         do {
-            let response = try await api.save(url: trimmed)
+            let response = try await api.save(url: normalized.absoluteString)
             guard response.success, let data = response.data else {
                 saveErrorMessage = "Failed to save website"
                 return false
@@ -93,7 +98,7 @@ public final class WebsitesViewModel: ObservableObject {
             }
             return true
         } catch {
-            saveErrorMessage = error.localizedDescription
+            saveErrorMessage = ErrorMapping.message(for: error)
             return false
         }
     }

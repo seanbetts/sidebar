@@ -1689,12 +1689,25 @@ private struct WebsitesPanelView: View {
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
         }
-        .sheet(isPresented: $isNewWebsitePresented) {
-            NewWebsiteSheet(
-                url: $newWebsiteUrl,
-                isSaving: viewModel.isSavingWebsite,
-                onSave: saveWebsite
-            )
+        .alert("Save a website", isPresented: $isNewWebsitePresented) {
+            TextField("https://example.com", text: $newWebsiteUrl)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit {
+                    saveWebsite()
+                }
+            Button(viewModel.isSavingWebsite ? "Saving..." : "Save") {
+                saveWebsite()
+            }
+            .disabled(viewModel.isSavingWebsite || !WebsiteURLValidator.isValid(newWebsiteUrl))
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                newWebsiteUrl = ""
+            }
+        } message: {
+            Text("Paste a URL to save it to your archive.")
         }
         .alert("Unable to save website", isPresented: isSaveErrorPresented) {
             Button("OK", role: .cancel) {
@@ -2046,13 +2059,13 @@ private struct WebsitesPanelView: View {
     }
 
     private func saveWebsite() {
-        let url = newWebsiteUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard WebsiteURLValidator.isValid(url) else {
+        let raw = newWebsiteUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let normalized = WebsiteURLValidator.normalizedCandidate(raw) else {
             saveErrorMessage = "Enter a valid URL."
             return
         }
         Task {
-            let saved = await viewModel.saveWebsite(url: url)
+            let saved = await viewModel.saveWebsite(url: normalized.absoluteString)
             if saved {
                 environment.notesViewModel.clearSelection()
                 environment.ingestionViewModel.clearSelection()
@@ -2062,55 +2075,6 @@ private struct WebsitesPanelView: View {
                 saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
             }
         }
-    }
-}
-
-private struct NewWebsiteSheet: View {
-    @Binding var url: String
-    let isSaving: Bool
-    let onSave: () -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                Text("Paste a URL to save it to your archive.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                TextField("https://example.com", text: $url)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                    .submitLabel(.done)
-                if !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isValidUrl {
-                    Text("Enter a valid URL.")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.top, DesignTokens.Spacing.md)
-            .navigationTitle("Save a website")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .disabled(isSaving)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "Saving..." : "Save") {
-                        onSave()
-                    }
-                    .disabled(isSaving || !isValidUrl)
-                }
-            }
-        }
-    }
-
-    private var isValidUrl: Bool {
-        WebsiteURLValidator.isValid(url)
     }
 }
 
