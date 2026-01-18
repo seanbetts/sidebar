@@ -1663,6 +1663,7 @@ private struct WebsitesPanelView: View {
     @State private var isNewWebsitePresented = false
     @State private var newWebsiteUrl: String = ""
     @State private var saveErrorMessage: String? = nil
+    @State private var archiveHeight: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1905,9 +1906,18 @@ private struct WebsitesPanelView: View {
                 await viewModel.load()
             }
         } else {
-            VStack(spacing: 0) {
-                websitesListView
-                websitesArchiveSection
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    websitesListView
+                        .frame(height: max(0, proxy.size.height - archiveHeight))
+                    websitesArchiveSection
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .onPreferenceChange(ArchiveHeightKey.self) { newValue in
+                    if abs(newValue - archiveHeight) > 0.5 {
+                        archiveHeight = newValue
+                    }
+                }
             }
         }
     }
@@ -2051,6 +2061,11 @@ private struct WebsitesPanelView: View {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(panelBackground)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ArchiveHeightKey.self, value: proxy.size.height)
+            }
+        )
     }
 
     private var isCompact: Bool {
@@ -2229,6 +2244,14 @@ private struct WebsiteRow: View, Equatable {
             bottom: 0,
             trailing: horizontalPadding
         )
+    }
+}
+
+private struct ArchiveHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

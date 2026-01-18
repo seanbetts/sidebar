@@ -334,7 +334,8 @@ public struct ContentView: View {
             header: {
                 SiteHeaderBar(
                     onSwapContent: swapPrimaryAndSecondary,
-                    onShowSettings: { isSettingsPresented = true }
+                    onShowSettings: { isSettingsPresented = true },
+                    isLeftPanelExpanded: isLeftPanelExpanded
                 )
             }
         ) {
