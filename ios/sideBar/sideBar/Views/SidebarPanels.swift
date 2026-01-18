@@ -1411,66 +1411,85 @@ private struct FilesPanelView: View {
 
     private var filesListView: some View {
         List {
-            if !pinnedItems.isEmpty {
-                Section("Pinned") {
-                    ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
-                        let row = FilesIngestionRow(
-                            item: item,
-                            isSelected: viewModel.selectedFileId == item.file.id,
-                            onPinToggle: pinAction(for: item),
-                            onDelete: deleteAction(for: item)
-                        )
-                        if isFolder(item) {
-                            row
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                        } else {
-                            row
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+            if !searchQuery.trimmed.isEmpty {
+                ForEach(Array(searchResults.enumerated()), id: \.element.file.id) { index, item in
+                    let row = FilesIngestionRow(
+                        item: item,
+                        isSelected: viewModel.selectedFileId == item.file.id,
+                        onPinToggle: pinAction(for: item),
+                        onDelete: deleteAction(for: item)
+                    )
+                    if isFolder(item) {
+                        row
+                            .staggeredAppear(index: index, isActive: listAppeared)
+                    } else {
+                        row
+                            .staggeredAppear(index: index, isActive: listAppeared)
+                            .onTapGesture { open(item: item) }
+                    }
+                }
+            } else {
+                if !pinnedItems.isEmpty {
+                    Section("Pinned") {
+                        ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
+                            let row = FilesIngestionRow(
+                                item: item,
+                                isSelected: viewModel.selectedFileId == item.file.id,
+                                onPinToggle: pinAction(for: item),
+                                onDelete: deleteAction(for: item)
+                            )
+                            if isFolder(item) {
+                                row
+                                    .staggeredAppear(index: index, isActive: listAppeared)
+                            } else {
+                                row
+                                    .staggeredAppear(index: index, isActive: listAppeared)
+                                    .onTapGesture { open(item: item) }
+                            }
                         }
                     }
                 }
-            }
 
-            if !categorizedItems.isEmpty {
-                Section("Files") {
-                    ForEach(Array(categoryOrder.enumerated()), id: \.element) { categoryIndex, category in
-                        if let items = categorizedItems[category], !items.isEmpty {
-                            DisclosureGroup(
-                                isExpanded: bindingForCategory(category)
-                            ) {
-                                ForEach(Array(items.enumerated()), id: \.element.file.id) { itemIndex, item in
-                                    let row = FilesIngestionRow(
-                                        item: item,
-                                        isSelected: viewModel.selectedFileId == item.file.id,
-                                        onPinToggle: pinAction(for: item),
-                                        onDelete: deleteAction(for: item)
-                                    )
-                                    if isFolder(item) {
-                                        row
-                                            .staggeredAppear(
-                                                index: categoryIndex + itemIndex,
-                                                isActive: listAppeared
-                                            )
-                                    } else {
-                                        row
-                                            .staggeredAppear(
-                                                index: categoryIndex + itemIndex,
-                                                isActive: listAppeared
-                                            )
-                                            .onTapGesture { open(item: item) }
+                if !categorizedItems.isEmpty {
+                    Section("Files") {
+                        ForEach(Array(categoryOrder.enumerated()), id: \.element) { categoryIndex, category in
+                            if let items = categorizedItems[category], !items.isEmpty {
+                                DisclosureGroup(
+                                    isExpanded: bindingForCategory(category)
+                                ) {
+                                    ForEach(Array(items.enumerated()), id: \.element.file.id) { itemIndex, item in
+                                        let row = FilesIngestionRow(
+                                            item: item,
+                                            isSelected: viewModel.selectedFileId == item.file.id,
+                                            onPinToggle: pinAction(for: item),
+                                            onDelete: deleteAction(for: item)
+                                        )
+                                        if isFolder(item) {
+                                            row
+                                                .staggeredAppear(
+                                                    index: categoryIndex + itemIndex,
+                                                    isActive: listAppeared
+                                                )
+                                        } else {
+                                            row
+                                                .staggeredAppear(
+                                                    index: categoryIndex + itemIndex,
+                                                    isActive: listAppeared
+                                                )
+                                                .onTapGesture { open(item: item) }
+                                        }
                                     }
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: categoryIconName(category))
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 20, alignment: .center)
+                                        Text(categoryLabels[category] ?? "Files")
+                                    }
+                                    .font(.subheadline)
                                 }
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: categoryIconName(category))
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 20, alignment: .center)
-                                    Text(categoryLabels[category] ?? "Files")
-                                }
-                                .font(.subheadline)
+                                .listRowBackground(rowBackground)
                             }
-                            .listRowBackground(rowBackground)
                         }
                     }
                 }
@@ -1604,6 +1623,14 @@ private struct FilesPanelView: View {
         guard !needle.isEmpty else { return viewModel.items }
         return viewModel.items.filter { item in
             item.file.filenameOriginal.lowercased().contains(needle)
+        }
+    }
+
+    private var searchResults: [IngestionListItem] {
+        filteredItems.sorted { lhs, rhs in
+            let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
+            let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
+            return leftDate > rightDate
         }
     }
 
