@@ -92,6 +92,9 @@ private struct FilesHeaderView: View {
     }
 
     private var iconName: String {
+        if viewModel.activeMeta?.file.category == "reports" {
+            return "chart.line.text.clipboard"
+        }
         if viewModel.activeMeta?.file.category == "presentations" {
             return "rectangle.on.rectangle.angled"
         }
