@@ -6,6 +6,7 @@ public protocol IngestionProviding {
     func getContent(fileId: String, kind: String, range: String?) async throws -> Data
     func pin(fileId: String, pinned: Bool) async throws
     func delete(fileId: String) async throws
+    func rename(fileId: String, filename: String) async throws
 }
 
 public struct IngestionAPI {

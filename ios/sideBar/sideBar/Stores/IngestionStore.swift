@@ -125,6 +125,30 @@ public final class IngestionStore: ObservableObject {
         persistListCache()
     }
 
+    public func updateFilename(fileId: String, filename: String) {
+        if let index = items.firstIndex(where: { $0.file.id == fileId }) {
+            let existing = items[index]
+            let updatedFile = updatingFilename(existing.file, filename: filename)
+            items[index] = IngestionListItem(file: updatedFile, job: existing.job, recommendedViewer: existing.recommendedViewer)
+        }
+        if let meta = activeMeta, meta.file.id == fileId {
+            let updatedFile = updatingFilename(meta.file, filename: filename)
+            let updatedMeta = IngestionMetaResponse(
+                file: updatedFile,
+                job: meta.job,
+                derivatives: meta.derivatives,
+                recommendedViewer: meta.recommendedViewer
+            )
+            activeMeta = updatedMeta
+            cache.set(
+                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
+                value: updatedMeta,
+                ttlSeconds: CachePolicy.ingestionMeta
+            )
+        }
+        persistListCache()
+    }
+
     private func refreshList() async {
         guard !isRefreshingList else {
             return
@@ -205,6 +229,23 @@ public final class IngestionStore: ObservableObject {
             sizeBytes: file.sizeBytes,
             sha256: file.sha256,
             pinned: pinned,
+            pinnedOrder: file.pinnedOrder,
+            category: file.category,
+            sourceUrl: file.sourceUrl,
+            sourceMetadata: file.sourceMetadata,
+            createdAt: file.createdAt
+        )
+    }
+
+    private func updatingFilename(_ file: IngestedFileMeta, filename: String) -> IngestedFileMeta {
+        IngestedFileMeta(
+            id: file.id,
+            filenameOriginal: filename,
+            path: file.path,
+            mimeOriginal: file.mimeOriginal,
+            sizeBytes: file.sizeBytes,
+            sha256: file.sha256,
+            pinned: file.pinned,
             pinnedOrder: file.pinnedOrder,
             category: file.category,
             sourceUrl: file.sourceUrl,
