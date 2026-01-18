@@ -10,7 +10,6 @@ const NOTE_ARCHIVE_NAME = 'Archive';
 
 type FileActionsContext = {
 	getNode: () => FileNode;
-	getBasePath: () => string;
 	getHideExtensions: () => boolean;
 	getEditedName: () => string;
 	setEditedName: (value: string) => void;
@@ -32,18 +31,16 @@ const toFolderPath = (path: string) => path.replace(/^folder:/, '');
  */
 export function useFileActions(ctx: FileActionsContext) {
 	const buildFolderOptions = (excludePath?: string) => {
-		const basePath = ctx.getBasePath();
-		const tree = get(ctx.treeStore).trees[basePath];
+		const tree = get(ctx.treeStore).trees.notes;
 		const rootChildren = tree?.children || [];
-		const rootLabel = basePath === 'notes' ? 'Notes' : 'Workspace';
 		const options: { label: string; value: string; depth: number }[] = [
-			{ label: rootLabel, value: '', depth: 0 }
+			{ label: 'Notes', value: '', depth: 0 }
 		];
 
 		const walk = (nodes: FileNode[], depth: number) => {
 			for (const child of nodes) {
 				if (child.type !== 'directory') continue;
-				if (basePath === 'notes' && child.name === NOTE_ARCHIVE_NAME) continue;
+				if (child.name === NOTE_ARCHIVE_NAME) continue;
 				const folderPath = toFolderPath(child.path);
 				if (
 					excludePath &&
@@ -77,7 +74,6 @@ export function useFileActions(ctx: FileActionsContext) {
 
 	const saveRename = async () => {
 		const node = ctx.getNode();
-		const basePath = ctx.getBasePath();
 		const trimmed = ctx.getEditedName().trim();
 		if (trimmed && trimmed !== node.name) {
 			try {
@@ -89,31 +85,20 @@ export function useFileActions(ctx: FileActionsContext) {
 					}
 				}
 
-				const response =
-					basePath === 'notes'
-						? await fetch(
-								node.type === 'directory'
-									? '/api/v1/notes/folders/rename'
-									: `/api/v1/notes/${node.path}/rename`,
-								{
-									method: 'PATCH',
-									headers: { 'Content-Type': 'application/json' },
-									body: JSON.stringify(
-										node.type === 'directory'
-											? { oldPath: toFolderPath(node.path), newName }
-											: { newName }
-									)
-								}
-							)
-						: await fetch(`/api/v1/files/rename`, {
-								method: 'POST',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify({
-									basePath,
-									oldPath: node.path,
-									newName
-								})
-							});
+				const response = await fetch(
+					node.type === 'directory'
+						? '/api/v1/notes/folders/rename'
+						: `/api/v1/notes/${node.path}/rename`,
+					{
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(
+							node.type === 'directory'
+								? { oldPath: toFolderPath(node.path), newName }
+								: { newName }
+						)
+					}
+				);
 
 				if (!response.ok) throw new Error('Failed to rename');
 
@@ -122,25 +107,16 @@ export function useFileActions(ctx: FileActionsContext) {
 					ctx.editorStore.updateNoteName(newName);
 				}
 
-				if (basePath === 'notes') {
-					if (node.type === 'directory') {
-						ctx.treeStore.renameFolderNode?.(toFolderPath(node.path), newName);
-					} else {
-						ctx.treeStore.renameNoteNode?.(node.path, newName);
-					}
+				if (node.type === 'directory') {
+					ctx.treeStore.renameFolderNode?.(toFolderPath(node.path), newName);
 				} else {
-					ctx.treeStore.renameWorkspaceNode?.(basePath, node.path, newName);
+					ctx.treeStore.renameNoteNode?.(node.path, newName);
 				}
-				if (basePath === 'notes') {
-					dispatchCacheEvent('note.renamed');
-				} else {
-					dispatchCacheEvent('file.renamed');
-				}
+				dispatchCacheEvent('note.renamed');
 			} catch (error) {
 				toast.error('Failed to rename');
 				logError('Failed to rename', error, {
 					scope: 'fileActions.rename',
-					basePath,
 					nodePath: node.path
 				});
 				ctx.setEditedName(node.name);
@@ -226,35 +202,18 @@ export function useFileActions(ctx: FileActionsContext) {
 		const node = ctx.getNode();
 		if (node.type !== 'file') return;
 		try {
-			const response =
-				ctx.getBasePath() === 'notes'
-					? await fetch(`/api/v1/notes/${node.path}/move`, {
-							method: 'PATCH',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({ folder })
-						})
-					: await fetch(`/api/v1/files/move`, {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({
-								basePath: ctx.getBasePath(),
-								path: node.path,
-								destination: folder
-							})
-						});
-			if (!response.ok) throw new Error('Failed to move file');
-			if (ctx.getBasePath() === 'notes') {
-				ctx.treeStore.moveNoteNode?.(node.path, folder);
-				dispatchCacheEvent('note.moved');
-			} else {
-				ctx.treeStore.moveWorkspaceNode?.(ctx.getBasePath(), node.path, folder);
-				dispatchCacheEvent('file.moved');
-			}
+			const response = await fetch(`/api/v1/notes/${node.path}/move`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ folder })
+			});
+			if (!response.ok) throw new Error('Failed to move note');
+			ctx.treeStore.moveNoteNode?.(node.path, folder);
+			dispatchCacheEvent('note.moved');
 		} catch (error) {
-			toast.error('Failed to move file');
+			toast.error('Failed to move note');
 			logError('Failed to move file', error, {
 				scope: 'fileActions.move',
-				basePath: ctx.getBasePath(),
 				nodePath: node.path,
 				destination: folder
 			});
@@ -265,38 +224,21 @@ export function useFileActions(ctx: FileActionsContext) {
 		const node = ctx.getNode();
 		if (node.type !== 'directory') return;
 		try {
-			const response =
-				ctx.getBasePath() === 'notes'
-					? await fetch('/api/v1/notes/folders/move', {
-							method: 'PATCH',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({
-								oldPath: toFolderPath(node.path),
-								newParent
-							})
-						})
-					: await fetch('/api/v1/files/move', {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({
-								basePath: ctx.getBasePath(),
-								path: node.path,
-								destination: newParent
-							})
-						});
+			const response = await fetch('/api/v1/notes/folders/move', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					oldPath: toFolderPath(node.path),
+					newParent
+				})
+			});
 			if (!response.ok) throw new Error('Failed to move folder');
-			if (ctx.getBasePath() === 'notes') {
-				ctx.treeStore.moveFolderNode?.(toFolderPath(node.path), newParent);
-				dispatchCacheEvent('note.moved');
-			} else {
-				ctx.treeStore.moveWorkspaceNode?.(ctx.getBasePath(), node.path, newParent);
-				dispatchCacheEvent('file.moved');
-			}
+			ctx.treeStore.moveFolderNode?.(toFolderPath(node.path), newParent);
+			dispatchCacheEvent('note.moved');
 		} catch (error) {
 			toast.error('Failed to move folder');
 			logError('Failed to move folder', error, {
 				scope: 'fileActions.moveFolder',
-				basePath: ctx.getBasePath(),
 				nodePath: node.path,
 				destination: newParent
 			});
@@ -308,20 +250,14 @@ export function useFileActions(ctx: FileActionsContext) {
 		if (node.type !== 'file') return;
 		try {
 			const link = document.createElement('a');
-			if (ctx.getBasePath() === 'notes') {
-				link.href = `/api/v1/notes/${node.path}/download`;
-				link.download = `${ctx.getDisplayName()}.md`;
-			} else {
-				link.href = `/api/v1/files/download?basePath=${encodeURIComponent(ctx.getBasePath())}&path=${encodeURIComponent(node.path)}`;
-				link.download = ctx.getDisplayName();
-			}
+			link.href = `/api/v1/notes/${node.path}/download`;
+			link.download = `${ctx.getDisplayName()}.md`;
 			document.body.appendChild(link);
 			link.click();
 			link.remove();
 		} catch (error) {
 			logError('Failed to download file', error, {
 				scope: 'fileActions.download',
-				basePath: ctx.getBasePath(),
 				nodePath: node.path
 			});
 		}
@@ -330,27 +266,17 @@ export function useFileActions(ctx: FileActionsContext) {
 	const confirmDelete = async (): Promise<boolean> => {
 		const node = ctx.getNode();
 		try {
-			const response =
-				ctx.getBasePath() === 'notes'
-					? await fetch(
-							node.type === 'directory' ? '/api/v1/notes/folders' : `/api/v1/notes/${node.path}`,
-							{
-								method: 'DELETE',
-								headers: { 'Content-Type': 'application/json' },
-								body:
-									node.type === 'directory'
-										? JSON.stringify({ path: toFolderPath(node.path) })
-										: undefined
-							}
-						)
-					: await fetch(`/api/v1/files/delete`, {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({
-								basePath: ctx.getBasePath(),
-								path: node.path
-							})
-						});
+			const response = await fetch(
+				node.type === 'directory' ? '/api/v1/notes/folders' : `/api/v1/notes/${node.path}`,
+				{
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body:
+						node.type === 'directory'
+							? JSON.stringify({ path: toFolderPath(node.path) })
+							: undefined
+				}
+			);
 
 			if (!response.ok) throw new Error('Failed to delete');
 
@@ -359,18 +285,13 @@ export function useFileActions(ctx: FileActionsContext) {
 				ctx.editorStore.reset();
 			}
 
-			ctx.treeStore.removeNode(ctx.getBasePath(), node.path);
-			if (ctx.getBasePath() === 'notes') {
-				dispatchCacheEvent('note.deleted');
-			} else {
-				dispatchCacheEvent('file.deleted');
-			}
+			ctx.treeStore.removeNode('notes', node.path);
+			dispatchCacheEvent('note.deleted');
 			return true;
 		} catch (error) {
 			toast.error('Failed to delete');
 			logError('Failed to delete', error, {
 				scope: 'fileActions.delete',
-				basePath: ctx.getBasePath(),
 				nodePath: node.path
 			});
 			return false;

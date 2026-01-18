@@ -91,7 +91,6 @@ const {
 		},
 		treeStore: {
 			searchNotes: vi.fn(),
-			searchFiles: vi.fn(),
 			load: vi.fn(),
 			addNoteNode: vi.fn(),
 			addFolderNode: vi.fn()
