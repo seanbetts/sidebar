@@ -61,10 +61,7 @@ public struct IngestionDetailView: View {
         if let message = meta.job.userMessage, !message.isEmpty {
             return message
         }
-        if let stage = meta.job.stage, !stage.isEmpty {
-            return stage.replacingOccurrences(of: "_", with: " ").capitalized
-        }
-        return "We will open this file once processing completes."
+        return ingestionStatusLabel(for: meta.job) ?? "We will open this file once processing completes."
     }
 
 }
