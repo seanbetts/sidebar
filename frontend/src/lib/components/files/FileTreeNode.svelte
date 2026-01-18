@@ -47,7 +47,6 @@
 
 	const actions = useFileActions({
 		getNode: () => node,
-		getBasePath: () => basePath,
 		getHideExtensions: () => hideExtensions,
 		getEditedName: () => editedName,
 		setEditedName: (value) => (editedName = value),
