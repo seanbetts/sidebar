@@ -68,6 +68,21 @@ struct MarkdownFormattingToolbar: View {
             toolbarButton("taskList", systemImage: "checkmark.square", label: "Task list")
             toolbarButton("link", systemImage: "link", label: "Link")
             toolbarButton("codeBlock", systemImage: "chevron.left.slash.chevron.right", label: "Code block")
+            #if os(iOS)
+            UIKitMenuButton(
+                systemImage: "ellipsis.circle",
+                accessibilityLabel: "More formatting",
+                items: [
+                    MenuActionItem(title: "Strikethrough", systemImage: nil, role: nil) { onCommand("strike") },
+                    MenuActionItem(title: "Inline code", systemImage: nil, role: nil) { onCommand("inlineCode") },
+                    MenuActionItem(title: "Numbered list", systemImage: nil, role: nil) { onCommand("orderedList") },
+                    MenuActionItem(title: "Blockquote", systemImage: nil, role: nil) { onCommand("blockquote") },
+                    MenuActionItem(title: "Horizontal rule", systemImage: nil, role: nil) { onCommand("hr") },
+                    MenuActionItem(title: "Table", systemImage: nil, role: nil) { onCommand("table") }
+                ]
+            )
+            .frame(width: 28, height: 28)
+            #else
             Menu {
                 Button("Strikethrough") { onCommand("strike") }
                 Button("Inline code") { onCommand("inlineCode") }
@@ -82,6 +97,7 @@ struct MarkdownFormattingToolbar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("More formatting")
+            #endif
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
