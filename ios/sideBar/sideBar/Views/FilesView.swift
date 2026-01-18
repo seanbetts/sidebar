@@ -1,11 +1,13 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Combine
 
 public struct FilesView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @StateObject private var pdfController = PDFViewerController()
 
     public init() {
     }
@@ -16,7 +18,10 @@ public struct FilesView: View {
                 OfflineBanner()
             }
             if !isCompact {
-                FilesHeaderView(viewModel: environment.ingestionViewModel)
+                FilesHeaderView(
+                    viewModel: environment.ingestionViewModel,
+                    pdfController: pdfController
+                )
                 Divider()
             }
             content
@@ -27,6 +32,11 @@ public struct FilesView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if isCompact {
+                ToolbarItemGroup(placement: .navigationBarLeading) {
+                    if shouldShowPdfControls {
+                        PdfHeaderControls(controller: pdfController, isCompact: true)
+                    }
+                }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     if hasActiveSelection {
                         FilesHeaderActions(viewModel: environment.ingestionViewModel)
@@ -35,11 +45,14 @@ public struct FilesView: View {
             }
         }
         #endif
+        .onChange(of: environment.ingestionViewModel.selectedFileId) { _, _ in
+            pdfController.reset()
+        }
     }
 
     @ViewBuilder
     private var content: some View {
-        FilesDetailContainer(viewModel: environment.ingestionViewModel)
+        FilesDetailContainer(viewModel: environment.ingestionViewModel, pdfController: pdfController)
     }
 
     private var isCompact: Bool {
@@ -87,10 +100,26 @@ public struct FilesView: View {
     private var hasActiveSelection: Bool {
         environment.ingestionViewModel.selectedFileId != nil
     }
+
+    private var shouldShowPdfControls: Bool {
+        guard let mime = selectedMimeOriginal else { return false }
+        return mime.split(separator: ";").first?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "application/pdf"
+    }
+
+    private var selectedMimeOriginal: String? {
+        if let mime = environment.ingestionViewModel.activeMeta?.file.mimeOriginal {
+            return mime
+        }
+        guard let selectedId = environment.ingestionViewModel.selectedFileId else {
+            return nil
+        }
+        return environment.ingestionViewModel.items.first { $0.file.id == selectedId }?.file.mimeOriginal
+    }
 }
 
 private struct FilesHeaderView: View {
     @ObservedObject var viewModel: IngestionViewModel
+    @ObservedObject var pdfController: PDFViewerController
 
     var body: some View {
         ContentHeaderRow(
@@ -107,7 +136,12 @@ private struct FilesHeaderView: View {
             subtitleTracking: 0.8
         ) {
             if viewModel.selectedFileId != nil {
-                FilesHeaderActions(viewModel: viewModel)
+                HeaderActionRow {
+                    if isPdf {
+                        PdfHeaderControls(controller: pdfController, isCompact: false)
+                    }
+                    FilesHeaderActions(viewModel: viewModel)
+                }
             }
         }
         .padding(16)
@@ -197,6 +231,16 @@ private struct FilesHeaderView: View {
             return nil
         }
         return viewModel.items.first { $0.file.id == selectedId }?.recommendedViewer
+    }
+
+    private var isPdf: Bool {
+        if let mime = selectedMimeOriginal {
+            let normalized = mime.split(separator: ";").first?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? mime
+            if normalized == "application/pdf" {
+                return true
+            }
+        }
+        return selectedRecommendedViewer == "viewer_pdf"
     }
 
     private func fileTypeLabel(name: String, mime: String?) -> String {
@@ -506,6 +550,84 @@ private struct FilesHeaderActions: View {
     }
 }
 
+private struct PdfHeaderControls: View {
+    @ObservedObject var controller: PDFViewerController
+    let isCompact: Bool
+
+    var body: some View {
+        HStack(spacing: isCompact ? 8 : 12) {
+            PdfControlButton(
+                systemName: "chevron.left",
+                accessibilityLabel: "Previous page",
+                isDisabled: !controller.canPrev
+            ) {
+                controller.goToPreviousPage()
+            }
+            Text(pageLabel)
+                .font(isCompact ? .caption2 : .caption)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: isCompact ? 44 : 60)
+            PdfControlButton(
+                systemName: "chevron.right",
+                accessibilityLabel: "Next page",
+                isDisabled: !controller.canNext
+            ) {
+                controller.goToNextPage()
+            }
+            PdfControlButton(
+                systemName: "minus",
+                accessibilityLabel: "Zoom out"
+            ) {
+                controller.zoomOut()
+            }
+            PdfControlButton(
+                systemName: "plus",
+                accessibilityLabel: "Zoom in"
+            ) {
+                controller.zoomIn()
+            }
+            PdfControlButton(
+                systemName: "arrow.up.and.down",
+                accessibilityLabel: "Fit to height",
+                isActive: controller.fitMode == .height
+            ) {
+                controller.setFitMode(.height)
+            }
+            PdfControlButton(
+                systemName: "arrow.left.and.right",
+                accessibilityLabel: "Fit to width",
+                isActive: controller.fitMode == .width
+            ) {
+                controller.setFitMode(.width)
+            }
+        }
+    }
+
+    private var pageLabel: String {
+        "\(controller.currentPage) / \(max(controller.pageCount, 1))"
+    }
+}
+
+private struct PdfControlButton: View {
+    let systemName: String
+    let accessibilityLabel: String
+    var isActive: Bool = false
+    var isDisabled: Bool = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 24, height: 20)
+                .foregroundStyle(isActive ? .primary : .secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .disabled(isDisabled)
+    }
+}
+
 private struct BinaryFileDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.data] }
 
@@ -526,10 +648,11 @@ private struct BinaryFileDocument: FileDocument {
 
 private struct FilesDetailContainer: View {
     @ObservedObject var viewModel: IngestionViewModel
+    @ObservedObject var pdfController: PDFViewerController
 
     var body: some View {
         if let meta = viewModel.activeMeta {
-            IngestionDetailView(viewModel: viewModel, meta: meta)
+            IngestionDetailView(viewModel: viewModel, meta: meta, pdfController: pdfController)
         } else if let selectedItem = viewModel.selectedItem,
                   viewModel.selectedFileId != nil,
                   viewModel.errorMessage == nil,

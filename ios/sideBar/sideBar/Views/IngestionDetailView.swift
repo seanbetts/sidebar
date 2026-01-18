@@ -3,10 +3,12 @@ import SwiftUI
 public struct IngestionDetailView: View {
     @ObservedObject var viewModel: IngestionViewModel
     let meta: IngestionMetaResponse
+    let pdfController: PDFViewerController
 
-    public init(viewModel: IngestionViewModel, meta: IngestionMetaResponse) {
+    public init(viewModel: IngestionViewModel, meta: IngestionMetaResponse, pdfController: PDFViewerController) {
         self.viewModel = viewModel
         self.meta = meta
+        self.pdfController = pdfController
     }
 
     public var body: some View {
@@ -36,7 +38,7 @@ public struct IngestionDetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else if let state = viewModel.viewerState {
-                FileViewerView(state: state)
+                FileViewerView(state: state, pdfController: pdfController)
             } else if let error = viewModel.errorMessage {
                 PlaceholderView(
                     title: "Unable to load preview",
