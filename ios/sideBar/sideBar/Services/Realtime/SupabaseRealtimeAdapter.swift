@@ -17,8 +17,12 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
     private var currentUserId: String?
     private var notesChannel: RealtimeChannelV2?
     private var websitesChannel: RealtimeChannelV2?
+    private var ingestedFilesChannel: RealtimeChannelV2?
+    private var fileJobsChannel: RealtimeChannelV2?
     private var notesSubscriptions: [ObservationToken] = []
     private var websitesSubscriptions: [ObservationToken] = []
+    private var ingestedFilesSubscriptions: [ObservationToken] = []
+    private var fileJobsSubscriptions: [ObservationToken] = []
 
     public init(config: EnvironmentConfig, handler: RealtimeEventHandler? = nil) {
         self.handler = handler
@@ -42,6 +46,8 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         await client.realtimeV2.setAuth(accessToken)
         let shouldResubscribeNotes = currentUserId != userId || notesChannel == nil
         let shouldResubscribeWebsites = currentUserId != userId || websitesChannel == nil
+        let shouldResubscribeIngestedFiles = currentUserId != userId || ingestedFilesChannel == nil
+        let shouldResubscribeFileJobs = currentUserId != userId || fileJobsChannel == nil
         currentUserId = userId
         if shouldResubscribeNotes {
             await subscribeToNotes(userId: userId)
@@ -49,15 +55,27 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         if shouldResubscribeWebsites {
             await subscribeToWebsites(userId: userId)
         }
+        if shouldResubscribeIngestedFiles {
+            await subscribeToIngestedFiles(userId: userId)
+        }
+        if shouldResubscribeFileJobs {
+            await subscribeToFileJobs()
+        }
     }
 
     public func stop() {
         notesSubscriptions.removeAll()
         websitesSubscriptions.removeAll()
+        ingestedFilesSubscriptions.removeAll()
+        fileJobsSubscriptions.removeAll()
         let channel = notesChannel
         let websitesChannel = websitesChannel
+        let ingestedFilesChannel = ingestedFilesChannel
+        let fileJobsChannel = fileJobsChannel
         notesChannel = nil
         self.websitesChannel = nil
+        self.ingestedFilesChannel = nil
+        self.fileJobsChannel = nil
         Task {
             await tokenStore.set(nil)
         }
@@ -70,6 +88,16 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         if let websitesChannel {
             Task {
                 await client.realtimeV2.removeChannel(websitesChannel)
+            }
+        }
+        if let ingestedFilesChannel {
+            Task {
+                await client.realtimeV2.removeChannel(ingestedFilesChannel)
+            }
+        }
+        if let fileJobsChannel {
+            Task {
+                await client.realtimeV2.removeChannel(fileJobsChannel)
             }
         }
     }
@@ -174,6 +202,102 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
+    private func subscribeToIngestedFiles(userId: String) async {
+        if let existingChannel = ingestedFilesChannel {
+            await client.realtimeV2.removeChannel(existingChannel)
+        }
+        ingestedFilesSubscriptions.removeAll()
+        let channel = client.realtimeV2.channel("public:\(RealtimeTable.ingestedFiles)")
+        let filter = "user_id=eq.\(userId)"
+        ingestedFilesSubscriptions.append(
+            channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: RealtimeTable.ingestedFiles,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleIngestedFileInsert(action)
+                }
+            }
+        )
+        ingestedFilesSubscriptions.append(
+            channel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: RealtimeTable.ingestedFiles,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleIngestedFileUpdate(action)
+                }
+            }
+        )
+        ingestedFilesSubscriptions.append(
+            channel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: RealtimeTable.ingestedFiles,
+                filter: filter
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleIngestedFileDelete(action)
+                }
+            }
+        )
+        ingestedFilesChannel = channel
+        do {
+            try await channel.subscribeWithError()
+        } catch {
+        }
+    }
+
+    private func subscribeToFileJobs() async {
+        if let existingChannel = fileJobsChannel {
+            await client.realtimeV2.removeChannel(existingChannel)
+        }
+        fileJobsSubscriptions.removeAll()
+        let channel = client.realtimeV2.channel("public:\(RealtimeTable.fileJobs)")
+        fileJobsSubscriptions.append(
+            channel.onPostgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: RealtimeTable.fileJobs
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleFileJobInsert(action)
+                }
+            }
+        )
+        fileJobsSubscriptions.append(
+            channel.onPostgresChange(
+                UpdateAction.self,
+                schema: "public",
+                table: RealtimeTable.fileJobs
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleFileJobUpdate(action)
+                }
+            }
+        )
+        fileJobsSubscriptions.append(
+            channel.onPostgresChange(
+                DeleteAction.self,
+                schema: "public",
+                table: RealtimeTable.fileJobs
+            ) { [weak self] action in
+                Task { @MainActor [weak self] in
+                    self?.handleFileJobDelete(action)
+                }
+            }
+        )
+        fileJobsChannel = channel
+        do {
+            try await channel.subscribeWithError()
+        } catch {
+        }
+    }
+
     private func handleNoteInsert(_ action: InsertAction) {
         do {
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
@@ -241,6 +365,56 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
+    private func handleIngestedFileInsert(_ action: InsertAction) {
+        do {
+            let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
+            notifyIngestedFileEvent(type: .insert, record: record, oldRecord: nil)
+        } catch {
+        }
+    }
+
+    private func handleIngestedFileUpdate(_ action: UpdateAction) {
+        do {
+            let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
+            let oldRecord: IngestedFileRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            notifyIngestedFileEvent(type: .update, record: record, oldRecord: oldRecord)
+        } catch {
+        }
+    }
+
+    private func handleIngestedFileDelete(_ action: DeleteAction) {
+        do {
+            let oldRecord: IngestedFileRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
+            notifyIngestedFileEvent(type: .delete, record: nil, oldRecord: oldRecord)
+        } catch {
+        }
+    }
+
+    private func handleFileJobInsert(_ action: InsertAction) {
+        do {
+            let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
+            notifyFileJobEvent(type: .insert, record: record, oldRecord: nil)
+        } catch {
+        }
+    }
+
+    private func handleFileJobUpdate(_ action: UpdateAction) {
+        do {
+            let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
+            let oldRecord: FileJobRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            notifyFileJobEvent(type: .update, record: record, oldRecord: oldRecord)
+        } catch {
+        }
+    }
+
+    private func handleFileJobDelete(_ action: DeleteAction) {
+        do {
+            let oldRecord: FileJobRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
+            notifyFileJobEvent(type: .delete, record: nil, oldRecord: oldRecord)
+        } catch {
+        }
+    }
+
     private func notifyWebsiteEvent(
         type: RealtimeEventType,
         record: WebsiteRealtimeRecord?,
@@ -255,6 +429,40 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         )
         Task { @MainActor [weak self] in
             self?.handler?.handleWebsiteEvent(payload)
+        }
+    }
+
+    private func notifyIngestedFileEvent(
+        type: RealtimeEventType,
+        record: IngestedFileRealtimeRecord?,
+        oldRecord: IngestedFileRealtimeRecord?
+    ) {
+        let payload = RealtimePayload(
+            eventType: type,
+            table: RealtimeTable.ingestedFiles,
+            schema: "public",
+            record: record,
+            oldRecord: oldRecord
+        )
+        Task { @MainActor [weak self] in
+            self?.handler?.handleIngestedFileEvent(payload)
+        }
+    }
+
+    private func notifyFileJobEvent(
+        type: RealtimeEventType,
+        record: FileJobRealtimeRecord?,
+        oldRecord: FileJobRealtimeRecord?
+    ) {
+        let payload = RealtimePayload(
+            eventType: type,
+            table: RealtimeTable.fileJobs,
+            schema: "public",
+            record: record,
+            oldRecord: oldRecord
+        )
+        Task { @MainActor [weak self] in
+            self?.handler?.handleFileJobEvent(payload)
         }
     }
 }

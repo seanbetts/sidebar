@@ -24,6 +24,8 @@ public final class IngestionViewModel: ObservableObject {
     private let uploadManager: IngestionUploadManaging
     private var cancellables = Set<AnyCancellable>()
     private var securityScopedURLs: [String: URL] = [:]
+    private var jobPollingTasks: [String: Task<Void, Never>] = [:]
+    private var listPollingTask: Task<Void, Never>? = nil
 
     public init(
         api: any IngestionProviding,
@@ -39,6 +41,7 @@ public final class IngestionViewModel: ObservableObject {
         store.$items
             .sink { [weak self] items in
                 self?.items = items
+                self?.updateListPollingState(items: items)
             }
             .store(in: &cancellables)
 
@@ -72,6 +75,11 @@ public final class IngestionViewModel: ObservableObject {
         errorMessage = nil
         do {
             try await store.loadMeta(fileId: fileId)
+            if let meta = activeMeta, meta.file.id == fileId {
+                store.updateFilename(fileId: fileId, filename: meta.file.filenameOriginal)
+                store.updateJob(fileId: fileId, job: meta.job, recommendedViewer: meta.recommendedViewer)
+            }
+            startJobPollingIfNeeded(fileId: fileId)
             await ensureViewerReady(for: fileId)
         } catch {
             errorMessage = error.localizedDescription
@@ -85,6 +93,7 @@ public final class IngestionViewModel: ObservableObject {
         await loadMeta(fileId: fileId)
         guard let meta = activeMeta else { return }
         guard viewerState == nil else { return }
+        startJobPollingIfNeeded(fileId: fileId)
         if let kind = preferredDerivativeKind(for: meta) {
             await selectDerivative(kind: kind)
         }
@@ -145,6 +154,7 @@ public final class IngestionViewModel: ObservableObject {
         selectedDerivativeKind = nil
         viewerState = nil
         errorMessage = nil
+        cancelJobPolling()
     }
 
     public func deleteFile(fileId: String) async -> Bool {
@@ -187,7 +197,7 @@ public final class IngestionViewModel: ObservableObject {
         let tempId = "youtube-\(UUID().uuidString)"
         let pendingItem = makeLocalItem(
             id: tempId,
-            filename: "YouTube video",
+            filename: "YouTube Video",
             mimeType: "video/youtube",
             sizeBytes: 0,
             status: "processing",
@@ -202,7 +212,7 @@ public final class IngestionViewModel: ObservableObject {
             store.replaceLocalUpload(
                 tempId: tempId,
                 fileId: fileId,
-                filename: "YouTube video",
+                filename: "YouTube Video",
                 mimeType: "video/youtube",
                 sizeBytes: 0,
                 sourceUrl: normalized
@@ -217,6 +227,7 @@ public final class IngestionViewModel: ObservableObject {
                 prepareSelection(fileId: fileId)
             }
             await selectFile(fileId: fileId)
+            startJobPollingIfNeeded(fileId: fileId)
             return nil
         } catch {
             store.updateLocalUpload(fileId: tempId, status: "failed", stage: "failed", progress: nil)
@@ -227,8 +238,8 @@ public final class IngestionViewModel: ObservableObject {
                 case .requestFailed:
                     return "Failed to add YouTube video"
                 default:
-                    return "Failed to add YouTube video"
-                }
+        return "Failed to add YouTube video"
+    }
             }
             return "Failed to add YouTube video"
         }
@@ -284,6 +295,87 @@ public final class IngestionViewModel: ObservableObject {
         if let kind = preferredDerivativeKind(for: meta) {
             await selectDerivative(kind: kind)
         }
+    }
+
+    private func startJobPollingIfNeeded(fileId: String) {
+        guard let meta = activeMeta, meta.file.id == fileId else { return }
+        let status = meta.job.status ?? ""
+        guard status != "ready" && status != "failed" && status != "canceled" else {
+            cancelJobPolling(fileId: fileId)
+            return
+        }
+        guard jobPollingTasks[fileId] == nil else { return }
+        jobPollingTasks[fileId] = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard self.selectedFileId == fileId else {
+                    self.cancelJobPolling(fileId: fileId)
+                    return
+                }
+                do {
+                    try await self.store.loadMeta(fileId: fileId, force: true)
+                    if let meta = self.activeMeta, meta.file.id == fileId {
+                        self.store.updateJob(fileId: fileId, job: meta.job, recommendedViewer: meta.recommendedViewer)
+                        if (meta.job.status ?? "") == "ready" {
+                            await self.ensureViewerReady(for: fileId)
+                            self.cancelJobPolling(fileId: fileId)
+                            return
+                        }
+                        if (meta.job.status ?? "") == "failed" {
+                            self.cancelJobPolling(fileId: fileId)
+                            return
+                        }
+                    }
+                } catch {
+                    // Ignore polling errors; next tick will retry.
+                }
+            }
+        }
+    }
+
+    private func cancelJobPolling(fileId: String? = nil) {
+        if let fileId {
+            jobPollingTasks[fileId]?.cancel()
+            jobPollingTasks[fileId] = nil
+            return
+        }
+        for task in jobPollingTasks.values {
+            task.cancel()
+        }
+        jobPollingTasks = [:]
+    }
+
+    private func updateListPollingState(items: [IngestionListItem]) {
+        let hasProcessing = items.contains { item in
+            let status = item.job.status ?? ""
+            return !status.isEmpty && !["ready", "failed", "canceled"].contains(status)
+        }
+        if hasProcessing {
+            startListPolling()
+        } else {
+            stopListPolling()
+        }
+    }
+
+    private func startListPolling() {
+        guard listPollingTask == nil else { return }
+        listPollingTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                do {
+                    try await self.store.loadList(force: true)
+                } catch {
+                    // Ignore polling errors; next tick will retry.
+                }
+            }
+        }
+    }
+
+    private func stopListPolling() {
+        listPollingTask?.cancel()
+        listPollingTask = nil
     }
 
     private func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {
