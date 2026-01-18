@@ -33,7 +33,7 @@ Implement native file upload + YouTube ingestion with async progress tracking an
 
 5) Viewer handling
 - [x] If selected file is still processing, show “Processing…” in the main workspace.
-- [ ] Auto-open uploaded items when ready (confirm desired behavior for files vs. websites).
+- [x] Auto-open uploaded items when ready (only if user is in Files; otherwise prompt to open).
 
 ## Notes
 - Keep uploads async/non-blocking so users can continue using the app.
