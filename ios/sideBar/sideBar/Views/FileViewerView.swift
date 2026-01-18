@@ -209,6 +209,7 @@ public final class PDFViewerController: ObservableObject {
     private var observers: [NSObjectProtocol] = []
     private var fitRetryWorkItem: DispatchWorkItem?
     private var containerSize: CGSize = .zero
+    private var animateNextFit = false
 
     deinit {
         cleanupObservers()
@@ -263,7 +264,12 @@ public final class PDFViewerController: ObservableObject {
     }
 
     func scheduleFitAndRefresh() {
+        scheduleFitAndRefresh(animated: false)
+    }
+
+    private func scheduleFitAndRefresh(animated: Bool) {
         fitRetryWorkItem?.cancel()
+        animateNextFit = animated
         let workItem = DispatchWorkItem { [weak self] in
             self?.applyFitWithRetry(attempt: 0)
         }
@@ -274,7 +280,7 @@ public final class PDFViewerController: ObservableObject {
     func updateContainerSize(_ size: CGSize) {
         guard size.width > 0, size.height > 0 else { return }
         containerSize = size
-        scheduleFitAndRefresh()
+        scheduleFitAndRefresh(animated: true)
     }
 
     private func reapplyZoomForCurrentPage() {
@@ -378,9 +384,29 @@ public final class PDFViewerController: ObservableObject {
         let maxScale = max(pdfView.maxScaleFactor, minScale)
         let clamped = min(max(targetScale, minScale), maxScale)
         guard clamped.isFinite, clamped > 0 else { return false }
-        pdfView.scaleFactor = clamped
+        applyScale(clamped, animated: animateNextFit)
+        animateNextFit = false
         scale = clamped
         return true
+    }
+
+    private func applyScale(_ scale: CGFloat, animated: Bool) {
+        guard let pdfView else { return }
+        guard animated else {
+            pdfView.scaleFactor = scale
+            return
+        }
+        #if os(macOS)
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            pdfView.animator().scaleFactor = scale
+        }
+        #else
+        UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
+            pdfView.scaleFactor = scale
+        }
+        #endif
     }
 
     private func baseScaleForCurrentPage() -> CGFloat? {
