@@ -12,7 +12,7 @@ def _auth_headers() -> dict[str, str]:
 
 def test_ingestion_upload_and_meta(test_client):
     response = test_client.post(
-        "/api/ingestion",
+        "/api/v1/files",
         headers=_auth_headers(),
         files={"file": ("sample.pdf", b"%PDF-1.4", "application/pdf")},
     )
@@ -20,7 +20,7 @@ def test_ingestion_upload_and_meta(test_client):
     file_id = response.json().get("file_id")
     assert file_id
 
-    meta = test_client.get(f"/api/ingestion/{file_id}/meta", headers=_auth_headers())
+    meta = test_client.get(f"/api/v1/files/{file_id}/meta", headers=_auth_headers())
     assert meta.status_code == 200
     payload = meta.json()
     assert payload["file"]["id"] == file_id
@@ -35,23 +35,23 @@ def test_ingestion_upload_and_meta(test_client):
 
 def test_ingestion_pause_resume_cancel(test_client):
     response = test_client.post(
-        "/api/ingestion",
+        "/api/v1/files",
         headers=_auth_headers(),
         files={"file": ("sample.pdf", b"%PDF-1.4", "application/pdf")},
     )
     file_id = response.json().get("file_id")
     assert file_id
 
-    pause = test_client.post(f"/api/ingestion/{file_id}/pause", headers=_auth_headers())
+    pause = test_client.post(f"/api/v1/files/{file_id}/pause", headers=_auth_headers())
     assert pause.status_code == 200
 
     resume = test_client.post(
-        f"/api/ingestion/{file_id}/resume", headers=_auth_headers()
+        f"/api/v1/files/{file_id}/resume", headers=_auth_headers()
     )
     assert resume.status_code == 200
 
     cancel = test_client.post(
-        f"/api/ingestion/{file_id}/cancel", headers=_auth_headers()
+        f"/api/v1/files/{file_id}/cancel", headers=_auth_headers()
     )
     assert cancel.status_code == 200
 
@@ -109,7 +109,7 @@ def test_ingestion_meta_syncs_failed_transcript_status(test_client, test_db):
     test_db.commit()
 
     response = test_client.get(
-        f"/api/ingestion/{file_id}/meta", headers=_auth_headers()
+        f"/api/v1/files/{file_id}/meta", headers=_auth_headers()
     )
     assert response.status_code == 200
 

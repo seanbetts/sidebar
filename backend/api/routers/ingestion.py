@@ -1,4 +1,4 @@
-"""File ingestion router for uploads and processing status."""
+"""Files router for uploads and processing status."""
 
 from __future__ import annotations
 
@@ -28,14 +28,14 @@ from api.routers.ingestion_helpers import (
     _recommended_viewer,
     _safe_cleanup,
     _staging_path,
-    _user_message_for_error,
+    _user_message_for_job,
 )
 from api.services.file_ingestion_service import FileIngestionService
 from api.services.storage.service import get_storage_backend
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.utils.validation import parse_uuid
 
-router = APIRouter(prefix="/ingestion", tags=["ingestion"])
+router = APIRouter()
 
 
 @router.post("")
@@ -90,7 +90,7 @@ async def ingest_youtube(
     record, _job = FileIngestionService.create_ingestion(
         db,
         user_id,
-        filename_original="YouTube video",
+        filename_original="YouTube Video",
         mime_original="video/youtube",
         size_bytes=0,
         sha256=None,
@@ -152,9 +152,10 @@ async def list_ingestions(
                     "stage": job.stage if job else None,
                     "error_code": job.error_code if job else None,
                     "error_message": job.error_message if job else None,
-                    "user_message": _user_message_for_error(
+                    "user_message": _user_message_for_job(
                         job.error_code if job else None,
                         job.status if job else None,
+                        job.stage if job else None,
                     ),
                     "attempts": job.attempts if job else 0,
                     "updated_at": job.updated_at.isoformat()
@@ -243,9 +244,10 @@ async def get_file_meta(
             "stage": job.stage if job else None,
             "error_code": job.error_code if job else None,
             "error_message": job.error_message if job else None,
-            "user_message": _user_message_for_error(
+            "user_message": _user_message_for_job(
                 job.error_code if job else None,
                 job.status if job else None,
+                job.stage if job else None,
             ),
             "attempts": job.attempts if job else 0,
             "updated_at": job.updated_at.isoformat()

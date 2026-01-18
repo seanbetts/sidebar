@@ -172,7 +172,7 @@ class NotesService:
             db: Database session.
             user_id: Current user ID.
             content: Markdown content.
-            title: Optional explicit title.
+            title: Note title. Defaults to "Untitled Note" if not provided.
             folder: Folder path. Defaults to "".
             pinned: Whether the note is pinned. Defaults to False.
             tags: Optional list of tags.
@@ -181,7 +181,7 @@ class NotesService:
             Newly created Note.
         """
         now = datetime.now(UTC)
-        resolved_title = title or NotesService.extract_title(content, "Untitled Note")
+        resolved_title = title or "Untitled Note"
         metadata = {"folder": folder, "pinned": pinned}
         if tags:
             metadata["tags"] = tags
@@ -232,7 +232,8 @@ class NotesService:
             user_id: Current user ID.
             note_id: Note UUID.
             content: Updated markdown content.
-            title: Optional explicit title.
+            title: Optional explicit title. If not provided, existing title
+                is preserved.
 
         Returns:
             Updated Note.
@@ -252,8 +253,8 @@ class NotesService:
         if not note:
             raise NoteNotFoundError(f"Note not found: {note_id}")
 
-        resolved_title = title or NotesService.extract_title(content, note.title)
-        note.title = resolved_title
+        if title is not None:
+            note.title = title
         note.content = content
         note.updated_at = datetime.now(UTC)
         db.commit()

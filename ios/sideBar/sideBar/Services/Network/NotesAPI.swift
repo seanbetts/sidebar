@@ -5,6 +5,17 @@ public protocol NotesProviding {
     func getNote(id: String) async throws -> NotePayload
     func search(query: String, limit: Int) async throws -> [FileNode]
     func updateNote(id: String, content: String) async throws -> NotePayload
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload
+    func renameNote(id: String, newName: String) async throws -> NotePayload
+    func moveNote(id: String, folder: String) async throws -> NotePayload
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload
+    func updatePinnedOrder(ids: [String]) async throws
+    func deleteNote(id: String) async throws -> NotePayload
+    func createFolder(path: String) async throws
+    func renameFolder(oldPath: String, newName: String) async throws
+    func moveFolder(oldPath: String, newParent: String) async throws
+    func deleteFolder(path: String) async throws
 }
 
 public struct NotesAPI {
@@ -47,7 +58,8 @@ public struct NotesAPI {
     }
 
     public func renameNote(id: String, newName: String) async throws -> NotePayload {
-        try await client.request("notes/\(id)/rename", method: "PATCH", body: RenameRequest(newName: newName))
+        struct RenamePayload: Encodable { let newName: String }
+        return try await client.request("notes/\(id)/rename", method: "PATCH", body: RenamePayload(newName: newName))
     }
 
     public func moveNote(id: String, folder: String) async throws -> NotePayload {
@@ -77,13 +89,13 @@ public struct NotesAPI {
     }
 
     public func renameFolder(oldPath: String, newName: String) async throws {
-        struct FolderRequest: Codable { let oldPath: String; let newName: String }
-        try await client.requestVoid("notes/folders/rename", method: "PATCH", body: FolderRequest(oldPath: oldPath, newName: newName))
+        let payload = ["oldPath": oldPath, "newName": newName]
+        try await client.requestVoid("notes/folders/rename", method: "PATCH", body: payload)
     }
 
     public func moveFolder(oldPath: String, newParent: String) async throws {
-        struct FolderRequest: Codable { let oldPath: String; let newParent: String }
-        try await client.requestVoid("notes/folders/move", method: "PATCH", body: FolderRequest(oldPath: oldPath, newParent: newParent))
+        let payload = ["oldPath": oldPath, "newParent": newParent]
+        try await client.requestVoid("notes/folders/move", method: "PATCH", body: payload)
     }
 
     public func deleteFolder(path: String) async throws {

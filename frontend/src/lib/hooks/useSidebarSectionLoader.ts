@@ -17,11 +17,12 @@ export function useSidebarSectionLoader() {
 		const treeState = get(treeStore);
 		const websitesState = get(websitesStore);
 		const conversationsState = get(conversationListStore);
+		const ingestionState = get(ingestionStore);
 
 		const hasData = {
 			notes: treeState.trees?.['notes']?.loaded ?? false,
 			websites: websitesState.loaded ?? false,
-			workspace: treeState.trees?.['documents']?.loaded ?? false,
+			workspace: ingestionState.loaded ?? false,
 			history: conversationsState.loaded ?? false,
 			things: false
 		}[section];
@@ -38,7 +39,6 @@ export function useSidebarSectionLoader() {
 				websitesStore.load();
 				break;
 			case 'workspace':
-				treeStore.load('documents');
 				ingestionStore.load();
 				break;
 			case 'history':

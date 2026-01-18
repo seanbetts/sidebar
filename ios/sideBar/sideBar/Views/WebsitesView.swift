@@ -1,5 +1,4 @@
 import SwiftUI
-import MarkdownUI
 
 public struct WebsitesView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -15,18 +14,6 @@ public struct WebsitesView: View {
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if isCompact {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                        } label: {
-                            Image(systemName: "line.3.horizontal")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Website options")
-                    }
-                }
-            }
             #endif
     }
 
@@ -57,9 +44,13 @@ private struct WebsitesDetailView: View {
     @ObservedObject var viewModel: WebsitesViewModel
     @Environment(\.openURL) private var openURL
     @State private var safariURL: URL? = nil
-    @State private var scrollWidth: CGFloat = 0
-    private let contentMaxWidth: CGFloat = 800
-    private let contentHorizontalPadding: CGFloat = 20
+    @State private var exportDocument: MarkdownFileDocument?
+    @State private var exportFilename: String = "website.md"
+    @State private var isExporting = false
+    @State private var isRenameDialogPresented = false
+    @State private var renameValue: String = ""
+    @State private var isDeleteAlertPresented = false
+    @State private var isArchiveAlertPresented = false
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -77,6 +68,62 @@ private struct WebsitesDetailView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        #if !os(macOS)
+        .toolbar {
+            if isCompact {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    websiteActionsMenu
+                    closeButton
+                }
+            }
+        }
+        #endif
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .sideBarMarkdown,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
+        }
+        .alert(renameDialogTitle, isPresented: $isRenameDialogPresented) {
+            TextField(renameDialogPlaceholder, text: $renameValue)
+                .submitLabel(.done)
+                .onSubmit {
+                    commitRename()
+                }
+            Button("Rename") {
+                commitRename()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                renameValue = ""
+            }
+        }
+        .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
+            Button("Delete", role: .destructive) {
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.deleteWebsite(id: websiteId)
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will remove the website and cannot be undone.")
+        }
+        .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
+            Button(archiveActionTitle, role: .destructive) {
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.setArchived(id: websiteId, archived: !isArchived)
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text(archiveAlertMessage)
+        }
         #if os(iOS) && canImport(SafariServices)
         .sheet(isPresented: safariBinding) {
             if let safariURL {
@@ -87,78 +134,32 @@ private struct WebsitesDetailView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Image(systemName: "globe")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(displayTitle)
-                    .font(.headline)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .layoutPriority(1)
-                    .truncationMode(.tail)
-                if let subtitle = subtitleText {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
+        ContentHeaderRow(
+            iconName: "globe",
+            title: displayTitle,
+            subtitle: subtitleText,
+            titleLineLimit: 1,
+            subtitleLineLimit: 1,
+            titleLayoutPriority: 0,
+            subtitleLayoutPriority: 1
+        ) {
+            HeaderActionRow {
+                websiteActionsMenu
+                closeButton
             }
-            Spacer()
-            Button {
-            } label: {
-                Image(systemName: "line.3.horizontal")
-                    .frame(width: 28, height: 28)
-            }
-            .buttonStyle(.plain)
-            .font(.system(size: 16, weight: .semibold))
-            .imageScale(.medium)
-            .accessibilityLabel("Website options")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
-        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
+        .padding(16)
+        .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
 
     @ViewBuilder
     private var content: some View {
         if let website = viewModel.active {
             ScrollView {
-                let blocks = MarkdownRendering.splitWebsiteContent(stripFrontmatter(website.content))
-                VStack(alignment: .leading, spacing: 16) {
-                    ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                        switch block {
-                        case .markdown(let text):
-                            SideBarMarkdown(text: text)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        case .gallery(let gallery):
-                            WebsiteGalleryView(
-                                gallery: gallery,
-                                availableWidth: galleryWidth
-                            )
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-                .frame(maxWidth: contentMaxWidth, alignment: .leading)
-                .padding(contentHorizontalPadding)
-                .frame(maxWidth: .infinity, alignment: .center)
+                SideBarMarkdownContainer(text: website.content)
             }
-            .background(
-                GeometryReader { proxy in
-                    Color.clear
-                        .preference(key: ContentWidthPreferenceKey.self, value: proxy.size.width)
-                }
-            )
-            .onPreferenceChange(ContentWidthPreferenceKey.self) { width in
-                if width > 0, scrollWidth != width {
-                    scrollWidth = width
-                }
-            }
-        } else if viewModel.isLoadingDetail {
-            LoadingView(message: "Loading website…")
+        } else if viewModel.isLoadingDetail || viewModel.pendingWebsite != nil {
+            LoadingView(message: "Reading...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.errorMessage, viewModel.selectedWebsiteId != nil {
             PlaceholderView(
@@ -205,6 +206,143 @@ private struct WebsitesDetailView: View {
         return parts.isEmpty ? nil : parts.joined(separator: " | ")
     }
 
+    private var websiteActionsMenu: some View {
+        #if os(macOS)
+        Menu {
+            Button {
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                }
+            } label: {
+                Label(pinActionTitle, systemImage: pinIconName)
+            }
+            Button {
+                renameValue = viewModel.active?.title ?? ""
+                isRenameDialogPresented = true
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button {
+                copyWebsiteContent()
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+            Button {
+                exportWebsite()
+            } label: {
+                Label("Download", systemImage: "square.and.arrow.down")
+            }
+            Button {
+                isArchiveAlertPresented = true
+            } label: {
+                Label(archiveMenuTitle, systemImage: archiveIconName)
+            }
+            Button(role: .destructive) {
+                isDeleteAlertPresented = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        } label: {
+            HeaderActionIcon(systemName: "ellipsis.circle")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Website options")
+        .disabled(viewModel.active == nil)
+        #else
+        UIKitMenuButton(
+            systemImage: "ellipsis.circle",
+            accessibilityLabel: "Website options",
+            items: [
+                MenuActionItem(title: pinActionTitle, systemImage: pinIconName, role: nil) {
+                    guard let websiteId = viewModel.active?.id else { return }
+                    Task {
+                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                    }
+                },
+                MenuActionItem(title: "Rename", systemImage: "pencil", role: nil) {
+                    renameValue = viewModel.active?.title ?? ""
+                    isRenameDialogPresented = true
+                },
+                MenuActionItem(title: "Copy", systemImage: "doc.on.doc", role: nil) {
+                    copyWebsiteContent()
+                },
+                MenuActionItem(title: "Download", systemImage: "square.and.arrow.down", role: nil) {
+                    exportWebsite()
+                },
+                MenuActionItem(title: archiveMenuTitle, systemImage: archiveIconName, role: nil) {
+                    isArchiveAlertPresented = true
+                },
+                MenuActionItem(title: "Delete", systemImage: "trash", role: .destructive) {
+                    isDeleteAlertPresented = true
+                }
+            ]
+        )
+        .frame(width: 28, height: 20)
+        .accessibilityLabel("Website options")
+        .disabled(viewModel.active == nil)
+        #endif
+    }
+
+    private var closeButton: some View {
+        HeaderActionButton(
+            systemName: "xmark",
+            accessibilityLabel: "Close website",
+            action: { viewModel.clearSelection() },
+            isDisabled: viewModel.active == nil
+        )
+    }
+
+    private var isPinned: Bool {
+        viewModel.active?.pinned == true
+    }
+
+    private var isArchived: Bool {
+        viewModel.active?.archived == true
+    }
+
+    private var pinActionTitle: String {
+        isPinned ? "Unpin" : "Pin"
+    }
+
+    private var pinIconName: String {
+        isPinned ? "pin.slash" : "pin"
+    }
+
+    private var archiveMenuTitle: String {
+        isArchived ? "Unarchive" : "Archive"
+    }
+
+    private var archiveIconName: String {
+        isArchived ? "archivebox.fill" : "archivebox"
+    }
+
+    private var archiveActionTitle: String {
+        isArchived ? "Unarchive" : "Archive"
+    }
+
+    private var archiveAlertTitle: String {
+        isArchived ? "Unarchive website" : "Archive website"
+    }
+
+    private var archiveAlertMessage: String {
+        isArchived
+            ? "This will move the website back to your main list."
+            : "This will move the website into your archive."
+    }
+
+    private var renameDialogTitle: String {
+        "Rename website"
+    }
+
+    private var renameDialogPlaceholder: String {
+        "Website title"
+    }
+
+    private var deleteDialogTitle: String {
+        "Delete website"
+    }
+
     private var isCompact: Bool {
         #if os(macOS)
         return false
@@ -222,31 +360,43 @@ private struct WebsitesDetailView: View {
         #endif
     }
 
+    private func commitRename() {
+        guard let websiteId = viewModel.active?.id else { return }
+        let updatedName = renameValue
+        isRenameDialogPresented = false
+        renameValue = ""
+        Task {
+            await viewModel.renameWebsite(id: websiteId, title: updatedName)
+        }
+    }
+
+    private func copyWebsiteContent() {
+        guard let content = viewModel.active?.content, !content.isEmpty else { return }
+        let stripped = MarkdownRendering.stripFrontmatter(content)
+        guard !stripped.isEmpty else { return }
+        #if os(iOS)
+        UIPasteboard.general.string = stripped
+        #elseif os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(stripped, forType: .string)
+        #endif
+    }
+
+    private func exportWebsite() {
+        guard let website = viewModel.active else { return }
+        let fallbackName = website.title.isEmpty ? "website" : website.title
+        let stripped = MarkdownRendering.stripFrontmatter(website.content)
+        guard !stripped.isEmpty else { return }
+        exportFilename = "\(fallbackName).md"
+        exportDocument = MarkdownFileDocument(text: stripped)
+        isExporting = true
+    }
+
     private var sourceURL: URL? {
         guard let website = viewModel.active else { return nil }
         let urlString = (website.urlFull?.isEmpty == false) ? website.urlFull : website.url
         guard let urlString else { return nil }
         return URL(string: urlString)
-    }
-
-    private func stripFrontmatter(_ content: String) -> String {
-        let marker = "---"
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix(marker) else { return content }
-        let parts = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
-        guard let first = parts.first, first.trimmingCharacters(in: .whitespacesAndNewlines) == marker else {
-            return content
-        }
-        var endIndex: Int? = nil
-        for (index, line) in parts.enumerated().dropFirst() {
-            if line.trimmingCharacters(in: .whitespacesAndNewlines) == marker {
-                endIndex = index
-                break
-            }
-        }
-        guard let endIndex else { return content }
-        let body = parts.dropFirst(endIndex + 1).joined(separator: "\n")
-        return body.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func formatDomain(_ domain: String) -> String {
@@ -270,108 +420,4 @@ private struct WebsitesDetailView: View {
         formatter.timeStyle = .none
         return formatter
     }()
-
-    private var galleryWidth: CGFloat {
-        let available = scrollWidth - (contentHorizontalPadding * 2)
-        if available > 0 {
-            return min(contentMaxWidth, available)
-        }
-        return contentMaxWidth
-    }
-}
-
-private struct WebsiteGalleryView: View {
-    let gallery: MarkdownRendering.WebsiteGallery
-    let availableWidth: CGFloat
-    private let gridSpacing: CGFloat = 12
-    private let minImageWidth: CGFloat = 150
-    private let maxImageSize = CGSize(width: 450, height: 450)
-
-    var body: some View {
-        VStack(alignment: .center, spacing: gridSpacing) {
-            ForEach(rows.indices, id: \.self) { rowIndex in
-                HStack(spacing: gridSpacing) {
-                    ForEach(rows[rowIndex], id: \.self) { urlString in
-                        GalleryImageView(
-                            urlString: urlString,
-                            maxSize: CGSize(width: imageWidth, height: maxImageSize.height)
-                        )
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-            if let caption = gallery.caption, !caption.isEmpty {
-                Text(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var columns: Int {
-        let effectiveWidth = max(availableWidth, minImageWidth)
-        let count = Int((effectiveWidth + gridSpacing) / (minImageWidth + gridSpacing))
-        return max(1, count)
-    }
-
-    private var imageWidth: CGFloat {
-        let effectiveWidth = max(availableWidth, minImageWidth)
-        let totalSpacing = gridSpacing * CGFloat(max(columns - 1, 0))
-        let columnWidth = (effectiveWidth - totalSpacing) / CGFloat(columns)
-        return min(columnWidth, maxImageSize.width)
-    }
-
-    private var rows: [[String]] {
-        chunked(gallery.imageUrls, size: columns)
-    }
-
-    private func chunked(_ items: [String], size: Int) -> [[String]] {
-        guard size > 0 else { return [items] }
-        var chunks: [[String]] = []
-        var index = 0
-        while index < items.count {
-            let end = min(index + size, items.count)
-            chunks.append(Array(items[index..<end]))
-            index = end
-        }
-        return chunks
-    }
-}
-
-private struct GalleryImageView: View {
-    let urlString: String
-    let maxSize: CGSize
-
-    var body: some View {
-        if let url = URL(string: urlString) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
-                case .failure:
-                    Image(systemName: "photo")
-                        .font(.system(size: 32, weight: .regular))
-                        .foregroundStyle(.secondary)
-                case .empty:
-                    ProgressView()
-                @unknown default:
-                    EmptyView()
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-    }
-}
-
-private struct ContentWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
 }

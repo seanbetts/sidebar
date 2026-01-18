@@ -7,18 +7,25 @@ public struct SiteHeaderBar: View {
     #endif
     @AppStorage(AppStorageKeys.weatherUsesFahrenheit) private var weatherUsesFahrenheit = false
     @State private var isScratchpadPresented = false
+    @State private var isIngestionCenterPresented = false
     private let onSwapContent: (() -> Void)?
     private let onToggleSidebar: (() -> Void)?
     private let onShowSettings: (() -> Void)?
+    private let isLeftPanelExpanded: Bool
+    private let shouldAnimateSidebar: Bool
 
     public init(
         onSwapContent: (() -> Void)? = nil,
         onToggleSidebar: (() -> Void)? = nil,
-        onShowSettings: (() -> Void)? = nil
+        onShowSettings: (() -> Void)? = nil,
+        isLeftPanelExpanded: Bool = true,
+        shouldAnimateSidebar: Bool = true
     ) {
         self.onSwapContent = onSwapContent
         self.onToggleSidebar = onToggleSidebar
         self.onShowSettings = onShowSettings
+        self.isLeftPanelExpanded = isLeftPanelExpanded
+        self.shouldAnimateSidebar = shouldAnimateSidebar
     }
 
     public var body: some View {
@@ -49,15 +56,19 @@ public struct SiteHeaderBar: View {
 
     private var brandView: some View {
         HStack(spacing: 10) {
-            Image("AppLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 32, height: 32)
-            Rectangle()
-                .fill(Color.primary)
-                .frame(width: 4, height: 35)
-                .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
-                .opacity(0.9)
+            if isCompact || isLeftPanelExpanded {
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
+                    .transition(.scale.combined(with: .opacity))
+                Rectangle()
+                    .fill(Color.primary)
+                    .frame(width: 4, height: 35)
+                    .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+                    .opacity(0.9)
+                    .transition(.scale.combined(with: .opacity))
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text("sideBar")
                     .font(.headline.weight(.bold))
@@ -65,7 +76,52 @@ public struct SiteHeaderBar: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
+            if shouldShowIngestionStatus {
+                Button {
+                    isIngestionCenterPresented = true
+                } label: {
+                    HStack(spacing: 6) {
+                        if !environment.ingestionViewModel.activeUploadItems.isEmpty {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                        } else if environment.ingestionViewModel.lastReadyMessage != nil {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        } else {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        Text(ingestionStatusText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .pillStyle()
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 6)
+                .accessibilityLabel("Show uploads")
+                #if os(macOS)
+                .popover(isPresented: $isIngestionCenterPresented, arrowEdge: .top) {
+                    IngestionCenterView(
+                        activeItems: environment.ingestionViewModel.activeUploadItems,
+                        failedItems: environment.ingestionViewModel.failedUploadItems,
+                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) }
+                    )
+                }
+                #else
+                .sheet(isPresented: $isIngestionCenterPresented) {
+                    IngestionCenterView(
+                        activeItems: environment.ingestionViewModel.activeUploadItems,
+                        failedItems: environment.ingestionViewModel.failedUploadItems,
+                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) }
+                    )
+                }
+                #endif
+            }
         }
+        .animation(shouldAnimateSidebar ? .smooth(duration: 0.3) : nil, value: isLeftPanelExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
             if isCompact {
@@ -151,7 +207,8 @@ public struct SiteHeaderBar: View {
                 .popover(isPresented: $isScratchpadPresented) {
                     ScratchpadPopoverView(
                         api: environment.container.scratchpadAPI,
-                        cache: environment.container.cacheClient
+                        cache: environment.container.cacheClient,
+                        scratchpadStore: environment.scratchpadStore
                     )
                     .frame(minWidth: 360, minHeight: 280)
                 }
@@ -214,6 +271,32 @@ public struct SiteHeaderBar: View {
         let city = first.uppercased(with: locale)
         let country = last.uppercased(with: locale)
         return "\(city), \(country)"
+    }
+
+    private var shouldShowIngestionStatus: Bool {
+        !environment.ingestionViewModel.activeUploadItems.isEmpty ||
+            !environment.ingestionViewModel.failedUploadItems.isEmpty ||
+            environment.ingestionViewModel.lastReadyMessage != nil
+    }
+
+    private var ingestionStatusText: String {
+        let activeItems = environment.ingestionViewModel.activeUploadItems
+        if let label = activeItems
+            .map({ ingestionStatusLabel(for: $0.job) ?? "Processing" })
+            .first(where: { $0 != "Processing" }) {
+            return label
+        }
+        if !activeItems.isEmpty {
+            return "Processing"
+        }
+        let failedCount = environment.ingestionViewModel.failedUploadItems.count
+        if failedCount > 0 {
+            return failedCount == 1 ? "1 Failed" : "\(failedCount) Failed"
+        }
+        if environment.ingestionViewModel.lastReadyMessage != nil {
+            return "Ready"
+        }
+        return ""
     }
 }
 

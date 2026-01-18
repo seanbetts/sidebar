@@ -24,7 +24,14 @@ def register_notes_tools(mcp, executor, default_user_id: str) -> None:
         folder: str | None = None,
         tags: list[str] | None = None,
     ) -> str:
-        """Create a new markdown note with metadata."""
+        """Create a new markdown note with metadata.
+
+        Args:
+            title: Note title (required).
+            content: Markdown content.
+            folder: Optional folder path.
+            tags: Optional list of tags.
+        """
         start_time = time.time()
 
         args = [

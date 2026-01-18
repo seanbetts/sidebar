@@ -56,6 +56,21 @@ public final class WebsitesStore: ObservableObject {
         }
     }
 
+    public func insertItemAtTop(_ item: WebsiteItem, persist: Bool = true) {
+        items.removeAll { $0.id == item.id }
+        items.insert(item, at: 0)
+        if let active, active.id == item.id {
+            let updated = updateDetail(active, with: item)
+            self.active = updated
+            if persist {
+                cache.set(key: CacheKeys.websiteDetail(id: updated.id), value: updated, ttlSeconds: CachePolicy.websiteDetail)
+            }
+        }
+        if persist {
+            persistListCache()
+        }
+    }
+
     public func removeItem(id: String, persist: Bool = true) {
         items.removeAll { $0.id == id }
         if active?.id == id {

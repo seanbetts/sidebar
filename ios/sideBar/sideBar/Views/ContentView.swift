@@ -37,9 +37,11 @@ public struct ContentView: View {
     @State private var pendingSessionExpiryAlert = false
     @State private var pendingBiometricUnavailableAlert = false
     @State private var isSigningOut = false
+    @State private var pendingReadyFileNotification: ReadyFileNotification?
     #if os(iOS)
     @AppStorage(AppStorageKeys.hasShownBiometricHint) private var hasShownBiometricHint = false
     #endif
+    @State private var hasCompletedInitialSetup = false
 
     public init() {
     }
@@ -50,6 +52,12 @@ public struct ContentView: View {
         } else if !environment.isAuthenticated {
             LoginView()
         } else {
+            signedInContent
+        }
+    }
+
+    private var signedInContent: AnyView {
+        var content: AnyView = AnyView(
             SignedInContentView(
                 biometricUnlockEnabled: biometricUnlockEnabled,
                 isBiometricUnlocked: $isBiometricUnlocked,
@@ -57,221 +65,243 @@ public struct ContentView: View {
                 onSignOut: { Task { await environment.beginSignOut() } },
                 mainView: { mainView }
             )
-            #if os(iOS)
-            .background(
+        )
+        #if os(iOS)
+        content = AnyView(
+            content.background(
                 KeyboardShortcutHandler()
                     .environmentObject(environment)
                     .frame(width: 0, height: 0)
             )
-            #endif
-            .overlay(alignment: .top) {
-                if let toast = environment.toastCenter.toast {
-                    ToastBanner(toast: toast)
-                        .padding(.top, 12)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .onTapGesture {
-                            environment.toastCenter.dismiss()
-                        }
-                }
+        )
+        #endif
+        content = AnyView(content.overlay(alignment: .top) {
+            if let toast = environment.toastCenter.toast {
+                ToastBanner(toast: toast)
+                    .padding(.top, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .onTapGesture {
+                        environment.toastCenter.dismiss()
+                    }
             }
-            .animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast)
-            .onChange(of: scenePhase) { _, newValue in
-                if newValue == .background && biometricUnlockEnabled {
-                    isBiometricUnlocked = false
-                }
+        })
+        content = AnyView(content.animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast))
+        content = AnyView(content.onChange(of: scenePhase) { _, newValue in
+            if newValue == .background && biometricUnlockEnabled {
+                isBiometricUnlocked = false
             }
-            .onChange(of: environment.biometricMonitor.isAvailable) { _, isAvailable in
-                guard biometricUnlockEnabled, !isAvailable, environment.isAuthenticated else { return }
-                enqueueAlertAction {
-                    presentAlert(.biometricUnavailable)
-                }
+        })
+        content = AnyView(content.onChange(of: environment.biometricMonitor.isAvailable) { _, isAvailable in
+            guard biometricUnlockEnabled, !isAvailable, environment.isAuthenticated else { return }
+            enqueueAlertAction {
+                presentAlert(.biometricUnavailable)
             }
-            .onChange(of: phoneSelection) { _, newValue in
-                sidebarSelection = newValue
-                primarySection = newValue
-                Task { await loadPhoneSectionIfNeeded(newValue) }
+        })
+        content = AnyView(content.onChange(of: phoneSelection) { _, newValue in
+            sidebarSelection = newValue
+            primarySection = newValue
+            Task { await loadPhoneSectionIfNeeded(newValue) }
+        })
+        content = AnyView(content.onReceive(environment.notesViewModel.$selectedNoteId) { newValue in
+            guard newValue != nil else { return }
+            handleNonChatSelection(.notes)
+        })
+        content = AnyView(content.onReceive(environment.ingestionViewModel.$selectedFileId) { newValue in
+            guard newValue != nil else { return }
+            handleNonChatSelection(.files)
+        })
+        content = AnyView(content.onChange(of: environment.ingestionViewModel.readyFileNotification) { _, notification in
+            guard let notification else { return }
+            handleReadyFileNotification(notification)
+        })
+        content = AnyView(content.onReceive(environment.websitesViewModel.$selectedWebsiteId) { newValue in
+            guard newValue != nil else { return }
+            handleNonChatSelection(.websites)
+        })
+        content = AnyView(content.onChange(of: environment.commandSelection) { _, newValue in
+            guard let newValue else { return }
+            if newValue == .settings {
+                #if os(macOS)
+                #else
+                isSettingsPresented = true
+                #endif
+                environment.commandSelection = nil
+                return
             }
-            .onReceive(environment.notesViewModel.$selectedNoteId) { newValue in
-                guard newValue != nil else { return }
-                handleNonChatSelection(.notes)
+            sidebarSelection = newValue
+            if !isLeftPanelExpanded {
+                isLeftPanelExpanded = true
             }
-            .onReceive(environment.ingestionViewModel.$selectedFileId) { newValue in
-                guard newValue != nil else { return }
-                handleNonChatSelection(.files)
-            }
-            .onReceive(environment.websitesViewModel.$active) { newValue in
-                guard newValue != nil else { return }
-                handleNonChatSelection(.websites)
-            }
-            .onChange(of: environment.commandSelection) { _, newValue in
-                guard let newValue else { return }
-                if newValue == .settings {
-                    #if os(macOS)
-                    #else
-                    isSettingsPresented = true
-                    #endif
-                    environment.commandSelection = nil
-                    return
-                }
-                sidebarSelection = newValue
-                if !isLeftPanelExpanded {
-                    isLeftPanelExpanded = true
-                }
                 #if !os(macOS)
                 phoneSelection = newValue
                 #endif
                 environment.commandSelection = nil
-            }
-            .onChange(of: environment.isAuthenticated) { _, isAuthenticated in
-                activeAlert = nil
-                pendingSessionExpiryAlert = false
-                pendingBiometricUnavailableAlert = false
-                environment.sessionExpiryWarning = nil
-                isSigningOut = false
-                if isAuthenticated {
-                    if biometricUnlockEnabled {
-                        isBiometricUnlocked = false
-                    } else {
-                        isBiometricUnlocked = true
-                    }
-                    #if os(iOS)
-                    if environment.biometricMonitor.isAvailable
-                        && !biometricUnlockEnabled
-                        && !hasShownBiometricHint {
-                        hasShownBiometricHint = true
-                        enqueueAlertAction {
-                            if activeAlert == nil {
-                                activeAlert = .biometricHint
-                            }
-                        }
-                    }
-                    #endif
-                    if !didLoadSettings {
-                        didLoadSettings = true
-                        Task {
-                            await environment.settingsViewModel.load()
-                            await environment.settingsViewModel.loadProfileImage()
-                            await refreshWeatherIfPossible()
-                        }
-                    }
-                } else {
-                    didLoadSettings = false
+        })
+        content = AnyView(content.onChange(of: environment.isAuthenticated) { _, isAuthenticated in
+            activeAlert = nil
+            pendingSessionExpiryAlert = false
+            pendingBiometricUnavailableAlert = false
+            environment.sessionExpiryWarning = nil
+            isSigningOut = false
+            if isAuthenticated {
+                if biometricUnlockEnabled {
                     isBiometricUnlocked = false
+                } else {
+                    isBiometricUnlocked = true
                 }
-            }
-            .onChange(of: biometricUnlockEnabled) { _, isEnabled in
-                isBiometricUnlocked = !isEnabled
-            }
-            .onChange(of: environment.settingsViewModel.settings?.location) { _, _ in
-                Task {
-                    await refreshWeatherIfPossible()
+                #if os(iOS)
+                if environment.biometricMonitor.isAvailable
+                    && !biometricUnlockEnabled
+                    && !hasShownBiometricHint {
+                    hasShownBiometricHint = true
+                    enqueueAlertAction {
+                        if activeAlert == nil {
+                            activeAlert = .biometricHint
+                        }
+                    }
                 }
-            }
-            .task {
-                applyInitialSelectionIfNeeded()
-                if environment.isAuthenticated && !didLoadSettings {
+                #endif
+                if !didLoadSettings {
                     didLoadSettings = true
-                    isBiometricUnlocked = !biometricUnlockEnabled
                     Task {
                         await environment.settingsViewModel.load()
                         await environment.settingsViewModel.loadProfileImage()
                         await refreshWeatherIfPossible()
                     }
                 }
+                } else {
+                    didLoadSettings = false
+                    isBiometricUnlocked = false
+                }
+        })
+        content = AnyView(content.onChange(of: biometricUnlockEnabled) { _, isEnabled in
+            isBiometricUnlocked = !isEnabled
+        })
+        content = AnyView(content.onChange(of: environment.settingsViewModel.settings?.location) { _, _ in
+            Task {
+                await refreshWeatherIfPossible()
             }
-            #if !os(macOS)
-            .sheet(isPresented: $isSettingsPresented) {
-                SettingsView()
-                    .environmentObject(environment)
-            }
-            #endif
-            .onChange(of: environment.sessionExpiryWarning) { _, newValue in
-                enqueueAlertAction {
-                    guard environment.isAuthenticated, !isSigningOut else { return }
-                    if newValue != nil {
-                        presentAlert(.sessionExpiry)
-                    } else {
-                        pendingSessionExpiryAlert = false
-                    }
+        })
+        content = AnyView(content.task {
+            applyInitialSelectionIfNeeded()
+            if environment.isAuthenticated && !didLoadSettings {
+                didLoadSettings = true
+                isBiometricUnlocked = !biometricUnlockEnabled
+                Task {
+                    await environment.settingsViewModel.load()
+                    await environment.settingsViewModel.loadProfileImage()
+                    await refreshWeatherIfPossible()
                 }
             }
-            .onChange(of: environment.signOutEvent) { _, _ in
-                enqueueAlertAction {
+        })
+        #if !os(macOS)
+        content = AnyView(content.sheet(isPresented: $isSettingsPresented) {
+            SettingsView()
+                .environmentObject(environment)
+        })
+        #endif
+        content = AnyView(content.onChange(of: environment.sessionExpiryWarning) { _, newValue in
+            enqueueAlertAction {
+                guard environment.isAuthenticated, !isSigningOut else { return }
+                if newValue != nil {
+                    presentAlert(.sessionExpiry)
+                } else {
                     pendingSessionExpiryAlert = false
-                    pendingBiometricUnavailableAlert = false
-                    activeAlert = nil
-                    isSigningOut = true
                 }
             }
-            .onChange(of: environment.isAuthenticated) { _, isAuthenticated in
-                guard !isAuthenticated else { return }
-                enqueueAlertAction {
+        })
+        content = AnyView(content.onChange(of: environment.signOutEvent) { _, _ in
+            enqueueAlertAction {
+                pendingSessionExpiryAlert = false
+                pendingBiometricUnavailableAlert = false
+                activeAlert = nil
+                isSigningOut = true
+            }
+        })
+        content = AnyView(content.onChange(of: environment.isAuthenticated) { _, isAuthenticated in
+            guard !isAuthenticated else { return }
+            enqueueAlertAction {
+                pendingSessionExpiryAlert = false
+                pendingBiometricUnavailableAlert = false
+                activeAlert = nil
+                isSigningOut = false
+            }
+        })
+        content = AnyView(content.onChange(of: activeAlert) { _, newValue in
+            guard newValue == nil else { return }
+            enqueueAlertAction {
+                if pendingBiometricUnavailableAlert {
+                    pendingBiometricUnavailableAlert = false
+                    activeAlert = .biometricUnavailable
+                    return
+                }
+                if pendingSessionExpiryAlert,
+                   environment.isAuthenticated,
+                   !isSigningOut,
+                   environment.sessionExpiryWarning != nil {
                     pendingSessionExpiryAlert = false
-                    pendingBiometricUnavailableAlert = false
-                    activeAlert = nil
-                    isSigningOut = false
+                    activeAlert = .sessionExpiry
+                    return
+                }
+                pendingSessionExpiryAlert = false
+                if let notification = pendingReadyFileNotification {
+                    pendingReadyFileNotification = nil
+                    handleReadyFileNotification(notification)
                 }
             }
-            .onChange(of: activeAlert) { _, newValue in
-                guard newValue == nil else { return }
-                enqueueAlertAction {
-                    if pendingBiometricUnavailableAlert {
-                        pendingBiometricUnavailableAlert = false
-                        activeAlert = .biometricUnavailable
-                        return
-                    }
-                    if pendingSessionExpiryAlert,
-                       environment.isAuthenticated,
-                       !isSigningOut,
-                       environment.sessionExpiryWarning != nil {
-                        pendingSessionExpiryAlert = false
-                        activeAlert = .sessionExpiry
-                    } else {
-                        pendingSessionExpiryAlert = false
-                    }
-                }
+        })
+        content = AnyView(content.alert(item: $activeAlert) { alert in
+            switch alert {
+            case .biometricUnavailable:
+                return Alert(
+                    title: Text("Biometric Unlock Unavailable"),
+                    message: Text("Biometric unlock is no longer available on this device. You can re-enable it in Settings once Face ID or Touch ID is available again."),
+                    dismissButton: .default(Text("OK"))
+                )
+            case .biometricHint:
+                return Alert(
+                    title: Text(biometricHintTitle),
+                    message: Text(biometricHintMessage),
+                    primaryButton: .default(Text("Enable in Settings"), action: {
+                        enqueueAlertAction {
+                            isSettingsPresented = true
+                        }
+                    }),
+                    secondaryButton: .cancel()
+                )
+            case .sessionExpiry:
+                return Alert(
+                    title: Text("Session Expiring Soon"),
+                    message: Text("Your session will expire soon. Would you like to stay signed in?"),
+                    primaryButton: .default(Text("Stay Signed In"), action: {
+                        enqueueAlertAction {
+                            Task { await environment.container.authSession.refreshSession() }
+                            environment.sessionExpiryWarning = nil
+                        }
+                    }),
+                    secondaryButton: .destructive(Text("Sign Out"), action: {
+                        enqueueAlertAction {
+                            pendingSessionExpiryAlert = false
+                            Task {
+                                await environment.beginSignOut()
+                            }
+                        }
+                    })
+                )
+            case .fileReady(let notification):
+                return Alert(
+                    title: Text("File Ready"),
+                    message: Text("\"\(notification.filename)\" is ready to view."),
+                    primaryButton: .default(Text("Open File"), action: {
+                        enqueueAlertAction {
+                            openReadyFile(notification)
+                        }
+                    }),
+                        secondaryButton: .cancel(Text("Stay Here"))
+                )
             }
-            .alert(item: $activeAlert) { alert in
-                switch alert {
-                case .biometricUnavailable:
-                    return Alert(
-                        title: Text("Biometric Unlock Unavailable"),
-                        message: Text("Biometric unlock is no longer available on this device. You can re-enable it in Settings once Face ID or Touch ID is available again."),
-                        dismissButton: .default(Text("OK"))
-                    )
-                case .biometricHint:
-                    return Alert(
-                        title: Text(biometricHintTitle),
-                        message: Text(biometricHintMessage),
-                        primaryButton: .default(Text("Enable in Settings"), action: {
-                            enqueueAlertAction {
-                                isSettingsPresented = true
-                            }
-                        }),
-                        secondaryButton: .cancel()
-                    )
-                case .sessionExpiry:
-                    return Alert(
-                        title: Text("Session Expiring Soon"),
-                        message: Text("Your session will expire soon. Would you like to stay signed in?"),
-                        primaryButton: .default(Text("Stay Signed In"), action: {
-                            enqueueAlertAction {
-                                Task { await environment.container.authSession.refreshSession() }
-                                environment.sessionExpiryWarning = nil
-                            }
-                        }),
-                        secondaryButton: .destructive(Text("Sign Out"), action: {
-                            enqueueAlertAction {
-                                pendingSessionExpiryAlert = false
-                                Task {
-                                    await environment.beginSignOut()
-                                }
-                            }
-                        })
-                    )
-                }
-            }
-        }
+        })
+        return content
     }
 
     private var biometricHintTitle: String {
@@ -317,6 +347,8 @@ public struct ContentView: View {
             pendingSessionExpiryAlert = true
         case .biometricHint:
             break
+        case .fileReady(let notification):
+            pendingReadyFileNotification = notification
         }
     }
 
@@ -330,11 +362,14 @@ public struct ContentView: View {
         WorkspaceLayout(
             selection: $sidebarSelection,
             isLeftPanelExpanded: $isLeftPanelExpanded,
+            shouldAnimateSidebar: hasCompletedInitialSetup,
             onShowSettings: { isSettingsPresented = true },
             header: {
                 SiteHeaderBar(
                     onSwapContent: swapPrimaryAndSecondary,
-                    onShowSettings: { isSettingsPresented = true }
+                    onShowSettings: { isSettingsPresented = true },
+                    isLeftPanelExpanded: isLeftPanelExpanded,
+                    shouldAnimateSidebar: hasCompletedInitialSetup
                 )
             }
         ) {
@@ -393,7 +428,8 @@ public struct ContentView: View {
         .sheet(isPresented: $isPhoneScratchpadPresented) {
             ScratchpadPopoverView(
                 api: environment.container.scratchpadAPI,
-                cache: environment.container.cacheClient
+                cache: environment.container.cacheClient,
+                scratchpadStore: environment.scratchpadStore
             )
         }
     }
@@ -427,6 +463,37 @@ public struct ContentView: View {
             primarySection = section
         }
         lastNonChatSection = section
+    }
+
+    private func handleReadyFileNotification(_ notification: ReadyFileNotification) {
+        environment.ingestionViewModel.clearReadyFileNotification()
+        if environment.ingestionViewModel.selectedFileId == notification.fileId {
+            return
+        }
+        if isFilesSectionVisible {
+            Task { await environment.ingestionViewModel.selectFile(fileId: notification.fileId, forceRefresh: true) }
+            return
+        }
+        presentAlert(.fileReady(notification))
+    }
+
+    private func openReadyFile(_ notification: ReadyFileNotification) {
+        navigateToFilesSection()
+        Task { await environment.ingestionViewModel.selectFile(fileId: notification.fileId, forceRefresh: true) }
+    }
+
+    private func navigateToFilesSection() {
+        #if !os(macOS)
+        if horizontalSizeClass == .compact {
+            phoneSelection = .files
+            return
+        }
+        #endif
+        sidebarSelection = .files
+        if !isLeftPanelExpanded {
+            isLeftPanelExpanded = true
+        }
+        handleNonChatSelection(.files)
     }
 
     private func phoneTabView(for section: AppSection) -> some View {
@@ -602,6 +669,17 @@ public struct ContentView: View {
         #endif
     }
 
+    private var isFilesSectionVisible: Bool {
+        #if os(macOS)
+        return primarySection == .files || secondarySection == .files
+        #else
+        if isCompact {
+            return phoneSelection == .files
+        }
+        return primarySection == .files || secondarySection == .files
+        #endif
+    }
+
     private var isPhonePanelListVisible: Bool {
         guard isCompact else { return false }
         switch phoneSelection {
@@ -639,6 +717,9 @@ public struct ContentView: View {
         sidebarSelection = .notes
         isLeftPanelExpanded = true
 #endif
+        DispatchQueue.main.async {
+            hasCompletedInitialSetup = true
+        }
     }
 
 
@@ -715,10 +796,11 @@ public struct ConfigErrorView: View {
     }
 }
 
-private enum ActiveAlert: Identifiable {
+private enum ActiveAlert: Identifiable, Equatable {
     case biometricUnavailable
     case biometricHint
     case sessionExpiry
+    case fileReady(ReadyFileNotification)
 
     var id: String {
         switch self {
@@ -728,6 +810,8 @@ private enum ActiveAlert: Identifiable {
             return "biometricHint"
         case .sessionExpiry:
             return "sessionExpiry"
+        case .fileReady(let notification):
+            return "fileReady-\(notification.id)"
         }
     }
 }
@@ -738,6 +822,7 @@ private struct SignedInContentView<Main: View>: View {
     let topSafeAreaBackground: Color
     let onSignOut: () -> Void
     let mainView: () -> Main
+    @EnvironmentObject private var environment: AppEnvironment
 
     var body: some View {
         Group {
@@ -751,6 +836,7 @@ private struct SignedInContentView<Main: View>: View {
                     mainView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .background(DesignTokens.Colors.background)
+                        .coordinateSpace(name: "appRoot")
                         .overlay(alignment: .top) {
                             Rectangle()
                                 .fill(topSafeAreaBackground)

@@ -7,6 +7,7 @@
 	import { treeStore } from '$lib/stores/tree';
 	import { thingsStore } from '$lib/stores/things';
 	import { websitesStore } from '$lib/stores/websites';
+	import { filesSearchStore } from '$lib/stores/files-search';
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
 	import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 	import ConversationList from './ConversationList.svelte';
@@ -497,8 +498,8 @@
 				<SidebarSectionHeader
 					title="Files"
 					searchPlaceholder="Search files..."
-					onSearch={(query) => treeStore.searchFiles('documents', query)}
-					onClear={() => treeStore.load('documents', true)}
+					onSearch={(query) => filesSearchStore.set(query)}
+					onClear={() => filesSearchStore.clear()}
 				>
 					<svelte:fragment slot="actions">
 						<input

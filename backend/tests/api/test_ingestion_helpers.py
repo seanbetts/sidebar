@@ -7,6 +7,7 @@ from api.routers.ingestion_helpers import (
     _normalize_youtube_url,
     _recommended_viewer,
     _user_message_for_error,
+    _user_message_for_job,
 )
 
 
@@ -58,3 +59,12 @@ def test_user_message_for_error():
         _user_message_for_error("FILE_EMPTY", "failed")
         == "This file appears to be empty."
     )
+
+
+def test_user_message_for_job_stage_mapping():
+    assert _user_message_for_job(None, "queued", None) == "Queued"
+    assert _user_message_for_job(None, "processing", "validating") == "Preparing"
+    assert _user_message_for_job(None, "processing", "ai_md") == "Transcribing"
+    assert _user_message_for_job(None, "processing", "finalizing") == "Finalizing"
+    assert _user_message_for_job(None, "ready", None) == "Ready"
+    assert _user_message_for_job(None, "canceled", None) == "Canceled"

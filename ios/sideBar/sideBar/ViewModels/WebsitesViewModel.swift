@@ -5,12 +5,22 @@ import Combine
 
 @MainActor
 public final class WebsitesViewModel: ObservableObject {
+    public struct PendingWebsiteItem: Identifiable, Equatable {
+        public let id: String
+        public let title: String
+        public let domain: String
+        public let url: String
+    }
+
     @Published public private(set) var items: [WebsiteItem] = []
     @Published public private(set) var active: WebsiteDetail? = nil
     @Published public private(set) var selectedWebsiteId: String? = nil
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingDetail: Bool = false
     @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var isSavingWebsite: Bool = false
+    @Published public private(set) var saveErrorMessage: String? = nil
+    @Published public private(set) var pendingWebsite: PendingWebsiteItem? = nil
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
@@ -34,7 +44,9 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func load() async {
-        isLoading = true
+        if items.isEmpty {
+            isLoading = true
+        }
         errorMessage = nil
         do {
             try await store.loadList()
@@ -69,11 +81,114 @@ public final class WebsitesViewModel: ObservableObject {
         store.clearActive()
     }
 
+    public func saveWebsite(url: String) async -> Bool {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            saveErrorMessage = "Enter a valid URL."
+            return false
+        }
+        guard let normalized = WebsiteURLValidator.normalizedCandidate(trimmed) else {
+            saveErrorMessage = "Enter a valid URL."
+            return false
+        }
+        let previousSelectedId = selectedWebsiteId
+        let pending = makePendingWebsite(from: normalized)
+        pendingWebsite = pending
+        selectedWebsiteId = pending.id
+        saveErrorMessage = nil
+        isSavingWebsite = true
+        isLoadingDetail = true
+        defer {
+            isSavingWebsite = false
+            isLoadingDetail = false
+        }
+        do {
+            let response = try await api.save(url: normalized.absoluteString)
+            guard response.success, let data = response.data else {
+                pendingWebsite = nil
+                selectedWebsiteId = previousSelectedId
+                saveErrorMessage = "Failed to save website"
+                return false
+            }
+            selectedWebsiteId = data.id
+            try await store.loadDetail(id: data.id, force: true)
+            let detail = active
+            store.insertItemAtTop(
+                WebsiteItem(
+                    id: data.id,
+                    title: detail?.title ?? data.title,
+                    url: detail?.url ?? data.url,
+                    domain: detail?.domain ?? data.domain,
+                    savedAt: detail?.savedAt,
+                    publishedAt: detail?.publishedAt,
+                    pinned: detail?.pinned ?? false,
+                    pinnedOrder: detail?.pinnedOrder,
+                    archived: detail?.archived ?? false,
+                    youtubeTranscripts: detail?.youtubeTranscripts,
+                    updatedAt: detail?.updatedAt,
+                    lastOpenedAt: detail?.lastOpenedAt
+                ),
+                persist: true
+            )
+            pendingWebsite = nil
+            store.invalidateList()
+            Task { [weak self] in
+                try? await self?.store.loadList(force: true)
+            }
+            return true
+        } catch {
+            pendingWebsite = nil
+            selectedWebsiteId = previousSelectedId
+            saveErrorMessage = ErrorMapping.message(for: error)
+            return false
+        }
+    }
+
     public func setPinned(id: String, pinned: Bool) async {
         errorMessage = nil
         do {
             let updated = try await api.pin(id: id, pinned: pinned)
             store.updateListItem(updated, persist: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    public func renameWebsite(id: String, title: String) async {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return
+        }
+        errorMessage = nil
+        do {
+            let updated = try await api.rename(id: id, title: trimmed)
+            store.updateListItem(updated, persist: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    public func setArchived(id: String, archived: Bool) async {
+        errorMessage = nil
+        do {
+            let updated = try await api.archive(id: id, archived: archived)
+            store.updateListItem(updated, persist: true)
+            if archived, selectedWebsiteId == id {
+                clearSelection()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    public func deleteWebsite(id: String) async {
+        errorMessage = nil
+        do {
+            try await api.delete(id: id)
+            store.removeItem(id: id, persist: true)
+            if selectedWebsiteId == id {
+                clearSelection()
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -85,5 +200,16 @@ public final class WebsitesViewModel: ObservableObject {
             selectedWebsiteId = nil
         }
         store.applyRealtimeEvent(payload)
+    }
+
+    private func makePendingWebsite(from url: URL) -> PendingWebsiteItem {
+        let host = url.host ?? url.absoluteString
+        let domain = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+        return PendingWebsiteItem(
+            id: "pending-\(UUID().uuidString)",
+            title: "Reading...",
+            domain: domain,
+            url: url.absoluteString
+        )
     }
 }

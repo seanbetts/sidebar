@@ -201,7 +201,7 @@ describe('createProxyHandler', () => {
 			);
 
 		const handler = createProxyHandler({
-			pathBuilder: () => '/api/v1/files/download',
+			pathBuilder: () => '/api/v1/notes/tree',
 			responseType: 'stream'
 		});
 

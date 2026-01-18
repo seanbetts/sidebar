@@ -1,4 +1,6 @@
 import SwiftUI
+import Foundation
+import UniformTypeIdentifiers
 
 private func panelHeaderBackground(_ colorScheme: ColorScheme) -> Color {
     #if os(macOS)
@@ -46,12 +48,13 @@ private struct TasksPanelView: View {
             header
             SidebarPanelPlaceholder(title: "Tasks")
         }
+        .frame(maxHeight: .infinity)
     }
 
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Tasks") {
-                HStack(spacing: DesignTokens.Spacing.xs) {
+                HStack(spacing: 30) {
                     Button {
                     } label: {
                         Image(systemName: "plus")
@@ -80,6 +83,7 @@ private struct TasksPanelView: View {
         return horizontalSizeClass == .compact
         #endif
     }
+
 }
 
 private struct ConversationsPanelView: View {
@@ -89,7 +93,6 @@ private struct ConversationsPanelView: View {
     @State private var renameValue: String = ""
     @State private var deleteConversationId: String? = nil
     @State private var deleteConversationTitle: String = ""
-    @FocusState private var renameFieldFocusedId: String?
     @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -106,6 +109,22 @@ private struct ConversationsPanelView: View {
                 } else {
                     conversationsList
                 }
+            }
+            .frame(maxHeight: .infinity)
+        }
+        .frame(maxHeight: .infinity)
+        .alert("Rename chat", isPresented: isRenameDialogPresented) {
+            TextField("Chat name", text: $renameValue)
+                .submitLabel(.done)
+                .onSubmit {
+                    commitRename()
+                }
+            Button("Rename") {
+                commitRename()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                clearRenameTarget()
             }
         }
         .alert(
@@ -180,23 +199,16 @@ private struct ConversationsPanelView: View {
         List {
             ForEach(filteredGroups) { group in
                 Section(group.title) {
-                    ForEach(Array(group.conversations.enumerated()), id: \.element.id) { index, conversation in
-                        let isEditing = renameConversationId == conversation.id
+                    ForEach(group.conversations) { conversation in
                         SelectableRow(isSelected: viewModel.selectedConversationId == conversation.id) {
                             ConversationRow(
                                 conversation: conversation,
                                 isSelected: viewModel.selectedConversationId == conversation.id,
-                                isEditing: isEditing,
-                                renameValue: $renameValue,
-                                focusedId: $renameFieldFocusedId,
                                 onRename: { beginRename(conversation) },
-                                onRenameSubmit: { commitRename(conversation) },
-                                onRenameCancel: cancelRename,
                                 onDelete: { presentDelete(conversation) }
                             )
                         }
                         .onTapGesture {
-                            guard !isEditing else { return }
                             Task { await viewModel.selectConversation(id: conversation.id) }
                         }
                         #if os(iOS)
@@ -248,6 +260,17 @@ private struct ConversationsPanelView: View {
         DesignTokens.Colors.sidebar
     }
 
+    private var isRenameDialogPresented: Binding<Bool> {
+        Binding(
+            get: { renameConversationId != nil },
+            set: { isPresented in
+                if !isPresented {
+                    clearRenameTarget()
+                }
+            }
+        )
+    }
+
     private var isDeleteDialogPresented: Binding<Bool> {
         Binding(
             get: { deleteConversationId != nil },
@@ -262,20 +285,21 @@ private struct ConversationsPanelView: View {
     private func beginRename(_ conversation: Conversation) {
         renameConversationId = conversation.id
         renameValue = conversation.title
-        renameFieldFocusedId = conversation.id
     }
 
-    private func cancelRename() {
+    private func clearRenameTarget() {
         renameConversationId = nil
         renameValue = ""
-        renameFieldFocusedId = nil
     }
 
-    private func commitRename(_ conversation: Conversation) {
+    private func commitRename() {
+        let targetId = renameConversationId
         let updatedTitle = renameValue
-        cancelRename()
-        Task {
-            await viewModel.renameConversation(id: conversation.id, title: updatedTitle)
+        clearRenameTarget()
+        if let id = targetId {
+            Task {
+                await viewModel.renameConversation(id: id, title: updatedTitle)
+            }
         }
     }
 
@@ -308,34 +332,19 @@ private struct ConversationsPanelView: View {
 private struct ConversationRow: View, Equatable {
     let conversation: Conversation
     let isSelected: Bool
-    let isEditing: Bool
-    @Binding var renameValue: String
-    @FocusState.Binding var focusedId: String?
     let onRename: () -> Void
-    let onRenameSubmit: () -> Void
-    let onRenameCancel: () -> Void
     let onDelete: () -> Void
     private let subtitleText: String
 
     init(
         conversation: Conversation,
         isSelected: Bool,
-        isEditing: Bool,
-        renameValue: Binding<String>,
-        focusedId: FocusState<String?>.Binding,
         onRename: @escaping () -> Void,
-        onRenameSubmit: @escaping () -> Void,
-        onRenameCancel: @escaping () -> Void,
         onDelete: @escaping () -> Void
     ) {
         self.conversation = conversation
         self.isSelected = isSelected
-        self.isEditing = isEditing
-        self._renameValue = renameValue
-        self._focusedId = focusedId
         self.onRename = onRename
-        self.onRenameSubmit = onRenameSubmit
-        self.onRenameCancel = onRenameCancel
         self.onDelete = onDelete
         let formattedDate = ConversationRow.formattedDate(from: conversation.updatedAt)
         let count = conversation.messageCount
@@ -348,59 +357,43 @@ private struct ConversationRow: View, Equatable {
         lhs.conversation.id == rhs.conversation.id &&
         lhs.conversation.title == rhs.conversation.title &&
         lhs.conversation.updatedAt == rhs.conversation.updatedAt &&
-        lhs.conversation.messageCount == rhs.conversation.messageCount &&
-        lhs.isEditing == rhs.isEditing
+        lhs.conversation.messageCount == rhs.conversation.messageCount
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 6) {
-                if isEditing {
-                    TextField("", text: $renameValue)
-                        .textFieldStyle(.plain)
-                        .font(.subheadline)
-                        .foregroundStyle(primaryTextColor)
-                        .focused($focusedId, equals: conversation.id)
-                        .submitLabel(.done)
-                        .onSubmit(onRenameSubmit)
-                        #if os(macOS)
-                        .onExitCommand(perform: onRenameCancel)
-                        #endif
-                } else {
-                    Text(conversation.title)
-                        .font(.subheadline)
-                        .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
-                        .lineLimit(1)
-                }
+                Text(conversation.title)
+                    .font(.subheadline)
+                    .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                    .lineLimit(1)
                 Text(subtitleText)
                     .font(.caption2)
                     .foregroundStyle(isSelected ? selectedSecondaryText.opacity(0.85) : secondaryTextColor)
             }
             Spacer(minLength: 0)
             #if os(macOS)
-            if !isEditing {
-                let menu = Menu {
-                    Button("Rename") {
-                        onRename()
-                    }
-                    Button("Delete", role: .destructive) {
-                        onDelete()
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
+            let menu = Menu {
+                Button("Rename") {
+                    onRename()
                 }
-                .menuStyle(.borderlessButton)
-                .buttonStyle(.plain)
-                .accessibilityLabel("Conversation actions")
+                Button("Delete", role: .destructive) {
+                    onDelete()
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+            }
+            .menuStyle(.borderlessButton)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Conversation actions")
 
-                if #available(macOS 13.0, *) {
-                    menu.menuIndicator(.hidden)
-                } else {
-                    menu
-                }
+            if #available(macOS 13.0, *) {
+                menu.menuIndicator(.hidden)
+            } else {
+                menu
             }
             #endif
         }
@@ -456,12 +449,23 @@ public struct NotesPanel: View {
 
 private struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
+    @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
     @Environment(\.colorScheme) private var colorScheme
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
+    @State private var isNewNotePresented = false
+    @State private var isNewFolderPresented = false
+    @State private var newNoteName: String = ""
+    @State private var newFolderName: String = ""
+    @State private var newFolderParent: String = ""
+    @State private var isCreatingNote = false
+    @State private var isCreatingFolder = false
+    @State private var renameTarget: FileNodeItem? = nil
+    @State private var renameValue: String = ""
+    @State private var deleteTarget: FileNodeItem? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -472,6 +476,7 @@ private struct NotesPanelView: View {
             notesPanelContent
             #endif
         }
+        .frame(maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -481,6 +486,66 @@ private struct NotesPanelView: View {
         .onChange(of: viewModel.searchQuery) { _, newValue in
             viewModel.updateSearch(query: newValue)
         }
+        .alert("New Note", isPresented: $isNewNotePresented) {
+            TextField("Note title", text: $newNoteName)
+                .submitLabel(.done)
+                .onSubmit {
+                    createNote()
+                }
+            Button("Create") {
+                createNote()
+            }
+            .disabled(isCreatingNote || newNoteName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                newNoteName = ""
+            }
+        }
+        .sheet(isPresented: $isNewFolderPresented) {
+            NewFolderSheet(
+                name: $newFolderName,
+                selectedFolder: $newFolderParent,
+                options: folderOptions,
+                isSaving: isCreatingFolder,
+                onCreate: createFolder
+            )
+        }
+        .alert(renameDialogTitle, isPresented: isRenameDialogPresented) {
+            TextField(renameDialogPlaceholder, text: $renameValue)
+                .submitLabel(.done)
+                .onSubmit {
+                    commitRename()
+                }
+            Button("Rename") {
+                commitRename()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                renameTarget = nil
+                renameValue = ""
+            }
+        }
+        .alert(deleteDialogTitle, isPresented: isDeleteDialogPresented) {
+            Button("Delete", role: .destructive) {
+                let target = deleteTarget
+                deleteTarget = nil
+                Task {
+                    if let target {
+                        if target.isFile {
+                            await viewModel.deleteNote(id: target.id)
+                        } else {
+                            await viewModel.deleteFolder(path: target.id)
+                        }
+                    }
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                deleteTarget = nil
+            }
+        } message: {
+            Text(deleteDialogMessage)
+        }
     }
 
     private var header: some View {
@@ -488,6 +553,9 @@ private struct NotesPanelView: View {
             PanelHeader(title: "Notes") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Button {
+                        newFolderName = ""
+                        newFolderParent = ""
+                        isNewFolderPresented = true
                     } label: {
                         Image(systemName: "folder")
                             .font(.system(size: 14, weight: .semibold))
@@ -496,6 +564,8 @@ private struct NotesPanelView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Add folder")
                     Button {
+                        newNoteName = ""
+                        isNewNotePresented = true
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .semibold))
@@ -522,6 +592,111 @@ private struct NotesPanelView: View {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+
+    private var folderOptions: [NotesFolderOption] {
+        NotesFolderOption.build(from: viewModel.tree?.children ?? [])
+    }
+
+    private func createNote() {
+        let trimmed = newNoteName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isCreatingNote else { return }
+        isCreatingNote = true
+        // Set the flag BEFORE creating the note so it's ready when currentNoteId changes
+        environment.notesEditorViewModel.requestEditingOnNextLoad()
+        Task {
+            let created = await viewModel.createNote(title: trimmed, folder: nil)
+            await MainActor.run {
+                isCreatingNote = false
+                if created != nil {
+                    isNewNotePresented = false
+                } else {
+                    // Reset flag if creation failed
+                    environment.notesEditorViewModel.wantsEditingOnNextLoad = false
+                }
+            }
+        }
+    }
+
+    private func createFolder() {
+        let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isCreatingFolder else { return }
+        isCreatingFolder = true
+        Task {
+            let destination = newFolderParent.isEmpty ? trimmed : "\(newFolderParent)/\(trimmed)"
+            let created = await viewModel.createFolder(path: destination)
+            await MainActor.run {
+                isCreatingFolder = false
+                if created {
+                    isNewFolderPresented = false
+                }
+            }
+        }
+    }
+
+    private var isRenameDialogPresented: Binding<Bool> {
+        Binding(
+            get: { renameTarget != nil },
+            set: { isPresented in
+                if !isPresented {
+                    renameTarget = nil
+                    renameValue = ""
+                }
+            }
+        )
+    }
+
+    private var isDeleteDialogPresented: Binding<Bool> {
+        Binding(
+            get: { deleteTarget != nil },
+            set: { isPresented in
+                if !isPresented {
+                    deleteTarget = nil
+                }
+            }
+        )
+    }
+
+    private var renameDialogTitle: String {
+        renameTarget?.isFile == true ? "Rename note" : "Rename folder"
+    }
+
+    private var renameDialogPlaceholder: String {
+        renameTarget?.isFile == true ? "Note name" : "Folder name"
+    }
+
+    private var deleteDialogTitle: String {
+        deleteTarget?.isFile == true ? "Delete note" : "Delete folder"
+    }
+
+    private var deleteDialogMessage: String {
+        deleteTarget?.isFile == true
+            ? "This will remove the note and cannot be undone."
+            : "This will remove the folder and its contents."
+    }
+
+    private func beginRename(for item: FileNodeItem) {
+        renameTarget = item
+        renameValue = item.displayName
+    }
+
+    private func confirmDelete(for item: FileNodeItem) {
+        deleteTarget = item
+    }
+
+    private func commitRename() {
+        let target = renameTarget
+        let updated = renameValue
+        renameTarget = nil
+        renameValue = ""
+        guard let target else { return }
+        Task {
+            if target.isFile {
+                await viewModel.renameNote(id: target.id, newName: updated)
+            } else {
+                await viewModel.renameFolder(path: target.id, newName: updated)
+            }
+        }
     }
 
     private var searchResultsView: some View {
@@ -557,6 +732,10 @@ private struct NotesPanelView: View {
                             isSelected: viewModel.selectedNoteId == node.path
                         ) {
                             Task { await viewModel.selectNote(id: node.path) }
+                        } onRename: {
+                            beginRename(for: FileNodeItem(id: node.path, name: node.name, type: node.type, children: nil))
+                        } onDelete: {
+                            confirmDelete(for: FileNodeItem(id: node.path, name: node.name, type: node.type, children: nil))
                         }
                     }
                 }
@@ -636,6 +815,10 @@ private struct NotesPanelView: View {
                             isSelected: viewModel.selectedNoteId == item.id
                         ) {
                             Task { await viewModel.selectNote(id: item.id) }
+                        } onRename: {
+                            beginRename(for: item)
+                        } onDelete: {
+                            confirmDelete(for: item)
                         }
                     }
                 }
@@ -662,6 +845,10 @@ private struct NotesPanelView: View {
                                     if item.isFile {
                                         Task { await viewModel.selectNote(id: item.id) }
                                     }
+                                } onRename: {
+                                    beginRename(for: item)
+                                } onDelete: {
+                                    confirmDelete(for: item)
                                 }
                             }
                             .listRowBackground(rowBackground)
@@ -708,6 +895,10 @@ private struct NotesPanelView: View {
                 if item.isFile {
                     Task { await viewModel.selectNote(id: item.id) }
                 }
+            } onRename: {
+                beginRename(for: item)
+            } onDelete: {
+                confirmDelete(for: item)
             }
         }
         .listRowBackground(rowBackground)
@@ -736,6 +927,10 @@ private struct NotesPanelView: View {
                                     if item.isFile {
                                         Task { await viewModel.selectNote(id: item.id) }
                                     }
+                                } onRename: {
+                                    beginRename(for: item)
+                                } onDelete: {
+                                    confirmDelete(for: item)
                                 }
                             }
                         }
@@ -808,7 +1003,7 @@ private struct NotesPanelView: View {
         nodes.compactMap { node in
             if node.type == .directory {
                 let children = filterNodes(node.children ?? [], includeArchived: includeArchived)
-                if children.isEmpty {
+                if !includeArchived && node.name.lowercased() == "archive" {
                     return nil
                 }
                 return FileNode(
@@ -835,22 +1030,118 @@ private struct NotesPanelView: View {
     }
 }
 
+private struct NotesFolderOption: Identifiable, Hashable {
+    let id: String
+    let label: String
+    let value: String
+    let depth: Int
+
+    static func build(from nodes: [FileNode]) -> [NotesFolderOption] {
+        var options: [NotesFolderOption] = [
+            NotesFolderOption(id: "", label: "Notes", value: "", depth: 0)
+        ]
+
+        func walk(_ items: [FileNode], depth: Int) {
+            for item in items {
+                guard item.type == .directory else { continue }
+                if item.name.lowercased() == "archive" { continue }
+                let folderPath = item.path.replacingOccurrences(of: "folder:", with: "")
+                options.append(
+                    NotesFolderOption(
+                        id: folderPath,
+                        label: item.name,
+                        value: folderPath,
+                        depth: depth
+                    )
+                )
+                if let children = item.children, !children.isEmpty {
+                    walk(children, depth: depth + 1)
+                }
+            }
+        }
+
+        walk(nodes, depth: 1)
+        return options
+    }
+}
+
+private struct NewFolderSheet: View {
+    @Binding var name: String
+    @Binding var selectedFolder: String
+    let options: [NotesFolderOption]
+    let isSaving: Bool
+    let onCreate: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var isNameFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Folder") {
+                    TextField("Folder name", text: $name)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            onCreate()
+                        }
+                        .focused($isNameFocused)
+                }
+                Section("Location") {
+                    Picker("Location", selection: $selectedFolder) {
+                        ForEach(options) { option in
+                            Text(optionLabel(option))
+                                .tag(option.value)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("New Folder")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") {
+                        onCreate()
+                    }
+                    .disabled(isSaving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .onAppear {
+            isNameFocused = true
+        }
+    }
+
+    private func optionLabel(_ option: NotesFolderOption) -> String {
+        let indent = String(repeating: "  ", count: max(0, option.depth))
+        return indent + option.label
+    }
+}
+
 private struct NotesTreeRow: View {
     let item: FileNodeItem
     let isSelected: Bool
     let onSelect: () -> Void
+    let onRename: (() -> Void)?
+    let onDelete: (() -> Void)?
     let useListStyling: Bool
 
     init(
         item: FileNodeItem,
         isSelected: Bool,
         useListStyling: Bool = true,
-        onSelect: @escaping () -> Void
+        onSelect: @escaping () -> Void,
+        onRename: (() -> Void)? = nil,
+        onDelete: (() -> Void)? = nil
     ) {
         self.item = item
         self.isSelected = isSelected
         self.useListStyling = useListStyling
         self.onSelect = onSelect
+        self.onRename = onRename
+        self.onDelete = onDelete
     }
 
     var body: some View {
@@ -870,15 +1161,33 @@ private struct NotesTreeRow: View {
             }
         }
 
-        if item.isFile {
-            row
-                .onTapGesture { onSelect() }
-        } else if useListStyling {
-            row
-                .listRowBackground(rowBackground)
-        } else {
-            row
+        Group {
+            if item.isFile {
+                row.onTapGesture {
+                    onSelect()
+                }
+            } else {
+                row
+            }
         }
+        #if os(iOS)
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let onRename {
+                Button("Rename") {
+                    onRename()
+                }
+                .tint(.blue)
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if let onDelete {
+                Button("Delete") {
+                    onDelete()
+                }
+                .tint(.red)
+            }
+        }
+        #endif
     }
 
     private var primaryTextColor: Color {
@@ -953,6 +1262,7 @@ public struct FilesPanel: View {
 }
 
 private struct FilesPanelView: View {
+    @EnvironmentObject private var environment: AppEnvironment
     @ObservedObject var viewModel: IngestionViewModel
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -962,6 +1272,13 @@ private struct FilesPanelView: View {
     @State private var expandedCategories: Set<String> = []
     @State private var searchQuery: String = ""
     @State private var listAppeared = false
+    @State private var isDeleteAlertPresented = false
+    @State private var deleteTarget: IngestionListItem? = nil
+    @State private var pinTarget: IngestionListItem? = nil
+    @State private var isFileImporterPresented = false
+    @State private var isYouTubeAlertPresented = false
+    @State private var newYouTubeUrl: String = ""
+    @State private var knownFileIds: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -976,10 +1293,50 @@ private struct FilesPanelView: View {
                 ) {
                     Task { await viewModel.load() }
                 }
-            } else if filteredReadyItems.isEmpty && filteredProcessingItems.isEmpty && filteredFailedItems.isEmpty {
-                SidebarPanelPlaceholder(title: "No files yet.")
+            } else if filteredItems.isEmpty {
+                if searchQuery.trimmed.isEmpty {
+                    SidebarPanelPlaceholder(title: "No files yet.")
+                } else {
+                    SidebarPanelPlaceholder(title: "No results.")
+                }
             } else {
                 filesListView
+            }
+        }
+        .frame(maxHeight: .infinity)
+        .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
+            Button("Delete", role: .destructive) {
+                confirmDelete()
+            }
+            Button("Cancel", role: .cancel) {
+                clearDeleteTarget()
+            }
+        } message: {
+            Text("This will remove the file and cannot be undone.")
+        }
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: true
+        ) { result in
+            handleFileImport(result)
+        }
+        .alert("Add YouTube video", isPresented: $isYouTubeAlertPresented) {
+            TextField("youtube.com", text: $newYouTubeUrl)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit {
+                    addYouTube()
+                }
+            Button(viewModel.isIngestingYouTube ? "Adding..." : "Add") {
+                addYouTube()
+            }
+            .disabled(viewModel.isIngestingYouTube || newYouTubeUrl.trimmed.isEmpty)
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                newYouTubeUrl = ""
             }
         }
         .onAppear {
@@ -988,9 +1345,23 @@ private struct FilesPanelView: View {
                 Task { await viewModel.load() }
             }
             initializeExpandedCategoriesIfNeeded()
+            knownFileIds = Set(viewModel.items.map { $0.file.id })
         }
         .onChange(of: categoriesWithItems) { _, _ in
             initializeExpandedCategoriesIfNeeded()
+        }
+        .onChange(of: viewModel.items.map { $0.file.id }) { _, newIds in
+            let newIdSet = Set(newIds)
+            let addedIds = newIdSet.subtracting(knownFileIds)
+            if !addedIds.isEmpty {
+                for item in viewModel.items where addedIds.contains(item.file.id) {
+                    if item.file.mimeOriginal.lowercased().contains("youtube") {
+                        expandedCategories.insert("video")
+                        break
+                    }
+                }
+            }
+            knownFileIds = newIdSet
         }
     }
 
@@ -999,6 +1370,17 @@ private struct FilesPanelView: View {
             PanelHeader(title: "Files") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Button {
+                        newYouTubeUrl = ""
+                        isYouTubeAlertPresented = true
+                    } label: {
+                        Image(systemName: "play.rectangle")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add YouTube video")
+                    Button {
+                        isFileImporterPresented = true
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .semibold))
@@ -1029,70 +1411,90 @@ private struct FilesPanelView: View {
 
     private var filesListView: some View {
         List {
-            if !pinnedItems.isEmpty {
-                Section("Pinned") {
-                    ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
-                        let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                        if isFolder(item) {
-                            row
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                        } else {
-                            row
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
-                        }
+            if !searchQuery.trimmed.isEmpty {
+                ForEach(Array(searchResults.enumerated()), id: \.element.file.id) { index, item in
+                    let row = FilesIngestionRow(
+                        item: item,
+                        isSelected: viewModel.selectedFileId == item.file.id,
+                        onPinToggle: pinAction(for: item),
+                        onDelete: deleteAction(for: item)
+                    )
+                    if isFolder(item) {
+                        row
+                            .staggeredAppear(index: index, isActive: listAppeared)
+                    } else {
+                        row
+                            .staggeredAppear(index: index, isActive: listAppeared)
+                            .onTapGesture { open(item: item) }
                     }
                 }
-            }
-
-            if !categorizedItems.isEmpty {
-                Section("Files") {
-                    ForEach(Array(categoryOrder.enumerated()), id: \.element) { categoryIndex, category in
-                        if let items = categorizedItems[category], !items.isEmpty {
-                            DisclosureGroup(
-                                isExpanded: bindingForCategory(category)
-                            ) {
-                                ForEach(Array(items.enumerated()), id: \.element.file.id) { itemIndex, item in
-                                    let row = FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                                    if isFolder(item) {
-                                        row
-                                            .staggeredAppear(
-                                                index: categoryIndex + itemIndex,
-                                                isActive: listAppeared
-                                            )
-                                    } else {
-                                        row
-                                            .staggeredAppear(
-                                                index: categoryIndex + itemIndex,
-                                                isActive: listAppeared
-                                            )
-                                            .onTapGesture { open(item: item) }
-                                    }
-                                }
-                            } label: {
-                                Text(categoryLabels[category] ?? "Files")
-                                    .font(.subheadline)
+            } else {
+                if !pinnedItems.isEmpty {
+                    Section("Pinned") {
+                        ForEach(Array(pinnedItems.enumerated()), id: \.element.file.id) { index, item in
+                            let row = FilesIngestionRow(
+                                item: item,
+                                isSelected: viewModel.selectedFileId == item.file.id,
+                                onPinToggle: pinAction(for: item),
+                                onDelete: deleteAction(for: item)
+                            )
+                            if isFolder(item) {
+                                row
+                                    .staggeredAppear(index: index, isActive: listAppeared)
+                            } else {
+                                row
+                                    .staggeredAppear(index: index, isActive: listAppeared)
+                                    .onTapGesture { open(item: item) }
                             }
-                            .listRowBackground(rowBackground)
+                        }
+                    }
+                }
+
+                if !categorizedItems.isEmpty {
+                    Section("Files") {
+                        ForEach(Array(categoryOrder.enumerated()), id: \.element) { categoryIndex, category in
+                            if let items = categorizedItems[category], !items.isEmpty {
+                                DisclosureGroup(
+                                    isExpanded: bindingForCategory(category)
+                                ) {
+                                    ForEach(Array(items.enumerated()), id: \.element.file.id) { itemIndex, item in
+                                        let row = FilesIngestionRow(
+                                            item: item,
+                                            isSelected: viewModel.selectedFileId == item.file.id,
+                                            onPinToggle: pinAction(for: item),
+                                            onDelete: deleteAction(for: item)
+                                        )
+                                        if isFolder(item) {
+                                            row
+                                                .staggeredAppear(
+                                                    index: categoryIndex + itemIndex,
+                                                    isActive: listAppeared
+                                                )
+                                        } else {
+                                            row
+                                                .staggeredAppear(
+                                                    index: categoryIndex + itemIndex,
+                                                    isActive: listAppeared
+                                                )
+                                                .onTapGesture { open(item: item) }
+                                        }
+                                    }
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: categoryIconName(category))
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 20, alignment: .center)
+                                        Text(categoryLabels[category] ?? "Files")
+                                    }
+                                    .font(.subheadline)
+                                }
+                                .listRowBackground(rowBackground)
+                            }
                         }
                     }
                 }
             }
 
-            if !filteredProcessingItems.isEmpty || !filteredFailedItems.isEmpty {
-                Section("Uploads") {
-                    ForEach(Array(filteredProcessingItems.enumerated()), id: \.element.file.id) { index, item in
-                        FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
-                    }
-                    ForEach(Array(filteredFailedItems.enumerated()), id: \.element.file.id) { index, item in
-                        FilesIngestionRow(item: item, isSelected: viewModel.selectedFileId == item.file.id)
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
-                    }
-                }
-            }
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
@@ -1113,7 +1515,84 @@ private struct FilesPanelView: View {
     }
 
     private func open(fileId: String) {
+        viewModel.prepareSelection(fileId: fileId)
         Task { await viewModel.selectFile(fileId: fileId) }
+    }
+
+    private func pinAction(for item: IngestionListItem) -> (() -> Void)? {
+        guard item.file.category != "folder" else {
+            return nil
+        }
+        return {
+            pinTarget = item
+            Task { await togglePin() }
+        }
+    }
+
+    private func deleteAction(for item: IngestionListItem) -> (() -> Void)? {
+        guard item.file.category != "folder" else {
+            return nil
+        }
+        return {
+            presentDelete(for: item)
+        }
+    }
+
+    private func togglePin() async {
+        guard let item = pinTarget else { return }
+        let isPinned = item.file.pinned ?? false
+        await viewModel.togglePinned(fileId: item.file.id, pinned: !isPinned)
+        pinTarget = nil
+    }
+
+    private func presentDelete(for item: IngestionListItem) {
+        deleteTarget = item
+        isDeleteAlertPresented = true
+    }
+
+    private func confirmDelete() {
+        guard let item = deleteTarget else { return }
+        Task {
+            let success = await viewModel.deleteFile(fileId: item.file.id)
+            if !success {
+                environment.toastCenter.show(message: "Failed to delete file")
+            }
+        }
+        clearDeleteTarget()
+    }
+
+    private func clearDeleteTarget() {
+        deleteTarget = nil
+        isDeleteAlertPresented = false
+    }
+
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            viewModel.addUploads(urls: urls)
+        case .failure:
+            environment.toastCenter.show(message: "Failed to add files")
+        }
+    }
+
+    private func addYouTube() {
+        let url = newYouTubeUrl.trimmed
+        guard !url.isEmpty else { return }
+        newYouTubeUrl = ""
+        isYouTubeAlertPresented = false
+        Task {
+            if let message = await viewModel.ingestYouTube(url: url) {
+                environment.toastCenter.show(message: message)
+            }
+        }
+    }
+
+    private var deleteDialogTitle: String {
+        guard let deleteTarget else {
+            return "Delete file"
+        }
+        let name = stripFileExtension(deleteTarget.file.filenameOriginal)
+        return "Delete \"\(name)\"?"
     }
 
     private func isFolder(_ item: IngestionListItem) -> Bool {
@@ -1139,50 +1618,25 @@ private struct FilesPanelView: View {
         }
     }
 
-    private var processingItems: [IngestionListItem] {
-        viewModel.items.filter { item in
-            let status = item.job.status ?? ""
-            return !["ready", "failed", "canceled"].contains(status)
-        }
-    }
-
-    private var failedItems: [IngestionListItem] {
-        viewModel.items.filter { ($0.job.status ?? "") == "failed" }
-    }
-
-    private var readyItems: [IngestionListItem] {
-        viewModel.items.filter { item in
-            (item.job.status ?? "") == "ready" && item.recommendedViewer != nil
-        }
-    }
-
-    private var filteredReadyItems: [IngestionListItem] {
+    private var filteredItems: [IngestionListItem] {
         let needle = searchQuery.trimmed.lowercased()
-        guard !needle.isEmpty else { return readyItems }
-        return readyItems.filter { item in
+        guard !needle.isEmpty else { return viewModel.items }
+        return viewModel.items.filter { item in
             item.file.filenameOriginal.lowercased().contains(needle)
         }
     }
 
-    private var filteredProcessingItems: [IngestionListItem] {
-        let needle = searchQuery.trimmed.lowercased()
-        guard !needle.isEmpty else { return processingItems }
-        return processingItems.filter { item in
-            item.file.filenameOriginal.lowercased().contains(needle)
-        }
-    }
-
-    private var filteredFailedItems: [IngestionListItem] {
-        let needle = searchQuery.trimmed.lowercased()
-        guard !needle.isEmpty else { return failedItems }
-        return failedItems.filter { item in
-            item.file.filenameOriginal.lowercased().contains(needle)
+    private var searchResults: [IngestionListItem] {
+        filteredItems.sorted { lhs, rhs in
+            let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
+            let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
+            return leftDate > rightDate
         }
     }
 
     private var pinnedItems: [IngestionListItem] {
-        filteredReadyItems
-            .filter { $0.file.pinned ?? false }
+        filteredItems
+            .filter { isReady($0) && ($0.file.pinned ?? false) }
             .sorted { lhs, rhs in
                 let left = lhs.file.pinnedOrder ?? Int.max
                 let right = rhs.file.pinnedOrder ?? Int.max
@@ -1196,16 +1650,16 @@ private struct FilesPanelView: View {
     }
 
     private var categorizedItems: [String: [IngestionListItem]] {
-        let unpinned = filteredReadyItems.filter { !($0.file.pinned ?? false) }
+        let unpinned = filteredItems.filter { !($0.file.pinned ?? false) }
         let grouped = unpinned.reduce(into: [String: [IngestionListItem]]()) { result, item in
-            let category = item.file.category ?? "other"
+            let category = categoryFor(item)
             result[category, default: []].append(item)
         }
         return grouped.mapValues { items in
             items.sorted { lhs, rhs in
-                let left = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-                let right = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-                return left > right
+                let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
+                let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
+                return leftDate > rightDate
             }
         }
     }
@@ -1231,6 +1685,67 @@ private struct FilesPanelView: View {
         ["documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"]
     }
 
+    private func isReady(_ item: IngestionListItem) -> Bool {
+        (item.job.status ?? "") == "ready" && item.recommendedViewer != nil
+    }
+
+    private func categoryFor(_ item: IngestionListItem) -> String {
+        if let category = item.file.category, !category.isEmpty {
+            return category
+        }
+        let normalized = item.file.mimeOriginal.split(separator: ";").first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? item.file.mimeOriginal
+        if normalized == "video/youtube" || normalized.hasPrefix("video/") {
+            return "video"
+        }
+        if normalized.hasPrefix("image/") {
+            return "images"
+        }
+        if normalized.hasPrefix("audio/") {
+            return "audio"
+        }
+        if normalized == "application/pdf"
+            || normalized == "text/plain"
+            || normalized == "text/markdown"
+            || normalized == "text/html"
+            || normalized == "application/msword"
+            || normalized == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" {
+            return "documents"
+        }
+        if normalized == "application/vnd.ms-excel"
+            || normalized == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            || normalized == "text/csv" {
+            return "spreadsheets"
+        }
+        if normalized == "application/vnd.ms-powerpoint"
+            || normalized == "application/vnd.openxmlformats-officedocument.presentationml.presentation" {
+            return "presentations"
+        }
+        return "other"
+    }
+
+    private func categoryIconName(_ category: String) -> String {
+        switch category {
+        case "documents":
+            return "doc.text"
+        case "images":
+            return "photo"
+        case "audio":
+            return "waveform"
+        case "video":
+            return "video"
+        case "spreadsheets":
+            return "tablecells"
+        case "reports":
+            return "chart.line.text.clipboard"
+        case "presentations":
+            return "rectangle.on.rectangle.angled"
+        default:
+            return "folder"
+        }
+    }
+
     private var panelBackground: Color {
         DesignTokens.Colors.sidebar
     }
@@ -1248,12 +1763,19 @@ private struct FilesPanelView: View {
 private struct FilesIngestionRow: View, Equatable {
     let item: IngestionListItem
     let isSelected: Bool
-    private let displayName: String
+    let onPinToggle: (() -> Void)?
+    let onDelete: (() -> Void)?
 
-    init(item: IngestionListItem, isSelected: Bool) {
+    init(
+        item: IngestionListItem,
+        isSelected: Bool,
+        onPinToggle: (() -> Void)? = nil,
+        onDelete: (() -> Void)? = nil
+    ) {
         self.item = item
         self.isSelected = isSelected
-        self.displayName = stripFileExtension(item.file.filenameOriginal)
+        self.onPinToggle = onPinToggle
+        self.onDelete = onDelete
     }
 
     static func == (lhs: FilesIngestionRow, rhs: FilesIngestionRow) -> Bool {
@@ -1273,20 +1795,66 @@ private struct FilesIngestionRow: View, Equatable {
     var body: some View {
         SelectableRow(isSelected: isSelected, insets: rowInsets) {
             HStack(spacing: 8) {
-                Image(systemName: iconName)
-                    .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
+                if isProcessing {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                } else if isFailed {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else {
+                    Image(systemName: iconName)
+                        .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayName)
                         .font(.subheadline)
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                    if let statusText {
+                        Text(statusText)
+                            .font(.caption)
+                            .foregroundStyle(statusTextColor)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer()
             }
         }
+        #if os(iOS)
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let onPinToggle {
+                let title = (item.file.pinned ?? false) ? "Unpin" : "Pin"
+                Button(title) {
+                    onPinToggle()
+                }
+                .tint(.blue)
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if let onDelete {
+                Button("Delete") {
+                    onDelete()
+                }
+                .tint(.red)
+            }
+        }
+        #endif
     }
 
     private var iconName: String {
+        if item.file.category == "folder" {
+            return folderIconName(for: displayName)
+        }
+        if item.file.mimeOriginal.lowercased().contains("video/youtube") {
+            return "video"
+        }
+        if item.file.category == "presentations" {
+            return "rectangle.on.rectangle.angled"
+        }
+        if item.file.category == "reports" {
+            return "chart.line.text.clipboard"
+        }
         switch item.recommendedViewer {
         case "viewer_pdf":
             return "doc.richtext"
@@ -1298,10 +1866,65 @@ private struct FilesIngestionRow: View, Equatable {
             return "photo"
         case "audio_original":
             return "waveform"
+        case "viewer_presentation":
+            return "rectangle.on.rectangle.angled"
         case "text_original", "ai_md":
             return "doc.text"
         default:
             return "doc"
+        }
+    }
+
+    private var statusText: String? {
+        let status = item.job.status ?? ""
+        if status.isEmpty || status == "ready" {
+            return nil
+        }
+        return ingestionStatusLabel(for: item.job) ?? "Processing"
+    }
+
+    private var statusTextColor: Color {
+        if isFailed {
+            return .orange
+        }
+        return secondaryTextColor
+    }
+
+    private var isProcessing: Bool {
+        let status = item.job.status ?? ""
+        return !status.isEmpty && !["ready", "failed", "canceled"].contains(status)
+    }
+
+    private var isFailed: Bool {
+        (item.job.status ?? "") == "failed"
+    }
+
+    private var displayName: String {
+        let name = stripFileExtension(item.file.filenameOriginal)
+        if item.file.mimeOriginal.lowercased() == "video/youtube", name.lowercased() == "youtube video" {
+            return "YouTube Video"
+        }
+        return name
+    }
+
+    private func folderIconName(for name: String) -> String {
+        switch name.lowercased() {
+        case "documents":
+            return "doc.text"
+        case "images":
+            return "photo"
+        case "audio":
+            return "waveform"
+        case "video":
+            return "video"
+        case "spreadsheets":
+            return "tablecells"
+        case "presentations":
+            return "rectangle.on.rectangle.angled"
+        case "reports":
+            return "chart.line.text.clipboard"
+        default:
+            return "folder"
         }
     }
 
@@ -1346,6 +1969,7 @@ public struct WebsitesPanel: View {
 
 private struct WebsitesPanelView: View {
     @ObservedObject var viewModel: WebsitesViewModel
+    @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -1355,6 +1979,10 @@ private struct WebsitesPanelView: View {
     @State private var isArchiveExpanded = false
     @State private var selection: String? = nil
     @State private var listAppeared = false
+    @State private var isNewWebsitePresented = false
+    @State private var newWebsiteUrl: String = ""
+    @State private var saveErrorMessage: String? = nil
+    @State private var archiveHeight: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1365,6 +1993,7 @@ private struct WebsitesPanelView: View {
             content
             #endif
         }
+        .frame(maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -1381,6 +2010,31 @@ private struct WebsitesPanelView: View {
         .onChange(of: viewModel.isLoading) { _, isLoading in
             listAppeared = !isLoading
         }
+        .alert("Save a website", isPresented: $isNewWebsitePresented) {
+            TextField("example.com", text: $newWebsiteUrl)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit {
+                    saveWebsite()
+                }
+            Button(viewModel.isSavingWebsite ? "Saving..." : "Save") {
+                saveWebsite()
+            }
+            .disabled(viewModel.isSavingWebsite || !WebsiteURLValidator.isValid(newWebsiteUrl))
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                newWebsiteUrl = ""
+            }
+        }
+        .alert("Unable to save website", isPresented: isSaveErrorPresented) {
+            Button("OK", role: .cancel) {
+                saveErrorMessage = nil
+            }
+        } message: {
+            Text(saveErrorMessage ?? "Failed to save website. Please try again.")
+        }
     }
 
     private var header: some View {
@@ -1388,6 +2042,8 @@ private struct WebsitesPanelView: View {
             PanelHeader(title: "Websites") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Button {
+                        newWebsiteUrl = ""
+                        isNewWebsitePresented = true
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .semibold))
@@ -1420,21 +2076,21 @@ private struct WebsitesPanelView: View {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty && viewModel.pendingWebsite == nil {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
             List {
+                if let pending = viewModel.pendingWebsite {
+                    Section("Adding") {
+                        PendingWebsiteRow(pending: pending, useListStyling: true)
+                    }
+                }
                 Section("Results") {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
                         ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
-                            WebsiteRow(
-                                item: item,
-                                isSelected: selection == item.id
-                            )
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
+                            websiteListRow(item: item, index: index)
                         }
                     }
                 }
@@ -1447,7 +2103,7 @@ private struct WebsitesPanelView: View {
             }
         } else {
             List {
-                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
+                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
                     Section("Pinned") {
                         if pinnedItemsSorted.isEmpty {
                             Text("No pinned websites")
@@ -1455,29 +2111,22 @@ private struct WebsitesPanelView: View {
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+                                websiteListRow(item: item, index: index)
                             }
                         }
                     }
 
                     Section("Websites") {
-                        if mainItems.isEmpty {
+                        if mainItems.isEmpty && viewModel.pendingWebsite == nil {
                             Text("No websites saved")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
+                            if let pending = viewModel.pendingWebsite {
+                                PendingWebsiteRow(pending: pending, useListStyling: true)
+                            }
                             ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+                                websiteListRow(item: item, index: index)
                             }
                         }
                     }
@@ -1493,12 +2142,7 @@ private struct WebsitesPanelView: View {
                                     .foregroundStyle(.secondary)
                             } else {
                                 ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
-                                    WebsiteRow(
-                                        item: item,
-                                        isSelected: selection == item.id
-                                    )
-                                    .staggeredAppear(index: index, isActive: listAppeared)
-                                    .onTapGesture { open(item: item) }
+                                    websiteListRow(item: item, index: index, allowArchive: false)
                                 }
                             }
                         },
@@ -1531,21 +2175,21 @@ private struct WebsitesPanelView: View {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty && viewModel.pendingWebsite == nil {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
             List {
+                if let pending = viewModel.pendingWebsite {
+                    Section("Adding") {
+                        PendingWebsiteRow(pending: pending, useListStyling: true)
+                    }
+                }
                 Section("Results") {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
                         ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
-                            WebsiteRow(
-                                item: item,
-                                isSelected: selection == item.id
-                            )
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
+                            websiteListRow(item: item, index: index)
                         }
                     }
                 }
@@ -1557,16 +2201,25 @@ private struct WebsitesPanelView: View {
                 await viewModel.load()
             }
         } else {
-            VStack(spacing: 0) {
-                websitesListView
-                websitesArchiveSection
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    websitesListView
+                        .frame(height: max(0, proxy.size.height - archiveHeight))
+                    websitesArchiveSection
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .onPreferenceChange(ArchiveHeightKey.self) { newValue in
+                    if abs(newValue - archiveHeight) > 0.5 {
+                        archiveHeight = newValue
+                    }
+                }
             }
         }
     }
 
     private var websitesListView: some View {
         List {
-            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
+            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
                 Section("Pinned") {
                     if pinnedItemsSorted.isEmpty {
                         Text("No pinned websites")
@@ -1574,29 +2227,22 @@ private struct WebsitesPanelView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+                            websiteListRow(item: item, index: index)
                         }
                     }
                 }
 
                 Section("Websites") {
-                    if mainItems.isEmpty {
+                    if mainItems.isEmpty && viewModel.pendingWebsite == nil {
                         Text("No websites saved")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
+                        if let pending = viewModel.pendingWebsite {
+                            PendingWebsiteRow(pending: pending, useListStyling: true)
+                        }
                         ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+                            websiteListRow(item: item, index: index)
                         }
                     }
                 }
@@ -1613,6 +2259,52 @@ private struct WebsitesPanelView: View {
     private func open(item: WebsiteItem) {
         selection = item.id
         Task { await viewModel.selectWebsite(id: item.id) }
+    }
+
+    @ViewBuilder
+    private func websiteListRow(
+        item: WebsiteItem,
+        index: Int,
+        useListStyling: Bool = true,
+        allowArchive: Bool = true
+    ) -> some View {
+        let row = WebsiteRow(
+            item: item,
+            isSelected: selection == item.id,
+            useListStyling: useListStyling
+        )
+        .staggeredAppear(index: index, isActive: listAppeared)
+        .onTapGesture { open(item: item) }
+
+        #if os(macOS)
+        row
+        #else
+        row
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                if allowArchive {
+                    Button {
+                        Task { await viewModel.setArchived(id: item.id, archived: true) }
+                    } label: {
+                        Label("Archive", systemImage: "archivebox")
+                    }
+                    .tint(.blue)
+                } else {
+                    Button {
+                        Task { await viewModel.setArchived(id: item.id, archived: false) }
+                    } label: {
+                        Label("Unarchive", systemImage: "tray.and.arrow.up")
+                    }
+                    .tint(.blue)
+                }
+            }
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    Task { await viewModel.deleteWebsite(id: item.id) }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        #endif
     }
 
     private var pinnedItemsSorted: [WebsiteItem] {
@@ -1678,13 +2370,7 @@ private struct WebsitesPanelView: View {
                         ScrollView {
                             LazyVStack(spacing: DesignTokens.Spacing.xs) {
                                 ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
-                                    WebsiteRow(
-                                        item: item,
-                                        isSelected: selection == item.id,
-                                        useListStyling: false
-                                    )
-                                    .staggeredAppear(index: index, isActive: listAppeared)
-                                    .onTapGesture { open(item: item) }
+                                    websiteListRow(item: item, index: index, useListStyling: false, allowArchive: false)
                                 }
                             }
                         }
@@ -1700,6 +2386,11 @@ private struct WebsitesPanelView: View {
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .background(panelBackground)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ArchiveHeightKey.self, value: proxy.size.height)
+            }
+        )
     }
 
     private var isCompact: Bool {
@@ -1710,6 +2401,87 @@ private struct WebsitesPanelView: View {
         #endif
     }
 
+    private var isSaveErrorPresented: Binding<Bool> {
+        Binding(
+            get: { saveErrorMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    saveErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func saveWebsite() {
+        let raw = newWebsiteUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let normalized = WebsiteURLValidator.normalizedCandidate(raw) else {
+            saveErrorMessage = "Enter a valid URL."
+            return
+        }
+        newWebsiteUrl = ""
+        isNewWebsitePresented = false
+        Task {
+            let saved = await viewModel.saveWebsite(url: normalized.absoluteString)
+            if saved {
+                environment.notesViewModel.clearSelection()
+                environment.ingestionViewModel.clearSelection()
+            } else {
+                saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
+            }
+        }
+    }
+}
+
+private struct PendingWebsiteRow: View, Equatable {
+    let pending: WebsitesViewModel.PendingWebsiteItem
+    let useListStyling: Bool
+
+    var body: some View {
+        SelectableRow(
+            isSelected: false,
+            insets: rowInsets,
+            useListStyling: useListStyling
+        ) {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .scaleEffect(0.75)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(pending.title)
+                        .font(.subheadline)
+                        .foregroundStyle(secondaryTextColor)
+                        .lineLimit(1)
+                    Text(formatDomain(pending.domain))
+                        .font(.caption)
+                        .foregroundStyle(secondaryTextColor)
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private var secondaryTextColor: Color {
+        DesignTokens.Colors.textSecondary
+    }
+
+    private func formatDomain(_ domain: String) -> String {
+        domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+    }
+
+    private var rowInsets: EdgeInsets {
+        let horizontalPadding: CGFloat
+        #if os(macOS)
+        horizontalPadding = DesignTokens.Spacing.xs
+        #else
+        horizontalPadding = DesignTokens.Spacing.sm
+        #endif
+        return EdgeInsets(
+            top: 0,
+            leading: horizontalPadding,
+            bottom: 0,
+            trailing: horizontalPadding
+        )
+    }
 }
 
 private struct WebsiteRow: View, Equatable {
@@ -1797,6 +2569,14 @@ private struct WebsiteRow: View, Equatable {
             bottom: 0,
             trailing: horizontalPadding
         )
+    }
+}
+
+private struct ArchiveHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

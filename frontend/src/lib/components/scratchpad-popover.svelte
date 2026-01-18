@@ -157,7 +157,7 @@
 				TaskList,
 				TaskItem.configure({ nested: true }),
 				TableKit,
-				Markdown
+				Markdown.configure({ html: true })
 			],
 			content: '',
 			editable: true,
@@ -296,31 +296,6 @@
 		padding: 0.25rem 0 0.5rem 0;
 		outline: none;
 		color: var(--color-foreground);
-	}
-
-	/* ========================================================================
-	   COMPONENT-SPECIFIC: Tighter spacing for compact popover layout
-	   Scratchpad uses reduced margins (0.5em vs 0.75em) and tighter line
-	   height (1.6 vs 1.7) to maximize content density within the constrained
-	   popover viewport (max 720px height).
-	   ======================================================================== */
-	:global(.scratchpad-editor p) {
-		margin: 0.5em 0;
-		line-height: 1.6;
-	}
-
-	:global(.scratchpad-editor ul),
-	:global(.scratchpad-editor ol) {
-		margin: 0.5em 0;
-		padding-left: 1.5em;
-	}
-
-	:global(.scratchpad-editor li) {
-		margin: 0;
-	}
-
-	:global(.scratchpad-editor li p) {
-		margin: 0;
 	}
 
 	/* Component-specific: Tighter spacing for compact popover layout */
