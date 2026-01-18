@@ -92,6 +92,9 @@ private struct FilesHeaderView: View {
     }
 
     private var iconName: String {
+        if viewModel.activeMeta?.file.category == "presentations" {
+            return "rectangle.on.rectangle.angled"
+        }
         guard let viewer = viewModel.activeMeta?.recommendedViewer else {
             return "folder"
         }
@@ -102,6 +105,8 @@ private struct FilesHeaderView: View {
             return "tablecells"
         case "viewer_video":
             return "video"
+        case "viewer_presentation":
+            return "rectangle.on.rectangle.angled"
         case "image_original":
             return "photo"
         case "audio_original":

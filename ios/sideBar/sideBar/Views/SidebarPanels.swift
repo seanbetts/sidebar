@@ -1624,6 +1624,9 @@ private struct FilesIngestionRow: View, Equatable {
         if item.file.category == "folder" {
             return folderIconName(for: displayName)
         }
+        if item.file.category == "presentations" {
+            return "rectangle.on.rectangle.angled"
+        }
         switch item.recommendedViewer {
         case "viewer_pdf":
             return "doc.richtext"
@@ -1635,6 +1638,8 @@ private struct FilesIngestionRow: View, Equatable {
             return "photo"
         case "audio_original":
             return "waveform"
+        case "viewer_presentation":
+            return "rectangle.on.rectangle.angled"
         case "text_original", "ai_md":
             return "doc.text"
         default:
