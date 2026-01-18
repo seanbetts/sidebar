@@ -1278,6 +1278,7 @@ private struct FilesPanelView: View {
     @State private var isFileImporterPresented = false
     @State private var isYouTubeAlertPresented = false
     @State private var newYouTubeUrl: String = ""
+    @State private var knownFileIds: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1292,8 +1293,12 @@ private struct FilesPanelView: View {
                 ) {
                     Task { await viewModel.load() }
                 }
-            } else if filteredReadyItems.isEmpty && filteredProcessingItems.isEmpty && filteredFailedItems.isEmpty {
-                SidebarPanelPlaceholder(title: "No files yet.")
+            } else if filteredItems.isEmpty {
+                if searchQuery.trimmed.isEmpty {
+                    SidebarPanelPlaceholder(title: "No files yet.")
+                } else {
+                    SidebarPanelPlaceholder(title: "No results.")
+                }
             } else {
                 filesListView
             }
@@ -1340,9 +1345,23 @@ private struct FilesPanelView: View {
                 Task { await viewModel.load() }
             }
             initializeExpandedCategoriesIfNeeded()
+            knownFileIds = Set(viewModel.items.map { $0.file.id })
         }
         .onChange(of: categoriesWithItems) { _, _ in
             initializeExpandedCategoriesIfNeeded()
+        }
+        .onChange(of: viewModel.items) { _, newItems in
+            let newIds = Set(newItems.map { $0.file.id })
+            let addedIds = newIds.subtracting(knownFileIds)
+            if !addedIds.isEmpty {
+                for item in newItems where addedIds.contains(item.file.id) {
+                    if item.file.mimeOriginal.lowercased().contains("youtube") {
+                        expandedCategories.insert("video")
+                        break
+                    }
+                }
+            }
+            knownFileIds = newIds
         }
     }
 
@@ -1457,30 +1476,6 @@ private struct FilesPanelView: View {
                 }
             }
 
-            if !filteredProcessingItems.isEmpty || !filteredFailedItems.isEmpty {
-                Section("Uploads") {
-                    ForEach(Array(filteredProcessingItems.enumerated()), id: \.element.file.id) { index, item in
-                        FilesIngestionRow(
-                            item: item,
-                            isSelected: viewModel.selectedFileId == item.file.id,
-                            onPinToggle: pinAction(for: item),
-                            onDelete: deleteAction(for: item)
-                        )
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
-                    }
-                    ForEach(Array(filteredFailedItems.enumerated()), id: \.element.file.id) { index, item in
-                        FilesIngestionRow(
-                            item: item,
-                            isSelected: viewModel.selectedFileId == item.file.id,
-                            onPinToggle: pinAction(for: item),
-                            onDelete: deleteAction(for: item)
-                        )
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
-                    }
-                }
-            }
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
@@ -1564,13 +1559,12 @@ private struct FilesPanelView: View {
     private func addYouTube() {
         let url = newYouTubeUrl.trimmed
         guard !url.isEmpty else { return }
+        newYouTubeUrl = ""
+        isYouTubeAlertPresented = false
         Task {
-            let success = await viewModel.ingestYouTube(url: url)
-            if !success {
-                environment.toastCenter.show(message: "Failed to add YouTube video")
+            if let message = await viewModel.ingestYouTube(url: url) {
+                environment.toastCenter.show(message: message)
             }
-            newYouTubeUrl = ""
-            isYouTubeAlertPresented = false
         }
     }
 
@@ -1605,50 +1599,17 @@ private struct FilesPanelView: View {
         }
     }
 
-    private var processingItems: [IngestionListItem] {
-        viewModel.items.filter { item in
-            let status = item.job.status ?? ""
-            return !["ready", "failed", "canceled"].contains(status)
-        }
-    }
-
-    private var failedItems: [IngestionListItem] {
-        viewModel.items.filter { ($0.job.status ?? "") == "failed" }
-    }
-
-    private var readyItems: [IngestionListItem] {
-        viewModel.items.filter { item in
-            (item.job.status ?? "") == "ready" && item.recommendedViewer != nil
-        }
-    }
-
-    private var filteredReadyItems: [IngestionListItem] {
+    private var filteredItems: [IngestionListItem] {
         let needle = searchQuery.trimmed.lowercased()
-        guard !needle.isEmpty else { return readyItems }
-        return readyItems.filter { item in
-            item.file.filenameOriginal.lowercased().contains(needle)
-        }
-    }
-
-    private var filteredProcessingItems: [IngestionListItem] {
-        let needle = searchQuery.trimmed.lowercased()
-        guard !needle.isEmpty else { return processingItems }
-        return processingItems.filter { item in
-            item.file.filenameOriginal.lowercased().contains(needle)
-        }
-    }
-
-    private var filteredFailedItems: [IngestionListItem] {
-        let needle = searchQuery.trimmed.lowercased()
-        guard !needle.isEmpty else { return failedItems }
-        return failedItems.filter { item in
+        guard !needle.isEmpty else { return viewModel.items }
+        return viewModel.items.filter { item in
             item.file.filenameOriginal.lowercased().contains(needle)
         }
     }
 
     private var pinnedItems: [IngestionListItem] {
-        filteredReadyItems
-            .filter { $0.file.pinned ?? false }
+        filteredItems
+            .filter { isReady($0) && ($0.file.pinned ?? false) }
             .sorted { lhs, rhs in
                 let left = lhs.file.pinnedOrder ?? Int.max
                 let right = rhs.file.pinnedOrder ?? Int.max
@@ -1662,16 +1623,16 @@ private struct FilesPanelView: View {
     }
 
     private var categorizedItems: [String: [IngestionListItem]] {
-        let unpinned = filteredReadyItems.filter { !($0.file.pinned ?? false) }
+        let unpinned = filteredItems.filter { !($0.file.pinned ?? false) }
         let grouped = unpinned.reduce(into: [String: [IngestionListItem]]()) { result, item in
-            let category = item.file.category ?? "other"
+            let category = categoryFor(item)
             result[category, default: []].append(item)
         }
         return grouped.mapValues { items in
             items.sorted { lhs, rhs in
-                let left = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
-                let right = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
-                return left > right
+                let leftDate = DateParsing.parseISO8601(lhs.file.createdAt) ?? .distantPast
+                let rightDate = DateParsing.parseISO8601(rhs.file.createdAt) ?? .distantPast
+                return leftDate > rightDate
             }
         }
     }
@@ -1695,6 +1656,46 @@ private struct FilesPanelView: View {
 
     private var categoryOrder: [String] {
         ["documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"]
+    }
+
+    private func isReady(_ item: IngestionListItem) -> Bool {
+        (item.job.status ?? "") == "ready" && item.recommendedViewer != nil
+    }
+
+    private func categoryFor(_ item: IngestionListItem) -> String {
+        if let category = item.file.category, !category.isEmpty {
+            return category
+        }
+        let normalized = item.file.mimeOriginal.split(separator: ";").first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? item.file.mimeOriginal
+        if normalized == "video/youtube" || normalized.hasPrefix("video/") {
+            return "video"
+        }
+        if normalized.hasPrefix("image/") {
+            return "images"
+        }
+        if normalized.hasPrefix("audio/") {
+            return "audio"
+        }
+        if normalized == "application/pdf"
+            || normalized == "text/plain"
+            || normalized == "text/markdown"
+            || normalized == "text/html"
+            || normalized == "application/msword"
+            || normalized == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" {
+            return "documents"
+        }
+        if normalized == "application/vnd.ms-excel"
+            || normalized == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            || normalized == "text/csv" {
+            return "spreadsheets"
+        }
+        if normalized == "application/vnd.ms-powerpoint"
+            || normalized == "application/vnd.openxmlformats-officedocument.presentationml.presentation" {
+            return "presentations"
+        }
+        return "other"
     }
 
     private func categoryIconName(_ category: String) -> String {
@@ -1769,6 +1770,14 @@ private struct FilesIngestionRow: View, Equatable {
     var body: some View {
         SelectableRow(isSelected: isSelected, insets: rowInsets) {
             HStack(spacing: 8) {
+                if isProcessing {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                } else if isFailed {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
                 Image(systemName: iconName)
                     .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 VStack(alignment: .leading, spacing: 4) {
@@ -1776,6 +1785,12 @@ private struct FilesIngestionRow: View, Equatable {
                         .font(.subheadline)
                         .lineLimit(1)
                         .foregroundStyle(isSelected ? selectedTextColor : primaryTextColor)
+                    if let statusText {
+                        Text(statusText)
+                            .font(.caption)
+                            .foregroundStyle(statusTextColor)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer()
             }
@@ -1805,6 +1820,9 @@ private struct FilesIngestionRow: View, Equatable {
         if item.file.category == "folder" {
             return folderIconName(for: displayName)
         }
+        if item.file.mimeOriginal.lowercased().contains("video/youtube") {
+            return "video"
+        }
         if item.file.category == "presentations" {
             return "rectangle.on.rectangle.angled"
         }
@@ -1829,6 +1847,42 @@ private struct FilesIngestionRow: View, Equatable {
         default:
             return "doc"
         }
+    }
+
+    private var statusText: String? {
+        let status = item.job.status ?? ""
+        if status.isEmpty || status == "ready" {
+            return nil
+        }
+        if status == "failed" {
+            return "Failed"
+        }
+        if status == "canceled" {
+            return "Canceled"
+        }
+        if status == "uploading" {
+            return "Uploading..."
+        }
+        if let stage = item.job.stage, !stage.isEmpty {
+            return stage.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+        return "Processing..."
+    }
+
+    private var statusTextColor: Color {
+        if isFailed {
+            return .orange
+        }
+        return secondaryTextColor
+    }
+
+    private var isProcessing: Bool {
+        let status = item.job.status ?? ""
+        return !status.isEmpty && !["ready", "failed", "canceled"].contains(status)
+    }
+
+    private var isFailed: Bool {
+        (item.job.status ?? "") == "failed"
     }
 
     private func folderIconName(for name: String) -> String {
