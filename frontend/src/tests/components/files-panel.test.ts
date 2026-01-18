@@ -3,18 +3,14 @@ import { writable } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
 import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
 
-vi.mock('$lib/stores/tree', () => ({
-	treeStore: (() => {
-		const treeState = writable({
-			trees: {
-				documents: {
-					children: [],
-					loading: false,
-					searchQuery: ''
-				}
-			}
-		});
-		return { subscribe: treeState.subscribe };
+vi.mock('$lib/stores/files-search', () => ({
+	filesSearchStore: (() => {
+		const searchState = writable('');
+		return {
+			subscribe: searchState.subscribe,
+			set: searchState.set,
+			clear: vi.fn(() => searchState.set(''))
+		};
 	})()
 }));
 

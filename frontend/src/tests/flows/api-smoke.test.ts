@@ -43,8 +43,7 @@ suite('API smoke (requires local server)', () => {
 
 	const postEndpoints: Array<{ path: string; body?: Record<string, unknown> }> = [
 		{ path: '/api/v1/notes/search', body: { query: '', limit: 1 } },
-		{ path: '/api/v1/websites/search', body: { query: '', limit: 1 } },
-		{ path: '/api/v1/files/search', body: { basePath: 'documents', query: '', limit: 1 } }
+		{ path: '/api/v1/websites/search', body: { query: '', limit: 1 } }
 	];
 
 	const optionalPostEndpoints: Array<{ path: string; body?: Record<string, unknown> }> = [
@@ -92,12 +91,6 @@ suite('API smoke (requires local server)', () => {
 
 	it('exposes conversations list route', async () => {
 		const response = await fetchWithTimeout(`${BASE_URL}/api/v1/conversations`);
-		expect(response.status).not.toBe(404);
-		expect(allowedStatuses.has(response.status)).toBe(true);
-	});
-
-	it('exposes files tree route', async () => {
-		const response = await fetchWithTimeout(`${BASE_URL}/api/v1/files/tree?basePath=documents`);
 		expect(response.status).not.toBe(404);
 		expect(allowedStatuses.has(response.status)).toBe(true);
 	});
