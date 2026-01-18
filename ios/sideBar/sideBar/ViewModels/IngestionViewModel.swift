@@ -709,7 +709,7 @@ public final class IngestionViewModel: ObservableObject {
     private func makeYouTubeEmbedURL(videoId: String) -> URL? {
         let trimmed = videoId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        let url = "https://www.youtube-nocookie.com/embed/\(trimmed)?playsinline=1&rel=0&modestbranding=1"
+        let url = "https://www.youtube-nocookie.com/embed/\(trimmed)?playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
         return URL(string: url)
     }
 

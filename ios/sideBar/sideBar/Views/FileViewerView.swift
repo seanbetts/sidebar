@@ -1,6 +1,7 @@
 import SwiftUI
 import PDFKit
 import AVKit
+import AVFoundation
 #if canImport(MarkdownUI)
 import MarkdownUI
 #endif
@@ -23,9 +24,12 @@ public struct FileViewerView: View {
             if let embedURL = state.youtubeEmbedURL {
                 VStack(spacing: 0) {
                     YouTubePlayerView(url: embedURL)
-                        .frame(height: 240)
-                    Divider()
-                    contentView
+                        .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                        .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+                        .padding(.top, SideBarMarkdownLayout.verticalPadding)
+                    constrainedContentView
                 }
             } else {
                 contentView
@@ -70,6 +74,12 @@ public struct FileViewerView: View {
         }
     }
 
+    private var constrainedContentView: some View {
+        contentView
+            .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+
     @ViewBuilder
     private var spreadsheetView: some View {
         if let spreadsheet = state.spreadsheet {
@@ -107,9 +117,7 @@ public struct FileViewerView: View {
                 AudioPlayerView(url: url)
                     .padding(20)
             } else {
-                VideoPlayer(player: AVPlayer(url: url))
-                    .frame(height: 360)
-                    .padding(20)
+                VideoPlayerContainer(url: url)
             }
         } else {
             PlaceholderView(title: "Media preview unavailable")
@@ -122,6 +130,43 @@ public struct FileViewerView: View {
             QuickLookPreview(url: url)
         } else {
             PlaceholderView(title: "Preview unavailable")
+        }
+    }
+}
+
+private struct VideoPlayerContainer: View {
+    let url: URL
+    @State private var aspectRatio: CGFloat = 16.0 / 9.0
+
+    var body: some View {
+        VideoPlayer(player: AVPlayer(url: url))
+            .aspectRatio(aspectRatio, contentMode: .fit)
+            .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(20)
+            .padding(.top, SideBarMarkdownLayout.verticalPadding)
+            .task {
+                await updateAspectRatio()
+            }
+    }
+
+    private func updateAspectRatio() async {
+        let asset = AVAsset(url: url)
+        do {
+            let tracks = try await asset.load(.tracks)
+            guard let track = tracks.first(where: { $0.mediaType == .video }) else { return }
+            let size = try await track.load(.naturalSize)
+            let transform = try await track.load(.preferredTransform)
+            let transformed = size.applying(transform)
+            let width = abs(transformed.width)
+            let height = abs(transformed.height)
+            guard width > 0, height > 0 else { return }
+            let ratio = width / height
+            await MainActor.run {
+                aspectRatio = ratio
+            }
+        } catch {
+            return
         }
     }
 }
