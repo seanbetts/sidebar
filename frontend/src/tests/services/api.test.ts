@@ -143,7 +143,7 @@ describe('api services', () => {
 		await ingestionAPI.rename('file-3', 'new.txt');
 
 		expect(fetchSpy).toHaveBeenCalledWith(
-			'/api/v1/ingestion/file-3/rename',
+			'/api/v1/files/file-3/rename',
 			expect.objectContaining({ method: 'PATCH' })
 		);
 	});
@@ -154,7 +154,7 @@ describe('api services', () => {
 		await ingestionAPI.setPinned('file-2', true);
 
 		expect(fetchSpy).toHaveBeenCalledWith(
-			'/api/v1/ingestion/file-2/pin',
+			'/api/v1/files/file-2/pin',
 			expect.objectContaining({ method: 'PATCH' })
 		);
 	});

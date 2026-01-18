@@ -21,7 +21,7 @@
 	$: {
 		const nextViewerUrl: string | undefined =
 			active && viewerKind && viewerKind !== 'viewer_video'
-				? `/api/v1/ingestion/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
+				? `/api/v1/files/${active.file.id}/content?kind=${encodeURIComponent(viewerKind)}`
 				: undefined;
 		viewerUrlValue = nextViewerUrl;
 	}

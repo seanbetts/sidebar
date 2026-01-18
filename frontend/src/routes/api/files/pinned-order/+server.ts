@@ -2,6 +2,6 @@ import { createProxyHandler } from '$lib/server/apiProxy';
 
 export const PATCH = createProxyHandler({
 	method: 'PATCH',
-	pathBuilder: (params) => `/api/v1/ingestion/${params.file_id}/rename`,
+	pathBuilder: () => '/api/v1/files/pinned-order',
 	bodyFromRequest: true
 });

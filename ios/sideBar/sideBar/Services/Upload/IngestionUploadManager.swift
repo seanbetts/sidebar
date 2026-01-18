@@ -47,7 +47,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     ) {
         DispatchQueue.global(qos: .utility).async {
             let boundary = "Boundary-\(UUID().uuidString)"
-            var request = URLRequest(url: self.config.baseUrl.appendingPathComponent("ingestion"))
+            var request = URLRequest(url: self.config.baseUrl.appendingPathComponent("files"))
             request.httpMethod = "POST"
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
