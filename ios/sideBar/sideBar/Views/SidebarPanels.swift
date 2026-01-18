@@ -1973,12 +1973,14 @@ private struct WebsitesPanelView: View {
                     } label: {
                         Label("Archive", systemImage: "archivebox")
                     }
+                    .tint(.blue)
                 } else {
                     Button {
                         Task { await viewModel.setArchived(id: item.id, archived: false) }
                     } label: {
                         Label("Unarchive", systemImage: "tray.and.arrow.up")
                     }
+                    .tint(.blue)
                 }
             }
             .swipeActions(edge: .trailing) {
