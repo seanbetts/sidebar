@@ -61,6 +61,7 @@ public struct SidebarRail: View {
             #endif
         }
         .frame(width: 56)
+        .frame(maxHeight: .infinity)
         .padding(.vertical, 12)
         .background(railBackground)
         .onAppear {

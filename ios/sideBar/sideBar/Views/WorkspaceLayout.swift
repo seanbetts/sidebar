@@ -236,6 +236,14 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         DesignTokens.Colors.sidebar
     }
 
+    private var dividerColor: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(uiColor: .separator)
+        #endif
+    }
+
     private var handleBackground: Color {
         DesignTokens.Colors.background
     }

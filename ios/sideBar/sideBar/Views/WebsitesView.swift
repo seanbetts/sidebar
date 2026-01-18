@@ -14,18 +14,6 @@ public struct WebsitesView: View {
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if isCompact {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Website options")
-                    }
-                }
-            }
             #endif
     }
 
@@ -56,6 +44,13 @@ private struct WebsitesDetailView: View {
     @ObservedObject var viewModel: WebsitesViewModel
     @Environment(\.openURL) private var openURL
     @State private var safariURL: URL? = nil
+    @State private var exportDocument: MarkdownFileDocument?
+    @State private var exportFilename: String = "website.md"
+    @State private var isExporting = false
+    @State private var isRenameDialogPresented = false
+    @State private var renameValue: String = ""
+    @State private var isDeleteAlertPresented = false
+    @State private var isArchiveAlertPresented = false
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -73,6 +68,62 @@ private struct WebsitesDetailView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        #if !os(macOS)
+        .toolbar {
+            if isCompact {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    websiteActionsMenu
+                    closeButton
+                }
+            }
+        }
+        #endif
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .sideBarMarkdown,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
+        }
+        .alert(renameDialogTitle, isPresented: $isRenameDialogPresented) {
+            TextField(renameDialogPlaceholder, text: $renameValue)
+                .submitLabel(.done)
+                .onSubmit {
+                    commitRename()
+                }
+            Button("Rename") {
+                commitRename()
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                renameValue = ""
+            }
+        }
+        .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
+            Button("Delete", role: .destructive) {
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.deleteWebsite(id: websiteId)
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will remove the website and cannot be undone.")
+        }
+        .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
+            Button(archiveActionTitle, role: .destructive) {
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.setArchived(id: websiteId, archived: !isArchived)
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text(archiveAlertMessage)
+        }
         #if os(iOS) && canImport(SafariServices)
         .sheet(isPresented: safariBinding) {
             if let safariURL {
@@ -92,15 +143,10 @@ private struct WebsitesDetailView: View {
             titleLayoutPriority: 0,
             subtitleLayoutPriority: 1
         ) {
-            Button {
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .frame(width: 28, height: 20)
+            HStack(spacing: 8) {
+                websiteActionsMenu
+                closeButton
             }
-            .buttonStyle(.plain)
-            .font(.system(size: 16, weight: .semibold))
-            .imageScale(.medium)
-            .accessibilityLabel("Website options")
         }
         .padding(16)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
@@ -160,6 +206,117 @@ private struct WebsitesDetailView: View {
         return parts.isEmpty ? nil : parts.joined(separator: " | ")
     }
 
+    private var websiteActionsMenu: some View {
+        Menu {
+            Button {
+                guard let websiteId = viewModel.active?.id else { return }
+                Task {
+                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                }
+            } label: {
+                Label(pinActionTitle, systemImage: pinIconName)
+            }
+            Button {
+                renameValue = viewModel.active?.title ?? ""
+                isRenameDialogPresented = true
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button {
+                copyWebsiteContent()
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+            Button {
+                exportWebsite()
+            } label: {
+                Label("Download", systemImage: "square.and.arrow.down")
+            }
+            Button {
+                isArchiveAlertPresented = true
+            } label: {
+                Label(archiveMenuTitle, systemImage: archiveIconName)
+            }
+            Button(role: .destructive) {
+                isDeleteAlertPresented = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .frame(width: 28, height: 20)
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 16, weight: .semibold))
+        .imageScale(.medium)
+        .accessibilityLabel("Website options")
+        .disabled(viewModel.active == nil)
+    }
+
+    private var closeButton: some View {
+        Button {
+            viewModel.clearSelection()
+        } label: {
+            Image(systemName: "xmark")
+                .frame(width: 28, height: 20)
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 14, weight: .semibold))
+        .imageScale(.medium)
+        .accessibilityLabel("Close website")
+        .disabled(viewModel.active == nil)
+    }
+
+    private var isPinned: Bool {
+        viewModel.active?.pinned == true
+    }
+
+    private var isArchived: Bool {
+        viewModel.active?.archived == true
+    }
+
+    private var pinActionTitle: String {
+        isPinned ? "Unpin" : "Pin"
+    }
+
+    private var pinIconName: String {
+        isPinned ? "pin.slash" : "pin"
+    }
+
+    private var archiveMenuTitle: String {
+        isArchived ? "Unarchive" : "Archive"
+    }
+
+    private var archiveIconName: String {
+        isArchived ? "archivebox.fill" : "archivebox"
+    }
+
+    private var archiveActionTitle: String {
+        isArchived ? "Unarchive" : "Archive"
+    }
+
+    private var archiveAlertTitle: String {
+        isArchived ? "Unarchive website" : "Archive website"
+    }
+
+    private var archiveAlertMessage: String {
+        isArchived
+            ? "This will move the website back to your main list."
+            : "This will move the website into your archive."
+    }
+
+    private var renameDialogTitle: String {
+        "Rename website"
+    }
+
+    private var renameDialogPlaceholder: String {
+        "Website title"
+    }
+
+    private var deleteDialogTitle: String {
+        "Delete website"
+    }
+
     private var isCompact: Bool {
         #if os(macOS)
         return false
@@ -175,6 +332,38 @@ private struct WebsitesDetailView: View {
         #else
         openURL(url)
         #endif
+    }
+
+    private func commitRename() {
+        guard let websiteId = viewModel.active?.id else { return }
+        let updatedName = renameValue
+        isRenameDialogPresented = false
+        renameValue = ""
+        Task {
+            await viewModel.renameWebsite(id: websiteId, title: updatedName)
+        }
+    }
+
+    private func copyWebsiteContent() {
+        guard let content = viewModel.active?.content, !content.isEmpty else { return }
+        let stripped = MarkdownRendering.stripFrontmatter(content)
+        guard !stripped.isEmpty else { return }
+        #if os(iOS)
+        UIPasteboard.general.string = stripped
+        #elseif os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(stripped, forType: .string)
+        #endif
+    }
+
+    private func exportWebsite() {
+        guard let website = viewModel.active else { return }
+        let fallbackName = website.title.isEmpty ? "website" : website.title
+        let stripped = MarkdownRendering.stripFrontmatter(website.content)
+        guard !stripped.isEmpty else { return }
+        exportFilename = "\(fallbackName).md"
+        exportDocument = MarkdownFileDocument(text: stripped)
+        isExporting = true
     }
 
     private var sourceURL: URL? {
