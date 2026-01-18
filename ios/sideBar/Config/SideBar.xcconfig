@@ -7,8 +7,7 @@
 // Local overrides (not committed)
 #include? "$(SRCROOT)/Config/SideBar.local.xcconfig"
 
-// Note: escape // in URLs so .xcconfig doesn't treat it as a comment.
-API_BASE_URL = http:\/\/127.0.0.1:8001\/api\/v1
+// Note: set API_BASE_URL in SideBar.local.xcconfig for local development.
 
 // Supabase project configuration
 // (anon key is "public", but keep it out of git anyway)

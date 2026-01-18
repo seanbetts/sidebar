@@ -29,13 +29,24 @@ public struct SecureFieldWithToggle: View {
 
     public var body: some View {
         HStack(spacing: 8) {
+            #if canImport(UIKit)
+            SecureTextFieldRepresentable(
+                title: title,
+                text: $text,
+                isSecure: $isSecure,
+                textContentType: textContentType
+            )
+            #else
             if isSecure {
                 SecureField(title, text: $text)
                     .textContentType(textContentType)
+                    .autocorrectionDisabled()
             } else {
                 TextField(title, text: $text)
                     .textContentType(textContentType)
+                    .autocorrectionDisabled()
             }
+            #endif
 
             Button {
                 isSecure.toggle()
@@ -48,3 +59,55 @@ public struct SecureFieldWithToggle: View {
         }
     }
 }
+
+#if canImport(UIKit)
+private struct SecureTextFieldRepresentable: UIViewRepresentable {
+    let title: String
+    @Binding var text: String
+    @Binding var isSecure: Bool
+    var textContentType: PlatformTextContentType?
+
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.placeholder = title
+        textField.textContentType = textContentType
+        textField.isSecureTextEntry = isSecure
+        textField.autocorrectionType = .no
+        textField.autocapitalizationType = .none
+        textField.addTarget(context.coordinator, action: #selector(Coordinator.textDidChange), for: .editingChanged)
+        return textField
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+        if uiView.isSecureTextEntry != isSecure {
+            let wasFirstResponder = uiView.isFirstResponder
+            uiView.isSecureTextEntry = isSecure
+            if wasFirstResponder {
+                uiView.becomeFirstResponder()
+            }
+        }
+        if uiView.textContentType != textContentType {
+            uiView.textContentType = textContentType
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    final class Coordinator: NSObject {
+        private let text: Binding<String>
+
+        init(text: Binding<String>) {
+            self.text = text
+        }
+
+        @objc func textDidChange(_ sender: UITextField) {
+            text.wrappedValue = sender.text ?? ""
+        }
+    }
+}
+#endif
