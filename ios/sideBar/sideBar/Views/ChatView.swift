@@ -280,32 +280,28 @@ private struct ChatHeaderView: View {
                         .labelStyle(.titleAndIcon)
                 }
                 if showNewChatButton || showCloseButton {
-                    HStack(spacing: 8) {
+                    HeaderActionRow {
                         if showNewChatButton {
-                            Button {
-                                Task {
-                                    await viewModel.startNewConversation()
+                            HeaderActionButton(
+                                systemName: "plus",
+                                accessibilityLabel: "New chat",
+                                action: {
+                                    Task {
+                                        await viewModel.startNewConversation()
+                                    }
                                 }
-                            } label: {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .frame(width: 28, height: 20)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("New chat")
+                            )
                         }
                         if showCloseButton {
-                            Button {
-                                Task {
-                                    await viewModel.closeConversation()
+                            HeaderActionButton(
+                                systemName: "xmark",
+                                accessibilityLabel: "Close chat",
+                                action: {
+                                    Task {
+                                        await viewModel.closeConversation()
+                                    }
                                 }
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .frame(width: 28, height: 20)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Close chat")
+                            )
                         }
                     }
                 }
