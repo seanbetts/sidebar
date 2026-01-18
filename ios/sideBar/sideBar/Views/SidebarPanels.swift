@@ -1738,7 +1738,6 @@ private struct FilesIngestionRow: View, Equatable {
     let isSelected: Bool
     let onPinToggle: (() -> Void)?
     let onDelete: (() -> Void)?
-    private let displayName: String
 
     init(
         item: IngestionListItem,
@@ -1750,7 +1749,6 @@ private struct FilesIngestionRow: View, Equatable {
         self.isSelected = isSelected
         self.onPinToggle = onPinToggle
         self.onDelete = onDelete
-        self.displayName = stripFileExtension(item.file.filenameOriginal)
     }
 
     static func == (lhs: FilesIngestionRow, rhs: FilesIngestionRow) -> Bool {
@@ -1884,6 +1882,14 @@ private struct FilesIngestionRow: View, Equatable {
 
     private var isFailed: Bool {
         (item.job.status ?? "") == "failed"
+    }
+
+    private var displayName: String {
+        let name = stripFileExtension(item.file.filenameOriginal)
+        if item.file.mimeOriginal.lowercased() == "video/youtube", name.lowercased() == "youtube video" {
+            return "YouTube Video"
+        }
+        return name
     }
 
     private func folderIconName(for name: String) -> String {

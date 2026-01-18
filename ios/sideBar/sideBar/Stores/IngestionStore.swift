@@ -184,6 +184,40 @@ public final class IngestionStore: ObservableObject {
         persistListCache()
     }
 
+    public func updateJob(fileId: String, job: IngestionJob, recommendedViewer: String?) {
+        if let index = remoteItems.firstIndex(where: { $0.file.id == fileId }) {
+            let existing = remoteItems[index]
+            remoteItems[index] = IngestionListItem(
+                file: existing.file,
+                job: job,
+                recommendedViewer: recommendedViewer ?? existing.recommendedViewer
+            )
+        }
+        if let local = localItems[fileId] {
+            localItems[fileId] = IngestionListItem(
+                file: local.file,
+                job: job,
+                recommendedViewer: recommendedViewer ?? local.recommendedViewer
+            )
+        }
+        if let meta = activeMeta, meta.file.id == fileId {
+            let updatedMeta = IngestionMetaResponse(
+                file: meta.file,
+                job: job,
+                derivatives: meta.derivatives,
+                recommendedViewer: recommendedViewer ?? meta.recommendedViewer
+            )
+            activeMeta = updatedMeta
+            cache.set(
+                key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
+                value: updatedMeta,
+                ttlSeconds: CachePolicy.ingestionMeta
+            )
+        }
+        items = mergeItems(remoteItems)
+        persistListCache()
+    }
+
     public func removeItem(fileId: String) {
         remoteItems.removeAll { $0.file.id == fileId }
         localItems.removeValue(forKey: fileId)
@@ -329,7 +363,8 @@ public final class IngestionStore: ObservableObject {
                 || current.job.status != item.job.status
                 || current.job.stage != item.job.stage
                 || current.file.pinned != item.file.pinned
-                || current.file.pinnedOrder != item.file.pinnedOrder {
+                || current.file.pinnedOrder != item.file.pinnedOrder
+                || current.file.filenameOriginal != item.file.filenameOriginal {
                 return true
             }
         }

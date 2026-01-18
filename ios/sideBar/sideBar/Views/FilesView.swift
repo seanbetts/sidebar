@@ -66,12 +66,22 @@ public struct FilesView: View {
 
     private var selectedFilenameOriginal: String? {
         if let name = environment.ingestionViewModel.activeMeta?.file.filenameOriginal {
-            return name
+            return normalizedFilename(name: name, mime: environment.ingestionViewModel.activeMeta?.file.mimeOriginal)
         }
         guard let selectedId = environment.ingestionViewModel.selectedFileId else {
             return nil
         }
-        return environment.ingestionViewModel.items.first { $0.file.id == selectedId }?.file.filenameOriginal
+        if let item = environment.ingestionViewModel.items.first(where: { $0.file.id == selectedId }) {
+            return normalizedFilename(name: item.file.filenameOriginal, mime: item.file.mimeOriginal)
+        }
+        return nil
+    }
+
+    private func normalizedFilename(name: String, mime: String?) -> String {
+        if mime?.lowercased() == "video/youtube", name.lowercased() == "youtube video" {
+            return "YouTube Video"
+        }
+        return name
     }
 
     private var hasActiveSelection: Bool {
@@ -148,12 +158,15 @@ private struct FilesHeaderView: View {
 
     private var selectedFilenameOriginal: String? {
         if let name = viewModel.activeMeta?.file.filenameOriginal {
-            return name
+            return normalizedFilename(name: name, mime: viewModel.activeMeta?.file.mimeOriginal)
         }
         guard let selectedId = viewModel.selectedFileId else {
             return nil
         }
-        return viewModel.items.first { $0.file.id == selectedId }?.file.filenameOriginal
+        if let item = viewModel.items.first(where: { $0.file.id == selectedId }) {
+            return normalizedFilename(name: item.file.filenameOriginal, mime: item.file.mimeOriginal)
+        }
+        return nil
     }
 
     private var selectedMimeOriginal: String? {
@@ -255,6 +268,13 @@ private struct FilesHeaderView: View {
             return "FILE"
         }
         return name[extensionMatch].dropFirst().uppercased()
+    }
+
+    private func normalizedFilename(name: String, mime: String?) -> String {
+        if mime?.lowercased() == "video/youtube", name.lowercased() == "youtube video" {
+            return "YouTube Video"
+        }
+        return name
     }
 }
 
