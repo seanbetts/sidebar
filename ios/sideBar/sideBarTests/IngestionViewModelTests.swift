@@ -15,10 +15,16 @@ final class IngestionViewModelTests: XCTestCase {
             listResult: .failure(MockError.forced),
             metaResult: .failure(MockError.forced),
             contentResult: .failure(MockError.forced),
-            pinResult: .failure(MockError.forced)
+            pinResult: .failure(MockError.forced),
+            youtubeResult: .failure(MockError.forced)
         )
         let store = IngestionStore(api: api, cache: cache)
-        let viewModel = IngestionViewModel(api: api, store: store, temporaryStore: .shared)
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager()
+        )
 
         await viewModel.load()
 
@@ -46,12 +52,18 @@ final class IngestionViewModelTests: XCTestCase {
             listResult: .success(IngestionListResponse(items: [makeListItem(id: file.id)])),
             metaResult: .success(meta),
             contentResult: .success(Data("Hello".utf8)),
-            pinResult: .success(())
+            pinResult: .success(()),
+            youtubeResult: .success("youtube")
         )
         let tempDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = TemporaryFileStore(directory: tempDirectory)
         let ingestionStore = IngestionStore(api: api, cache: TestCacheClient())
-        let viewModel = IngestionViewModel(api: api, store: ingestionStore, temporaryStore: store)
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: ingestionStore,
+            temporaryStore: store,
+            uploadManager: MockIngestionUploadManager()
+        )
 
         await viewModel.selectFile(fileId: file.id)
 
@@ -78,10 +90,16 @@ final class IngestionViewModelTests: XCTestCase {
             listResult: .failure(MockError.forced),
             metaResult: .failure(MockError.forced),
             contentResult: .failure(MockError.forced),
-            pinResult: .failure(MockError.forced)
+            pinResult: .failure(MockError.forced),
+            youtubeResult: .failure(MockError.forced)
         )
         let store = IngestionStore(api: api, cache: cache)
-        let viewModel = IngestionViewModel(api: api, store: store, temporaryStore: .shared)
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager()
+        )
 
         await viewModel.loadMeta(fileId: file.id)
 
@@ -94,6 +112,49 @@ final class IngestionViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.activeMeta?.file.id, file.id)
         XCTAssertTrue(viewModel.isOffline)
+    }
+
+    func testIngestYouTubeAddsLocalItemAndSelects() async {
+        let file = IngestedFileMeta(
+            id: "yt-1",
+            filenameOriginal: "YouTube video",
+            path: nil,
+            mimeOriginal: "video/youtube",
+            sizeBytes: 0,
+            sha256: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            category: nil,
+            sourceUrl: "https://www.youtube.com/watch?v=abc123",
+            sourceMetadata: nil,
+            createdAt: "2026-01-10T00:00:00Z"
+        )
+        let meta = IngestionMetaResponse(
+            file: file,
+            job: makeJob(),
+            derivatives: [],
+            recommendedViewer: nil
+        )
+        let api = MockIngestionAPI(
+            listResult: .success(IngestionListResponse(items: [])),
+            metaResult: .success(meta),
+            contentResult: .failure(MockError.forced),
+            pinResult: .success(()),
+            youtubeResult: .success("yt-1")
+        )
+        let store = IngestionStore(api: api, cache: TestCacheClient())
+        let viewModel = IngestionViewModel(
+            api: api,
+            store: store,
+            temporaryStore: .shared,
+            uploadManager: MockIngestionUploadManager()
+        )
+
+        let errorMessage = await viewModel.ingestYouTube(url: "https://www.youtube.com/watch?v=abc123")
+
+        XCTAssertNil(errorMessage)
+        XCTAssertEqual(viewModel.selectedFileId, "yt-1")
+        XCTAssertTrue(viewModel.items.contains(where: { $0.file.id == "yt-1" }))
     }
 
     private func makeListItem(id: String) -> IngestionListItem {
@@ -144,6 +205,7 @@ private struct MockIngestionAPI: IngestionProviding {
     let metaResult: Result<IngestionMetaResponse, Error>
     let contentResult: Result<Data, Error>
     let pinResult: Result<Void, Error>
+    let youtubeResult: Result<String, Error>
 
     func list() async throws -> IngestionListResponse {
         try listResult.get()
@@ -165,5 +227,45 @@ private struct MockIngestionAPI: IngestionProviding {
         _ = fileId
         _ = pinned
         return try pinResult.get()
+    }
+
+    func delete(fileId: String) async throws {
+        _ = fileId
+        throw MockError.forced
+    }
+
+    func rename(fileId: String, filename: String) async throws {
+        _ = fileId
+        _ = filename
+        throw MockError.forced
+    }
+
+    func ingestYouTube(url: String) async throws -> String {
+        _ = url
+        return try youtubeResult.get()
+    }
+}
+
+private final class MockIngestionUploadManager: IngestionUploadManaging {
+    func startUpload(
+        uploadId: String,
+        fileURL: URL,
+        filename: String,
+        mimeType: String,
+        folder: String,
+        onProgress: @escaping (Double) -> Void,
+        onCompletion: @escaping (Result<String, Error>) -> Void
+    ) {
+        _ = uploadId
+        _ = fileURL
+        _ = filename
+        _ = mimeType
+        _ = folder
+        _ = onProgress
+        _ = onCompletion
+    }
+
+    func cancelUpload(uploadId: String) {
+        _ = uploadId
     }
 }

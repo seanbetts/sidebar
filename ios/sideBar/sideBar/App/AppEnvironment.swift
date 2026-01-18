@@ -71,7 +71,8 @@ public final class AppEnvironment: ObservableObject {
         self.ingestionViewModel = IngestionViewModel(
             api: container.ingestionAPI,
             store: ingestionStore,
-            temporaryStore: temporaryStore
+            temporaryStore: temporaryStore,
+            uploadManager: IngestionUploadManager(config: container.apiClient.config)
         )
         self.websitesViewModel = WebsitesViewModel(api: container.websitesAPI, store: websitesStore)
         self.memoriesViewModel = MemoriesViewModel(api: container.memoriesAPI, cache: container.cacheClient)
