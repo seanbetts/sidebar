@@ -20,7 +20,6 @@ public struct YouTubePlayerView: NSViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
-        context.coordinator.logLoading(url: url)
         webView.loadHTMLString(makeHTML(url: url), baseURL: YouTubePlayerView.embedBaseURL)
         webView.setValue(false, forKey: "drawsBackground")
         return webView
@@ -29,7 +28,6 @@ public struct YouTubePlayerView: NSViewRepresentable {
     public func updateNSView(_ nsView: WKWebView, context: Context) {
         if context.coordinator.lastURL != url {
             context.coordinator.lastURL = url
-            context.coordinator.logLoading(url: url)
             nsView.loadHTMLString(makeHTML(url: url), baseURL: YouTubePlayerView.embedBaseURL)
         }
     }
@@ -46,10 +44,6 @@ public struct YouTubePlayerView: NSViewRepresentable {
             self.lastURL = url
         }
 
-        func logLoading(url: URL) {
-            logger.info("YouTube webview loading embed URL: \(url.absoluteString, privacy: .public)")
-        }
-
         public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             logger.info("YouTube webview console: \(String(describing: message.body), privacy: .public)")
         }
@@ -63,7 +57,6 @@ public struct YouTubePlayerView: NSViewRepresentable {
         }
 
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            logger.info("YouTube webview finished loading")
         }
 
         public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
@@ -136,7 +129,6 @@ public struct YouTubePlayerView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.scrollView.isScrollEnabled = false
-        context.coordinator.logLoading(url: url)
         webView.loadHTMLString(makeHTML(url: url), baseURL: YouTubePlayerView.embedBaseURL)
         webView.isOpaque = false
         webView.backgroundColor = .clear
@@ -146,7 +138,6 @@ public struct YouTubePlayerView: UIViewRepresentable {
     public func updateUIView(_ uiView: WKWebView, context: Context) {
         if context.coordinator.lastURL != url {
             context.coordinator.lastURL = url
-            context.coordinator.logLoading(url: url)
             uiView.loadHTMLString(makeHTML(url: url), baseURL: YouTubePlayerView.embedBaseURL)
         }
     }
@@ -163,10 +154,6 @@ public struct YouTubePlayerView: UIViewRepresentable {
             self.lastURL = url
         }
 
-        func logLoading(url: URL) {
-            logger.info("YouTube webview loading embed URL: \(url.absoluteString, privacy: .public)")
-        }
-
         public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             logger.info("YouTube webview console: \(String(describing: message.body), privacy: .public)")
         }
@@ -180,7 +167,6 @@ public struct YouTubePlayerView: UIViewRepresentable {
         }
 
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            logger.info("YouTube webview finished loading")
         }
 
         public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
