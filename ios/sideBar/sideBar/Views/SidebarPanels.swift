@@ -1777,9 +1777,10 @@ private struct FilesIngestionRow: View, Equatable {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption)
                         .foregroundStyle(.orange)
+                } else {
+                    Image(systemName: iconName)
+                        .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 }
-                Image(systemName: iconName)
-                    .foregroundStyle(isSelected ? selectedTextColor : secondaryTextColor)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayName)
                         .font(.subheadline)
