@@ -31,7 +31,7 @@ public struct SidebarRail: View {
     public var body: some View {
         VStack(spacing: 16) {
             Button(action: { onTogglePanel?() }) {
-                Image(systemName: "line.3.horizontal")
+                Image(systemName: "sidebar.left")
                     .font(.system(size: 18, weight: .semibold))
                     .frame(width: 32, height: 32)
             }
@@ -61,8 +61,20 @@ public struct SidebarRail: View {
             #endif
         }
         .frame(width: 56)
+        .frame(maxHeight: .infinity)
         .padding(.vertical, 12)
-        .background(railBackground)
+        .background(
+            Rectangle()
+                .fill(railBackground)
+                .ignoresSafeArea(.all, edges: .bottom)
+                .overlay(
+                    Rectangle()
+                        .fill(Color(.separator))
+                        .frame(width: 1)
+                        .ignoresSafeArea(.all, edges: .bottom),
+                    alignment: .trailing
+                )
+        )
         .onAppear {
             guard environment.isAuthenticated,
                   environment.settingsViewModel.profileImageData == nil else { return }

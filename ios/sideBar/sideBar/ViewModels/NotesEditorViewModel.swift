@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import Combine
 import os
 
@@ -13,7 +14,11 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var currentNoteId: String? = nil
     @Published public private(set) var isReadOnly: Bool = false
     @Published public var selectedRange: NSRange = NSRange(location: 0, length: 0)
+    @Published public var isEditing: Bool = false
+    @Published public var editorFrame: CGRect = .zero
+    @Published public var pendingCaretCoords: CGPoint? = nil
     @Published public private(set) var hasExternalUpdate: Bool = false
+    @Published public var wantsEditingOnNextLoad: Bool = false
 
     private let api: any NotesProviding
     private let notesStore: NotesStore
@@ -51,9 +56,23 @@ public final class NotesEditorViewModel: ObservableObject {
         selectedRange = range
     }
 
+    public func requestEditingOnNextLoad() {
+        wantsEditingOnNextLoad = true
+        pendingCaretCoords = nil
+        selectedRange = NSRange(location: 0, length: 0)
+    }
+
     public func handleUserEdit(_ updated: NSAttributedString) {
         attributedContent = updated
         content = MarkdownFormatting.serialize(attributedText: updated)
+        isDirty = content != baselineContent
+        saveError = nil
+        scheduleAutosave()
+    }
+
+    public func handleUserMarkdownEdit(_ updated: String) {
+        content = updated
+        attributedContent = MarkdownFormatting.render(markdown: updated)
         isDirty = content != baselineContent
         saveError = nil
         scheduleAutosave()
@@ -119,12 +138,15 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let pending = pendingExternalContent else { return }
         pendingExternalContent = nil
         hasExternalUpdate = false
-        updateContentFromServer(pending)
+        updateContentFromServer(pending, preserveSelection: true)
     }
 
     public func dismissExternalUpdate() {
         pendingExternalContent = nil
         hasExternalUpdate = false
+        if isDirty {
+            scheduleAutosave()
+        }
     }
 
     public func saveNow() {
@@ -192,7 +214,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     private func scheduleAutosave() {
-        guard isDirty, currentNoteId != nil, !isReadOnly else { return }
+        guard isDirty, currentNoteId != nil, !isReadOnly, !hasExternalUpdate else { return }
         if !isSaveInProgress {
             saveTask?.cancel()
             saveTask = Task { [weak self] in
@@ -212,7 +234,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     private func saveIfNeeded() async {
-        guard isDirty, let noteId = currentNoteId, !isReadOnly else { return }
+        guard isDirty, let noteId = currentNoteId, !isReadOnly, !hasExternalUpdate else { return }
         if isSaveInProgress {
             pendingSaveRequested = true
             return
@@ -269,10 +291,21 @@ public final class NotesEditorViewModel: ObservableObject {
             return
         }
 
-        if note.id == currentNoteId, note.content == content {
-            if ignoreNextStoreUpdate {
-                ignoreNextStoreUpdate = false
+        let isSameNote = note.id == currentNoteId
+
+        // If we just saved, ignore this update to prevent false "external update" detection
+        // The server response might have slightly different content (whitespace normalization)
+        if ignoreNextStoreUpdate, isSameNote {
+            ignoreNextStoreUpdate = false
+            baselineContent = note.content
+            if let modified = note.modified {
+                lastSaved = Date(timeIntervalSince1970: modified)
             }
+            isDirty = false
+            return
+        }
+
+        if isSameNote, note.content == content {
             baselineContent = content
             if let modified = note.modified {
                 lastSaved = Date(timeIntervalSince1970: modified)
@@ -286,10 +319,12 @@ public final class NotesEditorViewModel: ObservableObject {
         if isDirty, incoming != content {
             pendingExternalContent = incoming
             hasExternalUpdate = true
+            saveTask?.cancel()
+            pendingSaveRequested = false
             return
         }
 
-        updateContentFromServer(incoming)
+        updateContentFromServer(incoming, preserveSelection: isSameNote)
         if let modified = note.modified {
             lastSaved = Date(timeIntervalSince1970: modified)
         } else {
@@ -297,13 +332,21 @@ public final class NotesEditorViewModel: ObservableObject {
         }
     }
 
-    private func updateContentFromServer(_ updated: String) {
+    private func updateContentFromServer(_ updated: String, preserveSelection: Bool = false) {
         content = updated
         attributedContent = MarkdownFormatting.render(markdown: updated)
         baselineContent = updated
         isDirty = false
         hasExternalUpdate = false
         pendingExternalContent = nil
-        selectedRange = NSRange(location: 0, length: 0)
+        if preserveSelection {
+            let updatedLength = (updated as NSString).length
+            let clampedLocation = min(selectedRange.location, updatedLength)
+            let maxLength = max(0, updatedLength - clampedLocation)
+            let clampedLength = min(selectedRange.length, maxLength)
+            selectedRange = NSRange(location: clampedLocation, length: clampedLength)
+        } else {
+            selectedRange = NSRange(location: 0, length: 0)
+        }
     }
 }

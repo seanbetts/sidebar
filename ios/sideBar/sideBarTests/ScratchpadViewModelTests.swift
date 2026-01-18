@@ -32,6 +32,18 @@ final class ScratchpadViewModelTests: XCTestCase {
         XCTAssertEqual(cached?.content, "Updated")
         XCTAssertEqual(viewModel.scratchpad?.content, "Updated")
     }
+
+    func testCachedScratchpadReturnsCachedValue() {
+        let cached = ScratchpadResponse(id: "s1", title: "Scratchpad", content: "Cached", updatedAt: nil)
+        let cache = TestCacheClient()
+        cache.set(key: CacheKeys.scratchpad, value: cached, ttlSeconds: 60)
+        let viewModel = ScratchpadViewModel(
+            api: MockScratchpadAPI(getResult: .failure(MockError.forced), updateResult: .failure(MockError.forced)),
+            cache: cache
+        )
+
+        XCTAssertEqual(viewModel.cachedScratchpad()?.content, "Cached")
+    }
 }
 
 private enum MockError: Error {

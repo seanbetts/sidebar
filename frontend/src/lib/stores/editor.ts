@@ -41,12 +41,11 @@ function createEditorStore() {
 			update((state) => ({ ...state, isLoading: true, saveError: null }));
 
 			try {
-				const response =
-					basePath === 'notes'
-						? await fetch(`/api/v1/notes/${path}`)
-						: await fetch(
-								`/api/v1/files/content?basePath=${basePath}&path=${encodeURIComponent(path)}`
-							);
+				if (basePath !== 'notes') {
+					throw new Error('Unsupported editor base path');
+				}
+
+				const response = await fetch(`/api/v1/notes/${path}`);
 
 				if (!response.ok) {
 					await handleFetchError(response);
@@ -103,26 +102,28 @@ function createEditorStore() {
 			const state = get({ subscribe });
 
 			if (state.isReadOnly || !state.currentNoteId || !state.isDirty) return;
+			if (state.basePath !== 'notes') {
+				logError('Unsupported editor base path', new Error('Unsupported editor base path'), {
+					basePath: state.basePath,
+					noteId: state.currentNoteId
+				});
+				update((s) => ({
+					...s,
+					isSaving: false,
+					saveError: 'Unsupported editor base path',
+					lastUpdateSource: null
+				}));
+				return;
+			}
 
 			update((s) => ({ ...s, isSaving: true, saveError: null }));
 
 			try {
-				const response =
-					state.basePath === 'notes'
-						? await fetch(`/api/v1/notes/${state.currentNoteId}`, {
-								method: 'PATCH',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify({ content: state.content })
-							})
-						: await fetch('/api/v1/files/content', {
-								method: 'POST',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify({
-									basePath: state.basePath,
-									path: state.currentNoteId,
-									content: state.content
-								})
-							});
+				const response = await fetch(`/api/v1/notes/${state.currentNoteId}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ content: state.content })
+				});
 
 				if (!response.ok) {
 					await handleFetchError(response);

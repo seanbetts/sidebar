@@ -61,12 +61,12 @@ describe('tree actions', () => {
 	});
 
 	it('loads tree from cache when available', async () => {
-		cacheState.set('tree.documents', [{ name: 'Doc', path: 'doc', type: 'file' }]);
+		cacheState.set('tree.notes', [{ name: 'Doc', path: 'doc', type: 'file' }]);
 		const { load } = createLoadActions({ update, set, getState });
 
-		await load('documents');
+		await load('notes');
 
-		expect(state.trees.documents?.children).toHaveLength(1);
+		expect(state.trees.notes?.children).toHaveLength(1);
 	});
 
 	it('loads tree from API when cache is missing', async () => {
@@ -76,9 +76,9 @@ describe('tree actions', () => {
 		} as Response);
 		const { load } = createLoadActions({ update, set, getState });
 
-		await load('documents');
+		await load('notes');
 
-		expect(state.trees.documents?.loaded).toBe(true);
+		expect(state.trees.notes?.loaded).toBe(true);
 	});
 
 	it('searches notes via API', async () => {
@@ -90,22 +90,10 @@ describe('tree actions', () => {
 		expect(state.trees.notes?.children).toHaveLength(1);
 	});
 
-	it('searches files via fetch', async () => {
-		vi.spyOn(global, 'fetch').mockResolvedValue({
-			ok: true,
-			json: async () => ({ items: [{ name: 'File', path: 'file', type: 'file' }] })
-		} as Response);
-		const { searchFiles } = createSearchActions({ update, set, getState });
-
-		await searchFiles('documents', 'q');
-
-		expect(state.trees.documents?.children).toHaveLength(1);
-	});
-
 	it('toggles expanded state', () => {
 		state = {
 			trees: {
-				documents: {
+				notes: {
 					children: [{ name: 'Folder', path: 'folder', type: 'directory', expanded: false }],
 					expandedPaths: new Set(),
 					loading: false
@@ -114,15 +102,15 @@ describe('tree actions', () => {
 		};
 		const { toggleExpanded } = createMutationActions({ update, set, getState });
 
-		toggleExpanded('documents', 'folder');
+		toggleExpanded('notes', 'folder');
 
-		expect(state.trees.documents?.expandedPaths.has('folder')).toBe(true);
+		expect(state.trees.notes?.expandedPaths.has('folder')).toBe(true);
 	});
 
 	it('resets tree state', () => {
 		state = {
 			trees: {
-				documents: {
+				notes: {
 					children: [{ name: 'File', path: 'file', type: 'file' }],
 					expandedPaths: new Set(),
 					loading: false
@@ -133,6 +121,6 @@ describe('tree actions', () => {
 
 		resetTree();
 
-		expect(state.trees.documents).toBeUndefined();
+		expect(state.trees.notes).toBeUndefined();
 	});
 });

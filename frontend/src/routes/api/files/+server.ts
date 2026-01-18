@@ -2,23 +2,34 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 import { createProxyHandler } from '$lib/server/apiProxy';
+import { buildAuthHeaders, getApiUrl } from '$lib/server/api';
+import { logError } from '$lib/utils/errorHandling';
 
-const handler = createProxyHandler({
-	pathBuilder: () => '/api/v1/files/tree',
-	queryParamsFromUrl: true
+const API_URL = getApiUrl();
+
+export const GET = createProxyHandler({
+	pathBuilder: () => '/api/v1/files'
 });
 
-export const GET: RequestHandler = async (event) => {
-	const basePath = event.url.searchParams.get('basePath') || 'documents';
-	if (basePath === 'notes') {
-		return json({ error: 'Notes are served from /api/notes' }, { status: 400 });
+export const POST: RequestHandler = async ({ locals, request, fetch }) => {
+	try {
+		const formData = await request.formData();
+		const response = await fetch(`${API_URL}/api/v1/files`, {
+			method: 'POST',
+			headers: buildAuthHeaders(locals),
+			body: formData
+		});
+		if (!response.ok) {
+			const detail = await response.text();
+			return json(
+				{ detail: detail || response.statusText || 'Failed to upload file' },
+				{ status: response.status }
+			);
+		}
+		const data = await response.json();
+		return json(data);
+	} catch (error) {
+		logError('Failed to upload file', error, { scope: 'api.files.upload' });
+		return json({ error: 'Failed to upload file' }, { status: 500 });
 	}
-
-	if (!event.url.searchParams.has('basePath')) {
-		const url = new URL(event.url);
-		url.searchParams.set('basePath', basePath);
-		return handler({ ...event, url });
-	}
-
-	return handler(event);
 };

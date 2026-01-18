@@ -25,6 +25,7 @@ const {
 	editorStore,
 	websitesStore,
 	treeStore,
+	filesSearchStore,
 	thingsStore,
 	chatStore,
 	conversationListStore,
@@ -90,10 +91,13 @@ const {
 		},
 		treeStore: {
 			searchNotes: vi.fn(),
-			searchFiles: vi.fn(),
 			load: vi.fn(),
 			addNoteNode: vi.fn(),
 			addFolderNode: vi.fn()
+		},
+		filesSearchStore: {
+			set: vi.fn(),
+			clear: vi.fn()
 		},
 		thingsStore: {
 			search: vi.fn(),
@@ -139,6 +143,10 @@ vi.mock('$lib/stores/websites', () => ({
 
 vi.mock('$lib/stores/tree', () => ({
 	treeStore
+}));
+
+vi.mock('$lib/stores/files-search', () => ({
+	filesSearchStore
 }));
 
 vi.mock('$lib/stores/things', () => ({

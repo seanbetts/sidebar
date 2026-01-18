@@ -27,6 +27,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Build CodeMirror bundle
+        working-directory: .
+        run: ./scripts/build-codemirror.sh
       - name: Run coverage
         env:
           CI: "true"

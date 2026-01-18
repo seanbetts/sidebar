@@ -74,10 +74,12 @@ export function createLoadActions(context: TreeStoreContext) {
 	};
 
 	const revalidateInBackground = async (basePath: string, expandedPaths: Set<string>) => {
+		if (basePath !== 'notes') {
+			return;
+		}
+
 		try {
-			const endpoint =
-				basePath === 'notes' ? '/api/v1/notes/tree' : `/api/v1/files/tree?basePath=${basePath}`;
-			const response = await fetch(endpoint);
+			const response = await fetch('/api/v1/notes/tree');
 			if (!response.ok) return;
 			const data = await response.json();
 			const freshChildren: FileNode[] = data.children || [];
@@ -114,7 +116,14 @@ export function createLoadActions(context: TreeStoreContext) {
 		}
 	};
 
-	const load = async (basePath: string = 'documents', force: boolean = false) => {
+	const load = async (basePath: string = 'notes', force: boolean = false) => {
+		if (basePath !== 'notes') {
+			logError('Unsupported tree base path', new Error('Unsupported tree base path'), {
+				basePath
+			});
+			return;
+		}
+
 		const currentState = context.getState();
 		const currentTree = currentState.trees[basePath];
 		const expandedCache = getExpandedCache(basePath);
@@ -174,9 +183,7 @@ export function createLoadActions(context: TreeStoreContext) {
 		}));
 
 		try {
-			const endpoint =
-				basePath === 'notes' ? '/api/v1/notes/tree' : `/api/v1/files/tree?basePath=${basePath}`;
-			const response = await fetch(endpoint);
+			const response = await fetch('/api/v1/notes/tree');
 			if (!response.ok) {
 				await handleFetchError(response);
 			}

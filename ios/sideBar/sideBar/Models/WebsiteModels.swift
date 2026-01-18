@@ -62,3 +62,15 @@ public struct WebsiteQuickSaveJob: Codable {
     public let createdAt: String?
     public let updatedAt: String?
 }
+
+public struct WebsiteSaveResponse: Codable {
+    public let success: Bool
+    public let data: WebsiteSaveData?
+}
+
+public struct WebsiteSaveData: Codable {
+    public let id: String
+    public let title: String
+    public let url: String
+    public let domain: String
+}

@@ -139,7 +139,7 @@ export const conversationsAPI = new ConversationsAPI();
  */
 class IngestionAPI {
 	private get baseUrl(): string {
-		return '/api/v1/ingestion';
+		return '/api/v1/files';
 	}
 
 	/**

@@ -14,6 +14,10 @@ public struct ChatAPI {
 
 public struct ChatTitleRequest: Codable {
     public let conversationId: String
+
+    private enum CodingKeys: String, CodingKey {
+        case conversationId = "conversation_id"
+    }
 }
 
 public struct ChatTitleResponse: Codable {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Folder } from 'lucide-svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import { treeStore } from '$lib/stores/tree';
+	import { filesSearchStore } from '$lib/stores/files-search';
 	import { ingestionStore } from '$lib/stores/ingestion';
 	import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
 	import { websitesStore } from '$lib/stores/websites';
@@ -24,13 +24,8 @@
 	const { deleteIngestion, updatePinned, updatePinnedOrder, downloadFile, renameFile } =
 		useIngestionActions();
 
-	const basePath = 'documents';
-
-	$: treeData = $treeStore.trees[basePath];
-	$: children = treeData?.children || [];
-	$: searchQuery = treeData?.searchQuery || '';
-	// Show loading if explicitly loading OR if tree hasn't been initialized yet OR if ingestion is loading
-	$: loading = (treeData?.loading ?? !treeData) || $ingestionStore.loading;
+	$: searchQuery = $filesSearchStore;
+	$: loading = $ingestionStore.loading && !$ingestionStore.loaded;
 	$: normalizedQuery = searchQuery.trim().toLowerCase();
 	$: processingItems = ($ingestionStore.items || []).filter(
 		(item) => !['ready', 'failed', 'canceled'].includes(item.job.status || '')
@@ -241,9 +236,9 @@
 
 {#if loading}
 	<SidebarLoading message="Loading files..." />
-{:else if treeData?.error}
+{:else if $ingestionStore.error}
 	<SidebarEmptyState icon={Folder} title="Service unavailable" subtitle="Please try again later." />
-{:else if children.length === 0 && filteredProcessingItems.length === 0 && filteredFailedItems.length === 0 && filteredReadyItems.length === 0}
+{:else if filteredProcessingItems.length === 0 && filteredFailedItems.length === 0 && filteredReadyItems.length === 0}
 	<SidebarEmptyState
 		icon={Folder}
 		title="No files yet"

@@ -11,22 +11,38 @@ import UIKit
 
 public struct SettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
+    @Environment(\.colorScheme) private var colorScheme
 
     public init() {
     }
 
     public var body: some View {
-        #if os(macOS)
-        SettingsSplitView(
-            viewModel: environment.settingsViewModel,
-            memoriesViewModel: environment.memoriesViewModel
-        )
-        #else
-        SettingsTabsView(
-            viewModel: environment.settingsViewModel,
-            memoriesViewModel: environment.memoriesViewModel
-        )
-        #endif
+        ZStack {
+            settingsBackground
+                .ignoresSafeArea()
+            #if os(macOS)
+            SettingsSplitView(
+                viewModel: environment.settingsViewModel,
+                memoriesViewModel: environment.memoriesViewModel,
+                settingsBackground: settingsBackground,
+                listBackground: listBackground
+            )
+            #else
+            SettingsTabsView(
+                viewModel: environment.settingsViewModel,
+                memoriesViewModel: environment.memoriesViewModel,
+                settingsBackground: settingsBackground
+            )
+            #endif
+        }
+    }
+
+    private var settingsBackground: Color {
+        colorScheme == .dark ? DesignTokens.Colors.background : DesignTokens.Colors.surface
+    }
+
+    private var listBackground: Color {
+        colorScheme == .dark ? DesignTokens.Colors.surface : DesignTokens.Colors.background
     }
 }
 
@@ -74,6 +90,8 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 private struct SettingsSplitView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var memoriesViewModel: MemoriesViewModel
+    let settingsBackground: Color
+    let listBackground: Color
     @State private var selection: SettingsSection? = .profile
     @State private var hasLoaded = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -85,16 +103,20 @@ private struct SettingsSplitView: View {
                     .tag(section)
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(listBackground)
             .modifier(SidebarToggleHider())
         } detail: {
             settingsDetailView(for: selection ?? .profile)
                 .navigationTitle(selection?.title ?? "Settings")
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .modifier(SidebarToggleHider())
+                .background(settingsBackground)
         }
         .navigationSplitViewStyle(.balanced)
         .modifier(SidebarToggleHider())
         .frame(minWidth: 680, minHeight: 460)
+        .background(settingsBackground)
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -150,6 +172,7 @@ private struct SidebarToggleHider: ViewModifier {
 private struct SettingsTabsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var memoriesViewModel: MemoriesViewModel
+    let settingsBackground: Color
     @State private var hasLoaded = false
 
     var body: some View {
@@ -176,7 +199,7 @@ private struct SettingsTabsView: View {
                 }
         }
         .padding(16)
-        .background(DesignTokens.Colors.background)
+        .background(settingsBackground)
         .ignoresSafeArea()
         .onAppear {
             if !hasLoaded {

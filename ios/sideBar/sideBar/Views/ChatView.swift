@@ -146,7 +146,8 @@ private struct ChatDetailView: View {
         .sheet(isPresented: $isScratchpadPresented) {
             ScratchpadPopoverView(
                 api: environment.container.scratchpadAPI,
-                cache: environment.container.cacheClient
+                cache: environment.container.cacheClient,
+                scratchpadStore: environment.scratchpadStore
             )
         }
         #endif
@@ -227,84 +228,81 @@ private struct ChatHeaderView: View {
     #endif
 
     var body: some View {
-        if isCompact {
+        if showExtendedContent {
             VStack(alignment: .leading, spacing: 6) {
                 headerContent
+
+                if let errorMessage = viewModel.errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                if let activeTool = viewModel.activeTool {
+                    ChatActiveToolBanner(activeTool: activeTool)
+                }
+
+                if let promptPreview = viewModel.promptPreview {
+                    PromptPreviewView(promptPreview: promptPreview)
+                }
             }
             .padding(16)
             .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
             .background(headerBackground)
         } else {
-        VStack(alignment: .leading, spacing: 6) {
             headerContent
-
-            if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-
-            if let activeTool = viewModel.activeTool {
-                ChatActiveToolBanner(activeTool: activeTool)
-            }
-
-            if let promptPreview = viewModel.promptPreview {
-                PromptPreviewView(promptPreview: promptPreview)
-            }
-        }
-        .padding(16)
-        .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
-        .background(headerBackground)
+                .padding(16)
+                .frame(height: LayoutMetrics.contentHeaderMinHeight)
+                .background(headerBackground)
         }
     }
 
+    private var showExtendedContent: Bool {
+        if isCompact {
+            return false
+        }
+        return viewModel.errorMessage != nil ||
+            viewModel.activeTool != nil ||
+            viewModel.promptPreview != nil
+    }
+
     private var headerContent: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "bubble")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(selectedTitle)
-                    .font(.headline)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .layoutPriority(1)
-                    .truncationMode(.tail)
-            }
-            Spacer()
-            if viewModel.isStreaming {
-                Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .labelStyle(.titleAndIcon)
-            }
-            if showNewChatButton || showCloseButton {
-                HStack(spacing: 8) {
-                    if showNewChatButton {
-                        Button {
-                            Task {
-                                await viewModel.startNewConversation()
-                            }
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .semibold))
-                                .frame(width: 28, height: 20)
+        ContentHeaderRow(
+            iconName: "bubble",
+            title: selectedTitle,
+            titleLineLimit: 1
+        ) {
+            HStack(spacing: 12) {
+                if viewModel.isStreaming {
+                    Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.titleAndIcon)
+                }
+                if showNewChatButton || showCloseButton {
+                    HeaderActionRow {
+                        if showNewChatButton {
+                            HeaderActionButton(
+                                systemName: "plus",
+                                accessibilityLabel: "New chat",
+                                action: {
+                                    Task {
+                                        await viewModel.startNewConversation()
+                                    }
+                                }
+                            )
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("New chat")
-                    }
-                    if showCloseButton {
-                        Button {
-                            Task {
-                                await viewModel.closeConversation()
-                            }
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 14, weight: .semibold))
-                                .frame(width: 28, height: 20)
+                        if showCloseButton {
+                            HeaderActionButton(
+                                systemName: "xmark",
+                                accessibilityLabel: "Close chat",
+                                action: {
+                                    Task {
+                                        await viewModel.closeConversation()
+                                    }
+                                }
+                            )
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Close chat")
                     }
                 }
             }
@@ -504,7 +502,7 @@ private struct ChatMessageListView: View {
 private struct ChatMessageRow: View {
     let message: Message
     @Environment(\.colorScheme) private var colorScheme
-    private let maxBubbleWidth: CGFloat = 860
+    private let maxBubbleWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
 
     var body: some View {
         bubble
@@ -532,7 +530,7 @@ private struct ChatMessageRow: View {
                 .buttonStyle(.plain)
             }
 
-            SideBarMarkdown(text: message.content, preprocessor: MarkdownRendering.normalizeChatMarkdown)
+            SideBarMarkdown(text: message.content, style: .chat)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if message.status == .error, let error = message.error {
@@ -548,20 +546,16 @@ private struct ChatMessageRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(12)
+        .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+        .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
         .background(bubbleBackground)
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(bubbleBorder, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        #if os(macOS)
         .frame(maxWidth: maxBubbleWidth)
         .frame(maxWidth: .infinity, alignment: .center)
-        #else
-        .frame(maxWidth: 520)
-        .frame(maxWidth: .infinity, alignment: .center)
-        #endif
     }
 
     private var formattedTimestamp: String {

@@ -52,7 +52,7 @@ export function createMarkdownEditor({
 			TaskList,
 			TaskItem.configure({ nested: true }),
 			TableKit,
-			Markdown
+			Markdown.configure({ html: true })
 		],
 		content: '',
 		editable: true,
@@ -104,7 +104,6 @@ export function createMarkdownEditor({
 
 			if (contentActuallyChanged) {
 				const currentPosition = editor.state.selection.anchor;
-
 				editor.commands.setContent(nextContent);
 
 				await tick();

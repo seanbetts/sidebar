@@ -260,3 +260,37 @@ def _user_message_for_error(error_code: str | None, status: str | None) -> str |
     return ERROR_MESSAGES.get(
         error_code, "We couldn't process this file. Please try again."
     )
+
+
+def _user_message_for_job(
+    error_code: str | None, status: str | None, stage: str | None
+) -> str | None:
+    error_message = _user_message_for_error(error_code, status)
+    if error_message:
+        return error_message
+    normalized_status = (status or "").lower()
+    normalized_stage = (stage or "").lower()
+
+    if normalized_status == "uploading":
+        return "Uploading..."
+    if normalized_status == "queued" or normalized_stage == "queued":
+        return "Queued"
+    if normalized_status == "paused":
+        return "Paused"
+    if normalized_status == "canceled" or normalized_stage == "canceled":
+        return "Canceled"
+    if normalized_status == "failed" or normalized_stage == "failed":
+        return "Failed"
+    if normalized_status == "ready" or normalized_stage == "ready":
+        return "Ready"
+
+    if normalized_stage in {"validating", "converting", "extracting"}:
+        return "Preparing"
+    if normalized_stage in {"ai_md", "transcribing"}:
+        return "Transcribing"
+    if normalized_stage in {"thumb", "finalizing"}:
+        return "Finalizing"
+
+    if normalized_status:
+        return "Processing"
+    return None

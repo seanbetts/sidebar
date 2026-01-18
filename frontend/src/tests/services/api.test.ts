@@ -131,6 +131,12 @@ describe('api services', () => {
 		await expect(ingestionAPI.pause('file-1')).rejects.toThrow('Failed to pause ingestion');
 	});
 
+	it('ingestionAPI.resume throws on failure', async () => {
+		vi.spyOn(global, 'fetch').mockReturnValue(failJson());
+
+		await expect(ingestionAPI.resume('file-1')).rejects.toThrow('Failed to resume ingestion');
+	});
+
 	it('ingestionAPI.cancel throws on failure', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(failJson());
 
@@ -143,7 +149,7 @@ describe('api services', () => {
 		await ingestionAPI.rename('file-3', 'new.txt');
 
 		expect(fetchSpy).toHaveBeenCalledWith(
-			'/api/v1/ingestion/file-3/rename',
+			'/api/v1/files/file-3/rename',
 			expect.objectContaining({ method: 'PATCH' })
 		);
 	});
@@ -154,7 +160,28 @@ describe('api services', () => {
 		await ingestionAPI.setPinned('file-2', true);
 
 		expect(fetchSpy).toHaveBeenCalledWith(
-			'/api/v1/ingestion/file-2/pin',
+			'/api/v1/files/file-2/pin',
+			expect.objectContaining({ method: 'PATCH' })
+		);
+	});
+
+	it('ingestionAPI.getContent returns response', async () => {
+		const response = { ok: true } as Response;
+		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(response);
+
+		const data = await ingestionAPI.getContent('file-9', 'ai_md');
+
+		expect(data).toBe(response);
+		expect(fetchSpy).toHaveBeenCalledWith('/api/v1/files/file-9/content?kind=ai_md');
+	});
+
+	it('ingestionAPI.updatePinnedOrder posts order', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({}));
+
+		await ingestionAPI.updatePinnedOrder(['file-1', 'file-2']);
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/files/pinned-order',
 			expect.objectContaining({ method: 'PATCH' })
 		);
 	});

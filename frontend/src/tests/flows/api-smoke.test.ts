@@ -31,7 +31,7 @@ suite('API smoke (requires local server)', () => {
 		'/api/v1/skills',
 		'/api/v1/notes/tree',
 		'/api/v1/websites',
-		'/api/v1/ingestion',
+		'/api/v1/files',
 		'/api/v1/things/bridges/status',
 		'/api/v1/things/diagnostics',
 		'/api/v1/things/counts',
@@ -43,12 +43,11 @@ suite('API smoke (requires local server)', () => {
 
 	const postEndpoints: Array<{ path: string; body?: Record<string, unknown> }> = [
 		{ path: '/api/v1/notes/search', body: { query: '', limit: 1 } },
-		{ path: '/api/v1/websites/search', body: { query: '', limit: 1 } },
-		{ path: '/api/v1/files/search', body: { basePath: 'documents', query: '', limit: 1 } }
+		{ path: '/api/v1/websites/search', body: { query: '', limit: 1 } }
 	];
 
 	const optionalPostEndpoints: Array<{ path: string; body?: Record<string, unknown> }> = [
-		{ path: '/api/v1/ingestion/youtube', body: { url: '' } }
+		{ path: '/api/v1/files/youtube', body: { url: '' } }
 	];
 
 	for (const path of getEndpoints) {
@@ -92,12 +91,6 @@ suite('API smoke (requires local server)', () => {
 
 	it('exposes conversations list route', async () => {
 		const response = await fetchWithTimeout(`${BASE_URL}/api/v1/conversations`);
-		expect(response.status).not.toBe(404);
-		expect(allowedStatuses.has(response.status)).toBe(true);
-	});
-
-	it('exposes files tree route', async () => {
-		const response = await fetchWithTimeout(`${BASE_URL}/api/v1/files/tree?basePath=documents`);
 		expect(response.status).not.toBe(404);
 		expect(allowedStatuses.has(response.status)).toBe(true);
 	});

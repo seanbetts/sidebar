@@ -493,64 +493,6 @@
 		opacity: 0.7;
 	}
 
-	/* Code styling */
-	:global(.website-viewer code) {
-		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
-		font-size: 0.9em;
-		background: var(--color-muted);
-		padding: 0.15em 0.4em;
-		border-radius: 0.25rem;
-	}
-
-	:global(.website-viewer pre) {
-		background: var(--color-muted);
-		padding: 1em;
-		border-radius: 0.5rem;
-		overflow-x: auto;
-		margin: 1em 0;
-	}
-
-	:global(.website-viewer pre code) {
-		background: none;
-		padding: 0;
-		font-size: 0.875em;
-		line-height: 1.5;
-	}
-
-	/* Heading hierarchy - use higher specificity to override .tiptap styles */
-	:global(.tiptap.website-viewer h1) {
-		font-size: 2em;
-		font-weight: 700;
-		margin: 0.67em 0 !important;
-	}
-
-	:global(.tiptap.website-viewer h2) {
-		font-size: 1.5em;
-		font-weight: 600;
-		margin: 0.75em 0 !important;
-	}
-
-	:global(.tiptap.website-viewer h3) {
-		font-size: 1.17em;
-		font-weight: 600;
-		margin: 0.83em 0 !important;
-	}
-
-	:global(.tiptap.website-viewer h4),
-	:global(.tiptap.website-viewer h5),
-	:global(.tiptap.website-viewer h6) {
-		font-weight: 600;
-		margin: 0.83em 0 !important;
-	}
-
-	/* Blockquote accent */
-	:global(.tiptap.website-viewer blockquote) {
-		border-left: 3px solid var(--color-border);
-		padding-left: 1em;
-		margin: 1em 0 !important;
-		color: var(--color-muted-foreground);
-	}
-
 	/* Hide empty paragraphs with only ProseMirror trailing breaks */
 	:global(.website-viewer p:has(> br.ProseMirror-trailingBreak:only-child)) {
 		display: none;

@@ -5,6 +5,9 @@ public protocol IngestionProviding {
     func getMeta(fileId: String) async throws -> IngestionMetaResponse
     func getContent(fileId: String, kind: String, range: String?) async throws -> Data
     func pin(fileId: String, pinned: Bool) async throws
+    func delete(fileId: String) async throws
+    func rename(fileId: String, filename: String) async throws
+    func ingestYouTube(url: String) async throws -> String
 }
 
 public struct IngestionAPI {
@@ -17,16 +20,16 @@ public struct IngestionAPI {
     }
 
     public func list() async throws -> IngestionListResponse {
-        try await client.request("ingestion")
+        try await client.request("files")
     }
 
     public func getMeta(fileId: String) async throws -> IngestionMetaResponse {
-        try await client.request("ingestion/\(fileId)/meta")
+        try await client.request("files/\(fileId)/meta")
     }
 
     public func getContent(fileId: String, kind: String, range: String? = nil) async throws -> Data {
         let encodedKind = kind.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? kind
-        let requestPath = "ingestion/\(fileId)/content?kind=\(encodedKind)"
+        let requestPath = "files/\(fileId)/content?kind=\(encodedKind)"
         var headers: [String: String] = [:]
         if let range {
             headers["Range"] = range
@@ -36,38 +39,38 @@ public struct IngestionAPI {
 
     public func pin(fileId: String, pinned: Bool) async throws {
         struct PinRequest: Codable { let pinned: Bool }
-        try await client.requestVoid("ingestion/\(fileId)/pin", method: "PATCH", body: PinRequest(pinned: pinned))
+        try await client.requestVoid("files/\(fileId)/pin", method: "PATCH", body: PinRequest(pinned: pinned))
     }
 
     public func updatePinnedOrder(ids: [String]) async throws {
         struct PinnedOrderRequest: Codable { let order: [String] }
-        try await client.requestVoid("ingestion/pinned-order", method: "PATCH", body: PinnedOrderRequest(order: ids))
+        try await client.requestVoid("files/pinned-order", method: "PATCH", body: PinnedOrderRequest(order: ids))
     }
 
     public func rename(fileId: String, filename: String) async throws {
         struct RenameRequest: Codable { let filename: String }
-        try await client.requestVoid("ingestion/\(fileId)/rename", method: "PATCH", body: RenameRequest(filename: filename))
+        try await client.requestVoid("files/\(fileId)/rename", method: "PATCH", body: RenameRequest(filename: filename))
     }
 
     public func pause(fileId: String) async throws {
-        try await client.requestVoid("ingestion/\(fileId)/pause", method: "POST")
+        try await client.requestVoid("files/\(fileId)/pause", method: "POST")
     }
 
     public func resume(fileId: String) async throws {
-        try await client.requestVoid("ingestion/\(fileId)/resume", method: "POST")
+        try await client.requestVoid("files/\(fileId)/resume", method: "POST")
     }
 
     public func cancel(fileId: String) async throws {
-        try await client.requestVoid("ingestion/\(fileId)/cancel", method: "POST")
+        try await client.requestVoid("files/\(fileId)/cancel", method: "POST")
     }
 
     public func delete(fileId: String) async throws {
-        try await client.requestVoid("ingestion/\(fileId)", method: "DELETE")
+        try await client.requestVoid("files/\(fileId)", method: "DELETE")
     }
 
     public func upload(fileData: Data, filename: String, mimeType: String, folder: String = "") async throws -> String {
         let boundary = "Boundary-\(UUID().uuidString)"
-        var request = URLRequest(url: client.config.baseUrl.appendingPathComponent("ingestion"))
+        var request = URLRequest(url: client.config.baseUrl.appendingPathComponent("files"))
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         if let token = client.config.accessTokenProvider() {
@@ -103,6 +106,13 @@ public struct IngestionAPI {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let responsePayload = try decoder.decode(UploadResponse.self, from: data)
         return responsePayload.fileId
+    }
+
+    public func ingestYouTube(url: String) async throws -> String {
+        struct YouTubeRequest: Codable { let url: String }
+        struct YouTubeResponse: Codable { let fileId: String }
+        let response: YouTubeResponse = try await client.request("files/youtube", method: "POST", body: YouTubeRequest(url: url))
+        return response.fileId
     }
 }
 

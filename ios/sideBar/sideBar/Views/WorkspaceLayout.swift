@@ -3,6 +3,7 @@ import SwiftUI
 public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     @Binding private var selection: AppSection?
     @Binding private var isLeftPanelExpanded: Bool
+    private let shouldAnimateSidebar: Bool
     private let onShowSettings: (() -> Void)?
     @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
     @State private var draggingRightWidth: Double?
@@ -21,6 +22,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     public init(
         selection: Binding<AppSection?>,
         isLeftPanelExpanded: Binding<Bool>,
+        shouldAnimateSidebar: Bool = true,
         onShowSettings: (() -> Void)? = nil,
         @ViewBuilder header: @escaping () -> Header,
         @ViewBuilder mainContent: @escaping () -> Main,
@@ -28,6 +30,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     ) {
         self._selection = selection
         self._isLeftPanelExpanded = isLeftPanelExpanded
+        self.shouldAnimateSidebar = shouldAnimateSidebar
         self.onShowSettings = onShowSettings
         self.header = header
         self.mainContent = mainContent
@@ -37,7 +40,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     public var body: some View {
         GeometryReader { proxy in
             let widths = layoutWidths(for: proxy)
-            HStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 0) {
                 SidebarRail(
                     selection: $selection,
                     onTogglePanel: toggleLeftPanel,
@@ -53,14 +56,15 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         selection = section
                     }
                 )
-                    .frame(width: railWidth)
-
-                Divider()
 
                 if isLeftPanelExpanded {
                     panelView(for: selection)
                         .frame(width: widths.leftPanel)
+                        .frame(maxHeight: .infinity)
                         .background(panelBackground)
+                        .ignoresSafeArea(.all, edges: .bottom)
+                        .transition(.opacity)
+                        .zIndex(-1)
                 }
 
                 VStack(spacing: 0) {
@@ -70,6 +74,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         mainContent()
                             .frame(width: widths.main)
                             .frame(maxHeight: .infinity)
+                            .ignoresSafeArea(.all, edges: .bottom)
 
                         resizeHandle(
                             width: dividerWidth,
@@ -95,9 +100,12 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                         rightSidebar()
                             .frame(width: widths.right)
                             .frame(maxHeight: .infinity)
+                            .ignoresSafeArea(.all, edges: .bottom)
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(shouldAnimateSidebar ? .smooth(duration: 0.3) : nil, value: isLeftPanelExpanded)
         }
     }
 
@@ -173,10 +181,12 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         ZStack {
             Rectangle()
                 .fill(handleBackground)
+                .ignoresSafeArea(.all, edges: .bottom)
             Rectangle()
                 .fill(handleBorder)
                 .frame(width: 1)
                 .offset(x: -(width / 2) + 0.5)
+                .ignoresSafeArea(.all, edges: .bottom)
             Capsule()
                 .fill(handleGrabber)
                 .frame(width: 3, height: 28)

@@ -119,6 +119,9 @@ public final class NotesStore: ObservableObject {
         guard let current = activeNote else {
             return true
         }
-        return current.modified != incoming.modified || current.content != incoming.content
+        return current.modified != incoming.modified ||
+            current.content != incoming.content ||
+            current.name != incoming.name ||
+            current.path != incoming.path
     }
 }
