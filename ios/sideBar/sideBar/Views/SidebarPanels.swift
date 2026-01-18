@@ -1557,7 +1557,7 @@ private struct FilesPanelView: View {
         case "spreadsheets":
             return "tablecells"
         case "reports":
-            return "chart.bar"
+            return "chart.line.text.clipboard"
         case "presentations":
             return "rectangle.on.rectangle.angled"
         default:
@@ -1627,6 +1627,9 @@ private struct FilesIngestionRow: View, Equatable {
         if item.file.category == "presentations" {
             return "rectangle.on.rectangle.angled"
         }
+        if item.file.category == "reports" {
+            return "chart.line.text.clipboard"
+        }
         switch item.recommendedViewer {
         case "viewer_pdf":
             return "doc.richtext"
@@ -1659,10 +1662,10 @@ private struct FilesIngestionRow: View, Equatable {
             return "video"
         case "spreadsheets":
             return "tablecells"
-        case "reports":
-            return "chart.bar"
         case "presentations":
             return "rectangle.on.rectangle.angled"
+        case "reports":
+            return "chart.line.text.clipboard"
         default:
             return "folder"
         }
