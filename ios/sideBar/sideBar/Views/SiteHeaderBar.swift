@@ -7,6 +7,7 @@ public struct SiteHeaderBar: View {
     #endif
     @AppStorage(AppStorageKeys.weatherUsesFahrenheit) private var weatherUsesFahrenheit = false
     @State private var isScratchpadPresented = false
+    @State private var isIngestionCenterPresented = false
     private let onSwapContent: (() -> Void)?
     private let onToggleSidebar: (() -> Void)?
     private let onShowSettings: (() -> Void)?
@@ -71,6 +72,45 @@ public struct SiteHeaderBar: View {
                 Text("WORKSPACE")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
+            }
+            if shouldShowIngestionStatus {
+                Button {
+                    isIngestionCenterPresented = true
+                } label: {
+                    HStack(spacing: 6) {
+                        if environment.ingestionViewModel.activeUploadItems.isEmpty {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        } else {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                        }
+                        Text(ingestionStatusText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .pillStyle()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Show uploads")
+                #if os(macOS)
+                .popover(isPresented: $isIngestionCenterPresented, arrowEdge: .top) {
+                    IngestionCenterView(
+                        activeItems: environment.ingestionViewModel.activeUploadItems,
+                        failedItems: environment.ingestionViewModel.failedUploadItems,
+                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) }
+                    )
+                }
+                #else
+                .sheet(isPresented: $isIngestionCenterPresented) {
+                    IngestionCenterView(
+                        activeItems: environment.ingestionViewModel.activeUploadItems,
+                        failedItems: environment.ingestionViewModel.failedUploadItems,
+                        onCancel: { environment.ingestionViewModel.cancelUpload(fileId: $0.file.id) }
+                    )
+                }
+                #endif
             }
         }
         .animation(.smooth(duration: 0.3), value: isLeftPanelExpanded)
@@ -223,6 +263,20 @@ public struct SiteHeaderBar: View {
         let city = first.uppercased(with: locale)
         let country = last.uppercased(with: locale)
         return "\(city), \(country)"
+    }
+
+    private var shouldShowIngestionStatus: Bool {
+        !environment.ingestionViewModel.activeUploadItems.isEmpty ||
+            !environment.ingestionViewModel.failedUploadItems.isEmpty
+    }
+
+    private var ingestionStatusText: String {
+        let activeCount = environment.ingestionViewModel.activeUploadItems.count
+        if activeCount > 0 {
+            return activeCount == 1 ? "1 Upload" : "\(activeCount) Uploads"
+        }
+        let failedCount = environment.ingestionViewModel.failedUploadItems.count
+        return failedCount == 1 ? "1 Failed" : "\(failedCount) Failed"
     }
 }
 
