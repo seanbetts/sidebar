@@ -154,6 +154,20 @@ public final class WebsitesViewModel: ObservableObject {
         }
     }
 
+    public func renameWebsite(id: String, title: String) async {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return
+        }
+        errorMessage = nil
+        do {
+            let updated = try await api.rename(id: id, title: trimmed)
+            store.updateListItem(updated, persist: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     public func setArchived(id: String, archived: Bool) async {
         errorMessage = nil
         do {

@@ -200,6 +200,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let getResult: Result<WebsiteDetail, Error>
     let saveResult: Result<WebsiteSaveResponse, Error>
     let pinResult: Result<WebsiteItem, Error>
+    let renameResult: Result<WebsiteItem, Error>
     let archiveResult: Result<WebsiteItem, Error>
     let deleteResult: Result<Void, Error>
     private(set) var lastSavedUrl: String?
@@ -209,6 +210,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         getResult: Result<WebsiteDetail, Error> = .failure(MockError.forced),
         saveResult: Result<WebsiteSaveResponse, Error> = .failure(MockError.forced),
         pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
+        renameResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
         archiveResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
         deleteResult: Result<Void, Error> = .failure(MockError.forced)
     ) {
@@ -216,6 +218,7 @@ private final class MockWebsitesAPI: WebsitesProviding {
         self.getResult = getResult
         self.saveResult = saveResult
         self.pinResult = pinResult
+        self.renameResult = renameResult
         self.archiveResult = archiveResult
         self.deleteResult = deleteResult
     }
@@ -238,6 +241,12 @@ private final class MockWebsitesAPI: WebsitesProviding {
         _ = id
         _ = pinned
         return try pinResult.get()
+    }
+
+    func rename(id: String, title: String) async throws -> WebsiteItem {
+        _ = id
+        _ = title
+        return try renameResult.get()
     }
 
     func archive(id: String, archived: Bool) async throws -> WebsiteItem {
@@ -270,6 +279,10 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
     }
 
     func pin(id: String, pinned: Bool) async throws -> WebsiteItem {
+        makeItem(id: id)
+    }
+
+    func rename(id: String, title: String) async throws -> WebsiteItem {
         makeItem(id: id)
     }
 
