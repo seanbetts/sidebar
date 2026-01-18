@@ -57,11 +57,13 @@ public struct SiteHeaderBar: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 32, height: 32)
+                    .transition(.scale.combined(with: .opacity))
                 Rectangle()
                     .fill(Color.primary)
                     .frame(width: 4, height: 35)
                     .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
                     .opacity(0.9)
+                    .transition(.scale.combined(with: .opacity))
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("sideBar")
@@ -71,6 +73,7 @@ public struct SiteHeaderBar: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .animation(.smooth(duration: 0.3), value: isLeftPanelExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
             if isCompact {

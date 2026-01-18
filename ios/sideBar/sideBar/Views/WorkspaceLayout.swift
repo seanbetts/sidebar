@@ -61,6 +61,9 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                     panelView(for: selection)
                         .frame(width: widths.leftPanel)
                         .background(panelBackground)
+                        .transition(.opacity)
+                        .clipped()
+                        .zIndex(-1)
                 }
 
                 VStack(spacing: 0) {
@@ -98,6 +101,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                     }
                 }
             }
+            .animation(.smooth(duration: 0.3), value: isLeftPanelExpanded)
         }
     }
 
