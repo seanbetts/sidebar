@@ -1690,18 +1690,14 @@ private struct WebsitesPanelView: View {
             listAppeared = !isLoading
         }
         .alert("Save a website", isPresented: $isNewWebsitePresented) {
-            TextField(
-                "",
-                text: $newWebsiteUrl,
-                prompt: Text("example.com").foregroundStyle(.secondary)
-            )
-            .textInputAutocapitalization(.never)
-            .keyboardType(.URL)
-            .autocorrectionDisabled()
-            .submitLabel(.done)
-            .onSubmit {
-                saveWebsite()
-            }
+            TextField("https://www.example.com", text: $newWebsiteUrl)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit {
+                    saveWebsite()
+                }
             Button(viewModel.isSavingWebsite ? "Saving..." : "Save") {
                 saveWebsite()
             }
@@ -2076,19 +2072,19 @@ private struct WebsitesPanelView: View {
         )
     }
 
-private func saveWebsite() {
+    private func saveWebsite() {
         let raw = newWebsiteUrl.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let normalized = WebsiteURLValidator.normalizedCandidate(raw) else {
             saveErrorMessage = "Enter a valid URL."
             return
         }
+        newWebsiteUrl = ""
+        isNewWebsitePresented = false
         Task {
             let saved = await viewModel.saveWebsite(url: normalized.absoluteString)
             if saved {
                 environment.notesViewModel.clearSelection()
                 environment.ingestionViewModel.clearSelection()
-                newWebsiteUrl = ""
-                isNewWebsitePresented = false
             } else {
                 saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
             }

@@ -145,6 +145,30 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertTrue(saved)
         XCTAssertEqual(api.lastSavedUrl, "https://example.com")
     }
+
+    func testSaveWebsiteSetsPendingSelectionImmediately() async {
+        let cache = InMemoryCacheClient()
+        let api = ControlledWebsitesAPI()
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(api: api, store: store)
+
+        let saveTask = Task { await viewModel.saveWebsite(url: "https://example.com") }
+        await Task.yield()
+
+        XCTAssertNotNil(viewModel.pendingWebsite)
+        XCTAssertEqual(viewModel.selectedWebsiteId, viewModel.pendingWebsite?.id)
+        XCTAssertTrue(viewModel.isLoadingDetail)
+
+        api.resumeSave(
+            result: .success(WebsiteSaveResponse(
+                success: true,
+                data: WebsiteSaveData(id: "site-1", title: "Site", url: "https://example.com", domain: "example.com")
+            ))
+        )
+
+        _ = await saveTask.value
+        XCTAssertNil(viewModel.pendingWebsite)
+    }
 }
 
 private enum MockError: Error {
@@ -188,6 +212,34 @@ private final class MockWebsitesAPI: WebsitesProviding {
         _ = id
         _ = pinned
         return try pinResult.get()
+    }
+}
+
+private final class ControlledWebsitesAPI: WebsitesProviding {
+    private var saveContinuation: CheckedContinuation<WebsiteSaveResponse, Error>?
+
+    func list() async throws -> WebsitesResponse {
+        WebsitesResponse(items: [])
+    }
+
+    func get(id: String) async throws -> WebsiteDetail {
+        makeDetail(id: id)
+    }
+
+    func save(url: String) async throws -> WebsiteSaveResponse {
+        try await withCheckedThrowingContinuation { continuation in
+            saveContinuation = continuation
+        }
+    }
+
+    func pin(id: String, pinned: Bool) async throws -> WebsiteItem {
+        makeItem(id: id)
+    }
+
+    func resumeSave(result: Result<WebsiteSaveResponse, Error>) {
+        guard let continuation = saveContinuation else { return }
+        saveContinuation = nil
+        continuation.resume(with: result)
     }
 }
 

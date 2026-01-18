@@ -89,46 +89,54 @@ public final class WebsitesViewModel: ObservableObject {
             saveErrorMessage = "Enter a valid URL."
             return false
         }
-        pendingWebsite = makePendingWebsite(from: normalized)
+        let previousSelectedId = selectedWebsiteId
+        let pending = makePendingWebsite(from: normalized)
+        pendingWebsite = pending
+        selectedWebsiteId = pending.id
         saveErrorMessage = nil
         isSavingWebsite = true
-        defer { isSavingWebsite = false }
+        isLoadingDetail = true
+        defer {
+            isSavingWebsite = false
+            isLoadingDetail = false
+        }
         do {
             let response = try await api.save(url: normalized.absoluteString)
             guard response.success, let data = response.data else {
                 pendingWebsite = nil
+                selectedWebsiteId = previousSelectedId
                 saveErrorMessage = "Failed to save website"
                 return false
             }
-            pendingWebsite = nil
+            selectedWebsiteId = data.id
+            try await store.loadDetail(id: data.id, force: true)
+            let detail = active
             store.insertItemAtTop(
                 WebsiteItem(
                     id: data.id,
-                    title: data.title,
-                    url: data.url,
-                    domain: data.domain,
-                    savedAt: nil,
-                    publishedAt: nil,
-                    pinned: false,
-                    pinnedOrder: nil,
-                    archived: false,
-                    youtubeTranscripts: nil,
-                    updatedAt: nil,
-                    lastOpenedAt: nil
+                    title: detail?.title ?? data.title,
+                    url: detail?.url ?? data.url,
+                    domain: detail?.domain ?? data.domain,
+                    savedAt: detail?.savedAt,
+                    publishedAt: detail?.publishedAt,
+                    pinned: detail?.pinned ?? false,
+                    pinnedOrder: detail?.pinnedOrder,
+                    archived: detail?.archived ?? false,
+                    youtubeTranscripts: detail?.youtubeTranscripts,
+                    updatedAt: detail?.updatedAt,
+                    lastOpenedAt: detail?.lastOpenedAt
                 ),
                 persist: true
             )
+            pendingWebsite = nil
             store.invalidateList()
-            selectedWebsiteId = data.id
-            isLoadingDetail = true
-            defer { isLoadingDetail = false }
-            try await store.loadDetail(id: data.id, force: true)
             Task { [weak self] in
                 try? await self?.store.loadList(force: true)
             }
             return true
         } catch {
             pendingWebsite = nil
+            selectedWebsiteId = previousSelectedId
             saveErrorMessage = ErrorMapping.message(for: error)
             return false
         }
