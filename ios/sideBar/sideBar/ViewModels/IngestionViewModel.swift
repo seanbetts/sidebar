@@ -17,6 +17,7 @@ public final class IngestionViewModel: ObservableObject {
     @Published public private(set) var isOffline: Bool = false
     @Published public private(set) var errorMessage: String? = nil
     @Published public private(set) var isIngestingYouTube: Bool = false
+    @Published public private(set) var readyFileNotification: ReadyFileNotification? = nil
 
     private let api: any IngestionProviding
     private let temporaryStore: TemporaryFileStore
@@ -26,6 +27,7 @@ public final class IngestionViewModel: ObservableObject {
     private var securityScopedURLs: [String: URL] = [:]
     private var jobPollingTasks: [String: Task<Void, Never>] = [:]
     private var listPollingTask: Task<Void, Never>? = nil
+    private var statusCache: [String: String] = [:]
 
     public init(
         api: any IngestionProviding,
@@ -42,6 +44,7 @@ public final class IngestionViewModel: ObservableObject {
             .sink { [weak self] items in
                 self?.items = items
                 self?.updateListPollingState(items: items)
+                self?.detectReadyTransitions(items: items)
             }
             .store(in: &cancellables)
 
@@ -268,6 +271,10 @@ public final class IngestionViewModel: ObservableObject {
         items.filter { ($0.job.status ?? "") == "failed" }
     }
 
+    public func clearReadyFileNotification() {
+        readyFileNotification = nil
+    }
+
     private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
         let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }
         let nonAI = candidates.filter { $0.kind != "ai_md" }
@@ -376,6 +383,25 @@ public final class IngestionViewModel: ObservableObject {
     private func stopListPolling() {
         listPollingTask?.cancel()
         listPollingTask = nil
+    }
+
+    private func detectReadyTransitions(items: [IngestionListItem]) {
+        var seenIds = Set<String>()
+        for item in items {
+            let fileId = item.file.id
+            seenIds.insert(fileId)
+            let status = item.job.status ?? ""
+            if let previous = statusCache[fileId],
+               previous != status,
+               status == "ready" {
+                readyFileNotification = ReadyFileNotification(
+                    fileId: fileId,
+                    filename: item.file.filenameOriginal
+                )
+            }
+            statusCache[fileId] = status
+        }
+        statusCache.keys.filter { !seenIds.contains($0) }.forEach { statusCache.removeValue(forKey: $0) }
     }
 
     private func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {
@@ -695,5 +721,17 @@ public final class IngestionViewModel: ObservableObject {
             }
         }
         return nil
+    }
+}
+
+public struct ReadyFileNotification: Identifiable, Equatable {
+    public let id: String
+    public let fileId: String
+    public let filename: String
+
+    public init(fileId: String, filename: String) {
+        self.id = fileId
+        self.fileId = fileId
+        self.filename = filename
     }
 }
