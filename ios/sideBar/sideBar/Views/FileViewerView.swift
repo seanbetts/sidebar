@@ -2,6 +2,7 @@ import SwiftUI
 import PDFKit
 import AVKit
 import AVFoundation
+import Combine
 #if canImport(MarkdownUI)
 import MarkdownUI
 #endif
@@ -14,9 +15,11 @@ import QuickLook
 
 public struct FileViewerView: View {
     public let state: FileViewerState
+    public let pdfController: PDFViewerController?
 
-    public init(state: FileViewerState) {
+    public init(state: FileViewerState, pdfController: PDFViewerController? = nil) {
         self.state = state
+        self.pdfController = pdfController
     }
 
     public var body: some View {
@@ -92,7 +95,11 @@ public struct FileViewerView: View {
     @ViewBuilder
     private var pdfView: some View {
         if let url = state.fileURL {
-            PDFKitView(url: url)
+            if let pdfController {
+                PDFViewer(url: url, controller: pdfController)
+            } else {
+                PDFKitView(url: url)
+            }
         } else {
             PlaceholderView(title: "PDF preview unavailable")
         }
@@ -151,7 +158,7 @@ private struct VideoPlayerContainer: View {
     }
 
     private func updateAspectRatio() async {
-        let asset = AVAsset(url: url)
+        let asset = AVURLAsset(url: url)
         do {
             let tracks = try await asset.load(.tracks)
             guard let track = tracks.first(where: { $0.mediaType == .video }) else { return }
@@ -183,7 +190,187 @@ private struct MarkdownView: View {
     }
 }
 
+public final class PDFViewerController: ObservableObject {
+    enum FitMode: String, CaseIterable {
+        case auto
+        case width
+        case height
+    }
+
+    @Published private(set) var currentPage: Int = 1
+    @Published private(set) var pageCount: Int = 1
+    @Published private(set) var canPrev: Bool = false
+    @Published private(set) var canNext: Bool = false
+    @Published private(set) var scale: CGFloat = 1
+    @Published private(set) var fitMode: FitMode = .height
+
+    fileprivate weak var pdfView: PDFView?
+    private var observers: [NSObjectProtocol] = []
+
+    deinit {
+        cleanupObservers()
+    }
+
+    func attach(pdfView: PDFView) {
+        if self.pdfView === pdfView { return }
+        self.pdfView = pdfView
+        configure(pdfView: pdfView)
+        observe(pdfView: pdfView)
+        scheduleFitAndRefresh()
+    }
+
+    func reset() {
+        currentPage = 1
+        pageCount = 1
+        canPrev = false
+        canNext = false
+        scale = 1
+        fitMode = .height
+    }
+
+    func goToPreviousPage() {
+        pdfView?.goToPreviousPage(nil)
+        refreshState()
+    }
+
+    func goToNextPage() {
+        pdfView?.goToNextPage(nil)
+        refreshState()
+    }
+
+    func zoomIn() {
+        guard let pdfView else { return }
+        let next = min(pdfView.maxScaleFactor, pdfView.scaleFactor * 1.2)
+        pdfView.scaleFactor = next
+        scale = next
+    }
+
+    func zoomOut() {
+        guard let pdfView else { return }
+        let next = max(pdfView.minScaleFactor, pdfView.scaleFactor / 1.2)
+        pdfView.scaleFactor = next
+        scale = next
+    }
+
+    func setFitMode(_ mode: FitMode) {
+        fitMode = mode
+        applyFitMode()
+    }
+
+    func scheduleFitAndRefresh() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.applyFitMode()
+            self.refreshState()
+        }
+    }
+
+    private func configure(pdfView: PDFView) {
+        pdfView.autoScales = false
+        pdfView.displayMode = .singlePageContinuous
+        pdfView.displayDirection = .vertical
+        pdfView.usePageViewController(true, withViewOptions: nil)
+        pdfView.minScaleFactor = pdfView.scaleFactorForSizeToFit * 0.5
+        pdfView.maxScaleFactor = pdfView.scaleFactorForSizeToFit * 4.0
+        applyFitMode()
+    }
+
+    private func observe(pdfView: PDFView) {
+        cleanupObservers()
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: .PDFViewPageChanged, object: pdfView, queue: .main) { [weak self] _ in
+            self?.refreshState()
+        })
+        observers.append(center.addObserver(forName: .PDFViewScaleChanged, object: pdfView, queue: .main) { [weak self] _ in
+            self?.refreshState()
+        })
+        observers.append(center.addObserver(forName: .PDFViewDocumentChanged, object: pdfView, queue: .main) { [weak self] _ in
+            self?.refreshState()
+        })
+    }
+
+    private func cleanupObservers() {
+        let center = NotificationCenter.default
+        observers.forEach { center.removeObserver($0) }
+        observers = []
+    }
+
+    private func refreshState() {
+        guard let pdfView else { return }
+        let count = pdfView.document?.pageCount ?? 1
+        pageCount = max(count, 1)
+        if let current = pdfView.currentPage,
+           let document = pdfView.document {
+            currentPage = max(document.index(for: current) + 1, 1)
+        } else {
+            currentPage = 1
+        }
+        canPrev = currentPage > 1
+        canNext = currentPage < pageCount
+        scale = pdfView.scaleFactor
+    }
+
+    private func applyFitMode() {
+        guard let pdfView,
+              let page = pdfView.currentPage else { return }
+        let pageBounds = page.bounds(for: .cropBox)
+        let containerSize = pdfView.bounds.size
+        guard pageBounds.width > 0, pageBounds.height > 0, containerSize.width > 0, containerSize.height > 0 else {
+            return
+        }
+        let widthScale = containerSize.width / pageBounds.width
+        let heightScale = containerSize.height / pageBounds.height
+        let targetScale: CGFloat
+        switch fitMode {
+        case .auto:
+            targetScale = min(widthScale, heightScale)
+        case .width:
+            targetScale = widthScale
+        case .height:
+            targetScale = min(heightScale, widthScale)
+        }
+        pdfView.scaleFactor = targetScale
+        scale = targetScale
+    }
+}
+
 #if os(macOS)
+private struct PDFViewer: NSViewRepresentable {
+    let url: URL
+    let controller: PDFViewerController
+
+    func makeNSView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.backgroundColor = NSColor.appBackground
+        context.coordinator.loadDocument(into: view, url: url)
+        controller.attach(pdfView: view)
+        return view
+    }
+
+    func updateNSView(_ nsView: PDFView, context: Context) {
+        context.coordinator.loadDocument(into: nsView, url: url)
+        controller.attach(pdfView: nsView)
+        controller.scheduleFitAndRefresh()
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        private var document: PDFDocument?
+        private var documentURL: URL?
+
+        func loadDocument(into view: PDFView, url: URL) {
+            guard documentURL != url else { return }
+            documentURL = url
+            let doc = PDFDocument(url: url)
+            document = doc
+            view.document = doc
+        }
+    }
+}
+
 private struct PDFKitView: NSViewRepresentable {
     let url: URL
 
@@ -253,6 +440,42 @@ private struct QuickLookPreview: NSViewRepresentable {
     }
 }
 #else
+private struct PDFViewer: UIViewRepresentable {
+    let url: URL
+    let controller: PDFViewerController
+
+    func makeUIView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.backgroundColor = UIColor.systemBackground
+        context.coordinator.loadDocument(into: view, url: url)
+        controller.attach(pdfView: view)
+        return view
+    }
+
+    func updateUIView(_ uiView: PDFView, context: Context) {
+        context.coordinator.loadDocument(into: uiView, url: url)
+        controller.attach(pdfView: uiView)
+        controller.scheduleFitAndRefresh()
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        private var document: PDFDocument?
+        private var documentURL: URL?
+
+        func loadDocument(into view: PDFView, url: URL) {
+            guard documentURL != url else { return }
+            documentURL = url
+            let doc = PDFDocument(url: url)
+            document = doc
+            view.document = doc
+        }
+    }
+}
+
 private struct PDFKitView: UIViewRepresentable {
     let url: URL
 
