@@ -13,8 +13,6 @@ DEPRECATED_PATHS = {
     "/api/chat": "/api/v1/chat",
     "/api/conversations": "/api/v1/conversations",
     "/api/notes": "/api/v1/notes",
-    "/api/ingestion": "/api/v1/files",
-    "/api/v1/ingestion": "/api/v1/files",
     "/api/websites": "/api/v1/websites",
     "/api/scratchpad": "/api/v1/scratchpad",
     "/api/settings": "/api/v1/settings",
