@@ -1379,8 +1379,12 @@ private struct FilesPanelView: View {
                                     }
                                 }
                             } label: {
-                                Text(categoryLabels[category] ?? "Files")
-                                    .font(.subheadline)
+                                HStack(spacing: 8) {
+                                    Image(systemName: categoryIconName(category))
+                                        .foregroundStyle(.secondary)
+                                    Text(categoryLabels[category] ?? "Files")
+                                }
+                                .font(.subheadline)
                             }
                             .listRowBackground(rowBackground)
                         }
@@ -1540,6 +1544,27 @@ private struct FilesPanelView: View {
         ["documents", "images", "audio", "video", "spreadsheets", "reports", "presentations", "other"]
     }
 
+    private func categoryIconName(_ category: String) -> String {
+        switch category {
+        case "documents":
+            return "doc.text"
+        case "images":
+            return "photo"
+        case "audio":
+            return "waveform"
+        case "video":
+            return "video"
+        case "spreadsheets":
+            return "tablecells"
+        case "reports":
+            return "chart.bar"
+        case "presentations":
+            return "rectangle.on.rectangle.angled"
+        default:
+            return "folder"
+        }
+    }
+
     private var panelBackground: Color {
         DesignTokens.Colors.sidebar
     }
@@ -1596,6 +1621,9 @@ private struct FilesIngestionRow: View, Equatable {
     }
 
     private var iconName: String {
+        if item.file.category == "folder" {
+            return folderIconName(for: displayName)
+        }
         switch item.recommendedViewer {
         case "viewer_pdf":
             return "doc.richtext"
@@ -1611,6 +1639,27 @@ private struct FilesIngestionRow: View, Equatable {
             return "doc.text"
         default:
             return "doc"
+        }
+    }
+
+    private func folderIconName(for name: String) -> String {
+        switch name.lowercased() {
+        case "documents":
+            return "doc.text"
+        case "images":
+            return "photo"
+        case "audio":
+            return "waveform"
+        case "video":
+            return "video"
+        case "spreadsheets":
+            return "tablecells"
+        case "reports":
+            return "chart.bar"
+        case "presentations":
+            return "rectangle.on.rectangle.angled"
+        default:
+            return "folder"
         }
     }
 
