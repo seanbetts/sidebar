@@ -122,17 +122,38 @@ final class WebsitesViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedWebsiteId, "site-1")
         XCTAssertEqual(viewModel.active?.id, "site-1")
     }
+
+    func testSaveWebsiteNormalizesUrl() async {
+        let detail = makeDetail(id: "site-1")
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [])),
+            getResult: .success(detail),
+            saveResult: .success(WebsiteSaveResponse(
+                success: true,
+                data: WebsiteSaveData(id: "site-1", title: "Site", url: "https://example.com", domain: "example.com")
+            ))
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(api: api, store: store)
+
+        let saved = await viewModel.saveWebsite(url: "example.com")
+
+        XCTAssertTrue(saved)
+        XCTAssertEqual(api.lastSavedUrl, "https://example.com")
+    }
 }
 
 private enum MockError: Error {
     case forced
 }
 
-private struct MockWebsitesAPI: WebsitesProviding {
+private final class MockWebsitesAPI: WebsitesProviding {
     let listResult: Result<WebsitesResponse, Error>
     let getResult: Result<WebsiteDetail, Error>
     let saveResult: Result<WebsiteSaveResponse, Error>
     let pinResult: Result<WebsiteItem, Error>
+    private(set) var lastSavedUrl: String?
 
     init(
         listResult: Result<WebsitesResponse, Error> = .failure(MockError.forced),
@@ -156,7 +177,7 @@ private struct MockWebsitesAPI: WebsitesProviding {
     }
 
     func save(url: String) async throws -> WebsiteSaveResponse {
-        _ = url
+        lastSavedUrl = url
         return try saveResult.get()
     }
 

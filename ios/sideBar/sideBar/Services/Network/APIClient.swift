@@ -130,8 +130,7 @@ public final class APIClient {
     private func performRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let start = Date()
         if let url = request.url {
-            let path = url.path + (url.query.map { "?\($0)" } ?? "")
-            logger.debug("Request \(request.httpMethod ?? "GET") \(path, privacy: .public)")
+            logger.debug("Request \(request.httpMethod ?? "GET") \(url.absoluteString, privacy: .public)")
         }
         let (data, response) = try await session.data(for: request)
         let elapsedMs = Int(Date().timeIntervalSince(start) * 1000)
@@ -141,6 +140,10 @@ public final class APIClient {
         }
         logger.debug("Response \(http.statusCode) in \(elapsedMs)ms")
         guard (200...299).contains(http.statusCode) else {
+            if let body = String(data: data, encoding: .utf8), !body.isEmpty {
+                let preview = body.prefix(2000)
+                logger.error("Response body: \(preview, privacy: .private)")
+            }
             let message = Self.decodeErrorMessage(data: data, decoder: decoder)
             if let message {
                 throw APIClientError.apiError(message)
@@ -152,10 +155,35 @@ public final class APIClient {
 
     static func decodeErrorMessage(data: Data, decoder: JSONDecoder) -> String? {
         guard let payload = try? decoder.decode(APIErrorResponse.self, from: data) else {
+            if let errorPayload = try? decoder.decode(APIErrorEnvelope.self, from: data) {
+                return errorPayload.error.message
+            }
+            if let message = decodeFallbackMessage(data: data) {
+                return message
+            }
             return nil
         }
         if let detail = payload.detail, !detail.isEmpty {
             return detail
+        }
+        return nil
+    }
+
+    private static func decodeFallbackMessage(data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data),
+              let dict = json as? [String: Any] else {
+            return nil
+        }
+        if let detail = dict["detail"] as? String, !detail.isEmpty {
+            return detail
+        }
+        if let message = dict["message"] as? String, !message.isEmpty {
+            return message
+        }
+        if let error = dict["error"] as? [String: Any],
+           let message = error["message"] as? String,
+           !message.isEmpty {
+            return message
         }
         return nil
     }
@@ -182,4 +210,12 @@ public struct AnyEncodable: Encodable {
 
 private struct APIErrorResponse: Decodable {
     let detail: String?
+}
+
+private struct APIErrorEnvelope: Decodable {
+    let error: APIErrorMessage
+}
+
+private struct APIErrorMessage: Decodable {
+    let message: String
 }

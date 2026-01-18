@@ -30,56 +30,36 @@ public struct ScratchpadPopoverView: View {
                 )
                 Divider()
 
-                ZStack {
-                    Group {
-                        if isEditing {
-                            TextEditor(text: $draft)
-                                .font(.body)
-                                .focused($isEditorFocused)
-                                .scrollContentBackground(.hidden)
-                                .background(Color.clear)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .accessibilityLabel("Scratchpad text")
-                                .accessibilityHint("Enter notes for your scratchpad.")
-                        } else {
-                            ScrollView {
-                                SideBarMarkdown(
-                                    text: draft.isEmpty ? ScratchpadConstants.placeholder : draft
-                                )
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .textSelection(.enabled)
-                            }
-                            .background(Color.clear)
+                Group {
+                    if isEditing {
+                        TextEditor(text: $draft)
+                            .font(.body)
+                            .focused($isEditorFocused)
+                            .scrollContentBackground(.hidden)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel("Scratchpad text")
+                            .accessibilityHint("Enter notes for your scratchpad.")
+                    } else {
+                        ScrollView {
+                            SideBarMarkdown(
+                                text: draft.isEmpty ? ScratchpadConstants.placeholder : draft
+                            )
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .onTapGesture {
-                                isEditing = true
-                                isEditorFocused = true
-                            }
+                            .textSelection(.enabled)
                         }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .background(
-                        GeometryReader { proxy in
-                            Color.clear.preference(key: ScratchpadContentHeightKey.self, value: proxy.size.height)
+                        .onTapGesture {
+                            isEditing = true
+                            isEditorFocused = true
                         }
-                    )
-                    .onPreferenceChange(ScratchpadContentHeightKey.self) { height in
-                        guard !isEditing, height > 0 else { return }
-                        readModeHeight = height
-                    }
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: isEditing && readModeHeight > 0 ? readModeHeight : nil
-                    )
-
-                    if isLoading && !hasLoaded {
-                        ProgressView("Loading...")
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .overlay {
+                    if isLoading && !hasLoaded {
+                        ProgressView("Loading...")
+                    }
+                }
             }
-            .frame(maxWidth: .infinity)
             .padding(.horizontal, 16)
             .padding(.top, 16)
             .padding(.bottom, 24)
