@@ -102,7 +102,9 @@
 		editor = new Editor({
 			element: editorElement,
 			extensions: [
-				StarterKit,
+				StarterKit.configure({
+					link: false
+				}),
 				Youtube.configure({
 					controls: true,
 					modestBranding: true,
