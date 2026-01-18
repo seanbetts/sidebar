@@ -47,6 +47,7 @@ private struct TasksPanelView: View {
             header
             SidebarPanelPlaceholder(title: "Tasks")
         }
+        .frame(maxHeight: .infinity)
     }
 
     private var header: some View {
@@ -108,7 +109,9 @@ private struct ConversationsPanelView: View {
                     conversationsList
                 }
             }
+            .frame(maxHeight: .infinity)
         }
+        .frame(maxHeight: .infinity)
         .alert("Rename chat", isPresented: isRenameDialogPresented) {
             TextField("Chat name", text: $renameValue)
                 .submitLabel(.done)
@@ -472,6 +475,7 @@ private struct NotesPanelView: View {
             notesPanelContent
             #endif
         }
+        .frame(maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -1286,6 +1290,7 @@ private struct FilesPanelView: View {
                 filesListView
             }
         }
+        .frame(maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true
@@ -1674,6 +1679,7 @@ private struct WebsitesPanelView: View {
             content
             #endif
         }
+        .frame(maxHeight: .infinity)
         .onAppear {
             if !hasLoaded {
                 hasLoaded = true

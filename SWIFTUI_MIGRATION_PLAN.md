@@ -142,6 +142,7 @@ Critical Path (MVP): [███████████████████�
 - Chat: rename uses alert flow and title truncates to one line.
 - Shared UI: `ContentHeaderRow` introduced for consistent title bars across content types.
 - Scratchpad: caching, autosave, and realtime refresh parity with web.
+- Websites: save flow (alert + validation), optimistic "Reading" states, and header truncation adjustments.
 
 ### Phase Completion Status
 
@@ -168,7 +169,7 @@ Critical Path (MVP): [███████████████████�
 | **11.1 Chat Input** | ✅ Complete | 2 / 2-3 | 100% | ✅ Yes |
 | **11.2 Markdown Editor** | 🟨 In Progress | 3 / 6-9 | 50% | ✅ Yes |
 | **11.3 Note Operations** | ✅ Complete | 2 / 1-2 | 100% | ✅ Yes |
-| **11.4 Content Creation** | 🟨 In Progress | 1 / 1 | 33% | ✅ Yes |
+| **11.4 Content Creation** | 🟨 In Progress | 2 / 3 | 67% | ✅ Yes |
 | **11.5 Full App Testing** | ⬜ Not Started | 0 / 1-2 | 0% | ✅ Yes |
 | **POST-MVP TOTAL** | | **11-17** | | |
 
@@ -459,7 +460,7 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 - [x] Auto-save with 1.5-second debounce
 
 #### Phase 11.4: Content Creation (1 session)
-- [ ] Save websites (URL input sheet with validation)
+- [x] Save websites (URL input sheet with validation)
 - [ ] Add/edit/delete memories
 - [x] Editable scratchpad with auto-save
 
@@ -507,6 +508,7 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 | 2026-01-16 | 11.3 | 1 | TBD | Notes operations: rename via UUID, swipe actions fixed, remove tap-to-exit edit gesture |
 | 2026-01-16 | 8.5 | 1 | TBD | ContentHeaderRow shared across chat/notes/files/websites; chat rename alert + title truncation |
 | 2026-01-16 | 11.4 | 1 | TBD | Scratchpad parity: caching, autosave, realtime refresh, sizing fixes |
+| 2026-01-17 | 11.4 | 1 | TBD | Websites save flow (alert + validation), optimistic "Reading" states, header tweaks |
 
 ---
 
@@ -1461,6 +1463,7 @@ For audio, create custom controls with play/pause, scrubber, time labels.
 - Pin section at top
 - Search bar
 - Pull-to-refresh
+- Keep Archive section visible with long lists (list scrolls within max height) — pending revisit
 
 **6.2 Website Viewer**
 - Render HTML content:
