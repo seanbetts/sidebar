@@ -3,6 +3,7 @@ import SwiftUI
 public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     @Binding private var selection: AppSection?
     @Binding private var isLeftPanelExpanded: Bool
+    private let shouldAnimateSidebar: Bool
     private let onShowSettings: (() -> Void)?
     @AppStorage(AppStorageKeys.rightSidebarWidth) private var rightSidebarWidth: Double = 360
     @State private var draggingRightWidth: Double?
@@ -21,6 +22,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     public init(
         selection: Binding<AppSection?>,
         isLeftPanelExpanded: Binding<Bool>,
+        shouldAnimateSidebar: Bool = true,
         onShowSettings: (() -> Void)? = nil,
         @ViewBuilder header: @escaping () -> Header,
         @ViewBuilder mainContent: @escaping () -> Main,
@@ -28,6 +30,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     ) {
         self._selection = selection
         self._isLeftPanelExpanded = isLeftPanelExpanded
+        self.shouldAnimateSidebar = shouldAnimateSidebar
         self.onShowSettings = onShowSettings
         self.header = header
         self.mainContent = mainContent
@@ -102,7 +105,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.smooth(duration: 0.3), value: isLeftPanelExpanded)
+            .animation(shouldAnimateSidebar ? .smooth(duration: 0.3) : nil, value: isLeftPanelExpanded)
         }
     }
 

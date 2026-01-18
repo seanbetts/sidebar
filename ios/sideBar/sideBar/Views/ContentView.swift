@@ -41,6 +41,7 @@ public struct ContentView: View {
     #if os(iOS)
     @AppStorage(AppStorageKeys.hasShownBiometricHint) private var hasShownBiometricHint = false
     #endif
+    @State private var hasCompletedInitialSetup = false
 
     public init() {
     }
@@ -361,12 +362,14 @@ public struct ContentView: View {
         WorkspaceLayout(
             selection: $sidebarSelection,
             isLeftPanelExpanded: $isLeftPanelExpanded,
+            shouldAnimateSidebar: hasCompletedInitialSetup,
             onShowSettings: { isSettingsPresented = true },
             header: {
                 SiteHeaderBar(
                     onSwapContent: swapPrimaryAndSecondary,
                     onShowSettings: { isSettingsPresented = true },
-                    isLeftPanelExpanded: isLeftPanelExpanded
+                    isLeftPanelExpanded: isLeftPanelExpanded,
+                    shouldAnimateSidebar: hasCompletedInitialSetup
                 )
             }
         ) {
@@ -714,6 +717,9 @@ public struct ContentView: View {
         sidebarSelection = .notes
         isLeftPanelExpanded = true
 #endif
+        DispatchQueue.main.async {
+            hasCompletedInitialSetup = true
+        }
     }
 
 
