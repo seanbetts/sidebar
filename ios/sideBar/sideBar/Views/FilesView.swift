@@ -26,9 +26,11 @@ public struct FilesView: View {
         .navigationTitle(fileTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if isCompact, hasActiveSelection {
+            if isCompact {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    FilesHeaderActions(viewModel: environment.ingestionViewModel)
+                    if hasActiveSelection {
+                        FilesHeaderActions(viewModel: environment.ingestionViewModel)
+                    }
                 }
             }
         }
@@ -508,6 +510,13 @@ private struct FilesDetailContainer: View {
     var body: some View {
         if let meta = viewModel.activeMeta {
             IngestionDetailView(viewModel: viewModel, meta: meta)
+        } else if let selectedItem = viewModel.selectedItem,
+                  viewModel.selectedFileId != nil,
+                  viewModel.errorMessage == nil,
+                  !viewModel.isSelecting,
+                  !viewModel.isLoadingContent,
+                  shouldShowProcessingState(for: selectedItem) {
+            FilesProcessingView(item: selectedItem)
         } else if let message = viewModel.errorMessage {
             PlaceholderView(
                 title: "Unable to load file",
@@ -530,5 +539,49 @@ private struct FilesDetailContainer: View {
                 iconName: "folder"
             )
         }
+    }
+
+    private func shouldShowProcessingState(for item: IngestionListItem) -> Bool {
+        let status = item.job.status ?? ""
+        return status != "ready" && status != "failed" && status != "canceled"
+    }
+}
+
+private struct FilesProcessingView: View {
+    let item: IngestionListItem
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if let progress = item.job.progress {
+                ProgressView(value: progress)
+            } else {
+                ProgressView()
+            }
+            Text(statusTitle)
+                .font(.headline)
+            if let detail = statusDetail {
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var statusTitle: String {
+        if (item.job.status ?? "") == "uploading" {
+            return "Uploading file…"
+        }
+        return "Processing file…"
+    }
+
+    private var statusDetail: String? {
+        if let message = item.job.userMessage, !message.isEmpty {
+            return message
+        }
+        if let stage = item.job.stage, !stage.isEmpty {
+            return stage.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+        return nil
     }
 }

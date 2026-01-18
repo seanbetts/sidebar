@@ -24,6 +24,11 @@ public struct IngestionDetailView: View {
             if viewModel.isSelecting || viewModel.isLoadingContent {
                 LoadingView(message: "Loading file…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if shouldShowProcessingState {
+                PlaceholderView(
+                    title: "Processing file…",
+                    subtitle: processingDetail
+                )
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state)
             } else if let error = viewModel.errorMessage {
@@ -45,6 +50,21 @@ public struct IngestionDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var shouldShowProcessingState: Bool {
+        let status = meta.job.status ?? ""
+        return status != "ready" && status != "failed" && status != "canceled"
+    }
+
+    private var processingDetail: String? {
+        if let message = meta.job.userMessage, !message.isEmpty {
+            return message
+        }
+        if let stage = meta.job.stage, !stage.isEmpty {
+            return stage.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+        return "We will open this file once processing completes."
     }
 
 }

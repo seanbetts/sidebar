@@ -7,6 +7,7 @@ public protocol IngestionProviding {
     func pin(fileId: String, pinned: Bool) async throws
     func delete(fileId: String) async throws
     func rename(fileId: String, filename: String) async throws
+    func ingestYouTube(url: String) async throws -> String
 }
 
 public struct IngestionAPI {
@@ -105,6 +106,13 @@ public struct IngestionAPI {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let responsePayload = try decoder.decode(UploadResponse.self, from: data)
         return responsePayload.fileId
+    }
+
+    public func ingestYouTube(url: String) async throws -> String {
+        struct YouTubeRequest: Codable { let url: String }
+        struct YouTubeResponse: Codable { let fileId: String }
+        let response: YouTubeResponse = try await client.request("ingestion/youtube", method: "POST", body: YouTubeRequest(url: url))
+        return response.fileId
     }
 }
 
