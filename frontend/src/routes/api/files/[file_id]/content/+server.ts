@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { createProxyHandler } from '$lib/server/apiProxy';
 
 const proxyHandler = createProxyHandler({
-	pathBuilder: (params) => `/api/v1/ingestion/${params.file_id}/content`,
+	pathBuilder: (params) => `/api/v1/files/${params.file_id}/content`,
 	queryParamsFromUrl: true,
 	responseType: 'stream'
 });

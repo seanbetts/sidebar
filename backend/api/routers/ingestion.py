@@ -1,4 +1,4 @@
-"""File ingestion router for uploads and processing status."""
+"""Files router for uploads and processing status."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ from api.services.storage.service import get_storage_backend
 from api.services.website_transcript_service import WebsiteTranscriptService
 from api.utils.validation import parse_uuid
 
-router = APIRouter(prefix="/ingestion", tags=["ingestion"])
+router = APIRouter()
 
 
 @router.post("")

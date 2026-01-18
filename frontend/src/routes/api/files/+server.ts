@@ -8,13 +8,13 @@ import { logError } from '$lib/utils/errorHandling';
 const API_URL = getApiUrl();
 
 export const GET = createProxyHandler({
-	pathBuilder: () => '/api/v1/ingestion'
+	pathBuilder: () => '/api/v1/files'
 });
 
 export const POST: RequestHandler = async ({ locals, request, fetch }) => {
 	try {
 		const formData = await request.formData();
-		const response = await fetch(`${API_URL}/api/v1/ingestion`, {
+		const response = await fetch(`${API_URL}/api/v1/files`, {
 			method: 'POST',
 			headers: buildAuthHeaders(locals),
 			body: formData
@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ locals, request, fetch }) => {
 		const data = await response.json();
 		return json(data);
 	} catch (error) {
-		logError('Failed to upload ingestion file', error, { scope: 'api.ingestion.upload' });
+		logError('Failed to upload file', error, { scope: 'api.files.upload' });
 		return json({ error: 'Failed to upload file' }, { status: 500 });
 	}
 };

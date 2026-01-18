@@ -31,7 +31,7 @@ suite('API smoke (requires local server)', () => {
 		'/api/v1/skills',
 		'/api/v1/notes/tree',
 		'/api/v1/websites',
-		'/api/v1/ingestion',
+		'/api/v1/files',
 		'/api/v1/things/bridges/status',
 		'/api/v1/things/diagnostics',
 		'/api/v1/things/counts',
@@ -47,7 +47,7 @@ suite('API smoke (requires local server)', () => {
 	];
 
 	const optionalPostEndpoints: Array<{ path: string; body?: Record<string, unknown> }> = [
-		{ path: '/api/v1/ingestion/youtube', body: { url: '' } }
+		{ path: '/api/v1/files/youtube', body: { url: '' } }
 	];
 
 	for (const path of getEndpoints) {

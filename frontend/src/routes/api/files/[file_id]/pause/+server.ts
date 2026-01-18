@@ -2,6 +2,5 @@ import { createProxyHandler } from '$lib/server/apiProxy';
 
 export const POST = createProxyHandler({
 	method: 'POST',
-	pathBuilder: () => '/api/v1/ingestion/youtube',
-	bodyFromRequest: true
+	pathBuilder: (params) => `/api/v1/files/${params.file_id}/pause`
 });
