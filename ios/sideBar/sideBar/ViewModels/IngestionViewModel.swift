@@ -18,6 +18,7 @@ public final class IngestionViewModel: ObservableObject {
     @Published public private(set) var errorMessage: String? = nil
     @Published public private(set) var isIngestingYouTube: Bool = false
     @Published public private(set) var readyFileNotification: ReadyFileNotification? = nil
+    @Published public private(set) var lastReadyMessage: ReadyFileNotification? = nil
 
     private let api: any IngestionProviding
     private let temporaryStore: TemporaryFileStore
@@ -28,6 +29,7 @@ public final class IngestionViewModel: ObservableObject {
     private var jobPollingTasks: [String: Task<Void, Never>] = [:]
     private var listPollingTask: Task<Void, Never>? = nil
     private var statusCache: [String: String] = [:]
+    private var readyMessageTask: Task<Void, Never>? = nil
 
     public init(
         api: any IngestionProviding,
@@ -74,10 +76,10 @@ public final class IngestionViewModel: ObservableObject {
         isLoading = false
     }
 
-    public func loadMeta(fileId: String) async {
+    public func loadMeta(fileId: String, force: Bool = false) async {
         errorMessage = nil
         do {
-            try await store.loadMeta(fileId: fileId)
+            try await store.loadMeta(fileId: fileId, force: force)
             if let meta = activeMeta, meta.file.id == fileId {
                 store.updateFilename(fileId: fileId, filename: meta.file.filenameOriginal)
                 store.updateJob(fileId: fileId, job: meta.job, recommendedViewer: meta.recommendedViewer)
@@ -89,11 +91,11 @@ public final class IngestionViewModel: ObservableObject {
         }
     }
 
-    public func selectFile(fileId: String) async {
+    public func selectFile(fileId: String, forceRefresh: Bool = false) async {
         isSelecting = true
         defer { isSelecting = false }
         prepareSelection(fileId: fileId)
-        await loadMeta(fileId: fileId)
+        await loadMeta(fileId: fileId, force: forceRefresh)
         guard let meta = activeMeta else { return }
         guard viewerState == nil else { return }
         startJobPollingIfNeeded(fileId: fileId)
@@ -275,6 +277,12 @@ public final class IngestionViewModel: ObservableObject {
         readyFileNotification = nil
     }
 
+    public func clearReadyMessage() {
+        lastReadyMessage = nil
+        readyMessageTask?.cancel()
+        readyMessageTask = nil
+    }
+
     private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
         let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }
         let nonAI = candidates.filter { $0.kind != "ai_md" }
@@ -394,14 +402,29 @@ public final class IngestionViewModel: ObservableObject {
             if let previous = statusCache[fileId],
                previous != status,
                status == "ready" {
-                readyFileNotification = ReadyFileNotification(
+                let notification = ReadyFileNotification(
                     fileId: fileId,
                     filename: item.file.filenameOriginal
                 )
+                readyFileNotification = notification
+                registerReadyMessage(notification)
             }
             statusCache[fileId] = status
         }
         statusCache.keys.filter { !seenIds.contains($0) }.forEach { statusCache.removeValue(forKey: $0) }
+    }
+
+    private func registerReadyMessage(_ notification: ReadyFileNotification) {
+        lastReadyMessage = notification
+        readyMessageTask?.cancel()
+        readyMessageTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            await MainActor.run {
+                if self?.lastReadyMessage?.id == notification.id {
+                    self?.lastReadyMessage = nil
+                }
+            }
+        }
     }
 
     private func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {

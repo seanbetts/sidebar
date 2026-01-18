@@ -78,13 +78,17 @@ public struct SiteHeaderBar: View {
                     isIngestionCenterPresented = true
                 } label: {
                     HStack(spacing: 6) {
-                        if environment.ingestionViewModel.activeUploadItems.isEmpty {
+                        if !environment.ingestionViewModel.activeUploadItems.isEmpty {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                        } else if environment.ingestionViewModel.lastReadyMessage != nil {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        } else {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.orange)
-                        } else {
-                            ProgressView()
-                                .scaleEffect(0.6)
                         }
                         Text(ingestionStatusText)
                             .font(.caption.weight(.semibold))
@@ -268,7 +272,8 @@ public struct SiteHeaderBar: View {
 
     private var shouldShowIngestionStatus: Bool {
         !environment.ingestionViewModel.activeUploadItems.isEmpty ||
-            !environment.ingestionViewModel.failedUploadItems.isEmpty
+            !environment.ingestionViewModel.failedUploadItems.isEmpty ||
+            environment.ingestionViewModel.lastReadyMessage != nil
     }
 
     private var ingestionStatusText: String {
@@ -282,7 +287,13 @@ public struct SiteHeaderBar: View {
             return "Processing"
         }
         let failedCount = environment.ingestionViewModel.failedUploadItems.count
-        return failedCount == 1 ? "1 Failed" : "\(failedCount) Failed"
+        if failedCount > 0 {
+            return failedCount == 1 ? "1 Failed" : "\(failedCount) Failed"
+        }
+        if environment.ingestionViewModel.lastReadyMessage != nil {
+            return "Ready"
+        }
+        return ""
     }
 }
 

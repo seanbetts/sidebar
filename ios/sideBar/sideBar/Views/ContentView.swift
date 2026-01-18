@@ -468,7 +468,7 @@ public struct ContentView: View {
             return
         }
         if isFilesSectionVisible {
-            Task { await environment.ingestionViewModel.selectFile(fileId: notification.fileId) }
+            Task { await environment.ingestionViewModel.selectFile(fileId: notification.fileId, forceRefresh: true) }
             return
         }
         presentAlert(.fileReady(notification))
@@ -476,7 +476,7 @@ public struct ContentView: View {
 
     private func openReadyFile(_ notification: ReadyFileNotification) {
         navigateToFilesSection()
-        Task { await environment.ingestionViewModel.selectFile(fileId: notification.fileId) }
+        Task { await environment.ingestionViewModel.selectFile(fileId: notification.fileId, forceRefresh: true) }
     }
 
     private func navigateToFilesSection() {
