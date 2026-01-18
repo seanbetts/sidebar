@@ -526,7 +526,7 @@ private struct FilesDetailContainer: View {
         } else {
             PlaceholderView(
                 title: "Select a file",
-                subtitle: "Choose a file from the sidebar to preview it.",
+                subtitle: "Choose a file from the sidebar.",
                 iconName: "folder"
             )
         }
