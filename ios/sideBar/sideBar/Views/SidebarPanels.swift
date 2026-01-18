@@ -1757,10 +1757,15 @@ private struct WebsitesPanelView: View {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty && viewModel.pendingWebsite == nil {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
             List {
+                if let pending = viewModel.pendingWebsite {
+                    Section("Adding") {
+                        PendingWebsiteRow(pending: pending, useListStyling: true)
+                    }
+                }
                 Section("Results") {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
@@ -1784,7 +1789,7 @@ private struct WebsitesPanelView: View {
             }
         } else {
             List {
-                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
+                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
                     Section("Pinned") {
                         if pinnedItemsSorted.isEmpty {
                             Text("No pinned websites")
@@ -1803,11 +1808,14 @@ private struct WebsitesPanelView: View {
                     }
 
                     Section("Websites") {
-                        if mainItems.isEmpty {
+                        if mainItems.isEmpty && viewModel.pendingWebsite == nil {
                             Text("No websites saved")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
+                            if let pending = viewModel.pendingWebsite {
+                                PendingWebsiteRow(pending: pending, useListStyling: true)
+                            }
                             ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
                                 WebsiteRow(
                                     item: item,
@@ -1868,10 +1876,15 @@ private struct WebsitesPanelView: View {
             ) {
                 Task { await viewModel.load() }
             }
-        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty {
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty && viewModel.pendingWebsite == nil {
             SidebarPanelPlaceholder(title: "No websites yet.")
         } else if !searchQuery.trimmed.isEmpty {
             List {
+                if let pending = viewModel.pendingWebsite {
+                    Section("Adding") {
+                        PendingWebsiteRow(pending: pending, useListStyling: true)
+                    }
+                }
                 Section("Results") {
                     if filteredItems.isEmpty {
                         SidebarPanelPlaceholder(title: "No results.")
@@ -1903,7 +1916,7 @@ private struct WebsitesPanelView: View {
 
     private var websitesListView: some View {
         List {
-            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty {
+            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
                 Section("Pinned") {
                     if pinnedItemsSorted.isEmpty {
                         Text("No pinned websites")
@@ -1922,11 +1935,14 @@ private struct WebsitesPanelView: View {
                 }
 
                 Section("Websites") {
-                    if mainItems.isEmpty {
+                    if mainItems.isEmpty && viewModel.pendingWebsite == nil {
                         Text("No websites saved")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
+                        if let pending = viewModel.pendingWebsite {
+                            PendingWebsiteRow(pending: pending, useListStyling: true)
+                        }
                         ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
                                 WebsiteRow(
                                     item: item,
@@ -2058,7 +2074,7 @@ private struct WebsitesPanelView: View {
         )
     }
 
-    private func saveWebsite() {
+private func saveWebsite() {
         let raw = newWebsiteUrl.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let normalized = WebsiteURLValidator.normalizedCandidate(raw) else {
             saveErrorMessage = "Enter a valid URL."
@@ -2075,6 +2091,58 @@ private struct WebsitesPanelView: View {
                 saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
             }
         }
+    }
+}
+
+private struct PendingWebsiteRow: View, Equatable {
+    let pending: WebsitesViewModel.PendingWebsiteItem
+    let useListStyling: Bool
+
+    var body: some View {
+        SelectableRow(
+            isSelected: false,
+            insets: rowInsets,
+            useListStyling: useListStyling
+        ) {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .scaleEffect(0.75)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(pending.title)
+                        .font(.subheadline)
+                        .foregroundStyle(secondaryTextColor)
+                        .lineLimit(1)
+                    Text(formatDomain(pending.domain))
+                        .font(.caption)
+                        .foregroundStyle(secondaryTextColor)
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private var secondaryTextColor: Color {
+        DesignTokens.Colors.textSecondary
+    }
+
+    private func formatDomain(_ domain: String) -> String {
+        domain.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+    }
+
+    private var rowInsets: EdgeInsets {
+        let horizontalPadding: CGFloat
+        #if os(macOS)
+        horizontalPadding = DesignTokens.Spacing.xs
+        #else
+        horizontalPadding = DesignTokens.Spacing.sm
+        #endif
+        return EdgeInsets(
+            top: 0,
+            leading: horizontalPadding,
+            bottom: 0,
+            trailing: horizontalPadding
+        )
     }
 }
 

@@ -5,6 +5,13 @@ import Combine
 
 @MainActor
 public final class WebsitesViewModel: ObservableObject {
+    public struct PendingWebsiteItem: Identifiable, Equatable {
+        public let id: String
+        public let title: String
+        public let domain: String
+        public let url: String
+    }
+
     @Published public private(set) var items: [WebsiteItem] = []
     @Published public private(set) var active: WebsiteDetail? = nil
     @Published public private(set) var selectedWebsiteId: String? = nil
@@ -13,6 +20,7 @@ public final class WebsitesViewModel: ObservableObject {
     @Published public private(set) var errorMessage: String? = nil
     @Published public private(set) var isSavingWebsite: Bool = false
     @Published public private(set) var saveErrorMessage: String? = nil
+    @Published public private(set) var pendingWebsite: PendingWebsiteItem? = nil
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore
@@ -81,15 +89,35 @@ public final class WebsitesViewModel: ObservableObject {
             saveErrorMessage = "Enter a valid URL."
             return false
         }
+        pendingWebsite = makePendingWebsite(from: normalized)
         saveErrorMessage = nil
         isSavingWebsite = true
         defer { isSavingWebsite = false }
         do {
             let response = try await api.save(url: normalized.absoluteString)
             guard response.success, let data = response.data else {
+                pendingWebsite = nil
                 saveErrorMessage = "Failed to save website"
                 return false
             }
+            pendingWebsite = nil
+            store.insertItemAtTop(
+                WebsiteItem(
+                    id: data.id,
+                    title: data.title,
+                    url: data.url,
+                    domain: data.domain,
+                    savedAt: nil,
+                    publishedAt: nil,
+                    pinned: false,
+                    pinnedOrder: nil,
+                    archived: false,
+                    youtubeTranscripts: nil,
+                    updatedAt: nil,
+                    lastOpenedAt: nil
+                ),
+                persist: true
+            )
             store.invalidateList()
             selectedWebsiteId = data.id
             try await store.loadDetail(id: data.id, force: true)
@@ -98,6 +126,7 @@ public final class WebsitesViewModel: ObservableObject {
             }
             return true
         } catch {
+            pendingWebsite = nil
             saveErrorMessage = ErrorMapping.message(for: error)
             return false
         }
@@ -119,5 +148,17 @@ public final class WebsitesViewModel: ObservableObject {
             selectedWebsiteId = nil
         }
         store.applyRealtimeEvent(payload)
+    }
+
+    private func makePendingWebsite(from url: URL) -> PendingWebsiteItem {
+        let host = url.host ?? url.absoluteString
+        let domain = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+        let title = host.isEmpty ? url.absoluteString : host
+        return PendingWebsiteItem(
+            id: "pending-\(UUID().uuidString)",
+            title: title,
+            domain: domain,
+            url: url.absoluteString
+        )
     }
 }
