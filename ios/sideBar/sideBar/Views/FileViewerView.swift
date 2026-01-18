@@ -264,7 +264,7 @@ public final class PDFViewerController: ObservableObject {
     }
 
     func scheduleFitAndRefresh() {
-        scheduleFitAndRefresh(animated: false)
+        scheduleFitAndRefresh(animated: true)
     }
 
     private func scheduleFitAndRefresh(animated: Bool) {
@@ -279,8 +279,11 @@ public final class PDFViewerController: ObservableObject {
 
     func updateContainerSize(_ size: CGSize) {
         guard size.width > 0, size.height > 0 else { return }
+        if abs(containerSize.width - size.width) < 0.5, abs(containerSize.height - size.height) < 0.5 {
+            return
+        }
         containerSize = size
-        scheduleFitAndRefresh(animated: true)
+        scheduleFitAndRefresh(animated: false)
     }
 
     private func reapplyZoomForCurrentPage() {
@@ -341,6 +344,9 @@ public final class PDFViewerController: ObservableObject {
     }
 
     private func applyFitWithRetry(attempt: Int) {
+        if attempt > 0 {
+            animateNextFit = false
+        }
         guard applyScaleForCurrentPage() else {
             if attempt < 5 {
                 let delay = 0.1 * Double(attempt + 1)
@@ -398,12 +404,12 @@ public final class PDFViewerController: ObservableObject {
         }
         #if os(macOS)
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.25
+            context.duration = 0.3
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             pdfView.animator().scaleFactor = scale
         }
         #else
-        UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
+        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseInOut]) {
             pdfView.scaleFactor = scale
         }
         #endif
