@@ -1776,12 +1776,7 @@ private struct WebsitesPanelView: View {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
                         ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
-                            WebsiteRow(
-                                item: item,
-                                isSelected: selection == item.id
-                            )
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
+                            websiteListRow(item: item, index: index)
                         }
                     }
                 }
@@ -1802,12 +1797,7 @@ private struct WebsitesPanelView: View {
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+                                websiteListRow(item: item, index: index)
                             }
                         }
                     }
@@ -1822,12 +1812,7 @@ private struct WebsitesPanelView: View {
                                 PendingWebsiteRow(pending: pending, useListStyling: true)
                             }
                             ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+                                websiteListRow(item: item, index: index)
                             }
                         }
                     }
@@ -1843,12 +1828,7 @@ private struct WebsitesPanelView: View {
                                     .foregroundStyle(.secondary)
                             } else {
                                 ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
-                                    WebsiteRow(
-                                        item: item,
-                                        isSelected: selection == item.id
-                                    )
-                                    .staggeredAppear(index: index, isActive: listAppeared)
-                                    .onTapGesture { open(item: item) }
+                                    websiteListRow(item: item, index: index, allowArchive: false)
                                 }
                             }
                         },
@@ -1895,12 +1875,7 @@ private struct WebsitesPanelView: View {
                         SidebarPanelPlaceholder(title: "No results.")
                     } else {
                         ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
-                            WebsiteRow(
-                                item: item,
-                                isSelected: selection == item.id
-                            )
-                            .staggeredAppear(index: index, isActive: listAppeared)
-                            .onTapGesture { open(item: item) }
+                            websiteListRow(item: item, index: index)
                         }
                     }
                 }
@@ -1938,12 +1913,7 @@ private struct WebsitesPanelView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+                            websiteListRow(item: item, index: index)
                         }
                     }
                 }
@@ -1958,12 +1928,7 @@ private struct WebsitesPanelView: View {
                             PendingWebsiteRow(pending: pending, useListStyling: true)
                         }
                         ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
-                                WebsiteRow(
-                                    item: item,
-                                    isSelected: selection == item.id
-                                )
-                                .staggeredAppear(index: index, isActive: listAppeared)
-                                .onTapGesture { open(item: item) }
+                            websiteListRow(item: item, index: index)
                         }
                     }
                 }
@@ -1980,6 +1945,50 @@ private struct WebsitesPanelView: View {
     private func open(item: WebsiteItem) {
         selection = item.id
         Task { await viewModel.selectWebsite(id: item.id) }
+    }
+
+    @ViewBuilder
+    private func websiteListRow(
+        item: WebsiteItem,
+        index: Int,
+        useListStyling: Bool = true,
+        allowArchive: Bool = true
+    ) -> some View {
+        let row = WebsiteRow(
+            item: item,
+            isSelected: selection == item.id,
+            useListStyling: useListStyling
+        )
+        .staggeredAppear(index: index, isActive: listAppeared)
+        .onTapGesture { open(item: item) }
+
+        #if os(macOS)
+        row
+        #else
+        row
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                if allowArchive {
+                    Button {
+                        Task { await viewModel.setArchived(id: item.id, archived: true) }
+                    } label: {
+                        Label("Archive", systemImage: "archivebox")
+                    }
+                } else {
+                    Button {
+                        Task { await viewModel.setArchived(id: item.id, archived: false) }
+                    } label: {
+                        Label("Unarchive", systemImage: "tray.and.arrow.up")
+                    }
+                }
+            }
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    Task { await viewModel.deleteWebsite(id: item.id) }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        #endif
     }
 
     private var pinnedItemsSorted: [WebsiteItem] {
@@ -2045,13 +2054,7 @@ private struct WebsitesPanelView: View {
                         ScrollView {
                             LazyVStack(spacing: DesignTokens.Spacing.xs) {
                                 ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
-                                    WebsiteRow(
-                                        item: item,
-                                        isSelected: selection == item.id,
-                                        useListStyling: false
-                                    )
-                                    .staggeredAppear(index: index, isActive: listAppeared)
-                                    .onTapGesture { open(item: item) }
+                                    websiteListRow(item: item, index: index, useListStyling: false, allowArchive: false)
                                 }
                             }
                         }

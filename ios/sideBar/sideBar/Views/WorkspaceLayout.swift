@@ -104,6 +104,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .animation(.smooth(duration: 0.3), value: isLeftPanelExpanded)
         }
     }

@@ -5,6 +5,8 @@ public protocol WebsitesProviding {
     func get(id: String) async throws -> WebsiteDetail
     func save(url: String) async throws -> WebsiteSaveResponse
     func pin(id: String, pinned: Bool) async throws -> WebsiteItem
+    func archive(id: String, archived: Bool) async throws -> WebsiteItem
+    func delete(id: String) async throws
 }
 
 public struct WebsitesAPI {

@@ -169,6 +169,26 @@ final class WebsitesViewModelTests: XCTestCase {
         _ = await saveTask.value
         XCTAssertNil(viewModel.pendingWebsite)
     }
+
+    func testDeleteWebsiteClearsSelection() async {
+        let cache = InMemoryCacheClient()
+        let api = MockWebsitesAPI(
+            listResult: .success(WebsitesResponse(items: [makeItem(id: "site-1")])),
+            getResult: .success(makeDetail(id: "site-1")),
+            saveResult: .failure(MockError.forced),
+            pinResult: .failure(MockError.forced),
+            archiveResult: .failure(MockError.forced),
+            deleteResult: .success(())
+        )
+        let store = WebsitesStore(api: api, cache: cache)
+        let viewModel = WebsitesViewModel(api: api, store: store)
+
+        await viewModel.selectWebsite(id: "site-1")
+        await viewModel.deleteWebsite(id: "site-1")
+
+        XCTAssertNil(viewModel.selectedWebsiteId)
+        XCTAssertTrue(viewModel.items.isEmpty)
+    }
 }
 
 private enum MockError: Error {
@@ -180,18 +200,24 @@ private final class MockWebsitesAPI: WebsitesProviding {
     let getResult: Result<WebsiteDetail, Error>
     let saveResult: Result<WebsiteSaveResponse, Error>
     let pinResult: Result<WebsiteItem, Error>
+    let archiveResult: Result<WebsiteItem, Error>
+    let deleteResult: Result<Void, Error>
     private(set) var lastSavedUrl: String?
 
     init(
         listResult: Result<WebsitesResponse, Error> = .failure(MockError.forced),
         getResult: Result<WebsiteDetail, Error> = .failure(MockError.forced),
         saveResult: Result<WebsiteSaveResponse, Error> = .failure(MockError.forced),
-        pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced)
+        pinResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
+        archiveResult: Result<WebsiteItem, Error> = .failure(MockError.forced),
+        deleteResult: Result<Void, Error> = .failure(MockError.forced)
     ) {
         self.listResult = listResult
         self.getResult = getResult
         self.saveResult = saveResult
         self.pinResult = pinResult
+        self.archiveResult = archiveResult
+        self.deleteResult = deleteResult
     }
 
     func list() async throws -> WebsitesResponse {
@@ -212,6 +238,17 @@ private final class MockWebsitesAPI: WebsitesProviding {
         _ = id
         _ = pinned
         return try pinResult.get()
+    }
+
+    func archive(id: String, archived: Bool) async throws -> WebsiteItem {
+        _ = id
+        _ = archived
+        return try archiveResult.get()
+    }
+
+    func delete(id: String) async throws {
+        _ = id
+        try deleteResult.get()
     }
 }
 
@@ -234,6 +271,14 @@ private final class ControlledWebsitesAPI: WebsitesProviding {
 
     func pin(id: String, pinned: Bool) async throws -> WebsiteItem {
         makeItem(id: id)
+    }
+
+    func archive(id: String, archived: Bool) async throws -> WebsiteItem {
+        makeItem(id: id)
+    }
+
+    func delete(id: String) async throws {
+        _ = id
     }
 
     func resumeSave(result: Result<WebsiteSaveResponse, Error>) {
