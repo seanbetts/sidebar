@@ -25,14 +25,14 @@ public struct IngestionDetailView: View {
                 LoadingView(message: "Loading file…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if shouldShowProcessingState {
-                PlaceholderView(
-                    title: "Processing file…",
-                    subtitle: processingDetail
-                )
-                .overlay(
+                VStack(spacing: 16) {
                     ProgressView()
                         .scaleEffect(1.1)
-                )
+                    PlaceholderView(
+                        title: "Processing file…",
+                        subtitle: processingDetail
+                    )
+                }
             } else if let state = viewModel.viewerState {
                 FileViewerView(state: state)
             } else if let error = viewModel.errorMessage {
