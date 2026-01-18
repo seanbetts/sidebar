@@ -6,6 +6,7 @@ struct SelectableRow<Content: View>: View {
     private let rowInsets: EdgeInsets
     private let useListStyling: Bool
     private let verticalPadding: CGFloat
+    private let customRowBackground: Color?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
@@ -18,12 +19,14 @@ struct SelectableRow<Content: View>: View {
         ),
         verticalPadding: CGFloat = DesignTokens.Spacing.xs,
         useListStyling: Bool = true,
+        rowBackground: Color? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.isSelected = isSelected
         self.rowInsets = insets
         self.useListStyling = useListStyling
         self.verticalPadding = verticalPadding
+        self.customRowBackground = rowBackground
         self.content = content()
     }
 
@@ -49,6 +52,9 @@ struct SelectableRow<Content: View>: View {
     }
 
     private var rowBackground: Color {
+        if let customRowBackground {
+            return customRowBackground
+        }
         #if os(macOS)
         return DesignTokens.Colors.sidebar
         #else

@@ -7,6 +7,7 @@ struct MemoriesSettingsDetailView: View {
     @State private var selection: String? = nil
     @State private var hasLoaded = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         NavigationSplitView {
@@ -14,7 +15,7 @@ struct MemoriesSettingsDetailView: View {
                 header
                 listContent
             }
-            .background(DesignTokens.Colors.sidebar)
+            .background(listBackground)
         } detail: {
             detailContent
                 .background(DesignTokens.Colors.background)
@@ -100,7 +101,7 @@ struct MemoriesSettingsDetailView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-            .background(DesignTokens.Colors.sidebar)
+            .background(listBackground)
             .refreshable {
                 await viewModel.load()
             }
@@ -197,7 +198,17 @@ struct MemoriesSettingsDetailView: View {
     }
 
     private var searchFill: Color {
-        DesignTokens.Colors.input
+        if colorScheme == .dark {
+            return DesignTokens.Colors.surface
+        }
+        return DesignTokens.Colors.input
+    }
+
+    private var listBackground: Color {
+        if colorScheme == .dark {
+            return DesignTokens.Colors.background
+        }
+        return DesignTokens.Colors.sidebar
     }
 
     private var searchBorder: Color {
@@ -215,9 +226,10 @@ struct MemoriesSettingsDetailView: View {
 private struct MemoryRow: View {
     let item: MemoryItem
     let isSelected: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        SelectableRow(isSelected: isSelected) {
+        SelectableRow(isSelected: isSelected, rowBackground: rowBackground) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(item.path))
                     .font(.subheadline.weight(.semibold))
@@ -225,6 +237,10 @@ private struct MemoryRow: View {
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
             }
         }
+    }
+
+    private var rowBackground: Color {
+        colorScheme == .dark ? DesignTokens.Colors.surface : DesignTokens.Colors.background
     }
 
     private func displayName(_ path: String) -> String {
