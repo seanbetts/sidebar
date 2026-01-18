@@ -143,7 +143,7 @@ private struct WebsitesDetailView: View {
             titleLayoutPriority: 0,
             subtitleLayoutPriority: 1
         ) {
-            HStack(spacing: 8) {
+            HeaderActionRow {
                 websiteActionsMenu
                 closeButton
             }
@@ -209,62 +209,66 @@ private struct WebsitesDetailView: View {
     private var websiteActionsMenu: some View {
         Menu {
             Button {
-                guard let websiteId = viewModel.active?.id else { return }
-                Task {
-                    await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                MenuActionScheduler.perform {
+                    guard let websiteId = viewModel.active?.id else { return }
+                    Task {
+                        await viewModel.setPinned(id: websiteId, pinned: !isPinned)
+                    }
                 }
             } label: {
                 Label(pinActionTitle, systemImage: pinIconName)
             }
             Button {
-                renameValue = viewModel.active?.title ?? ""
-                isRenameDialogPresented = true
+                MenuActionScheduler.perform {
+                    renameValue = viewModel.active?.title ?? ""
+                    isRenameDialogPresented = true
+                }
             } label: {
                 Label("Rename", systemImage: "pencil")
             }
             Button {
-                copyWebsiteContent()
+                MenuActionScheduler.perform {
+                    copyWebsiteContent()
+                }
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
             Button {
-                exportWebsite()
+                MenuActionScheduler.perform {
+                    exportWebsite()
+                }
             } label: {
                 Label("Download", systemImage: "square.and.arrow.down")
             }
             Button {
-                isArchiveAlertPresented = true
+                MenuActionScheduler.perform {
+                    isArchiveAlertPresented = true
+                }
             } label: {
                 Label(archiveMenuTitle, systemImage: archiveIconName)
             }
             Button(role: .destructive) {
-                isDeleteAlertPresented = true
+                MenuActionScheduler.perform {
+                    isDeleteAlertPresented = true
+                }
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         } label: {
-            Image(systemName: "ellipsis.circle")
-                .frame(width: 28, height: 20)
+            HeaderActionIcon(systemName: "ellipsis.circle")
         }
         .buttonStyle(.plain)
-        .font(.system(size: 16, weight: .semibold))
-        .imageScale(.medium)
         .accessibilityLabel("Website options")
         .disabled(viewModel.active == nil)
     }
 
     private var closeButton: some View {
-        Button {
-            viewModel.clearSelection()
-        } label: {
-            Image(systemName: "xmark")
-                .frame(width: 28, height: 20)
-        }
-        .buttonStyle(.plain)
-        .font(.system(size: 14, weight: .semibold))
-        .imageScale(.medium)
-        .accessibilityLabel("Close website")
-        .disabled(viewModel.active == nil)
+        HeaderActionButton(
+            systemName: "xmark",
+            accessibilityLabel: "Close website",
+            action: { viewModel.clearSelection() },
+            isDisabled: viewModel.active == nil
+        )
     }
 
     private var isPinned: Bool {

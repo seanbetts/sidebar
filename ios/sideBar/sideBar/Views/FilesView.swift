@@ -27,12 +27,11 @@ public struct FilesView: View {
         .toolbar {
             if isCompact {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("File options")
+                        HeaderActionButton(
+                            systemName: "ellipsis.circle",
+                            accessibilityLabel: "File options",
+                            action: {}
+                        )
                 }
             }
         }
@@ -75,14 +74,11 @@ private struct FilesHeaderView: View {
             iconName: iconName,
             title: activeTitle
         ) {
-            Button {
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .buttonStyle(.plain)
-            .font(.system(size: 16, weight: .semibold))
-            .imageScale(.medium)
-            .accessibilityLabel("File options")
+            HeaderActionButton(
+                systemName: "ellipsis.circle",
+                accessibilityLabel: "File options",
+                action: {}
+            )
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 16)

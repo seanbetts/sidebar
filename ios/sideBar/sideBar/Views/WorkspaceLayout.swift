@@ -56,7 +56,9 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
                     .frame(width: railWidth)
                     .frame(maxHeight: .infinity)
 
-                Divider()
+                Rectangle()
+                    .fill(DesignTokens.Colors.border)
+                    .frame(width: 1)
                     .frame(maxHeight: .infinity)
 
                 if isLeftPanelExpanded {
@@ -234,14 +236,6 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
 
     private var panelBackground: Color {
         DesignTokens.Colors.sidebar
-    }
-
-    private var dividerColor: Color {
-        #if os(macOS)
-        return Color(nsColor: .separatorColor)
-        #else
-        return Color(uiColor: .separator)
-        #endif
     }
 
     private var handleBackground: Color {

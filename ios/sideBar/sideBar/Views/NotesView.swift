@@ -174,7 +174,7 @@ private struct NotesDetailView: View {
             ) {
                 if viewModel.activeNote != nil {
                     SaveStatusView(editorViewModel: editorViewModel)
-                    HStack(spacing: 30) {
+                    HeaderActionRow {
                         noteActionsMenu
                         closeButton
                     }
@@ -301,67 +301,77 @@ private struct NotesDetailView: View {
     private var noteActionsMenu: some View {
         Menu {
             Button {
-                guard let noteId = viewModel.activeNote?.path else { return }
-                Task {
-                    await viewModel.setPinned(id: noteId, pinned: !isPinned)
+                MenuActionScheduler.perform {
+                    guard let noteId = viewModel.activeNote?.path else { return }
+                    Task {
+                        await viewModel.setPinned(id: noteId, pinned: !isPinned)
+                    }
                 }
             } label: {
                 Label(pinActionTitle, systemImage: pinIconName)
             }
             Button {
-                renameValue = displayTitle
-                isRenameDialogPresented = true
+                MenuActionScheduler.perform {
+                    renameValue = displayTitle
+                    isRenameDialogPresented = true
+                }
             } label: {
                 Label("Rename", systemImage: "pencil")
             }
             Button {
-                moveSelection = currentFolderPath
-                isMoveSheetPresented = true
+                MenuActionScheduler.perform {
+                    moveSelection = currentFolderPath
+                    isMoveSheetPresented = true
+                }
             } label: {
                 Label("Move", systemImage: "arrow.forward.folder")
             }
             Button {
-                copyMarkdown()
+                MenuActionScheduler.perform {
+                    copyMarkdown()
+                }
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
             Button {
-                exportMarkdown()
+                MenuActionScheduler.perform {
+                    exportMarkdown()
+                }
             } label: {
                 Label("Download", systemImage: "square.and.arrow.down")
             }
             Button {
-                isArchiveAlertPresented = true
+                MenuActionScheduler.perform {
+                    isArchiveAlertPresented = true
+                }
             } label: {
                 Label(archiveMenuTitle, systemImage: archiveIconName)
             }
             Button(role: .destructive) {
-                isDeleteAlertPresented = true
+                MenuActionScheduler.perform {
+                    isDeleteAlertPresented = true
+                }
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         } label: {
-            Image(systemName: "ellipsis.circle")
+            HeaderActionIcon(systemName: "ellipsis.circle")
         }
         .buttonStyle(.plain)
-        .font(.system(size: 16, weight: .semibold))
-        .imageScale(.medium)
         .accessibilityLabel("Note options")
         .disabled(viewModel.activeNote == nil)
     }
 
     private var closeButton: some View {
-        Button {
-            editorViewModel.isEditing = false
-            viewModel.clearSelection()
-        } label: {
-            Image(systemName: "xmark")
-        }
-        .buttonStyle(.plain)
-        .font(.system(size: 14, weight: .semibold))
-        .imageScale(.medium)
-        .accessibilityLabel("Close note")
-        .disabled(viewModel.activeNote == nil)
+        HeaderActionButton(
+            systemName: "xmark",
+            accessibilityLabel: "Close note",
+            action: {
+                editorViewModel.isEditing = false
+                viewModel.clearSelection()
+            },
+            isDisabled: viewModel.activeNote == nil
+        )
     }
 
     private var activeNode: FileNode? {
