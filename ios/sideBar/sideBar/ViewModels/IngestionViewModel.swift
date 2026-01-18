@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UniformTypeIdentifiers
 
 // TODO: Revisit to prefer native-first data sources where applicable.
 
@@ -15,20 +16,25 @@ public final class IngestionViewModel: ObservableObject {
     @Published public private(set) var isSelecting: Bool = false
     @Published public private(set) var isOffline: Bool = false
     @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var isIngestingYouTube: Bool = false
 
     private let api: any IngestionProviding
     private let temporaryStore: TemporaryFileStore
     private let store: IngestionStore
+    private let uploadManager: IngestionUploadManaging
     private var cancellables = Set<AnyCancellable>()
+    private var securityScopedURLs: [String: URL] = [:]
 
     public init(
         api: any IngestionProviding,
         store: IngestionStore,
-        temporaryStore: TemporaryFileStore
+        temporaryStore: TemporaryFileStore,
+        uploadManager: IngestionUploadManaging
     ) {
         self.api = api
         self.temporaryStore = temporaryStore
         self.store = store
+        self.uploadManager = uploadManager
 
         store.$items
             .sink { [weak self] items in
@@ -66,6 +72,7 @@ public final class IngestionViewModel: ObservableObject {
         errorMessage = nil
         do {
             try await store.loadMeta(fileId: fileId)
+            await ensureViewerReady(for: fileId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -77,6 +84,7 @@ public final class IngestionViewModel: ObservableObject {
         prepareSelection(fileId: fileId)
         await loadMeta(fileId: fileId)
         guard let meta = activeMeta else { return }
+        guard viewerState == nil else { return }
         if let kind = preferredDerivativeKind(for: meta) {
             await selectDerivative(kind: kind)
         }
@@ -140,14 +148,15 @@ public final class IngestionViewModel: ObservableObject {
     }
 
     public func deleteFile(fileId: String) async -> Bool {
+        if selectedFileId == fileId {
+            clearSelection()
+        }
+        store.removeItem(fileId: fileId)
         do {
             try await api.delete(fileId: fileId)
-            if selectedFileId == fileId {
-                clearSelection()
-            }
-            await load(force: true)
             return true
         } catch {
+            await load(force: true)
             return false
         }
     }
@@ -160,6 +169,92 @@ public final class IngestionViewModel: ObservableObject {
         } catch {
             return false
         }
+    }
+
+    public func addUploads(urls: [URL]) {
+        for url in urls {
+            startUpload(url: url)
+        }
+    }
+
+    public func ingestYouTube(url: String) async -> String? {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let normalized = normalizeYouTubeUrlCandidate(trimmed) else {
+            return "Invalid YouTube URL"
+        }
+        isIngestingYouTube = true
+        defer { isIngestingYouTube = false }
+        let tempId = "youtube-\(UUID().uuidString)"
+        let pendingItem = makeLocalItem(
+            id: tempId,
+            filename: "YouTube video",
+            mimeType: "video/youtube",
+            sizeBytes: 0,
+            status: "processing",
+            stage: "queued",
+            progress: nil,
+            sourceUrl: normalized
+        )
+        store.addLocalUpload(pendingItem)
+        prepareSelection(fileId: tempId)
+        do {
+            let fileId = try await api.ingestYouTube(url: normalized)
+            store.replaceLocalUpload(
+                tempId: tempId,
+                fileId: fileId,
+                filename: "YouTube video",
+                mimeType: "video/youtube",
+                sizeBytes: 0,
+                sourceUrl: normalized
+            )
+            store.updateLocalUpload(
+                fileId: fileId,
+                status: "processing",
+                stage: "queued",
+                progress: nil
+            )
+            if selectedFileId == tempId {
+                prepareSelection(fileId: fileId)
+            }
+            await selectFile(fileId: fileId)
+            return nil
+        } catch {
+            store.updateLocalUpload(fileId: tempId, status: "failed", stage: "failed", progress: nil)
+            if let apiError = error as? APIClientError {
+                switch apiError {
+                case .apiError(let message):
+                    return message
+                case .requestFailed:
+                    return "Failed to add YouTube video"
+                default:
+                    return "Failed to add YouTube video"
+                }
+            }
+            return "Failed to add YouTube video"
+        }
+    }
+
+    public func cancelUpload(fileId: String) {
+        uploadManager.cancelUpload(uploadId: fileId)
+        store.updateLocalUpload(fileId: fileId, status: "canceled", stage: "canceled")
+        store.removeLocalUpload(fileId: fileId)
+        releaseSecurityScopedAccess(for: fileId)
+    }
+
+    public var selectedItem: IngestionListItem? {
+        guard let selectedFileId else { return nil }
+        return items.first { $0.file.id == selectedFileId }
+    }
+
+    public var activeUploadItems: [IngestionListItem] {
+        items.filter { item in
+            let status = item.job.status ?? ""
+            return !["ready", "failed", "canceled"].contains(status)
+        }
+    }
+
+    public var failedUploadItems: [IngestionListItem] {
+        items.filter { ($0.job.status ?? "") == "failed" }
     }
 
     private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
@@ -179,6 +274,16 @@ public final class IngestionViewModel: ObservableObject {
             }
         }
         return nonAI.first?.kind ?? candidates.first?.kind
+    }
+
+    private func ensureViewerReady(for fileId: String) async {
+        guard selectedFileId == fileId else { return }
+        guard let meta = activeMeta else { return }
+        guard viewerState == nil else { return }
+        guard (meta.job.status ?? "") == "ready" else { return }
+        if let kind = preferredDerivativeKind(for: meta) {
+            await selectDerivative(kind: kind)
+        }
     }
 
     private func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {
@@ -234,6 +339,157 @@ public final class IngestionViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
         isLoadingContent = false
+    }
+
+    private func startUpload(url: URL) {
+        let filename = url.lastPathComponent
+        let mimeType = mimeTypeFor(url: url)
+        let tempId = "local-\(UUID().uuidString)"
+        let access = url.startAccessingSecurityScopedResource()
+        if access {
+            securityScopedURLs[tempId] = url
+        }
+        let sizeBytes = fileSizeBytes(for: url)
+        let item = makeLocalItem(
+            id: tempId,
+            filename: filename,
+            mimeType: mimeType,
+            sizeBytes: sizeBytes,
+            status: "uploading",
+            stage: "uploading",
+            progress: 0,
+            sourceUrl: nil
+        )
+        store.addLocalUpload(item)
+        prepareSelection(fileId: tempId)
+
+        uploadManager.startUpload(
+            uploadId: tempId,
+            fileURL: url,
+            filename: filename,
+            mimeType: mimeType,
+            folder: "",
+            onProgress: { [weak self] progress in
+                guard let self else { return }
+                self.store.updateLocalUpload(
+                    fileId: tempId,
+                    status: "uploading",
+                    stage: "uploading",
+                    progress: progress
+                )
+            },
+            onCompletion: { [weak self] result in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.handleUploadCompletion(
+                        tempId: tempId,
+                        filename: filename,
+                        mimeType: mimeType,
+                        sizeBytes: sizeBytes,
+                        result: result
+                    )
+                }
+            }
+        )
+    }
+
+    private func handleUploadCompletion(
+        tempId: String,
+        filename: String,
+        mimeType: String,
+        sizeBytes: Int,
+        result: Result<String, Error>
+    ) async {
+        switch result {
+        case .success(let fileId):
+            releaseSecurityScopedAccess(for: tempId)
+            store.replaceLocalUpload(
+                tempId: tempId,
+                fileId: fileId,
+                filename: filename,
+                mimeType: mimeType,
+                sizeBytes: sizeBytes
+            )
+            store.updateLocalUpload(
+                fileId: fileId,
+                status: "processing",
+                stage: "processing",
+                progress: nil
+            )
+            if selectedFileId == tempId {
+                prepareSelection(fileId: fileId)
+            }
+            await selectFile(fileId: fileId)
+        case .failure:
+            releaseSecurityScopedAccess(for: tempId)
+            store.updateLocalUpload(fileId: tempId, status: "failed", stage: "failed", progress: nil)
+        }
+    }
+
+    private func makeLocalItem(
+        id: String,
+        filename: String,
+        mimeType: String,
+        sizeBytes: Int,
+        status: String,
+        stage: String,
+        progress: Double?,
+        sourceUrl: String?
+    ) -> IngestionListItem {
+        let file = IngestedFileMeta(
+            id: id,
+            filenameOriginal: filename,
+            path: nil,
+            mimeOriginal: mimeType,
+            sizeBytes: sizeBytes,
+            sha256: nil,
+            pinned: false,
+            pinnedOrder: nil,
+            category: nil,
+            sourceUrl: sourceUrl,
+            sourceMetadata: nil,
+            createdAt: ISO8601DateFormatter().string(from: Date())
+        )
+        let job = IngestionJob(
+            status: status,
+            stage: stage,
+            errorCode: nil,
+            errorMessage: nil,
+            userMessage: nil,
+            progress: progress,
+            attempts: 0,
+            updatedAt: nil
+        )
+        return IngestionListItem(file: file, job: job, recommendedViewer: nil)
+    }
+
+    private func mimeTypeFor(url: URL) -> String {
+        if let type = UTType(filenameExtension: url.pathExtension),
+           let mime = type.preferredMIMEType {
+            return mime
+        }
+        return "application/octet-stream"
+    }
+
+    private func fileSizeBytes(for url: URL) -> Int {
+        let values = try? url.resourceValues(forKeys: [.fileSizeKey])
+        return values?.fileSize ?? 0
+    }
+
+    private func normalizeYouTubeUrlCandidate(_ raw: String) -> String? {
+        guard !raw.isEmpty else { return nil }
+        let candidate = raw.contains("://") ? raw : "https://\(raw)"
+        guard let url = URL(string: candidate),
+              let host = url.host?.lowercased(),
+              host.contains("youtube.com") || host.contains("youtu.be") else {
+            return nil
+        }
+        return candidate
+    }
+
+    private func releaseSecurityScopedAccess(for fileId: String) {
+        guard let url = securityScopedURLs.removeValue(forKey: fileId) else { return }
+        url.stopAccessingSecurityScopedResource()
     }
 
     private func makeFilename(base: String, mimeType: String, fallback: String) -> String {

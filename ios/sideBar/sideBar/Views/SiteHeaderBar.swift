@@ -93,6 +93,7 @@ public struct SiteHeaderBar: View {
                     .pillStyle()
                 }
                 .buttonStyle(.plain)
+                .padding(.leading, 6)
                 .accessibilityLabel("Show uploads")
                 #if os(macOS)
                 .popover(isPresented: $isIngestionCenterPresented, arrowEdge: .top) {
