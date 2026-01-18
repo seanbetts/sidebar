@@ -586,6 +586,10 @@ private struct PdfHeaderControls: View {
             ) {
                 controller.zoomIn()
             }
+            Text(zoomLabel)
+                .font(isCompact ? .caption2 : .caption)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: isCompact ? 44 : 56)
             PdfControlButton(
                 systemName: "arrow.up.and.down",
                 accessibilityLabel: "Fit to height",
@@ -605,6 +609,11 @@ private struct PdfHeaderControls: View {
 
     private var pageLabel: String {
         "\(controller.currentPage) / \(max(controller.pageCount, 1))"
+    }
+
+    private var zoomLabel: String {
+        let percent = Int(round(controller.zoomMultiplier * 100))
+        return "\(percent)%"
     }
 }
 
