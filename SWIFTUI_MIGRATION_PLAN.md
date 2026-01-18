@@ -143,6 +143,8 @@ Critical Path (MVP): [███████████████████�
 - Shared UI: `ContentHeaderRow` introduced for consistent title bars across content types.
 - Scratchpad: caching, autosave, and realtime refresh parity with web.
 - Websites: save flow (alert + validation), optimistic "Reading" states, and header truncation adjustments.
+- Files: upload manager + YouTube ingestion, optimistic processing UI, header pill status stages, and auto-open ready files with alert fallback.
+- Files: PDF viewer controls (page, zoom, fit width/height) + YouTube embed fix + responsive PDF fit/zoom.
 
 ### Phase Completion Status
 
@@ -461,6 +463,8 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 
 #### Phase 11.4: Content Creation (1 session)
 - [x] Save websites (URL input sheet with validation)
+- [x] Upload files with processing status + optimistic sidebar entries
+- [x] Add YouTube videos via URL ingestion
 - [ ] Add/edit/delete memories
 - [x] Editable scratchpad with auto-save
 
@@ -509,6 +513,8 @@ MarkdownUI is the read-mode renderer; CodeMirror 6 in WKWebView is the edit-mode
 | 2026-01-16 | 8.5 | 1 | TBD | ContentHeaderRow shared across chat/notes/files/websites; chat rename alert + title truncation |
 | 2026-01-16 | 11.4 | 1 | TBD | Scratchpad parity: caching, autosave, realtime refresh, sizing fixes |
 | 2026-01-17 | 11.4 | 1 | TBD | Websites save flow (alert + validation), optimistic "Reading" states, header tweaks |
+| 2026-01-18 | 11.4 | 2 | TBD | File uploads + YouTube ingestion, processing UI, auto-open ready files |
+| 2026-01-19 | 11.4 | 1 | TBD | PDF controls (page/zoom/fit), responsive fit on resize, YouTube embed fix |
 
 ---
 
