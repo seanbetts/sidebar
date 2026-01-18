@@ -154,6 +154,32 @@ public final class WebsitesViewModel: ObservableObject {
         }
     }
 
+    public func setArchived(id: String, archived: Bool) async {
+        errorMessage = nil
+        do {
+            let updated = try await api.archive(id: id, archived: archived)
+            store.updateListItem(updated, persist: true)
+            if archived, selectedWebsiteId == id {
+                clearSelection()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    public func deleteWebsite(id: String) async {
+        errorMessage = nil
+        do {
+            try await api.delete(id: id)
+            store.removeItem(id: id, persist: true)
+            if selectedWebsiteId == id {
+                clearSelection()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     public func applyRealtimeEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>) async {
         let websiteId = payload.record?.id ?? payload.oldRecord?.id
         if payload.eventType == .delete, selectedWebsiteId == websiteId {
