@@ -1,5 +1,6 @@
 import SwiftUI
 import LocalAuthentication
+import os
 
 public enum AppSection: String, CaseIterable, Identifiable {
     case chat
@@ -47,12 +48,17 @@ public struct ContentView: View {
     }
 
     public var body: some View {
-        if let configError = environment.configError {
-            ConfigErrorView(error: configError)
-        } else if !environment.isAuthenticated {
-            LoginView()
-        } else {
-            signedInContent
+        Group {
+            if let configError = environment.configError {
+                ConfigErrorView(error: configError)
+                    .onAppear { logStartup("ConfigErrorView appeared") }
+            } else if !environment.isAuthenticated {
+                LoginView()
+                    .onAppear { logStartup("LoginView appeared") }
+            } else {
+                signedInContent
+                    .onAppear { logStartup("SignedInContent appeared") }
+            }
         }
     }
 
@@ -302,6 +308,17 @@ public struct ContentView: View {
             }
         })
         return content
+    }
+
+    private func logStartup(_ message: String) {
+        #if DEBUG
+        #if os(iOS)
+        AppLaunchMetrics.shared.mark(message)
+        #else
+        let logger = Logger(subsystem: "sideBar", category: "Startup")
+        logger.info("\(message, privacy: .public)")
+        #endif
+        #endif
     }
 
     private var biometricHintTitle: String {

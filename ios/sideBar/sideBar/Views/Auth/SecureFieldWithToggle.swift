@@ -74,6 +74,8 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
         textField.isSecureTextEntry = isSecure
         textField.autocorrectionType = .no
         textField.autocapitalizationType = .none
+        textField.setContentHuggingPriority(.required, for: .vertical)
+        textField.setContentCompressionResistancePriority(.required, for: .vertical)
         textField.addTarget(context.coordinator, action: #selector(Coordinator.textDidChange), for: .editingChanged)
         return textField
     }

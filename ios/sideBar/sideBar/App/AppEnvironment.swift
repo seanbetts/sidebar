@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import os
 
 @MainActor
 public final class AppEnvironment: ObservableObject {
@@ -33,6 +34,18 @@ public final class AppEnvironment: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
+        #if DEBUG
+        let logger = Logger(subsystem: "sideBar", category: "Startup")
+        let initStart = CFAbsoluteTimeGetCurrent()
+        func logStep(_ name: String, _ start: CFAbsoluteTime) {
+            let elapsedMs = Int((CFAbsoluteTimeGetCurrent() - start) * 1000)
+            logger.info("\(name, privacy: .public) took \(elapsedMs, privacy: .public)ms")
+        }
+        #endif
+
+        #if DEBUG
+        let storeStart = CFAbsoluteTimeGetCurrent()
+        #endif
         self.container = container
         self.themeManager = ThemeManager()
         self.chatStore = ChatStore(
@@ -90,7 +103,13 @@ public final class AppEnvironment: ObservableObject {
         self.biometricMonitor = BiometricMonitor()
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
+        #if DEBUG
+        logStep("Stores + view models", storeStart)
+        #endif
 
+        #if DEBUG
+        let subscriptionsStart = CFAbsoluteTimeGetCurrent()
+        #endif
         if let authAdapter = container.authSession as? SupabaseAuthAdapter {
             authAdapter.$accessToken
                 .sink { [weak self] _token in
@@ -160,6 +179,9 @@ public final class AppEnvironment: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+        #if DEBUG
+        logStep("Subscriptions", subscriptionsStart)
+        #endif
 
         if let realtimeClient = realtimeClient as? SupabaseRealtimeAdapter {
             realtimeClient.handler = self
@@ -169,6 +191,9 @@ public final class AppEnvironment: ObservableObject {
         if isAuthenticated {
             biometricMonitor.startMonitoring()
         }
+        #if DEBUG
+        logStep("Realtime + monitors", initStart)
+        #endif
     }
 
     public func refreshAuthState() {
