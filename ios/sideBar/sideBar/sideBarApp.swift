@@ -44,7 +44,10 @@ struct sideBarApp: App {
         let authStart = CFAbsoluteTimeGetCurrent()
         let authSession = SupabaseAuthAdapter(
             config: config,
-            stateStore: KeychainAuthStateStore()
+            stateStore: KeychainAuthStateStore(
+                service: AppGroupConfiguration.keychainService,
+                accessGroup: AppGroupConfiguration.keychainAccessGroup
+            )
         )
         let authEnd = CFAbsoluteTimeGetCurrent()
         logStep("Auth session", authStart, authEnd)
