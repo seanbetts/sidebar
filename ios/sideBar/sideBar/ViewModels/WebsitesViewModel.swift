@@ -33,6 +33,7 @@ public final class WebsitesViewModel: ObservableObject {
         store.$items
             .sink { [weak self] items in
                 self?.items = items
+                self?.clearPendingIfNeeded(items: items)
             }
             .store(in: &cancellables)
 
@@ -229,5 +230,13 @@ public final class WebsitesViewModel: ObservableObject {
             domain: domain,
             url: url.absoluteString
         )
+    }
+
+    private func clearPendingIfNeeded(items: [WebsiteItem]) {
+        guard let pendingWebsite else { return }
+        let pendingUrl = pendingWebsite.url
+        if items.contains(where: { $0.url == pendingUrl }) {
+            self.pendingWebsite = nil
+        }
     }
 }
