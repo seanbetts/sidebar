@@ -1,10 +1,14 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct WebsitesView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @Environment(\.scenePhase) private var scenePhase
 
     public init() {
     }
@@ -14,6 +18,15 @@ public struct WebsitesView: View {
             .task {
                 await environment.websitesViewModel.load(force: true)
             }
+            #if os(iOS)
+            .onChange(of: scenePhase) {
+                guard scenePhase == .active else { return }
+                Task {
+                    await environment.consumeExtensionEvents()
+                    await environment.websitesViewModel.load(force: true)
+                }
+            }
+            #endif
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)

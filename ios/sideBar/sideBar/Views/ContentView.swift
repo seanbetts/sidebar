@@ -101,7 +101,12 @@ public struct ContentView: View {
             }
             #if os(iOS)
             if newValue == .active {
-                Task { await environment.consumeExtensionEvents() }
+                Task {
+                    await environment.consumeExtensionEvents()
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    await environment.consumeExtensionEvents()
+                    await environment.websitesViewModel.load(force: true)
+                }
             }
             #endif
         })

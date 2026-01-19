@@ -36,18 +36,26 @@ public final class ExtensionEventStore {
     }
 
     public func consumeEvents() -> [ExtensionEvent] {
-        guard let defaults = userDefaults else { return [] }
-        defer { defaults.removeObject(forKey: eventsKey) }
+        guard let defaults = userDefaults else {
+            return []
+        }
+        defer {
+            defaults.removeObject(forKey: eventsKey)
+            defaults.synchronize()
+        }
         guard let data = defaults.data(forKey: eventsKey) else { return [] }
         return (try? decoder.decode([ExtensionEvent].self, from: data)) ?? []
     }
 
     private func append(event: ExtensionEvent) {
-        guard let defaults = userDefaults else { return }
+        guard let defaults = userDefaults else {
+            return
+        }
         var events = loadEvents(defaults: defaults)
         events.append(event)
         if let data = try? encoder.encode(events) {
             defaults.set(data, forKey: eventsKey)
+            defaults.synchronize()
         }
     }
 
@@ -57,7 +65,9 @@ public final class ExtensionEventStore {
     }
 
     private var userDefaults: UserDefaults? {
-        guard let suiteName = AppGroupConfiguration.appGroupId else { return nil }
+        guard let suiteName = AppGroupConfiguration.appGroupId else {
+            return nil
+        }
         return UserDefaults(suiteName: suiteName)
     }
 }
