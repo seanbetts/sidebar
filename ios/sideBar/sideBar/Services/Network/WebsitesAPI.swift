@@ -41,10 +41,6 @@ public struct WebsitesAPI {
         return try await client.request("websites/quick-save", method: "POST", body: QuickSaveRequest(url: url, title: title))
     }
 
-    public func quickSaveStatus(jobId: String) async throws -> WebsiteQuickSaveJob {
-        try await client.request("websites/quick-save/\(jobId)")
-    }
-
     public func pin(id: String, pinned: Bool) async throws -> WebsiteItem {
         struct PinRequest: Codable { let pinned: Bool }
         return try await client.request("websites/\(id)/pin", method: "PATCH", body: PinRequest(pinned: pinned))

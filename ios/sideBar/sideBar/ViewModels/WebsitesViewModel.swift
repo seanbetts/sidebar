@@ -43,19 +43,37 @@ public final class WebsitesViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    public func load() async {
+    public func load(force: Bool = false) async {
         if items.isEmpty {
             isLoading = true
         }
         errorMessage = nil
         do {
-            try await store.loadList()
+            try await store.loadList(force: force)
         } catch {
             if items.isEmpty {
                 errorMessage = error.localizedDescription
             }
         }
         isLoading = false
+    }
+
+    public func refreshFromExtension() async {
+        errorMessage = nil
+        do {
+            try await store.loadList(force: true)
+        } catch {
+            if items.isEmpty {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    public func showPendingFromExtension(url: String) {
+        guard let normalized = WebsiteURLValidator.normalizedCandidate(url) else {
+            return
+        }
+        pendingWebsite = makePendingWebsite(from: normalized)
     }
 
     public func loadById(id: String) async {

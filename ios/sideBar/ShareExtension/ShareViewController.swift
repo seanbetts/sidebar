@@ -50,6 +50,7 @@ final class ShareViewController: UIViewController {
         Task { @MainActor in
             do {
                 _ = try await environment.websitesAPI.quickSave(url: url.absoluteString, title: nil)
+                ExtensionEventStore.shared.recordWebsiteSaved(url: url.absoluteString)
                 showSuccess()
             } catch {
                 showError(error.localizedDescription)

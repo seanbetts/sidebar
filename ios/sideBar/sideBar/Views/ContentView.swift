@@ -1,6 +1,9 @@
 import SwiftUI
 import LocalAuthentication
 import os
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public enum AppSection: String, CaseIterable, Identifiable {
     case chat
@@ -96,7 +99,17 @@ public struct ContentView: View {
             if newValue == .background && biometricUnlockEnabled {
                 isBiometricUnlocked = false
             }
+            #if os(iOS)
+            if newValue == .active {
+                Task { await environment.consumeExtensionEvents() }
+            }
+            #endif
         })
+        #if os(iOS)
+        content = AnyView(content.onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            Task { await environment.consumeExtensionEvents() }
+        })
+        #endif
         content = AnyView(content.onChange(of: environment.biometricMonitor.isAvailable) { _, isAvailable in
             guard biometricUnlockEnabled, !isAvailable, environment.isAuthenticated else { return }
             enqueueAlertAction {
@@ -150,6 +163,9 @@ public struct ContentView: View {
             environment.sessionExpiryWarning = nil
             isSigningOut = false
             if isAuthenticated {
+                #if os(iOS)
+                Task { await environment.consumeExtensionEvents() }
+                #endif
                 if biometricUnlockEnabled {
                     isBiometricUnlocked = false
                 } else {

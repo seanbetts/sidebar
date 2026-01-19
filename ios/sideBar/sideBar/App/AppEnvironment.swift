@@ -226,6 +226,19 @@ public final class AppEnvironment: ObservableObject {
         refreshAuthState()
     }
 
+    public func consumeExtensionEvents() async {
+        let events = ExtensionEventStore.shared.consumeEvents()
+        guard !events.isEmpty else { return }
+        guard isAuthenticated else { return }
+        let websiteEvents = events.filter { $0.type == .websiteSaved }
+        guard !websiteEvents.isEmpty else { return }
+        for event in websiteEvents {
+            if let url = event.websiteUrl {
+                websitesViewModel.showPendingFromExtension(url: url)
+            }
+        }
+    }
+
     private func realtimeClientStopStart() {
         guard let userId = container.authSession.userId, isAuthenticated else {
             realtimeClient.stop()
