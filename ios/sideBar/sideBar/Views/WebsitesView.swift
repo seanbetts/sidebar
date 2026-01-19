@@ -11,6 +11,9 @@ public struct WebsitesView: View {
 
     public var body: some View {
         WebsitesDetailView(viewModel: environment.websitesViewModel)
+            .task {
+                await environment.websitesViewModel.load(force: true)
+            }
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)

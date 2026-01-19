@@ -6,7 +6,12 @@ public enum AppGroupConfiguration {
     private static let keychainServiceKey = "KEYCHAIN_SERVICE"
 
     public static var appGroupId: String? {
-        loadString(forKey: appGroupIdKey)
+        if let configured = loadString(forKey: appGroupIdKey) {
+            return configured
+        }
+        guard let bundleId = Bundle.main.bundleIdentifier else { return nil }
+        let normalized = bundleId.replacingOccurrences(of: ".ShareExtension", with: "")
+        return "group.\(normalized)"
     }
 
     public static var keychainAccessGroup: String? {
