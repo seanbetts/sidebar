@@ -82,6 +82,7 @@
 		142516C62F1EBECC0072E4F9 /* Exceptions for "sideBar" folder in "ShareExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Assets.xcassets,
 				Models/AnyCodable.swift,
 				Models/WebsiteModels.swift,
 				Services/Auth/AuthStateStore.swift,
