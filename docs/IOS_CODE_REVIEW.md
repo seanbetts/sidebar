@@ -21,6 +21,8 @@ The iOS codebase is a well-organized SwiftUI MVVM application with approximately
 | Documentation | ❌ Minimal | Medium |
 | File Sizes | ❌ Violations | High |
 | DRY Violations | ❌ Significant | High |
+| Styling Consistency | ⚠️ Inconsistent | Medium |
+| Security | ⚠️ Good Foundation, 5 Issues | High |
 
 ---
 
@@ -1522,9 +1524,251 @@ Design/Modifiers/
 
 ---
 
+## 7.12 Security Audit
+
+The codebase demonstrates **generally strong security practices** with proper Keychain usage, HTTPS enforcement, and careful logging. However, there are areas requiring attention.
+
+### Security Summary
+
+| Category | Status | Severity |
+|----------|--------|----------|
+| API Keys & Secrets | ✅ Secure | - |
+| Keychain Usage | ✅ Excellent | - |
+| HTTPS Enforcement | ✅ Secure | - |
+| Certificate Pinning | ⚠️ Not Implemented | Medium |
+| Session Management | ✅ Secure | - |
+| Offline Access Window | ⚠️ Too Long (7 days) | Medium |
+| Biometric Auth | ✅ Secure | - |
+| Sensitive Logging | ✅ Excellent | - |
+| Clipboard Handling | ⚠️ No Auto-Clear | Medium |
+| URL Validation | ✅ Excellent | - |
+| CoreData Encryption | ⚠️ Not Configured | Medium |
+| URLCache Protection | ⚠️ Unencrypted | Medium |
+| Debug Code | ✅ Properly Isolated | - |
+
+---
+
+### 7.12.1 Excellent Practices (No Action Required)
+
+#### Keychain Implementation
+**File:** `Services/Auth/KeychainAuthStateStore.swift`
+
+- Uses AES-GCM 256-bit encryption for stored tokens
+- `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` - tokens only accessible when device unlocked
+- iCloud Keychain sync disabled - prevents token leakage across devices
+- Auto-generates encryption key on first use
+
+#### Logging Practices
+**Files:** Throughout codebase
+
+```swift
+// Proper privacy annotations
+logger.error("Sign in failed: \(mappedError.localizedDescription, privacy: .public)")
+logger.error("Response body: \(preview, privacy: .private)")
+```
+
+- Uses `privacy: .public` and `privacy: .private` annotations properly
+- No tokens, passwords, or credentials logged
+- Debug logging only in `#if DEBUG` blocks
+
+#### URL Validation
+**File:** `Utilities/WebsiteURLValidator.swift`
+
+- Blocks localhost access
+- Blocks custom ports
+- Blocks direct IP addresses
+- Validates TLD format
+- Prevents DNS rebinding attacks
+
+#### Configuration Management
+**File:** `Config/SideBar.xcconfig`
+
+- Secrets left empty in tracked config file
+- Uses `.local.xcconfig` for actual values (not in git)
+- Proper environment variable delegation
+
+---
+
+### 7.12.2 Issues Requiring Attention
+
+#### Issue 1: No Certificate Pinning
+**Severity:** MEDIUM
+**Risk:** Vulnerable to MITM attacks if CA infrastructure is compromised
+
+**Current State:** Uses standard URLSession without certificate pinning
+
+**Recommendation:** Implement certificate pinning:
+```swift
+// Using TrustKit or custom URLSessionDelegate
+class PinningDelegate: NSObject, URLSessionDelegate {
+    private let pinnedCertificates: Set<Data> = [/* certificate data */]
+
+    func urlSession(_ session: URLSession,
+                   didReceive challenge: URLAuthenticationChallenge,
+                   completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        guard let serverTrust = challenge.protectionSpace.serverTrust,
+              let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+
+        let serverCertData = SecCertificateCopyData(certificate) as Data
+        if pinnedCertificates.contains(serverCertData) {
+            completionHandler(.useCredential, URLCredential(trust: serverTrust))
+        } else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+        }
+    }
+}
+```
+
+---
+
+#### Issue 2: 7-Day Offline Access Window
+**Severity:** MEDIUM
+**File:** `Services/Auth/SupabaseAuthAdapter.swift:98`
+
+**Current:**
+```swift
+private let offlineAccessWindow: TimeInterval = 60 * 60 * 24 * 7  // 7 days
+```
+
+**Risk:** If device is stolen, attacker has 7 days to use the account without server validation.
+
+**Recommendation:** Reduce to 24-48 hours:
+```swift
+private let offlineAccessWindow: TimeInterval = 60 * 60 * 24 * 1  // 1 day
+```
+
+---
+
+#### Issue 3: Clipboard Not Auto-Cleared
+**Severity:** MEDIUM
+**Files:** `SettingsView.swift:637`, `ChatView.swift:604`, `WebsitesView.swift:378`
+
+**Current:**
+```swift
+private func copyToken() {
+    UIPasteboard.general.string = viewModel.shortcutsToken
+    // Token stays in clipboard indefinitely
+}
+```
+
+**Risk:** Sensitive data (shortcuts token) persists in clipboard; other apps can read it.
+
+**Recommendation:** Auto-clear after 30 seconds:
+```swift
+private func copyToken() {
+    guard !viewModel.shortcutsToken.isEmpty else { return }
+
+    #if os(iOS)
+    UIPasteboard.general.string = viewModel.shortcutsToken
+    #else
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(viewModel.shortcutsToken, forType: .string)
+    #endif
+
+    // Clear after 30 seconds
+    DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+        #if os(iOS)
+        if UIPasteboard.general.string == viewModel.shortcutsToken {
+            UIPasteboard.general.string = ""
+        }
+        #else
+        NSPasteboard.general.clearContents()
+        #endif
+    }
+}
+```
+
+---
+
+#### Issue 4: CoreData Cache Not Protected
+**Severity:** MEDIUM
+**File:** `Services/Persistence/PersistenceController.swift`
+
+**Current:** No `NSFileProtectionKey` configured for CoreData files.
+
+**Risk:** Cache may contain API responses, conversation snippets, and potentially sensitive data stored unencrypted.
+
+**Recommendation:** Enable file protection:
+```swift
+public init(inMemory: Bool = false) {
+    container = NSPersistentContainer(name: "SideBarCache")
+
+    // Add file protection
+    container.persistentStoreDescriptions.forEach { desc in
+        desc.setOption(
+            FileProtectionType.complete as NSObject,
+            forKey: NSPersistentStoreFileProtectionKey
+        )
+    }
+
+    container.loadPersistentStores { /* ... */ }
+}
+```
+
+---
+
+#### Issue 5: URLCache Unprotected
+**Severity:** MEDIUM
+**File:** `Services/Network/APIClient.swift:191-206`
+
+**Current:** 100 MB disk cache stores HTTP responses without encryption in `.cachesDirectory`.
+
+**Risk:** API responses may contain sensitive user data.
+
+**Recommendation:** Disable caching for sensitive endpoints:
+```swift
+// Option 1: Disable disk cache entirely
+configuration.urlCache = URLCache(
+    memoryCapacity: 20 * 1024 * 1024,
+    diskCapacity: 0,  // No disk caching
+    diskPath: nil
+)
+
+// Option 2: Use cache policy for sensitive requests
+var request = URLRequest(url: url)
+request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+```
+
+---
+
+### 7.12.3 Security Implementation Priority
+
+| Fix | Priority | Effort | Impact |
+|-----|----------|--------|--------|
+| Enable CoreData file protection | **High** | Low | High |
+| Reduce offline access window | **High** | Low | Medium |
+| Auto-clear clipboard | **Medium** | Low | Medium |
+| Disable/protect URLCache | **Medium** | Low | Medium |
+| Implement certificate pinning | **Medium** | Medium | High |
+
+---
+
+### 7.12.4 Security Checklist for Future Development
+
+- [ ] Never log tokens, passwords, or PII without `privacy: .private`
+- [ ] Store sensitive data in Keychain, not UserDefaults
+- [ ] Use `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` for Keychain items
+- [ ] Validate all URLs before navigation (use `WebsiteURLValidator` pattern)
+- [ ] Clear clipboard after copying sensitive data
+- [ ] Use HTTPS for all network requests
+- [ ] Consider certificate pinning for high-security endpoints
+- [ ] Enable file protection for local databases
+- [ ] Keep DEBUG-only code in `#if DEBUG` blocks
+
+---
+
 ## 8. Action Plan
 
 ### Phase 1: Critical Fixes & Quick Wins (Week 1-2)
+
+**Security (High Priority):**
+- [ ] Enable CoreData file protection in `PersistenceController.swift`
+- [ ] Reduce offline access window from 7 days to 24 hours
+- [ ] Add auto-clear for clipboard after copying sensitive data
+- [ ] Disable or protect URLCache for sensitive endpoints
 
 **Error Handling:**
 - [ ] Fix empty catch blocks in SupabaseRealtimeAdapter.swift
@@ -1617,6 +1861,20 @@ Design/Modifiers/
 | Typography tokens | 0 | 10+ | -10 |
 | Semantic color tokens | 0 | 6+ | -6 |
 | Platform token coverage | 0% | 90%+ | -90% |
+
+### Security Metrics
+
+| Metric | Current | Target | Status |
+|--------|---------|--------|--------|
+| Keychain for sensitive data | ✅ Yes | Yes | Secure |
+| HTTPS enforcement | ✅ Yes | Yes | Secure |
+| Certificate pinning | ❌ No | Yes | Action needed |
+| CoreData file protection | ❌ No | Yes | Action needed |
+| URLCache protection | ❌ No | Yes | Action needed |
+| Offline access window | 7 days | 1-2 days | Action needed |
+| Clipboard auto-clear | ❌ No | Yes | Action needed |
+| Sensitive data logging | ✅ Secure | Secure | Secure |
+| Debug code isolation | ✅ Secure | Secure | Secure |
 
 ---
 
