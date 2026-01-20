@@ -1,7 +1,7 @@
 import UIKit
 
-final class ShareLoadingView: UIView {
-    private let activityIndicator = UIActivityIndicatorView(style: .large)
+final class ShareErrorView: UIView {
+    private let iconImageView = UIImageView()
     private let titleLabel = UILabel()
     private let messageLabel = UILabel()
     private let logoImageView = UIImageView()
@@ -17,6 +17,13 @@ final class ShareLoadingView: UIView {
 
     private func setup(message: String) {
         backgroundColor = .systemBackground
+
+        iconImageView.image = UIImage(systemName: "xmark.circle.fill")
+        iconImageView.tintColor = .label
+        iconImageView.contentMode = .scaleAspectFit
+        iconImageView.translatesAutoresizingMaskIntoConstraints = false
+        iconImageView.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        iconImageView.widthAnchor.constraint(equalToConstant: 36).isActive = true
 
         titleLabel.text = "sideBar"
         titleLabel.font = .systemFont(ofSize: 36, weight: .semibold)
@@ -39,13 +46,11 @@ final class ShareLoadingView: UIView {
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
 
-        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        activityIndicator.startAnimating()
-
-        let content = UIStackView(arrangedSubviews: [logoImageView, titleLabel, activityIndicator, messageLabel])
+        let content = UIStackView(arrangedSubviews: [logoImageView, titleLabel, iconImageView, messageLabel])
         content.axis = .vertical
         content.alignment = .center
         content.spacing = 8
+        content.setCustomSpacing(72, after: titleLabel)
         content.translatesAutoresizingMaskIntoConstraints = false
         addSubview(content)
 

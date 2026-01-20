@@ -81,7 +81,6 @@ public struct BiometricLockView: View {
         .background(DesignTokens.Colors.background)
         .onAppear {
             updateBiometryType()
-            authenticate()
         }
     }
 
