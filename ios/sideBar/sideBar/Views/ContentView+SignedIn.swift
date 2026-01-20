@@ -1,3 +1,4 @@
+import LocalAuthentication
 import SwiftUI
 #if os(iOS)
 import UIKit
@@ -6,7 +7,7 @@ import UIKit
 // MARK: - ContentView+SignedIn
 
 extension ContentView {
-    private var signedInContent: AnyView {
+    var signedInContent: AnyView {
         var content: AnyView = AnyView(
             SignedInContentView(
                 biometricUnlockEnabled: biometricUnlockEnabled,
@@ -325,7 +326,7 @@ extension ContentView {
         return content
     }
 
-    private func logStartup(_ message: String) {
+    func logStartup(_ message: String) {
         #if DEBUG
         #if os(iOS)
         AppLaunchMetrics.shared.mark(message)
@@ -336,7 +337,7 @@ extension ContentView {
         #endif
     }
 
-    private var biometricHintTitle: String {
+    var biometricHintTitle: String {
         switch environment.biometricMonitor.biometryType {
         case .touchID:
             return "Enable Touch ID?"
@@ -345,7 +346,7 @@ extension ContentView {
         }
     }
 
-    private var biometricHintMessage: String {
+    var biometricHintMessage: String {
         switch environment.biometricMonitor.biometryType {
         case .touchID:
             return "Unlock sideBar quickly and securely with Touch ID."

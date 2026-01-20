@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for NotesProviding.
 public protocol NotesProviding {
     func listTree() async throws -> FileTree
     func getNote(id: String) async throws -> NotePayload

@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+/// Defines the requirements for AuthSession.
 public protocol AuthSession {
     var accessToken: String? { get }
     var userId: String? { get }

@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for IngestionProviding.
 public protocol IngestionProviding {
     func list() async throws -> IngestionListResponse
     func getMeta(fileId: String) async throws -> IngestionMetaResponse

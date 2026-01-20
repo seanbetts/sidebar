@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension ContentView {
-    private func phoneTabView(for section: AppSection) -> some View {
+    func phoneTabView(for section: AppSection) -> some View {
         NavigationStack {
             phonePanelView(for: section)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -17,11 +17,11 @@ extension ContentView {
         }
     }
 
-    private var phoneSections: [AppSection] {
+    var phoneSections: [AppSection] {
         [.notes, .tasks, .websites, .files, .chat]
     }
 
-    private func phoneIconName(for section: AppSection) -> String {
+    func phoneIconName(for section: AppSection) -> String {
         switch section {
         case .notes:
             return "text.document"
@@ -39,22 +39,22 @@ extension ContentView {
     }
 
     @ViewBuilder
-    private func phonePanelView(for section: AppSection) -> some View {
+    func phonePanelView(for section: AppSection) -> some View {
         sectionDefinition(for: section).panelView()
     }
 
-    private func phoneDetailItemBinding(for section: AppSection) -> Binding<PhoneDetailRoute?> {
+    func phoneDetailItemBinding(for section: AppSection) -> Binding<PhoneDetailRoute?> {
         sectionDefinition(for: section).phoneSelection()
     }
 
-    private func detailViewDefinition(for section: AppSection?) -> AnyView {
+    func detailViewDefinition(for section: AppSection?) -> AnyView {
         guard let section else {
             return AnyView(WelcomeEmptyView())
         }
         return sectionDefinition(for: section).detailView()
     }
 
-    private func sectionDefinition(for section: AppSection) -> SectionDefinition {
+    func sectionDefinition(for section: AppSection) -> SectionDefinition {
         switch section {
         case .chat:
             return SectionDefinition(

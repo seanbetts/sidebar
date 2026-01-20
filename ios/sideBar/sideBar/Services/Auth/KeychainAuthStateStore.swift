@@ -4,6 +4,7 @@ import CryptoKit
 
 // MARK: - KeychainAuthStateStore
 
+/// Defines KeychainError.
 public enum KeychainError: LocalizedError, Equatable {
     case itemNotFound
     case duplicateItem
@@ -24,6 +25,7 @@ public enum KeychainError: LocalizedError, Equatable {
     }
 }
 
+/// Defines the requirements for KeychainClient.
 public protocol KeychainClient {
     func copyMatching(_ query: CFDictionary, result: UnsafeMutablePointer<AnyObject?>?) -> OSStatus
     func add(_ attributes: CFDictionary, result: UnsafeMutablePointer<AnyObject?>?) -> OSStatus
@@ -31,6 +33,7 @@ public protocol KeychainClient {
     func delete(_ query: CFDictionary) -> OSStatus
 }
 
+/// Represents SystemKeychainClient.
 public struct SystemKeychainClient: KeychainClient {
     public init() {
     }

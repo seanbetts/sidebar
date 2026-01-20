@@ -33,7 +33,7 @@ public struct ConfigErrorView: View {
     }
 }
 
-private enum ActiveAlert: Identifiable, Equatable {
+enum ActiveAlert: Identifiable, Equatable {
     case biometricUnavailable
     case biometricHint
     case sessionExpiry

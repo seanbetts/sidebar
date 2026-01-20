@@ -19,39 +19,39 @@ public enum AppSection: String, CaseIterable, Identifiable {
 }
 
 public struct ContentView: View {
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var environment: AppEnvironment
     #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.colorScheme) var colorScheme
     #endif
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var sidebarSelection: AppSection? = nil
-    @State private var primarySection: AppSection? = nil
-    @State private var secondarySection: AppSection? = .chat
-    @State private var lastNonChatSection: AppSection? = nil
-    @AppStorage(AppStorageKeys.leftPanelExpanded) private var isLeftPanelExpanded: Bool = true
-    @AppStorage(AppStorageKeys.biometricUnlockEnabled) private var biometricUnlockEnabled: Bool = false
-    @State private var isSettingsPresented = false
-    @State private var phoneSelection: AppSection = .chat
-    @State private var isPhoneScratchpadPresented = false
-    @State private var isShortcutsPresented = false
-    @State private var didSetInitialSelection = false
-    @State private var didLoadSettings = false
-    @State private var isBiometricUnlocked = false
-    @State private var activeAlert: ActiveAlert?
-    @State private var pendingSessionExpiryAlert = false
-    @State private var pendingBiometricUnavailableAlert = false
-    @State private var isSigningOut = false
-    @State private var pendingReadyFileNotification: ReadyFileNotification?
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @Environment(\.scenePhase) var scenePhase
+    @State var sidebarSelection: AppSection? = nil
+    @State var primarySection: AppSection? = nil
+    @State var secondarySection: AppSection? = .chat
+    @State var lastNonChatSection: AppSection? = nil
+    @AppStorage(AppStorageKeys.leftPanelExpanded) var isLeftPanelExpanded: Bool = true
+    @AppStorage(AppStorageKeys.biometricUnlockEnabled) var biometricUnlockEnabled: Bool = false
+    @State var isSettingsPresented = false
+    @State var phoneSelection: AppSection = .chat
+    @State var isPhoneScratchpadPresented = false
+    @State var isShortcutsPresented = false
+    @State var didSetInitialSelection = false
+    @State var didLoadSettings = false
+    @State var isBiometricUnlocked = false
+    @State var activeAlert: ActiveAlert?
+    @State var pendingSessionExpiryAlert = false
+    @State var pendingBiometricUnavailableAlert = false
+    @State var isSigningOut = false
+    @State var pendingReadyFileNotification: ReadyFileNotification?
     #if os(iOS)
-    @AppStorage(AppStorageKeys.hasShownBiometricHint) private var hasShownBiometricHint = false
+    @AppStorage(AppStorageKeys.hasShownBiometricHint) var hasShownBiometricHint = false
     #endif
-    @State private var hasCompletedInitialSetup = false
-    @State private var backgroundedAt: Date?
+    @State var hasCompletedInitialSetup = false
+    @State var backgroundedAt: Date?
 
     /// Grace period before requiring biometric re-authentication (30 seconds)
-    private let biometricGracePeriod: TimeInterval = 30
+    let biometricGracePeriod: TimeInterval = 30
 
     public init() {
     }

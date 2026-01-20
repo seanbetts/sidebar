@@ -31,7 +31,7 @@ public final class CoreDataCacheClient: CacheClient {
                     do {
                         try context.save()
                     } catch {
-                        logger.error("Cache entry cleanup failed: \(error.localizedDescription, privacy: .public)")
+                        self.logger.error("Cache entry cleanup failed: \(error.localizedDescription, privacy: .public)")
                     }
                     return
                 }
@@ -39,10 +39,10 @@ public final class CoreDataCacheClient: CacheClient {
                 do {
                     decoded = try decoder.decode(T.self, from: entry.payload)
                 } catch {
-                    logger.error("Cache decode failed: \(error.localizedDescription, privacy: .public)")
+                    self.logger.error("Cache decode failed: \(error.localizedDescription, privacy: .public)")
                 }
             } catch {
-                logger.error("Cache fetch failed: \(error.localizedDescription, privacy: .public)")
+                self.logger.error("Cache fetch failed: \(error.localizedDescription, privacy: .public)")
             }
         }
         return decoded
@@ -70,7 +70,7 @@ public final class CoreDataCacheClient: CacheClient {
             do {
                 entry = try context.fetch(request).first ?? CacheEntry(context: context)
             } catch {
-                logger.error("Cache fetch failed: \(error.localizedDescription, privacy: .public)")
+                self.logger.error("Cache fetch failed: \(error.localizedDescription, privacy: .public)")
                 entry = CacheEntry(context: context)
             }
             entry.key = key
@@ -85,7 +85,7 @@ public final class CoreDataCacheClient: CacheClient {
             do {
                 try context.save()
             } catch {
-                logger.error("Cache save failed: \(error.localizedDescription, privacy: .public)")
+                self.logger.error("Cache save failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -102,7 +102,7 @@ public final class CoreDataCacheClient: CacheClient {
                 }
                 try context.save()
             } catch {
-                logger.error("Cache remove failed: \(error.localizedDescription, privacy: .public)")
+                self.logger.error("Cache remove failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -118,7 +118,7 @@ public final class CoreDataCacheClient: CacheClient {
                 }
                 try context.save()
             } catch {
-                logger.error("Cache clear failed: \(error.localizedDescription, privacy: .public)")
+                self.logger.error("Cache clear failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

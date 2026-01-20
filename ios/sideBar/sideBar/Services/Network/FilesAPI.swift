@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for FilesProviding.
 public protocol FilesProviding {
     func listTree(basePath: String) async throws -> FileTree
     func getContent(basePath: String, path: String) async throws -> FileContent

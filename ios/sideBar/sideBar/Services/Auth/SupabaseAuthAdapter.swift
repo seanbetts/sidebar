@@ -5,6 +5,7 @@ import os
 
 // MARK: - SupabaseAuthAdapter
 
+/// Represents AuthErrorEvent.
 public struct AuthErrorEvent: Equatable {
     public let id = UUID()
     public let message: String
@@ -14,6 +15,7 @@ public struct AuthErrorEvent: Equatable {
     }
 }
 
+/// Defines AuthAdapterError.
 public enum AuthAdapterError: LocalizedError, Equatable {
     case signInInProgress
     case invalidCredentials

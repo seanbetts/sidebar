@@ -5,6 +5,7 @@ import Supabase
 
 // MARK: - SupabaseRealtimeAdapter
 
+/// Defines the requirements for RealtimeEventHandler.
 public protocol RealtimeEventHandler: AnyObject {
     func handleNoteEvent(_ payload: RealtimePayload<NoteRealtimeRecord>)
     func handleWebsiteEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>)
@@ -520,6 +521,7 @@ private actor AccessTokenStore {
     }
 }
 
+/// Represents NoteRealtimeRecord.
 public struct NoteRealtimeRecord: Codable {
     public let id: String
     public let title: String?
@@ -529,6 +531,7 @@ public struct NoteRealtimeRecord: Codable {
     public let deletedAt: String?
 }
 
+/// Represents WebsiteRealtimeRecord.
 public struct WebsiteRealtimeRecord: Codable {
     public let id: String
     public let title: String?
@@ -542,6 +545,7 @@ public struct WebsiteRealtimeRecord: Codable {
     public let deletedAt: String?
 }
 
+/// Represents IngestedFileRealtimeRecord.
 public struct IngestedFileRealtimeRecord: Codable {
     public let id: String
     public let filenameOriginal: String?
@@ -558,6 +562,7 @@ public struct IngestedFileRealtimeRecord: Codable {
     public let deletedAt: String?
 }
 
+/// Represents FileJobRealtimeRecord.
 public struct FileJobRealtimeRecord: Codable {
     public let fileId: String
     public let status: String?

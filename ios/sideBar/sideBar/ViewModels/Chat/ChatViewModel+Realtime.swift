@@ -4,67 +4,67 @@ import Foundation
 // MARK: - ChatViewModel+Realtime
 
 extension ChatViewModel {
-    private func handleNoteCreate(_ event: ChatStreamEvent) {
+    func handleNoteCreate(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
-    private func handleNoteUpdate(_ event: ChatStreamEvent) {
+    func handleNoteUpdate(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
-    private func handleNoteDelete(_ event: ChatStreamEvent) {
+    func handleNoteDelete(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
-    private func handleNotePinned(_ event: ChatStreamEvent) {
+    func handleNotePinned(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
-    private func handleNoteMoved(_ event: ChatStreamEvent) {
+    func handleNoteMoved(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
-    private func handleWebsiteSaved(_ event: ChatStreamEvent) {
+    func handleWebsiteSaved(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
         refreshWebsitesList()
     }
 
-    private func handleWebsitePinned(_ event: ChatStreamEvent) {
+    func handleWebsitePinned(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
         refreshWebsitesList()
     }
 
-    private func handleWebsiteArchived(_ event: ChatStreamEvent) {
+    func handleWebsiteArchived(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
         refreshWebsitesList()
     }
 
-    private func handleWebsiteDeleted(_ event: ChatStreamEvent) {
+    func handleWebsiteDeleted(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")
         cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
         refreshWebsitesList()
     }
 
-    private func handleIngestionUpdated(_ event: ChatStreamEvent) {
+    func handleIngestionUpdated(_ event: ChatStreamEvent) {
         let fileId = stringValue(from: event.data, key: "file_id")
         cache.invalidateList(listKey: CacheKeys.ingestionList, detailKey: CacheKeys.ingestionMeta, id: fileId)
         refreshIngestionList(fileId: fileId)
     }
 
-    private func refreshNotesTree() {
+    func refreshNotesTree() {
         guard let notesStore else {
             return
         }
@@ -73,7 +73,7 @@ extension ChatViewModel {
         }
     }
 
-    private func refreshWebsitesList() {
+    func refreshWebsitesList() {
         guard let websitesStore else {
             return
         }
@@ -82,7 +82,7 @@ extension ChatViewModel {
         }
     }
 
-    private func refreshIngestionList(fileId: String?) {
+    func refreshIngestionList(fileId: String?) {
         guard let ingestionStore else {
             return
         }
@@ -94,7 +94,7 @@ extension ChatViewModel {
         }
     }
 
-    private func handleThemeSet(_ event: ChatStreamEvent) {
+    func handleThemeSet(_ event: ChatStreamEvent) {
         guard let themeRaw = stringValue(from: event.data, key: "theme"),
               let mode = ThemeMode(rawValue: themeRaw) else {
             return
@@ -102,27 +102,27 @@ extension ChatViewModel {
         themeManager.mode = mode
     }
 
-    private func handlePromptPreview(_ event: ChatStreamEvent) {
+    func handlePromptPreview(_ event: ChatStreamEvent) {
         let systemPrompt = stringValue(from: event.data, key: "system_prompt")
         let firstMessagePrompt = stringValue(from: event.data, key: "first_message_prompt")
         promptPreview = ChatPromptPreview(systemPrompt: systemPrompt, firstMessagePrompt: firstMessagePrompt)
     }
 
-    private func handleToolStart(_ event: ChatStreamEvent) {
+    func handleToolStart(_ event: ChatStreamEvent) {
         guard let name = stringValue(from: event.data, key: "name") else {
             return
         }
         clearActiveToolTask?.cancel()
-        activeTool = ChatActiveTool(name: name, status: .running, startedAt: clock())
+        activeTool = ChatActiveTool(name: name, status: .running, startedAt: self.clock())
     }
 
-    private func handleToolEnd(_ event: ChatStreamEvent) {
+    func handleToolEnd(_ event: ChatStreamEvent) {
         guard let name = stringValue(from: event.data, key: "name") else {
             return
         }
         let statusRaw = stringValue(from: event.data, key: "status")
         let status = statusRaw == ToolActivityStatus.error.rawValue ? ToolActivityStatus.error : ToolActivityStatus.success
-        activeTool = ChatActiveTool(name: name, status: status, startedAt: activeTool?.startedAt ?? clock())
+        activeTool = ChatActiveTool(name: name, status: status, startedAt: activeTool?.startedAt ?? self.clock())
         if status == .error {
             markNeedsNewline()
         }
@@ -137,7 +137,7 @@ extension ChatViewModel {
         }
     }
 
-    private func markNeedsNewline() {
+    func markNeedsNewline() {
         guard let messageId = activeStreamingMessageId else {
             return
         }
@@ -155,7 +155,7 @@ extension ChatViewModel {
         }
     }
 
-    private func updateMessage(id: String, transform: (Message) -> Message) {
+    func updateMessage(id: String, transform: (Message) -> Message) {
         messages = messages.map { message in
             guard message.id == id else {
                 return message
@@ -165,7 +165,7 @@ extension ChatViewModel {
         syncMessagesToStore(conversationId: streamingConversationId ?? selectedConversationId)
     }
 
-    private func upsertToolCall(existing: [ToolCall]?, newValue: ToolCall) -> [ToolCall] {
+    func upsertToolCall(existing: [ToolCall]?, newValue: ToolCall) -> [ToolCall] {
         var updated = existing ?? []
         if let index = updated.firstIndex(where: { $0.id == newValue.id }) {
             updated[index] = newValue
@@ -175,7 +175,7 @@ extension ChatViewModel {
         return updated
     }
 
-    private func toolCallFromEvent(_ event: ChatStreamEvent, includeResult: Bool) -> ToolCall? {
+    func toolCallFromEvent(_ event: ChatStreamEvent, includeResult: Bool) -> ToolCall? {
         guard let payload = dictionaryValue(from: event.data) else {
             return nil
         }
@@ -190,32 +190,32 @@ extension ChatViewModel {
         return ToolCall(id: id, name: name, parameters: parameters, status: status, result: result)
     }
 
-    private func dictionaryValue(from data: AnyCodable?) -> [String: Any]? {
+    func dictionaryValue(from data: AnyCodable?) -> [String: Any]? {
         data?.value as? [String: Any]
     }
 
-    private func stringValue(from data: AnyCodable?, key: String) -> String? {
+    func stringValue(from data: AnyCodable?, key: String) -> String? {
         guard let payload = dictionaryValue(from: data) else {
             return nil
         }
         return payload[key] as? String
     }
 
-    private func anyCodableValue(_ value: Any?) -> AnyCodable? {
+    func anyCodableValue(_ value: Any?) -> AnyCodable? {
         guard let value else {
             return nil
         }
         return AnyCodable(value)
     }
 
-    private func dictionaryToAnyCodable(_ value: Any?) -> [String: AnyCodable] {
+    func dictionaryToAnyCodable(_ value: Any?) -> [String: AnyCodable] {
         guard let dict = value as? [String: Any] else {
             return [:]
         }
         return dict.mapValues { AnyCodable($0) }
     }
 
-    private func persistMessage(conversationId: String, message: Message) async {
+    func persistMessage(conversationId: String, message: Message) async {
         do {
             let updated = try await conversationsAPI.addMessage(
                 conversationId: conversationId,
@@ -245,11 +245,11 @@ extension ChatViewModel {
         return formatter
     }()
 
-    private static func isoTimestamp(from date: Date) -> String {
+    static func isoTimestamp(from date: Date) -> String {
         isoFormatter.string(from: date)
     }
 
-    private func generateConversationTitleIfNeeded(conversationId: String) async {
+    func generateConversationTitleIfNeeded(conversationId: String) async {
         guard let conversation = chatStore.conversations.first(where: { $0.id == conversationId }) else {
             return
         }
@@ -280,7 +280,7 @@ extension ChatViewModel {
         }
     }
 
-    private func prefixForToken(message: Message, token: String) -> String {
+    func prefixForToken(message: Message, token: String) -> String {
         guard message.needsNewline == true,
               !message.content.isEmpty,
               !message.content.hasSuffix("\n"),
@@ -290,7 +290,7 @@ extension ChatViewModel {
         return "\n\n"
     }
 
-    private var activeStreamingMessageId: String? {
+    var activeStreamingMessageId: String? {
         if let currentStreamMessageId {
             return currentStreamMessageId
         }

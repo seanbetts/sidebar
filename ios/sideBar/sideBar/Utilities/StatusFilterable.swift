@@ -6,7 +6,9 @@ public protocol StatusFilterable {
 }
 
 public extension Array where Element: StatusFilterable {
-    static let terminalStatuses = ["ready", "failed", "canceled"]
+    static var terminalStatuses: [String] {
+        ["ready", "failed", "canceled"]
+    }
 
     var activeItems: [Element] {
         filter { !Self.terminalStatuses.contains($0.statusValue) }

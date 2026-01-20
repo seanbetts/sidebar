@@ -1,5 +1,6 @@
 import Foundation
 
+/// Represents ParsedSSEEvent.
 public struct ParsedSSEEvent {
     public let type: String
     public let data: String

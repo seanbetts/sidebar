@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+/// Defines CacheKeys.
 public enum CacheKeys {
     public static let conversationsList = "conversations.list"
     public static let notesTree = "notes.tree"

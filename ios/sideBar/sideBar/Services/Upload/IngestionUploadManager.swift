@@ -3,6 +3,7 @@ import OSLog
 
 // MARK: - IngestionUploadManager
 
+/// Defines the requirements for IngestionUploadManaging.
 public protocol IngestionUploadManaging: AnyObject {
     func startUpload(
         uploadId: String,

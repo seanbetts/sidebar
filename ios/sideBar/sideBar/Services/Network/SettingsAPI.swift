@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for SettingsProviding.
 public protocol SettingsProviding {
     func getSettings() async throws -> UserSettings
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings

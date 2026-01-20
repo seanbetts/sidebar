@@ -1,5 +1,6 @@
 import Foundation
 
+/// Represents ChatActiveTool.
 public struct ChatActiveTool: Equatable {
     public let name: String
     public let status: ToolActivityStatus
@@ -12,12 +13,14 @@ public struct ChatActiveTool: Equatable {
     }
 }
 
+/// Defines ToolActivityStatus.
 public enum ToolActivityStatus: String {
     case running
     case success
     case error
 }
 
+/// Represents ChatPromptPreview.
 public struct ChatPromptPreview: Equatable {
     public let systemPrompt: String?
     public let firstMessagePrompt: String?
@@ -28,6 +31,7 @@ public struct ChatPromptPreview: Equatable {
     }
 }
 
+/// Represents ConversationGroup.
 public struct ConversationGroup: Identifiable {
     public let id: String
     public let title: String

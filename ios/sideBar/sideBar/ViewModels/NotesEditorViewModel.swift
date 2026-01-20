@@ -270,7 +270,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     private func handleNoteUpdate(_ note: NotePayload?) {
-        saveTask?.cancel()
+        saveTask.cancel()
         saveError = nil
         guard let note else {
             currentNoteId = nil
@@ -312,7 +312,7 @@ public final class NotesEditorViewModel: ObservableObject {
         if isDirty, incoming != content {
             pendingExternalContent = incoming
             hasExternalUpdate = true
-            saveTask?.cancel()
+            saveTask.cancel()
             pendingSaveRequested = false
             return
         }
