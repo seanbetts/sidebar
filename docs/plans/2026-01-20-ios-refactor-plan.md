@@ -111,6 +111,7 @@ Progress:
 - Added ChatAPI and IngestionAPI tests.
 - Added NotesAPI and WebsitesAPI tests.
 - Added ConversationsAPI, FilesAPI, and MemoriesAPI tests.
+- Added IngestionUploadManager helper tests.
 
 ## Phase 7: Documentation
 1) Doc comments for all public ViewModels and Services
