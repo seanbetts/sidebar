@@ -59,13 +59,14 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
 
             let bodyURL = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString)")
             do {
-                try self.writeMultipartBody(
+                try IngestionUploadHelpers.writeMultipartBody(
                     to: bodyURL,
                     boundary: boundary,
                     fileURL: fileURL,
                     filename: filename,
                     mimeType: mimeType,
-                    folder: folder
+                    folder: folder,
+                    logger: self.logger
                 )
             } catch {
                 DispatchQueue.main.async { onCompletion(.failure(error)) }
@@ -97,13 +98,58 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         }
     }
 
-    private func writeMultipartBody(
+    private func handleCompletion(for task: URLSessionTask, error: Error?) {
+        let context = queue.sync { contexts[task.taskIdentifier] }
+        guard let context else { return }
+        queue.async {
+            self.contexts.removeValue(forKey: task.taskIdentifier)
+            self.taskIdsByUploadId.removeValue(forKey: context.uploadId)
+        }
+        defer {
+            do {
+                try FileManager.default.removeItem(at: context.bodyFileURL)
+            } catch {
+                logger.error("Failed to remove upload body file: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+
+        if let error {
+            DispatchQueue.main.async { context.onCompletion(.failure(error)) }
+            return
+        }
+        guard let response = task.response as? HTTPURLResponse else {
+            DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.unknown)) }
+            return
+        }
+        guard (200...299).contains(response.statusCode) else {
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            if let message = APIClient.decodeErrorMessage(data: context.responseData, decoder: decoder) {
+                DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.apiError(message))) }
+                return
+            }
+            DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.requestFailed(response.statusCode))) }
+            return
+        }
+        do {
+            let fileId = try IngestionUploadHelpers.parseUploadResponse(data: context.responseData)
+            DispatchQueue.main.async { context.onCompletion(.success(fileId)) }
+        } catch {
+            DispatchQueue.main.async { context.onCompletion(.failure(error)) }
+        }
+    }
+
+}
+
+enum IngestionUploadHelpers {
+    static func writeMultipartBody(
         to url: URL,
         boundary: String,
         fileURL: URL,
         filename: String,
         mimeType: String,
-        folder: String
+        folder: String,
+        logger: Logger
     ) throws {
         FileManager.default.createFile(atPath: url.path, contents: nil)
         let handle = try FileHandle(forWritingTo: url)
@@ -151,48 +197,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         try handle.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
     }
 
-    private func handleCompletion(for task: URLSessionTask, error: Error?) {
-        let context = queue.sync { contexts[task.taskIdentifier] }
-        guard let context else { return }
-        queue.async {
-            self.contexts.removeValue(forKey: task.taskIdentifier)
-            self.taskIdsByUploadId.removeValue(forKey: context.uploadId)
-        }
-        defer {
-            do {
-                try FileManager.default.removeItem(at: context.bodyFileURL)
-            } catch {
-                logger.error("Failed to remove upload body file: \(error.localizedDescription, privacy: .public)")
-            }
-        }
-
-        if let error {
-            DispatchQueue.main.async { context.onCompletion(.failure(error)) }
-            return
-        }
-        guard let response = task.response as? HTTPURLResponse else {
-            DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.unknown)) }
-            return
-        }
-        guard (200...299).contains(response.statusCode) else {
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            if let message = APIClient.decodeErrorMessage(data: context.responseData, decoder: decoder) {
-                DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.apiError(message))) }
-                return
-            }
-            DispatchQueue.main.async { context.onCompletion(.failure(APIClientError.requestFailed(response.statusCode))) }
-            return
-        }
-        do {
-            let fileId = try parseUploadResponse(data: context.responseData)
-            DispatchQueue.main.async { context.onCompletion(.success(fileId)) }
-        } catch {
-            DispatchQueue.main.async { context.onCompletion(.failure(error)) }
-        }
-    }
-
-    private func parseUploadResponse(data: Data) throws -> String {
+    static func parseUploadResponse(data: Data) throws -> String {
         struct UploadResponse: Decodable {
             let fileId: String?
             let data: Inner?
