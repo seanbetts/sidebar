@@ -106,6 +106,11 @@ Progress:
 - Added SupabaseRealtimeAdapter tests.
 - Added MarkdownFormatting, MarkdownEditing, and MarkdownRendering tests.
 - Added PlacesViewModel tests.
+- Added WeatherAPI, ScratchpadAPI, and ScratchpadStore tests.
+- Added SettingsAPI and SkillsAPI tests.
+- Added ChatAPI and IngestionAPI tests.
+- Added NotesAPI and WebsitesAPI tests.
+- Added ConversationsAPI, FilesAPI, and MemoriesAPI tests.
 
 ## Phase 7: Documentation
 1) Doc comments for all public ViewModels and Services
