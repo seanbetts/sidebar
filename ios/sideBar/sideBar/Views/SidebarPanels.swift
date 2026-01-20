@@ -88,7 +88,9 @@ private struct TasksPanelView: View {
 
 private struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
+    @EnvironmentObject private var environment: AppEnvironment
     @State private var searchQuery: String = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var renameConversationId: String? = nil
     @State private var renameValue: String = ""
     @State private var deleteConversationId: String? = nil
@@ -147,6 +149,25 @@ private struct ConversationsPanelView: View {
         } message: {
             Text(deleteDialogTitle)
         }
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.section == .chat else { return }
+            switch event.action {
+            case .focusSearch:
+                isSearchFocused = true
+            case .renameItem:
+                guard let id = viewModel.selectedConversationId,
+                      let conversation = viewModel.conversations.first(where: { $0.id == id }) else { return }
+                beginRename(conversation)
+            case .deleteItem:
+                guard let id = viewModel.selectedConversationId,
+                      let conversation = viewModel.conversations.first(where: { $0.id == id }) else { return }
+                presentDelete(conversation)
+            case .navigateList(let direction):
+                navigateConversationList(direction: direction)
+            default:
+                break
+            }
+        }
     }
 
     private var header: some View {
@@ -172,7 +193,7 @@ private struct ConversationsPanelView: View {
                 }
                 .frame(height: 28)
             }
-            SearchField(text: $searchQuery, placeholder: "Search chats")
+            SearchField(text: $searchQuery, placeholder: "Search chats", isFocused: $isSearchFocused)
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
@@ -466,6 +487,7 @@ private struct NotesPanelView: View {
     @State private var renameTarget: FileNodeItem? = nil
     @State private var renameValue: String = ""
     @State private var deleteTarget: FileNodeItem? = nil
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -546,6 +568,24 @@ private struct NotesPanelView: View {
         } message: {
             Text(deleteDialogMessage)
         }
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.section == .notes else { return }
+            switch event.action {
+            case .focusSearch:
+                isSearchFocused = true
+            case .newItem:
+                newNoteName = ""
+                isNewNotePresented = true
+            case .createFolder:
+                newFolderName = ""
+                newFolderParent = ""
+                isNewFolderPresented = true
+            case .navigateList(let direction):
+                navigateNotesList(direction: direction)
+            default:
+                break
+            }
+        }
     }
 
     private var header: some View {
@@ -578,7 +618,7 @@ private struct NotesPanelView: View {
                     }
                 }
             }
-            SearchField(text: $viewModel.searchQuery, placeholder: "Search notes")
+            SearchField(text: $viewModel.searchQuery, placeholder: "Search notes", isFocused: $isSearchFocused)
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
@@ -699,6 +739,43 @@ private struct NotesPanelView: View {
         }
     }
 
+    private func navigateNotesList(direction: ShortcutListDirection) {
+        let items = noteNavigationItems()
+        guard !items.isEmpty else { return }
+        let currentId = viewModel.selectedNoteId
+        let nextIndex: Int
+        if let currentId, let index = items.firstIndex(of: currentId) {
+            nextIndex = direction == .next ? min(items.count - 1, index + 1) : max(0, index - 1)
+        } else {
+            nextIndex = direction == .next ? 0 : items.count - 1
+        }
+        let nextId = items[nextIndex]
+        Task { await viewModel.selectNote(id: nextId) }
+    }
+
+    private func noteNavigationItems() -> [String] {
+        let query = viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            return viewModel.searchResults.map { $0.path }
+        }
+        let pinnedIds = pinnedItems.map { $0.id }
+        let mainIds = flattenNoteIds(from: mainNodes)
+        return pinnedIds + mainIds
+    }
+
+    private func flattenNoteIds(from nodes: [FileNode]) -> [String] {
+        var results: [String] = []
+        for node in nodes {
+            if node.type == .file {
+                results.append(node.path)
+            }
+            if let children = node.children, !children.isEmpty {
+                results.append(contentsOf: flattenNoteIds(from: children))
+            }
+        }
+        return results
+    }
+
     private var searchResultsView: some View {
         List {
             Section("Results") {
@@ -744,6 +821,20 @@ private struct NotesPanelView: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(panelBackground)
+    }
+
+    private func navigateConversationList(direction: ShortcutListDirection) {
+        let ids = filteredGroups.flatMap { $0.conversations.map { $0.id } }
+        guard !ids.isEmpty else { return }
+        let currentId = viewModel.selectedConversationId
+        let nextIndex: Int
+        if let currentId, let index = ids.firstIndex(of: currentId) {
+            nextIndex = direction == .next ? min(ids.count - 1, index + 1) : max(0, index - 1)
+        } else {
+            nextIndex = direction == .next ? 0 : ids.count - 1
+        }
+        let nextId = ids[nextIndex]
+        Task { await viewModel.selectConversation(id: nextId) }
     }
 
     private var notesPanelContent: some View {
@@ -1279,6 +1370,7 @@ private struct FilesPanelView: View {
     @State private var isYouTubeAlertPresented = false
     @State private var newYouTubeUrl: String = ""
     @State private var knownFileIds: Set<String> = []
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1363,6 +1455,19 @@ private struct FilesPanelView: View {
             }
             knownFileIds = newIdSet
         }
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.section == .files else { return }
+            switch event.action {
+            case .focusSearch:
+                isSearchFocused = true
+            case .newItem:
+                isFileImporterPresented = true
+            case .navigateList(let direction):
+                navigateFilesList(direction: direction)
+            default:
+                break
+            }
+        }
     }
 
     private var header: some View {
@@ -1393,7 +1498,7 @@ private struct FilesPanelView: View {
                     }
                 }
             }
-            SearchField(text: $searchQuery, placeholder: "Search files")
+            SearchField(text: $searchQuery, placeholder: "Search files", isFocused: $isSearchFocused)
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
@@ -1564,6 +1669,33 @@ private struct FilesPanelView: View {
     private func clearDeleteTarget() {
         deleteTarget = nil
         isDeleteAlertPresented = false
+    }
+
+    private func navigateFilesList(direction: ShortcutListDirection) {
+        let ids = filesNavigationItems()
+        guard !ids.isEmpty else { return }
+        let currentId = viewModel.selectedFileId
+        let nextIndex: Int
+        if let currentId, let index = ids.firstIndex(of: currentId) {
+            nextIndex = direction == .next ? min(ids.count - 1, index + 1) : max(0, index - 1)
+        } else {
+            nextIndex = direction == .next ? 0 : ids.count - 1
+        }
+        open(fileId: ids[nextIndex])
+    }
+
+    private func filesNavigationItems() -> [String] {
+        if !searchQuery.trimmed.isEmpty {
+            return searchResults.filter { !isFolder($0) }.map { $0.file.id }
+        }
+        var ids: [String] = []
+        ids.append(contentsOf: pinnedItems.filter { !isFolder($0) }.map { $0.file.id })
+        for category in categoryOrder {
+            if let items = categorizedItems[category] {
+                ids.append(contentsOf: items.filter { !isFolder($0) }.map { $0.file.id })
+            }
+        }
+        return ids
     }
 
     private func handleFileImport(_ result: Result<[URL], Error>) {
@@ -1983,6 +2115,7 @@ private struct WebsitesPanelView: View {
     @State private var newWebsiteUrl: String = ""
     @State private var saveErrorMessage: String? = nil
     @State private var archiveHeight: CGFloat = 0
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -2035,6 +2168,20 @@ private struct WebsitesPanelView: View {
         } message: {
             Text(saveErrorMessage ?? "Failed to save website. Please try again.")
         }
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.section == .websites else { return }
+            switch event.action {
+            case .focusSearch:
+                isSearchFocused = true
+            case .newItem:
+                newWebsiteUrl = ""
+                isNewWebsitePresented = true
+            case .navigateList(let direction):
+                navigateWebsitesList(direction: direction)
+            default:
+                break
+            }
+        }
     }
 
     private var header: some View {
@@ -2056,7 +2203,7 @@ private struct WebsitesPanelView: View {
                     }
                 }
             }
-            SearchField(text: $searchQuery, placeholder: "Search websites")
+            SearchField(text: $searchQuery, placeholder: "Search websites", isFocused: $isSearchFocused)
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.bottom, DesignTokens.Spacing.sm)
         }
@@ -2259,6 +2406,29 @@ private struct WebsitesPanelView: View {
     private func open(item: WebsiteItem) {
         selection = item.id
         Task { await viewModel.selectWebsite(id: item.id) }
+    }
+
+    private func navigateWebsitesList(direction: ShortcutListDirection) {
+        let ids = websitesNavigationItems()
+        guard !ids.isEmpty else { return }
+        let currentId = selection ?? viewModel.active?.id
+        let nextIndex: Int
+        if let currentId, let index = ids.firstIndex(of: currentId) {
+            nextIndex = direction == .next ? min(ids.count - 1, index + 1) : max(0, index - 1)
+        } else {
+            nextIndex = direction == .next ? 0 : ids.count - 1
+        }
+        let nextId = ids[nextIndex]
+        if let item = viewModel.items.first(where: { $0.id == nextId }) {
+            open(item: item)
+        }
+    }
+
+    private func websitesNavigationItems() -> [String] {
+        if !searchQuery.trimmed.isEmpty {
+            return filteredItems.map { $0.id }
+        }
+        return pinnedItemsSorted.map { $0.id } + mainItems.map { $0.id }
     }
 
     @ViewBuilder

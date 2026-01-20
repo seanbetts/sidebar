@@ -31,6 +31,9 @@ public final class AppEnvironment: ObservableObject {
     @Published public var commandSelection: AppSection? = nil
     @Published public var sessionExpiryWarning: Date?
     @Published public private(set) var signOutEvent: UUID?
+    @Published public var activeSection: AppSection? = nil
+    @Published public var isNotesEditing: Bool = false
+    @Published public var shortcutActionEvent: ShortcutActionEvent?
     private var cancellables = Set<AnyCancellable>()
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
@@ -152,6 +155,12 @@ public final class AppEnvironment: ObservableObject {
             }
             .store(in: &cancellables)
 
+        notesEditorViewModel.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
         websitesViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
@@ -195,6 +204,23 @@ public final class AppEnvironment: ObservableObject {
         logStep("Realtime + monitors", initStart)
         #endif
     }
+
+    #if os(iOS)
+    public var activeShortcutContexts: Set<ShortcutContext> {
+        var contexts: Set<ShortcutContext> = [.universal]
+        if let activeSection {
+            contexts.insert(ShortcutContext.from(section: activeSection))
+        }
+        if isNotesEditing {
+            contexts.insert(.notesEditing)
+        }
+        return contexts
+    }
+
+    public func emitShortcutAction(_ action: ShortcutAction) {
+        shortcutActionEvent = ShortcutActionEvent(action: action, section: activeSection)
+    }
+    #endif
 
     public func refreshAuthState() {
         let wasAuthenticated = isAuthenticated

@@ -362,6 +362,21 @@ private struct FilesHeaderActions: View {
         ) { _ in
             exportDocument = nil
         }
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.section == .files else { return }
+            switch event.action {
+            case .renameItem:
+                beginRename()
+            case .deleteItem:
+                isDeleteAlertPresented = true
+            case .openInDefaultApp:
+                Task { await downloadFile() }
+            case .quickLook:
+                environment.toastCenter.show(message: "Quick Look is not available yet")
+            default:
+                break
+            }
+        }
     }
 
     private var fileActionsMenu: some View {

@@ -38,17 +38,23 @@ final class KeyCommandController: UIViewController {
 
 **Integration**: Embedded in `ContentView.swift:76-82` as zero-sized background view
 
-**Mechanism**: Updates `environment.commandSelection` → observed by ContentView → updates UI
+**Mechanism**: Registry + action router drive `UIKeyCommand` dispatch; `ContentView` responds to shortcut events.
 
-### To Be Built ❌
+**Implemented System**:
+- `KeyboardShortcutRegistry` with conflict logging + context priority
+- `ShortcutActionRouter` for context-aware dispatch
+- `KeyboardShortcutsView` reference sheet (⌘?)
+- Per-section handlers for search focus, list navigation, and dialogs
 
-- ⌘N, ⌘W, ⌘F and other universal shortcuts
-- Context-aware shortcuts (chat-specific, notes-specific, etc.)
-- Keyboard shortcuts reference view (⌘/)
-- Centralized shortcut registry
-- Conflict detection system
-- Inline shortcut hints in UI
-- Command palette (⌘K) - future enhancement
+### Status ✅
+
+- ✅ ⌘N, ⌘W, ⌘F and other universal shortcuts
+- ✅ Context-aware shortcuts (chat-specific, notes-specific, etc.)
+- ✅ Keyboard shortcuts reference view (⌘?)
+- ✅ Centralized shortcut registry
+- ✅ Conflict detection system (priority + logging)
+- ⏳ Inline shortcut hints in UI (deferred)
+- ❌ Command palette (⌘K) - future enhancement
 
 ## Complete Shortcut Scheme
 
@@ -58,13 +64,13 @@ final class KeyCommandController: UIViewController {
 |----------|--------|----------------|----------|
 | `⌘1-5` | Navigate to sections | ✅ Implemented | - |
 | `⌘,` | Open Settings | ✅ Implemented | - |
-| `⌘N` | New item in current section | ❌ To build | **P0** |
-| `⌘F` | Focus search/filter | ❌ To build | **P0** |
-| `⌘W` | Close current item | ❌ To build | **P0** |
-| `⌘R` | Refresh current section | ❌ To build | **P1** |
-| `⌘/` or `⌘?` | Show shortcuts reference | ❌ To build | **P0** |
-| `⌘⇧P` | Open Scratchpad | ❌ To build | **P1** |
-| `⌘⇧S` | Toggle sidebar | ❌ To build | **P1** |
+| `⌘N` | New item in current section | ✅ Implemented | **P0** |
+| `⌘F` | Focus search/filter | ✅ Implemented | **P0** |
+| `⌘W` | Close current item | ✅ Implemented | **P0** |
+| `⌘R` | Refresh current section | ✅ Implemented | **P1** |
+| `⌘?` | Show shortcuts reference | ✅ Implemented | **P0** |
+| `⌘⇧P` | Open Scratchpad | ✅ Implemented | **P1** |
+| `⌘⇧S` | Toggle sidebar | ✅ Implemented | **P1** |
 | `⌘K` | Command palette | ❌ Future | **P3** |
 
 ### Chat Section Shortcuts

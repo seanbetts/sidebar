@@ -122,6 +122,19 @@ private struct ChatDetailView: View {
         ) { result in
             handleFileImport(result)
         }
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.section == .chat else { return }
+            switch event.action {
+            case .sendMessage:
+                if !viewModel.isStreaming {
+                    handleSend()
+                }
+            case .attachFile:
+                isFileImporterPresented = true
+            default:
+                break
+            }
+        }
         #if !os(macOS)
         .overlay(alignment: .bottomTrailing) {
             if isCompact {
