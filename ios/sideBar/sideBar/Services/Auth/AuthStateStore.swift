@@ -8,6 +8,7 @@ public protocol AuthStateStore {
     func clear() throws
 }
 
+/// In-memory auth state store for testing.
 public final class InMemoryAuthStateStore: AuthStateStore {
     private var accessToken: String?
     private var userId: String?

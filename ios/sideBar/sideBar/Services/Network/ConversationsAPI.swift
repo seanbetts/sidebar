@@ -17,6 +17,7 @@ public protocol ConversationsAPIProviding {
     func update(conversationId: String, updates: ConversationUpdateRequest) async throws -> Conversation
 }
 
+/// API client for conversation endpoints.
 public struct ConversationsAPI {
     private let client: APIClient
 
@@ -58,16 +59,19 @@ public struct ConversationsAPI {
 extension ConversationsAPI: ConversationsProviding {}
 extension ConversationsAPI: ConversationsAPIProviding {}
 
+/// Request body for creating a conversation.
 public struct ConversationCreateRequest: Codable {
     public let title: String
 }
 
+/// Request body for updating conversation metadata.
 public struct ConversationUpdateRequest: Codable {
     public let title: String?
     public let titleGenerated: Bool?
     public let isArchived: Bool?
 }
 
+/// Request body for adding a conversation message.
 public struct ConversationMessageCreate: Codable {
     public let id: String
     public let role: String

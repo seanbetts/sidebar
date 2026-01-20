@@ -5,6 +5,7 @@ public protocol ScratchpadProviding {
     func update(content: String, mode: ScratchpadMode?) async throws -> ScratchpadResponse
 }
 
+/// API client for scratchpad endpoints.
 public struct ScratchpadAPI {
     private let client: APIClient
 

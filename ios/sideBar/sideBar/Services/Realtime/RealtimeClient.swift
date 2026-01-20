@@ -12,6 +12,7 @@ public protocol RealtimeClient {
     func stop()
 }
 
+/// No-op realtime client placeholder.
 public final class PlaceholderRealtimeClient: RealtimeClient {
     public init() {
     }

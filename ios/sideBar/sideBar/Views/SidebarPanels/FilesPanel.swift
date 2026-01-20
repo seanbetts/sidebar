@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - FilesPanel
+
 public struct FilesPanel: View {
     @EnvironmentObject private var environment: AppEnvironment
 

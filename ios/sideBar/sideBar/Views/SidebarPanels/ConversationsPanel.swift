@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+// MARK: - ConversationsPanel
+
 public struct ConversationsPanel: View {
     @EnvironmentObject private var environment: AppEnvironment
 

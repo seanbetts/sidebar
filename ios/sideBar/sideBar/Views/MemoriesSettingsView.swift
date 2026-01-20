@@ -1,6 +1,8 @@
 import SwiftUI
 import MarkdownUI
 
+// MARK: - MemoriesSettingsView
+
 struct MemoriesSettingsDetailView: View {
     @ObservedObject var viewModel: MemoriesViewModel
     @State private var searchQuery: String = ""

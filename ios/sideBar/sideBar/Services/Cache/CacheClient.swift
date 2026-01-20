@@ -23,6 +23,7 @@ public extension CacheClient {
     }
 }
 
+/// In-memory cache implementation for ephemeral data.
 public final class InMemoryCacheClient: CacheClient {
     private struct Entry {
         let expiresAt: Date

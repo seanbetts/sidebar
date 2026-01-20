@@ -3,6 +3,8 @@ import Combine
 import Supabase
 import os
 
+// MARK: - SupabaseAuthAdapter
+
 public struct AuthErrorEvent: Equatable {
     public let id = UUID()
     public let message: String
@@ -42,6 +44,7 @@ public enum AuthAdapterError: LocalizedError, Equatable {
 }
 
 @MainActor
+/// Supabase-backed authentication session handler.
 public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     @Published public private(set) var accessToken: String?
     @Published public private(set) var userId: String?

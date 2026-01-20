@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - MarkdownRendering
+
 public enum MarkdownRendering {
     public nonisolated static let imageCaptionMarker = "^caption:"
 

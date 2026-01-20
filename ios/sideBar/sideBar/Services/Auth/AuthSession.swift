@@ -9,6 +9,7 @@ public protocol AuthSession {
     func signOut() async
 }
 
+/// No-op auth session placeholder.
 public final class PlaceholderAuthSession: AuthSession {
     public private(set) var accessToken: String?
     public private(set) var userId: String?

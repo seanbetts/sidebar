@@ -4,6 +4,8 @@ import Combine
 import UIKit
 #endif
 
+// MARK: - WebsitesView
+
 public struct WebsitesView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)

@@ -2,6 +2,7 @@ import CoreData
 import Foundation
 import OSLog
 
+/// Core Data-backed cache implementation.
 public final class CoreDataCacheClient: CacheClient {
     private let container: NSPersistentContainer
     private let encoder = JSONEncoder()

@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Coordinates ingestion list state and polling for files.
 public final class IngestionViewModel: ObservableObject {
     @Published public private(set) var items: [IngestionListItem] = []
     @Published public private(set) var activeMeta: IngestionMetaResponse? = nil

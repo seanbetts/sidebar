@@ -5,6 +5,7 @@ public struct ParsedSSEEvent {
     public let data: String
 }
 
+/// Parses server-sent events into chat stream events.
 public final class ChatStreamParser {
     private var buffer = ""
 

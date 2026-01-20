@@ -8,6 +8,8 @@ import AppKit
 import UIKit
 #endif
 
+// MARK: - CodeMirrorEditorView
+
 final class CodeMirrorEditorHandle: ObservableObject {
     let objectWillChange = ObservableObjectPublisher()
     fileprivate var setMarkdownHandler: ((String) -> Void)?

@@ -1,5 +1,6 @@
 import Foundation
 
+/// API client for chat-related endpoints.
 public struct ChatAPI {
     private let client: APIClient
 
@@ -12,6 +13,7 @@ public struct ChatAPI {
     }
 }
 
+/// Request body for generating a conversation title.
 public struct ChatTitleRequest: Codable {
     public let conversationId: String
 
@@ -20,6 +22,7 @@ public struct ChatTitleRequest: Codable {
     }
 }
 
+/// Response payload for a generated conversation title.
 public struct ChatTitleResponse: Codable {
     public let title: String
     public let fallback: Bool

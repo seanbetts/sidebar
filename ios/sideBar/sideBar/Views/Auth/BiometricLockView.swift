@@ -2,6 +2,8 @@ import SwiftUI
 import LocalAuthentication
 import os
 
+// MARK: - BiometricLockView
+
 public struct BiometricLockView: View {
     let onUnlock: () -> Void
     let onSignOut: () -> Void

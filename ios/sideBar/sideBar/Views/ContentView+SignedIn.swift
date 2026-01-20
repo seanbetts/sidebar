@@ -3,6 +3,8 @@ import SwiftUI
 import UIKit
 #endif
 
+// MARK: - ContentView+SignedIn
+
 extension ContentView {
     private var signedInContent: AnyView {
         var content: AnyView = AnyView(

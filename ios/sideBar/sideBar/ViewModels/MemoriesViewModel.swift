@@ -4,6 +4,7 @@ import Combine
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Manages memory list and selection state.
 public final class MemoriesViewModel: ObservableObject {
     @Published public private(set) var items: [MemoryItem] = []
     @Published public private(set) var active: MemoryItem? = nil

@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+// MARK: - WebsitesPanel
+
 public struct WebsitesPanel: View {
     @EnvironmentObject private var environment: AppEnvironment
 

@@ -2,6 +2,9 @@
 import UIKit
 import os
 
+// MARK: - KeyboardShortcutRegistry
+
+/// Registers and resolves keyboard shortcuts.
 public final class KeyboardShortcutRegistry {
     public static let shared = KeyboardShortcutRegistry()
 

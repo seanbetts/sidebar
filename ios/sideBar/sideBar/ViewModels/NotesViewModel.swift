@@ -1,7 +1,10 @@
 import Foundation
 import Combine
 
+// MARK: - NotesViewModel
+
 @MainActor
+/// Drives notes list, selection, and search state.
 public final class NotesViewModel: ObservableObject {
     @Published public private(set) var tree: FileTree? = nil
     @Published public private(set) var activeNote: NotePayload? = nil

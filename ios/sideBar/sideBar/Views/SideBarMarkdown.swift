@@ -3,6 +3,8 @@ import MarkdownUI
 #endif
 import SwiftUI
 
+// MARK: - SideBarMarkdown
+
 struct SideBarMarkdownLayout {
     static let maxContentWidth: CGFloat = 800
     static let horizontalPadding: CGFloat = 20

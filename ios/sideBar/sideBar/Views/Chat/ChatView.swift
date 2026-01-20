@@ -5,6 +5,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 import Combine
 
+// MARK: - ChatView
+
 public struct ChatView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)

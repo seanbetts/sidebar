@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+// MARK: - NotesPanel+Helpers
+
 extension NotesPanelView {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {

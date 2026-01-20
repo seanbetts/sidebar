@@ -1,6 +1,8 @@
 import SwiftUI
 import Combine
 
+// MARK: - SiteHeaderBar
+
 public struct SiteHeaderBar: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)

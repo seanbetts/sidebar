@@ -5,6 +5,8 @@ import os
 import UIKit
 #endif
 
+// MARK: - AppEnvironment
+
 @MainActor
 public final class AppEnvironment: ObservableObject {
     #if os(iOS)

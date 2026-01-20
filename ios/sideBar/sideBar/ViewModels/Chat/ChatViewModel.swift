@@ -2,6 +2,7 @@ import Combine
 import Foundation
 
 
+/// Manages chat state, streaming, and conversation coordination.
 public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public private(set) var conversations: [Conversation] = []
     @Published public private(set) var selectedConversationId: String? = nil

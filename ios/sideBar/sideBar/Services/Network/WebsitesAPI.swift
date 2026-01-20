@@ -10,6 +10,7 @@ public protocol WebsitesProviding {
     func delete(id: String) async throws
 }
 
+/// API client for website endpoints.
 public struct WebsitesAPI {
     private let client: APIClient
 

@@ -2,6 +2,8 @@ import Combine
 import Foundation
 import UniformTypeIdentifiers
 
+// MARK: - ChatViewModel+Streaming
+
 extension ChatViewModel {
     public func startStream(request: ChatStreamRequest) async {
         errorMessage = nil

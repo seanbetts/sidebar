@@ -4,6 +4,7 @@ import Combine
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Manages places autocomplete and reverse geocoding state.
 public final class PlacesViewModel: ObservableObject {
     @Published public private(set) var predictions: [PlacePrediction] = []
     @Published public private(set) var reverseLabel: String? = nil

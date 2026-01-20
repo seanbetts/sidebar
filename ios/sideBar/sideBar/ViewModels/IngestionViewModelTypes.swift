@@ -1,5 +1,6 @@
 import Foundation
 
+/// Describes a file notification ready to be displayed.
 public struct ReadyFileNotification: Identifiable, Equatable {
     public let id: String
     public let fileId: String

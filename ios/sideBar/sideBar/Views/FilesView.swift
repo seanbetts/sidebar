@@ -2,6 +2,8 @@ import SwiftUI
 import Combine
 import UniformTypeIdentifiers
 
+// MARK: - FilesView
+
 public struct FilesView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)

@@ -10,6 +10,7 @@ public protocol SettingsProviding {
     func deleteProfileImage() async throws
 }
 
+/// API client for user settings endpoints.
 public struct SettingsAPI {
     private let client: APIClient
     private let session: URLSession

@@ -2,6 +2,7 @@ import Foundation
 import OSLog
 import Security
 
+/// URLSession delegate that enforces certificate pinning in production.
 public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
     private let pinnedCertificates: Set<Data>
     private let logger = Logger(subsystem: "sideBar", category: "Network")

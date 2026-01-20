@@ -18,6 +18,7 @@ public protocol NotesProviding {
     func deleteFolder(path: String) async throws
 }
 
+/// API client for note endpoints.
 public struct NotesAPI {
     private let client: APIClient
 
@@ -106,6 +107,7 @@ public struct NotesAPI {
 
 extension NotesAPI: NotesProviding {}
 
+/// Response payload for note data.
 public struct NotePayload: Codable {
     public let id: String
     public let name: String
@@ -114,6 +116,7 @@ public struct NotePayload: Codable {
     public let modified: Double?
 }
 
+/// Request body for creating a note.
 public struct NoteCreateRequest: Codable {
     public let content: String
     public let title: String?
@@ -121,22 +124,27 @@ public struct NoteCreateRequest: Codable {
     public let folder: String?
 }
 
+/// Request body for updating note content.
 public struct NoteUpdateRequest: Codable {
     public let content: String
 }
 
+/// Request body for renaming a note.
 public struct RenameRequest: Codable {
     public let newName: String
 }
 
+/// Request body for moving a note to a folder.
 public struct MoveRequest: Codable {
     public let folder: String
 }
 
+/// Request body for archiving or unarchiving a note.
 public struct ArchiveRequest: Codable {
     public let archived: Bool
 }
 
+/// Request body for pinning or unpinning a note.
 public struct PinRequest: Codable {
     public let pinned: Bool
 }
