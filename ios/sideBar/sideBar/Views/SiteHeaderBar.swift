@@ -52,6 +52,12 @@ public struct SiteHeaderBar: View {
         .background(barBackground)
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
+        #if os(iOS)
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.action == .openScratchpad, !isCompact else { return }
+            isScratchpadPresented = true
+        }
+        #endif
     }
 
     private var brandView: some View {

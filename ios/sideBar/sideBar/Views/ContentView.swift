@@ -34,6 +34,7 @@ public struct ContentView: View {
     @State private var isSettingsPresented = false
     @State private var phoneSelection: AppSection = .chat
     @State private var isPhoneScratchpadPresented = false
+    @State private var isShortcutsPresented = false
     @State private var didSetInitialSelection = false
     @State private var didLoadSettings = false
     @State private var isBiometricUnlocked = false
@@ -89,6 +90,11 @@ public struct ContentView: View {
             )
         )
         #endif
+        #if os(iOS)
+        content = AnyView(content.sheet(isPresented: $isShortcutsPresented) {
+            KeyboardShortcutsView()
+        })
+        #endif
         content = AnyView(content.overlay(alignment: .top) {
             if let toast = environment.toastCenter.toast {
                 ToastBanner(toast: toast)
@@ -142,7 +148,25 @@ public struct ContentView: View {
             sidebarSelection = newValue
             primarySection = newValue
             Task { await loadPhoneSectionIfNeeded(newValue) }
+            updateActiveSection()
         })
+        content = AnyView(content.onChange(of: sidebarSelection) { _, _ in
+            updateActiveSection()
+        })
+        content = AnyView(content.onChange(of: primarySection) { _, _ in
+            updateActiveSection()
+        })
+        content = AnyView(content.onChange(of: secondarySection) { _, _ in
+            updateActiveSection()
+        })
+        content = AnyView(content.onChange(of: isSettingsPresented) { _, _ in
+            updateActiveSection()
+        })
+        #if !os(macOS)
+        content = AnyView(content.onChange(of: horizontalSizeClass) { _, _ in
+            updateActiveSection()
+        })
+        #endif
         content = AnyView(content.onReceive(environment.notesViewModel.$selectedNoteId) { newValue in
             guard newValue != nil else { return }
             handleNonChatSelection(.notes)
@@ -177,6 +201,7 @@ public struct ContentView: View {
                 phoneSelection = newValue
                 #endif
                 environment.commandSelection = nil
+            updateActiveSection()
         })
         content = AnyView(content.onChange(of: environment.isAuthenticated) { oldValue, isAuthenticated in
             activeAlert = nil
@@ -232,6 +257,24 @@ public struct ContentView: View {
                 await refreshWeatherIfPossible()
             }
         })
+        #if os(iOS)
+        content = AnyView(content.onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            switch event.action {
+            case .showShortcuts:
+                isShortcutsPresented = true
+            case .toggleSidebar:
+                if horizontalSizeClass != .compact {
+                    isLeftPanelExpanded.toggle()
+                }
+            case .openScratchpad:
+                if horizontalSizeClass == .compact {
+                    isPhoneScratchpadPresented = true
+                }
+            default:
+                break
+            }
+        })
+        #endif
         content = AnyView(content.task {
             applyInitialSelectionIfNeeded()
             if environment.isAuthenticated && !didLoadSettings {
@@ -781,6 +824,23 @@ public struct ContentView: View {
         DispatchQueue.main.async {
             hasCompletedInitialSetup = true
         }
+        updateActiveSection()
+    }
+
+    private func updateActiveSection() {
+        #if os(macOS)
+        let section = isSettingsPresented ? AppSection.settings : (primarySection ?? sidebarSelection ?? secondarySection)
+        #else
+        let section: AppSection
+        if isSettingsPresented {
+            section = .settings
+        } else if horizontalSizeClass == .compact {
+            section = phoneSelection
+        } else {
+            section = primarySection ?? sidebarSelection ?? secondarySection
+        }
+        #endif
+        environment.activeSection = section
     }
 
 

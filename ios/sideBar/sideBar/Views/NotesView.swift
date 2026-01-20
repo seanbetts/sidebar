@@ -156,6 +156,35 @@ private struct NotesDetailView: View {
         } message: {
             Text(archiveAlertMessage)
         }
+        .onAppear {
+            environment.isNotesEditing = editorViewModel.isEditing
+        }
+        .onChange(of: editorViewModel.isEditing) { _, newValue in
+            environment.isNotesEditing = newValue
+        }
+        .onDisappear {
+            environment.isNotesEditing = false
+        }
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.section == .notes else { return }
+            switch event.action {
+            case .toggleEditMode:
+                guard !editorViewModel.isReadOnly else { return }
+                editorViewModel.isEditing.toggle()
+            case .renameItem:
+                guard viewModel.activeNote != nil else { return }
+                renameValue = displayTitle
+                isRenameDialogPresented = true
+            case .deleteItem:
+                guard viewModel.activeNote != nil else { return }
+                isDeleteAlertPresented = true
+            case .archiveItem:
+                guard viewModel.activeNote != nil else { return }
+                isArchiveAlertPresented = true
+            default:
+                break
+            }
+        }
         .toolbar {
             if isCompact, viewModel.activeNote != nil {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {

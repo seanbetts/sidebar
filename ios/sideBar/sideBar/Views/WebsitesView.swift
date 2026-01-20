@@ -140,6 +140,25 @@ private struct WebsitesDetailView: View {
         } message: {
             Text(archiveAlertMessage)
         }
+        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+            guard event.section == .websites else { return }
+            switch event.action {
+            case .renameItem:
+                guard viewModel.active != nil else { return }
+                renameValue = displayTitle
+                isRenameDialogPresented = true
+            case .deleteItem:
+                guard viewModel.active != nil else { return }
+                isDeleteAlertPresented = true
+            case .archiveItem:
+                guard viewModel.active != nil else { return }
+                isArchiveAlertPresented = true
+            case .openInBrowser:
+                openSource()
+            default:
+                break
+            }
+        }
         #if os(iOS) && canImport(SafariServices)
         .sheet(isPresented: safariBinding) {
             if let safariURL {
