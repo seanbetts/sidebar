@@ -80,6 +80,10 @@ Source: IOS_CODE_REVIEW.md recommendations
 5) Tests/visual QA
    - Snapshot or manual verification for key screens.
 
+Progress:
+- Added Typography + semantic error colors, PlatformTokens, and border/shadow modifiers.
+- Replaced numeric padding/radius/font usages with tokens across Views/Design components.
+
 ## Phase 6: Testing Expansion
 1) ViewModels
    - NotesEditorViewModel, PlacesViewModel, NavigationState

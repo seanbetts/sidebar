@@ -31,7 +31,7 @@ private struct TasksPanelView: View {
                     Button {
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(DesignTokens.Typography.labelMd)
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)

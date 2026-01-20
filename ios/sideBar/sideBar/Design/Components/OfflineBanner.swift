@@ -5,15 +5,15 @@ struct OfflineBanner: View {
         HStack(spacing: 8) {
             Image(systemName: "wifi.slash")
             Text("Offline - showing cached data")
-                .font(.subheadline.weight(.semibold))
+                .font(DesignTokens.Typography.subheadlineSemibold)
         }
         .foregroundStyle(.primary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(DesignTokens.Colors.warning)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.top, DesignTokens.Spacing.xs)
     }
 }

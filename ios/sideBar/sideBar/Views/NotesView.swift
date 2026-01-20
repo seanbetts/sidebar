@@ -210,7 +210,7 @@ private struct NotesDetailView: View {
                     }
                 }
             }
-            .padding(16)
+            .padding(DesignTokens.Spacing.md)
             .opacity(isEditingToolbarVisible ? 0 : 1)
             .allowsHitTesting(!isEditingToolbarVisible)
             if isEditingToolbarVisible {

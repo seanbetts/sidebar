@@ -31,7 +31,7 @@ struct ChatMessageListView: View {
                                     .controlSize(.small)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, DesignTokens.Spacing.xxs)
                         .onAppear {
                             autoLoadMore(proxy: proxy)
                         }
@@ -44,7 +44,7 @@ struct ChatMessageListView: View {
                         .frame(height: max(bottomInset, 1))
                         .id("bottom")
                 }
-                .padding(16)
+                .padding(DesignTokens.Spacing.md)
                 #if os(macOS)
                 .frame(maxWidth: maxContentWidth)
                 .frame(maxWidth: .infinity, alignment: .center)

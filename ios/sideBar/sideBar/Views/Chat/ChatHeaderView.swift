@@ -14,7 +14,7 @@ struct ChatHeaderView: View {
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DesignTokens.Colors.error)
                 }
 
                 if let activeTool = viewModel.activeTool {
@@ -25,12 +25,12 @@ struct ChatHeaderView: View {
                     PromptPreviewView(promptPreview: promptPreview)
                 }
             }
-            .padding(16)
+            .padding(DesignTokens.Spacing.md)
             .frame(minHeight: LayoutMetrics.contentHeaderMinHeight)
             .background(headerBackground)
         } else {
             headerContent
-                .padding(16)
+                .padding(DesignTokens.Spacing.md)
                 .frame(height: LayoutMetrics.contentHeaderMinHeight)
                 .background(headerBackground)
         }
@@ -54,7 +54,7 @@ struct ChatHeaderView: View {
             HStack(spacing: 12) {
                 if viewModel.isStreaming {
                     Label("Streaming", systemImage: "dot.radiowaves.left.and.right")
-                        .font(.caption.weight(.semibold))
+                        .font(DesignTokens.Typography.captionSemibold)
                         .foregroundStyle(.secondary)
                         .labelStyle(.titleAndIcon)
                 }

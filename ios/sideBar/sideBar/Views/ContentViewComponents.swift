@@ -29,7 +29,7 @@ public struct ConfigErrorView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
         }
-        .padding(24)
+        .padding(DesignTokens.Spacing.xl)
     }
 }
 
@@ -101,7 +101,7 @@ public struct WelcomeEmptyView: View {
                 .frame(width: 72, height: 72)
                 .opacity(0.7)
             Text("Welcome to sideBar")
-                .font(.title3.weight(.semibold))
+                .font(DesignTokens.Typography.title3Semibold)
             Text("Select a note, website, or file to get started.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -136,7 +136,7 @@ public struct PlaceholderView: View {
         VStack(spacing: 12) {
             if let iconName {
                 Image(systemName: iconName)
-                    .font(.system(size: 32, weight: .semibold))
+                    .font(DesignTokens.Typography.titleXL)
                     .foregroundStyle(.secondary)
             }
             Text(title)

@@ -47,8 +47,8 @@ public struct SiteHeaderBar: View {
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
         .frame(minHeight: LayoutMetrics.appHeaderMinHeight)
         .background(barBackground)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -78,9 +78,9 @@ public struct SiteHeaderBar: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("sideBar")
-                    .font(.headline.weight(.bold))
+                    .font(DesignTokens.Typography.headlineBold)
                 Text("WORKSPACE")
-                    .font(.caption2.weight(.semibold))
+                    .font(DesignTokens.Typography.caption2Semibold)
                     .foregroundStyle(.secondary)
             }
             if shouldShowIngestionStatus {
@@ -101,13 +101,13 @@ public struct SiteHeaderBar: View {
                                 .foregroundStyle(.orange)
                         }
                         Text(ingestionStatusText)
-                            .font(.caption.weight(.semibold))
+                            .font(DesignTokens.Typography.captionSemibold)
                             .foregroundStyle(.secondary)
                     }
                     .pillStyle()
                 }
                 .buttonStyle(.plain)
-                .padding(.leading, 6)
+                .padding(.leading, DesignTokens.Spacing.xxsPlus)
                 .accessibilityLabel("Show uploads")
                 #if os(macOS)
                 .popover(isPresented: $isIngestionCenterPresented, arrowEdge: .top) {
@@ -151,7 +151,7 @@ public struct SiteHeaderBar: View {
                         .foregroundStyle(.secondary)
                 }
                 .font(.subheadline)
-                .padding(.trailing, 14)
+                .padding(.trailing, DesignTokens.Spacing.smPlus)
 
                 Button(action: { onSwapContent?() }) {
                     Image(systemName: "arrow.left.arrow.right")
@@ -160,9 +160,9 @@ public struct SiteHeaderBar: View {
                 .buttonStyle(.plain)
                 .disabled(onSwapContent == nil)
                 .accessibilityLabel("Swap panels")
-                .font(.system(size: 16, weight: .semibold))
+                .font(DesignTokens.Typography.titleMd)
                 .imageScale(.medium)
-                .padding(6)
+                .padding(DesignTokens.Spacing.xxsPlus)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(buttonBackground)
@@ -182,7 +182,7 @@ public struct SiteHeaderBar: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Settings")
                 .imageScale(.medium)
-                .padding(6)
+                .padding(DesignTokens.Spacing.xxsPlus)
                 .background(
                     Circle()
                         .fill(buttonBackground)
@@ -200,9 +200,9 @@ public struct SiteHeaderBar: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Scratchpad")
-                .font(.system(size: 16, weight: .semibold))
+                .font(DesignTokens.Typography.titleMd)
                 .imageScale(.medium)
-                .padding(6)
+                .padding(DesignTokens.Spacing.xxsPlus)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(buttonBackground)

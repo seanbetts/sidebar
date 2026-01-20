@@ -140,7 +140,7 @@ private struct FilesPanelView: View {
                         isYouTubeAlertPresented = true
                     } label: {
                         Image(systemName: "play.rectangle")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(DesignTokens.Typography.labelMd)
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
@@ -149,7 +149,7 @@ private struct FilesPanelView: View {
                         isFileImporterPresented = true
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(DesignTokens.Typography.labelMd)
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)

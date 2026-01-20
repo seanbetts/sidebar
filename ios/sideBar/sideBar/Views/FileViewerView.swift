@@ -70,10 +70,10 @@ public struct FileViewerView: View {
     private var textView: some View {
         ScrollView {
             Text(state.text ?? "No preview available.")
-                .font(.system(.body, design: .monospaced))
+                .font(DesignTokens.Typography.monoBody)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                .padding(DesignTokens.Spacing.lg)
         }
     }
 
@@ -122,7 +122,7 @@ public struct FileViewerView: View {
         if let url = state.fileURL {
             if state.kind == .audio {
                 AudioPlayerView(url: url)
-                    .padding(20)
+                    .padding(DesignTokens.Spacing.lg)
             } else {
                 VideoPlayerContainer(url: url)
             }

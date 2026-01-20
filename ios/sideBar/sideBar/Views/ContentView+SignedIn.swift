@@ -23,7 +23,7 @@ extension ContentView {
         content = AnyView(content.overlay(alignment: .top) {
             if let toast = environment.toastCenter.toast {
                 ToastBanner(toast: toast)
-                    .padding(.top, 12)
+                    .padding(.top, DesignTokens.Spacing.sm)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .onTapGesture {
                         environment.toastCenter.dismiss()

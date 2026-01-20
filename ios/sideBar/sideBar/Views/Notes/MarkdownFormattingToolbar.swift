@@ -24,12 +24,12 @@ struct MarkdownFormattingToolbar: View {
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(DesignTokens.Typography.labelLg)
                     .frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Close editor")
-            .padding(.trailing, 12)
+            .padding(.trailing, DesignTokens.Spacing.sm)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(toolbarBackgroundColor)
@@ -92,15 +92,15 @@ struct MarkdownFormattingToolbar: View {
                 Button("Table") { onCommand("table") }
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(DesignTokens.Typography.labelLg)
                     .frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("More formatting")
             #endif
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
     private var fullToolbar: some View {
@@ -122,8 +122,8 @@ struct MarkdownFormattingToolbar: View {
                 toolbarButton("codeBlock", systemImage: "chevron.left.slash.chevron.right", label: "Code block")
                 toolbarButton("table", systemImage: "tablecells", label: "Table")
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
         }
     }
 
@@ -133,7 +133,7 @@ struct MarkdownFormattingToolbar: View {
             onCommand(command)
         } label: {
             Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
+                .font(DesignTokens.Typography.labelLg)
                 .frame(width: 28, height: 28)
         }
         .buttonStyle(.plain)
@@ -146,7 +146,7 @@ struct MarkdownFormattingToolbar: View {
             onCommand(command)
         } label: {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
+                .font(DesignTokens.Typography.labelSm)
                 .frame(width: 32, height: 28)
         }
         .buttonStyle(.plain)
@@ -158,7 +158,7 @@ struct MarkdownFormattingToolbar: View {
         Rectangle()
             .fill(toolbarDividerColor)
             .frame(width: 1, height: 20)
-            .padding(.horizontal, 2)
+            .padding(.horizontal, DesignTokens.Spacing.xxxs)
     }
 
     private var toolbarDividerColor: Color {

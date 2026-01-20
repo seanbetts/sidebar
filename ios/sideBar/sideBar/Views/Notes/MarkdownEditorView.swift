@@ -29,8 +29,8 @@ struct MarkdownEditorView: View {
         .overlay(alignment: .topTrailing) {
             if showsCompactStatus {
                 SaveStatusView(editorViewModel: viewModel)
-                    .padding(.top, 12)
-                    .padding(.trailing, 16)
+                    .padding(.top, DesignTokens.Spacing.sm)
+                    .padding(.trailing, DesignTokens.Spacing.md)
             }
         }
         .task(id: viewModel.currentNoteId) {
@@ -137,8 +137,8 @@ private struct ExternalUpdateBanner: View {
             Button("Reload", action: onReload)
             Button("Keep editing", action: onKeep)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
         .background(Color(.systemYellow).opacity(0.2))
     }
 }

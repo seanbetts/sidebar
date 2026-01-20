@@ -42,12 +42,12 @@ public struct BiometricLockView: View {
                         .frame(width: 64, height: 64)
 
                     Text("Unlock sideBar")
-                        .font(.title3.weight(.semibold))
+                        .font(DesignTokens.Typography.title3Semibold)
 
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.callout)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(DesignTokens.Colors.error)
                             .multilineTextAlignment(.center)
                     }
 
@@ -89,7 +89,7 @@ public struct BiometricLockView: View {
                     .controlSize(.large)
                 }
                 .frame(maxWidth: 420)
-                .padding(24)
+                .padding(DesignTokens.Spacing.xl)
                 .cardStyle()
             }
         }

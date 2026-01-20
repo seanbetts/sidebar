@@ -184,7 +184,7 @@ private struct WebsitesDetailView: View {
                 closeButton
             }
         }
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
 

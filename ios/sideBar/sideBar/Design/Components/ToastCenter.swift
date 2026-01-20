@@ -39,14 +39,14 @@ public enum ToastStyle {
     public var background: Color {
         switch self {
         case .error:
-            return Color.red.opacity(0.12)
+            return DesignTokens.Colors.errorSurface
         }
     }
 
     public var foreground: Color {
         switch self {
         case .error:
-            return Color.red
+            return DesignTokens.Colors.error
         }
     }
 }
@@ -59,23 +59,23 @@ public struct ToastBanner: View {
     }
 
     public var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DesignTokens.Spacing.xsPlus) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 14, weight: .semibold))
+                .font(DesignTokens.Typography.labelMd)
             Text(toast.message)
-                .font(.subheadline.weight(.semibold))
+                .font(DesignTokens.Typography.subheadlineSemibold)
                 .lineLimit(2)
         }
         .foregroundStyle(toast.style.foreground)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 16)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.md)
         .background(toast.style.background)
         .clipShape(Capsule())
         .overlay(
             Capsule()
-                .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                .stroke(DesignTokens.Colors.errorBorder, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+        .appShadow(color: Color.black.opacity(0.08), radius: DesignTokens.Spacing.xs, y: DesignTokens.Spacing.xxs)
         .accessibilityLabel(toast.message)
     }
 }

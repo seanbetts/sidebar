@@ -32,7 +32,7 @@ public struct SidebarRail: View {
         VStack(spacing: 16) {
             Button(action: { onTogglePanel?() }) {
                 Image(systemName: "sidebar.left")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(DesignTokens.Typography.titleLg)
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
@@ -62,7 +62,7 @@ public struct SidebarRail: View {
         }
         .frame(width: 56)
         .frame(maxHeight: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, DesignTokens.Spacing.sm)
         .background(
             Rectangle()
                 .fill(railBackground)
@@ -99,7 +99,7 @@ public struct SidebarRail: View {
             }
         } label: {
             Image(systemName: iconName(for: section))
-                .font(.system(size: 18, weight: .semibold))
+                .font(DesignTokens.Typography.titleLg)
                 .frame(width: 32, height: 32)
                 .foregroundStyle(isActive ? Color.accentColor : Color.primary)
                 .background(

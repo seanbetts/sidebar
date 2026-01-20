@@ -10,7 +10,7 @@ struct VideoPlayerContainer: View {
             .aspectRatio(aspectRatio, contentMode: .fit)
             .frame(maxWidth: SideBarMarkdownLayout.maxContentWidth)
             .frame(maxWidth: .infinity, alignment: .center)
-            .padding(20)
+            .padding(DesignTokens.Spacing.lg)
             .padding(.top, SideBarMarkdownLayout.verticalPadding)
             .task {
                 await updateAspectRatio()
@@ -396,7 +396,7 @@ struct PlatformImageView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: size.width, maxHeight: size.height)
-                .padding(12)
+                .padding(DesignTokens.Spacing.sm)
         } else {
             PlaceholderView(title: "Unable to load image")
         }
@@ -518,7 +518,7 @@ struct PlatformImageView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: size.width, maxHeight: size.height)
-                .padding(12)
+                .padding(DesignTokens.Spacing.sm)
         } else {
             PlaceholderView(title: "Unable to load image")
         }
