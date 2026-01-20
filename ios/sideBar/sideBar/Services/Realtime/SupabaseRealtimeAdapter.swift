@@ -119,7 +119,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleNoteInsert(action)
+                    self?.handleNoteInsert(SupabaseInsertActionAdapter(action: action))
                 }
             }
         )
@@ -131,7 +131,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleNoteUpdate(action)
+                    self?.handleNoteUpdate(SupabaseUpdateActionAdapter(action: action))
                 }
             }
         )
@@ -143,7 +143,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleNoteDelete(action)
+                    self?.handleNoteDelete(SupabaseDeleteActionAdapter(action: action))
                 }
             }
         )
@@ -170,7 +170,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleWebsiteInsert(action)
+                    self?.handleWebsiteInsert(SupabaseInsertActionAdapter(action: action))
                 }
             }
         )
@@ -182,7 +182,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleWebsiteUpdate(action)
+                    self?.handleWebsiteUpdate(SupabaseUpdateActionAdapter(action: action))
                 }
             }
         )
@@ -194,7 +194,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleWebsiteDelete(action)
+                    self?.handleWebsiteDelete(SupabaseDeleteActionAdapter(action: action))
                 }
             }
         )
@@ -221,7 +221,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleIngestedFileInsert(action)
+                    self?.handleIngestedFileInsert(SupabaseInsertActionAdapter(action: action))
                 }
             }
         )
@@ -233,7 +233,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleIngestedFileUpdate(action)
+                    self?.handleIngestedFileUpdate(SupabaseUpdateActionAdapter(action: action))
                 }
             }
         )
@@ -245,7 +245,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleIngestedFileDelete(action)
+                    self?.handleIngestedFileDelete(SupabaseDeleteActionAdapter(action: action))
                 }
             }
         )
@@ -270,7 +270,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 table: RealtimeTable.fileJobs
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleFileJobInsert(action)
+                    self?.handleFileJobInsert(SupabaseInsertActionAdapter(action: action))
                 }
             }
         )
@@ -281,7 +281,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 table: RealtimeTable.fileJobs
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleFileJobUpdate(action)
+                    self?.handleFileJobUpdate(SupabaseUpdateActionAdapter(action: action))
                 }
             }
         )
@@ -292,7 +292,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 table: RealtimeTable.fileJobs
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleFileJobDelete(action)
+                    self?.handleFileJobDelete(SupabaseDeleteActionAdapter(action: action))
                 }
             }
         )
@@ -304,7 +304,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleNoteInsert(_ action: InsertAction) {
+    func handleNoteInsert(_ action: RealtimeActionDecoding) {
         do {
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyNoteEvent(type: .insert, record: record, oldRecord: nil)
@@ -313,7 +313,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleNoteUpdate(_ action: UpdateAction) {
+    func handleNoteUpdate(_ action: RealtimeActionDecoding) {
         do {
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             var oldRecord: NoteRealtimeRecord?
@@ -328,7 +328,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleNoteDelete(_ action: DeleteAction) {
+    func handleNoteDelete(_ action: RealtimeActionDecoding) {
         do {
             let oldRecord: NoteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyNoteEvent(type: .delete, record: nil, oldRecord: oldRecord)
@@ -354,7 +354,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleWebsiteInsert(_ action: InsertAction) {
+    func handleWebsiteInsert(_ action: RealtimeActionDecoding) {
         do {
             let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyWebsiteEvent(type: .insert, record: record, oldRecord: nil)
@@ -363,7 +363,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleWebsiteUpdate(_ action: UpdateAction) {
+    func handleWebsiteUpdate(_ action: RealtimeActionDecoding) {
         do {
             let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             var oldRecord: WebsiteRealtimeRecord?
@@ -378,7 +378,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleWebsiteDelete(_ action: DeleteAction) {
+    func handleWebsiteDelete(_ action: RealtimeActionDecoding) {
         do {
             let oldRecord: WebsiteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyWebsiteEvent(type: .delete, record: nil, oldRecord: oldRecord)
@@ -387,7 +387,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleIngestedFileInsert(_ action: InsertAction) {
+    func handleIngestedFileInsert(_ action: RealtimeActionDecoding) {
         do {
             let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyIngestedFileEvent(type: .insert, record: record, oldRecord: nil)
@@ -396,7 +396,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleIngestedFileUpdate(_ action: UpdateAction) {
+    func handleIngestedFileUpdate(_ action: RealtimeActionDecoding) {
         do {
             let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
             var oldRecord: IngestedFileRealtimeRecord?
@@ -411,7 +411,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleIngestedFileDelete(_ action: DeleteAction) {
+    func handleIngestedFileDelete(_ action: RealtimeActionDecoding) {
         do {
             let oldRecord: IngestedFileRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyIngestedFileEvent(type: .delete, record: nil, oldRecord: oldRecord)
@@ -420,7 +420,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleFileJobInsert(_ action: InsertAction) {
+    func handleFileJobInsert(_ action: RealtimeActionDecoding) {
         do {
             let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyFileJobEvent(type: .insert, record: record, oldRecord: nil)
@@ -429,7 +429,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleFileJobUpdate(_ action: UpdateAction) {
+    func handleFileJobUpdate(_ action: RealtimeActionDecoding) {
         do {
             let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
             var oldRecord: FileJobRealtimeRecord?
@@ -444,7 +444,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleFileJobDelete(_ action: DeleteAction) {
+    func handleFileJobDelete(_ action: RealtimeActionDecoding) {
         do {
             let oldRecord: FileJobRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyFileJobEvent(type: .delete, record: nil, oldRecord: oldRecord)
