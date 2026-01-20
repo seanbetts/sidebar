@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 public struct SiteHeaderBar: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -53,8 +54,8 @@ public struct SiteHeaderBar: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
         #if os(iOS)
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.action == .openScratchpad, !isCompact else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.action == .openScratchpad, !isCompact else { return }
             isScratchpadPresented = true
         }
         #endif

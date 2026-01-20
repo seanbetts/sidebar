@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import Foundation
 import UniformTypeIdentifiers
 
@@ -149,8 +150,8 @@ private struct ConversationsPanelView: View {
         } message: {
             Text(deleteDialogTitle)
         }
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.section == .chat else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .chat else { return }
             switch event.action {
             case .focusSearch:
                 isSearchFocused = true
@@ -261,6 +262,20 @@ private struct ConversationsPanelView: View {
         .refreshable {
             await viewModel.refreshConversations()
         }
+    }
+
+    private func navigateConversationList(direction: ShortcutListDirection) {
+        let ids = filteredGroups.flatMap { $0.conversations.map { $0.id } }
+        guard !ids.isEmpty else { return }
+        let currentId = viewModel.selectedConversationId
+        let nextIndex: Int
+        if let currentId, let index = ids.firstIndex(of: currentId) {
+            nextIndex = direction == .next ? min(ids.count - 1, index + 1) : max(0, index - 1)
+        } else {
+            nextIndex = direction == .next ? 0 : ids.count - 1
+        }
+        let nextId = ids[nextIndex]
+        Task { await viewModel.selectConversation(id: nextId) }
     }
 
     private var filteredGroups: [ConversationGroup] {
@@ -568,8 +583,8 @@ private struct NotesPanelView: View {
         } message: {
             Text(deleteDialogMessage)
         }
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.section == .notes else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .notes else { return }
             switch event.action {
             case .focusSearch:
                 isSearchFocused = true
@@ -821,20 +836,6 @@ private struct NotesPanelView: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(panelBackground)
-    }
-
-    private func navigateConversationList(direction: ShortcutListDirection) {
-        let ids = filteredGroups.flatMap { $0.conversations.map { $0.id } }
-        guard !ids.isEmpty else { return }
-        let currentId = viewModel.selectedConversationId
-        let nextIndex: Int
-        if let currentId, let index = ids.firstIndex(of: currentId) {
-            nextIndex = direction == .next ? min(ids.count - 1, index + 1) : max(0, index - 1)
-        } else {
-            nextIndex = direction == .next ? 0 : ids.count - 1
-        }
-        let nextId = ids[nextIndex]
-        Task { await viewModel.selectConversation(id: nextId) }
     }
 
     private var notesPanelContent: some View {
@@ -1455,8 +1456,8 @@ private struct FilesPanelView: View {
             }
             knownFileIds = newIdSet
         }
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.section == .files else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .files else { return }
             switch event.action {
             case .focusSearch:
                 isSearchFocused = true
@@ -2168,8 +2169,8 @@ private struct WebsitesPanelView: View {
         } message: {
             Text(saveErrorMessage ?? "Failed to save website. Please try again.")
         }
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.section == .websites else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .websites else { return }
             switch event.action {
             case .focusSearch:
                 isSearchFocused = true

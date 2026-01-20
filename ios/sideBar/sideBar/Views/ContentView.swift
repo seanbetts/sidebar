@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import LocalAuthentication
 import os
 #if canImport(UIKit)
@@ -258,7 +259,8 @@ public struct ContentView: View {
             }
         })
         #if os(iOS)
-        content = AnyView(content.onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
+        content = AnyView(content.onReceive(environment.$shortcutActionEvent) { event in
+            guard let event else { return }
             switch event.action {
             case .showShortcuts:
                 isShortcutsPresented = true
@@ -837,7 +839,7 @@ public struct ContentView: View {
         } else if horizontalSizeClass == .compact {
             section = phoneSelection
         } else {
-            section = primarySection ?? sidebarSelection ?? secondarySection
+            section = primarySection ?? sidebarSelection ?? secondarySection ?? .chat
         }
         #endif
         environment.activeSection = section

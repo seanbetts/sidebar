@@ -62,5 +62,23 @@ public struct KeyboardShortcut: Identifiable, Hashable {
     public var keySignature: String {
         "\(input)|\(modifiers.rawValue)"
     }
+
+    public static func == (lhs: KeyboardShortcut, rhs: KeyboardShortcut) -> Bool {
+        lhs.input == rhs.input
+            && lhs.modifiers.rawValue == rhs.modifiers.rawValue
+            && lhs.title == rhs.title
+            && lhs.description == rhs.description
+            && lhs.action == rhs.action
+            && lhs.contexts == rhs.contexts
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(input)
+        hasher.combine(modifiers.rawValue)
+        hasher.combine(title)
+        hasher.combine(description)
+        hasher.combine(action)
+        hasher.combine(contexts)
+    }
 }
 #endif

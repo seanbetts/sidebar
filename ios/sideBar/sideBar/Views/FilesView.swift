@@ -1,6 +1,6 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import Combine
+import UniformTypeIdentifiers
 
 public struct FilesView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -362,8 +362,8 @@ private struct FilesHeaderActions: View {
         ) { _ in
             exportDocument = nil
         }
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.section == .files else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .files else { return }
             switch event.action {
             case .renameItem:
                 beginRename()
