@@ -181,7 +181,8 @@ public struct LoginView: View {
             SecureFieldWithToggle(
                 title: "Password",
                 text: $password,
-                textContentType: .password
+                textContentType: .password,
+                onSubmit: { Task { await signIn() } }
             )
             .focused($focusedField, equals: .password)
             .submitLabel(.go)
@@ -232,12 +233,18 @@ public struct LoginView: View {
             Task { await signIn() }
         } label: {
             ZStack {
-                Text(isSigningIn ? "Signing in..." : "Sign In")
+                // Hidden text to maintain consistent width
+                Text("Signing in...")
+                    .opacity(0)
+                // Visible content
                 if isSigningIn {
                     HStack(spacing: 8) {
                         ProgressView()
-                        Spacer()
+                            .tint(.black)
+                        Text("Signing in...")
                     }
+                } else {
+                    Text("Sign In")
                 }
             }
             .frame(maxWidth: .infinity)

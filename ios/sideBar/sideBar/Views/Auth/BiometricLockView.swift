@@ -5,6 +5,7 @@ import os
 public struct BiometricLockView: View {
     let onUnlock: () -> Void
     let onSignOut: () -> Void
+    let scenePhase: ScenePhase
 
     private let logger = Logger(subsystem: "sideBar", category: "Biometrics")
 
@@ -12,67 +13,81 @@ public struct BiometricLockView: View {
     @State private var errorMessage: String?
     @State private var biometryType: LABiometryType = .none
     @State private var showPasscodeFallback = false
+    @State private var hasAttemptedAutoAuth = false
 
-    public init(onUnlock: @escaping () -> Void, onSignOut: @escaping () -> Void) {
+    public init(onUnlock: @escaping () -> Void, onSignOut: @escaping () -> Void, scenePhase: ScenePhase) {
         self.onUnlock = onUnlock
         self.onSignOut = onSignOut
+        self.scenePhase = scenePhase
+    }
+
+    /// Whether we're in the initial auto-authentication phase (no errors yet)
+    private var isAutoAuthenticating: Bool {
+        isAuthenticating && errorMessage == nil && !showPasscodeFallback
     }
 
     public var body: some View {
         VStack(spacing: 20) {
             Image("AppLogo")
                 .resizable()
+                .renderingMode(.template)
+                .foregroundStyle(.primary)
                 .scaledToFit()
                 .frame(width: 64, height: 64)
 
-            Text("Unlock sideBar")
-                .font(.title3.weight(.semibold))
+            // Only show full UI if not in auto-auth phase or if there was an error
+            if !isAutoAuthenticating {
+                Text("Unlock sideBar")
+                    .font(.title3.weight(.semibold))
 
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-            } else {
-                Text("Authenticate to continue.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-
-            Button(action: authenticate) {
-                if isAuthenticating {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
                 } else {
-                    Text(unlockButtonTitle)
-                        .frame(maxWidth: .infinity)
+                    Text("Authenticate to continue.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(.accentColor)
-            .keyboardShortcut(.defaultAction)
-            .disabled(isAuthenticating)
 
-            if showPasscodeFallback {
-                Button {
-                    authenticateWithPasscode()
+                Button(action: authenticate) {
+                    if isAuthenticating {
+                        ProgressView()
+                            .tint(.black)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text(unlockButtonTitle)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(.white)
+                .foregroundStyle(.black)
+                .keyboardShortcut(.defaultAction)
+                .disabled(isAuthenticating)
+
+                if showPasscodeFallback {
+                    Button {
+                        authenticateWithPasscode()
+                    } label: {
+                        Text("Use Passcode")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+
+                Button(role: .destructive) {
+                    onSignOut()
                 } label: {
-                    Text("Use Passcode")
+                    Text("Sign Out")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
             }
-
-            Button(role: .destructive) {
-                onSignOut()
-            } label: {
-                Text("Sign Out")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
         }
         .frame(maxWidth: 420)
         .padding(24)
@@ -81,6 +96,20 @@ public struct BiometricLockView: View {
         .background(DesignTokens.Colors.background)
         .onAppear {
             updateBiometryType()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Auto-trigger biometric when app becomes active
+            if newPhase == .active && !hasAttemptedAutoAuth && !isAuthenticating {
+                hasAttemptedAutoAuth = true
+                authenticate()
+            }
+        }
+        .task {
+            // Initial auto-trigger if app is already active when view appears
+            if scenePhase == .active && !hasAttemptedAutoAuth {
+                hasAttemptedAutoAuth = true
+                authenticate()
+            }
         }
     }
 
