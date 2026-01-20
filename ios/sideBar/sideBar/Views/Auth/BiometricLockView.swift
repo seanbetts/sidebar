@@ -14,6 +14,7 @@ public struct BiometricLockView: View {
     @State private var biometryType: LABiometryType = .none
     @State private var showPasscodeFallback = false
     @State private var hasAttemptedAutoAuth = false
+    @State private var userCancelled = false
 
     public init(onUnlock: @escaping () -> Void, onSignOut: @escaping () -> Void, scenePhase: ScenePhase) {
         self.onUnlock = onUnlock
@@ -21,79 +22,78 @@ public struct BiometricLockView: View {
         self.scenePhase = scenePhase
     }
 
-    /// Whether we're in the initial auto-authentication phase (no errors yet)
-    private var isAutoAuthenticating: Bool {
-        isAuthenticating && errorMessage == nil && !showPasscodeFallback
+    /// Whether we need to show the fallback UI (error occurred or user cancelled)
+    private var showFallbackUI: Bool {
+        errorMessage != nil || showPasscodeFallback || userCancelled
     }
 
     public var body: some View {
-        VStack(spacing: 20) {
-            Image("AppLogo")
-                .resizable()
-                .renderingMode(.template)
-                .foregroundStyle(.primary)
-                .scaledToFit()
-                .frame(width: 64, height: 64)
+        ZStack {
+            // Background always visible
+            DesignTokens.Colors.background
+                .ignoresSafeArea()
 
-            // Only show full UI if not in auto-auth phase or if there was an error
-            if !isAutoAuthenticating {
-                Text("Unlock sideBar")
-                    .font(.title3.weight(.semibold))
+            // Only show the card UI if there's an error or fallback needed
+            if showFallbackUI {
+                VStack(spacing: 20) {
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 64, height: 64)
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.callout)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                } else {
-                    Text("Authenticate to continue.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                    Text("Unlock sideBar")
+                        .font(.title3.weight(.semibold))
 
-                Button(action: authenticate) {
-                    if isAuthenticating {
-                        ProgressView()
-                            .tint(.black)
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text(unlockButtonTitle)
-                            .frame(maxWidth: .infinity)
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.callout)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .tint(.white)
-                .foregroundStyle(.black)
-                .keyboardShortcut(.defaultAction)
-                .disabled(isAuthenticating)
 
-                if showPasscodeFallback {
-                    Button {
-                        authenticateWithPasscode()
+                    Button(action: authenticate) {
+                        if isAuthenticating {
+                            ProgressView()
+                                .tint(.black)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text(unlockButtonTitle)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(.white)
+                    .foregroundStyle(.black)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(isAuthenticating)
+
+                    if showPasscodeFallback {
+                        Button {
+                            authenticateWithPasscode()
+                        } label: {
+                            Text("Use Passcode")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                    }
+
+                    Button(role: .destructive) {
+                        onSignOut()
                     } label: {
-                        Text("Use Passcode")
+                        Text("Sign Out")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
                 }
-
-                Button(role: .destructive) {
-                    onSignOut()
-                } label: {
-                    Text("Sign Out")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .frame(maxWidth: 420)
+                .padding(24)
+                .cardStyle()
             }
         }
-        .frame(maxWidth: 420)
-        .padding(24)
-        .cardStyle()
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .background(DesignTokens.Colors.background)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             updateBiometryType()
         }
@@ -146,6 +146,7 @@ public struct BiometricLockView: View {
         isAuthenticating = true
         errorMessage = nil
         showPasscodeFallback = false
+        userCancelled = false
 
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"
@@ -244,6 +245,7 @@ public struct BiometricLockView: View {
         case .biometryNotAvailable:
             errorMessage = "\(biometryName) is not available on this device."
         case .userCancel:
+            userCancelled = true
             errorMessage = nil
         case .userFallback:
             errorMessage = "Please use your device passcode."
