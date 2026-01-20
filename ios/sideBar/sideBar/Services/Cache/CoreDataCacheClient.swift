@@ -1,10 +1,12 @@
 import CoreData
 import Foundation
+import OSLog
 
 public final class CoreDataCacheClient: CacheClient {
     private let container: NSPersistentContainer
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    private let logger = Logger(subsystem: "sideBar", category: "Cache")
 
     public init(container: NSPersistentContainer) {
         self.container = container
@@ -18,23 +20,39 @@ public final class CoreDataCacheClient: CacheClient {
             request.fetchLimit = 1
             request.predicate = NSPredicate(format: "key == %@", key)
 
-            guard let entry = try? context.fetch(request).first else {
-                return
-            }
+            do {
+                guard let entry = try context.fetch(request).first else {
+                    return
+                }
 
-            if Date() > entry.expiresAt {
-                context.delete(entry)
-                try? context.save()
-                return
-            }
+                if Date() > entry.expiresAt {
+                    context.delete(entry)
+                    do {
+                        try context.save()
+                    } catch {
+                        logger.error("Cache entry cleanup failed: \(error.localizedDescription, privacy: .public)")
+                    }
+                    return
+                }
 
-            decoded = try? decoder.decode(T.self, from: entry.payload)
+                do {
+                    decoded = try decoder.decode(T.self, from: entry.payload)
+                } catch {
+                    logger.error("Cache decode failed: \(error.localizedDescription, privacy: .public)")
+                }
+            } catch {
+                logger.error("Cache fetch failed: \(error.localizedDescription, privacy: .public)")
+            }
         }
         return decoded
     }
 
     public func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval) {
-        guard let data = try? encoder.encode(value) else {
+        let data: Data
+        do {
+            data = try encoder.encode(value)
+        } catch {
+            logger.error("Cache encode failed: \(error.localizedDescription, privacy: .public)")
             return
         }
 
@@ -47,7 +65,13 @@ public final class CoreDataCacheClient: CacheClient {
             request.fetchLimit = 1
             request.predicate = NSPredicate(format: "key == %@", key)
 
-            let entry = (try? context.fetch(request).first) ?? CacheEntry(context: context)
+            let entry: CacheEntry
+            do {
+                entry = try context.fetch(request).first ?? CacheEntry(context: context)
+            } catch {
+                logger.error("Cache fetch failed: \(error.localizedDescription, privacy: .public)")
+                entry = CacheEntry(context: context)
+            }
             entry.key = key
             entry.payload = data
             entry.expiresAt = expiresAt
@@ -57,7 +81,11 @@ public final class CoreDataCacheClient: CacheClient {
                 entry.createdAt = now
             }
 
-            try? context.save()
+            do {
+                try context.save()
+            } catch {
+                logger.error("Cache save failed: \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -66,11 +94,15 @@ public final class CoreDataCacheClient: CacheClient {
         context.performAndWait {
             let request = CacheEntry.fetchRequest()
             request.predicate = NSPredicate(format: "key == %@", key)
-            let items = (try? context.fetch(request)) ?? []
-            for item in items {
-                context.delete(item)
+            do {
+                let items = try context.fetch(request)
+                for item in items {
+                    context.delete(item)
+                }
+                try context.save()
+            } catch {
+                logger.error("Cache remove failed: \(error.localizedDescription, privacy: .public)")
             }
-            try? context.save()
         }
     }
 
@@ -78,11 +110,15 @@ public final class CoreDataCacheClient: CacheClient {
         let context = container.viewContext
         context.performAndWait {
             let request = CacheEntry.fetchRequest()
-            let items = (try? context.fetch(request)) ?? []
-            for item in items {
-                context.delete(item)
+            do {
+                let items = try context.fetch(request)
+                for item in items {
+                    context.delete(item)
+                }
+                try context.save()
+            } catch {
+                logger.error("Cache clear failed: \(error.localizedDescription, privacy: .public)")
             }
-            try? context.save()
         }
     }
 }

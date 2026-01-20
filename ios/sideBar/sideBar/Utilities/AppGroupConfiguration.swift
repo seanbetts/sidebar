@@ -24,7 +24,7 @@ public enum AppGroupConfiguration {
 
     private static func loadString(forKey key: String) -> String? {
         let value = Bundle.main.object(forInfoDictionaryKey: key) as? String
-        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = value?.trimmed
         guard let trimmed, !trimmed.isEmpty else { return nil }
         if trimmed.contains("$(") {
             return nil

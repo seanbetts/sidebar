@@ -411,11 +411,26 @@ private struct WebsitesDetailView: View {
         let stripped = MarkdownRendering.stripFrontmatter(content)
         guard !stripped.isEmpty else { return }
         #if os(iOS)
-        UIPasteboard.general.string = stripped
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = stripped
         #elseif os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(stripped, forType: .string)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(stripped, forType: .string)
         #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == stripped {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == stripped {
+                pasteboard.string = ""
+            }
+            #endif
+        }
     }
 
     private func exportWebsite() {

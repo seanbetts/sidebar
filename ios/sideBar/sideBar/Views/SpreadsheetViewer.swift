@@ -186,7 +186,7 @@ public struct SpreadsheetViewer: View {
     }
 
     private var hasHeaderLabels: Bool {
-        headerRow.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        headerRow.contains { !$0.trimmed.isEmpty }
     }
 
     private var columnCount: Int {
@@ -197,7 +197,7 @@ public struct SpreadsheetViewer: View {
         guard hasHeaderLabels else {
             return Array(repeating: "", count: columnCount)
         }
-        return headerRow.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        return headerRow.map { $0.trimmed }
     }
 
     private var dataRows: [[String]] {
@@ -208,7 +208,7 @@ public struct SpreadsheetViewer: View {
     }
 
     private var filteredRows: [[String]] {
-        let trimmed = filterText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = filterText.trimmed
         guard !trimmed.isEmpty else { return dataRows }
         let needle = trimmed.lowercased()
         return dataRows.filter { row in
@@ -240,7 +240,7 @@ public struct SpreadsheetViewer: View {
         (0..<columnCount).map { columnIndex in
             for row in dataRows {
                 guard columnIndex < row.count else { continue }
-                let value = row[columnIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+                let value = row[columnIndex].trimmed
                 if value.isEmpty { continue }
                 return Double(value) != nil
             }
@@ -338,7 +338,7 @@ public struct SpreadsheetViewer: View {
     private func alignmentForColumn(_ columnIndex: Int) -> Alignment {
         guard let firstRow = dataRows.first else { return .leading }
         guard columnIndex < firstRow.count else { return .leading }
-        let value = firstRow[columnIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = firstRow[columnIndex].trimmed
         return Double(value) != nil ? .trailing : .leading
     }
 

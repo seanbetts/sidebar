@@ -65,13 +65,13 @@ private func loadString(key: String) throws -> String {
 }
 
 private func loadOptionalString(key: String) -> String? {
-    if let value = ProcessInfo.processInfo.environment[key], !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        return value.trimmingCharacters(in: .whitespacesAndNewlines)
+    if let value = ProcessInfo.processInfo.environment[key], !value.trimmed.isEmpty {
+        return value.trimmed
     }
 
     if let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
-        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        return value.trimmingCharacters(in: .whitespacesAndNewlines)
+        !value.trimmed.isEmpty {
+        return value.trimmed
     }
 
     if let value = EnvironmentConfigFileReader.loadString(forKey: key) {

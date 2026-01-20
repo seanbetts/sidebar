@@ -179,7 +179,7 @@ struct SideBarMarkdown: View, Equatable {
             }
             .paragraph { configuration in
                 let rawMarkdown = configuration.content.renderMarkdown()
-                let trimmed = rawMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
+                let trimmed = rawMarkdown.trimmed
                 if trimmed.hasPrefix(MarkdownRendering.imageCaptionMarker) {
                     let caption = trimmed
                         .dropFirst(MarkdownRendering.imageCaptionMarker.count)

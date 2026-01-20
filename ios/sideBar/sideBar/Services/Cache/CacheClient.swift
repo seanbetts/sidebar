@@ -1,11 +1,26 @@
-import Foundation
 import Combine
+import Foundation
+import OSLog
 
 public protocol CacheClient {
     func get<T: Codable>(key: String) -> T?
     func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval)
     func remove(key: String)
     func clear()
+}
+
+public extension CacheClient {
+    /// Invalidate a list cache and optionally a related detail cache.
+    func invalidateList(
+        listKey: String,
+        detailKey: ((String) -> String)? = nil,
+        id: String? = nil
+    ) {
+        remove(key: listKey)
+        if let detailKey, let id {
+            remove(key: detailKey(id))
+        }
+    }
 }
 
 public final class InMemoryCacheClient: CacheClient {
@@ -17,6 +32,7 @@ public final class InMemoryCacheClient: CacheClient {
     private var storage: [String: Entry] = [:]
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    private let logger = Logger(subsystem: "sideBar", category: "Cache")
 
     public init() {
     }
@@ -29,11 +45,20 @@ public final class InMemoryCacheClient: CacheClient {
             storage.removeValue(forKey: key)
             return nil
         }
-        return try? decoder.decode(T.self, from: entry.data)
+        do {
+            return try decoder.decode(T.self, from: entry.data)
+        } catch {
+            logger.error("Cache decode failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
     }
 
     public func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval) {
-        guard let data = try? encoder.encode(value) else {
+        let data: Data
+        do {
+            data = try encoder.encode(value)
+        } catch {
+            logger.error("Cache encode failed: \(error.localizedDescription, privacy: .public)")
             return
         }
         let entry = Entry(expiresAt: Date().addingTimeInterval(ttlSeconds), data: data)

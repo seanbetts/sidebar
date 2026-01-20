@@ -6,8 +6,7 @@ enum WebsiteURLValidator {
     }
 
     static func normalizedCandidate(_ input: String) -> URL? {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
+        guard let trimmed = input.trimmedOrNil else { return nil }
         let candidate = trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://")
             ? trimmed
             : "https://\(trimmed)"

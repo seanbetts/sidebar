@@ -62,6 +62,12 @@ public struct IngestionListItem: Codable {
     public let recommendedViewer: String?
 }
 
+extension IngestionListItem: StatusFilterable {
+    public var statusValue: String {
+        job.status ?? ""
+    }
+}
+
 public struct IngestionListResponse: Codable {
     public let items: [IngestionListItem]
 }
