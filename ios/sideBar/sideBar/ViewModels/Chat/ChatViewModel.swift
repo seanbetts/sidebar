@@ -4,39 +4,39 @@ import Foundation
 
 /// Manages chat state, streaming, and conversation coordination.
 public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
-    @Published public private(set) var conversations: [Conversation] = []
-    @Published public private(set) var selectedConversationId: String? = nil
-    @Published public private(set) var messages: [Message] = []
-    @Published public private(set) var isStreaming: Bool = false
-    @Published public private(set) var isLoadingConversations: Bool = false
-    @Published public private(set) var isLoadingMessages: Bool = false
-    @Published public private(set) var attachments: [ChatAttachmentItem] = []
-    @Published public private(set) var errorMessage: String? = nil
-    @Published public private(set) var activeTool: ChatActiveTool? = nil
-    @Published public private(set) var promptPreview: ChatPromptPreview? = nil
+    @Published public var conversations: [Conversation] = []
+    @Published public var selectedConversationId: String? = nil
+    @Published public var messages: [Message] = []
+    @Published public var isStreaming: Bool = false
+    @Published public var isLoadingConversations: Bool = false
+    @Published public var isLoadingMessages: Bool = false
+    @Published public var attachments: [ChatAttachmentItem] = []
+    @Published public var errorMessage: String? = nil
+    @Published public var activeTool: ChatActiveTool? = nil
+    @Published public var promptPreview: ChatPromptPreview? = nil
 
-    private let chatAPI: ChatAPI
-    private let conversationsAPI: ConversationsAPIProviding
-    private let cache: CacheClient
-    private let ingestionAPI: IngestionAPI
-    private let notesStore: NotesStore?
-    private let websitesStore: WebsitesStore?
-    private let ingestionStore: IngestionStore?
-    private let themeManager: ThemeManager
-    private let streamClient: ChatStreamClient
-    private let chatStore: ChatStore
-    private let userDefaults: UserDefaults
-    private let toastCenter: ToastCenter?
-    private let clock: () -> Date
-    private let scratchpadStore: ScratchpadStore?
+    let chatAPI: ChatAPI
+    let conversationsAPI: ConversationsAPIProviding
+    let cache: CacheClient
+    let ingestionAPI: IngestionAPI
+    let notesStore: NotesStore?
+    let websitesStore: WebsitesStore?
+    let ingestionStore: IngestionStore?
+    let themeManager: ThemeManager
+    let streamClient: ChatStreamClient
+    let chatStore: ChatStore
+    let userDefaults: UserDefaults
+    let toastCenter: ToastCenter?
+    let clock: () -> Date
+    let scratchpadStore: ScratchpadStore?
 
-    private var currentStreamMessageId: String?
-    private var streamingConversationId: String?
-    private var clearActiveToolTask: Task<Void, Never>?
-    private var refreshTask: PollingTask?
-    private var generatingTitleIds = Set<String>()
-    private var cancellables = Set<AnyCancellable>()
-    private var attachmentPollTasks: [String: Task<Void, Never>] = [:]
+    var currentStreamMessageId: String?
+    var streamingConversationId: String?
+    var clearActiveToolTask: Task<Void, Never>?
+    var refreshTask: PollingTask?
+    var generatingTitleIds = Set<String>()
+    var cancellables = Set<AnyCancellable>()
+    var attachmentPollTasks: [String: Task<Void, Never>] = [:]
 
     public init(
         chatAPI: ChatAPI,

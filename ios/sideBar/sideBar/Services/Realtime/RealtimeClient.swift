@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines RealtimeChannelName.
 public enum RealtimeChannelName: String {
     case notes
     case websites
@@ -7,6 +8,7 @@ public enum RealtimeChannelName: String {
     case fileJobs = "file_processing_jobs"
 }
 
+/// Defines the requirements for RealtimeClient.
 public protocol RealtimeClient {
     func start(userId: String, accessToken: String?) async
     func stop()

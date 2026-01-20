@@ -80,7 +80,7 @@ extension ChatViewModel {
         }
     }
 
-    private func applySelectionIfNeeded(using items: [Conversation]) {
+    func applySelectionIfNeeded(using items: [Conversation]) {
         guard !items.isEmpty else {
             return
         }
@@ -94,7 +94,7 @@ extension ChatViewModel {
         activeTool = nil
     }
 
-    private func reconcileMessages(_ incoming: [Message], for conversationId: String) -> [Message] {
+    func reconcileMessages(_ incoming: [Message], for conversationId: String) -> [Message] {
         guard conversationId == streamingConversationId,
               let currentStreamMessageId,
               !incoming.contains(where: { $0.id == currentStreamMessageId }),
@@ -104,7 +104,7 @@ extension ChatViewModel {
         return incoming + [streamingMessage]
     }
 
-    private func isSameMessageSnapshot(current: [Message], incoming: [Message]) -> Bool {
+    func isSameMessageSnapshot(current: [Message], incoming: [Message]) -> Bool {
         guard current.count == incoming.count else {
             return false
         }
@@ -116,7 +116,7 @@ extension ChatViewModel {
             && currentLast.status == incomingLast.status
     }
 
-    private func cleanupEmptyConversationIfNeeded() async {
+    func cleanupEmptyConversationIfNeeded() async {
         guard let conversationId = selectedConversationId else {
             return
         }
@@ -141,7 +141,7 @@ extension ChatViewModel {
         }
     }
 
-    private func clearConversationSelection() {
+    func clearConversationSelection() {
         stopStream()
         selectedConversationId = nil
         messages = []
@@ -152,13 +152,13 @@ extension ChatViewModel {
         clearAttachments()
     }
 
-    private func clearAttachments() {
+    func clearAttachments() {
         attachments.removeAll()
         attachmentPollTasks.values.forEach { $0.cancel() }
         attachmentPollTasks = [:]
     }
 
-    private func addAttachment(url: URL) async {
+    func addAttachment(url: URL) async {
         let id = UUID().uuidString
         let name = url.lastPathComponent
         attachments.append(
@@ -173,7 +173,7 @@ extension ChatViewModel {
         await uploadAttachment(id: id, url: url)
     }
 
-    private func uploadAttachment(id: String, url: URL) async {
+    func uploadAttachment(id: String, url: URL) async {
         let access = url.startAccessingSecurityScopedResource()
         defer {
             if access {
@@ -207,7 +207,7 @@ extension ChatViewModel {
         }
     }
 
-    private func startAttachmentPolling(id: String, fileId: String) {
+    func startAttachmentPolling(id: String, fileId: String) {
         attachmentPollTasks[id]?.cancel()
         let task = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 1_500_000_000)
@@ -251,14 +251,14 @@ extension ChatViewModel {
         attachmentPollTasks[id] = task
     }
 
-    private func updateAttachment(id: String, update: (ChatAttachmentItem) -> ChatAttachmentItem) {
+    func updateAttachment(id: String, update: (ChatAttachmentItem) -> ChatAttachmentItem) {
         guard let index = attachments.firstIndex(where: { $0.id == id }) else {
             return
         }
         attachments[index] = update(attachments[index])
     }
 
-    private func mimeTypeFor(url: URL) -> String {
+    func mimeTypeFor(url: URL) -> String {
         if let type = UTType(filenameExtension: url.pathExtension),
            let mime = type.preferredMIMEType {
             return mime
@@ -266,7 +266,7 @@ extension ChatViewModel {
         return "application/octet-stream"
     }
 
-    private func syncMessagesToStore(conversationId: String?, persist: Bool = false) {
+    func syncMessagesToStore(conversationId: String?, persist: Bool = false) {
         guard let conversationId else {
             return
         }
@@ -277,7 +277,7 @@ extension ChatViewModel {
         )
     }
 
-    private func normalizeMessages(_ incoming: [Message]) -> [Message] {
+    func normalizeMessages(_ incoming: [Message]) -> [Message] {
         let indexed = incoming.enumerated().map { (offset: $0.offset, message: $0.element) }
         let sorted = indexed.sorted { left, right in
             let leftDate = DateParsing.parseISO8601(left.message.timestamp)
@@ -299,7 +299,7 @@ extension ChatViewModel {
         return sorted.map { $0.message }
     }
 
-    private func appendToken(from event: ChatStreamEvent) {
+    func appendToken(from event: ChatStreamEvent) {
         guard let token = stringValue(from: event.data, key: "content") else {
             return
         }
@@ -322,7 +322,7 @@ extension ChatViewModel {
         }
     }
 
-    private func handleToolCall(_ event: ChatStreamEvent) {
+    func handleToolCall(_ event: ChatStreamEvent) {
         guard let toolCall = toolCallFromEvent(event, includeResult: false) else {
             return
         }
@@ -344,7 +344,7 @@ extension ChatViewModel {
         }
     }
 
-    private func handleToolResult(_ event: ChatStreamEvent) {
+    func handleToolResult(_ event: ChatStreamEvent) {
         guard let toolCall = toolCallFromEvent(event, includeResult: true) else {
             return
         }
@@ -374,7 +374,7 @@ extension ChatViewModel {
         }
     }
 
-    private func finalizeStreaming(status: MessageStatus) {
+    func finalizeStreaming(status: MessageStatus) {
         guard let messageId = activeStreamingMessageId else {
             isStreaming = false
             return

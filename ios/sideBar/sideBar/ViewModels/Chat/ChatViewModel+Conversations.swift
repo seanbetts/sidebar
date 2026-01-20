@@ -57,7 +57,7 @@ extension ChatViewModel {
         }
         let userMessageId = UUID().uuidString
         let assistantMessageId = UUID().uuidString
-        let timestamp = Self.isoTimestamp(from: clock())
+        let timestamp = Self.isoTimestamp(from: self.clock())
         let attachmentsForMessage = readyAttachments.compactMap { attachment -> ChatAttachment? in
             guard let fileId = attachment.fileId else { return nil }
             return ChatAttachment(fileId: fileId, filename: attachment.name)

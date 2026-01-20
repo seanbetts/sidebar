@@ -1,3 +1,7 @@
+import AVKit
+import Combine
+import PDFKit
+import QuickLook
 import SwiftUI
 import UniformTypeIdentifiers
 

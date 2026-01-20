@@ -41,7 +41,7 @@ final class WebsitesStoreTests: XCTestCase {
         let api = MockWebsitesAPI(listResult: .failure(MockError.forced), getResult: .failure(MockError.forced))
         let store = WebsitesStore(api: api, cache: cache)
         store.updateListItem(item, persist: false)
-        try? await store.loadDetail(id: \"w1\")
+        try? await store.loadDetail(id: "w1")
 
         let payload = RealtimePayload<WebsiteRealtimeRecord>(
             eventType: .delete,

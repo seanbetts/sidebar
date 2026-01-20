@@ -2,7 +2,7 @@ import SwiftUI
 
 extension ContentView {
     @ViewBuilder
-    private var mainView: some View {
+    var mainView: some View {
         #if os(macOS)
         splitView
         #else
@@ -14,7 +14,7 @@ extension ContentView {
         #endif
     }
 
-    private func presentAlert(_ alert: ActiveAlert) {
+    func presentAlert(_ alert: ActiveAlert) {
         if activeAlert == nil {
             activeAlert = alert
             return
@@ -31,13 +31,13 @@ extension ContentView {
         }
     }
 
-    private func enqueueAlertAction(_ action: @escaping () -> Void) {
+    func enqueueAlertAction(_ action: @escaping () -> Void) {
         DispatchQueue.main.async {
             action()
         }
     }
 
-    private var splitView: some View {
+    var splitView: some View {
         WorkspaceLayout(
             selection: $sidebarSelection,
             isLeftPanelExpanded: $isLeftPanelExpanded,
@@ -58,7 +58,7 @@ extension ContentView {
         }
     }
 
-    private var compactView: some View {
+    var compactView: some View {
         TabView(selection: $phoneSelection) {
             ForEach(phoneSections, id: \.self) { section in
                 phoneTabView(for: section)
@@ -113,11 +113,11 @@ extension ContentView {
         }
     }
 
-    private func detailView(for section: AppSection?) -> some View {
+    func detailView(for section: AppSection?) -> some View {
         detailViewDefinition(for: section)
     }
 
-    private func swapPrimaryAndSecondary() {
+    func swapPrimaryAndSecondary() {
         let performSwap = {
             let temp = primarySection
             primarySection = secondarySection
@@ -135,7 +135,7 @@ extension ContentView {
         }
     }
 
-    private func handleNonChatSelection(_ section: AppSection) {
+    func handleNonChatSelection(_ section: AppSection) {
         if primarySection == .chat {
             secondarySection = section
         } else {
@@ -144,7 +144,7 @@ extension ContentView {
         lastNonChatSection = section
     }
 
-    private func handleReadyFileNotification(_ notification: ReadyFileNotification) {
+    func handleReadyFileNotification(_ notification: ReadyFileNotification) {
         environment.ingestionViewModel.clearReadyFileNotification()
         if environment.ingestionViewModel.selectedFileId == notification.fileId {
             return
@@ -156,12 +156,12 @@ extension ContentView {
         presentAlert(.fileReady(notification))
     }
 
-    private func openReadyFile(_ notification: ReadyFileNotification) {
+    func openReadyFile(_ notification: ReadyFileNotification) {
         navigateToFilesSection()
         Task { await environment.ingestionViewModel.selectFile(fileId: notification.fileId, forceRefresh: true) }
     }
 
-    private func navigateToFilesSection() {
+    func navigateToFilesSection() {
         #if !os(macOS)
         if horizontalSizeClass == .compact {
             phoneSelection = .files

@@ -1,11 +1,13 @@
 import Foundation
 
+/// Defines RealtimeEventType.
 public enum RealtimeEventType: String, Codable {
     case insert = "INSERT"
     case update = "UPDATE"
     case delete = "DELETE"
 }
 
+/// Represents RealtimePayload.
 public struct RealtimePayload<T: Codable>: Codable {
     public let eventType: RealtimeEventType
     public let table: String
@@ -22,6 +24,7 @@ public struct RealtimePayload<T: Codable>: Codable {
     }
 }
 
+/// Defines RealtimeTable.
 public enum RealtimeTable {
     public static let notes = "notes"
     public static let websites = "websites"

@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import OSLog
 
+/// Defines the requirements for CacheClient.
 public protocol CacheClient {
     func get<T: Codable>(key: String) -> T?
     func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval)

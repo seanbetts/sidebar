@@ -522,6 +522,3 @@ extension NotesPanelView {
         }
     }
 }
-
-
-}

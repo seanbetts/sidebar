@@ -88,9 +88,14 @@
 				Services/Auth/AuthStateStore.swift,
 				Services/Auth/KeychainAuthStateStore.swift,
 				Services/Network/APIClient.swift,
+				Services/Network/CertificatePinningDelegate.swift,
 				Services/Network/WebsitesAPI.swift,
 				Utilities/AppGroupConfiguration.swift,
+				Utilities/EnvironmentConfig.swift,
+				"Utilities/EnvironmentConfig+Load.swift",
+				Utilities/EnvironmentConfigFileReader.swift,
 				Utilities/ExtensionEventStore.swift,
+				"Utilities/String+Validation.swift",
 			);
 			target = 142516AC2F1EB96B0072E4F9 /* ShareExtension */;
 		};

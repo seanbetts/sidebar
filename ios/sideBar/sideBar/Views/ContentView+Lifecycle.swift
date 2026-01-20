@@ -4,14 +4,14 @@ import UIKit
 #endif
 
 extension ContentView {
-    private func refreshWeatherIfPossible() async {
+    func refreshWeatherIfPossible() async {
         guard environment.isAuthenticated else { return }
         let location = environment.settingsViewModel.settings?.location?.trimmed ?? ""
         guard !location.isEmpty else { return }
         await environment.weatherViewModel.load(location: location)
     }
 
-    private func loadPhoneSectionIfNeeded(_ section: AppSection) async {
+    func loadPhoneSectionIfNeeded(_ section: AppSection) async {
         switch section {
         case .notes:
             await environment.notesViewModel.loadTree()
@@ -26,7 +26,7 @@ extension ContentView {
         }
     }
 
-    private var topSafeAreaBackground: Color {
+    var topSafeAreaBackground: Color {
         #if os(macOS)
         return DesignTokens.Colors.background
         #else
@@ -37,7 +37,7 @@ extension ContentView {
         #endif
     }
 
-    private var isCompact: Bool {
+    var isCompact: Bool {
         #if os(macOS)
         return false
         #else
@@ -45,7 +45,7 @@ extension ContentView {
         #endif
     }
 
-    private var isFilesSectionVisible: Bool {
+    var isFilesSectionVisible: Bool {
         #if os(macOS)
         return primarySection == .files || secondarySection == .files
         #else
@@ -56,7 +56,7 @@ extension ContentView {
         #endif
     }
 
-    private var isPhonePanelListVisible: Bool {
+    var isPhonePanelListVisible: Bool {
         guard isCompact else { return false }
         switch phoneSelection {
         case .chat:
@@ -72,7 +72,7 @@ extension ContentView {
         }
     }
 
-    private func applyInitialSelectionIfNeeded() {
+    func applyInitialSelectionIfNeeded() {
         guard !didSetInitialSelection else { return }
         didSetInitialSelection = true
 #if os(iOS)
@@ -99,7 +99,7 @@ extension ContentView {
         updateActiveSection()
     }
 
-    private func updateActiveSection() {
+    func updateActiveSection() {
         #if os(macOS)
         let section = isSettingsPresented ? AppSection.settings : (primarySection ?? sidebarSelection ?? secondarySection)
         #else
@@ -119,7 +119,7 @@ extension ContentView {
     }
 
 
-    private var tabBarTint: Color {
+    var tabBarTint: Color {
         #if os(macOS)
         return Color.accentColor
         #else
@@ -127,7 +127,7 @@ extension ContentView {
         #endif
     }
 
-    private var tabAccessoryBackground: Color {
+    var tabAccessoryBackground: Color {
         #if os(macOS)
         return DesignTokens.Colors.surface
         #else
@@ -135,7 +135,7 @@ extension ContentView {
         #endif
     }
 
-    private var tabAccessoryBorder: Color {
+    var tabAccessoryBorder: Color {
         #if os(macOS)
         return DesignTokens.Colors.border
         #else
@@ -143,7 +143,7 @@ extension ContentView {
         #endif
     }
 
-    private var separatorColor: Color {
+    var separatorColor: Color {
         #if os(macOS)
         return DesignTokens.Colors.border
         #else

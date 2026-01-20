@@ -7,30 +7,30 @@ import UniformTypeIdentifiers
 @MainActor
 /// Coordinates ingestion list state and polling for files.
 public final class IngestionViewModel: ObservableObject {
-    @Published public private(set) var items: [IngestionListItem] = []
-    @Published public private(set) var activeMeta: IngestionMetaResponse? = nil
-    @Published public private(set) var selectedFileId: String? = nil
-    @Published public private(set) var selectedDerivativeKind: String? = nil
-    @Published public private(set) var viewerState: FileViewerState? = nil
-    @Published public private(set) var isLoading: Bool = false
-    @Published public private(set) var isLoadingContent: Bool = false
-    @Published public private(set) var isSelecting: Bool = false
-    @Published public private(set) var isOffline: Bool = false
-    @Published public private(set) var errorMessage: String? = nil
-    @Published public private(set) var isIngestingYouTube: Bool = false
-    @Published public private(set) var readyFileNotification: ReadyFileNotification? = nil
-    @Published public private(set) var lastReadyMessage: ReadyFileNotification? = nil
+    @Published public var items: [IngestionListItem] = []
+    @Published public var activeMeta: IngestionMetaResponse? = nil
+    @Published public var selectedFileId: String? = nil
+    @Published public var selectedDerivativeKind: String? = nil
+    @Published public var viewerState: FileViewerState? = nil
+    @Published public var isLoading: Bool = false
+    @Published public var isLoadingContent: Bool = false
+    @Published public var isSelecting: Bool = false
+    @Published public var isOffline: Bool = false
+    @Published public var errorMessage: String? = nil
+    @Published public var isIngestingYouTube: Bool = false
+    @Published public var readyFileNotification: ReadyFileNotification? = nil
+    @Published public var lastReadyMessage: ReadyFileNotification? = nil
 
-    private let api: any IngestionProviding
-    private let temporaryStore: TemporaryFileStore
-    private let store: IngestionStore
-    private let uploadManager: IngestionUploadManaging
-    private var cancellables = Set<AnyCancellable>()
-    private var securityScopedURLs: [String: URL] = [:]
-    private var jobPollingTasks: [String: Task<Void, Never>] = [:]
-    private var listPollingTask: PollingTask? = nil
-    private var statusCache: [String: String] = [:]
-    private let readyMessageTask = ManagedTask()
+    let api: any IngestionProviding
+    let temporaryStore: TemporaryFileStore
+    let store: IngestionStore
+    let uploadManager: IngestionUploadManaging
+    var cancellables = Set<AnyCancellable>()
+    var securityScopedURLs: [String: URL] = [:]
+    var jobPollingTasks: [String: Task<Void, Never>] = [:]
+    var listPollingTask: PollingTask? = nil
+    var statusCache: [String: String] = [:]
+    let readyMessageTask = ManagedTask()
 
     public init(
         api: any IngestionProviding,
@@ -63,3 +63,4 @@ public final class IngestionViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
+}

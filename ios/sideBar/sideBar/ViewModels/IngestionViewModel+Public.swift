@@ -185,8 +185,8 @@ extension IngestionViewModel {
                 case .requestFailed:
                     return "Failed to add YouTube video"
                 default:
-        return "Failed to add YouTube video"
-    }
+                    return "Failed to add YouTube video"
+                }
             }
             return "Failed to add YouTube video"
         }
@@ -217,4 +217,6 @@ extension IngestionViewModel {
     }
 
     public func clearReadyMessage() {
+        lastReadyMessage = nil
+    }
 }

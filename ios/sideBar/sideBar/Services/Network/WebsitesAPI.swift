@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for WebsitesProviding.
 public protocol WebsitesProviding {
     func list() async throws -> WebsitesResponse
     func get(id: String) async throws -> WebsiteDetail

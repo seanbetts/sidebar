@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for ConversationsProviding.
 public protocol ConversationsProviding {
     func list() async throws -> [Conversation]
     func get(id: String) async throws -> ConversationWithMessages
@@ -7,6 +8,7 @@ public protocol ConversationsProviding {
     func delete(conversationId: String) async throws -> Conversation
 }
 
+/// Defines the requirements for ConversationsAPIProviding.
 public protocol ConversationsAPIProviding {
     func list() async throws -> [Conversation]
     func get(id: String) async throws -> ConversationWithMessages

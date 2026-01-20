@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 // MARK: - IngestionViewModel+Private
 
 extension IngestionViewModel {
-    private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
+    func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
         let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }
         let nonAI = candidates.filter { $0.kind != "ai_md" }
 
@@ -24,7 +24,7 @@ extension IngestionViewModel {
         return nonAI.first?.kind ?? candidates.first?.kind
     }
 
-    private func ensureViewerReady(for fileId: String) async {
+    func ensureViewerReady(for fileId: String) async {
         guard selectedFileId == fileId else { return }
         guard let meta = activeMeta else { return }
         guard viewerState == nil else { return }
@@ -34,7 +34,7 @@ extension IngestionViewModel {
         }
     }
 
-    private func startJobPollingIfNeeded(fileId: String) {
+    func startJobPollingIfNeeded(fileId: String) {
         guard let meta = activeMeta, meta.file.id == fileId else { return }
         let status = meta.job.status ?? ""
         guard status != "ready" && status != "failed" && status != "canceled" else {
@@ -71,7 +71,7 @@ extension IngestionViewModel {
         }
     }
 
-    private func cancelJobPolling(fileId: String? = nil) {
+    func cancelJobPolling(fileId: String? = nil) {
         if let fileId {
             jobPollingTasks[fileId]?.cancel()
             jobPollingTasks[fileId] = nil
@@ -83,7 +83,7 @@ extension IngestionViewModel {
         jobPollingTasks = [:]
     }
 
-    private func updateListPollingState(items: [IngestionListItem]) {
+    func updateListPollingState(items: [IngestionListItem]) {
         if items.hasActiveItems {
             startListPolling()
         } else {
@@ -91,7 +91,7 @@ extension IngestionViewModel {
         }
     }
 
-    private func startListPolling() {
+    func startListPolling() {
         guard listPollingTask == nil else { return }
         let task = PollingTask(interval: 3)
         listPollingTask = task
@@ -104,12 +104,12 @@ extension IngestionViewModel {
         }
     }
 
-    private func stopListPolling() {
+    func stopListPolling() {
         listPollingTask?.cancel()
         listPollingTask = nil
     }
 
-    private func detectReadyTransitions(items: [IngestionListItem]) {
+    func detectReadyTransitions(items: [IngestionListItem]) {
         var seenIds = Set<String>()
         for item in items {
             let fileId = item.file.id
@@ -130,7 +130,7 @@ extension IngestionViewModel {
         statusCache.keys.filter { !seenIds.contains($0) }.forEach { statusCache.removeValue(forKey: $0) }
     }
 
-    private func registerReadyMessage(_ notification: ReadyFileNotification) {
+    func registerReadyMessage(_ notification: ReadyFileNotification) {
         lastReadyMessage = notification
         readyMessageTask.runDebounced(delay: 6) { [weak self] in
             await MainActor.run {
@@ -141,7 +141,7 @@ extension IngestionViewModel {
         }
     }
 
-    private func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {
+    func loadDerivativeContent(meta: IngestionMetaResponse, derivative: IngestionDerivative) async {
         isLoadingContent = true
         errorMessage = nil
         do {
@@ -196,7 +196,7 @@ extension IngestionViewModel {
         isLoadingContent = false
     }
 
-    private func startUpload(url: URL) {
+    func startUpload(url: URL) {
         let filename = url.lastPathComponent
         let mimeType = mimeTypeFor(url: url)
         let tempId = "local-\(UUID().uuidString)"
@@ -248,7 +248,7 @@ extension IngestionViewModel {
         )
     }
 
-    private func handleUploadCompletion(
+    func handleUploadCompletion(
         tempId: String,
         filename: String,
         mimeType: String,
@@ -281,7 +281,7 @@ extension IngestionViewModel {
         }
     }
 
-    private func makeLocalItem(
+    func makeLocalItem(
         id: String,
         filename: String,
         mimeType: String,
@@ -318,7 +318,7 @@ extension IngestionViewModel {
         return IngestionListItem(file: file, job: job, recommendedViewer: nil)
     }
 
-    private func mimeTypeFor(url: URL) -> String {
+    func mimeTypeFor(url: URL) -> String {
         if let type = UTType(filenameExtension: url.pathExtension),
            let mime = type.preferredMIMEType {
             return mime
@@ -326,12 +326,12 @@ extension IngestionViewModel {
         return "application/octet-stream"
     }
 
-    private func fileSizeBytes(for url: URL) -> Int {
+    func fileSizeBytes(for url: URL) -> Int {
         let values = try? url.resourceValues(forKeys: [.fileSizeKey])
         return values?.fileSize ?? 0
     }
 
-    private func normalizeYouTubeUrlCandidate(_ raw: String) -> String? {
+    func normalizeYouTubeUrlCandidate(_ raw: String) -> String? {
         guard !raw.isEmpty else { return nil }
         let candidate = raw.contains("://") ? raw : "https://\(raw)"
         guard let url = URL(string: candidate),
@@ -342,12 +342,12 @@ extension IngestionViewModel {
         return candidate
     }
 
-    private func releaseSecurityScopedAccess(for fileId: String) {
+    func releaseSecurityScopedAccess(for fileId: String) {
         guard let url = securityScopedURLs.removeValue(forKey: fileId) else { return }
         url.stopAccessingSecurityScopedResource()
     }
 
-    private func makeFilename(base: String, mimeType: String, fallback: String) -> String {
+    func makeFilename(base: String, mimeType: String, fallback: String) -> String {
         if base.contains(".") {
             return base
         }
@@ -357,7 +357,7 @@ extension IngestionViewModel {
         return "\(base)-\(fallback)"
     }
 
-    private func filenameExtension(for mimeType: String) -> String? {
+    func filenameExtension(for mimeType: String) -> String? {
         let normalized = mimeType.lowercased()
         switch normalized {
         case "application/pdf":
@@ -386,7 +386,7 @@ extension IngestionViewModel {
         }
     }
 
-    private func overrideKindIfMarkdown(
+    func overrideKindIfMarkdown(
         inferredKind: FileViewerKind,
         filename: String,
         mimeType: String
@@ -403,7 +403,7 @@ extension IngestionViewModel {
         return inferredKind
     }
 
-    private func buildYouTubeEmbedURL(from file: IngestedFileMeta) -> URL? {
+    func buildYouTubeEmbedURL(from file: IngestedFileMeta) -> URL? {
         if let metadata = file.sourceMetadata {
             if let value = metadata["video_id"]?.value as? String {
                 return makeYouTubeEmbedURL(videoId: value)
@@ -420,11 +420,42 @@ extension IngestionViewModel {
         return nil
     }
 
-    private func makeYouTubeEmbedURL(videoId: String) -> URL? {
+    func makeYouTubeEmbedURL(videoId: String) -> URL? {
         guard let trimmed = videoId.trimmedOrNil else { return nil }
         let url = "https://www.youtube-nocookie.com/embed/\(trimmed)?playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
         return URL(string: url)
     }
 
-    private func extractYouTubeVideoId(from raw: String) -> String? {
+    func extractYouTubeVideoId(from raw: String) -> String? {
+        guard let normalized = normalizeYouTubeUrlCandidate(raw),
+              let url = URL(string: normalized) else {
+            return nil
+        }
+        let host = url.host?.lowercased() ?? ""
+        if host.contains("youtu.be") {
+            return url.pathComponents.last?.trimmedOrNil
+        }
+        guard host.contains("youtube.com") else {
+            return nil
+        }
+        if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           let queryItems = components.queryItems,
+           let videoId = queryItems.first(where: { $0.name == "v" })?.value?.trimmedOrNil {
+            return videoId
+        }
+        let components = url.pathComponents.filter { $0 != "/" }
+        if let embedIndex = components.firstIndex(of: "embed"),
+           components.indices.contains(embedIndex + 1) {
+            return components[embedIndex + 1].trimmedOrNil
+        }
+        if let shortsIndex = components.firstIndex(of: "shorts"),
+           components.indices.contains(shortsIndex + 1) {
+            return components[shortsIndex + 1].trimmedOrNil
+        }
+        if let liveIndex = components.firstIndex(of: "live"),
+           components.indices.contains(liveIndex + 1) {
+            return components[liveIndex + 1].trimmedOrNil
+        }
+        return components.last?.trimmedOrNil
+    }
 }

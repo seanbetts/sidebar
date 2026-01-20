@@ -2,6 +2,7 @@ import Foundation
 
 // TODO: Revisit to prefer native-first data sources where applicable.
 
+/// Defines the requirements for TaskProvider.
 public protocol TaskProvider {
     func listTasks(scope: String) async throws -> [TaskItem]
     func searchTasks(query: String) async throws -> [TaskItem]

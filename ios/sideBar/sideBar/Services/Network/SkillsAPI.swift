@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for SkillsProviding.
 public protocol SkillsProviding {
     func list() async throws -> SkillsResponse
 }

@@ -50,6 +50,7 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
     }
 }
 
+/// Defines PinnedCertificates.
 public enum PinnedCertificates {
     public static func loadFromMainBundle() -> Set<Data> {
         guard let urls = Bundle.main.urls(forResourcesWithExtension: "cer", subdirectory: nil) else {

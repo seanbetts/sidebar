@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for AuthStateStore.
 public protocol AuthStateStore {
     func saveAccessToken(_ token: String?) throws
     func saveUserId(_ userId: String?) throws

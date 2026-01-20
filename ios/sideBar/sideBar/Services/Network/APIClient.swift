@@ -14,6 +14,7 @@ public struct APIClientConfig {
     }
 }
 
+/// Defines APIClientError.
 public enum APIClientError: Error {
     case invalidUrl
     case missingToken
