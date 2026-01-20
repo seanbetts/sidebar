@@ -46,6 +46,10 @@ public struct ContentView: View {
     @AppStorage(AppStorageKeys.hasShownBiometricHint) private var hasShownBiometricHint = false
     #endif
     @State private var hasCompletedInitialSetup = false
+    @State private var backgroundedAt: Date?
+
+    /// Grace period before requiring biometric re-authentication (30 seconds)
+    private let biometricGracePeriod: TimeInterval = 30
 
     public init() {
     }
@@ -72,7 +76,8 @@ public struct ContentView: View {
                 isBiometricUnlocked: $isBiometricUnlocked,
                 topSafeAreaBackground: topSafeAreaBackground,
                 onSignOut: { Task { await environment.beginSignOut() } },
-                mainView: { mainView }
+                mainView: { mainView },
+                scenePhase: scenePhase
             )
         )
         #if os(iOS)
@@ -95,12 +100,24 @@ public struct ContentView: View {
             }
         })
         content = AnyView(content.animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast))
-        content = AnyView(content.onChange(of: scenePhase) { _, newValue in
+        content = AnyView(content.onChange(of: scenePhase) { oldValue, newValue in
             if newValue == .background && biometricUnlockEnabled {
-                isBiometricUnlocked = false
+                // Record when we went to background (don't lock yet)
+                backgroundedAt = Date()
             }
             #if os(iOS)
             if newValue == .active {
+                // Check if we need to require biometric based on grace period
+                if biometricUnlockEnabled && isBiometricUnlocked {
+                    if let backgrounded = backgroundedAt {
+                        let elapsed = Date().timeIntervalSince(backgrounded)
+                        if elapsed > biometricGracePeriod {
+                            isBiometricUnlocked = false
+                        }
+                    }
+                }
+                backgroundedAt = nil
+
                 Task {
                     await environment.consumeExtensionEvents()
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -161,7 +178,7 @@ public struct ContentView: View {
                 #endif
                 environment.commandSelection = nil
         })
-        content = AnyView(content.onChange(of: environment.isAuthenticated) { _, isAuthenticated in
+        content = AnyView(content.onChange(of: environment.isAuthenticated) { oldValue, isAuthenticated in
             activeAlert = nil
             pendingSessionExpiryAlert = false
             pendingBiometricUnavailableAlert = false
@@ -171,7 +188,13 @@ public struct ContentView: View {
                 #if os(iOS)
                 Task { await environment.consumeExtensionEvents() }
                 #endif
-                if biometricUnlockEnabled {
+                // When user just signed in (transitioned from not authenticated to authenticated),
+                // consider them already unlocked since they authenticated with password.
+                // Biometric lock should only apply when returning from background.
+                let justSignedIn = !oldValue
+                if justSignedIn {
+                    isBiometricUnlocked = true
+                } else if biometricUnlockEnabled {
                     isBiometricUnlocked = false
                 } else {
                     isBiometricUnlocked = true
@@ -860,6 +883,7 @@ private struct SignedInContentView<Main: View>: View {
     let topSafeAreaBackground: Color
     let onSignOut: () -> Void
     let mainView: () -> Main
+    let scenePhase: ScenePhase
     @EnvironmentObject private var environment: AppEnvironment
 
     var body: some View {
@@ -867,7 +891,8 @@ private struct SignedInContentView<Main: View>: View {
             if biometricUnlockEnabled && !isBiometricUnlocked {
                 BiometricLockView(
                     onUnlock: { isBiometricUnlocked = true },
-                    onSignOut: onSignOut
+                    onSignOut: onSignOut,
+                    scenePhase: scenePhase
                 )
             } else {
                 GeometryReader { proxy in

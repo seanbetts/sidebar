@@ -14,17 +14,20 @@ public struct SecureFieldWithToggle: View {
     let title: String
     @Binding var text: String
     var textContentType: PlatformTextContentType?
+    var onSubmit: (() -> Void)?
 
     @State private var isSecure = true
 
     public init(
         title: String,
         text: Binding<String>,
-        textContentType: PlatformTextContentType? = nil
+        textContentType: PlatformTextContentType? = nil,
+        onSubmit: (() -> Void)? = nil
     ) {
         self.title = title
         self._text = text
         self.textContentType = textContentType
+        self.onSubmit = onSubmit
     }
 
     public var body: some View {
@@ -34,7 +37,8 @@ public struct SecureFieldWithToggle: View {
                 title: title,
                 text: $text,
                 isSecure: $isSecure,
-                textContentType: textContentType
+                textContentType: textContentType,
+                onSubmit: onSubmit
             )
             #else
             if isSecure {
@@ -66,6 +70,7 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
     @Binding var text: String
     @Binding var isSecure: Bool
     var textContentType: PlatformTextContentType?
+    var onSubmit: (() -> Void)?
 
     func makeUIView(context: Context) -> UITextField {
         let textField = UITextField()
@@ -74,9 +79,11 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
         textField.isSecureTextEntry = isSecure
         textField.autocorrectionType = .no
         textField.autocapitalizationType = .none
+        textField.returnKeyType = .go
         textField.setContentHuggingPriority(.required, for: .vertical)
         textField.setContentCompressionResistancePriority(.required, for: .vertical)
         textField.addTarget(context.coordinator, action: #selector(Coordinator.textDidChange), for: .editingChanged)
+        textField.delegate = context.coordinator
         return textField
     }
 
@@ -94,21 +101,29 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
         if uiView.textContentType != textContentType {
             uiView.textContentType = textContentType
         }
+        context.coordinator.onSubmit = onSubmit
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, onSubmit: onSubmit)
     }
 
-    final class Coordinator: NSObject {
+    final class Coordinator: NSObject, UITextFieldDelegate {
         private let text: Binding<String>
+        var onSubmit: (() -> Void)?
 
-        init(text: Binding<String>) {
+        init(text: Binding<String>, onSubmit: (() -> Void)?) {
             self.text = text
+            self.onSubmit = onSubmit
         }
 
         @objc func textDidChange(_ sender: UITextField) {
             text.wrappedValue = sender.text ?? ""
+        }
+
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            onSubmit?()
+            return true
         }
     }
 }

@@ -47,6 +47,7 @@ All three features leverage existing infrastructure (80%, 70%, and 60% ready res
 **Files to Update:**
 - `sideBar.entitlements` - Add App Groups entitlement
 - New: `ShareExtension.entitlements`, `WidgetExtension.entitlements`
+**Status:** Complete (app + ShareExtension configured)
 
 #### 2. Push Notification Setup (For Live Activities)
 **Why:** Live Activities require push notification capability
@@ -91,6 +92,7 @@ private func baseQuery() -> [String: Any] {
 
 **Files to Update:**
 - `KeychainAuthStateStore.swift` - Add access group parameter
+**Status:** Complete
 
 #### 4. Core Data Migration to App Groups (For Widgets)
 **Why:** Widgets need to read cached data
@@ -145,6 +147,7 @@ public final class SharedUserDefaults {
   }
 }
 ```
+**Status:** Complete (share extension uses App Group defaults via `ExtensionEventStore`)
 
 ---
 
@@ -158,6 +161,7 @@ public final class SharedUserDefaults {
 
 #### Task 1.1: Create Share Extension Target
 **Duration:** 1-2 hours
+**Status:** Complete
 
 **Steps:**
 1. Xcode → File → New → Target → Share Extension
@@ -201,6 +205,7 @@ public final class SharedUserDefaults {
 
 #### Task 1.2: Add App Groups to Extension
 **Duration:** 30 minutes
+**Status:** Complete
 
 1. Select ShareExtension target
 2. Signing & Capabilities → + Capability → App Groups
@@ -209,6 +214,7 @@ public final class SharedUserDefaults {
 
 #### Task 1.3: Share Code Between Targets
 **Duration:** 1 hour
+**Status:** Complete
 
 **Approach 1: Add files to multiple targets** (Simple, recommended for now)
 1. Select these files in Xcode:
@@ -231,6 +237,7 @@ public final class SharedUserDefaults {
 
 #### Task 1.4: Environment Configuration
 **Duration:** 1 hour
+**Status:** Complete
 
 **Create:** `ShareExtension/ShareExtensionEnvironment.swift`
 
