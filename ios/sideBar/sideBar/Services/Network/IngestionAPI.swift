@@ -10,6 +10,7 @@ public protocol IngestionProviding {
     func ingestYouTube(url: String) async throws -> String
 }
 
+/// API client for ingestion endpoints.
 public struct IngestionAPI {
     private let client: APIClient
     private let session: URLSession

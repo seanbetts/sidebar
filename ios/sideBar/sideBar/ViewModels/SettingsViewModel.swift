@@ -4,6 +4,7 @@ import Combine
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Manages user settings, skills, and profile image state.
 public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var settings: UserSettings? = nil
     @Published public private(set) var skills: [SkillItem] = []

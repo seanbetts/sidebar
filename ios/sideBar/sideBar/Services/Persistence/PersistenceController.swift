@@ -1,6 +1,7 @@
 import CoreData
 import Foundation
 
+/// Configures Core Data persistence for the app.
 public final class PersistenceController {
     public static let shared = PersistenceController()
 

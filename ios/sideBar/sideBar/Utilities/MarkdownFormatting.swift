@@ -5,6 +5,8 @@ import AppKit
 import UIKit
 #endif
 
+// MARK: - MarkdownFormatting
+
 public enum MarkdownFormatting {
     private static let blockAttribute = NSAttributedString.Key("sideBarMarkdownBlock")
 

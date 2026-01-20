@@ -1,6 +1,8 @@
 import Combine
 import Foundation
 
+// MARK: - ChatViewModel+Conversations
+
 extension ChatViewModel {
     public func loadConversations(force: Bool = false, silent: Bool = false) async {
         errorMessage = nil

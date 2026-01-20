@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+// MARK: - NotesPanelComponents
+
 struct NotesFolderOption: Identifiable, Hashable {
     let id: String
     let label: String

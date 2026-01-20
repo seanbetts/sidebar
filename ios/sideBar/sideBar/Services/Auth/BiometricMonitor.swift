@@ -3,6 +3,7 @@ import Combine
 import LocalAuthentication
 
 @MainActor
+/// Observes biometric availability and state changes.
 public final class BiometricMonitor: ObservableObject {
     @Published public private(set) var biometryType: LABiometryType = .none
     @Published public private(set) var isAvailable: Bool = false

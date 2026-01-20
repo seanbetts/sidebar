@@ -1,6 +1,8 @@
 import Combine
 import Foundation
 
+// MARK: - ChatViewModel+Realtime
+
 extension ChatViewModel {
     private func handleNoteCreate(_ event: ChatStreamEvent) {
         let id = stringValue(from: event.data, key: "id")

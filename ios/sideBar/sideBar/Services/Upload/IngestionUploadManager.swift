@@ -1,6 +1,8 @@
 import Foundation
 import OSLog
 
+// MARK: - IngestionUploadManager
+
 public protocol IngestionUploadManaging: AnyObject {
     func startUpload(
         uploadId: String,
@@ -14,6 +16,7 @@ public protocol IngestionUploadManaging: AnyObject {
     func cancelUpload(uploadId: String)
 }
 
+/// Handles background uploads for ingestion.
 public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let config: APIClientConfig
     private let logger = Logger(subsystem: "sideBar", category: "Upload")

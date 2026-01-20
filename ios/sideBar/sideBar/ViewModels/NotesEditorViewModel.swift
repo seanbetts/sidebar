@@ -3,7 +3,10 @@ import CoreGraphics
 import Combine
 import os
 
+// MARK: - NotesEditorViewModel
+
 @MainActor
+/// Manages note editing state, formatting actions, and autosave.
 public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var content: String = ""
     @Published public private(set) var attributedContent: NSAttributedString = NSAttributedString(string: "")

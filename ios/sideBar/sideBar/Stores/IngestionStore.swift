@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 
+// MARK: - IngestionStore
+
 @MainActor
 public final class IngestionStore: ObservableObject {
     @Published public private(set) var items: [IngestionListItem] = []

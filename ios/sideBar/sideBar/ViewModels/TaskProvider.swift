@@ -13,6 +13,7 @@ public protocol TaskProvider {
     func setDueDate(id: String, date: Date?) async throws
 }
 
+/// Represents a task returned by a task provider.
 public struct TaskItem: Identifiable, Codable {
     public let id: String
     public let title: String
@@ -24,6 +25,7 @@ public struct TaskItem: Identifiable, Codable {
     public let updatedAt: String?
 }
 
+/// Defines the fields needed to create or update a task.
 public struct TaskDraft: Codable {
     public let title: String
     public let notes: String?

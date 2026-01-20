@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - SettingsSections
+
 struct ProfileSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @EnvironmentObject private var environment: AppEnvironment

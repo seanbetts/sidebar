@@ -5,6 +5,8 @@ import UIKit
 #endif
 
 #if os(iOS)
+// MARK: - SpreadsheetGridView
+
 struct SpreadsheetGridView: UIViewRepresentable {
     let headers: [String]
     let rows: [[String]]

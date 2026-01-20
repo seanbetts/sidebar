@@ -2,6 +2,8 @@ import Combine
 import Foundation
 import UniformTypeIdentifiers
 
+// MARK: - IngestionViewModel+Private
+
 extension IngestionViewModel {
     private func preferredDerivativeKind(for meta: IngestionMetaResponse) -> String? {
         let candidates = meta.derivatives.filter { $0.kind != "thumb_png" }

@@ -10,6 +10,7 @@ public protocol ChatStreamEventHandler: AnyObject {
     func handle(event: ChatStreamEvent)
 }
 
+/// No-op chat stream client placeholder.
 public final class PlaceholderChatStreamClient: ChatStreamClient {
     public weak var handler: ChatStreamEventHandler?
 

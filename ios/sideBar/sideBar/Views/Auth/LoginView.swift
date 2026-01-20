@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - LoginView
+
 public struct LoginView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

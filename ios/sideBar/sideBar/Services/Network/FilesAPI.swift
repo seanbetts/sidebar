@@ -6,6 +6,7 @@ public protocol FilesProviding {
     func download(basePath: String, path: String) async throws -> Data
 }
 
+/// API client for file tree and content endpoints.
 public struct FilesAPI {
     private let client: APIClient
 

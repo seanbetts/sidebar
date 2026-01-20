@@ -121,6 +121,12 @@ Progress:
 3) Create docs/IOS_ARCHITECTURE.md
 4) Update README/ENVIRONMENT with iOS specifics
 
+Progress:
+- Added MARK sections for large Swift files.
+- Added doc comments for public ViewModels, Services, and API payload structs.
+- Added `docs/IOS_ARCHITECTURE.md` with SwiftUI architecture overview.
+- Updated README and local development docs with iOS setup and test steps.
+
 ## Execution Strategy (Step-by-step)
 - Work in small batches:
   1) Implement one category (e.g., security) + tests + lint/format.

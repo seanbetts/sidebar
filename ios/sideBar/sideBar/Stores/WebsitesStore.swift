@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 
+// MARK: - WebsitesStore
+
 @MainActor
 public final class WebsitesStore: ObservableObject {
     @Published public private(set) var items: [WebsiteItem] = []

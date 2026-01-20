@@ -2,6 +2,8 @@ import Combine
 import Foundation
 import UniformTypeIdentifiers
 
+// MARK: - IngestionViewModel+Public
+
 extension IngestionViewModel {
     public func load(force: Bool = false) async {
         isLoading = true

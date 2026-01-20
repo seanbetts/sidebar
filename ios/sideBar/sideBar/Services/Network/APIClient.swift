@@ -1,6 +1,9 @@
 import Foundation
 import os
 
+// MARK: - APIClient
+
+/// Configuration for APIClient base URL and auth token.
 public struct APIClientConfig {
     public let baseUrl: URL
     public let accessTokenProvider: () -> String?
@@ -20,6 +23,7 @@ public enum APIClientError: Error {
     case unknown
 }
 
+/// HTTP client for JSON and binary API requests.
 public final class APIClient {
     let config: APIClientConfig
     private let session: URLSession
@@ -206,6 +210,7 @@ public final class APIClient {
     }
 }
 
+/// Type-erases Encodable values so they can be encoded uniformly.
 public struct AnyEncodable: Encodable {
     private let encodeFunc: (Encoder) throws -> Void
 

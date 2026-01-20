@@ -4,6 +4,7 @@ import Combine
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Manages scratchpad content and updates.
 public final class ScratchpadViewModel: ObservableObject {
     @Published public private(set) var scratchpad: ScratchpadResponse? = nil
     @Published public private(set) var errorMessage: String? = nil

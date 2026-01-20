@@ -3,6 +3,8 @@ import OSLog
 import Realtime
 import Supabase
 
+// MARK: - SupabaseRealtimeAdapter
+
 public protocol RealtimeEventHandler: AnyObject {
     func handleNoteEvent(_ payload: RealtimePayload<NoteRealtimeRecord>)
     func handleWebsiteEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>)
@@ -10,6 +12,7 @@ public protocol RealtimeEventHandler: AnyObject {
     func handleFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>)
 }
 
+/// Bridges Supabase realtime events into app payloads.
 public final class SupabaseRealtimeAdapter: RealtimeClient {
     public weak var handler: RealtimeEventHandler?
     private let tokenStore: AccessTokenStore

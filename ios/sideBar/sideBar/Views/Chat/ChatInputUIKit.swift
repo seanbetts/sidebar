@@ -2,6 +2,8 @@
 import SwiftUI
 import UIKit
 
+// MARK: - ChatInputUIKit
+
 struct ChatInputUIKitView: UIViewRepresentable {
     @Binding var text: String
     @Binding var measuredHeight: CGFloat

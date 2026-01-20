@@ -2,6 +2,7 @@
 import Foundation
 
 @MainActor
+/// Routes shortcut actions to view models.
 public final class ShortcutActionRouter {
     public init() {}
 

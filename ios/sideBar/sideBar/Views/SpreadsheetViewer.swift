@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - SpreadsheetViewer
+
 public struct SpreadsheetViewer: View {
     public let payload: SpreadsheetPayload
     @State private var selectedSheetIndex: Int = 0

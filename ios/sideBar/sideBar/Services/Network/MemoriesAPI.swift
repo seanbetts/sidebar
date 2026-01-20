@@ -5,6 +5,7 @@ public protocol MemoriesProviding {
     func get(id: String) async throws -> MemoryItem
 }
 
+/// API client for memory endpoints.
 public struct MemoriesAPI {
     private let client: APIClient
 

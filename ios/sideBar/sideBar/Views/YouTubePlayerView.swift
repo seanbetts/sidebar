@@ -3,6 +3,8 @@ import WebKit
 import os
 
 #if os(macOS)
+// MARK: - YouTubePlayerView
+
 public struct YouTubePlayerView: NSViewRepresentable {
     let url: URL
 

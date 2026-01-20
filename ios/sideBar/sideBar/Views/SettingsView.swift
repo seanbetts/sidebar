@@ -9,6 +9,8 @@ import AppKit
 import UIKit
 #endif
 
+// MARK: - SettingsView
+
 public struct SettingsView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.colorScheme) private var colorScheme

@@ -1,10 +1,14 @@
 import Foundation
 import Combine
 
+// MARK: - WebsitesViewModel
+
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Manages website list/detail state and actions.
 public final class WebsitesViewModel: ObservableObject {
+    /// Holds a pending website captured from an extension flow.
     public struct PendingWebsiteItem: Identifiable, Equatable {
         public let id: String
         public let title: String

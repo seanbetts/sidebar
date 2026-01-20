@@ -7,6 +7,8 @@ import UIKit
 import AppKit
 #endif
 
+// MARK: - NotesView
+
 public struct NotesView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)

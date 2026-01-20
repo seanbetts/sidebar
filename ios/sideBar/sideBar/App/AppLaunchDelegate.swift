@@ -4,6 +4,8 @@ import os
 #if os(iOS)
 import UIKit
 
+// MARK: - AppLaunchDelegate
+
 final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
     private enum ShortcutCommandKeys {
         static let type = "type"

@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 
+// MARK: - ChatStore
+
 @MainActor
 public final class ChatStore: ObservableObject {
     @Published public private(set) var conversations: [Conversation] = []

@@ -5,6 +5,7 @@ import Combine
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Persists navigation selections and layout preferences.
 public final class NavigationState: ObservableObject {
     public let objectWillChange = ObservableObjectPublisher()
 

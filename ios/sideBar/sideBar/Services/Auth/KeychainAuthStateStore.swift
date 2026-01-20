@@ -2,6 +2,8 @@ import Foundation
 import Security
 import CryptoKit
 
+// MARK: - KeychainAuthStateStore
+
 public enum KeychainError: LocalizedError, Equatable {
     case itemNotFound
     case duplicateItem
@@ -50,6 +52,7 @@ public struct SystemKeychainClient: KeychainClient {
     }
 }
 
+/// Stores auth state securely in the keychain.
 public final class KeychainAuthStateStore: AuthStateStore {
     private let service: String
     private let accessGroup: String?

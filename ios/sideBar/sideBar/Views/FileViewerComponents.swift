@@ -1,6 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - FileViewerComponents
+
 struct VideoPlayerContainer: View {
     let url: URL
     @State private var aspectRatio: CGFloat = 16.0 / 9.0
