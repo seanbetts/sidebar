@@ -21,6 +21,7 @@ final class ShareSuccessView: UIView {
         checkmarkImageView.image = UIImage(systemName: "checkmark.circle.fill")
         checkmarkImageView.tintColor = .label
         checkmarkImageView.contentMode = .scaleAspectFit
+        checkmarkImageView.translatesAutoresizingMaskIntoConstraints = false
         checkmarkImageView.heightAnchor.constraint(equalToConstant: 36).isActive = true
         checkmarkImageView.widthAnchor.constraint(equalToConstant: 36).isActive = true
 
@@ -30,7 +31,12 @@ final class ShareSuccessView: UIView {
         titleLabel.textAlignment = .center
 
         logoImageView.image = UIImage(named: "AppLogo", in: Bundle.main, compatibleWith: nil)
+        if logoImageView.image == nil {
+            logoImageView.image = UIImage(systemName: "app")
+            logoImageView.tintColor = .label
+        }
         logoImageView.contentMode = .scaleAspectFit
+        logoImageView.translatesAutoresizingMaskIntoConstraints = false
         logoImageView.heightAnchor.constraint(equalToConstant: 88).isActive = true
         logoImageView.widthAnchor.constraint(equalToConstant: 88).isActive = true
 

@@ -24,7 +24,12 @@ final class ShareLoadingView: UIView {
         titleLabel.textAlignment = .center
 
         logoImageView.image = UIImage(named: "AppLogo", in: Bundle.main, compatibleWith: nil)
+        if logoImageView.image == nil {
+            logoImageView.image = UIImage(systemName: "app")
+            logoImageView.tintColor = .label
+        }
         logoImageView.contentMode = .scaleAspectFit
+        logoImageView.translatesAutoresizingMaskIntoConstraints = false
         logoImageView.heightAnchor.constraint(equalToConstant: 88).isActive = true
         logoImageView.widthAnchor.constraint(equalToConstant: 88).isActive = true
 
@@ -34,6 +39,7 @@ final class ShareLoadingView: UIView {
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
 
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         activityIndicator.startAnimating()
 
         let content = UIStackView(arrangedSubviews: [logoImageView, titleLabel, activityIndicator, messageLabel])
