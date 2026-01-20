@@ -96,6 +96,12 @@ Progress:
 5) Coverage targets
    - ViewModels 80%+, Services 80%+, Utilities 90%
 
+Progress:
+- Added store tests for ChatStore, NotesStore, and WebsitesStore.
+- Added ChatStreamParser unit tests.
+- Added IngestionStore and RealtimeMappers tests.
+- Added NotesEditorViewModel tests.
+
 ## Phase 7: Documentation
 1) Doc comments for all public ViewModels and Services
 2) MARK sections for files >200 LOC
