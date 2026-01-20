@@ -233,9 +233,12 @@ public struct LoginView: View {
             Task { await signIn() }
         } label: {
             ZStack {
-                // Hidden text to maintain consistent width
-                Text("Signing in...")
-                    .opacity(0)
+                // Hidden content to maintain consistent size
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Signing in...")
+                }
+                .opacity(0)
                 // Visible content
                 if isSigningIn {
                     HStack(spacing: 8) {
