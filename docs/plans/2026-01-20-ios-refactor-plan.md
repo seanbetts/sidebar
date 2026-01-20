@@ -23,6 +23,12 @@ Source: IOS_CODE_REVIEW.md recommendations
    - Add missing doc comment coverage checks (docstrings target).
    - Confirm no debug artifacts in committed code.
 
+Progress:
+- Inventory captured (largest file: `ios/sideBar/sideBar/Views/FilesView.swift` at 583 LOC; tests: 56 files / 163 funcs).
+- Added SwiftLint config and Xcode build phase; CI workflow runs SwiftLint.
+- Enabled code coverage in the shared Xcode scheme and CI test command.
+- Added doc comment coverage check for ViewModels/Services; verified no debug prints found.
+
 ## Phase 1: Security Fixes (High Priority)
 1) CoreData file protection
    - Set NSPersistentStoreFileProtectionKey in PersistenceController.
