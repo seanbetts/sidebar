@@ -808,6 +808,18 @@ interrogate api/ --verbose
 
 ---
 
+## iOS (SwiftLint + Doc Comments)
+
+SwiftLint is integrated into the Xcode build and CI. The configuration lives at `ios/sideBar/.swiftlint.yml`.
+
+Doc comment coverage for public ViewModels/Services is enforced via:
+
+```bash
+python scripts/check_ios_doc_comments.py
+```
+
+---
+
 ## Summary
 
 **Enforcement Levels:**

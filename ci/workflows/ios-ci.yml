@@ -1,0 +1,29 @@
+name: iOS CI
+
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "scripts/check_ios_doc_comments.py"
+      - ".github/workflows/ios-ci.yml"
+  push:
+    paths:
+      - "ios/**"
+      - "scripts/check_ios_doc_comments.py"
+      - ".github/workflows/ios-ci.yml"
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install SwiftLint
+        run: brew install swiftlint
+      - name: SwiftLint
+        run: swiftlint --config .swiftlint.yml
+        working-directory: ios/sideBar
+      - name: Doc comment coverage
+        run: python scripts/check_ios_doc_comments.py
+      - name: Run tests with coverage
+        run: xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' -enableCodeCoverage YES test
