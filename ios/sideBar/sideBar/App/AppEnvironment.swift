@@ -1,9 +1,15 @@
 import Foundation
 import Combine
 import os
+#if os(iOS)
+import UIKit
+#endif
 
 @MainActor
 public final class AppEnvironment: ObservableObject {
+    #if os(iOS)
+    public static weak var shared: AppEnvironment?
+    #endif
     public let container: ServiceContainer
     public var themeManager: ThemeManager
     public let chatStore: ChatStore
@@ -32,7 +38,13 @@ public final class AppEnvironment: ObservableObject {
     @Published public var sessionExpiryWarning: Date?
     @Published public private(set) var signOutEvent: UUID?
     @Published public var activeSection: AppSection? = nil
-    @Published public var isNotesEditing: Bool = false
+    @Published public var isNotesEditing: Bool = false {
+        didSet {
+            #if os(iOS)
+            UIMenuSystem.main.setNeedsRebuild()
+            #endif
+        }
+    }
     @Published public var shortcutActionEvent: ShortcutActionEvent?
     private var cancellables = Set<AnyCancellable>()
 
@@ -106,6 +118,9 @@ public final class AppEnvironment: ObservableObject {
         self.biometricMonitor = BiometricMonitor()
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
+        #if os(iOS)
+        AppEnvironment.shared = self
+        #endif
         #if DEBUG
         logStep("Stores + view models", storeStart)
         #endif

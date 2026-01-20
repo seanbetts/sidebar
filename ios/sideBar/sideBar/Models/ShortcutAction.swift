@@ -17,7 +17,6 @@ public enum ShortcutAction: Hashable {
     case toggleSidebar
     case sendMessage
     case attachFile
-    case stopStreaming
     case renameItem
     case deleteItem
     case pinItem

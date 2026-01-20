@@ -152,7 +152,7 @@ public final class KeyboardShortcutRegistry {
                 contexts: [.universal]
             ),
             KeyboardShortcut(
-                input: "p",
+                input: "o",
                 modifiers: [.command, .shift],
                 title: "Scratchpad",
                 description: "Open scratchpad",
@@ -171,38 +171,18 @@ public final class KeyboardShortcutRegistry {
             // Chat
             KeyboardShortcut(
                 input: "\r",
+                modifiers: [.command],
                 title: "Send Message",
                 description: "Send the current chat message",
                 action: .sendMessage,
                 contexts: [.chat]
             ),
             KeyboardShortcut(
-                input: "a",
+                input: "f",
                 modifiers: [.command, .shift],
                 title: "Attach File",
                 description: "Attach a file to the chat",
                 action: .attachFile,
-                contexts: [.chat]
-            ),
-            KeyboardShortcut(
-                input: "/",
-                title: "Stop Streaming",
-                description: "Stop the current chat stream",
-                action: .stopStreaming,
-                contexts: [.chat]
-            ),
-            KeyboardShortcut(
-                input: UIKeyCommand.inputUpArrow,
-                title: "Previous Conversation",
-                description: "Move to the previous conversation",
-                action: .navigateList(.previous),
-                contexts: [.chat]
-            ),
-            KeyboardShortcut(
-                input: UIKeyCommand.inputDownArrow,
-                title: "Next Conversation",
-                description: "Move to the next conversation",
-                action: .navigateList(.next),
                 contexts: [.chat]
             ),
             KeyboardShortcut(
@@ -215,6 +195,7 @@ public final class KeyboardShortcutRegistry {
             ),
             KeyboardShortcut(
                 input: UIKeyCommand.inputDelete,
+                modifiers: [.command],
                 title: "Delete Conversation",
                 description: "Delete the current conversation",
                 action: .deleteItem,
@@ -228,13 +209,6 @@ public final class KeyboardShortcutRegistry {
                 title: "New Folder",
                 description: "Create a new folder",
                 action: .createFolder,
-                contexts: [.notes]
-            ),
-            KeyboardShortcut(
-                input: "s",
-                title: "Save Note",
-                description: "Save the current note",
-                action: .saveNote,
                 contexts: [.notes]
             ),
             KeyboardShortcut(
@@ -262,7 +236,7 @@ public final class KeyboardShortcutRegistry {
             ),
             KeyboardShortcut(
                 input: "r",
-                modifiers: [.command, .shift],
+                modifiers: [.command, .alternate],
                 title: "Rename Note",
                 description: "Rename the current note",
                 action: .renameItem,
@@ -270,26 +244,12 @@ public final class KeyboardShortcutRegistry {
             ),
             KeyboardShortcut(
                 input: UIKeyCommand.inputDelete,
+                modifiers: [.command, .shift],
                 title: "Delete Note",
                 description: "Delete the current note",
                 action: .deleteItem,
                 contexts: [.notes]
             ),
-            KeyboardShortcut(
-                input: UIKeyCommand.inputUpArrow,
-                title: "Previous Note",
-                description: "Move to the previous note",
-                action: .navigateList(.previous),
-                contexts: [.notes]
-            ),
-            KeyboardShortcut(
-                input: UIKeyCommand.inputDownArrow,
-                title: "Next Note",
-                description: "Move to the next note",
-                action: .navigateList(.next),
-                contexts: [.notes]
-            ),
-
             // Notes editing
             KeyboardShortcut(
                 input: "b",
@@ -317,7 +277,7 @@ public final class KeyboardShortcutRegistry {
             // Websites
             KeyboardShortcut(
                 input: "p",
-                modifiers: [.command, .shift],
+                modifiers: [.command, .alternate],
                 title: "Pin Website",
                 description: "Pin or unpin the current website",
                 action: .pinItem,
@@ -325,7 +285,7 @@ public final class KeyboardShortcutRegistry {
             ),
             KeyboardShortcut(
                 input: "a",
-                modifiers: [.command, .shift],
+                modifiers: [.command, .alternate],
                 title: "Archive Website",
                 description: "Archive or unarchive the current website",
                 action: .archiveItem,
@@ -333,27 +293,15 @@ public final class KeyboardShortcutRegistry {
             ),
             KeyboardShortcut(
                 input: UIKeyCommand.inputDelete,
+                modifiers: [.command, .alternate],
                 title: "Delete Website",
                 description: "Delete the current website",
                 action: .deleteItem,
                 contexts: [.websites]
             ),
             KeyboardShortcut(
-                input: UIKeyCommand.inputUpArrow,
-                title: "Previous Website",
-                description: "Move to the previous website",
-                action: .navigateList(.previous),
-                contexts: [.websites]
-            ),
-            KeyboardShortcut(
-                input: UIKeyCommand.inputDownArrow,
-                title: "Next Website",
-                description: "Move to the next website",
-                action: .navigateList(.next),
-                contexts: [.websites]
-            ),
-            KeyboardShortcut(
                 input: "\r",
+                modifiers: [.command, .shift],
                 title: "Open in Browser",
                 description: "Open the website in the browser",
                 action: .openInBrowser,
@@ -363,31 +311,10 @@ public final class KeyboardShortcutRegistry {
             // Files
             KeyboardShortcut(
                 input: UIKeyCommand.inputDelete,
+                modifiers: [.command, .alternate, .shift],
                 title: "Delete File",
                 description: "Delete the current file",
                 action: .deleteItem,
-                contexts: [.files]
-            ),
-            KeyboardShortcut(
-                input: UIKeyCommand.inputUpArrow,
-                title: "Previous File",
-                description: "Move to the previous file",
-                action: .navigateList(.previous),
-                contexts: [.files]
-            ),
-            KeyboardShortcut(
-                input: UIKeyCommand.inputDownArrow,
-                title: "Next File",
-                description: "Move to the next file",
-                action: .navigateList(.next),
-                contexts: [.files]
-            ),
-            KeyboardShortcut(
-                input: "o",
-                modifiers: [.command, .alternate],
-                title: "Open in Default App",
-                description: "Open the current file in its default app",
-                action: .openInDefaultApp,
                 contexts: [.files]
             ),
             KeyboardShortcut(
