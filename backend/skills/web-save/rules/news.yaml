@@ -226,6 +226,58 @@
     - ".article-tags"
     - ".inline-ad"
 
+- id: wired-pre-cleanup
+  phase: pre
+  priority: 90
+  trigger:
+    host:
+      ends_with: "wired.com"
+  actions:
+    # Strip "paywall" class from paragraphs so readability doesn't filter them
+    - op: remove_attrs
+      selector: "p.paywall"
+      attrs: ["class"]
+  remove:
+    # Page header/footer/nav
+    - "header"
+    - "footer"
+    - "nav"
+    # Sidebar content
+    - ".grid-layout__aside"
+    - "[class*='StickyBox']"
+    - "[class*='RecircMostPopular']"
+    - "[class*='SummaryItem']"
+    # All ads
+    - ".full-bleed-ad"
+    - ".row-mid-content-ad"
+    - "[class*='StickyMidContentAd']"
+    - ".ad"
+    - "[class*='AdWrapper-']"
+    - ".ad--in-content"
+    - ".ad--sponsor-product"
+    - ".teads-player"
+    - "[id^='teads']"
+    - "[class*='cns-ads']"
+    - "iframe[id*='google_ads']"
+    # Audio embed
+    - "[data-testid='cne-audio-embed-figure']"
+    # Newsletter/marketing
+    - ".newsletter"
+    - ".newsletter-subscribe"
+    - "[class*='NewsletterOneClick']"
+    - ".journey-unit__container"
+    - ".journey-unit"
+    - "[class*='ConsumerMarketingUnit']"
+    - ".consumer-marketing-unit"
+    # Pull quotes with newsletter embeds
+    - "[data-testid='pullquote-embed-leftborder']"
+    - "[class*='PullQuoteEmbedWrapper-']"
+    # Featured video embeds
+    - "[data-testid='cne-interlude-container']"
+    - "[class*='VideoFigure-']"
+    - "[class*='CneVideoEmbed']"
+    - "[data-event-click*='CNEInterludeEmbed']"
+
 - id: wired-cleanup
   phase: post
   trigger:
@@ -233,8 +285,17 @@
       ends_with: "wired.com"
   remove:
     - ".related-content"
-    - ".paywall"
-    - ".newsletter"
+    - ".article__sidebar"
+    - ".social-icons"
+    - ".article-share"
+    - ".recirc-module"
+    - "[data-testid='RecircMostPopular']"
+    - "[data-testid='GenericCallout']"
+    - ".callout"
+    - ".article__related"
+    - ".comments"
+    - ".article__footer"
+    - "aside"
 
 - id: engadget-cleanup
   phase: post

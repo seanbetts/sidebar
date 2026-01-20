@@ -27,11 +27,13 @@ from api.services.web_save_parser_cleanup import (
     cleanup_youtube_markdown,
     dedupe_markdown_images,
     extract_openai_body_html,
+    extract_wired_body_html,
     filter_non_content_images,
     is_paywalled,
     normalize_image_captions,
     normalize_image_sources,
     normalize_link_sources,
+    normalize_wired_image_url,
     polish_article_html,
     prepend_hero_image,
     simplify_linked_images,
@@ -390,6 +392,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             openai_html = extract_openai_body_html(raw_html_original)
             if openai_html:
                 article_html = openai_html
+        elif urlparse(final_url).netloc.endswith("wired.com"):
+            wired_html = extract_wired_body_html(raw_html_original)
+            if wired_html:
+                article_html = wired_html
     logger.debug(
         "web-save readability url=%s article_len=%s",
         final_url,
@@ -476,6 +482,8 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
     image_url = metadata.get("image")
     if image_url:
         resolved_image = urljoin(source_url, image_url)
+        if domain.endswith("wired.com"):
+            resolved_image = normalize_wired_image_url(resolved_image)
         article_html = prepend_hero_image(article_html, resolved_image, title)
     markdown = html_to_markdown(article_html)
     if domain.endswith("theverge.com"):
