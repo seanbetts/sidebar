@@ -6,8 +6,12 @@ public final class ShortcutActionRouter {
     public init() {}
 
     public func handle(_ shortcut: KeyboardShortcut, environment: AppEnvironment) {
+        handle(shortcut.action, environment: environment)
+    }
+
+    public func handle(_ action: ShortcutAction, environment: AppEnvironment) {
         let section = environment.activeSection
-        switch shortcut.action {
+        switch action {
         case .navigate(let target):
             environment.commandSelection = target
         case .openSettings:
@@ -31,11 +35,9 @@ public final class ShortcutActionRouter {
              .navigateList,
              .openInDefaultApp,
              .quickLook:
-            environment.emitShortcutAction(shortcut.action)
+            environment.emitShortcutAction(action)
         case .refreshSection:
             handleRefresh(section: section, environment: environment)
-        case .stopStreaming:
-            environment.chatViewModel.stopStream()
         case .pinItem:
             handlePinToggle(section: section, environment: environment)
         case .saveNote:

@@ -83,15 +83,6 @@ public struct ContentView: View {
             )
         )
         #if os(iOS)
-        content = AnyView(
-            content.background(
-                KeyboardShortcutHandler()
-                    .environmentObject(environment)
-                    .frame(width: 0, height: 0)
-            )
-        )
-        #endif
-        #if os(iOS)
         content = AnyView(content.sheet(isPresented: $isShortcutsPresented) {
             KeyboardShortcutsView()
         })
@@ -843,6 +834,9 @@ public struct ContentView: View {
         }
         #endif
         environment.activeSection = section
+        #if os(iOS)
+        UIMenuSystem.main.setNeedsRebuild()
+        #endif
     }
 
 
