@@ -318,9 +318,3 @@ private struct HeaderInfoItem: View {
         }
     }
 }
-
-private extension String {
-    var trimmed: String {
-        trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}

@@ -260,9 +260,3 @@ private struct MemoryRow: View {
     }
 
 }
-
-private extension String {
-    var trimmed: String {
-        trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}

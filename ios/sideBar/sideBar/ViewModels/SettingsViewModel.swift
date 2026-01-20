@@ -32,18 +32,20 @@ public final class SettingsViewModel: ObservableObject {
     public func load() async {
         errorMessage = nil
         isLoading = true
-        let cached: UserSettings? = cache.get(key: CacheKeys.userSettings)
-        if let cached {
-            settings = cached
+        let loader = CachedLoader(
+            cache: cache,
+            key: CacheKeys.userSettings,
+            ttl: CachePolicy.userSettings
+        ) { [settingsAPI] in
+            try await settingsAPI.getSettings()
         }
         do {
-            let response = try await settingsAPI.getSettings()
+            let (response, _) = try await loader.load(onRefresh: { [weak self] fresh in
+                self?.settings = fresh
+            })
             settings = response
-            cache.set(key: CacheKeys.userSettings, value: response, ttlSeconds: CachePolicy.userSettings)
         } catch {
-            if cached == nil {
-                errorMessage = error.localizedDescription
-            }
+            errorMessage = error.localizedDescription
         }
         isLoading = false
     }
@@ -51,18 +53,20 @@ public final class SettingsViewModel: ObservableObject {
     public func loadSkills() async {
         skillsError = nil
         isLoadingSkills = true
-        let cached: SkillsResponse? = cache.get(key: CacheKeys.skillsList)
-        if let cached {
-            skills = cached.skills
+        let loader = CachedLoader(
+            cache: cache,
+            key: CacheKeys.skillsList,
+            ttl: CachePolicy.skillsList
+        ) { [skillsAPI] in
+            try await skillsAPI.list()
         }
         do {
-            let response = try await skillsAPI.list()
+            let (response, _) = try await loader.load(onRefresh: { [weak self] fresh in
+                self?.skills = fresh.skills
+            })
             skills = response.skills
-            cache.set(key: CacheKeys.skillsList, value: response, ttlSeconds: CachePolicy.skillsList)
         } catch {
-            if cached == nil {
-                skillsError = error.localizedDescription
-            }
+            skillsError = error.localizedDescription
         }
         isLoadingSkills = false
     }
@@ -97,19 +101,21 @@ public final class SettingsViewModel: ObservableObject {
             cache.remove(key: CacheKeys.profileImage)
             return
         }
-        let cached: Data? = cache.get(key: CacheKeys.profileImage)
-        if let cached {
-            profileImageData = cached
-        }
         isLoadingProfileImage = true
+        let loader = CachedLoader(
+            cache: cache,
+            key: CacheKeys.profileImage,
+            ttl: CachePolicy.profileImage
+        ) { [settingsAPI] in
+            try await settingsAPI.getProfileImage()
+        }
         do {
-            let data = try await settingsAPI.getProfileImage()
+            let (data, _) = try await loader.load(onRefresh: { [weak self] fresh in
+                self?.profileImageData = fresh
+            })
             profileImageData = data
-            cache.set(key: CacheKeys.profileImage, value: data, ttlSeconds: CachePolicy.profileImage)
         } catch {
-            if cached == nil {
-                profileImageData = nil
-            }
+            profileImageData = nil
         }
         isLoadingProfileImage = false
     }

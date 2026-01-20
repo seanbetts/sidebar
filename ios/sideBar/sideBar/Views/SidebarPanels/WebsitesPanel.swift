@@ -523,9 +523,3 @@ private struct ArchiveHeightKey: PreferenceKey {
         value = nextValue()
     }
 }
-
-private extension String {
-    var trimmed: String {
-        trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}

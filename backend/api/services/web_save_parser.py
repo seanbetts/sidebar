@@ -27,6 +27,7 @@ from api.services.web_save_parser_cleanup import (
     cleanup_youtube_markdown,
     dedupe_markdown_images,
     extract_openai_body_html,
+    extract_verge_body_html,
     extract_wired_body_html,
     filter_non_content_images,
     is_paywalled,
@@ -396,6 +397,10 @@ def parse_url_local(url: str, *, timeout: int = 30) -> ParsedPage:
             wired_html = extract_wired_body_html(raw_html_original)
             if wired_html:
                 article_html = wired_html
+        elif urlparse(final_url).netloc.endswith("theverge.com"):
+            verge_html = extract_verge_body_html(raw_html_original)
+            if verge_html:
+                article_html = verge_html
     logger.debug(
         "web-save readability url=%s article_len=%s",
         final_url,
