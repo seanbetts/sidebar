@@ -103,6 +103,7 @@ Progress:
 - Added NotesEditorViewModel tests.
 - Added URLSessionChatStreamClient tests.
 - Added DateParsing, FileNameFormatting, and FileTreeSignature tests.
+- Added SupabaseRealtimeAdapter tests.
 
 ## Phase 7: Documentation
 1) Doc comments for all public ViewModels and Services
