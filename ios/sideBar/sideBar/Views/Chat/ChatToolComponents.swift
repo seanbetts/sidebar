@@ -7,13 +7,13 @@ struct ToolCallListView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Tool Calls")
-                .font(.caption.weight(.semibold))
+                .font(DesignTokens.Typography.captionSemibold)
                 .foregroundStyle(.secondary)
             ForEach(toolCalls) { toolCall in
                 ToolCallRow(toolCall: toolCall)
             }
         }
-        .padding(8)
+        .padding(DesignTokens.Spacing.xs)
         .background(toolBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
@@ -33,7 +33,7 @@ struct ToolCallRow: View {
                     .fill(statusColor)
                     .frame(width: 8, height: 8)
                 Text(toolCall.name)
-                    .font(.subheadline.weight(.semibold))
+                    .font(DesignTokens.Typography.subheadlineSemibold)
                 Text(toolCall.status.rawValue.capitalized)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -53,7 +53,7 @@ struct ToolCallRow: View {
                     .textSelection(.enabled)
             }
         }
-            .padding(10)
+            .padding(DesignTokens.Spacing.xsPlus)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(rowBackground)

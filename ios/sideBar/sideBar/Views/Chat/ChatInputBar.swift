@@ -29,14 +29,11 @@ struct ChatInputBar: View {
         .frame(maxWidth: maxInputWidth)
         .frame(maxWidth: .infinity, alignment: .center)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.mdPlus, style: .continuous)
                 .fill(DesignTokens.Colors.surface)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(borderColor, lineWidth: 1)
-        )
-        .shadow(color: shadowColor, radius: shadowRadius, x: 0, y: shadowRadius * 0.6)
+        .bordered(color: borderColor, cornerRadius: DesignTokens.Radius.mdPlus)
+        .appShadow(color: shadowColor, radius: shadowRadius, y: shadowRadius * 0.6)
     }
 
     private var shadowColor: Color {

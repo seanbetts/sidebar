@@ -242,7 +242,7 @@ struct SideBarMarkdown: View, Equatable {
                             BackgroundColor(nil)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
+                        .padding(DesignTokens.Spacing.md)
                 }
                 .background(style.codeBlockBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -311,7 +311,7 @@ private struct CappedImageProvider: ImageProvider {
                 HStack {
                     Spacer(minLength: 0)
                     Image(systemName: "photo")
-                        .font(.system(size: 32, weight: .regular))
+                        .font(DesignTokens.Typography.display)
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                 }
@@ -417,7 +417,7 @@ private struct MarkdownGalleryImageView: View {
                         .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
                 case .failure:
                     Image(systemName: "photo")
-                        .font(.system(size: 32, weight: .regular))
+                        .font(DesignTokens.Typography.display)
                         .foregroundStyle(.secondary)
                 case .empty:
                     ProgressView()

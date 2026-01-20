@@ -8,14 +8,14 @@ struct ChatActiveToolBanner: View {
             statusIndicator
             VStack(alignment: .leading, spacing: 2) {
                 Text(activeTool.name)
-                    .font(.subheadline.weight(.semibold))
+                    .font(DesignTokens.Typography.subheadlineSemibold)
                 Text(activeTool.status.rawValue.capitalized)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
         }
-        .padding(10)
+        .padding(DesignTokens.Spacing.xsPlus)
         .background(bannerBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
@@ -36,7 +36,7 @@ struct ChatActiveToolBanner: View {
                 .foregroundStyle(.green)
         case .error:
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(DesignTokens.Colors.error)
         }
     }
 }
@@ -47,7 +47,7 @@ struct PromptPreviewView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Prompt Preview")
-                .font(.caption.weight(.semibold))
+                .font(DesignTokens.Typography.captionSemibold)
                 .foregroundStyle(.secondary)
 
             if let system = promptPreview.systemPrompt, !system.isEmpty {
@@ -62,7 +62,7 @@ struct PromptPreviewView: View {
                     .textSelection(.enabled)
             }
         }
-        .padding(10)
+        .padding(DesignTokens.Spacing.xsPlus)
         .background(promptBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }

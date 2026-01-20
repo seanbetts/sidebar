@@ -85,7 +85,7 @@ extension ContentView {
                                 isPhoneScratchpadPresented = true
                             } label: {
                                 Image(systemName: "square.and.pencil")
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .font(DesignTokens.Typography.titleLg)
                                     .frame(width: 48, height: 48)
                             }
                             .buttonStyle(.plain)
@@ -95,8 +95,8 @@ extension ContentView {
                                     .stroke(separatorColor, lineWidth: 1)
                             )
                             .accessibilityLabel("Scratchpad")
-                            .padding(.trailing, 16)
-                            .padding(.bottom, proxy.safeAreaInsets.bottom + 32)
+                            .padding(.trailing, DesignTokens.Spacing.md)
+                            .padding(.bottom, proxy.safeAreaInsets.bottom + DesignTokens.Spacing.xxl)
                         }
                     }
                 }

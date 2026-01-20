@@ -27,7 +27,7 @@ public struct SpreadsheetViewer: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
         .onChange(of: payload.sheets.count) { _, _ in
             ensureValidSheetIndex()
         }
@@ -55,7 +55,7 @@ public struct SpreadsheetViewer: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 Text("Sheets")
-                    .font(.subheadline.weight(.semibold))
+                    .font(DesignTokens.Typography.subheadlineSemibold)
                 Spacer()
                 Text("\(currentSheet.rows.count) rows")
                     .font(.caption)
@@ -69,10 +69,10 @@ public struct SpreadsheetViewer: View {
                                 selectedSheetIndex = index
                             } label: {
                                 Text(payload.sheets[index].name.isEmpty ? "Sheet \(index + 1)" : payload.sheets[index].name)
-                                    .font(.caption.weight(.semibold))
+                                    .font(DesignTokens.Typography.captionSemibold)
                                     .foregroundStyle(index == selectedSheetIndex ? .primary : .secondary)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, DesignTokens.Spacing.xsPlus)
+                                    .padding(.vertical, DesignTokens.Spacing.xxsPlus)
                                     .background(
                                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                                             .fill(index == selectedSheetIndex ? tabSelectedBackground : tabBackground)
@@ -94,8 +94,8 @@ public struct SpreadsheetViewer: View {
                 .textFieldStyle(.plain)
         }
         .font(.subheadline)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xs)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(controlBackground)
@@ -131,7 +131,7 @@ public struct SpreadsheetViewer: View {
                             Text("No data")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                                .padding(.vertical, 12)
+                                .padding(.vertical, DesignTokens.Spacing.sm)
                         } else {
                             ForEach(visibleRows.indices, id: \.self) { index in
                                 dataRowView(row: visibleRows[index])
@@ -161,8 +161,8 @@ public struct SpreadsheetViewer: View {
                     .lineLimit(1)
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 2)
+        .padding(.vertical, DesignTokens.Spacing.xxsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.xxxs)
         .background(rowBackground)
     }
 
@@ -256,12 +256,12 @@ public struct SpreadsheetViewer: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text(columnLabels[safe: columnIndex] ?? "")
-                            .font(.subheadline.weight(.semibold))
+                            .font(DesignTokens.Typography.subheadlineSemibold)
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                         if sortColumn == columnIndex {
                             Image(systemName: sortDirection == .ascending ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                                .font(.caption2.weight(.semibold))
+                                .font(DesignTokens.Typography.caption2Semibold)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -274,8 +274,8 @@ public struct SpreadsheetViewer: View {
                     : "Column \(columnIndex + 1)")
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 2)
+        .padding(.vertical, DesignTokens.Spacing.xxsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.xxxs)
         .background(headerBackground)
     }
 

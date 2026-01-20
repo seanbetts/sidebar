@@ -112,8 +112,8 @@ private struct ChatDetailView: View {
                     onAttach: { isFileImporterPresented = true }
                 )
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 16)
+            .padding(.horizontal, DesignTokens.Spacing.xl)
+            .padding(.bottom, DesignTokens.Spacing.md)
             #if os(macOS)
             .frame(maxWidth: 860)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -146,7 +146,7 @@ private struct ChatDetailView: View {
                     isScratchpadPresented = true
                 } label: {
                     Image(systemName: "square.and.pencil")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(DesignTokens.Typography.titleLg)
                         .frame(width: 48, height: 48)
                 }
                 .buttonStyle(.plain)
@@ -156,8 +156,8 @@ private struct ChatDetailView: View {
                         .stroke(DesignTokens.Colors.border, lineWidth: 1)
                 )
                 .accessibilityLabel("Scratchpad")
-                .padding(.trailing, 16)
-                .padding(.bottom, inputBarHeight + 24)
+                .padding(.trailing, DesignTokens.Spacing.md)
+                .padding(.bottom, inputBarHeight + DesignTokens.Spacing.xl)
             }
         }
         .sheet(isPresented: $isScratchpadPresented) {

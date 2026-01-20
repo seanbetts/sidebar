@@ -40,7 +40,7 @@ public struct LoginView: View {
                 .groupBoxStyle(LoginGroupBoxStyle())
             }
             .frame(maxWidth: 420)
-            .padding(24)
+            .padding(DesignTokens.Spacing.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .background(DesignTokens.Colors.background)
             .contentShape(Rectangle())
@@ -52,7 +52,7 @@ public struct LoginView: View {
                 ZStack {
                     Color.green.opacity(0.9)
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 60))
+                        .font(DesignTokens.Typography.logo)
                         .foregroundStyle(.white)
                 }
                 .ignoresSafeArea()
@@ -132,7 +132,7 @@ public struct LoginView: View {
                 .scaledToFit()
                 .frame(width: 64, height: 64)
             Text("sideBar")
-                .font(.title2.weight(.semibold))
+                .font(DesignTokens.Typography.title2Semibold)
         }
     }
 
@@ -166,8 +166,8 @@ public struct LoginView: View {
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
         .background(fieldBackground)
         .overlay(fieldBorder)
         .accessibilitySortPriority(3)
@@ -197,8 +197,8 @@ public struct LoginView: View {
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
         .background(fieldBackground)
         .overlay(fieldBorder)
         .accessibilitySortPriority(2)
@@ -209,19 +209,19 @@ public struct LoginView: View {
         if let errorMessage {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(DesignTokens.Colors.error)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(errorMessage)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DesignTokens.Colors.error)
                         .font(.callout)
                     Text("Double-check your credentials and connection, then try again.")
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 }
             }
-            .padding(12)
-            .background(Color.red.opacity(0.1))
-            .cornerRadius(8)
+            .padding(DesignTokens.Spacing.sm)
+            .background(DesignTokens.Colors.errorBackground)
+            .cornerRadius(DesignTokens.Radius.xsPlus)
             .accessibilityLabel("Error")
             .accessibilityValue(errorMessage)
             .accessibilityHint("Double-check your credentials and connection, then try again.")

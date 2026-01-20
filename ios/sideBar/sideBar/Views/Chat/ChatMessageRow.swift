@@ -14,9 +14,9 @@ struct ChatMessageRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Text(message.role == .assistant ? "sideBar" : "You")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .font(DesignTokens.Typography.captionSemibold)
+                    .padding(.horizontal, DesignTokens.Spacing.xs)
+                    .padding(.vertical, DesignTokens.Spacing.xxs)
                     .background(rolePillBackground)
                     .foregroundStyle(rolePillText)
                     .overlay(rolePillBorder)
@@ -38,7 +38,7 @@ struct ChatMessageRow: View {
             if message.status == .error, let error = message.error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(DesignTokens.Colors.error)
             }
 
             HStack {
@@ -52,10 +52,10 @@ struct ChatMessageRow: View {
         .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
         .background(bubbleBackground)
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.mdPlus, style: .continuous)
                 .stroke(bubbleBorder, lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.mdPlus, style: .continuous))
         .frame(maxWidth: maxBubbleWidth)
         .frame(maxWidth: .infinity, alignment: .center)
     }

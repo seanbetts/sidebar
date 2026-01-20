@@ -78,7 +78,7 @@ struct PdfControlButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(DesignTokens.Typography.labelSm)
                 .frame(width: 24, height: 20)
                 .foregroundStyle(isActive ? .primary : .secondary)
         }

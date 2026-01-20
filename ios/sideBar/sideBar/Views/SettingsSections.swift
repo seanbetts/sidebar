@@ -50,7 +50,7 @@ struct ProfileSettingsView: View {
                 Section {
                     Text(profileImageError)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
             #endif
@@ -281,7 +281,7 @@ struct SkillsSettingsView: View {
                 Section {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
             if viewModel.isSavingSkills {
@@ -311,7 +311,7 @@ struct SkillsSettingsView: View {
                             )) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(skill.name)
-                                        .font(.subheadline.weight(.semibold))
+                                        .font(DesignTokens.Typography.subheadlineSemibold)
                                     Text(skill.description)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -394,7 +394,7 @@ struct ShortcutsSettingsView: View {
                 if let error = viewModel.shortcutsError {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DesignTokens.Colors.error)
                 }
             }
         }

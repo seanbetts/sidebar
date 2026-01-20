@@ -10,7 +10,7 @@ struct PendingAttachmentsView: View {
             ForEach(attachments) { attachment in
                 HStack(spacing: 10) {
                     Image(systemName: "paperclip")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(DesignTokens.Typography.labelMd)
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(attachment.name)
@@ -27,7 +27,7 @@ struct PendingAttachmentsView: View {
                                 onRetry(attachment.id)
                             } label: {
                                 Image(systemName: "arrow.clockwise")
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(DesignTokens.Typography.labelMd)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Retry attachment")
@@ -35,7 +35,7 @@ struct PendingAttachmentsView: View {
                                 onDelete(attachment.id)
                             } label: {
                                 Image(systemName: "trash")
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(DesignTokens.Typography.labelMd)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Delete attachment")
@@ -45,8 +45,8 @@ struct PendingAttachmentsView: View {
                             .controlSize(.small)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, DesignTokens.Spacing.sm)
+                .padding(.vertical, DesignTokens.Spacing.xs)
                 .background(DesignTokens.Colors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
@@ -86,21 +86,21 @@ struct ReadyAttachmentsView: View {
                 ForEach(attachments) { attachment in
                     HStack(spacing: 6) {
                         Image(systemName: "paperclip")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(DesignTokens.Typography.labelXs)
                         Text(attachment.name)
-                            .font(.caption.weight(.semibold))
+                            .font(DesignTokens.Typography.captionSemibold)
                             .lineLimit(1)
                         Button {
                             onRemove(attachment.id)
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(DesignTokens.Typography.labelXxs)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Remove \(attachment.name)")
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, DesignTokens.Spacing.xsPlus)
+                    .padding(.vertical, DesignTokens.Spacing.xxsPlus)
                     .background(DesignTokens.Colors.muted)
                     .clipShape(Capsule())
                 }

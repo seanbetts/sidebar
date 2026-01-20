@@ -198,7 +198,7 @@ private struct SettingsTabsView: View {
                     Label("Memories", systemImage: "bookmark")
                 }
         }
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
         .background(settingsBackground)
         .ignoresSafeArea()
         .onAppear {

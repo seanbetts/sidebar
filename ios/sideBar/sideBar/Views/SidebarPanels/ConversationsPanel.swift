@@ -109,7 +109,7 @@ private struct ConversationsPanelView: View {
                             }
                         } label: {
                             Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(DesignTokens.Typography.labelMd)
                                 .frame(width: 28, height: 28)
                         }
                         .buttonStyle(.plain)
@@ -345,7 +345,7 @@ private struct ConversationRow: View, Equatable {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(DesignTokens.Typography.labelMd)
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
             }

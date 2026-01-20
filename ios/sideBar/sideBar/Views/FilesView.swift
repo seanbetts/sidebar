@@ -144,7 +144,7 @@ private struct FilesHeaderView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
 

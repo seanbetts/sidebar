@@ -12,7 +12,7 @@ extension NotesPanelView {
                         isNewFolderPresented = true
                     } label: {
                         Image(systemName: "folder")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(DesignTokens.Typography.labelMd)
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
@@ -22,7 +22,7 @@ extension NotesPanelView {
                         isNewNotePresented = true
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(DesignTokens.Typography.labelMd)
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
