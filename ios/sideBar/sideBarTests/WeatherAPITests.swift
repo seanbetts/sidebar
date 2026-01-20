@@ -1,8 +1,6 @@
 import XCTest
 @testable import sideBar
 
-private typealias URLProtocolMock = WeatherURLProtocolMock
-
 final class WeatherAPITests: XCTestCase {
     override func tearDown() {
         WeatherURLProtocolMock.requestHandler = nil

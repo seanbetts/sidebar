@@ -1,8 +1,6 @@
 import XCTest
 @testable import sideBar
 
-private typealias URLProtocolMock = SettingsURLProtocolMock
-
 final class SettingsAPITests: XCTestCase {
     override func tearDown() {
         SettingsURLProtocolMock.requestHandler = nil
@@ -82,6 +80,45 @@ final class SettingsAPITests: XCTestCase {
         XCTAssertEqual(data, expected)
     }
 
+    func testUploadProfileImageSetsHeaders() async throws {
+        let api = SettingsAPI(client: makeClient(), session: makeSession())
+        SettingsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "image/png")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Filename"), "avatar.png")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+
+        try await api.uploadProfileImage(
+            data: Data([0x01, 0x02]),
+            contentType: "image/png",
+            filename: "avatar.png"
+        )
+    }
+
+    func testDeleteProfileImageUsesDelete() async throws {
+        let api = SettingsAPI(client: makeClient())
+        SettingsURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "DELETE")
+            XCTAssertTrue(request.url?.absoluteString.contains("settings/profile-image") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+
+        try await api.deleteProfileImage()
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
@@ -91,6 +128,12 @@ final class SettingsAPITests: XCTestCase {
         configuration.protocolClasses = [SettingsURLProtocolMock.self]
         let session = URLSession(configuration: configuration)
         return APIClient(config: config, session: session)
+    }
+
+    private func makeSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [SettingsURLProtocolMock.self]
+        return URLSession(configuration: configuration)
     }
 }
 

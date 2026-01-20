@@ -1,8 +1,6 @@
 import XCTest
 @testable import sideBar
 
-private typealias URLProtocolMock = ScratchpadURLProtocolMock
-
 final class ScratchpadAPITests: XCTestCase {
     override func tearDown() {
         ScratchpadURLProtocolMock.requestHandler = nil

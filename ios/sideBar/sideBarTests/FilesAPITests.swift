@@ -29,6 +29,109 @@ final class FilesAPITests: XCTestCase {
         XCTAssertEqual(data, expected)
     }
 
+    func testSearchUsesPostAndQueryParams() async throws {
+        let api = FilesAPI(client: makeClient())
+        FilesURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            let urlString = request.url?.absoluteString ?? ""
+            XCTAssertTrue(urlString.contains("files/search") == true)
+            XCTAssertTrue(urlString.contains("query=hello") == true)
+            XCTAssertTrue(urlString.contains("basePath=docs") == true)
+            XCTAssertTrue(urlString.contains("limit=2") == true)
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = "{\"items\":[]}"
+            return (response, Data(payload.utf8))
+        }
+
+        let items = try await api.search(query: "hello", basePath: "docs", limit: 2)
+
+        XCTAssertTrue(items.isEmpty)
+    }
+
+    func testCreateFolderPostsBody() async throws {
+        let api = FilesAPI(client: makeClient())
+        FilesURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("files/folder") == true)
+            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            XCTAssertEqual(body?["basePath"] as? String, "docs")
+            XCTAssertEqual(body?["path"] as? String, "New")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+
+        try await api.createFolder(basePath: "docs", path: "New")
+    }
+
+    func testRenamePostsBody() async throws {
+        let api = FilesAPI(client: makeClient())
+        FilesURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("files/rename") == true)
+            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            XCTAssertEqual(body?["oldPath"] as? String, "/old.txt")
+            XCTAssertEqual(body?["newName"] as? String, "new.txt")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+
+        try await api.rename(basePath: "docs", oldPath: "/old.txt", newName: "new.txt")
+    }
+
+    func testMovePostsBody() async throws {
+        let api = FilesAPI(client: makeClient())
+        FilesURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("files/move") == true)
+            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            XCTAssertEqual(body?["path"] as? String, "/old.txt")
+            XCTAssertEqual(body?["destination"] as? String, "/new")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+
+        try await api.move(basePath: "docs", path: "/old.txt", destination: "/new")
+    }
+
+    func testDeletePostsBody() async throws {
+        let api = FilesAPI(client: makeClient())
+        FilesURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("files/delete") == true)
+            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            XCTAssertEqual(body?["path"] as? String, "/old.txt")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+
+        try await api.delete(basePath: "docs", path: "/old.txt")
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

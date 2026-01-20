@@ -112,6 +112,8 @@ Progress:
 - Added NotesAPI and WebsitesAPI tests.
 - Added ConversationsAPI, FilesAPI, and MemoriesAPI tests.
 - Added IngestionUploadManager helper tests.
+- Added NavigationState, CachePolicy, and CoreDataCacheClient tests.
+- Expanded API tests for more endpoints (Conversations, Files, Ingestion, Settings).
 
 ## Phase 7: Documentation
 1) Doc comments for all public ViewModels and Services
