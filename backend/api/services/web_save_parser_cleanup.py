@@ -353,6 +353,81 @@ def normalize_wired_image_url(url: str) -> str:
     return url
 
 
+def extract_verge_body_html(raw_html: str) -> str | None:
+    """Extract The Verge article content from body component elements."""
+    if not raw_html:
+        return None
+    try:
+        tree = lxml_html.fromstring(raw_html)
+    except ValueError:
+        tree = lxml_html.fragment_fromstring(raw_html, create_parent="div")
+
+    # Find all article body component elements
+    body_components = tree.cssselect(".duet--article--article-body-component")
+    if not body_components:
+        return None
+
+    # Create a new container to hold all content
+    combined = lxml_html.Element("div")
+
+    for component in body_components:
+        # Copy all children from each body component
+        for child in list(component):
+            # Skip empty divs
+            if child.tag == "div" and not child.text_content().strip():
+                continue
+            combined.append(child)
+
+    # Remove noise elements
+    noise_selectors = [
+        # Category/topic links at the top
+        "[class*='Breadcrumbs']",
+        "[class*='breadcrumb']",
+        ".duet--article--article-categories",
+        # Author info block
+        "[class*='ArticleAuthor']",
+        ".duet--article--byline-contact",
+        # Share buttons
+        "[class*='ShareTools']",
+        "[class*='share-tools']",
+        ".duet--article--share",
+        # Follow buttons and popovers
+        "[id^='follow-']",
+        "[id^='popover-']",
+        "[class*='FollowToggle']",
+        # Comments section
+        "[class*='Comments']",
+        ".duet--article--comments",
+        # Related content/sidebar
+        ".duet--article--related",
+        "[class*='RelatedStories']",
+        "[class*='StickyBox']",
+        "[class*='Sidebar']",
+        "aside",
+        # Ads and marketing
+        "[class*='Ad']",
+        "[class*='ad-']",
+        ".duet--ad--",
+        "[class*='NewsletterSignup']",
+        # Navigation and chrome
+        "nav",
+        "header",
+        "footer",
+        "script",
+        "style",
+        # Gallery chrome (prev/next buttons, captions handled separately)
+        ".duet--article--gallery button",
+        ".duet--article--gallery strong",
+    ]
+    for selector in noise_selectors:
+        for node in combined.cssselect(selector):
+            parent = node.getparent()
+            if parent is not None:
+                parent.remove(node)
+
+    return lxml_html.tostring(combined, encoding="unicode", method="html")
+
+
 def extract_wired_body_html(raw_html: str) -> str | None:
     """Extract Wired article content from split body containers."""
     if not raw_html:

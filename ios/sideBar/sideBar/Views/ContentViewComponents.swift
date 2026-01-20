@@ -11,12 +11,6 @@ struct SectionDefinition {
     let phoneSelection: () -> Binding<PhoneDetailRoute?>
 }
 
-private extension String {
-    var trimmed: String {
-        trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}
-
 public struct ConfigErrorView: View {
     public let error: EnvironmentConfigLoadError
 

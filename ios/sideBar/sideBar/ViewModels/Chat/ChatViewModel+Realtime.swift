@@ -3,83 +3,62 @@ import Foundation
 
 extension ChatViewModel {
     private func handleNoteCreate(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.notesTree)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.note(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
     private func handleNoteUpdate(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.notesTree)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.note(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
     private func handleNoteDelete(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.notesTree)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.note(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
     private func handleNotePinned(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.notesTree)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.note(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
     private func handleNoteMoved(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.notesTree)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.note(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.notesTree, detailKey: CacheKeys.note, id: id)
         refreshNotesTree()
     }
 
     private func handleWebsiteSaved(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.websitesList)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.websiteDetail(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
         refreshWebsitesList()
     }
 
     private func handleWebsitePinned(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.websitesList)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.websiteDetail(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
         refreshWebsitesList()
     }
 
     private func handleWebsiteArchived(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.websitesList)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.websiteDetail(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
         refreshWebsitesList()
     }
 
     private func handleWebsiteDeleted(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.websitesList)
-        if let id = stringValue(from: event.data, key: "id") {
-            cache.remove(key: CacheKeys.websiteDetail(id: id))
-        }
+        let id = stringValue(from: event.data, key: "id")
+        cache.invalidateList(listKey: CacheKeys.websitesList, detailKey: CacheKeys.websiteDetail, id: id)
         refreshWebsitesList()
     }
 
     private func handleIngestionUpdated(_ event: ChatStreamEvent) {
-        cache.remove(key: CacheKeys.ingestionList)
         let fileId = stringValue(from: event.data, key: "file_id")
-        if let fileId {
-            cache.remove(key: CacheKeys.ingestionMeta(fileId: fileId))
-        }
+        cache.invalidateList(listKey: CacheKeys.ingestionList, detailKey: CacheKeys.ingestionMeta, id: fileId)
         refreshIngestionList(fileId: fileId)
     }
 

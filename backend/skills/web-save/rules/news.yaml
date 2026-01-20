@@ -92,6 +92,53 @@
     - ".newsletter-signup"
     - ".inline-ad"
 
+- id: theverge-pre-cleanup
+  phase: pre
+  priority: 90
+  trigger:
+    host:
+      ends_with: "theverge.com"
+  remove:
+    # Page header/footer/nav
+    - "header"
+    - "footer"
+    - "nav"
+    # Sidebar and sticky elements
+    - "aside"
+    - "[class*='Sidebar']"
+    - "[class*='StickyBox']"
+    # Breadcrumbs/category links
+    - "[class*='Breadcrumbs']"
+    - ".duet--article--article-categories"
+    # Author/byline contact info
+    - "[class*='ArticleAuthor']"
+    - ".duet--article--byline-contact"
+    # Share tools
+    - "[class*='ShareTools']"
+    - "[class*='share-tools']"
+    - ".duet--article--share"
+    # Follow buttons and popovers
+    - "[id^='follow-']"
+    - "[id^='popover-']"
+    - "[class*='FollowToggle']"
+    # Comments
+    - "[class*='Comments']"
+    - ".duet--article--comments"
+    # Ads
+    - "[class*='Ad']"
+    - "[class*='ad-']"
+    - ".duet--ad--"
+    # Newsletter signup
+    - "[class*='NewsletterSignup']"
+    # Related content
+    - ".duet--article--related"
+    - "[class*='RelatedStories']"
+    - ".c-related-list"
+    # Legacy selectors
+    - ".c-entry-hero__subscribe"
+    - ".c-ad"
+    - ".tly2fw0"
+
 - id: theverge-cleanup
   phase: post
   trigger:

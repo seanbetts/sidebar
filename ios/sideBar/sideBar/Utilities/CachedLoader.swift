@@ -21,11 +21,19 @@ public struct CachedLoader<T: Codable> {
 
     /// Load with cache-first strategy.
     /// - Returns: Tuple of (data, wasFromCache)
-    public func load(force: Bool = false) async throws -> (T, Bool) {
+    public func load(
+        force: Bool = false,
+        onRefresh: ((T) -> Void)? = nil
+    ) async throws -> (T, Bool) {
         if !force, let cached: T = cache.get(key: cacheKey) {
             Task {
                 if let fresh = try? await fetch() {
                     cache.set(key: cacheKey, value: fresh, ttlSeconds: ttlSeconds)
+                    if let onRefresh {
+                        await MainActor.run {
+                            onRefresh(fresh)
+                        }
+                    }
                 }
             }
             return (cached, true)

@@ -14,6 +14,6 @@ public extension StringProtocol {
 
     /// Returns the string trimmed of surrounding whitespace and newlines.
     var trimmed: String {
-        String(self).trimmed
+        String(self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

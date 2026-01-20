@@ -7,32 +7,21 @@ public final class ChatStore: ObservableObject {
     @Published public private(set) var conversationDetails: [String: ConversationWithMessages] = [:]
 
     private let conversationsAPI: ConversationsProviding
-    private let cache: CacheClient
+    private let cacheClient: CacheClient
     private var isRefreshingList = false
 
     public init(conversationsAPI: ConversationsProviding, cache: CacheClient) {
         self.conversationsAPI = conversationsAPI
-        self.cache = cache
+        self.cacheClient = cache
     }
 
     public func loadConversations(force: Bool = false) async throws {
-        let cached: [Conversation]? = force ? nil : cache.get(key: CacheKeys.conversationsList)
-        if let cached {
-            applyConversationListUpdate(cached, persist: false)
-            Task { [weak self] in
-                await self?.refreshConversationsList()
-            }
-            return
-        }
-
-        let response = try await conversationsAPI.list()
-        let filtered = response.filter { $0.isArchived != true }
-        applyConversationListUpdate(filtered, persist: true)
+        try await loadWithCache(force: force)
     }
 
     public func loadConversation(id: String, force: Bool = false) async throws {
         let cacheKey = CacheKeys.conversation(id: id)
-        if !force, let cached: ConversationWithMessages = cache.get(key: cacheKey) {
+        if !force, let cached: ConversationWithMessages = cacheClient.get(key: cacheKey) {
             conversationDetails[id] = cached
             return
         }
@@ -40,7 +29,7 @@ public final class ChatStore: ObservableObject {
         let response = try await conversationsAPI.get(id: id)
         if shouldApplyConversationUpdate(response, cached: conversationDetails[id]) {
             conversationDetails[id] = response
-            cache.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
+            cacheClient.set(key: cacheKey, value: response, ttlSeconds: CachePolicy.conversationDetail)
         }
     }
 
@@ -55,7 +44,7 @@ public final class ChatStore: ObservableObject {
         updated.insert(conversation, at: 0)
         conversations = updated
         if persist {
-            cache.set(
+            cacheClient.set(
                 key: CacheKeys.conversationsList,
                 value: updated,
                 ttlSeconds: CachePolicy.conversationsList
@@ -67,7 +56,7 @@ public final class ChatStore: ObservableObject {
         conversationDetails[detail.id] = detail
         if persist {
             let cacheKey = CacheKeys.conversation(id: detail.id)
-            cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+            cacheClient.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
         }
     }
 
@@ -93,14 +82,14 @@ public final class ChatStore: ObservableObject {
             )
         }
         if persist {
-            cache.set(
+            cacheClient.set(
                 key: CacheKeys.conversationsList,
                 value: updated,
                 ttlSeconds: CachePolicy.conversationsList
             )
             if let detail = conversationDetails[conversation.id] {
                 let cacheKey = CacheKeys.conversation(id: conversation.id)
-                cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+                cacheClient.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
             }
         }
     }
@@ -138,14 +127,14 @@ public final class ChatStore: ObservableObject {
             )
         }
         if persist {
-            cache.set(
+            cacheClient.set(
                 key: CacheKeys.conversationsList,
                 value: conversations,
                 ttlSeconds: CachePolicy.conversationsList
             )
             if let detail = conversationDetails[id] {
                 let cacheKey = CacheKeys.conversation(id: id)
-                cache.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
+                cacheClient.set(key: cacheKey, value: detail, ttlSeconds: CachePolicy.conversationDetail)
             }
         }
     }
@@ -172,7 +161,7 @@ public final class ChatStore: ObservableObject {
         conversationDetails[id] = updated
         if persist {
             let cacheKey = CacheKeys.conversation(id: id)
-            cache.set(key: cacheKey, value: updated, ttlSeconds: CachePolicy.conversationDetail)
+            cacheClient.set(key: cacheKey, value: updated, ttlSeconds: CachePolicy.conversationDetail)
         }
     }
 
@@ -180,13 +169,13 @@ public final class ChatStore: ObservableObject {
         conversations.removeAll { $0.id == id }
         conversationDetails[id] = nil
         if persist {
-            cache.set(
+            cacheClient.set(
                 key: CacheKeys.conversationsList,
                 value: conversations,
                 ttlSeconds: CachePolicy.conversationsList
             )
             let cacheKey = CacheKeys.conversation(id: id)
-            cache.remove(key: cacheKey)
+            cacheClient.remove(key: cacheKey)
         }
     }
 
@@ -224,7 +213,7 @@ public final class ChatStore: ObservableObject {
         }
         conversations = incoming
         if persist {
-            cache.set(key: CacheKeys.conversationsList, value: incoming, ttlSeconds: CachePolicy.conversationsList)
+            cacheClient.set(key: CacheKeys.conversationsList, value: incoming, ttlSeconds: CachePolicy.conversationsList)
         }
     }
 
@@ -246,5 +235,26 @@ public final class ChatStore: ObservableObject {
             }
         }
         return false
+    }
+}
+
+extension ChatStore: CachedStore {
+    public typealias CachedData = [Conversation]
+
+    public var cache: CacheClient { cacheClient }
+    public var cacheKey: String { CacheKeys.conversationsList }
+    public var cacheTTL: TimeInterval { CachePolicy.conversationsList }
+
+    public func fetchFromAPI() async throws -> [Conversation] {
+        let response = try await conversationsAPI.list()
+        return response.filter { $0.isArchived != true }
+    }
+
+    public func applyData(_ data: [Conversation], persist: Bool) {
+        applyConversationListUpdate(data, persist: persist)
+    }
+
+    public func backgroundRefresh() async {
+        await refreshConversationsList()
     }
 }
