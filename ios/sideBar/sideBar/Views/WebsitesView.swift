@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -140,8 +141,8 @@ private struct WebsitesDetailView: View {
         } message: {
             Text(archiveAlertMessage)
         }
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.section == .websites else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .websites else { return }
             switch event.action {
             case .renameItem:
                 guard viewModel.active != nil else { return }

@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Combine
 
 public struct ChatView: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -122,8 +123,8 @@ private struct ChatDetailView: View {
         ) { result in
             handleFileImport(result)
         }
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.section == .chat else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .chat else { return }
             switch event.action {
             case .sendMessage:
                 if !viewModel.isStreaming {

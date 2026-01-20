@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import UniformTypeIdentifiers
 #if os(iOS)
 import UIKit
@@ -165,8 +166,8 @@ private struct NotesDetailView: View {
         .onDisappear {
             environment.isNotesEditing = false
         }
-        .onReceive(environment.$shortcutActionEvent.compactMap { $0 }) { event in
-            guard event.section == .notes else { return }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .notes else { return }
             switch event.action {
             case .toggleEditMode:
                 guard !editorViewModel.isReadOnly else { return }

@@ -44,8 +44,11 @@ final class KeyCommandController: UIViewController {
 
     func updateShortcuts(_ shortcuts: [KeyboardShortcut]) {
         self.shortcuts = shortcuts
-        self.shortcutLookup = Dictionary(uniqueKeysWithValues: shortcuts.map { ($0.id, $0) })
-        setNeedsUpdateOfKeyCommands()
+        self.shortcutLookup = Dictionary(uniqueKeysWithValues: shortcuts.map { ($0.keySignature, $0) })
+        if isFirstResponder {
+            resignFirstResponder()
+            becomeFirstResponder()
+        }
     }
 
     private func makeCommand(for shortcut: KeyboardShortcut) -> UIKeyCommand {
@@ -55,13 +58,13 @@ final class KeyCommandController: UIViewController {
             action: #selector(handleCommand(_:))
         )
         command.discoverabilityTitle = shortcut.title
-        command.propertyList = shortcut.id
         return command
     }
 
     @objc private func handleCommand(_ command: UIKeyCommand) {
-        guard let id = command.propertyList as? String,
-              let shortcut = shortcutLookup[id] else { return }
+        guard let input = command.input else { return }
+        let signature = "\(input)|\(command.modifierFlags.rawValue)"
+        guard let shortcut = shortcutLookup[signature] else { return }
         onShortcut?(shortcut)
     }
 }
