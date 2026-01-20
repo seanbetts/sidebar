@@ -77,7 +77,7 @@ public struct LoginView: View {
         defer { isSigningIn = false }
 
         do {
-            let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedEmail = email.trimmed
             if trimmedEmail != email {
                 email = trimmedEmail
             }
@@ -271,7 +271,7 @@ public struct LoginView: View {
     }
 
     private var isValidEmail: Bool {
-        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = email.trimmed
         guard !trimmed.isEmpty else { return false }
         let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         return NSPredicate(format: "SELF MATCHES %@", regex).evaluate(with: trimmed)

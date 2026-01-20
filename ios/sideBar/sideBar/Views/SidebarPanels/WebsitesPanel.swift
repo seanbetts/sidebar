@@ -1,0 +1,531 @@
+import Foundation
+import SwiftUI
+
+public struct WebsitesPanel: View {
+    @EnvironmentObject private var environment: AppEnvironment
+
+    public init() {
+    }
+
+    public var body: some View {
+        WebsitesPanelView(viewModel: environment.websitesViewModel)
+    }
+}
+
+private struct WebsitesPanelView: View {
+    @ObservedObject var viewModel: WebsitesViewModel
+    @EnvironmentObject private var environment: AppEnvironment
+    #if !os(macOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var searchQuery: String = ""
+    @State private var hasLoaded = false
+    @State private var isArchiveExpanded = false
+    @State private var selection: String? = nil
+    @State private var listAppeared = false
+    @State private var isNewWebsitePresented = false
+    @State private var newWebsiteUrl: String = ""
+    @State private var saveErrorMessage: String? = nil
+    @State private var archiveHeight: CGFloat = 0
+    @FocusState private var isSearchFocused: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            #if os(macOS)
+            websitesPanelContentWithArchive
+            #else
+            content
+            #endif
+        }
+        .frame(maxHeight: .infinity)
+        .onAppear {
+            if !hasLoaded {
+                hasLoaded = true
+                Task { await viewModel.load() }
+            }
+            if selection == nil {
+                selection = viewModel.active?.id
+            }
+            listAppeared = !viewModel.isLoading
+        }
+        .onChange(of: viewModel.active?.id) { _, newValue in
+            selection = newValue
+        }
+        .onChange(of: viewModel.isLoading) { _, isLoading in
+            listAppeared = !isLoading
+        }
+        .alert("Save a website", isPresented: $isNewWebsitePresented) {
+            TextField("example.com", text: $newWebsiteUrl)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit {
+                    saveWebsite()
+                }
+            Button(viewModel.isSavingWebsite ? "Saving..." : "Save") {
+                saveWebsite()
+            }
+            .disabled(viewModel.isSavingWebsite || !WebsiteURLValidator.isValid(newWebsiteUrl))
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) {
+                newWebsiteUrl = ""
+            }
+        }
+        .alert("Unable to save website", isPresented: isSaveErrorPresented) {
+            Button("OK", role: .cancel) {
+                saveErrorMessage = nil
+            }
+        } message: {
+            Text(saveErrorMessage ?? "Failed to save website. Please try again.")
+        }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .websites else { return }
+            switch event.action {
+            case .focusSearch:
+                isSearchFocused = true
+            case .newItem:
+                newWebsiteUrl = ""
+                isNewWebsitePresented = true
+            case .navigateList(let direction):
+                navigateWebsitesList(direction: direction)
+            default:
+                break
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: DesignTokens.Spacing.sm) {
+            PanelHeader(title: "Websites") {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Button {
+                        newWebsiteUrl = ""
+                        isNewWebsitePresented = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add website")
+                    if isCompact {
+                        SettingsAvatarButton()
+                    }
+                }
+            }
+            SearchField(text: $searchQuery, placeholder: "Search websites", isFocused: $isSearchFocused)
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.bottom, DesignTokens.Spacing.sm)
+        }
+        .frame(minHeight: LayoutMetrics.panelHeaderMinHeight)
+        .background(panelHeaderBackground(colorScheme))
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.isLoading && viewModel.items.isEmpty {
+            SidebarListSkeleton(rowCount: 8, showSubtitle: true)
+        } else if let error = viewModel.errorMessage {
+            SidebarPanelPlaceholder(
+                title: "Unable to load websites",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                Task { await viewModel.load() }
+            }
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty && viewModel.pendingWebsite == nil {
+            SidebarPanelPlaceholder(title: "No websites yet.")
+        } else if !searchQuery.trimmed.isEmpty {
+            List {
+                if let pending = viewModel.pendingWebsite {
+                    Section("Adding") {
+                        PendingWebsiteRow(pending: pending, useListStyling: true)
+                    }
+                }
+                Section("Results") {
+                    if filteredItems.isEmpty {
+                        SidebarPanelPlaceholder(title: "No results.")
+                    } else {
+                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
+                            websiteListRow(item: item, index: index)
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
+        } else {
+            List {
+                if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
+                    Section("Pinned") {
+                        if pinnedItemsSorted.isEmpty {
+                            Text("No pinned websites")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
+                                websiteListRow(item: item, index: index)
+                            }
+                        }
+                    }
+
+                    Section("Websites") {
+                        if mainItems.isEmpty && viewModel.pendingWebsite == nil {
+                            Text("No websites saved")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            if let pending = viewModel.pendingWebsite {
+                                PendingWebsiteRow(pending: pending, useListStyling: true)
+                            }
+                            ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
+                                websiteListRow(item: item, index: index)
+                            }
+                        }
+                    }
+                }
+#if !os(macOS)
+                Section {
+                    DisclosureGroup(
+                        isExpanded: $isArchiveExpanded,
+                        content: {
+                            if archivedItems.isEmpty {
+                                Text("No archived websites")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
+                                    websiteListRow(item: item, index: index, allowArchive: false)
+                                }
+                            }
+                        },
+                        label: {
+                            Label("Archive", systemImage: "archivebox")
+                        }
+                    )
+                    .listRowBackground(rowBackground)
+                }
+#endif
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var websitesPanelContentWithArchive: some View {
+        if viewModel.isLoading && viewModel.items.isEmpty {
+            SidebarListSkeleton(rowCount: 8, showSubtitle: true)
+        } else if let error = viewModel.errorMessage {
+            SidebarPanelPlaceholder(
+                title: "Unable to load websites",
+                subtitle: error,
+                actionTitle: "Retry"
+            ) {
+                Task { await viewModel.load() }
+            }
+        } else if searchQuery.trimmed.isEmpty && viewModel.items.isEmpty && viewModel.pendingWebsite == nil {
+            SidebarPanelPlaceholder(title: "No websites yet.")
+        } else if !searchQuery.trimmed.isEmpty {
+            List {
+                if let pending = viewModel.pendingWebsite {
+                    Section("Adding") {
+                        PendingWebsiteRow(pending: pending, useListStyling: true)
+                    }
+                }
+                Section("Results") {
+                    if filteredItems.isEmpty {
+                        SidebarPanelPlaceholder(title: "No results.")
+                    } else {
+                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
+                            websiteListRow(item: item, index: index)
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(panelBackground)
+            .refreshable {
+                await viewModel.load()
+            }
+        } else {
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    websitesListView
+                        .frame(height: max(0, proxy.size.height - archiveHeight))
+                    websitesArchiveSection
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .onPreferenceChange(ArchiveHeightKey.self) { newValue in
+                    if abs(newValue - archiveHeight) > 0.5 {
+                        archiveHeight = newValue
+                    }
+                }
+            }
+        }
+    }
+
+    private var websitesListView: some View {
+        List {
+            if !pinnedItemsSorted.isEmpty || !mainItems.isEmpty || viewModel.pendingWebsite != nil {
+                Section("Pinned") {
+                    if pinnedItemsSorted.isEmpty {
+                        Text("No pinned websites")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array(pinnedItemsSorted.enumerated()), id: \.element.id) { index, item in
+                            websiteListRow(item: item, index: index)
+                        }
+                    }
+                }
+
+                Section("Websites") {
+                    if mainItems.isEmpty && viewModel.pendingWebsite == nil {
+                        Text("No websites saved")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        if let pending = viewModel.pendingWebsite {
+                            PendingWebsiteRow(pending: pending, useListStyling: true)
+                        }
+                        ForEach(Array(mainItems.enumerated()), id: \.element.id) { index, item in
+                            websiteListRow(item: item, index: index)
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(panelBackground)
+        .refreshable {
+            await viewModel.load()
+        }
+    }
+
+    private func open(item: WebsiteItem) {
+        selection = item.id
+        Task { await viewModel.selectWebsite(id: item.id) }
+    }
+
+    private func navigateWebsitesList(direction: ShortcutListDirection) {
+        let ids = websitesNavigationItems()
+        guard !ids.isEmpty else { return }
+        let currentId = selection ?? viewModel.active?.id
+        let nextIndex: Int
+        if let currentId, let index = ids.firstIndex(of: currentId) {
+            nextIndex = direction == .next ? min(ids.count - 1, index + 1) : max(0, index - 1)
+        } else {
+            nextIndex = direction == .next ? 0 : ids.count - 1
+        }
+        let nextId = ids[nextIndex]
+        if let item = viewModel.items.first(where: { $0.id == nextId }) {
+            open(item: item)
+        }
+    }
+
+    private func websitesNavigationItems() -> [String] {
+        if !searchQuery.trimmed.isEmpty {
+            return filteredItems.map { $0.id }
+        }
+        return pinnedItemsSorted.map { $0.id } + mainItems.map { $0.id }
+    }
+
+    @ViewBuilder
+    private func websiteListRow(
+        item: WebsiteItem,
+        index: Int,
+        useListStyling: Bool = true,
+        allowArchive: Bool = true
+    ) -> some View {
+        let row = WebsiteRow(
+            item: item,
+            isSelected: selection == item.id,
+            useListStyling: useListStyling
+        )
+        .staggeredAppear(index: index, isActive: listAppeared)
+        .onTapGesture { open(item: item) }
+
+        #if os(macOS)
+        row
+        #else
+        row
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                if allowArchive {
+                    Button {
+                        Task { await viewModel.setArchived(id: item.id, archived: true) }
+                    } label: {
+                        Label("Archive", systemImage: "archivebox")
+                    }
+                    .tint(.blue)
+                } else {
+                    Button {
+                        Task { await viewModel.setArchived(id: item.id, archived: false) }
+                    } label: {
+                        Label("Unarchive", systemImage: "tray.and.arrow.up")
+                    }
+                    .tint(.blue)
+                }
+            }
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    Task { await viewModel.deleteWebsite(id: item.id) }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        #endif
+    }
+
+    private var pinnedItemsSorted: [WebsiteItem] {
+        pinnedItems.sorted { lhs, rhs in
+            let leftOrder = lhs.pinnedOrder ?? Int.max
+            let rightOrder = rhs.pinnedOrder ?? Int.max
+            if leftOrder != rightOrder {
+                return leftOrder < rightOrder
+            }
+            let leftDate = DateParsing.parseISO8601(lhs.updatedAt) ?? .distantPast
+            let rightDate = DateParsing.parseISO8601(rhs.updatedAt) ?? .distantPast
+            return leftDate > rightDate
+        }
+    }
+
+    private var pinnedItems: [WebsiteItem] {
+        viewModel.items.filter { $0.pinned && !$0.archived }
+    }
+
+    private var mainItems: [WebsiteItem] {
+        viewModel.items.filter { !$0.pinned && !$0.archived }
+    }
+
+    private var archivedItems: [WebsiteItem] {
+        viewModel.items.filter { $0.archived }
+    }
+
+    private var filteredItems: [WebsiteItem] {
+        let needle = searchQuery.trimmed.lowercased()
+        guard !needle.isEmpty else { return viewModel.items }
+        return viewModel.items.filter { item in
+            item.title.lowercased().contains(needle) ||
+            item.domain.lowercased().contains(needle) ||
+            item.url.lowercased().contains(needle)
+        }
+    }
+
+    private var panelBackground: Color {
+        DesignTokens.Colors.sidebar
+    }
+
+    private var rowBackground: Color {
+        #if os(macOS)
+        return DesignTokens.Colors.sidebar
+        #else
+        return DesignTokens.Colors.background
+        #endif
+    }
+
+    private var websitesArchiveSection: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Divider()
+                .overlay(DesignTokens.Colors.border)
+                .padding(.bottom, DesignTokens.Spacing.xs)
+            DisclosureGroup(
+                isExpanded: $isArchiveExpanded,
+                content: {
+                    if archivedItems.isEmpty {
+                        Text("No archived websites")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: DesignTokens.Spacing.xs) {
+                                ForEach(Array(archivedItems.enumerated()), id: \.element.id) { index, item in
+                                    websiteListRow(item: item, index: index, useListStyling: false, allowArchive: false)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 650)
+                    }
+                },
+                label: {
+                    Label("Archive", systemImage: "archivebox")
+                        .font(.subheadline)
+                }
+            )
+        }
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.sm)
+        .background(panelBackground)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ArchiveHeightKey.self, value: proxy.size.height)
+            }
+        )
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+        return false
+        #else
+        return horizontalSizeClass == .compact
+        #endif
+    }
+
+    private var isSaveErrorPresented: Binding<Bool> {
+        Binding(
+            get: { saveErrorMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    saveErrorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func saveWebsite() {
+        let raw = newWebsiteUrl.trimmed
+        guard let normalized = WebsiteURLValidator.normalizedCandidate(raw) else {
+            saveErrorMessage = "Enter a valid URL."
+            return
+        }
+        newWebsiteUrl = ""
+        isNewWebsitePresented = false
+        Task {
+            let saved = await viewModel.saveWebsite(url: normalized.absoluteString)
+            if saved {
+                environment.notesViewModel.clearSelection()
+                environment.ingestionViewModel.clearSelection()
+            } else {
+                saveErrorMessage = viewModel.saveErrorMessage ?? "Failed to save website. Please try again."
+            }
+        }
+    }
+}
+
+
+private struct ArchiveHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private extension String {
+    var trimmed: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}

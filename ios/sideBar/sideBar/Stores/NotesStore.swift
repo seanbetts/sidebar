@@ -7,30 +7,21 @@ public final class NotesStore: ObservableObject {
     @Published public private(set) var activeNote: NotePayload? = nil
 
     private let api: any NotesProviding
-    private let cache: CacheClient
+    private let cacheClient: CacheClient
     private var isRefreshingTree = false
 
     public init(api: any NotesProviding, cache: CacheClient) {
         self.api = api
-        self.cache = cache
+        self.cacheClient = cache
     }
 
     public func loadTree(force: Bool = false) async throws {
-        let cached: FileTree? = force ? nil : cache.get(key: CacheKeys.notesTree)
-        if let cached {
-            applyTreeUpdate(cached, persist: false)
-            Task { [weak self] in
-                await self?.refreshTree()
-            }
-            return
-        }
-        let response = try await api.listTree()
-        applyTreeUpdate(response, persist: true)
+        try await loadWithCache(force: force)
     }
 
     public func loadNote(id: String, force: Bool = false) async throws {
         let cacheKey = CacheKeys.note(id: id)
-        if !force, let cached: NotePayload = cache.get(key: cacheKey) {
+        if !force, let cached: NotePayload = cacheClient.get(key: cacheKey) {
             applyNoteUpdate(cached, persist: false)
             return
         }
@@ -39,11 +30,11 @@ public final class NotesStore: ObservableObject {
     }
 
     public func invalidateTree() {
-        cache.remove(key: CacheKeys.notesTree)
+        cacheClient.remove(key: CacheKeys.notesTree)
     }
 
     public func invalidateNote(id: String) {
-        cache.remove(key: CacheKeys.note(id: id))
+        cacheClient.remove(key: CacheKeys.note(id: id))
     }
 
     public func clearActiveNote() {
@@ -61,7 +52,7 @@ public final class NotesStore: ObservableObject {
                 activeNote = nil
             }
             if let noteId {
-                cache.remove(key: CacheKeys.note(id: noteId))
+                cacheClient.remove(key: CacheKeys.note(id: noteId))
             }
         } else if let record = payload.record, let mapped = RealtimeMappers.mapNote(record) {
             applyNoteUpdate(mapped, persist: true)
@@ -94,7 +85,7 @@ public final class NotesStore: ObservableObject {
         }
         tree = incoming
         if persist {
-            cache.set(key: CacheKeys.notesTree, value: incoming, ttlSeconds: CachePolicy.notesTree)
+            cacheClient.set(key: CacheKeys.notesTree, value: incoming, ttlSeconds: CachePolicy.notesTree)
         }
     }
 
@@ -111,7 +102,7 @@ public final class NotesStore: ObservableObject {
         }
         activeNote = incoming
         if persist {
-            cache.set(key: CacheKeys.note(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.noteContent)
+            cacheClient.set(key: CacheKeys.note(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.noteContent)
         }
     }
 
@@ -123,5 +114,25 @@ public final class NotesStore: ObservableObject {
             current.content != incoming.content ||
             current.name != incoming.name ||
             current.path != incoming.path
+    }
+}
+
+extension NotesStore: CachedStore {
+    public typealias CachedData = FileTree
+
+    public var cache: CacheClient { cacheClient }
+    public var cacheKey: String { CacheKeys.notesTree }
+    public var cacheTTL: TimeInterval { CachePolicy.notesTree }
+
+    public func fetchFromAPI() async throws -> FileTree {
+        try await api.listTree()
+    }
+
+    public func applyData(_ data: FileTree, persist: Bool) {
+        applyTreeUpdate(data, persist: persist)
+    }
+
+    public func backgroundRefresh() async {
+        await refreshTree()
     }
 }

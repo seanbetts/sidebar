@@ -14,7 +14,7 @@ public final class NotesViewModel: ObservableObject {
     private let api: any NotesProviding
     private let store: NotesStore
     private let toastCenter: ToastCenter
-    private var searchTask: Task<Void, Never>?
+    private let searchTask = ManagedTask()
     private var cancellables = Set<AnyCancellable>()
 
     public init(
@@ -92,12 +92,11 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func createNote(title: String, folder: String?) async -> NotePayload? {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard let trimmed = title.trimmedOrNil else {
             return nil
         }
         let filename = trimmed.lowercased().hasSuffix(".md") ? trimmed : "\(trimmed).md"
-        let pathPrefix = folder?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let pathPrefix = folder?.trimmed ?? ""
         let fullPath = pathPrefix.isEmpty ? filename : "\(pathPrefix)/\(filename)"
         do {
             let created = try await api.createNote(
@@ -114,7 +113,7 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func createFolder(path: String) async -> Bool {
-        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = path.trimmed
         let normalized = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !normalized.isEmpty else {
             return false
@@ -130,8 +129,7 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func renameNote(id: String, newName: String) async {
-        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard let trimmed = newName.trimmedOrNil else {
             return
         }
         let filename = trimmed.lowercased().hasSuffix(".md") ? trimmed : "\(trimmed).md"
@@ -214,8 +212,7 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func renameFolder(path: String, newName: String) async {
-        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard let trimmed = newName.trimmedOrNil else { return }
         let normalized = normalizeFolderPath(path)
         guard !normalized.isEmpty else { return }
         do {
@@ -259,16 +256,15 @@ public final class NotesViewModel: ObservableObject {
 
     public func updateSearch(query: String) {
         searchQuery = query
-        searchTask?.cancel()
-        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        searchTask.cancel()
+        if query.isBlank {
             searchResults = []
             isSearching = false
             return
         }
         isSearching = true
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        searchTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 300_000_000)
+        let trimmed = query.trimmed
+        searchTask.runDebounced(delay: 0.3) { [weak self] in
             await self?.performSearch(query: trimmed)
         }
     }
@@ -298,7 +294,7 @@ public final class NotesViewModel: ObservableObject {
     }
 
     private func normalizeFolderPath(_ path: String) -> String {
-        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = path.trimmed
         if trimmed.hasPrefix("folder:") {
             let start = trimmed.index(trimmed.startIndex, offsetBy: 7)
             return String(trimmed[start...]).trimmingCharacters(in: CharacterSet(charactersIn: "/"))

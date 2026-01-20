@@ -77,14 +77,18 @@ public struct YouTubePlayerView: NSViewRepresentable {
             </style>
             <script>
               (function() {
-                function post(type, args) {
-                  try {
-                    window.webkit.messageHandlers.consoleLog.postMessage(type + ": " + args.join(" "));
-                  } catch (e) {}
-                }
                 var originalLog = console.log;
                 var originalWarn = console.warn;
                 var originalError = console.error;
+                function post(type, args) {
+                  try {
+                    window.webkit.messageHandlers.consoleLog.postMessage(type + ": " + args.join(" "));
+                  } catch (e) {
+                    if (originalError) {
+                      originalError.call(console, "consoleLog bridge failed", e);
+                    }
+                  }
+                }
                 console.log = function() { post("log", Array.from(arguments)); if (originalLog) { originalLog.apply(console, arguments); } };
                 console.warn = function() { post("warn", Array.from(arguments)); if (originalWarn) { originalWarn.apply(console, arguments); } };
                 console.error = function() { post("error", Array.from(arguments)); if (originalError) { originalError.apply(console, arguments); } };

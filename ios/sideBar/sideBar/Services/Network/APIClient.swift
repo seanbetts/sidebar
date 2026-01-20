@@ -192,16 +192,16 @@ public final class APIClient {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 120
-        let diskPath = "URLCache"
-        if let cachesDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
-            let cacheDirectory = cachesDirectory.appendingPathComponent(diskPath, isDirectory: true)
-            try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
-        }
         configuration.urlCache = URLCache(
             memoryCapacity: 20 * 1024 * 1024,
-            diskCapacity: 100 * 1024 * 1024,
-            diskPath: diskPath
+            diskCapacity: 0,
+            diskPath: nil
         )
+        let pinnedCertificates = PinnedCertificates.loadFromMainBundle()
+        if !pinnedCertificates.isEmpty, !EnvironmentConfig.isRunningTestsOrPreviews() {
+            let delegate = CertificatePinningDelegate(pinnedCertificates: pinnedCertificates)
+            return URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
+        }
         return URLSession(configuration: configuration)
     }
 }

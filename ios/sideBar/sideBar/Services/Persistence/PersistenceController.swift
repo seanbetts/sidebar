@@ -9,6 +9,13 @@ public final class PersistenceController {
     public init(inMemory: Bool = false) {
         container = NSPersistentContainer(name: "SideBarCache")
 
+        container.persistentStoreDescriptions.forEach { description in
+            description.setOption(
+                FileProtectionType.complete as NSObject,
+                forKey: NSPersistentStoreFileProtectionKey
+            )
+        }
+
         if inMemory {
             container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
         }

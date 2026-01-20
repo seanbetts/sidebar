@@ -271,7 +271,7 @@ public struct SiteHeaderBar: View {
     private func formattedLocation(_ value: String) -> String {
         let parts = value
             .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .map { $0.trimmed }
         guard let first = parts.first else { return value }
         guard let last = parts.last, last != first else { return String(first) }
         let locale = Locale.current

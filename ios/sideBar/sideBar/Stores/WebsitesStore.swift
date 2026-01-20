@@ -7,30 +7,21 @@ public final class WebsitesStore: ObservableObject {
     @Published public private(set) var active: WebsiteDetail? = nil
 
     private let api: any WebsitesProviding
-    private let cache: CacheClient
+    private let cacheClient: CacheClient
     private var isRefreshingList = false
 
     public init(api: any WebsitesProviding, cache: CacheClient) {
         self.api = api
-        self.cache = cache
+        self.cacheClient = cache
     }
 
     public func loadList(force: Bool = false) async throws {
-        let cached: WebsitesResponse? = force ? nil : cache.get(key: CacheKeys.websitesList)
-        if let cached {
-            applyListUpdate(cached.items, persist: false)
-            Task { [weak self] in
-                await self?.refreshList()
-            }
-            return
-        }
-        let response = try await api.list()
-        applyListUpdate(response.items, persist: true)
+        try await loadWithCache(force: force)
     }
 
     public func loadDetail(id: String, force: Bool = false) async throws {
         let cacheKey = CacheKeys.websiteDetail(id: id)
-        if !force, let cached: WebsiteDetail = cache.get(key: cacheKey) {
+        if !force, let cached: WebsiteDetail = cacheClient.get(key: cacheKey) {
             applyDetailUpdate(cached, persist: false)
             return
         }
@@ -48,7 +39,7 @@ public final class WebsitesStore: ObservableObject {
             let updated = updateDetail(active, with: item)
             self.active = updated
             if persist {
-                cache.set(key: CacheKeys.websiteDetail(id: updated.id), value: updated, ttlSeconds: CachePolicy.websiteDetail)
+                cacheClient.set(key: CacheKeys.websiteDetail(id: updated.id), value: updated, ttlSeconds: CachePolicy.websiteDetail)
             }
         }
         if persist {
@@ -63,7 +54,7 @@ public final class WebsitesStore: ObservableObject {
             let updated = updateDetail(active, with: item)
             self.active = updated
             if persist {
-                cache.set(key: CacheKeys.websiteDetail(id: updated.id), value: updated, ttlSeconds: CachePolicy.websiteDetail)
+                cacheClient.set(key: CacheKeys.websiteDetail(id: updated.id), value: updated, ttlSeconds: CachePolicy.websiteDetail)
             }
         }
         if persist {
@@ -82,11 +73,11 @@ public final class WebsitesStore: ObservableObject {
     }
 
     public func invalidateList() {
-        cache.remove(key: CacheKeys.websitesList)
+        cacheClient.remove(key: CacheKeys.websitesList)
     }
 
     public func invalidateDetail(id: String) {
-        cache.remove(key: CacheKeys.websiteDetail(id: id))
+        cacheClient.remove(key: CacheKeys.websiteDetail(id: id))
     }
 
     public func clearActive() {
@@ -103,7 +94,7 @@ public final class WebsitesStore: ObservableObject {
         case .delete:
             if let websiteId = payload.oldRecord?.id ?? payload.record?.id {
                 removeItem(id: websiteId, persist: true)
-                cache.remove(key: CacheKeys.websiteDetail(id: websiteId))
+                cacheClient.remove(key: CacheKeys.websiteDetail(id: websiteId))
             }
         case .insert, .update:
             if let record = payload.record, let mapped = RealtimeMappers.mapWebsite(record) {
@@ -167,7 +158,7 @@ public final class WebsitesStore: ObservableObject {
         }
         active = incoming
         if persist {
-            cache.set(key: CacheKeys.websiteDetail(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.websiteDetail)
+            cacheClient.set(key: CacheKeys.websiteDetail(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.websiteDetail)
         }
     }
 
@@ -180,7 +171,7 @@ public final class WebsitesStore: ObservableObject {
 
     private func persistListCache() {
         let response = WebsitesResponse(items: items)
-        cache.set(key: CacheKeys.websitesList, value: response, ttlSeconds: CachePolicy.websitesList)
+        cacheClient.set(key: CacheKeys.websitesList, value: response, ttlSeconds: CachePolicy.websitesList)
     }
 
     private func updateDetail(_ detail: WebsiteDetail, with item: WebsiteItem) -> WebsiteDetail {
@@ -201,5 +192,25 @@ public final class WebsitesStore: ObservableObject {
             updatedAt: item.updatedAt ?? detail.updatedAt,
             lastOpenedAt: item.lastOpenedAt ?? detail.lastOpenedAt
         )
+    }
+}
+
+extension WebsitesStore: CachedStore {
+    public typealias CachedData = WebsitesResponse
+
+    public var cache: CacheClient { cacheClient }
+    public var cacheKey: String { CacheKeys.websitesList }
+    public var cacheTTL: TimeInterval { CachePolicy.websitesList }
+
+    public func fetchFromAPI() async throws -> WebsitesResponse {
+        try await api.list()
+    }
+
+    public func applyData(_ data: WebsitesResponse, persist: Bool) {
+        applyListUpdate(data.items, persist: persist)
+    }
+
+    public func backgroundRefresh() async {
+        await refreshList()
     }
 }

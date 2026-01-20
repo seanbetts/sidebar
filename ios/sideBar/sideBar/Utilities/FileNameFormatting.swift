@@ -1,7 +1,7 @@
 import Foundation
 
 public func stripFileExtension(_ name: String) -> String {
-    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmed = name.trimmed
     guard !trimmed.isEmpty else {
         return name
     }

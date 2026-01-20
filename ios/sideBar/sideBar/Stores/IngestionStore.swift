@@ -8,7 +8,7 @@ public final class IngestionStore: ObservableObject {
     @Published public private(set) var isOffline: Bool = false
 
     private let api: any IngestionProviding
-    private let cache: CacheClient
+    private let cacheClient: CacheClient
     private var remoteItems: [IngestionListItem] = []
     private var localItems: [String: IngestionListItem] = [:]
     private var isRefreshingList = false
@@ -16,26 +16,16 @@ public final class IngestionStore: ObservableObject {
 
     public init(api: any IngestionProviding, cache: CacheClient) {
         self.api = api
-        self.cache = cache
+        self.cacheClient = cache
     }
 
     public func loadList(force: Bool = false) async throws {
-        let cached: IngestionListResponse? = force ? nil : cache.get(key: CacheKeys.ingestionList)
-        if let cached {
-            applyListUpdate(cached.items, persist: false)
-            Task { [weak self] in
-                await self?.refreshList()
-            }
-            return
-        }
-        let response = try await api.list()
-        isOffline = false
-        applyListUpdate(response.items, persist: true)
+        try await loadWithCache(force: force)
     }
 
     public func loadMeta(fileId: String, force: Bool = false) async throws {
         let cacheKey = CacheKeys.ingestionMeta(fileId: fileId)
-        if !force, let cached: IngestionMetaResponse = cache.get(key: cacheKey) {
+        if !force, let cached: IngestionMetaResponse = cacheClient.get(key: cacheKey) {
             applyMetaUpdate(cached, persist: false)
             Task { [weak self] in
                 await self?.refreshMeta(fileId: fileId)
@@ -48,7 +38,7 @@ public final class IngestionStore: ObservableObject {
     }
 
     public func invalidateList() {
-        cache.remove(key: CacheKeys.ingestionList)
+        cacheClient.remove(key: CacheKeys.ingestionList)
     }
 
     public func clearActiveMeta() {
@@ -137,7 +127,7 @@ public final class IngestionStore: ObservableObject {
                 recommendedViewer: meta.recommendedViewer
             )
             activeMeta = updatedMeta
-            cache.set(
+            cacheClient.set(
                 key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
                 value: updatedMeta,
                 ttlSeconds: CachePolicy.ingestionMeta
@@ -174,7 +164,7 @@ public final class IngestionStore: ObservableObject {
                 recommendedViewer: meta.recommendedViewer
             )
             activeMeta = updatedMeta
-            cache.set(
+            cacheClient.set(
                 key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
                 value: updatedMeta,
                 ttlSeconds: CachePolicy.ingestionMeta
@@ -208,7 +198,7 @@ public final class IngestionStore: ObservableObject {
                 recommendedViewer: recommendedViewer ?? meta.recommendedViewer
             )
             activeMeta = updatedMeta
-            cache.set(
+            cacheClient.set(
                 key: CacheKeys.ingestionMeta(fileId: updatedMeta.file.id),
                 value: updatedMeta,
                 ttlSeconds: CachePolicy.ingestionMeta
@@ -226,7 +216,7 @@ public final class IngestionStore: ObservableObject {
             activeMeta = nil
         }
         persistListCache()
-        cache.remove(key: CacheKeys.ingestionMeta(fileId: fileId))
+        cacheClient.remove(key: CacheKeys.ingestionMeta(fileId: fileId))
     }
 
     public func addLocalUpload(_ item: IngestionListItem) {
@@ -435,7 +425,7 @@ public final class IngestionStore: ObservableObject {
         activeMeta = incoming
         updateFilenameForItems(fileId: incoming.file.id, filename: incoming.file.filenameOriginal)
         if persist {
-            cache.set(
+            cacheClient.set(
                 key: CacheKeys.ingestionMeta(fileId: incoming.file.id),
                 value: incoming,
                 ttlSeconds: CachePolicy.ingestionMeta
@@ -456,7 +446,7 @@ public final class IngestionStore: ObservableObject {
     }
 
     private func persistListCache() {
-        cache.set(
+        cacheClient.set(
             key: CacheKeys.ingestionList,
             value: IngestionListResponse(items: remoteItems),
             ttlSeconds: CachePolicy.ingestionList
@@ -490,5 +480,27 @@ public final class IngestionStore: ObservableObject {
             items = mergeItems(remoteItems)
             persistListCache()
         }
+    }
+}
+
+extension IngestionStore: CachedStore {
+    public typealias CachedData = IngestionListResponse
+
+    public var cache: CacheClient { cacheClient }
+    public var cacheKey: String { CacheKeys.ingestionList }
+    public var cacheTTL: TimeInterval { CachePolicy.ingestionList }
+
+    public func fetchFromAPI() async throws -> IngestionListResponse {
+        let response = try await api.list()
+        isOffline = false
+        return response
+    }
+
+    public func applyData(_ data: IngestionListResponse, persist: Bool) {
+        applyListUpdate(data.items, persist: persist)
+    }
+
+    public func backgroundRefresh() async {
+        await refreshList()
     }
 }

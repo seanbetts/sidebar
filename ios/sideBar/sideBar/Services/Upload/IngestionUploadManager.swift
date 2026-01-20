@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 public protocol IngestionUploadManaging: AnyObject {
     func startUpload(
@@ -15,6 +16,7 @@ public protocol IngestionUploadManaging: AnyObject {
 
 public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let config: APIClientConfig
+    private let logger = Logger(subsystem: "sideBar", category: "Upload")
     private lazy var session: URLSession = {
         #if os(iOS)
         let configuration = URLSessionConfiguration.background(withIdentifier: "sideBar.ingestion.uploads")
@@ -105,7 +107,13 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     ) throws {
         FileManager.default.createFile(atPath: url.path, contents: nil)
         let handle = try FileHandle(forWritingTo: url)
-        defer { try? handle.close() }
+        defer {
+            do {
+                try handle.close()
+            } catch {
+                logger.error("Upload body file close failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
 
         try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
         try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"folder\"\r\n\r\n".utf8))
@@ -115,15 +123,30 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         try handle.write(contentsOf: Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
 
         let input = try FileHandle(forReadingFrom: fileURL)
-        defer { try? input.close() }
+        defer {
+            do {
+                try input.close()
+            } catch {
+                logger.error("Upload source file close failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        var writeError: Error?
         while autoreleasepool(invoking: {
             let chunk = input.readData(ofLength: 1024 * 1024)
             if chunk.isEmpty {
                 return false
             }
-            try? handle.write(contentsOf: chunk)
+            do {
+                try handle.write(contentsOf: chunk)
+            } catch {
+                writeError = error
+                return false
+            }
             return true
         }) { }
+        if let writeError {
+            throw writeError
+        }
 
         try handle.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
     }
@@ -135,7 +158,13 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
             self.contexts.removeValue(forKey: task.taskIdentifier)
             self.taskIdsByUploadId.removeValue(forKey: context.uploadId)
         }
-        defer { try? FileManager.default.removeItem(at: context.bodyFileURL) }
+        defer {
+            do {
+                try FileManager.default.removeItem(at: context.bodyFileURL)
+            } catch {
+                logger.error("Failed to remove upload body file: \(error.localizedDescription, privacy: .public)")
+            }
+        }
 
         if let error {
             DispatchQueue.main.async { context.onCompletion(.failure(error)) }

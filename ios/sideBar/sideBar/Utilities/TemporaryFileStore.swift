@@ -34,7 +34,7 @@ public struct TemporaryFileStore {
     }
 
     private func makeURL(filename: String) throws -> URL {
-        let trimmed = filename.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = filename.trimmed
         let safeName = trimmed.isEmpty ? "file" : trimmed
         let unique = "\(UUID().uuidString)-\(safeName)"
         return directory.appendingPathComponent(unique, isDirectory: false)

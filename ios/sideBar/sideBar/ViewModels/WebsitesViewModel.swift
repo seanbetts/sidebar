@@ -101,8 +101,7 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func saveWebsite(url: String) async -> Bool {
-        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard let trimmed = url.trimmedOrNil else {
             saveErrorMessage = "Enter a valid URL."
             return false
         }
@@ -174,8 +173,7 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func renameWebsite(id: String, title: String) async {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard let trimmed = title.trimmedOrNil else {
             return
         }
         errorMessage = nil

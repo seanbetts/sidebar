@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Realtime
 import Supabase
 
@@ -14,6 +15,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
     private let tokenStore: AccessTokenStore
     private let client: SupabaseClient
     private let decoder: JSONDecoder
+    private let logger = Logger(subsystem: "sideBar", category: "Realtime")
     private var currentUserId: String?
     private var notesChannel: RealtimeChannelV2?
     private var websitesChannel: RealtimeChannelV2?
@@ -149,6 +151,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         do {
             try await channel.subscribeWithError()
         } catch {
+            logger.error("Notes subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -199,6 +202,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         do {
             try await channel.subscribeWithError()
         } catch {
+            logger.error("Websites subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -249,6 +253,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         do {
             try await channel.subscribeWithError()
         } catch {
+            logger.error("Ingested files subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -295,6 +300,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         do {
             try await channel.subscribeWithError()
         } catch {
+            logger.error("File jobs subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -303,15 +309,22 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyNoteEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
+            logger.error("Notes insert decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     private func handleNoteUpdate(_ action: UpdateAction) {
         do {
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
-            let oldRecord: NoteRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            var oldRecord: NoteRealtimeRecord?
+            do {
+                oldRecord = try action.decodeOldRecord(decoder: decoder)
+            } catch {
+                logger.error("Notes update old record decode failed: \(error.localizedDescription, privacy: .public)")
+            }
             notifyNoteEvent(type: .update, record: record, oldRecord: oldRecord)
         } catch {
+            logger.error("Notes update decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -320,6 +333,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             let oldRecord: NoteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyNoteEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
+            logger.error("Notes delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -345,15 +359,22 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyWebsiteEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
+            logger.error("Websites insert decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     private func handleWebsiteUpdate(_ action: UpdateAction) {
         do {
             let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
-            let oldRecord: WebsiteRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            var oldRecord: WebsiteRealtimeRecord?
+            do {
+                oldRecord = try action.decodeOldRecord(decoder: decoder)
+            } catch {
+                logger.error("Websites update old record decode failed: \(error.localizedDescription, privacy: .public)")
+            }
             notifyWebsiteEvent(type: .update, record: record, oldRecord: oldRecord)
         } catch {
+            logger.error("Websites update decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -362,6 +383,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             let oldRecord: WebsiteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyWebsiteEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
+            logger.error("Websites delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -370,15 +392,22 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyIngestedFileEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
+            logger.error("Ingested files insert decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     private func handleIngestedFileUpdate(_ action: UpdateAction) {
         do {
             let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
-            let oldRecord: IngestedFileRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            var oldRecord: IngestedFileRealtimeRecord?
+            do {
+                oldRecord = try action.decodeOldRecord(decoder: decoder)
+            } catch {
+                logger.error("Ingested files update old record decode failed: \(error.localizedDescription, privacy: .public)")
+            }
             notifyIngestedFileEvent(type: .update, record: record, oldRecord: oldRecord)
         } catch {
+            logger.error("Ingested files update decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -387,6 +416,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             let oldRecord: IngestedFileRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyIngestedFileEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
+            logger.error("Ingested files delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -395,15 +425,22 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyFileJobEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
+            logger.error("File jobs insert decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     private func handleFileJobUpdate(_ action: UpdateAction) {
         do {
             let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
-            let oldRecord: FileJobRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            var oldRecord: FileJobRealtimeRecord?
+            do {
+                oldRecord = try action.decodeOldRecord(decoder: decoder)
+            } catch {
+                logger.error("File jobs update old record decode failed: \(error.localizedDescription, privacy: .public)")
+            }
             notifyFileJobEvent(type: .update, record: record, oldRecord: oldRecord)
         } catch {
+            logger.error("File jobs update decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -412,6 +449,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             let oldRecord: FileJobRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyFileJobEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
+            logger.error("File jobs delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

@@ -26,6 +26,12 @@ public struct ChatAttachmentItem: Identifiable, Equatable {
     }
 }
 
+extension ChatAttachmentItem: StatusFilterable {
+    public var statusValue: String {
+        status.rawValue
+    }
+}
+
 /// Upload lifecycle for a chat attachment.
 public enum ChatAttachmentStatus: String, Equatable {
     case uploading
