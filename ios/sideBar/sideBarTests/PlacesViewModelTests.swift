@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class PlacesViewModelTests: XCTestCase {
     override func tearDown() {
-        URLProtocolMock.requestHandler = nil
+        PlacesURLProtocolMock.requestHandler = nil
         super.tearDown()
     }
 
@@ -13,7 +13,7 @@ final class PlacesViewModelTests: XCTestCase {
         let client = makeClient()
         let api = PlacesAPI(client: client)
         let viewModel = PlacesViewModel(api: api)
-        URLProtocolMock.requestHandler = { request in
+        PlacesURLProtocolMock.requestHandler = { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -34,7 +34,7 @@ final class PlacesViewModelTests: XCTestCase {
         let client = makeClient()
         let api = PlacesAPI(client: client)
         let viewModel = PlacesViewModel(api: api)
-        URLProtocolMock.requestHandler = { request in
+        PlacesURLProtocolMock.requestHandler = { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -55,7 +55,7 @@ final class PlacesViewModelTests: XCTestCase {
         let client = makeClient()
         let api = PlacesAPI(client: client)
         let viewModel = PlacesViewModel(api: api)
-        URLProtocolMock.requestHandler = { request in
+        PlacesURLProtocolMock.requestHandler = { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 500,
@@ -76,13 +76,13 @@ final class PlacesViewModelTests: XCTestCase {
             accessTokenProvider: { nil }
         )
         let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [URLProtocolMock.self]
+        configuration.protocolClasses = [PlacesURLProtocolMock.self]
         let session = URLSession(configuration: configuration)
         return APIClient(config: config, session: session)
     }
 }
 
-final class URLProtocolMock: URLProtocol {
+final class PlacesURLProtocolMock: URLProtocol {
     static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 
     override class func canInit(with request: URLRequest) -> Bool {
@@ -94,7 +94,7 @@ final class URLProtocolMock: URLProtocol {
     }
 
     override func startLoading() {
-        guard let handler = URLProtocolMock.requestHandler else {
+        guard let handler = PlacesURLProtocolMock.requestHandler else {
             XCTFail("Request handler not set")
             return
         }

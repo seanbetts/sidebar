@@ -1,8 +1,6 @@
 import XCTest
 @testable import sideBar
 
-private typealias URLProtocolMock = SkillsURLProtocolMock
-
 final class SkillsAPITests: XCTestCase {
     override func tearDown() {
         SkillsURLProtocolMock.requestHandler = nil

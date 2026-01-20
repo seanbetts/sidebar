@@ -48,6 +48,28 @@ final class IngestionAPITests: XCTestCase {
         XCTAssertEqual(response.items.first?.file.id, "f1")
     }
 
+    func testIngestYouTubePostsUrl() async throws {
+        let api = IngestionAPI(client: makeClient())
+        IngestionURLProtocolMock.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.url?.absoluteString.contains("files/youtube") == true)
+            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            XCTAssertEqual(body?["url"] as? String, "https://youtu.be/123")
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let payload = "{\"file_id\":\"f9\"}"
+            return (response, Data(payload.utf8))
+        }
+
+        let fileId = try await api.ingestYouTube(url: "https://youtu.be/123")
+
+        XCTAssertEqual(fileId, "f9")
+    }
+
     private func makeClient() -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,
