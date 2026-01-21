@@ -16,6 +16,7 @@ from api.exceptions import (
 from api.models.task import Task
 from api.models.task_area import TaskArea
 from api.models.task_project import TaskProject
+from api.services.recurrence_service import RecurrenceService
 from api.utils.validation import parse_optional_uuid, parse_uuid
 
 
@@ -345,3 +346,17 @@ class TaskService:
         task.deleted_at = now
         task.updated_at = now
         return task
+
+    @staticmethod
+    def complete_task(
+        db: Session, user_id: str, task_id: str
+    ) -> tuple[Task, Task | None]:
+        """Mark a task complete and create the next instance if repeating."""
+        task = TaskService.get_task(db, user_id, task_id)
+        now = datetime.now(UTC)
+        task.status = "completed"
+        task.completed_at = now
+        task.updated_at = now
+
+        next_task = RecurrenceService.complete_repeating_task(db, task)
+        return task, next_task
