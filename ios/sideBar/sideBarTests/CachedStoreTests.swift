@@ -33,33 +33,32 @@ final class CachedStoreTests: XCTestCase {
 }
 
 @MainActor
-private final class MockCachedStore: CachedStore {
+private final class MockCachedStore: CachedStoreBase<String> {
     struct Applied {
         let value: String
         let persist: Bool
     }
 
-    let cache: CacheClient
-    let cacheKey: String = "store-key"
-    let cacheTTL: TimeInterval = 60
+    override var cacheKey: String { "store-key" }
+    override var cacheTTL: TimeInterval { 60 }
     let fetchResult: String
     var appliedData: [Applied] = []
     var onBackgroundRefresh: (() -> Void)? = nil
 
     init(cache: CacheClient, fetchResult: String) {
-        self.cache = cache
         self.fetchResult = fetchResult
+        super.init(cache: cache)
     }
 
-    func fetchFromAPI() async throws -> String {
+    override func fetchFromAPI() async throws -> String {
         fetchResult
     }
 
-    func applyData(_ data: String, persist: Bool) {
+    override func applyData(_ data: String, persist: Bool) {
         appliedData.append(Applied(value: data, persist: persist))
     }
 
-    func backgroundRefresh() async {
+    override func backgroundRefresh() async {
         onBackgroundRefresh?()
     }
 }
