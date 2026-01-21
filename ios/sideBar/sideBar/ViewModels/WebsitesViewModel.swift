@@ -3,6 +3,7 @@ import Combine
 
 // MARK: - WebsitesViewModel
 
+@MainActor
 /// Manages saved websites list, detail views, and website saving functionality.
 ///
 /// This ViewModel coordinates website operations including:
@@ -31,7 +32,6 @@ import Combine
 /// let success = await viewModel.saveWebsite(url: "https://example.com")
 /// await viewModel.selectWebsite(id: websiteId)
 /// ```
-@MainActor
 public final class WebsitesViewModel: ObservableObject {
     /// Holds a pending website captured from an extension flow.
     public struct PendingWebsiteItem: Identifiable, Equatable {
