@@ -151,6 +151,8 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         notesChannel = channel
         do {
             try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
         } catch {
             logger.error("Notes subscription failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -202,6 +204,8 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         websitesChannel = channel
         do {
             try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
         } catch {
             logger.error("Websites subscription failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -253,6 +257,8 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         ingestedFilesChannel = channel
         do {
             try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
         } catch {
             logger.error("Ingested files subscription failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -300,6 +306,8 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         fileJobsChannel = channel
         do {
             try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
         } catch {
             logger.error("File jobs subscription failed: \(error.localizedDescription, privacy: .public)")
         }
