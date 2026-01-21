@@ -1,6 +1,18 @@
 import Foundation
 import Combine
 
+// MARK: - NotesStore
+
+/// Persistent store for notes file tree and active note content.
+///
+/// Manages the hierarchical file tree of notes and the currently selected note.
+/// Uses `CachedStoreBase` for cache-first loading with background refresh.
+///
+/// ## Responsibilities
+/// - Load and cache the notes file tree structure
+/// - Load and cache individual note content
+/// - Apply editor updates from `NotesEditorViewModel`
+/// - Handle real-time note events (insert, update, delete)
 public final class NotesStore: CachedStoreBase<FileTree> {
     @Published public private(set) var tree: FileTree? = nil
     @Published public private(set) var activeNote: NotePayload? = nil

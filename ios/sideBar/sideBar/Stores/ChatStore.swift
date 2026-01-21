@@ -3,6 +3,16 @@ import Combine
 
 // MARK: - ChatStore
 
+/// Persistent store for chat conversations and message details.
+///
+/// Manages the source of truth for conversation list and per-conversation messages.
+/// Uses `CachedStoreBase` for cache-first loading with background refresh.
+///
+/// ## Responsibilities
+/// - Load and cache conversation list
+/// - Load and cache individual conversation details with messages
+/// - Handle real-time conversation events (insert, update, delete)
+/// - Coordinate with `ChatViewModel` via Combine publishers
 public final class ChatStore: CachedStoreBase<[Conversation]> {
     @Published public private(set) var conversations: [Conversation] = []
     @Published public private(set) var conversationDetails: [String: ConversationWithMessages] = [:]

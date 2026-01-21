@@ -3,6 +3,17 @@ import Combine
 
 // MARK: - IngestionStore
 
+/// Persistent store for ingested files and their processing metadata.
+///
+/// Manages both remote file list and locally-initiated uploads. Merges local
+/// upload state with server-side data for seamless optimistic UI updates.
+///
+/// ## Responsibilities
+/// - Load and cache the ingested files list
+/// - Track local upload items before server confirmation
+/// - Load and cache file metadata (derivatives, content)
+/// - Handle offline state detection
+/// - Handle real-time file job events
 public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     @Published public private(set) var items: [IngestionListItem] = []
     @Published public private(set) var activeMeta: IngestionMetaResponse? = nil
