@@ -110,6 +110,30 @@ class ConversationNotFoundError(NotFoundError):
         super().__init__("Conversation", conversation_id)
 
 
+class TaskNotFoundError(NotFoundError):
+    """Task not found."""
+
+    def __init__(self, task_id: str) -> None:
+        """Initialize a not found error for a task."""
+        super().__init__("Task", task_id)
+
+
+class TaskAreaNotFoundError(NotFoundError):
+    """Task area not found."""
+
+    def __init__(self, area_id: str) -> None:
+        """Initialize a not found error for a task area."""
+        super().__init__("TaskArea", area_id)
+
+
+class TaskProjectNotFoundError(NotFoundError):
+    """Task project not found."""
+
+    def __init__(self, project_id: str) -> None:
+        """Initialize a not found error for a task project."""
+        super().__init__("TaskProject", project_id)
+
+
 class FileNotFoundError(NotFoundError):
     """File not found."""
 
