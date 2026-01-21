@@ -20,6 +20,7 @@ from api.exceptions import (
     ServiceUnavailableError,
 )
 from api.models.things_bridge import ThingsBridge
+from api.services.tasks_import_service import TasksImportService
 from api.services.things_bridge_client import ThingsBridgeClient
 from api.services.things_bridge_install_service import ThingsBridgeInstallService
 from api.services.things_bridge_service import ThingsBridgeService
@@ -73,6 +74,16 @@ def _bridge_payload(bridge: ThingsBridge, include_token: bool = False) -> dict:
     if include_token:
         payload["bridgeToken"] = bridge.bridge_token
     return payload
+
+
+def _merge_items_by_id(items: list[dict], *, key: str = "id") -> list[dict]:
+    merged: dict[str, dict] = {}
+    for item in items:
+        item_id = str(item.get(key) or "").strip()
+        if not item_id:
+            continue
+        merged[item_id] = item
+    return list(merged.values())
 
 
 @router.post("/bridges/register")
@@ -334,6 +345,50 @@ async def bridge_status(
         "activeBridge": _bridge_payload(active) if active else None,
         "bridges": [_bridge_payload(bridge) for bridge in bridges],
     }
+
+
+@router.post("/import")
+async def import_tasks_from_things(
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Import Things data into native task tables."""
+    set_session_user_id(db, user_id)
+    bridge = ThingsBridgeService.select_active_bridge(db, user_id)
+    if not bridge:
+        raise ServiceUnavailableError("No active Things bridge found")
+
+    client = ThingsBridgeClient(bridge)
+    inbox_payload, today_payload, upcoming_payload = await asyncio.gather(
+        client.get_list("inbox"),
+        client.get_list("today"),
+        client.get_list("upcoming"),
+    )
+    tasks = [
+        *inbox_payload.get("tasks", []),
+        *today_payload.get("tasks", []),
+        *upcoming_payload.get("tasks", []),
+    ]
+    areas = _merge_items_by_id(
+        [
+            *inbox_payload.get("areas", []),
+            *today_payload.get("areas", []),
+            *upcoming_payload.get("areas", []),
+        ]
+    )
+    projects = _merge_items_by_id(
+        [
+            *inbox_payload.get("projects", []),
+            *today_payload.get("projects", []),
+            *upcoming_payload.get("projects", []),
+        ]
+    )
+    stats = TasksImportService.import_from_bridge(
+        db, user_id, {"areas": areas, "projects": projects, "tasks": tasks}
+    )
+    db.commit()
+    return stats.__dict__
 
 
 def _get_active_bridge_or_503(db: Session, user_id: str) -> ThingsBridge:
