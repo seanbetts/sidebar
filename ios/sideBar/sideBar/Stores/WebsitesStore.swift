@@ -3,6 +3,16 @@ import Combine
 
 // MARK: - WebsitesStore
 
+/// Persistent store for saved websites list and active website detail.
+///
+/// Manages the list of saved websites and the currently selected website's full content.
+/// Uses `CachedStoreBase` for cache-first loading with background refresh.
+///
+/// ## Responsibilities
+/// - Load and cache the saved websites list
+/// - Load and cache individual website details with content
+/// - Update list items in-place for pin/archive/rename operations
+/// - Handle real-time website events (insert, update, delete)
 public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     @Published public private(set) var items: [WebsiteItem] = []
     @Published public private(set) var active: WebsiteDetail? = nil

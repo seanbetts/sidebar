@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - ContentView+Layout
+
 extension ContentView {
     @ViewBuilder
     var mainView: some View {
