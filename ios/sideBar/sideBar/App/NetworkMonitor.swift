@@ -7,15 +7,17 @@ final class NetworkMonitor: ObservableObject, @unchecked Sendable {
     private let monitor: NWPathMonitor
     private let queue = DispatchQueue(label: "sidebar.network.monitor")
 
-    init() {
+    init(startMonitoring: Bool = true) {
         monitor = NWPathMonitor()
-        monitor.pathUpdateHandler = { [weak self] path in
-            let isOffline = path.status != .satisfied
-            DispatchQueue.main.async {
-                self?.isOffline = isOffline
+        if startMonitoring {
+            monitor.pathUpdateHandler = { [weak self] path in
+                let isOffline = path.status != .satisfied
+                DispatchQueue.main.async {
+                    self?.isOffline = isOffline
+                }
             }
+            monitor.start(queue: queue)
         }
-        monitor.start(queue: queue)
     }
 
     deinit {

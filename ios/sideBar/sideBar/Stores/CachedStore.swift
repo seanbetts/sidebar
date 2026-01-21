@@ -1,6 +1,7 @@
 import Foundation
 
 /// Protocol for stores with cache-first loading.
+@MainActor
 public protocol CachedStore: AnyObject {
     associatedtype CachedData: Codable
 

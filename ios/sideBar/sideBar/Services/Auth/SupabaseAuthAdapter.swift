@@ -69,7 +69,11 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private var lastRefreshAttempt: Date?
     private var sessionWarningToken = UUID()
 
-    public init(config: EnvironmentConfig, stateStore: AuthStateStore) {
+    public init(
+        config: EnvironmentConfig,
+        stateStore: AuthStateStore,
+        startAuthStateTask: Bool = true
+    ) {
         self.stateStore = stateStore
 
         let authOptions = SupabaseClientOptions.AuthOptions(
@@ -102,10 +106,12 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
             }
         }
 
-        authStateTask = Task { [supabase, weak self] in
-            for await (_, session) in supabase.auth.authStateChanges {
-                guard let self else { return }
-                self.applySession(session)
+        if startAuthStateTask {
+            authStateTask = Task { [supabase, weak self] in
+                for await (_, session) in supabase.auth.authStateChanges {
+                    guard let self else { return }
+                    self.applySession(session)
+                }
             }
         }
     }

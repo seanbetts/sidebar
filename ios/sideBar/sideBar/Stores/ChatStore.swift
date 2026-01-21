@@ -240,6 +240,7 @@ public final class ChatStore: ObservableObject {
     }
 }
 
+@MainActor
 extension ChatStore: CachedStore {
     public typealias CachedData = [Conversation]
 

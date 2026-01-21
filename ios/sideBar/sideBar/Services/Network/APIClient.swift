@@ -28,17 +28,11 @@ public enum APIClientError: Error {
 public final class APIClient {
     let config: APIClientConfig
     private let session: URLSession
-    private let decoder: JSONDecoder
-    private let encoder: JSONEncoder
     private let logger = Logger(subsystem: "sideBar", category: "APIClient")
 
     public init(config: APIClientConfig, session: URLSession = APIClient.makeDefaultSession()) {
         self.config = config
         self.session = session
-        self.decoder = JSONDecoder()
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
-        self.encoder = JSONEncoder()
-        self.encoder.keyEncodingStrategy = .useDefaultKeys
     }
 
     public func request<T: Decodable>(
@@ -50,6 +44,7 @@ public final class APIClient {
         let request = try buildRequest(path, method: method, body: body, headers: headers)
         let (data, _) = try await performRequest(request)
         do {
+            let decoder = Self.makeDecoder()
             return try decoder.decode(T.self, from: data)
         } catch {
             throw APIClientError.decodingFailed
@@ -127,6 +122,7 @@ public final class APIClient {
             if request.value(forHTTPHeaderField: "Content-Type") == nil {
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             }
+            let encoder = Self.makeEncoder()
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
         return request
@@ -149,6 +145,7 @@ public final class APIClient {
                 let preview = body.prefix(2000)
                 logger.error("Response body: \(preview, privacy: .private)")
             }
+            let decoder = Self.makeDecoder()
             let message = Self.decodeErrorMessage(data: data, decoder: decoder)
             if let message {
                 throw APIClientError.apiError(message)
@@ -191,6 +188,18 @@ public final class APIClient {
             return message
         }
         return nil
+    }
+
+    private static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }
+
+    private static func makeEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .useDefaultKeys
+        return encoder
     }
 
     public static func makeDefaultSession() -> URLSession {

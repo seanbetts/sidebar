@@ -1,6 +1,7 @@
 import Foundation
 
 /// Manages a single cancellable task.
+@MainActor
 public final class ManagedTask {
     private var task: Task<Void, Never>?
 
@@ -13,7 +14,7 @@ public final class ManagedTask {
     }
 
     /// Starts a new task, canceling any existing one.
-    public func run(_ action: @escaping @Sendable () async -> Void) {
+    public func run(_ action: @escaping @MainActor () async -> Void) {
         cancel()
         task = Task { await action() }
     }
@@ -21,7 +22,7 @@ public final class ManagedTask {
     /// Starts a new task after delay (useful for debouncing).
     public func runDebounced(
         delay: TimeInterval,
-        _ action: @escaping @Sendable () async -> Void
+        _ action: @escaping @MainActor () async -> Void
     ) {
         cancel()
         task = Task {

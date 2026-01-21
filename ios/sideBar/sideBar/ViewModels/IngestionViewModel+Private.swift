@@ -133,11 +133,10 @@ extension IngestionViewModel {
     func registerReadyMessage(_ notification: ReadyFileNotification) {
         lastReadyMessage = notification
         readyMessageTask.runDebounced(delay: 6) { [weak self] in
-            await MainActor.run {
-                if self?.lastReadyMessage?.id == notification.id {
-                    self?.lastReadyMessage = nil
-                }
+            guard let self, self.lastReadyMessage?.id == notification.id else {
+                return
             }
+            self.lastReadyMessage = nil
         }
     }
 

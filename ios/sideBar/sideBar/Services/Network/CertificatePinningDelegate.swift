@@ -34,7 +34,7 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
             return
         }
 
-        guard let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
+        guard let certificate = leafCertificate(from: serverTrust) else {
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
@@ -47,6 +47,11 @@ public final class CertificatePinningDelegate: NSObject, URLSessionDelegate {
         }
 
         completionHandler(.useCredential, URLCredential(trust: serverTrust))
+    }
+
+    private func leafCertificate(from trust: SecTrust) -> SecCertificate? {
+        let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate]
+        return chain?.first
     }
 }
 
