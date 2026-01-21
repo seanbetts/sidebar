@@ -419,13 +419,15 @@
 			);
 			inputPaths = (
 				"$(SRCROOT)/.swiftlint.yml",
+				"$(SRCROOT)/sideBar",
+				"$(SRCROOT)/sideBarTests",
 			);
 			name = SwiftLint;
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if command -v swiftlint > /dev/null; then\n  swiftlint --config \"${SRCROOT}/.swiftlint.yml\"\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
+			shellScript = "if command -v swiftlint > /dev/null; then\n  swiftlint lint --config \"${SRCROOT}/.swiftlint.yml\" \"${SRCROOT}/sideBar\" \"${SRCROOT}/sideBarTests\"\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

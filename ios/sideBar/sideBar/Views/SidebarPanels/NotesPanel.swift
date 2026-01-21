@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 public struct NotesPanel: View {
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var environment: AppEnvironment
 
     public init() {
     }
@@ -15,24 +15,24 @@ public struct NotesPanel: View {
 
 struct NotesPanelView: View {
     @ObservedObject var viewModel: NotesViewModel
-    @EnvironmentObject private var environment: AppEnvironment
+    @EnvironmentObject var environment: AppEnvironment
     #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var hasLoaded = false
-    @State private var isArchiveExpanded = false
-    @State private var isNewNotePresented = false
-    @State private var isNewFolderPresented = false
-    @State private var newNoteName: String = ""
-    @State private var newFolderName: String = ""
-    @State private var newFolderParent: String = ""
-    @State private var isCreatingNote = false
-    @State private var isCreatingFolder = false
-    @State private var renameTarget: FileNodeItem? = nil
-    @State private var renameValue: String = ""
-    @State private var deleteTarget: FileNodeItem? = nil
-    @FocusState private var isSearchFocused: Bool
+    @Environment(\.colorScheme) var colorScheme
+    @State var hasLoaded = false
+    @State var isArchiveExpanded = false
+    @State var isNewNotePresented = false
+    @State var isNewFolderPresented = false
+    @State var newNoteName: String = ""
+    @State var newFolderName: String = ""
+    @State var newFolderParent: String = ""
+    @State var isCreatingNote = false
+    @State var isCreatingFolder = false
+    @State var renameTarget: FileNodeItem? = nil
+    @State var renameValue: String = ""
+    @State var deleteTarget: FileNodeItem? = nil
+    @FocusState var isSearchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {

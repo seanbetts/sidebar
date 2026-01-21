@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class NavigationStateTests: XCTestCase {
     private var previousSection: String?
     private var previousWidth: Double?
