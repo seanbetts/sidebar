@@ -1,9 +1,11 @@
 import Foundation
+import Combine
 
 /// Base class for stores with cache-first loading.
 /// Subclasses must override `cacheKey`, `cacheTTL`, `fetchFromAPI()`, `applyData()`, and `backgroundRefresh()`.
 @MainActor
 open class CachedStoreBase<CachedData: Codable>: ObservableObject {
+    public let objectWillChange = ObservableObjectPublisher()
     public let cache: CacheClient
 
     open var cacheKey: String {
