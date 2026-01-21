@@ -182,9 +182,9 @@ public struct LoginView: View {
                 focus: $focusedField,
                 field: .password,
                 textContentType: .password,
+                submitLabel: .go,
                 onSubmit: { Task { await signIn() } }
             )
-            .submitLabel(.go)
             if !password.isEmpty {
                 Button {
                     password = ""
