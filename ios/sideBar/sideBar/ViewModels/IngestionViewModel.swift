@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 // MARK: - IngestionViewModel
 
+@MainActor
 /// Manages file ingestion, upload tracking, and file viewer state.
 ///
 /// This ViewModel handles the complete file ingestion lifecycle:
@@ -39,7 +40,6 @@ import UniformTypeIdentifiers
 /// await viewModel.ingestFiles(urls: selectedURLs)
 /// await viewModel.selectFile(id: fileId)
 /// ```
-@MainActor
 public final class IngestionViewModel: ObservableObject {
     @Published public var items: [IngestionListItem] = []
     @Published public var activeMeta: IngestionMetaResponse? = nil
