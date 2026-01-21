@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0A12F21000000BEEF02 /* MarkdownUI */; };
 		142516B72F1EB96B0072E4F9 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 142516AD2F1EB96B0072E4F9 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 1478191A2F15B19C00F36081 /* SideBar.local.xcconfig */; };
 		14DFA3282F10F45E001DAF5B /* SideBarCache.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 14DFA3262F10F45E001DAF5B /* SideBarCache.xcdatamodeld */; };
 		14DFA32E2F110406001DAF5B /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32D2F110406001DAF5B /* Auth */; };
 		14DFA3302F110406001DAF5B /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA32F2F110406001DAF5B /* Functions */; };
@@ -374,7 +373,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				14E0AB222F30000000BEEF06 /* sideBar/Resources/CodeMirror in Resources */,
-				1478191B2F15B19C00F36081 /* SideBar.local.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -428,7 +426,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "OUTPUT=\"${DERIVED_FILE_DIR}/swiftlint.output\"\nif command -v swiftlint > /dev/null; then\n  swiftlint lint --config \"${SRCROOT}/.swiftlint.yml\" \"${SRCROOT}/sideBar\" \"${SRCROOT}/sideBarTests\"\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\ntouch \"${OUTPUT}\"\n";
+			shellScript = "OUTPUT=\"${DERIVED_FILE_DIR}/swiftlint.output\"\nSWIFTLINT=\"\"\nif command -v swiftlint > /dev/null; then\n  SWIFTLINT=\"swiftlint\"\nelif [ -x \"/opt/homebrew/bin/swiftlint\" ]; then\n  SWIFTLINT=\"/opt/homebrew/bin/swiftlint\"\nelif [ -x \"/usr/local/bin/swiftlint\" ]; then\n  SWIFTLINT=\"/usr/local/bin/swiftlint\"\nfi\nif [ -n \"${SWIFTLINT}\" ]; then\n  \"${SWIFTLINT}\" lint --config \"${SRCROOT}/.swiftlint.yml\" \"${SRCROOT}/sideBar\" \"${SRCROOT}/sideBarTests\"\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\ntouch \"${OUTPUT}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -689,7 +687,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
@@ -758,7 +756,7 @@
 				DEVELOPMENT_TEAM = A7FXNR4C35;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;

@@ -197,7 +197,6 @@ public final class WebsitesStore: ObservableObject {
     }
 }
 
-@MainActor
 extension WebsitesStore: CachedStore {
     public typealias CachedData = WebsitesResponse
 

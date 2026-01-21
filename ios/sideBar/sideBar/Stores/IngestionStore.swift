@@ -485,7 +485,6 @@ public final class IngestionStore: ObservableObject {
     }
 }
 
-@MainActor
 extension IngestionStore: CachedStore {
     public typealias CachedData = IngestionListResponse
 

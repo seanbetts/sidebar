@@ -117,7 +117,6 @@ public final class NotesStore: ObservableObject {
     }
 }
 
-@MainActor
 extension NotesStore: CachedStore {
     public typealias CachedData = FileTree
 

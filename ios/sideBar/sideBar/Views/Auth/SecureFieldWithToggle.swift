@@ -10,9 +10,11 @@ public typealias PlatformTextContentType = NSTextContentType
 public typealias PlatformTextContentType = String
 #endif
 
-public struct SecureFieldWithToggle: View {
+public struct SecureFieldWithToggle<Field: Hashable>: View {
     let title: String
     @Binding var text: String
+    private let focus: FocusState<Field?>.Binding
+    private let field: Field
     var textContentType: PlatformTextContentType?
     var onSubmit: (() -> Void)?
 
@@ -21,11 +23,15 @@ public struct SecureFieldWithToggle: View {
     public init(
         title: String,
         text: Binding<String>,
+        focus: FocusState<Field?>.Binding,
+        field: Field,
         textContentType: PlatformTextContentType? = nil,
         onSubmit: (() -> Void)? = nil
     ) {
         self.title = title
         self._text = text
+        self.focus = focus
+        self.field = field
         self.textContentType = textContentType
         self.onSubmit = onSubmit
     }
@@ -37,19 +43,25 @@ public struct SecureFieldWithToggle: View {
                 title: title,
                 text: $text,
                 isSecure: $isSecure,
+                isFocused: focusBinding,
                 textContentType: textContentType,
                 onSubmit: onSubmit
             )
             #else
-            if isSecure {
-                SecureField(title, text: $text)
-                    .textContentType(textContentType)
-                    .autocorrectionDisabled()
-            } else {
-                TextField(title, text: $text)
-                    .textContentType(textContentType)
-                    .autocorrectionDisabled()
+            Group {
+                if isSecure {
+                    SecureField(title, text: $text)
+                } else {
+                    TextField(title, text: $text)
+                }
             }
+            .textContentType(textContentType)
+            .autocorrectionDisabled()
+            #if canImport(UIKit)
+            .textInputAutocapitalization(.never)
+            #endif
+            .focused(focus, equals: field)
+            .onSubmit { onSubmit?() }
             #endif
 
             Button {
@@ -62,6 +74,15 @@ public struct SecureFieldWithToggle: View {
             .accessibilityLabel(isSecure ? "Show password" : "Hide password")
         }
     }
+
+    private var focusBinding: Binding<Bool> {
+        Binding(
+            get: { focus.wrappedValue == field },
+            set: { isFocused in
+                focus.wrappedValue = isFocused ? field : nil
+            }
+        )
+    }
 }
 
 #if canImport(UIKit)
@@ -69,6 +90,7 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
     let title: String
     @Binding var text: String
     @Binding var isSecure: Bool
+    @Binding var isFocused: Bool
     var textContentType: PlatformTextContentType?
     var onSubmit: (() -> Void)?
 
@@ -80,6 +102,9 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
         textField.autocorrectionType = .no
         textField.autocapitalizationType = .none
         textField.returnKeyType = .go
+        textField.enablesReturnKeyAutomatically = true
+        textField.inputAssistantItem.leadingBarButtonGroups = []
+        textField.inputAssistantItem.trailingBarButtonGroups = []
         textField.setContentHuggingPriority(.required, for: .vertical)
         textField.setContentCompressionResistancePriority(.required, for: .vertical)
         textField.addTarget(context.coordinator, action: #selector(Coordinator.textDidChange), for: .editingChanged)
@@ -93,32 +118,71 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
         }
         if uiView.isSecureTextEntry != isSecure {
             let wasFirstResponder = uiView.isFirstResponder
-            uiView.isSecureTextEntry = isSecure
             if wasFirstResponder {
-                uiView.becomeFirstResponder()
+                uiView.resignFirstResponder()
+            }
+            uiView.isSecureTextEntry = isSecure
+            uiView.text = text
+            if wasFirstResponder {
+                DispatchQueue.main.async {
+                    if isFocused {
+                        uiView.becomeFirstResponder()
+                    }
+                }
             }
         }
         if uiView.textContentType != textContentType {
             uiView.textContentType = textContentType
         }
+        uiView.inputAssistantItem.leadingBarButtonGroups = []
+        uiView.inputAssistantItem.trailingBarButtonGroups = []
+        if isFocused, !uiView.isFirstResponder {
+            DispatchQueue.main.async {
+                if isFocused, !uiView.isFirstResponder {
+                    uiView.becomeFirstResponder()
+                }
+            }
+        } else if !isFocused, uiView.isFirstResponder {
+            DispatchQueue.main.async {
+                if !isFocused, uiView.isFirstResponder {
+                    uiView.resignFirstResponder()
+                }
+            }
+        }
         context.coordinator.onSubmit = onSubmit
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, onSubmit: onSubmit)
+        Coordinator(text: $text, isFocused: $isFocused, onSubmit: onSubmit)
     }
 
     final class Coordinator: NSObject, UITextFieldDelegate {
         private let text: Binding<String>
+        private let isFocused: Binding<Bool>
         var onSubmit: (() -> Void)?
 
-        init(text: Binding<String>, onSubmit: (() -> Void)?) {
+        init(text: Binding<String>, isFocused: Binding<Bool>, onSubmit: (() -> Void)?) {
             self.text = text
+            self.isFocused = isFocused
             self.onSubmit = onSubmit
         }
 
         @objc func textDidChange(_ sender: UITextField) {
             text.wrappedValue = sender.text ?? ""
+        }
+
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            guard !isFocused.wrappedValue else { return }
+            DispatchQueue.main.async {
+                self.isFocused.wrappedValue = true
+            }
+        }
+
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            guard isFocused.wrappedValue else { return }
+            DispatchQueue.main.async {
+                self.isFocused.wrappedValue = false
+            }
         }
 
         func textFieldShouldReturn(_ textField: UITextField) -> Bool {
