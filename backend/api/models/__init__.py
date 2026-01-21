@@ -3,6 +3,10 @@
 from api.models.conversation import Conversation
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.models.note import Note
+from api.models.task import Task
+from api.models.task_area import TaskArea
+from api.models.task_operation_log import TaskOperationLog
+from api.models.task_project import TaskProject
 from api.models.things_bridge import ThingsBridge
 from api.models.things_bridge_install_token import ThingsBridgeInstallToken
 from api.models.user_memory import UserMemory
@@ -18,6 +22,10 @@ __all__ = [
     "IngestedFile",
     "FileDerivative",
     "FileProcessingJob",
+    "Task",
+    "TaskArea",
+    "TaskOperationLog",
+    "TaskProject",
     "ThingsBridge",
     "ThingsBridgeInstallToken",
 ]
