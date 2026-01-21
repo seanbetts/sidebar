@@ -3,8 +3,30 @@ import Combine
 
 // MARK: - NotesViewModel
 
+/// Manages the notes file tree, note selection, and search functionality.
+///
+/// This ViewModel acts as a coordinator between the UI and the `NotesStore`, providing:
+/// - File tree loading and navigation
+/// - Note CRUD operations (create, rename, move, delete)
+/// - Folder management (create, rename, delete)
+/// - Debounced search with `ManagedTask`
+/// - Real-time event handling for live updates
+///
+/// ## Data Flow
+/// The ViewModel subscribes to `NotesStore` publishers and mirrors state for SwiftUI binding.
+/// All mutations flow through the store, which handles caching and persistence.
+///
+/// ## Threading
+/// Marked `@MainActor` - all properties and methods execute on the main thread.
+///
+/// ## Usage
+/// ```swift
+/// let viewModel = NotesViewModel(api: notesAPI, store: notesStore, toastCenter: toast)
+/// await viewModel.loadTree()
+/// await viewModel.selectNote(id: "path/to/note.md")
+/// await viewModel.createNote(title: "New Note", folder: "subfolder")
+/// ```
 @MainActor
-/// Drives notes list, selection, and search state.
 public final class NotesViewModel: ObservableObject {
     @Published public private(set) var tree: FileTree? = nil
     @Published public private(set) var activeNote: NotePayload? = nil

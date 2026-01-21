@@ -1,8 +1,33 @@
 import Combine
 import Foundation
 
+// MARK: - ChatViewModel
 
-/// Manages chat state, streaming, and conversation coordination.
+/// Central ViewModel for chat functionality, managing conversations, messages, and real-time streaming.
+///
+/// This ViewModel coordinates between multiple components:
+/// - `ChatStore`: Persistent storage for conversations and messages
+/// - `ChatStreamClient`: Server-sent events for real-time message streaming
+/// - Various APIs: Chat, Conversations, and Ingestion endpoints
+///
+/// ## Threading
+/// All published properties are updated on the main actor. Stream events are processed
+/// asynchronously and dispatched to the main thread for UI updates.
+///
+/// ## Architecture
+/// The ViewModel is split across multiple files for maintainability:
+/// - `ChatViewModel.swift`: Core state and initialization
+/// - `ChatViewModel+Conversations.swift`: Conversation CRUD operations
+/// - `ChatViewModel+Streaming.swift`: Message sending and stream handling
+/// - `ChatViewModel+Realtime.swift`: Real-time event processing
+///
+/// ## Usage
+/// ```swift
+/// let viewModel = ChatViewModel(chatAPI: api, conversationsAPI: convAPI, ...)
+/// await viewModel.loadConversations()
+/// await viewModel.selectConversation(id: conversationId)
+/// await viewModel.sendMessage(text: "Hello")
+/// ```
 public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public var conversations: [Conversation] = []
     @Published public var selectedConversationId: String? = nil
