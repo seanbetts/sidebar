@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines CachePolicy.
 public enum CachePolicy {
     public static let conversationsList: TimeInterval = 30 * 60
     public static let conversationDetail: TimeInterval = 2 * 60 * 60

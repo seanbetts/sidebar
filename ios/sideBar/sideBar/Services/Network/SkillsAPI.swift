@@ -1,9 +1,11 @@
 import Foundation
 
+/// Defines the requirements for SkillsProviding.
 public protocol SkillsProviding {
     func list() async throws -> SkillsResponse
 }
 
+/// API client for skills endpoints.
 public struct SkillsAPI {
     private let client: APIClient
 

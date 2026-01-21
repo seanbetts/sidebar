@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for IngestionProviding.
 public protocol IngestionProviding {
     func list() async throws -> IngestionListResponse
     func getMeta(fileId: String) async throws -> IngestionMetaResponse
@@ -10,6 +11,7 @@ public protocol IngestionProviding {
     func ingestYouTube(url: String) async throws -> String
 }
 
+/// API client for ingestion endpoints.
 public struct IngestionAPI {
     private let client: APIClient
     private let session: URLSession

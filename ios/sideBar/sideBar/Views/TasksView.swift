@@ -16,24 +16,24 @@ public struct TasksView: View {
     private var header: some View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.circle")
-                .font(.system(size: 18, weight: .semibold))
+                .font(DesignTokens.Typography.titleLg)
                 .foregroundStyle(.secondary)
             Text("Tasks")
                 .font(.headline)
             Spacer()
         }
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
     }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Things integration will appear here.")
-                .font(.subheadline.weight(.semibold))
+                .font(DesignTokens.Typography.subheadlineSemibold)
             Text("Install Things on this device to view your tasks.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(20)
+        .padding(DesignTokens.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

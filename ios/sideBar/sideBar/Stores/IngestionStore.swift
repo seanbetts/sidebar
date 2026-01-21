@@ -1,14 +1,25 @@
 import Foundation
 import Combine
 
-@MainActor
-public final class IngestionStore: ObservableObject {
+// MARK: - IngestionStore
+
+/// Persistent store for ingested files and their processing metadata.
+///
+/// Manages both remote file list and locally-initiated uploads. Merges local
+/// upload state with server-side data for seamless optimistic UI updates.
+///
+/// ## Responsibilities
+/// - Load and cache the ingested files list
+/// - Track local upload items before server confirmation
+/// - Load and cache file metadata (derivatives, content)
+/// - Handle offline state detection
+/// - Handle real-time file job events
+public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     @Published public private(set) var items: [IngestionListItem] = []
     @Published public private(set) var activeMeta: IngestionMetaResponse? = nil
     @Published public private(set) var isOffline: Bool = false
 
     private let api: any IngestionProviding
-    private let cache: CacheClient
     private var remoteItems: [IngestionListItem] = []
     private var localItems: [String: IngestionListItem] = [:]
     private var isRefreshingList = false
@@ -16,21 +27,32 @@ public final class IngestionStore: ObservableObject {
 
     public init(api: any IngestionProviding, cache: CacheClient) {
         self.api = api
-        self.cache = cache
+        super.init(cache: cache)
     }
 
-    public func loadList(force: Bool = false) async throws {
-        let cached: IngestionListResponse? = force ? nil : cache.get(key: CacheKeys.ingestionList)
-        if let cached {
-            applyListUpdate(cached.items, persist: false)
-            Task { [weak self] in
-                await self?.refreshList()
-            }
-            return
-        }
+    // MARK: - CachedStoreBase Overrides
+
+    public override var cacheKey: String { CacheKeys.ingestionList }
+    public override var cacheTTL: TimeInterval { CachePolicy.ingestionList }
+
+    public override func fetchFromAPI() async throws -> IngestionListResponse {
         let response = try await api.list()
         isOffline = false
-        applyListUpdate(response.items, persist: true)
+        return response
+    }
+
+    public override func applyData(_ data: IngestionListResponse, persist: Bool) {
+        applyListUpdate(data.items, persist: persist)
+    }
+
+    public override func backgroundRefresh() async {
+        await refreshList()
+    }
+
+    // MARK: - Public API
+
+    public func loadList(force: Bool = false) async throws {
+        try await loadWithCache(force: force)
     }
 
     public func loadMeta(fileId: String, force: Bool = false) async throws {
@@ -61,7 +83,9 @@ public final class IngestionStore: ObservableObject {
         localItems = [:]
         activeMeta = nil
     }
+}
 
+extension IngestionStore {
     public func applyIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) {
         let fileId = payload.record?.id ?? payload.oldRecord?.id
         switch payload.eventType {
@@ -306,6 +330,10 @@ public final class IngestionStore: ObservableObject {
         localItems.removeValue(forKey: fileId)
         items = mergeItems(remoteItems)
     }
+}
+
+extension IngestionStore {
+    // MARK: - Private
 
     private func refreshList() async {
         guard !isRefreshingList else {

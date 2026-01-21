@@ -1,39 +1,49 @@
 import Foundation
+import os
 @testable import sideBar
 
-final class TestCacheClient: CacheClient {
-    private struct Entry {
+/// Test cache client using OSAllocatedUnfairLock for Swift 6 safe synchronization.
+final class TestCacheClient: CacheClient, @unchecked Sendable {
+    private struct Entry: Sendable {
         let expiresAt: Date
         let data: Data
     }
 
-    private var storage: [String: Entry] = [:]
-    private let encoder = JSONEncoder()
-    private let decoder = JSONDecoder()
+    private let storage = OSAllocatedUnfairLock(initialState: [String: Entry]())
 
     func get<T: Codable>(key: String) -> T? {
-        guard let entry = storage[key] else {
-            return nil
+        storage.withLock { store in
+            guard let entry = store[key] else {
+                return nil
+            }
+            if Date() > entry.expiresAt {
+                store.removeValue(forKey: key)
+                return nil
+            }
+            let decoder = JSONDecoder()
+            return try? decoder.decode(T.self, from: entry.data)
         }
-        if Date() > entry.expiresAt {
-            storage.removeValue(forKey: key)
-            return nil
-        }
-        return try? decoder.decode(T.self, from: entry.data)
     }
 
     func set<T: Codable>(key: String, value: T, ttlSeconds: TimeInterval) {
+        let encoder = JSONEncoder()
         guard let data = try? encoder.encode(value) else {
             return
         }
-        storage[key] = Entry(expiresAt: Date().addingTimeInterval(ttlSeconds), data: data)
+        storage.withLock { store in
+            store[key] = Entry(expiresAt: Date().addingTimeInterval(ttlSeconds), data: data)
+        }
     }
 
     func remove(key: String) {
-        storage.removeValue(forKey: key)
+        storage.withLock { store in
+            store.removeValue(forKey: key)
+        }
     }
 
     func clear() {
-        storage.removeAll()
+        storage.withLock { store in
+            store.removeAll()
+        }
     }
 }

@@ -1,10 +1,12 @@
 import Foundation
 
+/// Defines the requirements for MemoriesProviding.
 public protocol MemoriesProviding {
     func list() async throws -> [MemoryItem]
     func get(id: String) async throws -> MemoryItem
 }
 
+/// API client for memory endpoints.
 public struct MemoriesAPI {
     private let client: APIClient
 

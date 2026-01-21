@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - MarkdownRendering
+
 public enum MarkdownRendering {
     public nonisolated static let imageCaptionMarker = "^caption:"
 
@@ -58,22 +60,22 @@ public enum MarkdownRendering {
 
     public nonisolated static func stripFrontmatter(_ content: String) -> String {
         let marker = "---"
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = content.trimmed
         guard trimmed.hasPrefix(marker) else { return content }
         let parts = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
-        guard let first = parts.first, first.trimmingCharacters(in: .whitespacesAndNewlines) == marker else {
+        guard let first = parts.first, first.trimmed == marker else {
             return content
         }
         var endIndex: Int? = nil
         for (index, line) in parts.enumerated().dropFirst() {
-            if line.trimmingCharacters(in: .whitespacesAndNewlines) == marker {
+            if line.trimmed == marker {
                 endIndex = index
                 break
             }
         }
         guard let endIndex else { return content }
         let body = parts.dropFirst(endIndex + 1).joined(separator: "\n")
-        return body.trimmingCharacters(in: .whitespacesAndNewlines)
+        return body.trimmed
     }
 
     public nonisolated static func normalizeMarkdownText(_ text: String) -> String {
@@ -88,7 +90,7 @@ public enum MarkdownRendering {
             switch block {
             case .markdown(let markdown):
                 let normalized = normalizeMarkdownText(markdown)
-                guard !normalized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                guard !normalized.isBlank else {
                     return nil
                 }
                 return .markdown(normalized)
@@ -131,12 +133,12 @@ public enum MarkdownRendering {
 
     private nonisolated static func makeTaskItemRegex() -> NSRegularExpression {
         let pattern = #"^(\s*[-+*]\s+\[[xX]\]\s+)(.+)$"#
-        return try! NSRegularExpression(pattern: pattern, options: [])
+        return makeRegex(pattern: pattern)
     }
 
     private nonisolated static func makeAnyTaskItemRegex() -> NSRegularExpression {
         let pattern = #"^\s*[-+*]\s+\[[ xX]\]\s+.+$"#
-        return try! NSRegularExpression(pattern: pattern, options: [])
+        return makeRegex(pattern: pattern)
     }
 
     private nonisolated static func isTaskListLine(_ line: String, regex: NSRegularExpression) -> Bool {
@@ -146,7 +148,7 @@ public enum MarkdownRendering {
 
     private nonisolated static func makeGalleryRegex() -> NSRegularExpression {
         let pattern = #"<figure\s+class=\"image-gallery\"[^>]*>.*?</figure>"#
-        return try! NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+        return makeRegex(pattern: pattern, options: [.dotMatchesLineSeparators])
     }
 
     private nonisolated static func normalizeImageCaptions(_ text: String) -> String {
@@ -176,17 +178,37 @@ public enum MarkdownRendering {
 
     private nonisolated static func makeImageCaptionRegex() -> NSRegularExpression {
         let pattern = #"^\s*(!\[[^\]]*\]\([^)]+\))\s*([*_])(.+?)\2\s*$"#
-        return try! NSRegularExpression(pattern: pattern, options: [])
+        return makeRegex(pattern: pattern)
     }
 
     private nonisolated static func makeGalleryCaptionRegex() -> NSRegularExpression {
         let pattern = #"data-caption=\"([^\"]*)\""#
-        return try! NSRegularExpression(pattern: pattern, options: [])
+        return makeRegex(pattern: pattern)
     }
 
     private nonisolated static func makeGalleryImageRegex() -> NSRegularExpression {
         let pattern = #"<img[^>]*\s+src=\"([^\"]+)\"[^>]*/?>"#
-        return try! NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+        return makeRegex(pattern: pattern, options: [.dotMatchesLineSeparators])
+    }
+
+    private nonisolated static func makeRegex(
+        pattern: String,
+        options: NSRegularExpression.Options = []
+    ) -> NSRegularExpression {
+        do {
+            return try NSRegularExpression(pattern: pattern, options: options)
+        } catch {
+            assertionFailure("Invalid regex pattern: \(pattern). Error: \(error)")
+            return fallbackRegex()
+        }
+    }
+
+    private nonisolated static func fallbackRegex() -> NSRegularExpression {
+        do {
+            return try NSRegularExpression(pattern: "$^", options: [])
+        } catch {
+            fatalError("Failed to create fallback regex: \(error)")
+        }
     }
 
     private nonisolated static func parseGalleryBlock(_ block: String) -> MarkdownGallery? {
@@ -216,7 +238,7 @@ public enum MarkdownRendering {
     }
 
     private nonisolated static func appendMarkdownIfNeeded(_ text: String, to blocks: inout [MarkdownContentBlock]) {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard !text.isBlank else { return }
         blocks.append(.markdown(text))
     }
 }

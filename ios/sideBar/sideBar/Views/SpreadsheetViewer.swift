@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - SpreadsheetViewer
+
 public struct SpreadsheetViewer: View {
     public let payload: SpreadsheetPayload
     @State private var selectedSheetIndex: Int = 0
@@ -27,7 +29,7 @@ public struct SpreadsheetViewer: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
         .onChange(of: payload.sheets.count) { _, _ in
             ensureValidSheetIndex()
         }
@@ -55,7 +57,7 @@ public struct SpreadsheetViewer: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 Text("Sheets")
-                    .font(.subheadline.weight(.semibold))
+                    .font(DesignTokens.Typography.subheadlineSemibold)
                 Spacer()
                 Text("\(currentSheet.rows.count) rows")
                     .font(.caption)
@@ -69,10 +71,10 @@ public struct SpreadsheetViewer: View {
                                 selectedSheetIndex = index
                             } label: {
                                 Text(payload.sheets[index].name.isEmpty ? "Sheet \(index + 1)" : payload.sheets[index].name)
-                                    .font(.caption.weight(.semibold))
+                                    .font(DesignTokens.Typography.captionSemibold)
                                     .foregroundStyle(index == selectedSheetIndex ? .primary : .secondary)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, DesignTokens.Spacing.xsPlus)
+                                    .padding(.vertical, DesignTokens.Spacing.xxsPlus)
                                     .background(
                                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                                             .fill(index == selectedSheetIndex ? tabSelectedBackground : tabBackground)
@@ -94,8 +96,8 @@ public struct SpreadsheetViewer: View {
                 .textFieldStyle(.plain)
         }
         .font(.subheadline)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xs)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(controlBackground)
@@ -131,7 +133,7 @@ public struct SpreadsheetViewer: View {
                             Text("No data")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                                .padding(.vertical, 12)
+                                .padding(.vertical, DesignTokens.Spacing.sm)
                         } else {
                             ForEach(visibleRows.indices, id: \.self) { index in
                                 dataRowView(row: visibleRows[index])
@@ -161,8 +163,8 @@ public struct SpreadsheetViewer: View {
                     .lineLimit(1)
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 2)
+        .padding(.vertical, DesignTokens.Spacing.xxsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.xxxs)
         .background(rowBackground)
     }
 
@@ -186,7 +188,7 @@ public struct SpreadsheetViewer: View {
     }
 
     private var hasHeaderLabels: Bool {
-        headerRow.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        headerRow.contains { !$0.trimmed.isEmpty }
     }
 
     private var columnCount: Int {
@@ -197,7 +199,7 @@ public struct SpreadsheetViewer: View {
         guard hasHeaderLabels else {
             return Array(repeating: "", count: columnCount)
         }
-        return headerRow.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        return headerRow.map { $0.trimmed }
     }
 
     private var dataRows: [[String]] {
@@ -208,7 +210,7 @@ public struct SpreadsheetViewer: View {
     }
 
     private var filteredRows: [[String]] {
-        let trimmed = filterText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = filterText.trimmed
         guard !trimmed.isEmpty else { return dataRows }
         let needle = trimmed.lowercased()
         return dataRows.filter { row in
@@ -240,7 +242,7 @@ public struct SpreadsheetViewer: View {
         (0..<columnCount).map { columnIndex in
             for row in dataRows {
                 guard columnIndex < row.count else { continue }
-                let value = row[columnIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+                let value = row[columnIndex].trimmed
                 if value.isEmpty { continue }
                 return Double(value) != nil
             }
@@ -256,12 +258,12 @@ public struct SpreadsheetViewer: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text(columnLabels[safe: columnIndex] ?? "")
-                            .font(.subheadline.weight(.semibold))
+                            .font(DesignTokens.Typography.subheadlineSemibold)
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                         if sortColumn == columnIndex {
                             Image(systemName: sortDirection == .ascending ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                                .font(.caption2.weight(.semibold))
+                                .font(DesignTokens.Typography.caption2Semibold)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -274,8 +276,8 @@ public struct SpreadsheetViewer: View {
                     : "Column \(columnIndex + 1)")
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 2)
+        .padding(.vertical, DesignTokens.Spacing.xxsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.xxxs)
         .background(headerBackground)
     }
 
@@ -338,7 +340,7 @@ public struct SpreadsheetViewer: View {
     private func alignmentForColumn(_ columnIndex: Int) -> Alignment {
         guard let firstRow = dataRows.first else { return .leading }
         guard columnIndex < firstRow.count else { return .leading }
-        let value = firstRow[columnIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = firstRow[columnIndex].trimmed
         return Double(value) != nil ? .trailing : .leading
     }
 

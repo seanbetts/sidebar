@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for WebsitesProviding.
 public protocol WebsitesProviding {
     func list() async throws -> WebsitesResponse
     func get(id: String) async throws -> WebsiteDetail
@@ -10,6 +11,7 @@ public protocol WebsitesProviding {
     func delete(id: String) async throws
 }
 
+/// API client for website endpoints.
 public struct WebsitesAPI {
     private let client: APIClient
 
@@ -39,10 +41,6 @@ public struct WebsitesAPI {
     public func quickSave(url: String, title: String? = nil) async throws -> WebsiteQuickSaveResponse {
         struct QuickSaveRequest: Codable { let url: String; let title: String? }
         return try await client.request("websites/quick-save", method: "POST", body: QuickSaveRequest(url: url, title: title))
-    }
-
-    public func quickSaveStatus(jobId: String) async throws -> WebsiteQuickSaveJob {
-        try await client.request("websites/quick-save/\(jobId)")
     }
 
     public func pin(id: String, pinned: Bool) async throws -> WebsiteItem {

@@ -1,6 +1,8 @@
 import SwiftUI
 import MarkdownUI
 
+// MARK: - MemoriesSettingsView
+
 struct MemoriesSettingsDetailView: View {
     @ObservedObject var viewModel: MemoriesViewModel
     @State private var searchQuery: String = ""
@@ -57,8 +59,8 @@ struct MemoriesSettingsDetailView: View {
                     .accessibilityLabel("Clear search")
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
             .font(.subheadline)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -69,7 +71,7 @@ struct MemoriesSettingsDetailView: View {
                     .stroke(searchBorder, lineWidth: 1)
             )
         }
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
     }
 
     @ViewBuilder
@@ -114,7 +116,7 @@ struct MemoriesSettingsDetailView: View {
             if horizontalSizeClass == .compact {
                 ScrollView {
                     SideBarMarkdown(text: memory.content)
-                        .padding(20)
+                        .padding(DesignTokens.Spacing.lg)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .navigationTitle(displayName(memory.path))
@@ -127,7 +129,7 @@ struct MemoriesSettingsDetailView: View {
                     Divider()
                     ScrollView {
                         SideBarMarkdown(text: memory.content)
-                            .padding(20)
+                            .padding(DesignTokens.Spacing.lg)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -161,7 +163,7 @@ struct MemoriesSettingsDetailView: View {
     private func detailHeader(memory: MemoryItem) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "bookmark")
-                .font(.system(size: 18, weight: .semibold))
+                .font(DesignTokens.Typography.titleLg)
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(memory.path))
@@ -169,7 +171,7 @@ struct MemoriesSettingsDetailView: View {
             }
             Spacer()
         }
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
     }
 
     private var filteredItems: [MemoryItem] {
@@ -232,7 +234,7 @@ private struct MemoryRow: View {
         SelectableRow(isSelected: isSelected, rowBackground: rowBackground) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName(item.path))
-                    .font(.subheadline.weight(.semibold))
+                    .font(DesignTokens.Typography.subheadlineSemibold)
                     .lineLimit(1)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
             }
@@ -259,10 +261,4 @@ private struct MemoryRow: View {
         return MemoriesSettingsDetailView.dateFormatter.string(from: date)
     }
 
-}
-
-private extension String {
-    var trimmed: String {
-        trimmingCharacters(in: .whitespacesAndNewlines)
-    }
 }

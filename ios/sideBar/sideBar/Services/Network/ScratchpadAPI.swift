@@ -1,10 +1,12 @@
 import Foundation
 
+/// Defines the requirements for ScratchpadProviding.
 public protocol ScratchpadProviding {
     func get() async throws -> ScratchpadResponse
     func update(content: String, mode: ScratchpadMode?) async throws -> ScratchpadResponse
 }
 
+/// API client for scratchpad endpoints.
 public struct ScratchpadAPI {
     private let client: APIClient
 

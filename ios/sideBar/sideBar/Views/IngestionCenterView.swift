@@ -27,7 +27,7 @@ struct IngestionCenterView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
         .frame(minWidth: 280, maxWidth: 360, maxHeight: 420)
     }
 
@@ -35,7 +35,7 @@ struct IngestionCenterView: View {
     private func section(title: String, items: [IngestionListItem], showCancel: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(DesignTokens.Typography.captionSemibold)
                 .foregroundStyle(.secondary)
             ForEach(items, id: \.file.id) { item in
                 IngestionCenterRow(item: item, showCancel: showCancel, onCancel: onCancel)
@@ -53,7 +53,7 @@ private struct IngestionCenterRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(stripFileExtension(item.file.filenameOriginal))
-                    .font(.subheadline.weight(.semibold))
+                    .font(DesignTokens.Typography.subheadlineSemibold)
                     .lineLimit(1)
                 Spacer()
                 if isFailed {
@@ -66,7 +66,7 @@ private struct IngestionCenterRow: View {
                         onCancel(item)
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.caption.weight(.semibold))
+                            .font(DesignTokens.Typography.captionSemibold)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Cancel upload")
@@ -88,7 +88,7 @@ private struct IngestionCenterRow: View {
                 }
             }
         }
-        .padding(10)
+        .padding(DesignTokens.Spacing.xsPlus)
         .background(DesignTokens.Colors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(

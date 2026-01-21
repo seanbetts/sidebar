@@ -3,43 +3,9 @@ import Combine
 import Supabase
 import os
 
-public protocol AuthStateStore {
-    func saveAccessToken(_ token: String?) throws
-    func saveUserId(_ userId: String?) throws
-    func loadAccessToken() throws -> String?
-    func loadUserId() throws -> String?
-    func clear() throws
-}
+// MARK: - SupabaseAuthAdapter
 
-public final class InMemoryAuthStateStore: AuthStateStore {
-    private var accessToken: String?
-    private var userId: String?
-
-    public init() {
-    }
-
-    public func saveAccessToken(_ token: String?) throws {
-        accessToken = token
-    }
-
-    public func saveUserId(_ userId: String?) throws {
-        self.userId = userId
-    }
-
-    public func loadAccessToken() throws -> String? {
-        accessToken
-    }
-
-    public func loadUserId() throws -> String? {
-        userId
-    }
-
-    public func clear() throws {
-        accessToken = nil
-        userId = nil
-    }
-}
-
+/// Represents AuthErrorEvent.
 public struct AuthErrorEvent: Equatable {
     public let id = UUID()
     public let message: String
@@ -49,6 +15,7 @@ public struct AuthErrorEvent: Equatable {
     }
 }
 
+/// Defines AuthAdapterError.
 public enum AuthAdapterError: LocalizedError, Equatable {
     case signInInProgress
     case invalidCredentials
@@ -79,6 +46,7 @@ public enum AuthAdapterError: LocalizedError, Equatable {
 }
 
 @MainActor
+/// Supabase-backed authentication session handler.
 public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     @Published public private(set) var accessToken: String?
     @Published public private(set) var userId: String?
@@ -95,13 +63,17 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
     private let logger = Logger(subsystem: "sideBar", category: "Auth")
     private let sessionWarningLeadTime: TimeInterval = 300
     private let refreshCooldown: TimeInterval = 60
-    private let offlineAccessWindow: TimeInterval = 60 * 60 * 24 * 7
+    private let offlineAccessWindow: TimeInterval = 60 * 60 * 24
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
     private var lastSessionExpiryDate: Date?
     private var lastRefreshAttempt: Date?
     private var sessionWarningToken = UUID()
 
-    public init(config: EnvironmentConfig, stateStore: AuthStateStore) {
+    public init(
+        config: EnvironmentConfig,
+        stateStore: AuthStateStore,
+        startAuthStateTask: Bool = true
+    ) {
         self.stateStore = stateStore
 
         let authOptions = SupabaseClientOptions.AuthOptions(
@@ -123,17 +95,23 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
                     accessToken = storedToken
                     userId = storedUserId
                 } else {
-                    try? stateStore.clear()
+                    do {
+                        try stateStore.clear()
+                    } catch {
+                        logger.error("Failed to clear auth state: \(error.localizedDescription, privacy: .public)")
+                    }
                 }
             } catch {
                 recordError("Unable to restore authentication state.")
             }
         }
 
-        authStateTask = Task { [supabase, weak self] in
-            for await (_, session) in supabase.auth.authStateChanges {
-                guard let self else { return }
-                self.applySession(session)
+        if startAuthStateTask {
+            authStateTask = Task { [supabase, weak self] in
+                for await (_, session) in supabase.auth.authStateChanges {
+                    guard let self else { return }
+                    self.applySession(session)
+                }
             }
         }
     }
@@ -210,7 +188,11 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         }
         accessToken = nil
         userId = nil
-        try? stateStore.clear()
+        do {
+            try stateStore.clear()
+        } catch {
+            logger.error("Failed to clear auth state: \(error.localizedDescription, privacy: .public)")
+        }
         sessionExpiryWarning = nil
         lastSessionExpiryDate = nil
         warningTask?.cancel()
@@ -269,7 +251,14 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         let warningDelay = expiresAt.addingTimeInterval(-sessionWarningLeadTime).timeIntervalSinceNow
         if warningDelay > 5 {
             warningTask = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(warningDelay))
+                do {
+                    try await Task.sleep(for: .seconds(warningDelay))
+                } catch {
+                    if !Task.isCancelled {
+                        self?.logger.error("Session warning sleep failed: \(error.localizedDescription, privacy: .public)")
+                    }
+                    return
+                }
                 await MainActor.run {
                     guard let self, self.sessionWarningToken == warningToken else { return }
                     self.sessionExpiryWarning = expiresAt
@@ -280,7 +269,14 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         let refreshDelay = max(warningDelay, 0)
         if refreshDelay > 0 {
             refreshScheduleTask = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(refreshDelay))
+                do {
+                    try await Task.sleep(for: .seconds(refreshDelay))
+                } catch {
+                    if !Task.isCancelled {
+                        self?.logger.error("Session refresh sleep failed: \(error.localizedDescription, privacy: .public)")
+                    }
+                    return
+                }
                 await self?.refreshSession()
             }
         } else {

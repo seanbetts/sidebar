@@ -1,14 +1,13 @@
-import Foundation
 import Combine
+import Foundation
 import MapKit
 
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
-public final class WeatherViewModel: ObservableObject {
+/// Loads weather data and formats related state.
+public final class WeatherViewModel: LoadableViewModel {
     @Published public private(set) var weather: WeatherResponse? = nil
-    @Published public private(set) var errorMessage: String? = nil
-    @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var locationName: String? = nil
 
     private let api: any WeatherProviding
@@ -18,27 +17,21 @@ public final class WeatherViewModel: ObservableObject {
     }
 
     public func load(location: String) async {
-        errorMessage = nil
-        isLoading = true
         locationName = location
-        do {
+        await withLoading({
             let coordinate = try await searchCoordinates(for: location)
-            weather = try await api.getWeather(lat: coordinate.latitude, lon: coordinate.longitude)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isLoading = false
+            return try await api.getWeather(lat: coordinate.latitude, lon: coordinate.longitude)
+        }, onSuccess: { [weak self] response in
+            self?.weather = response
+        })
     }
 
     public func load(lat: Double, lon: Double) async {
-        errorMessage = nil
-        isLoading = true
-        do {
-            weather = try await api.getWeather(lat: lat, lon: lon)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isLoading = false
+        await withLoading({
+            try await api.getWeather(lat: lat, lon: lon)
+        }, onSuccess: { [weak self] response in
+            self?.weather = response
+        })
     }
 
     private func searchCoordinates(for location: String) async throws -> CLLocationCoordinate2D {

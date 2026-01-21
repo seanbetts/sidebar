@@ -28,7 +28,7 @@ public enum EnvironmentConfigFileReader {
         guard let rawValue = plist[key] as? String else {
             return nil
         }
-        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = rawValue.trimmed
         return value.isEmpty ? nil : value
     }
 }

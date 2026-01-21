@@ -4,6 +4,7 @@ import Combine
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Manages memory list and selection state.
 public final class MemoriesViewModel: ObservableObject {
     @Published public private(set) var items: [MemoryItem] = []
     @Published public private(set) var active: MemoryItem? = nil
@@ -23,18 +24,20 @@ public final class MemoriesViewModel: ObservableObject {
     public func load() async {
         errorMessage = nil
         isLoading = true
-        let cached: [MemoryItem]? = cache.get(key: CacheKeys.memoriesList)
-        if let cached {
-            items = cached
+        let loader = CachedLoader(
+            cache: cache,
+            key: CacheKeys.memoriesList,
+            ttl: CachePolicy.memoriesList
+        ) { [api] in
+            try await api.list()
         }
         do {
-            let response = try await api.list()
+            let (response, _) = try await loader.load(onRefresh: { [weak self] fresh in
+                self?.items = fresh
+            })
             items = response
-            cache.set(key: CacheKeys.memoriesList, value: response, ttlSeconds: CachePolicy.memoriesList)
         } catch {
-            if cached == nil {
-                errorMessage = error.localizedDescription
-            }
+            errorMessage = error.localizedDescription
         }
         isLoading = false
     }

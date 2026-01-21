@@ -1,5 +1,9 @@
 import Foundation
+import OSLog
 
+// MARK: - IngestionUploadManager
+
+/// Defines the requirements for IngestionUploadManaging.
 public protocol IngestionUploadManaging: AnyObject {
     func startUpload(
         uploadId: String,
@@ -13,8 +17,10 @@ public protocol IngestionUploadManaging: AnyObject {
     func cancelUpload(uploadId: String)
 }
 
+/// Handles background uploads for ingestion.
 public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     private let config: APIClientConfig
+    private let logger = Logger(subsystem: "sideBar", category: "Upload")
     private lazy var session: URLSession = {
         #if os(iOS)
         let configuration = URLSessionConfiguration.background(withIdentifier: "sideBar.ingestion.uploads")
@@ -57,13 +63,14 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
 
             let bodyURL = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString)")
             do {
-                try self.writeMultipartBody(
+                try IngestionUploadHelpers.writeMultipartBody(
                     to: bodyURL,
                     boundary: boundary,
                     fileURL: fileURL,
                     filename: filename,
                     mimeType: mimeType,
-                    folder: folder
+                    folder: folder,
+                    logger: self.logger
                 )
             } catch {
                 DispatchQueue.main.async { onCompletion(.failure(error)) }
@@ -95,39 +102,6 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         }
     }
 
-    private func writeMultipartBody(
-        to url: URL,
-        boundary: String,
-        fileURL: URL,
-        filename: String,
-        mimeType: String,
-        folder: String
-    ) throws {
-        FileManager.default.createFile(atPath: url.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: url)
-        defer { try? handle.close() }
-
-        try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
-        try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"folder\"\r\n\r\n".utf8))
-        try handle.write(contentsOf: Data("\(folder)\r\n".utf8))
-        try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
-        try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".utf8))
-        try handle.write(contentsOf: Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
-
-        let input = try FileHandle(forReadingFrom: fileURL)
-        defer { try? input.close() }
-        while autoreleasepool(invoking: {
-            let chunk = input.readData(ofLength: 1024 * 1024)
-            if chunk.isEmpty {
-                return false
-            }
-            try? handle.write(contentsOf: chunk)
-            return true
-        }) { }
-
-        try handle.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
-    }
-
     private func handleCompletion(for task: URLSessionTask, error: Error?) {
         let context = queue.sync { contexts[task.taskIdentifier] }
         guard let context else { return }
@@ -135,7 +109,13 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
             self.contexts.removeValue(forKey: task.taskIdentifier)
             self.taskIdsByUploadId.removeValue(forKey: context.uploadId)
         }
-        defer { try? FileManager.default.removeItem(at: context.bodyFileURL) }
+        defer {
+            do {
+                try FileManager.default.removeItem(at: context.bodyFileURL)
+            } catch {
+                logger.error("Failed to remove upload body file: \(error.localizedDescription, privacy: .public)")
+            }
+        }
 
         if let error {
             DispatchQueue.main.async { context.onCompletion(.failure(error)) }
@@ -156,14 +136,72 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
             return
         }
         do {
-            let fileId = try parseUploadResponse(data: context.responseData)
+            let fileId = try IngestionUploadHelpers.parseUploadResponse(data: context.responseData)
             DispatchQueue.main.async { context.onCompletion(.success(fileId)) }
         } catch {
             DispatchQueue.main.async { context.onCompletion(.failure(error)) }
         }
     }
 
-    private func parseUploadResponse(data: Data) throws -> String {
+}
+
+enum IngestionUploadHelpers {
+    static func writeMultipartBody(
+        to url: URL,
+        boundary: String,
+        fileURL: URL,
+        filename: String,
+        mimeType: String,
+        folder: String,
+        logger: Logger
+    ) throws {
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: url)
+        defer {
+            do {
+                try handle.close()
+            } catch {
+                logger.error("Upload body file close failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+
+        try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
+        try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"folder\"\r\n\r\n".utf8))
+        try handle.write(contentsOf: Data("\(folder)\r\n".utf8))
+        try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
+        try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".utf8))
+        try handle.write(contentsOf: Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
+
+        let input = try FileHandle(forReadingFrom: fileURL)
+        defer {
+            do {
+                try input.close()
+            } catch {
+                logger.error("Upload source file close failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        var writeError: Error?
+        while autoreleasepool(invoking: {
+            let chunk = input.readData(ofLength: 1024 * 1024)
+            if chunk.isEmpty {
+                return false
+            }
+            do {
+                try handle.write(contentsOf: chunk)
+            } catch {
+                writeError = error
+                return false
+            }
+            return true
+        }) { }
+        if let writeError {
+            throw writeError
+        }
+
+        try handle.write(contentsOf: Data("\r\n--\(boundary)--\r\n".utf8))
+    }
+
+    static func parseUploadResponse(data: Data) throws -> String {
         struct UploadResponse: Decodable {
             let fileId: String?
             let data: Inner?

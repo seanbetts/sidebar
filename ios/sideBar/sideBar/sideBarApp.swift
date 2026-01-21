@@ -6,19 +6,32 @@
 //
 
 import SwiftUI
+import os
 
 @main
-struct sideBarApp: App {
+struct SideBarApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppLaunchDelegate.self) private var appDelegate
+    #endif
     @StateObject private var environment: AppEnvironment
 
     init() {
+        let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
+        let launchStart = CFAbsoluteTimeGetCurrent()
+        let logger = Logger(subsystem: "sideBar", category: "Startup")
+        let logStep: (String, Double, Double) -> Void = { name, start, end in
+            let elapsedMs = Int((end - start) * 1000)
+            logger.info("\(name, privacy: .public) took \(elapsedMs, privacy: .public)ms")
+        }
+
         let config: EnvironmentConfig
         let configError: EnvironmentConfigLoadError?
+        let configStart = CFAbsoluteTimeGetCurrent()
         do {
             config = try EnvironmentConfig.load()
             configError = nil
         } catch {
-            if EnvironmentConfig.isRunningTestsOrPreviews() {
+            if isTestMode {
                 config = EnvironmentConfig.fallbackForTesting()
                 configError = nil
             } else {
@@ -26,15 +39,39 @@ struct sideBarApp: App {
                 configError = error as? EnvironmentConfigLoadError
             }
         }
+        let configEnd = CFAbsoluteTimeGetCurrent()
+        logStep("Config load", configStart, configEnd)
 
+        let authStart = CFAbsoluteTimeGetCurrent()
+        let stateStore: AuthStateStore = isTestMode
+            ? InMemoryAuthStateStore()
+            : KeychainAuthStateStore(
+                service: AppGroupConfiguration.keychainService,
+                accessGroup: AppGroupConfiguration.keychainAccessGroup
+            )
         let authSession = SupabaseAuthAdapter(
             config: config,
-            stateStore: KeychainAuthStateStore()
+            stateStore: stateStore,
+            startAuthStateTask: !isTestMode
         )
+        let authEnd = CFAbsoluteTimeGetCurrent()
+        logStep("Auth session", authStart, authEnd)
 
-        let cacheClient = CoreDataCacheClient(container: PersistenceController.shared.container)
+        let cacheStart = CFAbsoluteTimeGetCurrent()
+        let cacheClient: CacheClient = isTestMode
+            ? InMemoryCacheClient()
+            : CoreDataCacheClient(container: PersistenceController.shared.container)
         let container = ServiceContainer(config: config, authSession: authSession, cacheClient: cacheClient)
+        let cacheEnd = CFAbsoluteTimeGetCurrent()
+        logStep("Service container", cacheStart, cacheEnd)
+
+        let envStart = CFAbsoluteTimeGetCurrent()
         _environment = StateObject(wrappedValue: AppEnvironment(container: container, configError: configError))
+        let envEnd = CFAbsoluteTimeGetCurrent()
+        logStep("Environment", envStart, envEnd)
+
+        let launchEnd = CFAbsoluteTimeGetCurrent()
+        logStep("Startup total", launchStart, launchEnd)
     }
 
     var body: some Scene {

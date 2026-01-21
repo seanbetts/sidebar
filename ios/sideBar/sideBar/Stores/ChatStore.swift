@@ -1,33 +1,52 @@
 import Foundation
 import Combine
 
-@MainActor
-public final class ChatStore: ObservableObject {
+// MARK: - ChatStore
+
+/// Persistent store for chat conversations and message details.
+///
+/// Manages the source of truth for conversation list and per-conversation messages.
+/// Uses `CachedStoreBase` for cache-first loading with background refresh.
+///
+/// ## Responsibilities
+/// - Load and cache conversation list
+/// - Load and cache individual conversation details with messages
+/// - Handle real-time conversation events (insert, update, delete)
+/// - Coordinate with `ChatViewModel` via Combine publishers
+public final class ChatStore: CachedStoreBase<[Conversation]> {
     @Published public private(set) var conversations: [Conversation] = []
     @Published public private(set) var conversationDetails: [String: ConversationWithMessages] = [:]
 
     private let conversationsAPI: ConversationsProviding
-    private let cache: CacheClient
     private var isRefreshingList = false
 
     public init(conversationsAPI: ConversationsProviding, cache: CacheClient) {
         self.conversationsAPI = conversationsAPI
-        self.cache = cache
+        super.init(cache: cache)
     }
 
-    public func loadConversations(force: Bool = false) async throws {
-        let cached: [Conversation]? = force ? nil : cache.get(key: CacheKeys.conversationsList)
-        if let cached {
-            applyConversationListUpdate(cached, persist: false)
-            Task { [weak self] in
-                await self?.refreshConversationsList()
-            }
-            return
-        }
+    // MARK: - CachedStoreBase Overrides
 
+    public override var cacheKey: String { CacheKeys.conversationsList }
+    public override var cacheTTL: TimeInterval { CachePolicy.conversationsList }
+
+    public override func fetchFromAPI() async throws -> [Conversation] {
         let response = try await conversationsAPI.list()
-        let filtered = response.filter { $0.isArchived != true }
-        applyConversationListUpdate(filtered, persist: true)
+        return response.filter { $0.isArchived != true }
+    }
+
+    public override func applyData(_ data: [Conversation], persist: Bool) {
+        applyConversationListUpdate(data, persist: persist)
+    }
+
+    public override func backgroundRefresh() async {
+        await refreshConversationsList()
+    }
+
+    // MARK: - Public API
+
+    public func loadConversations(force: Bool = false) async throws {
+        try await loadWithCache(force: force)
     }
 
     public func loadConversation(id: String, force: Bool = false) async throws {
@@ -189,6 +208,8 @@ public final class ChatStore: ObservableObject {
             cache.remove(key: cacheKey)
         }
     }
+
+    // MARK: - Private
 
     private func shouldApplyConversationUpdate(
         _ response: ConversationWithMessages,

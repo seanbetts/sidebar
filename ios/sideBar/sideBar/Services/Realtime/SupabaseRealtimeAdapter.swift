@@ -1,7 +1,11 @@
 import Foundation
+import OSLog
 import Realtime
 import Supabase
 
+// MARK: - SupabaseRealtimeAdapter
+
+/// Defines the requirements for RealtimeEventHandler.
 public protocol RealtimeEventHandler: AnyObject {
     func handleNoteEvent(_ payload: RealtimePayload<NoteRealtimeRecord>)
     func handleWebsiteEvent(_ payload: RealtimePayload<WebsiteRealtimeRecord>)
@@ -9,11 +13,12 @@ public protocol RealtimeEventHandler: AnyObject {
     func handleFileJobEvent(_ payload: RealtimePayload<FileJobRealtimeRecord>)
 }
 
+/// Bridges Supabase realtime events into app payloads.
 public final class SupabaseRealtimeAdapter: RealtimeClient {
     public weak var handler: RealtimeEventHandler?
     private let tokenStore: AccessTokenStore
     private let client: SupabaseClient
-    private let decoder: JSONDecoder
+    private let logger = Logger(subsystem: "sideBar", category: "Realtime")
     private var currentUserId: String?
     private var notesChannel: RealtimeChannelV2?
     private var websitesChannel: RealtimeChannelV2?
@@ -27,8 +32,6 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
     public init(config: EnvironmentConfig, handler: RealtimeEventHandler? = nil) {
         self.handler = handler
         self.tokenStore = AccessTokenStore()
-        self.decoder = JSONDecoder()
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
         let options = SupabaseClientOptions(
             auth: SupabaseClientOptions.AuthOptions(
                 accessToken: { [tokenStore] in await tokenStore.get() }
@@ -101,7 +104,9 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             }
         }
     }
+}
 
+extension SupabaseRealtimeAdapter {
     private func subscribeToNotes(userId: String) async {
         if let existingChannel = notesChannel {
             await client.realtimeV2.removeChannel(existingChannel)
@@ -117,7 +122,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleNoteInsert(action)
+                    self?.handleNoteInsert(SupabaseInsertActionAdapter(action: action))
                 }
             }
         )
@@ -129,7 +134,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleNoteUpdate(action)
+                    self?.handleNoteUpdate(SupabaseUpdateActionAdapter(action: action))
                 }
             }
         )
@@ -141,14 +146,17 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleNoteDelete(action)
+                    self?.handleNoteDelete(SupabaseDeleteActionAdapter(action: action))
                 }
             }
         )
         notesChannel = channel
         do {
             try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
         } catch {
+            logger.error("Notes subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -167,7 +175,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleWebsiteInsert(action)
+                    self?.handleWebsiteInsert(SupabaseInsertActionAdapter(action: action))
                 }
             }
         )
@@ -179,7 +187,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleWebsiteUpdate(action)
+                    self?.handleWebsiteUpdate(SupabaseUpdateActionAdapter(action: action))
                 }
             }
         )
@@ -191,14 +199,17 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleWebsiteDelete(action)
+                    self?.handleWebsiteDelete(SupabaseDeleteActionAdapter(action: action))
                 }
             }
         )
         websitesChannel = channel
         do {
             try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
         } catch {
+            logger.error("Websites subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -217,7 +228,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleIngestedFileInsert(action)
+                    self?.handleIngestedFileInsert(SupabaseInsertActionAdapter(action: action))
                 }
             }
         )
@@ -229,7 +240,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleIngestedFileUpdate(action)
+                    self?.handleIngestedFileUpdate(SupabaseUpdateActionAdapter(action: action))
                 }
             }
         )
@@ -241,14 +252,17 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 filter: filter
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleIngestedFileDelete(action)
+                    self?.handleIngestedFileDelete(SupabaseDeleteActionAdapter(action: action))
                 }
             }
         )
         ingestedFilesChannel = channel
         do {
             try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
         } catch {
+            logger.error("Ingested files subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -265,7 +279,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 table: RealtimeTable.fileJobs
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleFileJobInsert(action)
+                    self?.handleFileJobInsert(SupabaseInsertActionAdapter(action: action))
                 }
             }
         )
@@ -276,7 +290,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 table: RealtimeTable.fileJobs
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleFileJobUpdate(action)
+                    self?.handleFileJobUpdate(SupabaseUpdateActionAdapter(action: action))
                 }
             }
         )
@@ -287,39 +301,56 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
                 table: RealtimeTable.fileJobs
             ) { [weak self] action in
                 Task { @MainActor [weak self] in
-                    self?.handleFileJobDelete(action)
+                    self?.handleFileJobDelete(SupabaseDeleteActionAdapter(action: action))
                 }
             }
         )
         fileJobsChannel = channel
         do {
             try await channel.subscribeWithError()
+        } catch is CancellationError {
+            // Expected during auth transitions
         } catch {
+            logger.error("File jobs subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleNoteInsert(_ action: InsertAction) {
+}
+
+extension SupabaseRealtimeAdapter {
+    func handleNoteInsert(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyNoteEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
+            logger.error("Notes insert decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleNoteUpdate(_ action: UpdateAction) {
+    func handleNoteUpdate(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
-            let oldRecord: NoteRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            var oldRecord: NoteRealtimeRecord?
+            do {
+                oldRecord = try action.decodeOldRecord(decoder: decoder)
+            } catch {
+                logger.error("Notes update old record decode failed: \(error.localizedDescription, privacy: .public)")
+            }
             notifyNoteEvent(type: .update, record: record, oldRecord: oldRecord)
         } catch {
+            logger.error("Notes update decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleNoteDelete(_ action: DeleteAction) {
+    func handleNoteDelete(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let oldRecord: NoteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyNoteEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
+            logger.error("Notes delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -340,79 +371,118 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
-    private func handleWebsiteInsert(_ action: InsertAction) {
+    func handleWebsiteInsert(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyWebsiteEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
+            logger.error("Websites insert decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleWebsiteUpdate(_ action: UpdateAction) {
+    func handleWebsiteUpdate(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
-            let oldRecord: WebsiteRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            var oldRecord: WebsiteRealtimeRecord?
+            do {
+                oldRecord = try action.decodeOldRecord(decoder: decoder)
+            } catch {
+                logger.error("Websites update old record decode failed: \(error.localizedDescription, privacy: .public)")
+            }
             notifyWebsiteEvent(type: .update, record: record, oldRecord: oldRecord)
         } catch {
+            logger.error("Websites update decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleWebsiteDelete(_ action: DeleteAction) {
+    func handleWebsiteDelete(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let oldRecord: WebsiteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyWebsiteEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
+            logger.error("Websites delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleIngestedFileInsert(_ action: InsertAction) {
+    func handleIngestedFileInsert(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyIngestedFileEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
+            logger.error("Ingested files insert decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleIngestedFileUpdate(_ action: UpdateAction) {
+    func handleIngestedFileUpdate(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
-            let oldRecord: IngestedFileRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            var oldRecord: IngestedFileRealtimeRecord?
+            do {
+                oldRecord = try action.decodeOldRecord(decoder: decoder)
+            } catch {
+                logger.error("Ingested files update old record decode failed: \(error.localizedDescription, privacy: .public)")
+            }
             notifyIngestedFileEvent(type: .update, record: record, oldRecord: oldRecord)
         } catch {
+            logger.error("Ingested files update decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleIngestedFileDelete(_ action: DeleteAction) {
+    func handleIngestedFileDelete(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let oldRecord: IngestedFileRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyIngestedFileEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
+            logger.error("Ingested files delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleFileJobInsert(_ action: InsertAction) {
+    func handleFileJobInsert(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyFileJobEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
+            logger.error("File jobs insert decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleFileJobUpdate(_ action: UpdateAction) {
+    func handleFileJobUpdate(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
-            let oldRecord: FileJobRealtimeRecord? = try? action.decodeOldRecord(decoder: decoder)
+            var oldRecord: FileJobRealtimeRecord?
+            do {
+                oldRecord = try action.decodeOldRecord(decoder: decoder)
+            } catch {
+                logger.error("File jobs update old record decode failed: \(error.localizedDescription, privacy: .public)")
+            }
             notifyFileJobEvent(type: .update, record: record, oldRecord: oldRecord)
         } catch {
+            logger.error("File jobs update decode failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func handleFileJobDelete(_ action: DeleteAction) {
+    func handleFileJobDelete(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let oldRecord: FileJobRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyFileJobEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
+            logger.error("File jobs delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    private static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
     }
 
     private func notifyWebsiteEvent(
@@ -479,6 +549,7 @@ private actor AccessTokenStore {
     }
 }
 
+/// Represents NoteRealtimeRecord.
 public struct NoteRealtimeRecord: Codable {
     public let id: String
     public let title: String?
@@ -488,6 +559,7 @@ public struct NoteRealtimeRecord: Codable {
     public let deletedAt: String?
 }
 
+/// Represents WebsiteRealtimeRecord.
 public struct WebsiteRealtimeRecord: Codable {
     public let id: String
     public let title: String?
@@ -501,6 +573,7 @@ public struct WebsiteRealtimeRecord: Codable {
     public let deletedAt: String?
 }
 
+/// Represents IngestedFileRealtimeRecord.
 public struct IngestedFileRealtimeRecord: Codable {
     public let id: String
     public let filenameOriginal: String?
@@ -517,6 +590,7 @@ public struct IngestedFileRealtimeRecord: Codable {
     public let deletedAt: String?
 }
 
+/// Represents FileJobRealtimeRecord.
 public struct FileJobRealtimeRecord: Codable {
     public let fileId: String
     public let status: String?

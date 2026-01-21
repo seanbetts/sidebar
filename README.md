@@ -127,6 +127,19 @@ ALLOW_PROD_MIGRATIONS=true ./scripts/migrate.sh upgrade
 
 See [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for the full guide and safety notes when using production Supabase/R2.
 
+## iOS App
+
+- **Project**: `ios/sideBar/sideBar.xcodeproj`
+- **Requirements**: Xcode 15+, iOS 17+ simulator
+- **Local config**: update `ios/sideBar/Config/SideBar.local.xcconfig`, then set the Debug base configuration to `Config/SideBar.xcconfig`.
+- **Docs**: see `docs/IOS_ARCHITECTURE.md` for the SwiftUI architecture overview.
+
+Run tests from CLI:
+
+```bash
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test
+```
+
 ### 3. Rebuild After Changes
 
 ```bash

@@ -14,9 +14,14 @@ export interface SSECallbacks {
 	onStreamClosed?: () => void;
 	onNoteCreated?: (data: { id?: string; title?: string; folder?: string }) => void;
 	onNoteUpdated?: (data: { id?: string; title?: string }) => void;
+	onNotePinned?: (data: { id?: string; pinned?: boolean }) => void;
+	onNoteMoved?: (data: { id?: string; folder?: string }) => void;
 	onWebsiteSaved?: (data: { id?: string; title?: string; url?: string }) => void;
+	onWebsitePinned?: (data: { id?: string; pinned?: boolean }) => void;
+	onWebsiteArchived?: (data: { id?: string; archived?: boolean }) => void;
 	onNoteDeleted?: (data: { id?: string }) => void;
 	onWebsiteDeleted?: (data: { id?: string }) => void;
+	onIngestionUpdated?: (data: { file_id?: string }) => void;
 	onThemeSet?: (data: { theme?: string }) => void;
 	onScratchpadUpdated?: () => void;
 	onScratchpadCleared?: () => void;
@@ -198,8 +203,24 @@ export class SSEClient {
 				callbacks.onNoteUpdated?.(data);
 				break;
 
+			case 'note_pinned':
+				callbacks.onNotePinned?.(data);
+				break;
+
+			case 'note_moved':
+				callbacks.onNoteMoved?.(data);
+				break;
+
 			case 'website_saved':
 				callbacks.onWebsiteSaved?.(data);
+				break;
+
+			case 'website_pinned':
+				callbacks.onWebsitePinned?.(data);
+				break;
+
+			case 'website_archived':
+				callbacks.onWebsiteArchived?.(data);
 				break;
 
 			case 'note_deleted':
@@ -208,6 +229,10 @@ export class SSEClient {
 
 			case 'website_deleted':
 				callbacks.onWebsiteDeleted?.(data);
+				break;
+
+			case 'ingestion_updated':
+				callbacks.onIngestionUpdated?.(data);
 				break;
 
 			case 'ui_theme_set':

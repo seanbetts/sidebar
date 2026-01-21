@@ -1,0 +1,22 @@
+included:
+  - sideBar
+  - sideBarTests
+  - ShareExtension
+
+excluded:
+  - sideBar.xcodeproj
+  - .build
+  - .swiftpm
+  - Carthage
+  - Pods
+  - Config
+
+line_length:
+  warning: 140
+  error: 200
+
+identifier_name:
+  min_length:
+    warning: 2
+  max_length:
+    warning: 60

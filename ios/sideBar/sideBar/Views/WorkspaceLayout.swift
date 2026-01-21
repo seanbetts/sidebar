@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - WorkspaceLayout
+
 public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     @Binding private var selection: AppSection?
     @Binding private var isLeftPanelExpanded: Bool

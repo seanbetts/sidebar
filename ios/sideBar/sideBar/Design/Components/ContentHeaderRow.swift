@@ -51,7 +51,7 @@ struct ContentHeaderRow<Trailing: View>: View {
     var body: some View {
         HStack(alignment: alignment, spacing: 12) {
             Image(systemName: iconName)
-                .font(.system(size: 18, weight: .semibold))
+                .font(DesignTokens.Typography.titleLg)
                 .foregroundStyle(.primary)
             HStack(alignment: titleSubtitleAlignment, spacing: 12) {
                 Text(title)

@@ -34,6 +34,6 @@ public struct SidebarPanelPlaceholder: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
     }
 }

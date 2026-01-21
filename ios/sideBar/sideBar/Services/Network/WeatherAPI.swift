@@ -1,9 +1,11 @@
 import Foundation
 
+/// Defines the requirements for WeatherProviding.
 public protocol WeatherProviding {
     func getWeather(lat: Double, lon: Double) async throws -> WeatherResponse
 }
 
+/// API client for weather endpoints.
 public struct WeatherAPI {
     private let client: APIClient
 

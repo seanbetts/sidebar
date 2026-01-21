@@ -1,6 +1,9 @@
 import Foundation
 import os
 
+// MARK: - APIClient
+
+/// Configuration for APIClient base URL and auth token.
 public struct APIClientConfig {
     public let baseUrl: URL
     public let accessTokenProvider: () -> String?
@@ -11,6 +14,7 @@ public struct APIClientConfig {
     }
 }
 
+/// Defines APIClientError.
 public enum APIClientError: Error {
     case invalidUrl
     case missingToken
@@ -20,20 +24,15 @@ public enum APIClientError: Error {
     case unknown
 }
 
+/// HTTP client for JSON and binary API requests.
 public final class APIClient {
     let config: APIClientConfig
     private let session: URLSession
-    private let decoder: JSONDecoder
-    private let encoder: JSONEncoder
     private let logger = Logger(subsystem: "sideBar", category: "APIClient")
 
     public init(config: APIClientConfig, session: URLSession = APIClient.makeDefaultSession()) {
         self.config = config
         self.session = session
-        self.decoder = JSONDecoder()
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
-        self.encoder = JSONEncoder()
-        self.encoder.keyEncodingStrategy = .useDefaultKeys
     }
 
     public func request<T: Decodable>(
@@ -45,6 +44,7 @@ public final class APIClient {
         let request = try buildRequest(path, method: method, body: body, headers: headers)
         let (data, _) = try await performRequest(request)
         do {
+            let decoder = Self.makeDecoder()
             return try decoder.decode(T.self, from: data)
         } catch {
             throw APIClientError.decodingFailed
@@ -97,10 +97,10 @@ public final class APIClient {
             } else {
                 components.path = "\(basePath)/\(trimmedPath)"
             }
-            if let existingQuery = components.query, !existingQuery.isEmpty {
-                components.query = "\(existingQuery)&\(queryPart)"
+            if let existingQuery = components.percentEncodedQuery, !existingQuery.isEmpty {
+                components.percentEncodedQuery = "\(existingQuery)&\(queryPart)"
             } else {
-                components.query = queryPart
+                components.percentEncodedQuery = queryPart
             }
             guard let composedUrl = components.url else {
                 throw APIClientError.invalidUrl
@@ -122,6 +122,7 @@ public final class APIClient {
             if request.value(forHTTPHeaderField: "Content-Type") == nil {
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             }
+            let encoder = Self.makeEncoder()
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
         return request
@@ -144,6 +145,7 @@ public final class APIClient {
                 let preview = body.prefix(2000)
                 logger.error("Response body: \(preview, privacy: .private)")
             }
+            let decoder = Self.makeDecoder()
             let message = Self.decodeErrorMessage(data: data, decoder: decoder)
             if let message {
                 throw APIClientError.apiError(message)
@@ -188,14 +190,37 @@ public final class APIClient {
         return nil
     }
 
+    private static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }
+
+    private static func makeEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .useDefaultKeys
+        return encoder
+    }
+
     public static func makeDefaultSession() -> URLSession {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 120
+        configuration.urlCache = URLCache(
+            memoryCapacity: 20 * 1024 * 1024,
+            diskCapacity: 0,
+            diskPath: nil
+        )
+        let pinnedCertificates = PinnedCertificates.loadFromMainBundle()
+        if !pinnedCertificates.isEmpty, !EnvironmentConfig.isRunningTestsOrPreviews() {
+            let delegate = CertificatePinningDelegate(pinnedCertificates: pinnedCertificates)
+            return URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
+        }
         return URLSession(configuration: configuration)
     }
 }
 
+/// Type-erases Encodable values so they can be encoded uniformly.
 public struct AnyEncodable: Encodable {
     private let encodeFunc: (Encoder) throws -> Void
 

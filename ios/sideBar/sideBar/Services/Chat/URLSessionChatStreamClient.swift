@@ -1,10 +1,11 @@
 import Foundation
 
+/// Streams chat events over URLSession SSE.
 public final class URLSessionChatStreamClient: ChatStreamClient {
     private let baseUrl: URL
     private let accessTokenProvider: () -> String?
     private let session: URLSession
-    private let parser: ChatStreamParser
+    private var parser: ChatStreamParser
     public weak var handler: ChatStreamEventHandler?
 
     private var streamTask: Task<Void, Error>?

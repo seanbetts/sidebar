@@ -3,7 +3,10 @@ import CoreGraphics
 import Combine
 import os
 
+// MARK: - NotesEditorViewModel
+
 @MainActor
+/// Manages note editing state, formatting actions, and autosave.
 public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var content: String = ""
     @Published public private(set) var attributedContent: NSAttributedString = NSAttributedString(string: "")
@@ -26,7 +29,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private let toastCenter: ToastCenter
     private let logger = Logger(subsystem: "sideBar", category: "NotesEditor")
     private var cancellables = Set<AnyCancellable>()
-    private var saveTask: Task<Void, Never>?
+    private let saveTask = ManagedTask()
     private var baselineContent: String = ""
     private var pendingExternalContent: String? = nil
     private var ignoreNextStoreUpdate = false
@@ -150,8 +153,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     public func saveNow() {
-        saveTask?.cancel()
-        saveTask = nil
+        saveTask.cancel()
         Task { [weak self] in
             await self?.saveIfNeeded()
         }
@@ -216,17 +218,8 @@ public final class NotesEditorViewModel: ObservableObject {
     private func scheduleAutosave() {
         guard isDirty, currentNoteId != nil, !isReadOnly, !hasExternalUpdate else { return }
         if !isSaveInProgress {
-            saveTask?.cancel()
-            saveTask = Task { [weak self] in
-                guard let self else { return }
-                do {
-                    try await Task.sleep(nanoseconds: self.autosaveDelaySeconds)
-                } catch {
-                    return
-                }
-                guard !Task.isCancelled else { return }
-                self.saveTask = nil
-                await self.saveIfNeeded()
+            saveTask.runDebounced(delay: TimeInterval(autosaveDelaySeconds) / 1_000_000_000) { [weak self] in
+                await self?.saveIfNeeded()
             }
         } else {
             pendingSaveRequested = true
@@ -277,7 +270,7 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     private func handleNoteUpdate(_ note: NotePayload?) {
-        saveTask?.cancel()
+        saveTask.cancel()
         saveError = nil
         guard let note else {
             currentNoteId = nil
@@ -319,7 +312,7 @@ public final class NotesEditorViewModel: ObservableObject {
         if isDirty, incoming != content {
             pendingExternalContent = incoming
             hasExternalUpdate = true
-            saveTask?.cancel()
+            saveTask.cancel()
             pendingSaveRequested = false
             return
         }

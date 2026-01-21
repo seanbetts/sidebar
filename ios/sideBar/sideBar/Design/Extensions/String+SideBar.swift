@@ -2,7 +2,7 @@ import Foundation
 
 extension String {
     var trimmedSideBar: String {
-        trimmingCharacters(in: .whitespacesAndNewlines)
+        trimmed
     }
 
     func withoutFileExtension() -> String {

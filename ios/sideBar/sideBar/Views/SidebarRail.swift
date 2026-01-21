@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 public struct SidebarRail: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -32,7 +35,7 @@ public struct SidebarRail: View {
         VStack(spacing: 16) {
             Button(action: { onTogglePanel?() }) {
                 Image(systemName: "sidebar.left")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(DesignTokens.Typography.titleLg)
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
@@ -62,14 +65,14 @@ public struct SidebarRail: View {
         }
         .frame(width: 56)
         .frame(maxHeight: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, DesignTokens.Spacing.sm)
         .background(
             Rectangle()
                 .fill(railBackground)
                 .ignoresSafeArea(.all, edges: .bottom)
                 .overlay(
                     Rectangle()
-                        .fill(Color(.separator))
+                        .fill(separatorColor)
                         .frame(width: 1)
                         .ignoresSafeArea(.all, edges: .bottom),
                     alignment: .trailing
@@ -99,7 +102,7 @@ public struct SidebarRail: View {
             }
         } label: {
             Image(systemName: iconName(for: section))
-                .font(.system(size: 18, weight: .semibold))
+                .font(DesignTokens.Typography.titleLg)
                 .frame(width: 32, height: 32)
                 .foregroundStyle(isActive ? Color.accentColor : Color.primary)
                 .background(
@@ -147,6 +150,14 @@ public struct SidebarRail: View {
 
     private var railBackground: Color {
         DesignTokens.Colors.sidebar
+    }
+
+    private var separatorColor: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(.separator)
+        #endif
     }
 
 }

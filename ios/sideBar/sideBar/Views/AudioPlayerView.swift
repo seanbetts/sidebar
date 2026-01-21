@@ -14,7 +14,7 @@ public struct AudioPlayerView: View {
             HStack(spacing: 12) {
                 Button(action: { viewModel.togglePlay() }) {
                     Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(DesignTokens.Typography.titleMd)
                         .frame(width: 36, height: 36)
                 }
                 .buttonStyle(.bordered)
