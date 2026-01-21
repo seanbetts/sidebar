@@ -133,12 +133,12 @@ public enum MarkdownRendering {
 
     private nonisolated static func makeTaskItemRegex() -> NSRegularExpression {
         let pattern = #"^(\s*[-+*]\s+\[[xX]\]\s+)(.+)$"#
-        return try! NSRegularExpression(pattern: pattern, options: [])
+        return makeRegex(pattern: pattern)
     }
 
     private nonisolated static func makeAnyTaskItemRegex() -> NSRegularExpression {
         let pattern = #"^\s*[-+*]\s+\[[ xX]\]\s+.+$"#
-        return try! NSRegularExpression(pattern: pattern, options: [])
+        return makeRegex(pattern: pattern)
     }
 
     private nonisolated static func isTaskListLine(_ line: String, regex: NSRegularExpression) -> Bool {
@@ -148,7 +148,7 @@ public enum MarkdownRendering {
 
     private nonisolated static func makeGalleryRegex() -> NSRegularExpression {
         let pattern = #"<figure\s+class=\"image-gallery\"[^>]*>.*?</figure>"#
-        return try! NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+        return makeRegex(pattern: pattern, options: [.dotMatchesLineSeparators])
     }
 
     private nonisolated static func normalizeImageCaptions(_ text: String) -> String {
@@ -178,17 +178,37 @@ public enum MarkdownRendering {
 
     private nonisolated static func makeImageCaptionRegex() -> NSRegularExpression {
         let pattern = #"^\s*(!\[[^\]]*\]\([^)]+\))\s*([*_])(.+?)\2\s*$"#
-        return try! NSRegularExpression(pattern: pattern, options: [])
+        return makeRegex(pattern: pattern)
     }
 
     private nonisolated static func makeGalleryCaptionRegex() -> NSRegularExpression {
         let pattern = #"data-caption=\"([^\"]*)\""#
-        return try! NSRegularExpression(pattern: pattern, options: [])
+        return makeRegex(pattern: pattern)
     }
 
     private nonisolated static func makeGalleryImageRegex() -> NSRegularExpression {
         let pattern = #"<img[^>]*\s+src=\"([^\"]+)\"[^>]*/?>"#
-        return try! NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+        return makeRegex(pattern: pattern, options: [.dotMatchesLineSeparators])
+    }
+
+    private nonisolated static func makeRegex(
+        pattern: String,
+        options: NSRegularExpression.Options = []
+    ) -> NSRegularExpression {
+        do {
+            return try NSRegularExpression(pattern: pattern, options: options)
+        } catch {
+            assertionFailure("Invalid regex pattern: \(pattern). Error: \(error)")
+            return fallbackRegex()
+        }
+    }
+
+    private nonisolated static func fallbackRegex() -> NSRegularExpression {
+        do {
+            return try NSRegularExpression(pattern: "$^", options: [])
+        } catch {
+            fatalError("Failed to create fallback regex: \(error)")
+        }
     }
 
     private nonisolated static func parseGalleryBlock(_ block: String) -> MarkdownGallery? {

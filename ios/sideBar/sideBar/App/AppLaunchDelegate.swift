@@ -156,59 +156,115 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         }
         return UIMenu(title: "", image: nil, identifier: identifier, options: .displayInline, children: commands)
     }
+}
 
-    private func categorizeShortcuts(
-        universal: [KeyboardShortcut],
-        contextual: [KeyboardShortcut]
-    ) -> (file: [KeyboardShortcut], edit: [KeyboardShortcut], view: [KeyboardShortcut], window: [KeyboardShortcut], help: [KeyboardShortcut], contextOnly: [KeyboardShortcut]) {
+extension AppLaunchDelegate {
+
+    private struct ShortcutCategories {
         var file: [KeyboardShortcut] = []
         var edit: [KeyboardShortcut] = []
         var view: [KeyboardShortcut] = []
         var window: [KeyboardShortcut] = []
         var help: [KeyboardShortcut] = []
+    }
+
+    private enum ShortcutMenuCategory {
+        case file
+        case edit
+        case view
+        case window
+        case help
+        case contextOnly
+    }
+
+    private func categorizeShortcuts(
+        universal: [KeyboardShortcut],
+        contextual: [KeyboardShortcut]
+    ) -> ShortcutCategories {
+        var categories = ShortcutCategories()
         var contextOnly: [KeyboardShortcut] = []
 
         for shortcut in universal {
-            switch shortcut.action {
-            case .navigate:
-                window.append(shortcut)
-            case .newItem, .closeItem:
-                file.append(shortcut)
-            case .focusSearch:
-                edit.append(shortcut)
-            case .refreshSection, .openScratchpad, .toggleSidebar:
-                view.append(shortcut)
-            case .showShortcuts:
-                help.append(shortcut)
-            default:
-                contextOnly.append(shortcut)
-            }
+            addShortcut(
+                shortcut,
+                category: categoryForUniversal(shortcut.action),
+                categories: &categories,
+                contextOnly: &contextOnly
+            )
         }
 
         for shortcut in contextual {
-            switch shortcut.action {
-            case .openInBrowser, .openInDefaultApp, .quickLook, .attachFile, .sendMessage:
-                file.append(shortcut)
-            case .renameItem,
-                 .deleteItem,
-                 .archiveItem,
-                 .pinItem,
-                 .saveNote,
-                 .toggleEditMode,
-                 .formatBold,
-                 .formatItalic,
-                 .insertCodeBlock,
-                 .createFolder:
-                edit.append(shortcut)
-            case .navigateList:
-                window.append(shortcut)
-            default:
-                contextOnly.append(shortcut)
-            }
+            addShortcut(
+                shortcut,
+                category: categoryForContextual(shortcut.action),
+                categories: &categories,
+                contextOnly: &contextOnly
+            )
         }
 
-        view.append(contentsOf: contextOnly)
-        return (file, edit, view, window, help, [])
+        categories.view.append(contentsOf: contextOnly)
+        return categories
+    }
+
+    private func addShortcut(
+        _ shortcut: KeyboardShortcut,
+        category: ShortcutMenuCategory,
+        categories: inout ShortcutCategories,
+        contextOnly: inout [KeyboardShortcut]
+    ) {
+        switch category {
+        case .file:
+            categories.file.append(shortcut)
+        case .edit:
+            categories.edit.append(shortcut)
+        case .view:
+            categories.view.append(shortcut)
+        case .window:
+            categories.window.append(shortcut)
+        case .help:
+            categories.help.append(shortcut)
+        case .contextOnly:
+            contextOnly.append(shortcut)
+        }
+    }
+
+    private func categoryForUniversal(_ action: ShortcutAction) -> ShortcutMenuCategory {
+        switch action {
+        case .navigate:
+            return .window
+        case .newItem, .closeItem:
+            return .file
+        case .focusSearch:
+            return .edit
+        case .refreshSection, .openScratchpad, .toggleSidebar:
+            return .view
+        case .showShortcuts:
+            return .help
+        default:
+            return .contextOnly
+        }
+    }
+
+    private func categoryForContextual(_ action: ShortcutAction) -> ShortcutMenuCategory {
+        switch action {
+        case .openInBrowser, .openInDefaultApp, .quickLook, .attachFile, .sendMessage:
+            return .file
+        case .renameItem,
+             .deleteItem,
+             .archiveItem,
+             .pinItem,
+             .saveNote,
+             .toggleEditMode,
+             .formatBold,
+             .formatItalic,
+             .insertCodeBlock,
+             .createFolder:
+            return .edit
+        case .navigateList:
+            return .window
+        default:
+            return .contextOnly
+        }
     }
 
     private func imageForShortcut(_ shortcut: KeyboardShortcut) -> UIImage? {
@@ -219,68 +275,11 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
     private func symbolName(for shortcut: KeyboardShortcut) -> String? {
         switch shortcut.action {
         case .navigate(let section):
-            switch section {
-            case .notes:
-                return "text.document"
-            case .tasks:
-                return "checkmark.square"
-            case .websites:
-                return "globe"
-            case .files:
-                return "folder"
-            case .chat:
-                return "bubble"
-            case .settings:
-                return "gearshape"
-            }
-        case .openSettings:
-            return "gearshape"
-        case .newItem:
-            return "plus"
-        case .closeItem:
-            return "xmark"
-        case .focusSearch:
-            return "magnifyingglass"
-        case .refreshSection:
-            return "arrow.clockwise"
-        case .showShortcuts:
-            return "command"
-        case .openScratchpad:
-            return "square.and.pencil"
-        case .toggleSidebar:
-            return "sidebar.left"
-        case .sendMessage:
-            return "paperplane"
-        case .attachFile:
-            return "paperclip"
-        case .renameItem:
-            return "pencil"
-        case .deleteItem:
-            return "trash"
-        case .pinItem:
-            return "pin"
-        case .archiveItem:
-            return "archivebox"
-        case .openInBrowser:
-            return "safari"
-        case .saveNote:
-            return "square.and.arrow.down"
-        case .toggleEditMode:
-            return "square.and.pencil"
-        case .formatBold:
-            return "bold"
-        case .formatItalic:
-            return "italic"
-        case .insertCodeBlock:
-            return "chevron.left.slash.chevron.right"
-        case .createFolder:
-            return "folder.badge.plus"
+            return Self.sectionSymbolNames[section]
         case .navigateList(let direction):
-            return direction == .next ? "arrow.down" : "arrow.up"
-        case .openInDefaultApp:
-            return "arrow.up.right.square"
-        case .quickLook:
-            return "eye"
+            return Self.listDirectionSymbols[direction]
+        default:
+            return Self.actionSymbolNames[shortcut.action]
         }
     }
 
@@ -293,52 +292,11 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         case .navigateList(let direction):
             payload[ShortcutCommandKeys.type] = ShortcutCommandType.navigateList.rawValue
             payload[ShortcutCommandKeys.direction] = direction.rawValue
-        case .openSettings:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.openSettings.rawValue
-        case .newItem:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.newItem.rawValue
-        case .closeItem:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.closeItem.rawValue
-        case .focusSearch:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.focusSearch.rawValue
-        case .refreshSection:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.refreshSection.rawValue
-        case .showShortcuts:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.showShortcuts.rawValue
-        case .openScratchpad:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.openScratchpad.rawValue
-        case .toggleSidebar:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.toggleSidebar.rawValue
-        case .sendMessage:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.sendMessage.rawValue
-        case .attachFile:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.attachFile.rawValue
-        case .renameItem:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.renameItem.rawValue
-        case .deleteItem:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.deleteItem.rawValue
-        case .pinItem:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.pinItem.rawValue
-        case .archiveItem:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.archiveItem.rawValue
-        case .openInBrowser:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.openInBrowser.rawValue
-        case .saveNote:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.saveNote.rawValue
-        case .toggleEditMode:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.toggleEditMode.rawValue
-        case .formatBold:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.formatBold.rawValue
-        case .formatItalic:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.formatItalic.rawValue
-        case .insertCodeBlock:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.insertCodeBlock.rawValue
-        case .createFolder:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.createFolder.rawValue
-        case .openInDefaultApp:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.openInDefaultApp.rawValue
-        case .quickLook:
-            payload[ShortcutCommandKeys.type] = ShortcutCommandType.quickLook.rawValue
+        default:
+            guard let commandType = Self.commandTypeMap[action] else {
+                return payload
+            }
+            payload[ShortcutCommandKeys.type] = commandType.rawValue
         }
         return payload
     }
@@ -355,53 +313,101 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
             guard let directionRaw = payload[ShortcutCommandKeys.direction],
                   let direction = ShortcutListDirection(rawValue: directionRaw) else { return nil }
             return .navigateList(direction)
-        case .openSettings:
-            return .openSettings
-        case .newItem:
-            return .newItem
-        case .closeItem:
-            return .closeItem
-        case .focusSearch:
-            return .focusSearch
-        case .refreshSection:
-            return .refreshSection
-        case .showShortcuts:
-            return .showShortcuts
-        case .openScratchpad:
-            return .openScratchpad
-        case .toggleSidebar:
-            return .toggleSidebar
-        case .sendMessage:
-            return .sendMessage
-        case .attachFile:
-            return .attachFile
-        case .renameItem:
-            return .renameItem
-        case .deleteItem:
-            return .deleteItem
-        case .pinItem:
-            return .pinItem
-        case .archiveItem:
-            return .archiveItem
-        case .openInBrowser:
-            return .openInBrowser
-        case .saveNote:
-            return .saveNote
-        case .toggleEditMode:
-            return .toggleEditMode
-        case .formatBold:
-            return .formatBold
-        case .formatItalic:
-            return .formatItalic
-        case .insertCodeBlock:
-            return .insertCodeBlock
-        case .createFolder:
-            return .createFolder
-        case .openInDefaultApp:
-            return .openInDefaultApp
-        case .quickLook:
-            return .quickLook
+        default:
+            return Self.actionFromCommandType[type]
         }
     }
+
+    private static let sectionSymbolNames: [AppSection: String] = [
+        .notes: "text.document",
+        .tasks: "checkmark.square",
+        .websites: "globe",
+        .files: "folder",
+        .chat: "bubble",
+        .settings: "gearshape"
+    ]
+
+    private static let listDirectionSymbols: [ShortcutListDirection: String] = [
+        .next: "arrow.down",
+        .previous: "arrow.up"
+    ]
+
+    private static let actionSymbolNames: [ShortcutAction: String] = [
+        .openSettings: "gearshape",
+        .newItem: "plus",
+        .closeItem: "xmark",
+        .focusSearch: "magnifyingglass",
+        .refreshSection: "arrow.clockwise",
+        .showShortcuts: "command",
+        .openScratchpad: "square.and.pencil",
+        .toggleSidebar: "sidebar.left",
+        .sendMessage: "paperplane",
+        .attachFile: "paperclip",
+        .renameItem: "pencil",
+        .deleteItem: "trash",
+        .pinItem: "pin",
+        .archiveItem: "archivebox",
+        .openInBrowser: "safari",
+        .saveNote: "square.and.arrow.down",
+        .toggleEditMode: "square.and.pencil",
+        .formatBold: "bold",
+        .formatItalic: "italic",
+        .insertCodeBlock: "chevron.left.slash.chevron.right",
+        .createFolder: "folder.badge.plus",
+        .openInDefaultApp: "arrow.up.right.square",
+        .quickLook: "eye"
+    ]
+
+    private static let commandTypeMap: [ShortcutAction: ShortcutCommandType] = [
+        .openSettings: .openSettings,
+        .newItem: .newItem,
+        .closeItem: .closeItem,
+        .focusSearch: .focusSearch,
+        .refreshSection: .refreshSection,
+        .showShortcuts: .showShortcuts,
+        .openScratchpad: .openScratchpad,
+        .toggleSidebar: .toggleSidebar,
+        .sendMessage: .sendMessage,
+        .attachFile: .attachFile,
+        .renameItem: .renameItem,
+        .deleteItem: .deleteItem,
+        .pinItem: .pinItem,
+        .archiveItem: .archiveItem,
+        .openInBrowser: .openInBrowser,
+        .saveNote: .saveNote,
+        .toggleEditMode: .toggleEditMode,
+        .formatBold: .formatBold,
+        .formatItalic: .formatItalic,
+        .insertCodeBlock: .insertCodeBlock,
+        .createFolder: .createFolder,
+        .openInDefaultApp: .openInDefaultApp,
+        .quickLook: .quickLook
+    ]
+
+    private static let actionFromCommandType: [ShortcutCommandType: ShortcutAction] = [
+        .openSettings: .openSettings,
+        .newItem: .newItem,
+        .closeItem: .closeItem,
+        .focusSearch: .focusSearch,
+        .refreshSection: .refreshSection,
+        .showShortcuts: .showShortcuts,
+        .openScratchpad: .openScratchpad,
+        .toggleSidebar: .toggleSidebar,
+        .sendMessage: .sendMessage,
+        .attachFile: .attachFile,
+        .renameItem: .renameItem,
+        .deleteItem: .deleteItem,
+        .pinItem: .pinItem,
+        .archiveItem: .archiveItem,
+        .openInBrowser: .openInBrowser,
+        .saveNote: .saveNote,
+        .toggleEditMode: .toggleEditMode,
+        .formatBold: .formatBold,
+        .formatItalic: .formatItalic,
+        .insertCodeBlock: .insertCodeBlock,
+        .createFolder: .createFolder,
+        .openInDefaultApp: .openInDefaultApp,
+        .quickLook: .quickLook
+    ]
 }
 #endif

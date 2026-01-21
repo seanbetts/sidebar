@@ -196,7 +196,9 @@ final class SpreadsheetGridLayout: UICollectionViewLayout {
         return cachedAttributes.values.compactMap { attributes in
             if attributes.frame.intersects(rect) {
                 if attributes.indexPath.section == 0 {
-                    let adjusted = attributes.copy() as! UICollectionViewLayoutAttributes
+                    guard let adjusted = attributes.copy() as? UICollectionViewLayoutAttributes else {
+                        return attributes
+                    }
                     adjusted.frame.origin.y = offsetY
                     adjusted.zIndex = 3
                     return adjusted

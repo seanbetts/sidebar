@@ -104,7 +104,9 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
             }
         }
     }
+}
 
+extension SupabaseRealtimeAdapter {
     private func subscribeToNotes(userId: String) async {
         if let existingChannel = notesChannel {
             await client.realtimeV2.removeChannel(existingChannel)
@@ -313,6 +315,9 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
         }
     }
 
+}
+
+extension SupabaseRealtimeAdapter {
     func handleNoteInsert(_ action: RealtimeActionDecoding) {
         do {
             let decoder = Self.makeDecoder()

@@ -23,7 +23,7 @@ public final class PersistenceController {
             container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
         }
 
-        container.loadPersistentStores { _description, error in
+        container.loadPersistentStores { _, error in
             if let error {
                 assertionFailure("Failed to load persistent stores: \(error)")
             }

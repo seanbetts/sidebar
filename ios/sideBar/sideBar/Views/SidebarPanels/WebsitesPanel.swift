@@ -102,7 +102,9 @@ private struct WebsitesPanelView: View {
             }
         }
     }
+}
 
+extension WebsitesPanelView {
     private var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Websites") {
@@ -321,7 +323,9 @@ private struct WebsitesPanelView: View {
             await viewModel.load()
         }
     }
+}
 
+extension WebsitesPanelView {
     private func open(item: WebsiteItem) {
         selection = item.id
         Task { await viewModel.selectWebsite(id: item.id) }

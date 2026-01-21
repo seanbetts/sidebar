@@ -29,55 +29,46 @@ extension ChatViewModel {
     }
 
     public func handle(event: ChatStreamEvent) {
-        switch event.type {
-        case .token:
-            appendToken(from: event)
-        case .toolCall:
-            handleToolCall(event)
-        case .toolResult:
-            handleToolResult(event)
-        case .complete:
-            finalizeStreaming(status: .complete)
-        case .error:
-            errorMessage = "Chat stream error"
-            finalizeStreaming(status: .error)
-        case .noteCreated:
-            handleNoteCreate(event)
-        case .noteUpdated:
-            handleNoteUpdate(event)
-        case .notePinned:
-            handleNotePinned(event)
-        case .noteMoved:
-            handleNoteMoved(event)
-        case .noteDeleted:
-            handleNoteDelete(event)
-        case .websiteSaved:
-            handleWebsiteSaved(event)
-        case .websitePinned:
-            handleWebsitePinned(event)
-        case .websiteArchived:
-            handleWebsiteArchived(event)
-        case .websiteDeleted:
-            handleWebsiteDeleted(event)
-        case .ingestionUpdated:
-            handleIngestionUpdated(event)
-        case .themeSet:
-            handleThemeSet(event)
-        case .scratchpadUpdated:
-            cache.remove(key: CacheKeys.scratchpad)
-            scratchpadStore?.bump()
-        case .scratchpadCleared:
-            cache.remove(key: CacheKeys.scratchpad)
-            scratchpadStore?.bump()
-        case .promptPreview:
-            handlePromptPreview(event)
-        case .toolStart:
-            handleToolStart(event)
-        case .toolEnd:
-            handleToolEnd(event)
-        case .memoryCreated, .memoryUpdated, .memoryDeleted:
-            break
+        if let handler = streamEventHandlers[event.type] {
+            handler(event)
         }
+    }
+
+    private var streamEventHandlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] {
+        [
+            .token: { [weak self] in self?.appendToken(from: $0) },
+            .toolCall: { [weak self] in self?.handleToolCall($0) },
+            .toolResult: { [weak self] in self?.handleToolResult($0) },
+            .complete: { [weak self] in self?.finalizeStreaming(status: .complete) },
+            .error: { [weak self] _ in
+                self?.errorMessage = "Chat stream error"
+                self?.finalizeStreaming(status: .error)
+            },
+            .noteCreated: { [weak self] in self?.handleNoteCreate($0) },
+            .noteUpdated: { [weak self] in self?.handleNoteUpdate($0) },
+            .notePinned: { [weak self] in self?.handleNotePinned($0) },
+            .noteMoved: { [weak self] in self?.handleNoteMoved($0) },
+            .noteDeleted: { [weak self] in self?.handleNoteDelete($0) },
+            .websiteSaved: { [weak self] in self?.handleWebsiteSaved($0) },
+            .websitePinned: { [weak self] in self?.handleWebsitePinned($0) },
+            .websiteArchived: { [weak self] in self?.handleWebsiteArchived($0) },
+            .websiteDeleted: { [weak self] in self?.handleWebsiteDeleted($0) },
+            .ingestionUpdated: { [weak self] in self?.handleIngestionUpdated($0) },
+            .themeSet: { [weak self] in self?.handleThemeSet($0) },
+            .scratchpadUpdated: { [weak self] _ in self?.refreshScratchpad() },
+            .scratchpadCleared: { [weak self] _ in self?.refreshScratchpad() },
+            .promptPreview: { [weak self] in self?.handlePromptPreview($0) },
+            .toolStart: { [weak self] in self?.handleToolStart($0) },
+            .toolEnd: { [weak self] in self?.handleToolEnd($0) },
+            .memoryCreated: { _ in },
+            .memoryUpdated: { _ in },
+            .memoryDeleted: { _ in }
+        ]
+    }
+
+    private func refreshScratchpad() {
+        cache.remove(key: CacheKeys.scratchpad)
+        scratchpadStore?.bump()
     }
 
     func applySelectionIfNeeded(using items: [Conversation]) {

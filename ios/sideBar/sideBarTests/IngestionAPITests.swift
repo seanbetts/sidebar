@@ -38,7 +38,37 @@ final class IngestionAPITests: XCTestCase {
                 headerFields: nil
             )!
             let payload = """
-            {"items":[{"file":{"id":"f1","filename_original":"doc.txt","path":null,"mime_original":"text/plain","size_bytes":1,"sha256":null,"pinned":null,"pinned_order":null,"category":null,"source_url":null,"source_metadata":null,"created_at":"2024-01-01"},"job":{"status":null,"stage":null,"error_code":null,"error_message":null,"user_message":null,"progress":null,"attempts":0,"updated_at":null},"recommended_viewer":null}]}
+            {
+              "items": [
+                {
+                  "file": {
+                    "id": "f1",
+                    "filename_original": "doc.txt",
+                    "path": null,
+                    "mime_original": "text/plain",
+                    "size_bytes": 1,
+                    "sha256": null,
+                    "pinned": null,
+                    "pinned_order": null,
+                    "category": null,
+                    "source_url": null,
+                    "source_metadata": null,
+                    "created_at": "2024-01-01"
+                  },
+                  "job": {
+                    "status": null,
+                    "stage": null,
+                    "error_code": null,
+                    "error_message": null,
+                    "user_message": null,
+                    "progress": null,
+                    "attempts": 0,
+                    "updated_at": null
+                  },
+                  "recommended_viewer": null
+                }
+              ]
+            }
             """
             return (response, Data(payload.utf8))
         }

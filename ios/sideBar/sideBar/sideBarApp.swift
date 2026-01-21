@@ -9,7 +9,7 @@ import SwiftUI
 import os
 
 @main
-struct sideBarApp: App {
+struct SideBarApp: App {
     #if os(iOS)
     @UIApplicationDelegateAdaptor(AppLaunchDelegate.self) private var appDelegate
     #endif
