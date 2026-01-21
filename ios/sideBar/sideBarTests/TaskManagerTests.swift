@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class TaskManagerTests: XCTestCase {
     func testManagedTaskRunDebouncedCancelsPrevious() async {
         let manager = ManagedTask()
