@@ -1,19 +1,36 @@
 import Foundation
 import Combine
 
-@MainActor
-public final class NotesStore: ObservableObject {
+public final class NotesStore: CachedStoreBase<FileTree> {
     @Published public private(set) var tree: FileTree? = nil
     @Published public private(set) var activeNote: NotePayload? = nil
 
     private let api: any NotesProviding
-    private let cacheClient: CacheClient
     private var isRefreshingTree = false
 
     public init(api: any NotesProviding, cache: CacheClient) {
         self.api = api
-        self.cacheClient = cache
+        super.init(cache: cache)
     }
+
+    // MARK: - CachedStoreBase Overrides
+
+    public override var cacheKey: String { CacheKeys.notesTree }
+    public override var cacheTTL: TimeInterval { CachePolicy.notesTree }
+
+    public override func fetchFromAPI() async throws -> FileTree {
+        try await api.listTree()
+    }
+
+    public override func applyData(_ data: FileTree, persist: Bool) {
+        applyTreeUpdate(data, persist: persist)
+    }
+
+    public override func backgroundRefresh() async {
+        await refreshTree()
+    }
+
+    // MARK: - Public API
 
     public func loadTree(force: Bool = false) async throws {
         try await loadWithCache(force: force)
@@ -21,7 +38,7 @@ public final class NotesStore: ObservableObject {
 
     public func loadNote(id: String, force: Bool = false) async throws {
         let cacheKey = CacheKeys.note(id: id)
-        if !force, let cached: NotePayload = cacheClient.get(key: cacheKey) {
+        if !force, let cached: NotePayload = cache.get(key: cacheKey) {
             applyNoteUpdate(cached, persist: false)
             return
         }
@@ -30,11 +47,11 @@ public final class NotesStore: ObservableObject {
     }
 
     public func invalidateTree() {
-        cacheClient.remove(key: CacheKeys.notesTree)
+        cache.remove(key: CacheKeys.notesTree)
     }
 
     public func invalidateNote(id: String) {
-        cacheClient.remove(key: CacheKeys.note(id: id))
+        cache.remove(key: CacheKeys.note(id: id))
     }
 
     public func clearActiveNote() {
@@ -52,7 +69,7 @@ public final class NotesStore: ObservableObject {
                 activeNote = nil
             }
             if let noteId {
-                cacheClient.remove(key: CacheKeys.note(id: noteId))
+                cache.remove(key: CacheKeys.note(id: noteId))
             }
         } else if let record = payload.record, let mapped = RealtimeMappers.mapNote(record) {
             applyNoteUpdate(mapped, persist: true)
@@ -64,6 +81,8 @@ public final class NotesStore: ObservableObject {
         tree = nil
         activeNote = nil
     }
+
+    // MARK: - Private
 
     private func refreshTree() async {
         guard !isRefreshingTree else {
@@ -85,7 +104,7 @@ public final class NotesStore: ObservableObject {
         }
         tree = incoming
         if persist {
-            cacheClient.set(key: CacheKeys.notesTree, value: incoming, ttlSeconds: CachePolicy.notesTree)
+            cache.set(key: CacheKeys.notesTree, value: incoming, ttlSeconds: CachePolicy.notesTree)
         }
     }
 
@@ -102,7 +121,7 @@ public final class NotesStore: ObservableObject {
         }
         activeNote = incoming
         if persist {
-            cacheClient.set(key: CacheKeys.note(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.noteContent)
+            cache.set(key: CacheKeys.note(id: incoming.id), value: incoming, ttlSeconds: CachePolicy.noteContent)
         }
     }
 
@@ -114,25 +133,5 @@ public final class NotesStore: ObservableObject {
             current.content != incoming.content ||
             current.name != incoming.name ||
             current.path != incoming.path
-    }
-}
-
-extension NotesStore: CachedStore {
-    public typealias CachedData = FileTree
-
-    public var cache: CacheClient { cacheClient }
-    public var cacheKey: String { CacheKeys.notesTree }
-    public var cacheTTL: TimeInterval { CachePolicy.notesTree }
-
-    public func fetchFromAPI() async throws -> FileTree {
-        try await api.listTree()
-    }
-
-    public func applyData(_ data: FileTree, persist: Bool) {
-        applyTreeUpdate(data, persist: persist)
-    }
-
-    public func backgroundRefresh() async {
-        await refreshTree()
     }
 }
