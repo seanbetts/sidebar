@@ -72,7 +72,9 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
         localItems = [:]
         activeMeta = nil
     }
+}
 
+extension IngestionStore {
     public func applyIngestedFileEvent(_ payload: RealtimePayload<IngestedFileRealtimeRecord>) {
         let fileId = payload.record?.id ?? payload.oldRecord?.id
         switch payload.eventType {
@@ -317,7 +319,9 @@ public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
         localItems.removeValue(forKey: fileId)
         items = mergeItems(remoteItems)
     }
+}
 
+extension IngestionStore {
     // MARK: - Private
 
     private func refreshList() async {

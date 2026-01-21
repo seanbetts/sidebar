@@ -75,6 +75,15 @@ public final class KeyboardShortcutRegistry {
     }
 
     private static func buildShortcuts() -> [KeyboardShortcut] {
+        buildUniversalShortcuts()
+            + buildChatShortcuts()
+            + buildNotesShortcuts()
+            + buildNotesEditingShortcuts()
+            + buildWebsitesShortcuts()
+            + buildFilesShortcuts()
+    }
+
+    private static func buildUniversalShortcuts() -> [KeyboardShortcut] {
         [
             KeyboardShortcut(
                 input: "1",
@@ -169,9 +178,12 @@ public final class KeyboardShortcutRegistry {
                 description: "Show or hide the sidebar",
                 action: .toggleSidebar,
                 contexts: [.universal]
-            ),
+            )
+        ]
+    }
 
-            // Chat
+    private static func buildChatShortcuts() -> [KeyboardShortcut] {
+        [
             KeyboardShortcut(
                 input: "\r",
                 modifiers: [.command],
@@ -203,9 +215,12 @@ public final class KeyboardShortcutRegistry {
                 description: "Delete the current conversation",
                 action: .deleteItem,
                 contexts: [.chat]
-            ),
+            )
+        ]
+    }
 
-            // Notes
+    private static func buildNotesShortcuts() -> [KeyboardShortcut] {
+        [
             KeyboardShortcut(
                 input: "n",
                 modifiers: [.command, .shift],
@@ -252,8 +267,12 @@ public final class KeyboardShortcutRegistry {
                 description: "Delete the current note",
                 action: .deleteItem,
                 contexts: [.notes]
-            ),
-            // Notes editing
+            )
+        ]
+    }
+
+    private static func buildNotesEditingShortcuts() -> [KeyboardShortcut] {
+        [
             KeyboardShortcut(
                 input: "b",
                 title: "Bold",
@@ -275,9 +294,12 @@ public final class KeyboardShortcutRegistry {
                 description: "Insert a code block",
                 action: .insertCodeBlock,
                 contexts: [.notesEditing]
-            ),
+            )
+        ]
+    }
 
-            // Websites
+    private static func buildWebsitesShortcuts() -> [KeyboardShortcut] {
+        [
             KeyboardShortcut(
                 input: "p",
                 modifiers: [.command, .alternate],
@@ -309,9 +331,12 @@ public final class KeyboardShortcutRegistry {
                 description: "Open the website in the browser",
                 action: .openInBrowser,
                 contexts: [.websites]
-            ),
+            )
+        ]
+    }
 
-            // Files
+    private static func buildFilesShortcuts() -> [KeyboardShortcut] {
+        [
             KeyboardShortcut(
                 input: UIKeyCommand.inputDelete,
                 modifiers: [.command, .alternate, .shift],

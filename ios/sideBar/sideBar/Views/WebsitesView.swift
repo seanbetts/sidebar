@@ -170,7 +170,9 @@ private struct WebsitesDetailView: View {
         }
         #endif
     }
+}
 
+extension WebsitesDetailView {
     private var header: some View {
         ContentHeaderRow(
             iconName: "globe",

@@ -38,7 +38,9 @@ private struct FilesPanelView: View {
     var body: some View {
         content
     }
+}
 
+extension FilesPanelView {
     private var content: some View {
         mainContent
             .frame(maxHeight: .infinity)
@@ -289,7 +291,9 @@ private struct FilesPanelView: View {
             listAppeared = !isLoading
         }
     }
+}
 
+extension FilesPanelView {
     private func open(item: IngestionListItem) {
         open(fileId: item.file.id)
     }

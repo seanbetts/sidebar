@@ -65,60 +65,26 @@ public final class AppEnvironment: ObservableObject {
         let storeStart = CFAbsoluteTimeGetCurrent()
         #endif
         self.container = container
-        self.themeManager = ThemeManager()
-        self.chatStore = ChatStore(
-            conversationsAPI: container.conversationsAPI,
-            cache: container.cacheClient
-        )
-        self.notesStore = NotesStore(api: container.notesAPI, cache: container.cacheClient)
-        self.websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
-        self.ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
-        self.tasksStore = TasksStore()
-        self.scratchpadStore = ScratchpadStore()
-        self.toastCenter = ToastCenter()
-        self.chatViewModel = ChatViewModel(
-            chatAPI: container.chatAPI,
-            conversationsAPI: container.conversationsAPI,
-            ingestionAPI: container.ingestionAPI,
-            cache: container.cacheClient,
-            notesStore: notesStore,
-            websitesStore: websitesStore,
-            ingestionStore: ingestionStore,
-            themeManager: themeManager,
-            streamClient: container.makeChatStreamClient(handler: nil),
-            chatStore: chatStore,
-            toastCenter: toastCenter,
-            scratchpadStore: scratchpadStore
-        )
-        let temporaryStore = TemporaryFileStore.shared
-        self.notesViewModel = NotesViewModel(
-            api: container.notesAPI,
-            store: notesStore,
-            toastCenter: toastCenter
-        )
-        self.notesEditorViewModel = NotesEditorViewModel(
-            api: container.notesAPI,
-            notesStore: notesStore,
-            notesViewModel: notesViewModel,
-            toastCenter: toastCenter
-        )
-        self.ingestionViewModel = IngestionViewModel(
-            api: container.ingestionAPI,
-            store: ingestionStore,
-            temporaryStore: temporaryStore,
-            uploadManager: IngestionUploadManager(config: container.apiClient.config)
-        )
-        self.websitesViewModel = WebsitesViewModel(api: container.websitesAPI, store: websitesStore)
-        self.memoriesViewModel = MemoriesViewModel(api: container.memoriesAPI, cache: container.cacheClient)
-        self.settingsViewModel = SettingsViewModel(
-            settingsAPI: container.settingsAPI,
-            skillsAPI: container.skillsAPI,
-            cache: container.cacheClient
-        )
-        self.weatherViewModel = WeatherViewModel(api: container.weatherAPI)
-        self.realtimeClient = container.makeRealtimeClient(handler: nil)
-        self.networkMonitor = NetworkMonitor(startMonitoring: !isTestMode)
-        self.biometricMonitor = BiometricMonitor()
+        let dependencies = Self.buildDependencies(container: container, isTestMode: isTestMode)
+        self.themeManager = dependencies.themeManager
+        self.chatStore = dependencies.chatStore
+        self.notesStore = dependencies.notesStore
+        self.websitesStore = dependencies.websitesStore
+        self.ingestionStore = dependencies.ingestionStore
+        self.tasksStore = dependencies.tasksStore
+        self.scratchpadStore = dependencies.scratchpadStore
+        self.toastCenter = dependencies.toastCenter
+        self.chatViewModel = dependencies.chatViewModel
+        self.notesViewModel = dependencies.notesViewModel
+        self.notesEditorViewModel = dependencies.notesEditorViewModel
+        self.ingestionViewModel = dependencies.ingestionViewModel
+        self.websitesViewModel = dependencies.websitesViewModel
+        self.memoriesViewModel = dependencies.memoriesViewModel
+        self.settingsViewModel = dependencies.settingsViewModel
+        self.weatherViewModel = dependencies.weatherViewModel
+        self.realtimeClient = dependencies.realtimeClient
+        self.networkMonitor = dependencies.networkMonitor
+        self.biometricMonitor = dependencies.biometricMonitor
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
         #if os(iOS)
@@ -135,30 +101,150 @@ public final class AppEnvironment: ObservableObject {
         #if DEBUG
         let subscriptionsStart = CFAbsoluteTimeGetCurrent()
         #endif
-        if let authAdapter = container.authSession as? SupabaseAuthAdapter {
-            authAdapter.$accessToken
-                .sink { [weak self] _token in
-                    self?.refreshAuthState()
-                }
-                .store(in: &cancellables)
+        configureSubscriptions()
+        #if DEBUG
+        logStep("Subscriptions", subscriptionsStart)
+        #endif
 
-            authAdapter.$authError
-                .compactMap { $0 }
-                .sink { [weak self, weak authAdapter] event in
-                    self?.toastCenter.show(message: event.message)
-                    authAdapter?.clearAuthError()
-                }
-                .store(in: &cancellables)
-
-            authAdapter.$sessionExpiryWarning
-                .sink { [weak self] warning in
-                    DispatchQueue.main.async {
-                        self?.sessionExpiryWarning = warning
-                    }
-                }
-                .store(in: &cancellables)
+        configureRealtimeClient()
+        observeSelectionChanges()
+        if isAuthenticated {
+            biometricMonitor.startMonitoring()
         }
+        #if DEBUG
+        logStep("Realtime + monitors", initStart)
+        #endif
+    }
 
+    private struct EnvironmentDependencies {
+        let themeManager: ThemeManager
+        let chatStore: ChatStore
+        let notesStore: NotesStore
+        let websitesStore: WebsitesStore
+        let ingestionStore: IngestionStore
+        let tasksStore: TasksStore
+        let scratchpadStore: ScratchpadStore
+        let toastCenter: ToastCenter
+        let chatViewModel: ChatViewModel
+        let notesViewModel: NotesViewModel
+        let notesEditorViewModel: NotesEditorViewModel
+        let ingestionViewModel: IngestionViewModel
+        let websitesViewModel: WebsitesViewModel
+        let memoriesViewModel: MemoriesViewModel
+        let settingsViewModel: SettingsViewModel
+        let weatherViewModel: WeatherViewModel
+        let realtimeClient: RealtimeClient
+        let networkMonitor: NetworkMonitor
+        let biometricMonitor: BiometricMonitor
+    }
+
+    private static func buildDependencies(
+        container: ServiceContainer,
+        isTestMode: Bool
+    ) -> EnvironmentDependencies {
+        let themeManager = ThemeManager()
+        let chatStore = ChatStore(conversationsAPI: container.conversationsAPI, cache: container.cacheClient)
+        let notesStore = NotesStore(api: container.notesAPI, cache: container.cacheClient)
+        let websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
+        let ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
+        let tasksStore = TasksStore()
+        let scratchpadStore = ScratchpadStore()
+        let toastCenter = ToastCenter()
+        let chatViewModel = ChatViewModel(
+            chatAPI: container.chatAPI,
+            conversationsAPI: container.conversationsAPI,
+            ingestionAPI: container.ingestionAPI,
+            cache: container.cacheClient,
+            notesStore: notesStore,
+            websitesStore: websitesStore,
+            ingestionStore: ingestionStore,
+            themeManager: themeManager,
+            streamClient: container.makeChatStreamClient(handler: nil),
+            chatStore: chatStore,
+            toastCenter: toastCenter,
+            scratchpadStore: scratchpadStore
+        )
+        let temporaryStore = TemporaryFileStore.shared
+        let notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore, toastCenter: toastCenter)
+        let notesEditorViewModel = NotesEditorViewModel(
+            api: container.notesAPI,
+            notesStore: notesStore,
+            notesViewModel: notesViewModel,
+            toastCenter: toastCenter
+        )
+        let ingestionViewModel = IngestionViewModel(
+            api: container.ingestionAPI,
+            store: ingestionStore,
+            temporaryStore: temporaryStore,
+            uploadManager: IngestionUploadManager(config: container.apiClient.config)
+        )
+        let websitesViewModel = WebsitesViewModel(api: container.websitesAPI, store: websitesStore)
+        let memoriesViewModel = MemoriesViewModel(api: container.memoriesAPI, cache: container.cacheClient)
+        let settingsViewModel = SettingsViewModel(
+            settingsAPI: container.settingsAPI,
+            skillsAPI: container.skillsAPI,
+            cache: container.cacheClient
+        )
+        let weatherViewModel = WeatherViewModel(api: container.weatherAPI)
+        let realtimeClient = container.makeRealtimeClient(handler: nil)
+        let networkMonitor = NetworkMonitor(startMonitoring: !isTestMode)
+        let biometricMonitor = BiometricMonitor()
+        return EnvironmentDependencies(
+            themeManager: themeManager,
+            chatStore: chatStore,
+            notesStore: notesStore,
+            websitesStore: websitesStore,
+            ingestionStore: ingestionStore,
+            tasksStore: tasksStore,
+            scratchpadStore: scratchpadStore,
+            toastCenter: toastCenter,
+            chatViewModel: chatViewModel,
+            notesViewModel: notesViewModel,
+            notesEditorViewModel: notesEditorViewModel,
+            ingestionViewModel: ingestionViewModel,
+            websitesViewModel: websitesViewModel,
+            memoriesViewModel: memoriesViewModel,
+            settingsViewModel: settingsViewModel,
+            weatherViewModel: weatherViewModel,
+            realtimeClient: realtimeClient,
+            networkMonitor: networkMonitor,
+            biometricMonitor: biometricMonitor
+        )
+    }
+
+    private func configureSubscriptions() {
+        if let authAdapter = container.authSession as? SupabaseAuthAdapter {
+            bindAuthAdapter(authAdapter)
+        }
+        forwardObjectWillChange()
+        monitorNetwork()
+    }
+
+    private func bindAuthAdapter(_ authAdapter: SupabaseAuthAdapter) {
+        authAdapter.$accessToken
+            .sink { [weak self] _ in
+                self?.refreshAuthState()
+            }
+            .store(in: &cancellables)
+
+        authAdapter.$authError
+            .compactMap { $0 }
+            .sink { [weak self, weak authAdapter] event in
+                self?.toastCenter.show(message: event.message)
+                authAdapter?.clearAuthError()
+            }
+            .store(in: &cancellables)
+
+        authAdapter.$sessionExpiryWarning
+            .sink { [weak self] warning in
+                DispatchQueue.main.async {
+                    self?.sessionExpiryWarning = warning
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func forwardObjectWillChange() {
         settingsViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
@@ -200,7 +286,9 @@ public final class AppEnvironment: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+    }
 
+    private func monitorNetwork() {
         networkMonitor.$isOffline
             .removeDuplicates()
             .sink { [weak self] isOffline in
@@ -210,23 +298,17 @@ public final class AppEnvironment: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-        #if DEBUG
-        logStep("Subscriptions", subscriptionsStart)
-        #endif
+    }
 
+    private func configureRealtimeClient() {
         if let realtimeClient = realtimeClient as? SupabaseRealtimeAdapter {
             realtimeClient.handler = self
         }
         realtimeClientStopStart()
-        observeSelectionChanges()
-        if isAuthenticated {
-            biometricMonitor.startMonitoring()
-        }
-        #if DEBUG
-        logStep("Realtime + monitors", initStart)
-        #endif
     }
+}
 
+extension AppEnvironment {
     #if os(iOS)
     public var activeShortcutContexts: Set<ShortcutContext> {
         var contexts: Set<ShortcutContext> = [.universal]
@@ -243,7 +325,9 @@ public final class AppEnvironment: ObservableObject {
         shortcutActionEvent = ShortcutActionEvent(action: action, section: activeSection)
     }
     #endif
+}
 
+extension AppEnvironment {
     public func refreshAuthState() {
         let wasAuthenticated = isAuthenticated
         isAuthenticated = container.authSession.accessToken != nil
@@ -286,7 +370,9 @@ public final class AppEnvironment: ObservableObject {
             }
         }
     }
+}
 
+extension AppEnvironment {
     private func realtimeClientStopStart() {
         guard let userId = container.authSession.userId, isAuthenticated else {
             realtimeClient.stop()

@@ -199,7 +199,9 @@ private struct NotesDetailView: View {
             }
         }
     }
+}
 
+extension NotesDetailView {
     private var header: some View {
         ZStack(alignment: .bottomLeading) {
             ContentHeaderRow(
