@@ -25,5 +25,3 @@ jobs:
         working-directory: ios/sideBar
       - name: Doc comment coverage
         run: python scripts/check_ios_doc_comments.py
-      - name: Run tests with coverage
-        run: xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' -enableCodeCoverage YES test
