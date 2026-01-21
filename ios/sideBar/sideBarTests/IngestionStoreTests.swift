@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class IngestionStoreTests: XCTestCase {
-    func testApplyIngestedFileEventCachesList() {
+    func testApplyIngestedFileEventCachesList() async {
         let cache = TestCacheClient()
         let store = IngestionStore(api: MockIngestionAPI(), cache: cache)
 
@@ -36,7 +36,7 @@ final class IngestionStoreTests: XCTestCase {
         XCTAssertEqual(cached?.items.first?.file.id, "f1")
     }
 
-    func testApplyFileJobEventUpdatesJobStatus() {
+    func testApplyFileJobEventUpdatesJobStatus() async {
         let cache = TestCacheClient()
         let store = IngestionStore(api: MockIngestionAPI(), cache: cache)
 

@@ -26,7 +26,7 @@ Frontend → Backend API → Bridge (127.0.0.1:8787) → AppleScript → Things 
 ```
 Frontend → Backend API → PostgreSQL
 - Direct SQL queries (<50ms)
-- Offline-first (data in our DB)
+- Offline-first with client-side cache + outbox sync
 - Cross-platform ready
 - Full data ownership
 - Native recurrence logic (daily, weekly, monthly with intervals)
@@ -47,9 +47,11 @@ Frontend → Backend API → PostgreSQL
 - ✅ Mirror Things structure: Areas → Projects → Tasks hierarchy
 - ✅ Store tags as JSONB array for flexibility
 - ✅ Track completion with `completed_at` timestamp
-- ✅ Support task status: inbox, today, upcoming, someday, completed, trashed
+- ✅ Soft deletes only via `deleted_at` (no hard deletes for user data)
+- ✅ Define status semantics: store inbox/someday/completed/trashed; today/upcoming derived from dates in service layer
 - ✅ Store recurrence rules as JSONB (daily, weekly, monthly with intervals)
-- ✅ Auto-create next instances when repeating tasks completed
+- ✅ Auto-create next instances when repeating tasks completed (idempotent with template linkage)
+- ✅ RLS enforced with per-request `SET LOCAL app.current_user_id` session setting
 
 **API Compatibility:**
 - ✅ Keep existing REST endpoint structure
@@ -77,10 +79,11 @@ Frontend → Backend API → PostgreSQL
 - ✅ All 20 repeating tasks imported with correct recurrence rules
 - ✅ Repeating tasks auto-create next instance on completion
 - ✅ Task list loads in <100ms (vs current ~500ms with bridge)
-- ✅ Full CRUD operations working (create, read, update, delete, complete)
+- ✅ Full CRUD operations working (create, read, update, complete, soft-delete)
 - ✅ Search functionality matches or exceeds current capability
 - ✅ Counts/badges update in real-time
 - ✅ No regressions in existing UI/UX
+- ✅ Offline-first: local tasks readable offline; queued edits sync on reconnect
 - ✅ Zero downtime migration path
 - ✅ Rollback plan if issues arise
 
@@ -114,8 +117,10 @@ def upgrade() -> None:
         sa.Column('title', sa.String(500), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+        sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.Index('idx_task_areas_user_id', 'user_id'),
+        sa.Index('idx_task_areas_deleted_at', 'deleted_at'),
     )
 
     # Projects table
@@ -131,11 +136,13 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['area_id'], ['task_areas.id'], ondelete='SET NULL'),
         sa.Index('idx_task_projects_user_id', 'user_id'),
         sa.Index('idx_task_projects_area_id', 'area_id'),
         sa.Index('idx_task_projects_status', 'status'),
+        sa.Index('idx_task_projects_deleted_at', 'deleted_at'),
     )
 
     # Tasks table
@@ -150,7 +157,7 @@ def upgrade() -> None:
         # Core fields
         sa.Column('title', sa.String(1000), nullable=False),
         sa.Column('notes', sa.Text, nullable=True),
-        sa.Column('status', sa.String(50), nullable=False, default='inbox'),  # inbox, today, upcoming, someday, completed, trashed
+        sa.Column('status', sa.String(50), nullable=False, default='inbox'),  # inbox, someday, completed, trashed (today/upcoming derived from dates)
 
         # Dates
         sa.Column('deadline', sa.Date, nullable=True),           # When task is due
@@ -161,6 +168,7 @@ def upgrade() -> None:
         sa.Column('tags', JSONB, nullable=True, default=sa.text("'[]'::jsonb")),  # Array of tag strings
         sa.Column('repeating', sa.Boolean, nullable=False, default=False),
         sa.Column('repeat_template', sa.Boolean, nullable=False, default=False),
+        sa.Column('repeat_template_id', UUID(as_uuid=True), nullable=True),  # FK to tasks.id for idempotent repeats
 
         # Recurrence support
         sa.Column('recurrence_rule', JSONB, nullable=True),  # Structured recurrence rule (see Phase 2.5)
@@ -171,10 +179,12 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('trashed_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
 
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['project_id'], ['task_projects.id'], ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['area_id'], ['task_areas.id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['repeat_template_id'], ['tasks.id'], ondelete='SET NULL'),
 
         # Indexes for performance
         sa.Index('idx_tasks_user_id', 'user_id'),
@@ -186,6 +196,15 @@ def upgrade() -> None:
         sa.Index('idx_tasks_scheduled_date', 'scheduled_date'),
         sa.Index('idx_tasks_completed_at', 'completed_at'),
         sa.Index('idx_tasks_next_instance_date', 'next_instance_date'),  # For recurrence processing
+        sa.Index('idx_tasks_deleted_at', 'deleted_at'),
+        sa.Index('idx_tasks_repeat_template_id', 'repeat_template_id'),
+        sa.Index(
+            'uq_tasks_repeat_template_date',
+            'repeat_template_id',
+            'scheduled_date',
+            unique=True,
+            postgresql_where=sa.text('repeat_template_id IS NOT NULL')
+        ),
 
         # GIN index for tags array search
         sa.Index('idx_tasks_tags_gin', 'tags', postgresql_using='gin'),
@@ -194,10 +213,26 @@ def upgrade() -> None:
         sa.Index('idx_tasks_user_status', 'user_id', 'status'),
     )
 
+    # Offline sync idempotency log (outbox replay protection)
+    op.create_table(
+        'task_operation_log',
+        sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
+        sa.Column('user_id', UUID(as_uuid=True), nullable=False),
+        sa.Column('operation_id', sa.String(255), nullable=False),
+        sa.Column('operation_type', sa.String(50), nullable=False),
+        sa.Column('payload', JSONB, nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.Index('idx_task_operation_log_user_id', 'user_id'),
+        sa.Index('idx_task_operation_log_operation_id', 'operation_id'),
+        sa.Index('uq_task_operation_log_user_operation', 'user_id', 'operation_id', unique=True),
+    )
+
     # Enable RLS
     op.execute("ALTER TABLE task_areas ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE task_projects ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE tasks ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE task_operation_log ENABLE ROW LEVEL SECURITY")
 
     # RLS policies
     op.execute("""
@@ -212,12 +247,30 @@ def upgrade() -> None:
         CREATE POLICY tasks_user_isolation ON tasks
         USING (user_id = current_setting('app.current_user_id')::uuid)
     """)
+    op.execute("""
+        CREATE POLICY task_operation_log_user_isolation ON task_operation_log
+        USING (user_id = current_setting('app.current_user_id')::uuid)
+    """)
 
 def downgrade() -> None:
+    op.drop_table('task_operation_log')
     op.drop_table('tasks')
     op.drop_table('task_projects')
     op.drop_table('task_areas')
 ```
+
+### 1.1.1 RLS Session Context
+
+RLS policies require setting `app.current_user_id` on every request. Add this to the DB session dependency so queries fail fast if the setting is missing:
+
+```python
+# In db session dependency or middleware
+def with_user_context(db: Session, user_id: uuid.UUID) -> Session:
+    db.execute(sa.text("SET LOCAL app.current_user_id = :user_id"), {"user_id": str(user_id)})
+    return db
+```
+
+If no user context is set, reject the request with 401/403 before running queries.
 
 ### 1.2 SQLAlchemy Models
 
@@ -241,13 +294,15 @@ class TaskArea(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
-    projects: Mapped[list["TaskProject"]] = relationship(back_populates="area", cascade="all, delete-orphan")
-    tasks: Mapped[list["Task"]] = relationship(back_populates="area", cascade="all, delete-orphan")
+    projects: Mapped[list["TaskProject"]] = relationship(back_populates="area")
+    tasks: Mapped[list["Task"]] = relationship(back_populates="area")
 
     __table_args__ = (
         Index("idx_task_areas_user_id", "user_id"),
+        Index("idx_task_areas_deleted_at", "deleted_at"),
     )
 ```
 
@@ -275,15 +330,17 @@ class TaskProject(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
     area: Mapped["TaskArea"] = relationship(back_populates="projects")
-    tasks: Mapped[list["Task"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    tasks: Mapped[list["Task"]] = relationship(back_populates="project")
 
     __table_args__ = (
         Index("idx_task_projects_user_id", "user_id"),
         Index("idx_task_projects_area_id", "area_id"),
         Index("idx_task_projects_status", "status"),
+        Index("idx_task_projects_deleted_at", "deleted_at"),
     )
 ```
 
@@ -318,6 +375,7 @@ class Task(Base):
     tags: Mapped[list[str] | None] = mapped_column(JSONB, default=list)
     repeating: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     repeat_template: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    repeat_template_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="SET NULL"))
 
     # Recurrence support (see Phase 2.5)
     recurrence_rule: Mapped[dict | None] = mapped_column(JSONB)
@@ -327,6 +385,7 @@ class Task(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     trashed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
     project: Mapped["TaskProject"] = relationship(back_populates="tasks")
@@ -342,8 +401,11 @@ class Task(Base):
         Index("idx_tasks_scheduled_date", "scheduled_date"),
         Index("idx_tasks_completed_at", "completed_at"),
         Index("idx_tasks_next_instance_date", "next_instance_date"),
+        Index("idx_tasks_deleted_at", "deleted_at"),
+        Index("idx_tasks_repeat_template_id", "repeat_template_id"),
         Index("idx_tasks_tags_gin", "tags", postgresql_using="gin"),
         Index("idx_tasks_user_status", "user_id", "status"),
+        Index("uq_tasks_repeat_template_date", "repeat_template_id", "scheduled_date", unique=True),
     )
 ```
 
@@ -637,7 +699,7 @@ async def import_from_things(
 **What Gets Imported:**
 - ✅ All areas
 - ✅ Active projects (status = "active")
-- ✅ Active tasks (status = "inbox", "today", "upcoming", "someday")
+- ✅ Active tasks (status in "inbox"/"someday"; today/upcoming derived from dates)
 - ✅ Repeating tasks (active instances with recurrence rules)
 
 **What Gets Filtered Out:**
@@ -709,6 +771,8 @@ Things stores recurrence in binary plist format with these fields:
 // Every month on the 22nd (e.g., "Book Madisons")
 {"type": "monthly", "interval": 1, "day_of_month": 22, "start_date": "2025-01-01"}
 ```
+
+**Template linkage:** For imported repeating tasks, set `repeat_template=True` and `repeat_template_id=task.id` after insert so subsequent instances can be deduped and linked.
 
 ### 2.5.2 Parse Things Plist Recurrence
 
@@ -919,11 +983,24 @@ class RecurrenceService:
         if not task.recurrence_rule:
             return None
 
+        # Idempotency guard: use repeat_template_id to avoid duplicates on retries
+        template_id = task.repeat_template_id or task.id
+
         # Calculate next occurrence
         next_date = RecurrenceService.calculate_next_occurrence(
             task.recurrence_rule,
             from_date=task.completed_at.date() if task.completed_at else date.today()
         )
+
+        existing_task = db.execute(
+            select(Task).where(
+                Task.repeat_template_id == template_id,
+                Task.scheduled_date == next_date,
+                Task.deleted_at.is_(None)
+            )
+        ).scalar_one_or_none()
+        if existing_task:
+            return existing_task
 
         # Create new task instance
         new_task = Task(
@@ -941,7 +1018,8 @@ class RecurrenceService:
             scheduled_date=next_date,
             tags=task.tags,
             repeating=True,
-            repeat_template=False
+            repeat_template=False,
+            repeat_template_id=template_id
         )
 
         db.add(new_task)
@@ -978,7 +1056,11 @@ class TaskService:
     def complete_task(db: Session, user_id: str, task_id: str) -> dict:
         """Mark task as complete and create next instance if repeating"""
         task = db.execute(
-            select(Task).where(Task.id == uuid.UUID(task_id), Task.user_id == user_id)
+            select(Task).where(
+                Task.id == uuid.UUID(task_id),
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None)
+            )
         ).scalar_one_or_none()
 
         if not task:
@@ -1020,10 +1102,14 @@ class TaskService:
 - Replace bridge client calls with direct DB queries
 - Update `/api/v1/things/*` endpoints to use new service
 - Maintain existing API response schemas
+- Keep business logic in services (routers stay thin)
 
 ### 3.1 Native Task Service
 
 **File: `/backend/api/services/task_service.py` (NEW)**
+
+Normalize incoming status values so legacy clients can send "today"/"upcoming" without persisting them:
+- Map "today"/"upcoming" to `status="inbox"` and rely on `scheduled_date`/`deadline` for scope.
 
 ```python
 """Native task management service"""
@@ -1050,7 +1136,8 @@ class TaskService:
         query = select(Task).where(
             Task.user_id == user_id,
             Task.status != "completed",
-            Task.status != "trashed"
+            Task.status != "trashed",
+            Task.deleted_at.is_(None)
         ).options(
             joinedload(Task.project),
             joinedload(Task.area)
@@ -1059,19 +1146,19 @@ class TaskService:
         if scope == "today":
             # Tasks scheduled for today or overdue
             query = query.where(
+                Task.status != "someday",
                 or_(
                     Task.scheduled_date == today,
-                    and_(Task.deadline <= today, Task.deadline.isnot(None)),
-                    Task.status == "today"
+                    and_(Task.deadline <= today, Task.deadline.isnot(None))
                 )
             )
         elif scope == "upcoming":
             # Tasks with future dates
             query = query.where(
+                Task.status != "someday",
                 or_(
                     Task.scheduled_date > today,
-                    and_(Task.deadline > today, Task.deadline.isnot(None)),
-                    Task.status == "upcoming"
+                    and_(Task.deadline > today, Task.deadline.isnot(None))
                 )
             )
         elif scope == "inbox":
@@ -1081,11 +1168,17 @@ class TaskService:
 
         # Get related projects and areas
         projects = db.execute(
-            select(TaskProject).where(TaskProject.user_id == user_id)
+            select(TaskProject).where(
+                TaskProject.user_id == user_id,
+                TaskProject.deleted_at.is_(None)
+            )
         ).scalars().all()
 
         areas = db.execute(
-            select(TaskArea).where(TaskArea.user_id == user_id)
+            select(TaskArea).where(
+                TaskArea.user_id == user_id,
+                TaskArea.deleted_at.is_(None)
+            )
         ).scalars().all()
 
         return {
@@ -1103,6 +1196,7 @@ class TaskService:
             select(Task).where(
                 Task.user_id == user_id,
                 Task.status != "trashed",
+                Task.deleted_at.is_(None),
                 or_(
                     Task.title.ilike(f"%{query}%"),
                     Task.notes.ilike(f"%{query}%")
@@ -1128,7 +1222,8 @@ class TaskService:
         inbox_count = db.execute(
             select(func.count(Task.id)).where(
                 Task.user_id == user_id,
-                Task.status == "inbox"
+                Task.status == "inbox",
+                Task.deleted_at.is_(None)
             )
         ).scalar()
 
@@ -1138,10 +1233,11 @@ class TaskService:
                 Task.user_id == user_id,
                 Task.status != "completed",
                 Task.status != "trashed",
+                Task.deleted_at.is_(None),
+                Task.status != "someday",
                 or_(
                     Task.scheduled_date == today,
-                    and_(Task.deadline <= today, Task.deadline.isnot(None)),
-                    Task.status == "today"
+                    and_(Task.deadline <= today, Task.deadline.isnot(None))
                 )
             )
         ).scalar()
@@ -1152,10 +1248,11 @@ class TaskService:
                 Task.user_id == user_id,
                 Task.status != "completed",
                 Task.status != "trashed",
+                Task.deleted_at.is_(None),
+                Task.status != "someday",
                 or_(
                     Task.scheduled_date > today,
-                    and_(Task.deadline > today, Task.deadline.isnot(None)),
-                    Task.status == "upcoming"
+                    and_(Task.deadline > today, Task.deadline.isnot(None))
                 )
             )
         ).scalar()
@@ -1169,6 +1266,7 @@ class TaskService:
                 Task.user_id == user_id,
                 Task.status != "completed",
                 Task.status != "trashed",
+                Task.deleted_at.is_(None),
                 Task.project_id.isnot(None)
             ).group_by(Task.project_id)
         ).all()
@@ -1182,6 +1280,7 @@ class TaskService:
                 Task.user_id == user_id,
                 Task.status != "completed",
                 Task.status != "trashed",
+                Task.deleted_at.is_(None),
                 Task.area_id.isnot(None)
             ).group_by(Task.area_id)
         ).all()
@@ -1199,11 +1298,15 @@ class TaskService:
     @staticmethod
     def create_task(db: Session, user_id: str, data: dict) -> dict:
         """Create new task"""
+        status = data.get("status", "inbox")
+        if status in {"today", "upcoming"}:
+            status = "inbox"
+
         task = Task(
             user_id=user_id,
             title=data["title"],
             notes=data.get("notes"),
-            status=data.get("status", "inbox"),
+            status=status,
             deadline=datetime.fromisoformat(data["due_date"]).date() if data.get("due_date") else None,
             project_id=uuid.UUID(data["project_id"]) if data.get("project_id") else None,
             area_id=uuid.UUID(data["area_id"]) if data.get("area_id") else None,
@@ -1218,7 +1321,11 @@ class TaskService:
     def complete_task(db: Session, user_id: str, task_id: str) -> dict:
         """Mark task as complete"""
         task = db.execute(
-            select(Task).where(Task.id == uuid.UUID(task_id), Task.user_id == user_id)
+            select(Task).where(
+                Task.id == uuid.UUID(task_id),
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None)
+            )
         ).scalar_one_or_none()
 
         if not task:
@@ -1235,7 +1342,11 @@ class TaskService:
     def rename_task(db: Session, user_id: str, task_id: str, new_title: str) -> dict:
         """Rename a task"""
         task = db.execute(
-            select(Task).where(Task.id == uuid.UUID(task_id), Task.user_id == user_id)
+            select(Task).where(
+                Task.id == uuid.UUID(task_id),
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None)
+            )
         ).scalar_one_or_none()
 
         if not task:
@@ -1251,7 +1362,11 @@ class TaskService:
     def update_notes(db: Session, user_id: str, task_id: str, notes: str) -> dict:
         """Update task notes"""
         task = db.execute(
-            select(Task).where(Task.id == uuid.UUID(task_id), Task.user_id == user_id)
+            select(Task).where(
+                Task.id == uuid.UUID(task_id),
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None)
+            )
         ).scalar_one_or_none()
 
         if not task:
@@ -1267,7 +1382,11 @@ class TaskService:
     def move_task(db: Session, user_id: str, task_id: str, project_id: str = None, area_id: str = None) -> dict:
         """Move task to different project or area"""
         task = db.execute(
-            select(Task).where(Task.id == uuid.UUID(task_id), Task.user_id == user_id)
+            select(Task).where(
+                Task.id == uuid.UUID(task_id),
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None)
+            )
         ).scalar_one_or_none()
 
         if not task:
@@ -1293,7 +1412,11 @@ class TaskService:
     def trash_task(db: Session, user_id: str, task_id: str) -> dict:
         """Move task to trash"""
         task = db.execute(
-            select(Task).where(Task.id == uuid.UUID(task_id), Task.user_id == user_id)
+            select(Task).where(
+                Task.id == uuid.UUID(task_id),
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None)
+            )
         ).scalar_one_or_none()
 
         if not task:
@@ -1301,6 +1424,7 @@ class TaskService:
 
         task.status = "trashed"
         task.trashed_at = datetime.now()
+        task.deleted_at = datetime.now()
         task.updated_at = datetime.now()
         db.commit()
 
@@ -1310,7 +1434,11 @@ class TaskService:
     def set_due_date(db: Session, user_id: str, task_id: str, due_date: str = None) -> dict:
         """Set or clear task due date"""
         task = db.execute(
-            select(Task).where(Task.id == uuid.UUID(task_id), Task.user_id == user_id)
+            select(Task).where(
+                Task.id == uuid.UUID(task_id),
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None)
+            )
         ).scalar_one_or_none()
 
         if not task:
@@ -1365,6 +1493,8 @@ class TaskService:
             "updatedAt": area.updated_at.isoformat() if area.updated_at else None
         }
 ```
+
+**JSONB updates:** When mutating `tags` or `recurrence_rule`, call `flag_modified(task, "tags")` / `flag_modified(task, "recurrence_rule")` so SQLAlchemy persists changes.
 
 ### 3.2 Update Things Router
 
@@ -1440,22 +1570,53 @@ async def apply_operation(
         raise HTTPException(status_code=400, detail=f"Unknown operation: {op}")
 ```
 
+### 3.3 Offline Sync via `/apply`
+
+Extend `/apply` to accept batch operations and sync metadata for offline outbox replay:
+
+```python
+@router.post("/apply")
+async def apply_operation(
+    payload: dict,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """
+    Payload:
+      {
+        "last_sync": "2026-01-11T12:00:00Z" | null,
+        "operations": [
+          {"operation_id": "uuid", "op": "add", "client_updated_at": "...", ...}
+        ]
+      }
+    """
+    return TaskService.apply_operations(db, user_id, payload)
+```
+
+Server-side behavior:
+- Deduplicate by `(user_id, operation_id)` using `task_operation_log`.
+- Apply operations in order within a transaction.
+- Return `applied`, `conflicts`, and `server_updated_since` to let clients pull deltas.
+- Conflict rule: last-write-wins by `client_updated_at`, with server values returned on conflict.
+
 ### Deliverables
 - ✅ TaskService implements all CRUD operations
 - ✅ All `/api/v1/things/*` endpoints updated
+- ✅ `/api/v1/things/apply` supports offline outbox replay (batch operations)
 - ✅ API response schemas unchanged (frontend compatibility)
 - ✅ Direct DB queries replace bridge HTTP calls
 - ✅ Performance improvements measured (<100ms queries)
 
 ---
 
-## Phase 4: Frontend Migration (2 days)
+## Phase 4: Frontend Migration (3 days)
 
 ### Objectives
 - Update Things store to work with new API
 - Remove bridge-specific logic
 - Reduce cache TTL (5min → 1min)
 - Add optimistic updates
+- Implement offline cache + outbox sync
 
 ### 4.1 Update Things Store
 
@@ -1555,6 +1716,43 @@ function getRecurrenceLabel(task: ThingsTask): string | null {
 {/if}
 ```
 
+### 4.4 Offline-First Sync + Queue
+
+Implement a local cache and outbox so tasks remain usable offline:
+
+- Persist tasks and metadata in IndexedDB (e.g., `tasks`, `projects`, `areas`, `sync_state` stores).
+- Store mutations in an outbox (`operations` store) with `operation_id`, `client_updated_at`, and payload.
+- On app start: render from IndexedDB immediately, then call `/sync` with `last_sync`.
+- When online: flush outbox in order via `/sync`; remove applied ops and merge server deltas.
+- When offline: queue operations and update UI optimistically; reconcile on reconnect.
+- Conflict handling: if server returns conflicts, show a non-blocking banner and refresh affected items.
+
+Suggested structure:
+
+```typescript
+const outbox = new OutboxQueue("task-ops");
+
+async function enqueueOperation(op: TaskOperation) {
+  await outbox.add(op);
+  applyOptimisticUpdate(op);
+  if (navigator.onLine) {
+    await flushOutbox();
+  }
+}
+
+async function flushOutbox() {
+  const batch = await outbox.peekBatch(50);
+  if (!batch.length) return;
+  const response = await thingsAPI.apply({ lastSync, operations: batch });
+  await outbox.removeApplied(response.applied);
+  await mergeServerDeltas(response.updated_since);
+}
+```
+
+Suggested files:
+- `frontend/src/lib/services/task_sync.ts` (sync + outbox logic)
+- `frontend/src/lib/stores/task_cache.ts` (IndexedDB-backed cache)
+
 ### Deliverables
 - ✅ Cache TTL reduced to 1 minute
 - ✅ Optimistic updates for complete/create/rename
@@ -1562,6 +1760,7 @@ function getRecurrenceLabel(task: ThingsTask): string | null {
 - ✅ Recurrence: Toast notification when next instance created
 - ✅ Recurrence: Visual indicator (repeat icon) on repeating tasks
 - ✅ Recurrence: Auto-refresh to show new task
+- ✅ Offline-first: IndexedDB cache + outbox replay + conflict handling
 - ✅ No visual regressions
 
 ---
@@ -1577,9 +1776,11 @@ function getRecurrenceLabel(task: ThingsTask): string | null {
 ### 5.1 Additional Indexes
 
 ```sql
--- Composite index for today's tasks query
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Composite index for today's/upcoming tasks query
 CREATE INDEX idx_tasks_today_lookup ON tasks(user_id, status, scheduled_date, deadline)
-WHERE status != 'completed' AND status != 'trashed';
+WHERE deleted_at IS NULL AND status NOT IN ('completed', 'trashed', 'someday');
 
 -- Index for search queries
 CREATE INDEX idx_tasks_title_trgm ON tasks USING gin(title gin_trgm_ops);
@@ -1670,7 +1871,7 @@ def test_get_tasks_today(db, test_user):
     task = Task(
         user_id=test_user.id,
         title="Test task",
-        status="today",
+        status="inbox",
         scheduled_date=date.today()
     )
     db.add(task)
@@ -1700,7 +1901,7 @@ def test_complete_repeating_task_daily(db, test_user):
     task = Task(
         user_id=test_user.id,
         title="Daily task",
-        status="today",
+        status="inbox",
         recurrence_rule={"type": "daily", "interval": 1},
         repeating=True
     )
@@ -1746,6 +1947,7 @@ def test_parse_things_recurrence_plist(db, test_user):
 4. **Performance**: Measure query times (<100ms requirement)
 5. **Search**: Test full-text search accuracy
 6. **Counts**: Verify badge counts match across all views
+7. **Offline Sync**: Queue operations offline and verify `/apply` replay + conflict handling
 7. **Recurrence Flow**: Complete repeating task, verify next instance created with correct date
 
 ### Manual Testing Checklist
@@ -1760,6 +1962,9 @@ def test_parse_things_recurrence_plist(db, test_user):
 - [ ] Search for tasks
 - [ ] Verify counts/badges
 - [ ] Test on slow connection (performance)
+- [ ] Go offline: tasks still visible from local cache
+- [ ] Go offline: create/complete task, then reconnect and verify sync
+- [ ] Force a conflict (edit same task on two devices), verify conflict handling
 - [ ] Complete daily repeating task, verify next instance appears
 - [ ] Complete weekly repeating task, verify correct weekday
 - [ ] Complete monthly repeating task, verify correct day of month
@@ -2104,11 +2309,11 @@ USE_NATIVE_TASK_SYSTEM=false
 | 2. Things Import | 2-3 days | Phase 1 |
 | 2.5. Recurrence Implementation | 2-3 days | Phase 2 |
 | 3. Backend API | 3-4 days | Phase 1, 2, 2.5 |
-| 4. Frontend Update | 2 days | Phase 3 |
+| 4. Frontend Update | 3 days | Phase 3 |
 | 5. Performance Optimization | 1-2 days | Phase 3, 4 |
 | 6. Bridge Decommission | 1 day | All phases |
 | Testing & Validation | 2-3 days | Ongoing |
-| **Total** | **15-21 days** | |
+| **Total** | **16-22 days** | |
 
 ---
 
@@ -2151,8 +2356,11 @@ backend/
 ```
 frontend/
 └── src/lib/
+    ├── services/
+    │   └── task_sync.ts   # Offline sync + outbox replay
     └── stores/
-        └── things.ts  # Reduce cache TTL, add optimistic updates
+        ├── task_cache.ts  # IndexedDB-backed cache
+        └── things.ts      # Reduce cache TTL, add optimistic updates
 ```
 
 ---
@@ -2164,7 +2372,7 @@ frontend/
 3. ⏭️ Execute Phase 2: Import all Things data (2-3 days)
 4. ⏭️ Implement Phase 2.5: Recurrence support (2-3 days)
 5. ⏭️ Implement Phase 3: Migrate backend API to native queries (3-4 days)
-6. ⏭️ Update Phase 4: Frontend optimizations (2 days)
+6. ⏭️ Update Phase 4: Frontend optimizations (3 days)
 7. ⏭️ Optimize Phase 5: Database performance tuning (1-2 days)
 8. ⏭️ Complete Phase 6: Decommission bridge (1 day)
 9. ⏭️ Validate: Run full test suite and performance benchmarks (including 20 repeating tasks)
