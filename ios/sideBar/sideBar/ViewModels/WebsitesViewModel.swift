@@ -3,10 +3,35 @@ import Combine
 
 // MARK: - WebsitesViewModel
 
-// TODO: Revisit to prefer native-first data sources where applicable.
-
+/// Manages saved websites list, detail views, and website saving functionality.
+///
+/// This ViewModel coordinates website operations including:
+/// - Loading and displaying the saved websites list
+/// - Website detail view with full content
+/// - Saving new websites via URL with validation
+/// - Pin, archive, rename, and delete operations
+/// - Pending website state for optimistic UI updates
+/// - Real-time event handling for live sync
+///
+/// ## URL Validation
+/// Uses `WebsiteURLValidator` to normalize and validate URLs before saving.
+/// Blocks localhost, direct IPs, and invalid TLDs.
+///
+/// ## Optimistic Updates
+/// When saving a website, a `PendingWebsiteItem` is created immediately for
+/// responsive UI, then replaced with the actual item once the server responds.
+///
+/// ## Threading
+/// Marked `@MainActor` - all properties and methods execute on the main thread.
+///
+/// ## Usage
+/// ```swift
+/// let viewModel = WebsitesViewModel(api: websitesAPI, store: websitesStore)
+/// await viewModel.load()
+/// let success = await viewModel.saveWebsite(url: "https://example.com")
+/// await viewModel.selectWebsite(id: websiteId)
+/// ```
 @MainActor
-/// Manages website list/detail state and actions.
 public final class WebsitesViewModel: ObservableObject {
     /// Holds a pending website captured from an extension flow.
     public struct PendingWebsiteItem: Identifiable, Equatable {
