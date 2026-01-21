@@ -3,7 +3,7 @@ import XCTest
 
 final class ChatStreamParserTests: XCTestCase {
     func testIngestParsesSingleEvent() {
-        let parser = ChatStreamParser()
+        var parser = ChatStreamParser()
         let chunk = "event: token\ndata: {\"text\":\"hi\"}\n\n"
 
         let events = parser.ingest(Data(chunk.utf8))
@@ -15,7 +15,7 @@ final class ChatStreamParserTests: XCTestCase {
     }
 
     func testIngestBuffersPartialEvent() {
-        let parser = ChatStreamParser()
+        var parser = ChatStreamParser()
         let part1 = "event: token\ndata: {\"text\":\"hi\""
         let part2 = "}\n\n"
 
@@ -28,7 +28,7 @@ final class ChatStreamParserTests: XCTestCase {
     }
 
     func testIngestIgnoresUnknownEventType() {
-        let parser = ChatStreamParser()
+        var parser = ChatStreamParser()
         let chunk = "event: unknown\ndata: {\"text\":\"hi\"}\n\n"
 
         let events = parser.ingest(Data(chunk.utf8))

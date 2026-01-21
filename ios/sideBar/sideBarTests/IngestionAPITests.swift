@@ -53,7 +53,8 @@ final class IngestionAPITests: XCTestCase {
         IngestionURLProtocolMock.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/youtube") == true)
-            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
             XCTAssertEqual(body?["url"] as? String, "https://youtu.be/123")
             let response = HTTPURLResponse(
                 url: request.url!,

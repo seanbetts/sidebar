@@ -58,7 +58,8 @@ final class FilesAPITests: XCTestCase {
         FilesURLProtocolMock.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/folder") == true)
-            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
             XCTAssertEqual(body?["basePath"] as? String, "docs")
             XCTAssertEqual(body?["path"] as? String, "New")
             let response = HTTPURLResponse(
@@ -78,7 +79,8 @@ final class FilesAPITests: XCTestCase {
         FilesURLProtocolMock.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/rename") == true)
-            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
             XCTAssertEqual(body?["oldPath"] as? String, "/old.txt")
             XCTAssertEqual(body?["newName"] as? String, "new.txt")
             let response = HTTPURLResponse(
@@ -98,7 +100,8 @@ final class FilesAPITests: XCTestCase {
         FilesURLProtocolMock.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/move") == true)
-            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
             XCTAssertEqual(body?["path"] as? String, "/old.txt")
             XCTAssertEqual(body?["destination"] as? String, "/new")
             let response = HTTPURLResponse(
@@ -118,7 +121,8 @@ final class FilesAPITests: XCTestCase {
         FilesURLProtocolMock.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertTrue(request.url?.absoluteString.contains("files/delete") == true)
-            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
             XCTAssertEqual(body?["path"] as? String, "/old.txt")
             let response = HTTPURLResponse(
                 url: request.url!,

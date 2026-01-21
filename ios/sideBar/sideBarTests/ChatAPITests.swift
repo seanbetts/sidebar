@@ -11,7 +11,8 @@ final class ChatAPITests: XCTestCase {
         let api = ChatAPI(client: makeClient())
         ChatURLProtocolMock.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
-            let body = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+            let bodyData = try XCTUnwrap(request.httpBodyData())
+            let body = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
             XCTAssertEqual(body?["conversation_id"] as? String, "c1")
             let response = HTTPURLResponse(
                 url: request.url!,

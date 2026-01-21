@@ -19,13 +19,16 @@ final class CoreDataCacheClientTests: XCTestCase {
         let client = CoreDataCacheClient(container: container)
         let context = container.viewContext
         context.performAndWait {
-            let entry = CacheEntry(context: context)
-            entry.key = "expired"
-            entry.payload = Data("\"value\"".utf8)
-            entry.expiresAt = Date(timeIntervalSince1970: 0)
-            entry.createdAt = Date()
-            entry.updatedAt = Date()
-            entry.typeName = "String"
+            let entry = NSEntityDescription.insertNewObject(
+                forEntityName: "CacheEntry",
+                into: context
+            ) as! NSManagedObject
+            entry.setValue("expired", forKey: "key")
+            entry.setValue(Data("\"value\"".utf8), forKey: "payload")
+            entry.setValue(Date(timeIntervalSince1970: 0), forKey: "expiresAt")
+            entry.setValue(Date(), forKey: "createdAt")
+            entry.setValue(Date(), forKey: "updatedAt")
+            entry.setValue("String", forKey: "typeName")
             try? context.save()
         }
 
@@ -45,13 +48,16 @@ final class CoreDataCacheClientTests: XCTestCase {
         let client = CoreDataCacheClient(container: container)
         let context = container.viewContext
         context.performAndWait {
-            let entry = CacheEntry(context: context)
-            entry.key = "bad"
-            entry.payload = Data("not-json".utf8)
-            entry.expiresAt = Date().addingTimeInterval(60)
-            entry.createdAt = Date()
-            entry.updatedAt = Date()
-            entry.typeName = "Int"
+            let entry = NSEntityDescription.insertNewObject(
+                forEntityName: "CacheEntry",
+                into: context
+            ) as! NSManagedObject
+            entry.setValue("bad", forKey: "key")
+            entry.setValue(Data("not-json".utf8), forKey: "payload")
+            entry.setValue(Date().addingTimeInterval(60), forKey: "expiresAt")
+            entry.setValue(Date(), forKey: "createdAt")
+            entry.setValue(Date(), forKey: "updatedAt")
+            entry.setValue("Int", forKey: "typeName")
             try? context.save()
         }
 
@@ -61,45 +67,8 @@ final class CoreDataCacheClientTests: XCTestCase {
     }
 
     private func makeContainer() -> NSPersistentContainer {
-        let model = NSManagedObjectModel()
-        let entity = NSEntityDescription()
-        entity.name = "CacheEntry"
-        entity.managedObjectClassName = NSStringFromClass(CacheEntry.self)
-
-        let key = NSAttributeDescription()
-        key.name = "key"
-        key.attributeType = .stringAttributeType
-        key.isOptional = false
-
-        let payload = NSAttributeDescription()
-        payload.name = "payload"
-        payload.attributeType = .binaryDataAttributeType
-        payload.isOptional = false
-
-        let expiresAt = NSAttributeDescription()
-        expiresAt.name = "expiresAt"
-        expiresAt.attributeType = .dateAttributeType
-        expiresAt.isOptional = false
-
-        let createdAt = NSAttributeDescription()
-        createdAt.name = "createdAt"
-        createdAt.attributeType = .dateAttributeType
-        createdAt.isOptional = true
-
-        let updatedAt = NSAttributeDescription()
-        updatedAt.name = "updatedAt"
-        updatedAt.attributeType = .dateAttributeType
-        updatedAt.isOptional = true
-
-        let typeName = NSAttributeDescription()
-        typeName.name = "typeName"
-        typeName.attributeType = .stringAttributeType
-        typeName.isOptional = true
-
-        entity.properties = [key, payload, expiresAt, createdAt, updatedAt, typeName]
-        model.entities = [entity]
-
-        let container = NSPersistentContainer(name: "CacheModel", managedObjectModel: model)
+        let model = PersistenceController.shared.container.persistentStoreCoordinator.managedObjectModel
+        let container = NSPersistentContainer(name: "SideBarCache", managedObjectModel: model)
         let description = NSPersistentStoreDescription()
         description.type = NSInMemoryStoreType
         container.persistentStoreDescriptions = [description]
