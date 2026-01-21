@@ -58,7 +58,9 @@ struct sideBarApp: App {
         logStep("Auth session", authStart, authEnd)
 
         let cacheStart = CFAbsoluteTimeGetCurrent()
-        let cacheClient = CoreDataCacheClient(container: PersistenceController.shared.container)
+        let cacheClient: CacheClient = isTestMode
+            ? InMemoryCacheClient()
+            : CoreDataCacheClient(container: PersistenceController.shared.container)
         let container = ServiceContainer(config: config, authSession: authSession, cacheClient: cacheClient)
         let cacheEnd = CFAbsoluteTimeGetCurrent()
         logStep("Service container", cacheStart, cacheEnd)

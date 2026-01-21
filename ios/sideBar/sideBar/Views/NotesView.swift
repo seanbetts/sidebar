@@ -190,10 +190,12 @@ private struct NotesDetailView: View {
         }
         .toolbar {
             if isCompact, viewModel.activeNote != nil {
+                #if os(iOS)
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     noteActionsMenu
                     closeButton
                 }
+                #endif
             }
         }
     }

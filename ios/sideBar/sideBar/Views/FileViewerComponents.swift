@@ -1,7 +1,12 @@
 import AVKit
 import Combine
 import PDFKit
+#if os(macOS)
 import QuickLook
+import QuickLookUI
+#else
+import QuickLook
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -165,7 +170,9 @@ public final class PDFViewerController: ObservableObject {
         pdfView.autoScales = false
         pdfView.displayMode = .singlePageContinuous
         pdfView.displayDirection = .vertical
+        #if os(iOS)
         pdfView.usePageViewController(true, withViewOptions: nil)
+        #endif
         let baseScale = pdfView.scaleFactorForSizeToFit
         if baseScale > 0 {
             pdfView.minScaleFactor = max(baseScale * 0.5, 0.1)

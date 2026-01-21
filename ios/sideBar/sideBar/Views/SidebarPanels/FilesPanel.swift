@@ -36,6 +36,91 @@ private struct FilesPanelView: View {
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
+        content
+    }
+
+    private var content: some View {
+        mainContent
+            .frame(maxHeight: .infinity)
+            .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
+                Button("Delete", role: .destructive) {
+                    confirmDelete()
+                }
+                Button("Cancel", role: .cancel) {
+                    clearDeleteTarget()
+                }
+            } message: {
+                Text("This will remove the file and cannot be undone.")
+            }
+            .fileImporter(
+                isPresented: $isFileImporterPresented,
+                allowedContentTypes: [.item],
+                allowsMultipleSelection: true
+            ) { result in
+                handleFileImport(result)
+            }
+            .alert("Add YouTube video", isPresented: $isYouTubeAlertPresented) {
+                TextField("youtube.com", text: $newYouTubeUrl)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    #endif
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .submitLabel(.done)
+                    #endif
+                    .onSubmit {
+                        addYouTube()
+                    }
+                Button(viewModel.isIngestingYouTube ? "Adding..." : "Add") {
+                    addYouTube()
+                }
+                .disabled(viewModel.isIngestingYouTube || newYouTubeUrl.trimmed.isEmpty)
+                .keyboardShortcut(.defaultAction)
+                Button("Cancel", role: .cancel) {
+                    newYouTubeUrl = ""
+                }
+            }
+            .onAppear {
+                if !hasLoaded {
+                    hasLoaded = true
+                    Task { await viewModel.load() }
+                }
+                initializeExpandedCategoriesIfNeeded()
+                knownFileIds = Set(viewModel.items.map { $0.file.id })
+            }
+            .onChange(of: categoriesWithItems) { _, _ in
+                initializeExpandedCategoriesIfNeeded()
+            }
+            .onChange(of: viewModel.items.map { $0.file.id }) { _, newIds in
+                let newIdSet = Set(newIds)
+                let addedIds = newIdSet.subtracting(knownFileIds)
+                if !addedIds.isEmpty {
+                    for item in viewModel.items where addedIds.contains(item.file.id) {
+                        if item.file.mimeOriginal.lowercased().contains("youtube") {
+                            expandedCategories.insert("video")
+                            break
+                        }
+                    }
+                }
+                knownFileIds = newIdSet
+            }
+            .onReceive(environment.$shortcutActionEvent) { event in
+                guard let event, event.section == .files else { return }
+                switch event.action {
+                case .focusSearch:
+                    isSearchFocused = true
+                case .newItem:
+                    isFileImporterPresented = true
+                case .navigateList(let direction):
+                    navigateFilesList(direction: direction)
+                default:
+                    break
+                }
+            }
+    }
+
+    private var mainContent: some View {
         VStack(spacing: 0) {
             header
             if viewModel.isLoading && viewModel.items.isEmpty {
@@ -56,79 +141,6 @@ private struct FilesPanelView: View {
                 }
             } else {
                 filesListView
-            }
-        }
-        .frame(maxHeight: .infinity)
-        .alert(deleteDialogTitle, isPresented: $isDeleteAlertPresented) {
-            Button("Delete", role: .destructive) {
-                confirmDelete()
-            }
-            Button("Cancel", role: .cancel) {
-                clearDeleteTarget()
-            }
-        } message: {
-            Text("This will remove the file and cannot be undone.")
-        }
-        .fileImporter(
-            isPresented: $isFileImporterPresented,
-            allowedContentTypes: [.item],
-            allowsMultipleSelection: true
-        ) { result in
-            handleFileImport(result)
-        }
-        .alert("Add YouTube video", isPresented: $isYouTubeAlertPresented) {
-            TextField("youtube.com", text: $newYouTubeUrl)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.URL)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-                .onSubmit {
-                    addYouTube()
-                }
-            Button(viewModel.isIngestingYouTube ? "Adding..." : "Add") {
-                addYouTube()
-            }
-            .disabled(viewModel.isIngestingYouTube || newYouTubeUrl.trimmed.isEmpty)
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) {
-                newYouTubeUrl = ""
-            }
-        }
-        .onAppear {
-            if !hasLoaded {
-                hasLoaded = true
-                Task { await viewModel.load() }
-            }
-            initializeExpandedCategoriesIfNeeded()
-            knownFileIds = Set(viewModel.items.map { $0.file.id })
-        }
-        .onChange(of: categoriesWithItems) { _, _ in
-            initializeExpandedCategoriesIfNeeded()
-        }
-        .onChange(of: viewModel.items.map { $0.file.id }) { _, newIds in
-            let newIdSet = Set(newIds)
-            let addedIds = newIdSet.subtracting(knownFileIds)
-            if !addedIds.isEmpty {
-                for item in viewModel.items where addedIds.contains(item.file.id) {
-                    if item.file.mimeOriginal.lowercased().contains("youtube") {
-                        expandedCategories.insert("video")
-                        break
-                    }
-                }
-            }
-            knownFileIds = newIdSet
-        }
-        .onReceive(environment.$shortcutActionEvent) { event in
-            guard let event, event.section == .files else { return }
-            switch event.action {
-            case .focusSearch:
-                isSearchFocused = true
-            case .newItem:
-                isFileImporterPresented = true
-            case .navigateList(let direction):
-                navigateFilesList(direction: direction)
-            default:
-                break
             }
         }
     }

@@ -1,4 +1,5 @@
 import LocalAuthentication
+import OSLog
 import SwiftUI
 #if os(iOS)
 import UIKit
