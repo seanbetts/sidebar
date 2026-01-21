@@ -7,13 +7,13 @@ public struct ParsedSSEEvent {
 }
 
 /// Parses server-sent events into chat stream events.
-public final class ChatStreamParser {
+public struct ChatStreamParser {
     private var buffer = ""
 
     public init() {
     }
 
-    public func ingest(_ data: Data) -> [ChatStreamEvent] {
+    public mutating func ingest(_ data: Data) -> [ChatStreamEvent] {
         guard let chunk = String(data: data, encoding: .utf8) else {
             return []
         }

@@ -10,7 +10,7 @@ public protocol AuthStateStore {
 }
 
 /// In-memory auth state store for testing.
-public final class InMemoryAuthStateStore: AuthStateStore {
+public nonisolated final class InMemoryAuthStateStore: AuthStateStore {
     private var accessToken: String?
     private var userId: String?
 

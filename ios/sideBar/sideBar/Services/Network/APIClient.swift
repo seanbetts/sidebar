@@ -102,10 +102,10 @@ public final class APIClient {
             } else {
                 components.path = "\(basePath)/\(trimmedPath)"
             }
-            if let existingQuery = components.query, !existingQuery.isEmpty {
-                components.query = "\(existingQuery)&\(queryPart)"
+            if let existingQuery = components.percentEncodedQuery, !existingQuery.isEmpty {
+                components.percentEncodedQuery = "\(existingQuery)&\(queryPart)"
             } else {
-                components.query = queryPart
+                components.percentEncodedQuery = queryPart
             }
             guard let composedUrl = components.url else {
                 throw APIClientError.invalidUrl
