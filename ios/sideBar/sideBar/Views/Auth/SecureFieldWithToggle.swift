@@ -102,10 +102,10 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
         textField.autocorrectionType = .no
         textField.autocapitalizationType = .none
         textField.returnKeyType = .go
-        textField.enablesReturnKeyAutomatically = true
-        textField.inputAssistantItem.leadingBarButtonGroups = []
-        textField.inputAssistantItem.trailingBarButtonGroups = []
+        textField.enablesReturnKeyAutomatically = false
+        textField.setContentHuggingPriority(.defaultLow, for: .horizontal)
         textField.setContentHuggingPriority(.required, for: .vertical)
+        textField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textField.setContentCompressionResistancePriority(.required, for: .vertical)
         textField.addTarget(context.coordinator, action: #selector(Coordinator.textDidChange), for: .editingChanged)
         textField.delegate = context.coordinator
@@ -119,37 +119,19 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
             uiView.text = text
         }
 
-        // Handle secure entry toggle without resigning first responder
+        // Handle secure entry toggle
         if uiView.isSecureTextEntry != isSecure {
-            // Store current selection
-            let selectedRange = uiView.selectedTextRange
-            let wasFirstResponder = uiView.isFirstResponder
-
             uiView.isSecureTextEntry = isSecure
-
-            // SecureField requires re-setting text after mode change
-            if uiView.text != text {
-                uiView.text = text
-            }
-
-            // Restore selection if possible
-            if wasFirstResponder, let range = selectedRange {
-                uiView.selectedTextRange = range
-            }
+            // Secure text fields clear on mode change, restore text
+            uiView.text = text
         }
 
         if uiView.textContentType != textContentType {
             uiView.textContentType = textContentType
         }
 
-        // Handle focus changes - batch on next runloop to avoid conflicts
-        let shouldBeFocused = isFocused
-        let isCurrentlyFocused = uiView.isFirstResponder
-        if shouldBeFocused != isCurrentlyFocused {
-            context.coordinator.pendingFocusChange = shouldBeFocused
-            context.coordinator.scheduleFocusUpdate()
-        }
-
+        // Sync focus state
+        context.coordinator.syncFocus(shouldBeFocused: isFocused, textField: uiView)
         context.coordinator.onSubmit = onSubmit
     }
 
@@ -162,8 +144,7 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
         private let isFocused: Binding<Bool>
         var onSubmit: (() -> Void)?
         weak var textField: UITextField?
-        var pendingFocusChange: Bool?
-        private var focusWorkItem: DispatchWorkItem?
+        private var isUpdatingFocus = false
 
         init(text: Binding<String>, isFocused: Binding<Bool>, onSubmit: (() -> Void)?) {
             self.text = text
@@ -171,19 +152,17 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
             self.onSubmit = onSubmit
         }
 
-        func scheduleFocusUpdate() {
-            focusWorkItem?.cancel()
-            let workItem = DispatchWorkItem { [weak self] in
-                guard let self, let textField = self.textField, let shouldFocus = self.pendingFocusChange else { return }
-                self.pendingFocusChange = nil
-                if shouldFocus && !textField.isFirstResponder {
-                    textField.becomeFirstResponder()
-                } else if !shouldFocus && textField.isFirstResponder {
-                    textField.resignFirstResponder()
-                }
+        func syncFocus(shouldBeFocused: Bool, textField: UITextField) {
+            let isCurrentlyFocused = textField.isFirstResponder
+            guard shouldBeFocused != isCurrentlyFocused, !isUpdatingFocus else { return }
+
+            isUpdatingFocus = true
+            if shouldBeFocused {
+                textField.becomeFirstResponder()
+            } else {
+                textField.resignFirstResponder()
             }
-            focusWorkItem = workItem
-            DispatchQueue.main.async(execute: workItem)
+            isUpdatingFocus = false
         }
 
         @objc func textDidChange(_ sender: UITextField) {
@@ -191,18 +170,18 @@ private struct SecureTextFieldRepresentable: UIViewRepresentable {
         }
 
         func textFieldDidBeginEditing(_ textField: UITextField) {
-            guard !isFocused.wrappedValue else { return }
+            guard !isUpdatingFocus, !isFocused.wrappedValue else { return }
             isFocused.wrappedValue = true
         }
 
         func textFieldDidEndEditing(_ textField: UITextField) {
-            guard isFocused.wrappedValue else { return }
+            guard !isUpdatingFocus, isFocused.wrappedValue else { return }
             isFocused.wrappedValue = false
         }
 
         func textFieldShouldReturn(_ textField: UITextField) -> Bool {
             onSubmit?()
-            return true
+            return false
         }
     }
 }

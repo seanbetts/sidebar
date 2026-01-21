@@ -37,7 +37,6 @@ public struct LoginView: View {
 
                         signInButton
                     }
-                    .onSubmit(handleSubmit)
                 }
                 .groupBoxStyle(LoginGroupBoxStyle())
             }
@@ -121,17 +120,6 @@ public struct LoginView: View {
         }
     }
 
-    private func handleSubmit() {
-        switch focusedField {
-        case .email:
-            focusedField = .password
-        case .password:
-            Task { await signIn() }
-        case .none:
-            break
-        }
-    }
-
     private var headerView: some View {
         VStack(spacing: 12) {
             Image("AppLogo")
@@ -157,6 +145,9 @@ public struct LoginView: View {
                 .autocorrectionDisabled()
                 .focused($focusedField, equals: .email)
                 .submitLabel(.next)
+                .onSubmit {
+                    focusedField = .password
+                }
             if !email.isEmpty {
                 Image(systemName: isValidEmail ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(isValidEmail ? .green : .orange)
