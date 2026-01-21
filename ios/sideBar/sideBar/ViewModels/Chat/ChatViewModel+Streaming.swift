@@ -35,35 +35,76 @@ extension ChatViewModel {
     }
 
     private var streamEventHandlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] {
-        [
-            .token: { [weak self] in self?.appendToken(from: $0) },
-            .toolCall: { [weak self] in self?.handleToolCall($0) },
-            .toolResult: { [weak self] in self?.handleToolResult($0) },
-            .complete: { [weak self] in self?.finalizeStreaming(status: .complete) },
-            .error: { [weak self] _ in
+        let handlers: [ChatStreamEventType: (ChatStreamEvent) -> Void] = [
+            .token: { [weak self] (event: ChatStreamEvent) in
+                self?.appendToken(from: event)
+            },
+            .toolCall: { [weak self] (event: ChatStreamEvent) in
+                self?.handleToolCall(event)
+            },
+            .toolResult: { [weak self] (event: ChatStreamEvent) in
+                self?.handleToolResult(event)
+            },
+            .complete: { [weak self] (_: ChatStreamEvent) in
+                self?.finalizeStreaming(status: .complete)
+            },
+            .error: { [weak self] (_: ChatStreamEvent) in
                 self?.errorMessage = "Chat stream error"
                 self?.finalizeStreaming(status: .error)
             },
-            .noteCreated: { [weak self] in self?.handleNoteCreate($0) },
-            .noteUpdated: { [weak self] in self?.handleNoteUpdate($0) },
-            .notePinned: { [weak self] in self?.handleNotePinned($0) },
-            .noteMoved: { [weak self] in self?.handleNoteMoved($0) },
-            .noteDeleted: { [weak self] in self?.handleNoteDelete($0) },
-            .websiteSaved: { [weak self] in self?.handleWebsiteSaved($0) },
-            .websitePinned: { [weak self] in self?.handleWebsitePinned($0) },
-            .websiteArchived: { [weak self] in self?.handleWebsiteArchived($0) },
-            .websiteDeleted: { [weak self] in self?.handleWebsiteDeleted($0) },
-            .ingestionUpdated: { [weak self] in self?.handleIngestionUpdated($0) },
-            .themeSet: { [weak self] in self?.handleThemeSet($0) },
-            .scratchpadUpdated: { [weak self] _ in self?.refreshScratchpad() },
-            .scratchpadCleared: { [weak self] _ in self?.refreshScratchpad() },
-            .promptPreview: { [weak self] in self?.handlePromptPreview($0) },
-            .toolStart: { [weak self] in self?.handleToolStart($0) },
-            .toolEnd: { [weak self] in self?.handleToolEnd($0) },
-            .memoryCreated: { _ in },
-            .memoryUpdated: { _ in },
-            .memoryDeleted: { _ in }
+            .noteCreated: { [weak self] (event: ChatStreamEvent) in
+                self?.handleNoteCreate(event)
+            },
+            .noteUpdated: { [weak self] (event: ChatStreamEvent) in
+                self?.handleNoteUpdate(event)
+            },
+            .notePinned: { [weak self] (event: ChatStreamEvent) in
+                self?.handleNotePinned(event)
+            },
+            .noteMoved: { [weak self] (event: ChatStreamEvent) in
+                self?.handleNoteMoved(event)
+            },
+            .noteDeleted: { [weak self] (event: ChatStreamEvent) in
+                self?.handleNoteDelete(event)
+            },
+            .websiteSaved: { [weak self] (event: ChatStreamEvent) in
+                self?.handleWebsiteSaved(event)
+            },
+            .websitePinned: { [weak self] (event: ChatStreamEvent) in
+                self?.handleWebsitePinned(event)
+            },
+            .websiteArchived: { [weak self] (event: ChatStreamEvent) in
+                self?.handleWebsiteArchived(event)
+            },
+            .websiteDeleted: { [weak self] (event: ChatStreamEvent) in
+                self?.handleWebsiteDeleted(event)
+            },
+            .ingestionUpdated: { [weak self] (event: ChatStreamEvent) in
+                self?.handleIngestionUpdated(event)
+            },
+            .themeSet: { [weak self] (event: ChatStreamEvent) in
+                self?.handleThemeSet(event)
+            },
+            .scratchpadUpdated: { [weak self] (_: ChatStreamEvent) in
+                self?.refreshScratchpad()
+            },
+            .scratchpadCleared: { [weak self] (_: ChatStreamEvent) in
+                self?.refreshScratchpad()
+            },
+            .promptPreview: { [weak self] (event: ChatStreamEvent) in
+                self?.handlePromptPreview(event)
+            },
+            .toolStart: { [weak self] (event: ChatStreamEvent) in
+                self?.handleToolStart(event)
+            },
+            .toolEnd: { [weak self] (event: ChatStreamEvent) in
+                self?.handleToolEnd(event)
+            },
+            .memoryCreated: { (_: ChatStreamEvent) in },
+            .memoryUpdated: { (_: ChatStreamEvent) in },
+            .memoryDeleted: { (_: ChatStreamEvent) in }
         ]
+        return handlers
     }
 
     private func refreshScratchpad() {
