@@ -24,7 +24,8 @@ final class NotesViewModelTests: XCTestCase {
 
         let api = MockNotesAPI(listTreeResult: .failure(MockError.forced))
         let store = NotesStore(api: api, cache: cache)
-        let viewModel = NotesViewModel(api: api, store: store)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(api: api, store: store, toastCenter: toastCenter)
 
         await viewModel.loadTree()
 
@@ -51,7 +52,8 @@ final class NotesViewModelTests: XCTestCase {
         let cache = InMemoryCacheClient()
         let api = MockNotesAPI(listTreeResult: .success(freshTree))
         let store = NotesStore(api: api, cache: cache)
-        let viewModel = NotesViewModel(api: api, store: store)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(api: api, store: store, toastCenter: toastCenter)
 
         await viewModel.loadTree()
 
@@ -95,7 +97,8 @@ final class NotesViewModelTests: XCTestCase {
 
         let api = MockNotesAPI(listTreeResult: .success(freshTree))
         let store = NotesStore(api: api, cache: cache)
-        let viewModel = NotesViewModel(api: api, store: store)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(api: api, store: store, toastCenter: toastCenter)
 
         await viewModel.loadTree()
 
@@ -138,7 +141,8 @@ final class NotesViewModelTests: XCTestCase {
             getNoteResult: .success(note)
         )
         let store = NotesStore(api: api, cache: cache)
-        let viewModel = NotesViewModel(api: api, store: store)
+        let toastCenter = ToastCenter()
+        let viewModel = NotesViewModel(api: api, store: store, toastCenter: toastCenter)
 
         await viewModel.selectNote(id: "note-id")
         XCTAssertEqual(viewModel.selectedNoteId, "note-id")
@@ -169,6 +173,7 @@ private enum MockError: Error {
     case forced
 }
 
+@MainActor
 private struct MockNotesAPI: NotesProviding {
     let listTreeResult: Result<FileTree, Error>
     let getNoteResult: Result<NotePayload, Error>
@@ -200,5 +205,61 @@ private struct MockNotesAPI: NotesProviding {
         _ = id
         _ = content
         return try getNoteResult.get()
+    }
+
+    func createNote(request: NoteCreateRequest) async throws -> NotePayload {
+        _ = request
+        return try getNoteResult.get()
+    }
+
+    func renameNote(id: String, newName: String) async throws -> NotePayload {
+        _ = id
+        _ = newName
+        return try getNoteResult.get()
+    }
+
+    func moveNote(id: String, folder: String) async throws -> NotePayload {
+        _ = id
+        _ = folder
+        return try getNoteResult.get()
+    }
+
+    func archiveNote(id: String, archived: Bool) async throws -> NotePayload {
+        _ = id
+        _ = archived
+        return try getNoteResult.get()
+    }
+
+    func pinNote(id: String, pinned: Bool) async throws -> NotePayload {
+        _ = id
+        _ = pinned
+        return try getNoteResult.get()
+    }
+
+    func updatePinnedOrder(ids: [String]) async throws {
+        _ = ids
+    }
+
+    func deleteNote(id: String) async throws -> NotePayload {
+        _ = id
+        return try getNoteResult.get()
+    }
+
+    func createFolder(path: String) async throws {
+        _ = path
+    }
+
+    func renameFolder(oldPath: String, newName: String) async throws {
+        _ = oldPath
+        _ = newName
+    }
+
+    func moveFolder(oldPath: String, newParent: String) async throws {
+        _ = oldPath
+        _ = newParent
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = path
     }
 }

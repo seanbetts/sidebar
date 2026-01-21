@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class SupabaseAuthAdapterTests: XCTestCase {
     private let lastAuthTimestampKey = AppStorageKeys.lastAuthTimestamp
 

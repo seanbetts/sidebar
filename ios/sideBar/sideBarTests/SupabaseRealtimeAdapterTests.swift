@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class SupabaseRealtimeAdapterTests: XCTestCase {
     func testHandleNoteInsertDispatchesPayload() async {
         let expectation = expectation(description: "note insert")

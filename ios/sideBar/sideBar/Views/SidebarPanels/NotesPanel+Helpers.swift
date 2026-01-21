@@ -4,7 +4,7 @@ import SwiftUI
 // MARK: - NotesPanel+Helpers
 
 extension NotesPanelView {
-    private var header: some View {
+    var header: some View {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Notes") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
@@ -42,7 +42,7 @@ extension NotesPanelView {
         .background(panelHeaderBackground(colorScheme))
     }
 
-    private var isCompact: Bool {
+    var isCompact: Bool {
         #if os(macOS)
         return false
         #else
@@ -50,11 +50,11 @@ extension NotesPanelView {
         #endif
     }
 
-    private var folderOptions: [NotesFolderOption] {
+    var folderOptions: [NotesFolderOption] {
         NotesFolderOption.build(from: viewModel.tree?.children ?? [])
     }
 
-    private func createNote() {
+    func createNote() {
         let trimmed = newNoteName.trimmed
         guard !trimmed.isEmpty, !isCreatingNote else { return }
         isCreatingNote = true
@@ -74,7 +74,7 @@ extension NotesPanelView {
         }
     }
 
-    private func createFolder() {
+    func createFolder() {
         let trimmed = newFolderName.trimmed
         guard !trimmed.isEmpty, !isCreatingFolder else { return }
         isCreatingFolder = true
@@ -90,7 +90,7 @@ extension NotesPanelView {
         }
     }
 
-    private var isRenameDialogPresented: Binding<Bool> {
+    var isRenameDialogPresented: Binding<Bool> {
         Binding(
             get: { renameTarget != nil },
             set: { isPresented in
@@ -102,7 +102,7 @@ extension NotesPanelView {
         )
     }
 
-    private var isDeleteDialogPresented: Binding<Bool> {
+    var isDeleteDialogPresented: Binding<Bool> {
         Binding(
             get: { deleteTarget != nil },
             set: { isPresented in
@@ -113,34 +113,34 @@ extension NotesPanelView {
         )
     }
 
-    private var renameDialogTitle: String {
+    var renameDialogTitle: String {
         renameTarget?.isFile == true ? "Rename note" : "Rename folder"
     }
 
-    private var renameDialogPlaceholder: String {
+    var renameDialogPlaceholder: String {
         renameTarget?.isFile == true ? "Note name" : "Folder name"
     }
 
-    private var deleteDialogTitle: String {
+    var deleteDialogTitle: String {
         deleteTarget?.isFile == true ? "Delete note" : "Delete folder"
     }
 
-    private var deleteDialogMessage: String {
+    var deleteDialogMessage: String {
         deleteTarget?.isFile == true
             ? "This will remove the note and cannot be undone."
             : "This will remove the folder and its contents."
     }
 
-    private func beginRename(for item: FileNodeItem) {
+    func beginRename(for item: FileNodeItem) {
         renameTarget = item
         renameValue = item.displayName
     }
 
-    private func confirmDelete(for item: FileNodeItem) {
+    func confirmDelete(for item: FileNodeItem) {
         deleteTarget = item
     }
 
-    private func commitRename() {
+    func commitRename() {
         let target = renameTarget
         let updated = renameValue
         renameTarget = nil
@@ -155,7 +155,7 @@ extension NotesPanelView {
         }
     }
 
-    private func navigateNotesList(direction: ShortcutListDirection) {
+    func navigateNotesList(direction: ShortcutListDirection) {
         let items = noteNavigationItems()
         guard !items.isEmpty else { return }
         let currentId = viewModel.selectedNoteId
@@ -169,7 +169,7 @@ extension NotesPanelView {
         Task { await viewModel.selectNote(id: nextId) }
     }
 
-    private func noteNavigationItems() -> [String] {
+    func noteNavigationItems() -> [String] {
         let query = viewModel.searchQuery.trimmed
         if !query.isEmpty {
             return viewModel.searchResults.map { $0.path }
@@ -179,7 +179,7 @@ extension NotesPanelView {
         return pinnedIds + mainIds
     }
 
-    private func flattenNoteIds(from nodes: [FileNode]) -> [String] {
+    func flattenNoteIds(from nodes: [FileNode]) -> [String] {
         var results: [String] = []
         for node in nodes {
             if node.type == .file {
@@ -192,7 +192,7 @@ extension NotesPanelView {
         return results
     }
 
-    private var searchResultsView: some View {
+    var searchResultsView: some View {
         List {
             Section("Results") {
                 if let error = viewModel.errorMessage,
@@ -239,7 +239,7 @@ extension NotesPanelView {
         .background(panelBackground)
     }
 
-    private var notesPanelContent: some View {
+    var notesPanelContent: some View {
         Group {
             if let error = viewModel.errorMessage, viewModel.tree == nil {
                 SidebarPanelPlaceholder(
@@ -259,7 +259,7 @@ extension NotesPanelView {
         }
     }
 
-    private var notesPanelContentWithArchive: some View {
+    var notesPanelContentWithArchive: some View {
         Group {
             if let error = viewModel.errorMessage, viewModel.tree == nil {
                 SidebarPanelPlaceholder(
@@ -282,7 +282,7 @@ extension NotesPanelView {
         }
     }
 
-    private func buildItems(from nodes: [FileNode]) -> [FileNodeItem] {
+    func buildItems(from nodes: [FileNode]) -> [FileNodeItem] {
         nodes.map { node in
             let children = node.type == .directory ? buildItems(from: node.children ?? []) : nil
             return FileNodeItem(
@@ -294,7 +294,7 @@ extension NotesPanelView {
         }
     }
 
-    private var notesTreeListView: some View {
+    var notesTreeListView: some View {
         List {
             Section("Pinned") {
                 if pinnedItems.isEmpty {
@@ -363,15 +363,15 @@ extension NotesPanelView {
         }
     }
 
-    private var notesTreeView: some View {
+    var notesTreeView: some View {
         notesTreeListView
     }
 
-    private var panelBackground: Color {
+    var panelBackground: Color {
         DesignTokens.Colors.sidebar
     }
 
-    private var rowBackground: Color {
+    var rowBackground: Color {
         #if os(macOS)
         return DesignTokens.Colors.sidebar
         #else
@@ -379,7 +379,7 @@ extension NotesPanelView {
         #endif
     }
 
-    private var mainOutlineGroup: some View {
+    var mainOutlineGroup: some View {
         OutlineGroup(buildItems(from: mainNodes), children: \.children) { item in
             NotesTreeRow(
                 item: item,
@@ -397,7 +397,7 @@ extension NotesPanelView {
         .listRowBackground(rowBackground)
     }
 
-    private var notesArchiveSection: some View {
+    var notesArchiveSection: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Divider()
                 .overlay(DesignTokens.Colors.border)
@@ -441,7 +441,7 @@ extension NotesPanelView {
         .background(panelBackground)
     }
 
-    private var pinnedItems: [FileNodeItem] {
+    var pinnedItems: [FileNodeItem] {
         let pinned = collectPinnedNodes(from: viewModel.tree?.children ?? [])
         let sorted = pinned.sorted { lhs, rhs in
             let leftOrder = lhs.pinnedOrder ?? Int.max
@@ -461,16 +461,16 @@ extension NotesPanelView {
         }
     }
 
-    private var mainNodes: [FileNode] {
+    var mainNodes: [FileNode] {
         filterNodes(viewModel.tree?.children ?? [], includeArchived: false)
     }
 
-    private var archivedNodes: [FileNode] {
+    var archivedNodes: [FileNode] {
         let nodes = filterNodes(viewModel.tree?.children ?? [], includeArchived: true)
         return normalizeArchivedNodes(nodes)
     }
 
-    private func normalizeArchivedNodes(_ nodes: [FileNode]) -> [FileNode] {
+    func normalizeArchivedNodes(_ nodes: [FileNode]) -> [FileNode] {
         nodes.flatMap { node in
             if node.type == .directory, node.name.lowercased() == "archive" {
                 return node.children ?? []
@@ -479,7 +479,7 @@ extension NotesPanelView {
         }
     }
 
-    private func collectPinnedNodes(from nodes: [FileNode]) -> [FileNode] {
+    func collectPinnedNodes(from nodes: [FileNode]) -> [FileNode] {
         var results: [FileNode] = []
         for node in nodes {
             if node.type == .file, node.pinned == true, node.archived != true {
@@ -492,7 +492,7 @@ extension NotesPanelView {
         return results
     }
 
-    private func filterNodes(_ nodes: [FileNode], includeArchived: Bool) -> [FileNode] {
+    func filterNodes(_ nodes: [FileNode], includeArchived: Bool) -> [FileNode] {
         nodes.compactMap { node in
             if node.type == .directory {
                 let children = filterNodes(node.children ?? [], includeArchived: includeArchived)
