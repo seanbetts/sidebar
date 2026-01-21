@@ -19,16 +19,8 @@ public struct ExtensionEvent: Codable, Equatable {
 public final class ExtensionEventStore {
     public static let shared = ExtensionEventStore()
     private let eventsKey = "extensionEvents"
-    private let encoder: JSONEncoder
-    private let decoder: JSONDecoder
 
     private init() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        self.encoder = encoder
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        self.decoder = decoder
     }
 
     public func recordWebsiteSaved(url: String?) {
@@ -44,6 +36,7 @@ public final class ExtensionEventStore {
             defaults.synchronize()
         }
         guard let data = defaults.data(forKey: eventsKey) else { return [] }
+        let decoder = Self.makeDecoder()
         return (try? decoder.decode([ExtensionEvent].self, from: data)) ?? []
     }
 
@@ -53,6 +46,7 @@ public final class ExtensionEventStore {
         }
         var events = loadEvents(defaults: defaults)
         events.append(event)
+        let encoder = Self.makeEncoder()
         if let data = try? encoder.encode(events) {
             defaults.set(data, forKey: eventsKey)
             defaults.synchronize()
@@ -61,6 +55,7 @@ public final class ExtensionEventStore {
 
     private func loadEvents(defaults: UserDefaults) -> [ExtensionEvent] {
         guard let data = defaults.data(forKey: eventsKey) else { return [] }
+        let decoder = Self.makeDecoder()
         return (try? decoder.decode([ExtensionEvent].self, from: data)) ?? []
     }
 
@@ -69,5 +64,17 @@ public final class ExtensionEventStore {
             return nil
         }
         return UserDefaults(suiteName: suiteName)
+    }
+
+    private static func makeEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    private static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 }

@@ -18,7 +18,6 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
     public weak var handler: RealtimeEventHandler?
     private let tokenStore: AccessTokenStore
     private let client: SupabaseClient
-    private let decoder: JSONDecoder
     private let logger = Logger(subsystem: "sideBar", category: "Realtime")
     private var currentUserId: String?
     private var notesChannel: RealtimeChannelV2?
@@ -33,8 +32,6 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
     public init(config: EnvironmentConfig, handler: RealtimeEventHandler? = nil) {
         self.handler = handler
         self.tokenStore = AccessTokenStore()
-        self.decoder = JSONDecoder()
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
         let options = SupabaseClientOptions(
             auth: SupabaseClientOptions.AuthOptions(
                 accessToken: { [tokenStore] in await tokenStore.get() }
@@ -310,6 +307,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleNoteInsert(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyNoteEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
@@ -319,6 +317,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleNoteUpdate(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: NoteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             var oldRecord: NoteRealtimeRecord?
             do {
@@ -334,6 +333,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleNoteDelete(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let oldRecord: NoteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyNoteEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
@@ -360,6 +360,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleWebsiteInsert(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyWebsiteEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
@@ -369,6 +370,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleWebsiteUpdate(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: WebsiteRealtimeRecord = try action.decodeRecord(decoder: decoder)
             var oldRecord: WebsiteRealtimeRecord?
             do {
@@ -384,6 +386,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleWebsiteDelete(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let oldRecord: WebsiteRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyWebsiteEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
@@ -393,6 +396,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleIngestedFileInsert(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyIngestedFileEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
@@ -402,6 +406,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleIngestedFileUpdate(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: IngestedFileRealtimeRecord = try action.decodeRecord(decoder: decoder)
             var oldRecord: IngestedFileRealtimeRecord?
             do {
@@ -417,6 +422,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleIngestedFileDelete(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let oldRecord: IngestedFileRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyIngestedFileEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
@@ -426,6 +432,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleFileJobInsert(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
             notifyFileJobEvent(type: .insert, record: record, oldRecord: nil)
         } catch {
@@ -435,6 +442,7 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleFileJobUpdate(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let record: FileJobRealtimeRecord = try action.decodeRecord(decoder: decoder)
             var oldRecord: FileJobRealtimeRecord?
             do {
@@ -450,11 +458,18 @@ public final class SupabaseRealtimeAdapter: RealtimeClient {
 
     func handleFileJobDelete(_ action: RealtimeActionDecoding) {
         do {
+            let decoder = Self.makeDecoder()
             let oldRecord: FileJobRealtimeRecord = try action.decodeOldRecord(decoder: decoder)
             notifyFileJobEvent(type: .delete, record: nil, oldRecord: oldRecord)
         } catch {
             logger.error("File jobs delete decode failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    private static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
     }
 
     private func notifyWebsiteEvent(

@@ -51,6 +51,7 @@ public final class AppEnvironment: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
+        let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
         #if DEBUG
         let logger = Logger(subsystem: "sideBar", category: "Startup")
         let initStart = CFAbsoluteTimeGetCurrent()
@@ -116,7 +117,7 @@ public final class AppEnvironment: ObservableObject {
         )
         self.weatherViewModel = WeatherViewModel(api: container.weatherAPI)
         self.realtimeClient = container.makeRealtimeClient(handler: nil)
-        self.networkMonitor = NetworkMonitor()
+        self.networkMonitor = NetworkMonitor(startMonitoring: !isTestMode)
         self.biometricMonitor = BiometricMonitor()
         self.configError = configError
         self.isAuthenticated = container.authSession.accessToken != nil
@@ -126,6 +127,10 @@ public final class AppEnvironment: ObservableObject {
         #if DEBUG
         logStep("Stores + view models", storeStart)
         #endif
+
+        if isTestMode {
+            return
+        }
 
         #if DEBUG
         let subscriptionsStart = CFAbsoluteTimeGetCurrent()
