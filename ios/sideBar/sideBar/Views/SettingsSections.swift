@@ -1,5 +1,8 @@
 import LocalAuthentication
 import SwiftUI
+#if os(macOS)
+import UniformTypeIdentifiers
+#endif
 
 // MARK: - SettingsSections
 

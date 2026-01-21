@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 public struct SidebarRail: View {
     @EnvironmentObject private var environment: AppEnvironment
@@ -69,7 +72,7 @@ public struct SidebarRail: View {
                 .ignoresSafeArea(.all, edges: .bottom)
                 .overlay(
                     Rectangle()
-                        .fill(Color(.separator))
+                        .fill(separatorColor)
                         .frame(width: 1)
                         .ignoresSafeArea(.all, edges: .bottom),
                     alignment: .trailing
@@ -147,6 +150,14 @@ public struct SidebarRail: View {
 
     private var railBackground: Color {
         DesignTokens.Colors.sidebar
+    }
+
+    private var separatorColor: Color {
+        #if os(macOS)
+        return Color(nsColor: .separatorColor)
+        #else
+        return Color(.separator)
+        #endif
     }
 
 }

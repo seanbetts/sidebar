@@ -60,10 +60,14 @@ private struct WebsitesPanelView: View {
         }
         .alert("Save a website", isPresented: $isNewWebsitePresented) {
             TextField("example.com", text: $newWebsiteUrl)
+                #if os(iOS)
                 .textInputAutocapitalization(.never)
                 .keyboardType(.URL)
+                #endif
                 .autocorrectionDisabled()
+                #if os(iOS)
                 .submitLabel(.done)
+                #endif
                 .onSubmit {
                     saveWebsite()
                 }
