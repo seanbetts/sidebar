@@ -69,7 +69,12 @@ public struct LoginView: View {
             errorMessage = nil
         }
         .onAppear {
-            focusedField = .email
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                if focusedField == nil {
+                    focusedField = .email
+                }
+            }
         }
     }
 
@@ -183,10 +188,11 @@ public struct LoginView: View {
             SecureFieldWithToggle(
                 title: "Password",
                 text: $password,
+                focus: $focusedField,
+                field: .password,
                 textContentType: .password,
                 onSubmit: { Task { await signIn() } }
             )
-            .focused($focusedField, equals: .password)
             .submitLabel(.go)
             if !password.isEmpty {
                 Button {

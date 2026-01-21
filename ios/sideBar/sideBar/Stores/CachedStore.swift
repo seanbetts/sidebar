@@ -1,21 +1,36 @@
 import Foundation
 
-/// Protocol for stores with cache-first loading.
+/// Base class for stores with cache-first loading.
+/// Subclasses must override `cacheKey`, `cacheTTL`, `fetchFromAPI()`, `applyData()`, and `backgroundRefresh()`.
 @MainActor
-public protocol CachedStore: AnyObject {
-    associatedtype CachedData: Codable
+open class CachedStoreBase<CachedData: Codable>: ObservableObject {
+    public let cache: CacheClient
 
-    var cache: CacheClient { get }
-    var cacheKey: String { get }
-    var cacheTTL: TimeInterval { get }
+    open var cacheKey: String {
+        fatalError("Subclass must override cacheKey")
+    }
 
-    func fetchFromAPI() async throws -> CachedData
-    func applyData(_ data: CachedData, persist: Bool)
-    func backgroundRefresh() async
-}
+    open var cacheTTL: TimeInterval {
+        fatalError("Subclass must override cacheTTL")
+    }
 
-public extension CachedStore {
-    func loadWithCache(force: Bool = false) async throws {
+    public init(cache: CacheClient) {
+        self.cache = cache
+    }
+
+    open func fetchFromAPI() async throws -> CachedData {
+        fatalError("Subclass must override fetchFromAPI()")
+    }
+
+    open func applyData(_ data: CachedData, persist: Bool) {
+        fatalError("Subclass must override applyData(_:persist:)")
+    }
+
+    open func backgroundRefresh() async {
+        fatalError("Subclass must override backgroundRefresh()")
+    }
+
+    public func loadWithCache(force: Bool = false) async throws {
         let cached: CachedData? = force ? nil : cache.get(key: cacheKey)
 
         if let cached {

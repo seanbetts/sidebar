@@ -1,6 +1,7 @@
 import XCTest
 @testable import sideBar
 
+@MainActor
 final class CachedStoreTests: XCTestCase {
     func testLoadWithCacheUsesCachedAndRefreshes() async throws {
         let cache = TestCacheClient()
@@ -31,6 +32,7 @@ final class CachedStoreTests: XCTestCase {
     }
 }
 
+@MainActor
 private final class MockCachedStore: CachedStore {
     struct Applied {
         let value: String
