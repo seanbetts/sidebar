@@ -1,10 +1,39 @@
 import Foundation
 import Combine
 
-// TODO: Revisit to prefer native-first data sources where applicable.
+// MARK: - WebsitesViewModel
 
 @MainActor
+/// Manages saved websites list, detail views, and website saving functionality.
+///
+/// This ViewModel coordinates website operations including:
+/// - Loading and displaying the saved websites list
+/// - Website detail view with full content
+/// - Saving new websites via URL with validation
+/// - Pin, archive, rename, and delete operations
+/// - Pending website state for optimistic UI updates
+/// - Real-time event handling for live sync
+///
+/// ## URL Validation
+/// Uses `WebsiteURLValidator` to normalize and validate URLs before saving.
+/// Blocks localhost, direct IPs, and invalid TLDs.
+///
+/// ## Optimistic Updates
+/// When saving a website, a `PendingWebsiteItem` is created immediately for
+/// responsive UI, then replaced with the actual item once the server responds.
+///
+/// ## Threading
+/// Marked `@MainActor` - all properties and methods execute on the main thread.
+///
+/// ## Usage
+/// ```swift
+/// let viewModel = WebsitesViewModel(api: websitesAPI, store: websitesStore)
+/// await viewModel.load()
+/// let success = await viewModel.saveWebsite(url: "https://example.com")
+/// await viewModel.selectWebsite(id: websiteId)
+/// ```
 public final class WebsitesViewModel: ObservableObject {
+    /// Holds a pending website captured from an extension flow.
     public struct PendingWebsiteItem: Identifiable, Equatable {
         public let id: String
         public let title: String
@@ -33,6 +62,7 @@ public final class WebsitesViewModel: ObservableObject {
         store.$items
             .sink { [weak self] items in
                 self?.items = items
+                self?.clearPendingIfNeeded(items: items)
             }
             .store(in: &cancellables)
 
@@ -43,19 +73,37 @@ public final class WebsitesViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    public func load() async {
+    public func load(force: Bool = false) async {
         if items.isEmpty {
             isLoading = true
         }
         errorMessage = nil
         do {
-            try await store.loadList()
+            try await store.loadList(force: force)
         } catch {
             if items.isEmpty {
                 errorMessage = error.localizedDescription
             }
         }
         isLoading = false
+    }
+
+    public func refreshFromExtension() async {
+        errorMessage = nil
+        do {
+            try await store.loadList(force: true)
+        } catch {
+            if items.isEmpty {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    public func showPendingFromExtension(url: String) {
+        guard let normalized = WebsiteURLValidator.normalizedCandidate(url) else {
+            return
+        }
+        pendingWebsite = makePendingWebsite(from: normalized)
     }
 
     public func loadById(id: String) async {
@@ -82,8 +130,7 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func saveWebsite(url: String) async -> Bool {
-        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard let trimmed = url.trimmedOrNil else {
             saveErrorMessage = "Enter a valid URL."
             return false
         }
@@ -155,8 +202,7 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     public func renameWebsite(id: String, title: String) async {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard let trimmed = title.trimmedOrNil else {
             return
         }
         errorMessage = nil
@@ -211,5 +257,13 @@ public final class WebsitesViewModel: ObservableObject {
             domain: domain,
             url: url.absoluteString
         )
+    }
+
+    private func clearPendingIfNeeded(items: [WebsiteItem]) {
+        guard let pendingWebsite else { return }
+        let pendingUrl = pendingWebsite.url
+        if items.contains(where: { $0.url == pendingUrl }) {
+            self.pendingWebsite = nil
+        }
     }
 }

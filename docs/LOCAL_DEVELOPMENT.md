@@ -56,6 +56,20 @@ git checkout dev
 ./dev.sh stop
 ```
 
+## iOS App (Xcode)
+
+1) Copy `ios/sideBar/Config/SideBar.local.xcconfig.example` to `ios/sideBar/Config/SideBar.local.xcconfig`.
+2) Update API and Supabase values in the local xcconfig (escape `//` in URLs).
+3) Open `ios/sideBar/sideBar.xcodeproj` in Xcode.
+4) In the `sideBar` target, set the Debug base configuration to `Config/SideBar.xcconfig`.
+5) Build/run in the simulator.
+
+Run iOS unit tests from the CLI:
+
+```bash
+xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test
+```
+
 ## Safety Notes (Production Data)
 
 You are connecting to production Supabase and R2.

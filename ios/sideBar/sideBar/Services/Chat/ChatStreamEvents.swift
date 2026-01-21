@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines ChatStreamEventType.
 public enum ChatStreamEventType: String {
     case token
     case toolCall = "tool_call"
@@ -8,9 +9,14 @@ public enum ChatStreamEventType: String {
     case error
     case noteCreated = "note_created"
     case noteUpdated = "note_updated"
+    case notePinned = "note_pinned"
+    case noteMoved = "note_moved"
     case noteDeleted = "note_deleted"
     case websiteSaved = "website_saved"
+    case websitePinned = "website_pinned"
+    case websiteArchived = "website_archived"
     case websiteDeleted = "website_deleted"
+    case ingestionUpdated = "ingestion_updated"
     case themeSet = "ui_theme_set"
     case scratchpadUpdated = "scratchpad_updated"
     case scratchpadCleared = "scratchpad_cleared"
@@ -22,6 +28,7 @@ public enum ChatStreamEventType: String {
     case memoryDeleted = "memory_deleted"
 }
 
+/// Represents ChatStreamEvent.
 public struct ChatStreamEvent {
     public let type: ChatStreamEventType
     public let data: AnyCodable?

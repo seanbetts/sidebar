@@ -36,4 +36,31 @@ describe('chat streaming flow', () => {
 		expect(onComplete).toHaveBeenCalled();
 		expect(onError).not.toHaveBeenCalled();
 	});
+
+	it('dispatches custom SSE events', async () => {
+		const client = new SSEClient();
+		const onNotePinned = vi.fn();
+		const onIngestionUpdated = vi.fn();
+
+		const stream = createStream([
+			'event: note_pinned\n',
+			'data: {"id":"note-1","pinned":true}\n\n',
+			'event: ingestion_updated\n',
+			'data: {"file_id":"file-1"}\n\n',
+			'event: complete\n',
+			'data: {}\n\n'
+		]);
+
+		global.fetch = vi.fn(async () => ({
+			ok: true,
+			status: 200,
+			statusText: 'OK',
+			body: stream
+		})) as unknown as typeof fetch;
+
+		await client.connect({ message: 'Hi' }, { onNotePinned, onIngestionUpdated });
+
+		expect(onNotePinned).toHaveBeenCalledWith({ id: 'note-1', pinned: true });
+		expect(onIngestionUpdated).toHaveBeenCalledWith({ file_id: 'file-1' });
+	});
 });

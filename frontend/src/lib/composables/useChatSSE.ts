@@ -4,6 +4,7 @@ import { treeStore } from '$lib/stores/tree';
 import { websitesStore } from '$lib/stores/websites';
 import { editorStore, currentNoteId } from '$lib/stores/editor';
 import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
+import { ingestionStore } from '$lib/stores/ingestion';
 import { scratchpadStore } from '$lib/stores/scratchpad';
 import { memoriesStore } from '$lib/stores/memories';
 import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
@@ -12,6 +13,7 @@ import { logError } from '$lib/utils/errorHandling';
 import { get } from 'svelte/store';
 import { toast } from 'svelte-sonner';
 import { markFirstEvent, markSseError } from '$lib/utils/chatMetrics';
+import { ingestionAPI } from '$lib/services/api';
 
 export interface ChatSSEConnectArgs {
 	assistantMessageId: string;
@@ -139,8 +141,41 @@ export function useChatSSE() {
 				}
 			},
 
+			onNotePinned: (data) => {
+				if (data?.id && data?.pinned !== undefined) {
+					treeStore.setNotePinned?.(data.id, data.pinned);
+				}
+				dispatchCacheEvent('note.pinned');
+			},
+
+			onNoteMoved: (data) => {
+				if (data?.id && data?.folder !== undefined) {
+					treeStore.moveNoteNode?.(data.id, data.folder);
+				}
+				dispatchCacheEvent('note.moved');
+			},
+
 			onWebsiteSaved: async () => {
 				dispatchCacheEvent('website.saved');
+			},
+
+			onWebsitePinned: (data) => {
+				if (data?.id && data?.pinned !== undefined) {
+					websitesStore.setPinnedLocal?.(data.id, data.pinned);
+					websitesStore.updateActiveLocal?.({
+						pinned: data.pinned,
+						...(data.pinned ? { archived: false } : {})
+					});
+				}
+				dispatchCacheEvent('website.pinned');
+			},
+
+			onWebsiteArchived: (data) => {
+				if (data?.id && data?.archived !== undefined) {
+					websitesStore.setArchivedLocal?.(data.id, data.archived);
+					websitesStore.updateActiveLocal?.({ archived: data.archived });
+				}
+				dispatchCacheEvent('website.archived');
 			},
 
 			onNoteDeleted: async (data) => {
@@ -158,6 +193,28 @@ export function useChatSSE() {
 				dispatchCacheEvent('website.deleted');
 				if (data?.id) {
 					websitesStore.removeLocal?.(data.id);
+				}
+			},
+
+			onIngestionUpdated: async (data) => {
+				const fileId = data?.file_id;
+				if (!fileId) return;
+				try {
+					const meta = await ingestionAPI.get(fileId);
+					ingestionStore.upsertItem({
+						file: meta.file,
+						job: meta.job,
+						recommended_viewer: meta.recommended_viewer
+					});
+					const viewerState = get(ingestionViewerStore);
+					if (viewerState.active?.file.id === fileId) {
+						ingestionViewerStore.setActive(meta);
+					}
+				} catch (error) {
+					logError('Failed to fetch ingestion metadata', error, {
+						scope: 'chatSSE.ingestionUpdated',
+						fileId
+					});
 				}
 			},
 

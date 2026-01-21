@@ -97,7 +97,7 @@ It runs only when explicitly enabled, so it won't break CI.
 # Run locally against a running app on http://localhost:3000
 RUN_API_SMOKE=1 npm test -- src/tests/flows/api-smoke.test.ts
 
-# Optional: include the YouTube ingestion endpoint (may return validation errors)
+# Optional: include the YouTube file endpoint (may return validation errors)
 RUN_API_SMOKE=1 RUN_API_SMOKE_YOUTUBE=1 npm test -- src/tests/flows/api-smoke.test.ts
 ```
 

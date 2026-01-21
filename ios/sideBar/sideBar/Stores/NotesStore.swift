@@ -1,31 +1,51 @@
 import Foundation
 import Combine
 
-@MainActor
-public final class NotesStore: ObservableObject {
+// MARK: - NotesStore
+
+/// Persistent store for notes file tree and active note content.
+///
+/// Manages the hierarchical file tree of notes and the currently selected note.
+/// Uses `CachedStoreBase` for cache-first loading with background refresh.
+///
+/// ## Responsibilities
+/// - Load and cache the notes file tree structure
+/// - Load and cache individual note content
+/// - Apply editor updates from `NotesEditorViewModel`
+/// - Handle real-time note events (insert, update, delete)
+public final class NotesStore: CachedStoreBase<FileTree> {
     @Published public private(set) var tree: FileTree? = nil
     @Published public private(set) var activeNote: NotePayload? = nil
 
     private let api: any NotesProviding
-    private let cache: CacheClient
     private var isRefreshingTree = false
 
     public init(api: any NotesProviding, cache: CacheClient) {
         self.api = api
-        self.cache = cache
+        super.init(cache: cache)
     }
 
+    // MARK: - CachedStoreBase Overrides
+
+    public override var cacheKey: String { CacheKeys.notesTree }
+    public override var cacheTTL: TimeInterval { CachePolicy.notesTree }
+
+    public override func fetchFromAPI() async throws -> FileTree {
+        try await api.listTree()
+    }
+
+    public override func applyData(_ data: FileTree, persist: Bool) {
+        applyTreeUpdate(data, persist: persist)
+    }
+
+    public override func backgroundRefresh() async {
+        await refreshTree()
+    }
+
+    // MARK: - Public API
+
     public func loadTree(force: Bool = false) async throws {
-        let cached: FileTree? = force ? nil : cache.get(key: CacheKeys.notesTree)
-        if let cached {
-            applyTreeUpdate(cached, persist: false)
-            Task { [weak self] in
-                await self?.refreshTree()
-            }
-            return
-        }
-        let response = try await api.listTree()
-        applyTreeUpdate(response, persist: true)
+        try await loadWithCache(force: force)
     }
 
     public func loadNote(id: String, force: Bool = false) async throws {
@@ -73,6 +93,8 @@ public final class NotesStore: ObservableObject {
         tree = nil
         activeNote = nil
     }
+
+    // MARK: - Private
 
     private func refreshTree() async {
         guard !isRefreshingTree else {

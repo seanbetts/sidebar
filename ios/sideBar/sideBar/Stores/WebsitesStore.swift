@@ -1,31 +1,51 @@
 import Foundation
 import Combine
 
-@MainActor
-public final class WebsitesStore: ObservableObject {
+// MARK: - WebsitesStore
+
+/// Persistent store for saved websites list and active website detail.
+///
+/// Manages the list of saved websites and the currently selected website's full content.
+/// Uses `CachedStoreBase` for cache-first loading with background refresh.
+///
+/// ## Responsibilities
+/// - Load and cache the saved websites list
+/// - Load and cache individual website details with content
+/// - Update list items in-place for pin/archive/rename operations
+/// - Handle real-time website events (insert, update, delete)
+public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     @Published public private(set) var items: [WebsiteItem] = []
     @Published public private(set) var active: WebsiteDetail? = nil
 
     private let api: any WebsitesProviding
-    private let cache: CacheClient
     private var isRefreshingList = false
 
     public init(api: any WebsitesProviding, cache: CacheClient) {
         self.api = api
-        self.cache = cache
+        super.init(cache: cache)
     }
 
+    // MARK: - CachedStoreBase Overrides
+
+    public override var cacheKey: String { CacheKeys.websitesList }
+    public override var cacheTTL: TimeInterval { CachePolicy.websitesList }
+
+    public override func fetchFromAPI() async throws -> WebsitesResponse {
+        try await api.list()
+    }
+
+    public override func applyData(_ data: WebsitesResponse, persist: Bool) {
+        applyListUpdate(data.items, persist: persist)
+    }
+
+    public override func backgroundRefresh() async {
+        await refreshList()
+    }
+
+    // MARK: - Public API
+
     public func loadList(force: Bool = false) async throws {
-        let cached: WebsitesResponse? = force ? nil : cache.get(key: CacheKeys.websitesList)
-        if let cached {
-            applyListUpdate(cached.items, persist: false)
-            Task { [weak self] in
-                await self?.refreshList()
-            }
-            return
-        }
-        let response = try await api.list()
-        applyListUpdate(response.items, persist: true)
+        try await loadWithCache(force: force)
     }
 
     public func loadDetail(id: String, force: Bool = false) async throws {
@@ -115,6 +135,8 @@ public final class WebsitesStore: ObservableObject {
             }
         }
     }
+
+    // MARK: - Private
 
     private func refreshList() async {
         guard !isRefreshingList else {

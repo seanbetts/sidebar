@@ -1,17 +1,19 @@
 import Foundation
 
+/// Represents ParsedSSEEvent.
 public struct ParsedSSEEvent {
     public let type: String
     public let data: String
 }
 
-public final class ChatStreamParser {
+/// Parses server-sent events into chat stream events.
+public struct ChatStreamParser {
     private var buffer = ""
 
     public init() {
     }
 
-    public func ingest(_ data: Data) -> [ChatStreamEvent] {
+    public mutating func ingest(_ data: Data) -> [ChatStreamEvent] {
         guard let chunk = String(data: data, encoding: .utf8) else {
             return []
         }

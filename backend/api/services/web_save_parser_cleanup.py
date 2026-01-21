@@ -333,6 +333,174 @@ def extract_openai_body_html(raw_html: str) -> str | None:
     return lxml_html.tostring(target, encoding="unicode", method="html")
 
 
+def normalize_wired_image_url(url: str) -> str:
+    """Normalize Wired image URLs to use a standard aspect ratio."""
+    if not url or "media.wired.com/photos/" not in url:
+        return url
+    # Wired uses URLs like:
+    # https://media.wired.com/photos/{id}/191:100/w_1280,c_limit/{filename}
+    # Transform odd aspect ratios (191:100, 1:1) to 3:2 for better display
+    import re
+
+    # Match aspect ratio in URL path
+    aspect_pattern = re.compile(r"/(\d+:\d+)/")
+    match = aspect_pattern.search(url)
+    if match:
+        current_ratio = match.group(1)
+        # Replace non-standard ratios with 3:2
+        if current_ratio in ("191:100", "1:1", "16:9"):
+            url = url.replace(f"/{current_ratio}/", "/3:2/")
+    return url
+
+
+def extract_verge_body_html(raw_html: str) -> str | None:
+    """Extract The Verge article content from body component elements."""
+    if not raw_html:
+        return None
+    try:
+        tree = lxml_html.fromstring(raw_html)
+    except ValueError:
+        tree = lxml_html.fragment_fromstring(raw_html, create_parent="div")
+
+    # Find all article body component elements
+    body_components = tree.cssselect(".duet--article--article-body-component")
+    if not body_components:
+        return None
+
+    # Create a new container to hold all content
+    combined = lxml_html.Element("div")
+
+    for component in body_components:
+        # Copy all children from each body component
+        for child in list(component):
+            # Skip empty divs
+            if child.tag == "div" and not child.text_content().strip():
+                continue
+            combined.append(child)
+
+    # Remove noise elements
+    noise_selectors = [
+        # Category/topic links at the top
+        "[class*='Breadcrumbs']",
+        "[class*='breadcrumb']",
+        ".duet--article--article-categories",
+        # Author info block
+        "[class*='ArticleAuthor']",
+        ".duet--article--byline-contact",
+        # Share buttons
+        "[class*='ShareTools']",
+        "[class*='share-tools']",
+        ".duet--article--share",
+        # Follow buttons and popovers
+        "[id^='follow-']",
+        "[id^='popover-']",
+        "[class*='FollowToggle']",
+        # Comments section
+        "[class*='Comments']",
+        ".duet--article--comments",
+        # Related content/sidebar
+        ".duet--article--related",
+        "[class*='RelatedStories']",
+        "[class*='StickyBox']",
+        "[class*='Sidebar']",
+        "aside",
+        # Ads and marketing
+        "[class*='Ad']",
+        "[class*='ad-']",
+        ".duet--ad--",
+        "[class*='NewsletterSignup']",
+        # Navigation and chrome
+        "nav",
+        "header",
+        "footer",
+        "script",
+        "style",
+        # Gallery chrome (prev/next buttons, captions handled separately)
+        ".duet--article--gallery button",
+        ".duet--article--gallery strong",
+    ]
+    for selector in noise_selectors:
+        for node in combined.cssselect(selector):
+            parent = node.getparent()
+            if parent is not None:
+                parent.remove(node)
+
+    return lxml_html.tostring(combined, encoding="unicode", method="html")
+
+
+def extract_wired_body_html(raw_html: str) -> str | None:
+    """Extract Wired article content from split body containers."""
+    if not raw_html:
+        return None
+    try:
+        tree = lxml_html.fromstring(raw_html)
+    except ValueError:
+        tree = lxml_html.fragment_fromstring(raw_html, create_parent="div")
+
+    # Find all body__inner-container elements (Wired splits articles across multiple)
+    containers = tree.cssselect(".body__inner-container")
+    if not containers:
+        return None
+
+    # Create a new container to hold all content
+    combined = lxml_html.Element("div")
+
+    for container in containers:
+        # Copy all children from each body__inner-container
+        for child in list(container):
+            # Skip empty divs
+            if child.tag == "div" and not child.text_content().strip():
+                continue
+            combined.append(child)
+
+    # Remove noise elements that might have been included
+    noise_selectors = [
+        ".teads-player",
+        "[class*='AdWrapper']",
+        "[class*='NewsletterOneClick']",
+        "[class*='ConsumerMarketingUnit']",
+        "[data-testid='pullquote-embed-leftborder']",
+        "[class*='VideoFigure']",
+        "[data-testid='cne-interlude-container']",
+        ".journey-unit__container",
+        ".journey-unit",
+        "aside",
+        "script",
+        "iframe",
+    ]
+    for selector in noise_selectors:
+        for node in combined.cssselect(selector):
+            parent = node.getparent()
+            if parent is not None:
+                parent.remove(node)
+
+    # Strip paywall class from paragraphs
+    for p in combined.cssselect("p.paywall"):
+        if "class" in p.attrib:
+            del p.attrib["class"]
+
+    # Normalize image URLs to use better aspect ratios
+    for img in combined.cssselect("img"):
+        src = img.get("src")
+        if src:
+            img.set("src", normalize_wired_image_url(src))
+        srcset = img.get("srcset")
+        if srcset:
+            # Normalize each URL in srcset
+            parts = []
+            for part in srcset.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                tokens = part.split()
+                if tokens:
+                    tokens[0] = normalize_wired_image_url(tokens[0])
+                parts.append(" ".join(tokens))
+            img.set("srcset", ", ".join(parts))
+
+    return lxml_html.tostring(combined, encoding="unicode", method="html")
+
+
 def extract_body_html(html_text: str) -> str:
     """Extract inner body HTML from a full document."""
     soup = BeautifulSoup(html_text, "html.parser")
@@ -428,16 +596,39 @@ def normalize_image_captions(html_text: str) -> str:
 
     for figure in soup.find_all("figure"):
         figcaption = figure.find("figcaption")
-        if not figcaption:
-            continue
-        caption = figcaption.get_text(" ", strip=True)
+        caption = None
+        caption_element = None
+
+        if figcaption:
+            caption = figcaption.get_text(" ", strip=True)
+            caption_element = figcaption
+        else:
+            # Handle Wired/Condé Nast caption structure: div.CaptionWrapper
+            caption_wrapper = figure.find(
+                "div", class_=lambda c: c and ("caption" in c.lower() if c else False)
+            )
+            if caption_wrapper:
+                # Look for credit span or just get all text
+                credit = caption_wrapper.find(
+                    "span",
+                    class_=lambda c: c and ("credit" in c.lower() if c else False),
+                )
+                if credit:
+                    caption = credit.get_text(" ", strip=True)
+                else:
+                    caption = caption_wrapper.get_text(" ", strip=True)
+                caption_element = caption_wrapper
+
         if not caption:
-            figcaption.decompose()
+            if caption_element:
+                caption_element.decompose()
             continue
+
         img = figure.find("img")
         if img and not img.get("title"):
             img["title"] = caption
-        figcaption.decompose()
+        if caption_element:
+            caption_element.decompose()
 
     for node in soup.find_all(attrs={"data-attrs": True}):
         data_attrs = node.get("data-attrs")

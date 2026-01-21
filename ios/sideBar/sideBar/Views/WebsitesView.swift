@@ -1,16 +1,35 @@
 import SwiftUI
+import Combine
+#if canImport(UIKit)
+import UIKit
+#endif
+
+// MARK: - WebsitesView
 
 public struct WebsitesView: View {
     @EnvironmentObject private var environment: AppEnvironment
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @Environment(\.scenePhase) private var scenePhase
 
     public init() {
     }
 
     public var body: some View {
         WebsitesDetailView(viewModel: environment.websitesViewModel)
+            .task {
+                await environment.websitesViewModel.load(force: true)
+            }
+            #if os(iOS)
+            .onChange(of: scenePhase) {
+                guard scenePhase == .active else { return }
+                Task {
+                    await environment.consumeExtensionEvents()
+                    await environment.websitesViewModel.load(force: true)
+                }
+            }
+            #endif
             #if !os(macOS)
             .navigationTitle(websiteTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -124,6 +143,25 @@ private struct WebsitesDetailView: View {
         } message: {
             Text(archiveAlertMessage)
         }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .websites else { return }
+            switch event.action {
+            case .renameItem:
+                guard viewModel.active != nil else { return }
+                renameValue = displayTitle
+                isRenameDialogPresented = true
+            case .deleteItem:
+                guard viewModel.active != nil else { return }
+                isDeleteAlertPresented = true
+            case .archiveItem:
+                guard viewModel.active != nil else { return }
+                isArchiveAlertPresented = true
+            case .openInBrowser:
+                openSource()
+            default:
+                break
+            }
+        }
         #if os(iOS) && canImport(SafariServices)
         .sheet(isPresented: safariBinding) {
             if let safariURL {
@@ -132,7 +170,9 @@ private struct WebsitesDetailView: View {
         }
         #endif
     }
+}
 
+extension WebsitesDetailView {
     private var header: some View {
         ContentHeaderRow(
             iconName: "globe",
@@ -148,7 +188,7 @@ private struct WebsitesDetailView: View {
                 closeButton
             }
         }
-        .padding(16)
+        .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
 
@@ -375,11 +415,26 @@ private struct WebsitesDetailView: View {
         let stripped = MarkdownRendering.stripFrontmatter(content)
         guard !stripped.isEmpty else { return }
         #if os(iOS)
-        UIPasteboard.general.string = stripped
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = stripped
         #elseif os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(stripped, forType: .string)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(stripped, forType: .string)
         #endif
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            #if os(macOS)
+            let pasteboard = NSPasteboard.general
+            if pasteboard.string(forType: .string) == stripped {
+                pasteboard.clearContents()
+            }
+            #else
+            let pasteboard = UIPasteboard.general
+            if pasteboard.string == stripped {
+                pasteboard.string = ""
+            }
+            #endif
+        }
     }
 
     private func exportWebsite() {

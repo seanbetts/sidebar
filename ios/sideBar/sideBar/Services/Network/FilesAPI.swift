@@ -1,11 +1,13 @@
 import Foundation
 
+/// Defines the requirements for FilesProviding.
 public protocol FilesProviding {
     func listTree(basePath: String) async throws -> FileTree
     func getContent(basePath: String, path: String) async throws -> FileContent
     func download(basePath: String, path: String) async throws -> Data
 }
 
+/// API client for file tree and content endpoints.
 public struct FilesAPI {
     private let client: APIClient
 
@@ -14,14 +16,14 @@ public struct FilesAPI {
     }
 
     public func listTree(basePath: String = "documents") async throws -> FileTree {
-        let encoded = basePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? basePath
+        let encoded = encodeQueryValue(basePath)
         let path = "files/tree?basePath=\(encoded)"
         return try await client.request(path)
     }
 
     public func search(query: String, basePath: String = "documents", limit: Int = 50) async throws -> [FileNode] {
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let baseEncoded = basePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? basePath
+        let encoded = encodeQueryValue(query)
+        let baseEncoded = encodeQueryValue(basePath)
         let path = "files/search?query=\(encoded)&basePath=\(baseEncoded)&limit=\(limit)"
         struct SearchResponse: Codable { let items: [FileNode] }
         let response: SearchResponse = try await client.request(path, method: "POST")
@@ -49,8 +51,9 @@ public struct FilesAPI {
     }
 
     public func getContent(basePath: String = "documents", path: String) async throws -> FileContent {
-        let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let requestPath = "files/content?basePath=\(basePath)&path=\(encoded)"
+        let encoded = encodeQueryValue(path)
+        let baseEncoded = encodeQueryValue(basePath)
+        let requestPath = "files/content?basePath=\(baseEncoded)&path=\(encoded)"
         return try await client.request(requestPath)
     }
 
@@ -60,11 +63,17 @@ public struct FilesAPI {
     }
 
     public func download(basePath: String = "documents", path: String) async throws -> Data {
-        let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let baseEncoded = basePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? basePath
+        let encoded = encodeQueryValue(path)
+        let baseEncoded = encodeQueryValue(basePath)
         let requestPath = "files/download?basePath=\(baseEncoded)&path=\(encoded)"
         return try await client.requestData(requestPath)
     }
 }
 
 extension FilesAPI: FilesProviding {}
+
+private func encodeQueryValue(_ value: String) -> String {
+    var allowed = CharacterSet.urlQueryAllowed
+    allowed.remove(charactersIn: "&=?/")
+    return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
+}

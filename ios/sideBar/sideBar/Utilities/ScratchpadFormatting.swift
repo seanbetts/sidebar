@@ -8,7 +8,7 @@ public enum ScratchpadConstants {
 
 public enum ScratchpadFormatting {
     public static func stripHeading(_ markdown: String) -> String {
-        let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = markdown.trimmed
         guard trimmed.hasPrefix(ScratchpadConstants.heading) else {
             return markdown
         }
@@ -20,7 +20,7 @@ public enum ScratchpadFormatting {
     }
 
     public static func withHeading(_ markdown: String) -> String {
-        let body = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = markdown.trimmed
         if body.isEmpty {
             return ScratchpadConstants.heading + "\n"
         }
@@ -34,6 +34,6 @@ public enum ScratchpadFormatting {
         }
         let range = NSRange(markdown.startIndex..., in: markdown)
         let cleaned = regex.stringByReplacingMatches(in: markdown, range: range, withTemplate: "")
-        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.trimmed
     }
 }

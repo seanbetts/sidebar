@@ -662,6 +662,38 @@ def test_extract_openai_body_html_prefers_article_and_removes_nav():
     assert "Nav" not in extracted
 
 
+def test_extract_verge_body_html_combines_body_components():
+    html = """
+    <html>
+      <body>
+        <div class="duet--article--article-body-component">
+          <p>First paragraph of article content.</p>
+          <p>Second paragraph here.</p>
+        </div>
+        <div class="sidebar">Sidebar content</div>
+        <div class="duet--article--article-body-component">
+          <p>Third paragraph continues.</p>
+          <div class="NewsletterSignup">Sign up for newsletter</div>
+        </div>
+        <aside>Related links</aside>
+      </body>
+    </html>
+    """
+    extracted = web_save_parser.extract_verge_body_html(html)
+    assert extracted is not None
+    assert "First paragraph" in extracted
+    assert "Second paragraph" in extracted
+    assert "Third paragraph" in extracted
+    # Noise elements should be removed
+    assert "Sign up for newsletter" not in extracted
+
+
+def test_extract_verge_body_html_returns_none_when_no_body_components():
+    html = "<html><body><p>No article structure</p></body></html>"
+    extracted = web_save_parser.extract_verge_body_html(html)
+    assert extracted is None
+
+
 def test_cleanup_openai_markdown_removes_footer_and_chrome():
     markdown = "\n".join(
         [

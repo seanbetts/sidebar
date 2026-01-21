@@ -1,5 +1,6 @@
 import Foundation
 
+/// API client for places endpoints.
 public struct PlacesAPI {
     private let client: APIClient
 

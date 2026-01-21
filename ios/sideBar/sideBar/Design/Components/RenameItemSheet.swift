@@ -28,14 +28,14 @@ struct RenameItemSheet: View {
                     Button("Rename") {
                         confirm()
                     }
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(text.trimmed.isEmpty)
                 }
             }
         }
     }
 
     private func confirm() {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = text.trimmed
         guard !trimmed.isEmpty else { return }
         text = ""
         onConfirm(trimmed)

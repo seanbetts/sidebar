@@ -1,5 +1,6 @@
 import Foundation
 
+/// Represents RealtimeMappers.
 public struct RealtimeMappers {
     public static func mapNote(_ record: NoteRealtimeRecord) -> NotePayload? {
         let id = record.id

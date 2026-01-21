@@ -2,6 +2,7 @@ import Foundation
 
 // TODO: Revisit to prefer native-first data sources where applicable.
 
+/// Defines the requirements for TaskProvider.
 public protocol TaskProvider {
     func listTasks(scope: String) async throws -> [TaskItem]
     func searchTasks(query: String) async throws -> [TaskItem]
@@ -13,6 +14,7 @@ public protocol TaskProvider {
     func setDueDate(id: String, date: Date?) async throws
 }
 
+/// Represents a task returned by a task provider.
 public struct TaskItem: Identifiable, Codable {
     public let id: String
     public let title: String
@@ -24,6 +26,7 @@ public struct TaskItem: Identifiable, Codable {
     public let updatedAt: String?
 }
 
+/// Defines the fields needed to create or update a task.
 public struct TaskDraft: Codable {
     public let title: String
     public let notes: String?

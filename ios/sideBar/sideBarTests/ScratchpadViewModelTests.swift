@@ -33,7 +33,7 @@ final class ScratchpadViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.scratchpad?.content, "Updated")
     }
 
-    func testCachedScratchpadReturnsCachedValue() {
+    func testCachedScratchpadReturnsCachedValue() async {
         let cached = ScratchpadResponse(id: "s1", title: "Scratchpad", content: "Cached", updatedAt: nil)
         let cache = TestCacheClient()
         cache.set(key: CacheKeys.scratchpad, value: cached, ttlSeconds: 60)

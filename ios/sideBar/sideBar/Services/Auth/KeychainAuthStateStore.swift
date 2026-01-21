@@ -2,6 +2,9 @@ import Foundation
 import Security
 import CryptoKit
 
+// MARK: - KeychainAuthStateStore
+
+/// Defines KeychainError.
 public enum KeychainError: LocalizedError, Equatable {
     case itemNotFound
     case duplicateItem
@@ -22,6 +25,7 @@ public enum KeychainError: LocalizedError, Equatable {
     }
 }
 
+/// Defines the requirements for KeychainClient.
 public protocol KeychainClient {
     func copyMatching(_ query: CFDictionary, result: UnsafeMutablePointer<AnyObject?>?) -> OSStatus
     func add(_ attributes: CFDictionary, result: UnsafeMutablePointer<AnyObject?>?) -> OSStatus
@@ -29,6 +33,7 @@ public protocol KeychainClient {
     func delete(_ query: CFDictionary) -> OSStatus
 }
 
+/// Represents SystemKeychainClient.
 public struct SystemKeychainClient: KeychainClient {
     public init() {
     }
@@ -50,8 +55,10 @@ public struct SystemKeychainClient: KeychainClient {
     }
 }
 
+/// Stores auth state securely in the keychain.
 public final class KeychainAuthStateStore: AuthStateStore {
     private let service: String
+    private let accessGroup: String?
     private let accessTokenAccount = "accessToken"
     private let userIdAccount = "userId"
     private let encryptionKeyAccount = "authEncryptionKey"
@@ -62,10 +69,12 @@ public final class KeychainAuthStateStore: AuthStateStore {
 
     public init(
         service: String? = nil,
+        accessGroup: String? = nil,
         keychain: KeychainClient = SystemKeychainClient(),
         useInMemoryStore: Bool? = nil
     ) {
         self.service = service ?? (Bundle.main.bundleIdentifier ?? "sideBar.Auth")
+        self.accessGroup = accessGroup
         self.keychain = keychain
         let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         self.useInMemoryStore = useInMemoryStore ?? isRunningTests
@@ -176,12 +185,18 @@ public final class KeychainAuthStateStore: AuthStateStore {
     }
 
     private func baseQuery(account: String) -> [String: Any] {
-        [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecAttrSynchronizable as String: kCFBooleanFalse as Any
         ]
+        #if os(iOS)
+        if let accessGroup {
+            query[kSecAttrAccessGroup as String] = accessGroup
+        }
+        #endif
+        return query
     }
 
     private func mapStatus(_ status: OSStatus) -> KeychainError {

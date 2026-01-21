@@ -4,6 +4,7 @@ import Combine
 // TODO: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
+/// Manages scratchpad content and updates.
 public final class ScratchpadViewModel: ObservableObject {
     @Published public private(set) var scratchpad: ScratchpadResponse? = nil
     @Published public private(set) var errorMessage: String? = nil
@@ -22,18 +23,20 @@ public final class ScratchpadViewModel: ObservableObject {
 
     public func load() async {
         errorMessage = nil
-        let cached = cachedScratchpad()
-        if let cached {
-            scratchpad = cached
+        let loader = CachedLoader(
+            cache: cache,
+            key: CacheKeys.scratchpad,
+            ttl: CachePolicy.scratchpad
+        ) { [api] in
+            try await api.get()
         }
         do {
-            let response = try await api.get()
+            let (response, _) = try await loader.load(onRefresh: { [weak self] fresh in
+                self?.scratchpad = fresh
+            })
             scratchpad = response
-            cache.set(key: CacheKeys.scratchpad, value: response, ttlSeconds: CachePolicy.scratchpad)
         } catch {
-            if cached == nil {
-                errorMessage = error.localizedDescription
-            }
+            errorMessage = error.localizedDescription
         }
     }
 

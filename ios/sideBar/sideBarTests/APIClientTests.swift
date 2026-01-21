@@ -70,6 +70,12 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(data, expected)
     }
 
+    func testDefaultSessionDisablesDiskCache() {
+        let session = APIClient.makeDefaultSession()
+        let cache = session.configuration.urlCache
+        XCTAssertEqual(cache?.diskCapacity, 0)
+    }
+
     private func makeClient(token: String) -> APIClient {
         let config = APIClientConfig(
             baseUrl: URL(string: "https://example.com")!,

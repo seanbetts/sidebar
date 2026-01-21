@@ -133,6 +133,7 @@ private enum MockError: Error {
     case forced
 }
 
+@MainActor
 private struct MockSettingsAPI: SettingsProviding {
     let result: Result<UserSettings, Error>
     let tokenResult: Result<ShortcutsTokenResponse, Error>
@@ -170,6 +171,15 @@ private struct MockSettingsAPI: SettingsProviding {
 
     func getProfileImage() async throws -> Data {
         try profileImageResult.get()
+    }
+
+    func uploadProfileImage(data: Data, contentType: String, filename: String) async throws {
+        _ = data
+        _ = contentType
+        _ = filename
+    }
+
+    func deleteProfileImage() async throws {
     }
 }
 

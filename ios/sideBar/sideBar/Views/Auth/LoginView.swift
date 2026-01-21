@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - LoginView
+
 public struct LoginView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -35,12 +37,11 @@ public struct LoginView: View {
 
                         signInButton
                     }
-                    .onSubmit(handleSubmit)
                 }
                 .groupBoxStyle(LoginGroupBoxStyle())
             }
             .frame(maxWidth: 420)
-            .padding(24)
+            .padding(DesignTokens.Spacing.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .background(DesignTokens.Colors.background)
             .contentShape(Rectangle())
@@ -52,7 +53,7 @@ public struct LoginView: View {
                 ZStack {
                     Color.green.opacity(0.9)
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 60))
+                        .font(DesignTokens.Typography.logo)
                         .foregroundStyle(.white)
                 }
                 .ignoresSafeArea()
@@ -67,7 +68,12 @@ public struct LoginView: View {
             errorMessage = nil
         }
         .onAppear {
-            focusedField = .email
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                if focusedField == nil {
+                    focusedField = .email
+                }
+            }
         }
     }
 
@@ -77,7 +83,7 @@ public struct LoginView: View {
         defer { isSigningIn = false }
 
         do {
-            let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedEmail = email.trimmed
             if trimmedEmail != email {
                 email = trimmedEmail
             }
@@ -114,17 +120,6 @@ public struct LoginView: View {
         }
     }
 
-    private func handleSubmit() {
-        switch focusedField {
-        case .email:
-            focusedField = .password
-        case .password:
-            Task { await signIn() }
-        case .none:
-            break
-        }
-    }
-
     private var headerView: some View {
         VStack(spacing: 12) {
             Image("AppLogo")
@@ -132,7 +127,7 @@ public struct LoginView: View {
                 .scaledToFit()
                 .frame(width: 64, height: 64)
             Text("sideBar")
-                .font(.title2.weight(.semibold))
+                .font(DesignTokens.Typography.title2Semibold)
         }
     }
 
@@ -150,6 +145,14 @@ public struct LoginView: View {
                 .autocorrectionDisabled()
                 .focused($focusedField, equals: .email)
                 .submitLabel(.next)
+                .onSubmit {
+                    focusedField = .password
+                }
+            if !email.isEmpty {
+                Image(systemName: isValidEmail ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(isValidEmail ? .green : .orange)
+                    .font(.callout)
+            }
             if !email.isEmpty {
                 Button {
                     email = ""
@@ -160,14 +163,9 @@ public struct LoginView: View {
                 .buttonStyle(.plain)
                 .transition(.scale.combined(with: .opacity))
             }
-            if !email.isEmpty {
-                Image(systemName: isValidEmail ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(isValidEmail ? .green : .orange)
-                    .font(.callout)
-            }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
         .background(fieldBackground)
         .overlay(fieldBorder)
         .accessibilitySortPriority(3)
@@ -181,10 +179,12 @@ public struct LoginView: View {
             SecureFieldWithToggle(
                 title: "Password",
                 text: $password,
-                textContentType: .password
+                focus: $focusedField,
+                field: .password,
+                textContentType: .password,
+                submitLabel: .go,
+                onSubmit: { Task { await signIn() } }
             )
-            .focused($focusedField, equals: .password)
-            .submitLabel(.go)
             if !password.isEmpty {
                 Button {
                     password = ""
@@ -196,8 +196,8 @@ public struct LoginView: View {
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .padding(.vertical, DesignTokens.Spacing.xsPlus)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
         .background(fieldBackground)
         .overlay(fieldBorder)
         .accessibilitySortPriority(2)
@@ -208,19 +208,19 @@ public struct LoginView: View {
         if let errorMessage {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(DesignTokens.Colors.error)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(errorMessage)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DesignTokens.Colors.error)
                         .font(.callout)
                     Text("Double-check your credentials and connection, then try again.")
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 }
             }
-            .padding(12)
-            .background(Color.red.opacity(0.1))
-            .cornerRadius(8)
+            .padding(DesignTokens.Spacing.sm)
+            .background(DesignTokens.Colors.errorBackground)
+            .cornerRadius(DesignTokens.Radius.xsPlus)
             .accessibilityLabel("Error")
             .accessibilityValue(errorMessage)
             .accessibilityHint("Double-check your credentials and connection, then try again.")
@@ -232,19 +232,29 @@ public struct LoginView: View {
             Task { await signIn() }
         } label: {
             ZStack {
-                Text(isSigningIn ? "Signing in..." : "Sign In")
+                // Hidden content to maintain consistent size
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Signing in...")
+                }
+                .opacity(0)
+                // Visible content
                 if isSigningIn {
                     HStack(spacing: 8) {
                         ProgressView()
-                        Spacer()
+                            .tint(.black)
+                        Text("Signing in...")
                     }
+                } else {
+                    Text("Sign In")
                 }
             }
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .tint(.accentColor)
+        .tint(.white)
+        .foregroundStyle(.black)
         .disabled(isSigningIn || email.isEmpty || password.isEmpty)
         .accessibilitySortPriority(1)
     }
@@ -260,7 +270,7 @@ public struct LoginView: View {
     }
 
     private var isValidEmail: Bool {
-        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = email.trimmed
         guard !trimmed.isEmpty else { return false }
         let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         return NSPredicate(format: "SELF MATCHES %@", regex).evaluate(with: trimmed)

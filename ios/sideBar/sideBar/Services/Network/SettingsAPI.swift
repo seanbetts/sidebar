@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines the requirements for SettingsProviding.
 public protocol SettingsProviding {
     func getSettings() async throws -> UserSettings
     func updateSettings(_ update: SettingsUpdate) async throws -> UserSettings
@@ -10,6 +11,7 @@ public protocol SettingsProviding {
     func deleteProfileImage() async throws
 }
 
+/// API client for user settings endpoints.
 public struct SettingsAPI {
     private let client: APIClient
     private let session: URLSession
