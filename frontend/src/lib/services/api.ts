@@ -562,10 +562,24 @@ class ThingsAPI {
 	}
 
 	async apply(payload: Record<string, unknown>): Promise<void> {
+		const buildOperationId = () => {
+			if (globalThis.crypto?.randomUUID) {
+				return globalThis.crypto.randomUUID();
+			}
+			return `op-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+		};
+		const withOperationId = (operation: Record<string, unknown>) => {
+			if (operation.operation_id) return operation;
+			return { ...operation, operation_id: buildOperationId() };
+		};
+		const normalizedPayload =
+			Array.isArray(payload.operations) && payload.operations.length
+				? { ...payload, operations: payload.operations.map(withOperationId) }
+				: withOperationId(payload);
 		const response = await fetch(`${this.baseUrl}/apply`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload)
+			body: JSON.stringify(normalizedPayload)
 		});
 		if (!response.ok) throw new Error('Failed to apply Things operation');
 	}
