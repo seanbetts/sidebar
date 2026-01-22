@@ -93,12 +93,14 @@ def _run_things_export() -> dict[str, Any]:
         }}
 
         function safeId(fn) {{
-          try {{
-            const obj = fn();
-            return obj ? obj.id() : null;
-          }} catch (err) {{
-            return null;
-          }}
+          const obj = safeValue(fn, null);
+          return obj ? safeValue(() => obj.id(), null) : null;
+        }}
+
+        function safeString(fn) {{
+          const value = safeValue(fn, null);
+          if (value === null || value === undefined) return null;
+          return String(value);
         }}
 
         const areas = (() => {{
@@ -108,10 +110,10 @@ def _run_things_export() -> dict[str, Any]:
             throw new Error('Failed to read areas: ' + err);
           }}
         }})().map(area => ({{
-          id: area.id(),
-          title: area.name(),
-          updatedAt: isoOrNull(area.modificationDate())
-        }}));
+          id: safeString(() => area.id()),
+          title: safeString(() => area.name()),
+          updatedAt: isoOrNull(safeValue(() => area.modificationDate(), null))
+        }})).filter(area => area.id);
 
         const projects = (() => {{
           try {{
@@ -120,13 +122,13 @@ def _run_things_export() -> dict[str, Any]:
             throw new Error('Failed to read projects: ' + err);
           }}
         }})().map(project => ({{
-          id: project.id(),
-          title: project.name(),
-          areaId: project.area() ? project.area().id() : null,
-          status: project.status(),
-          notes: project.notes(),
-          updatedAt: isoOrNull(project.modificationDate())
-        }}));
+          id: safeString(() => project.id()),
+          title: safeString(() => project.name()),
+          areaId: safeId(() => project.area()),
+          status: safeString(() => project.status()),
+          notes: safeString(() => project.notes()),
+          updatedAt: isoOrNull(safeValue(() => project.modificationDate(), null))
+        }})).filter(project => project.id);
 
         let tasks = [];
         const lists = (() => {{
@@ -137,20 +139,23 @@ def _run_things_export() -> dict[str, Any]:
           }}
         }})();
         lists.forEach(list => {{
-          const listName = safeValue(() => list.name(), 'Unknown');
-          list.toDos().forEach(todo => {{
+          const listName = safeString(() => list.name()) || 'Unknown';
+          const todos = safeValue(() => list.toDos(), []);
+          todos.forEach(todo => {{
+            const taskId = safeString(() => todo.id());
+            if (!taskId) return;
             tasks.push({{
-              id: todo.id(),
-              title: todo.name(),
-              status: todo.status(),
-              notes: todo.notes(),
-              dueDate: isoOrNull(todo.dueDate()),
-              activationDate: isoOrNull(todo.activationDate()),
-              completionDate: isoOrNull(todo.completionDate()),
+              id: taskId,
+              title: safeString(() => todo.name()) || 'Untitled Task',
+              status: safeString(() => todo.status()) || null,
+              notes: safeString(() => todo.notes()),
+              dueDate: isoOrNull(safeValue(() => todo.dueDate(), null)),
+              activationDate: isoOrNull(safeValue(() => todo.activationDate(), null)),
+              completionDate: isoOrNull(safeValue(() => todo.completionDate(), null)),
               tags: tagNames(todo),
               projectId: safeId(() => todo.project()),
               areaId: safeId(() => todo.area()),
-              updatedAt: isoOrNull(todo.modificationDate()),
+              updatedAt: isoOrNull(safeValue(() => todo.modificationDate(), null)),
               listName: listName
             }});
           }});
