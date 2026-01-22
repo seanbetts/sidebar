@@ -134,6 +134,7 @@ class TasksImportService:
                 task_data.get("deadlineStart")
             )
             tags = task_data.get("tags") or []
+            recurrence_rule = task_data.get("recurrenceRule")
             project_id = task_data.get("projectId")
             area_id = task_data.get("areaId")
             task_project = project_map.get(str(project_id)) if project_id else None
@@ -151,7 +152,7 @@ class TasksImportService:
                 flag_modified(existing_task, "tags")
                 existing_task.updated_at = updated_at or now
                 existing_task.repeating = bool(task_data.get("repeating"))
-                existing_task.recurrence_rule = None
+                existing_task.recurrence_rule = recurrence_rule
                 flag_modified(existing_task, "recurrence_rule")
             else:
                 task = Task(
@@ -167,9 +168,9 @@ class TasksImportService:
                     scheduled_date=None,
                     tags=tags,
                     repeating=bool(task_data.get("repeating")),
-                    repeat_template=False,
+                    repeat_template=bool(task_data.get("repeating")),
                     repeat_template_id=None,
-                    recurrence_rule=None,
+                    recurrence_rule=recurrence_rule,
                     next_instance_date=None,
                     created_at=updated_at or now,
                     updated_at=updated_at or now,
@@ -178,6 +179,9 @@ class TasksImportService:
                     deleted_at=None,
                 )
                 db.add(task)
+                db.flush()
+                if task.repeating and task.repeat_template_id is None:
+                    task.repeat_template_id = task.id
                 stats.tasks_imported += 1
 
         return stats
