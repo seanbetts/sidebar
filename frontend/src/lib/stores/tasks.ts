@@ -1,5 +1,20 @@
 import { get, writable } from 'svelte/store';
 import { tasksAPI } from '$lib/services/api';
+import { cacheTaskListResponse, enqueueTaskOperation } from '$lib/services/task_sync';
+import {
+	buildCountsMap,
+	applyTaskListResponse,
+	applyTaskMetaCountsOnly,
+	createPreloadAllSelections,
+	isSameSelection,
+	normalizeCountsCache,
+	selectionCount,
+	selectionKey,
+	tasksCacheKey,
+	updateTaskCaches
+} from '$lib/stores/tasks-cache-helpers';
+import { createSyncNotice } from '$lib/stores/tasks-notice';
+import { createTasksSyncCoordinator, type TasksMetaCache } from '$lib/stores/tasks-sync';
 import {
 	classifyDueBucket,
 	normalizeDateKey,
@@ -12,16 +27,11 @@ import type {
 	TaskArea,
 	TaskCountsResponse,
 	TaskListResponse,
-	TaskProject
+	TaskProject,
+	TaskSelection
 } from '$lib/types/tasks';
 
-export type TaskSelection =
-	| { type: 'inbox' }
-	| { type: 'today' }
-	| { type: 'upcoming' }
-	| { type: 'area'; id: string }
-	| { type: 'project'; id: string }
-	| { type: 'search'; query: string };
+export type { TaskSelection } from '$lib/types/tasks';
 
 export type TaskNewTaskDraft = {
 	title: string;
@@ -50,15 +60,11 @@ export type TasksState = {
 	error: string;
 };
 
-type TasksMetaCache = {
-	areas: TaskArea[];
-	projects: TaskProject[];
-};
-
 const CACHE_TTL = 60 * 1000;
 const CACHE_VERSION = '1.0';
 const META_CACHE_KEY = 'tasks.meta';
 const COUNTS_CACHE_KEY = 'tasks.counts';
+const isBrowser = typeof window !== 'undefined';
 
 const defaultState: TasksState = {
 	selection: { type: 'today' },
@@ -79,65 +85,16 @@ const defaultState: TasksState = {
 function createTasksStore() {
 	const { subscribe, set, update } = writable<TasksState>(defaultState);
 	let loadToken = 0;
-	let hasPreloaded = false;
 	let lastMeta: TasksMetaCache = { areas: [], projects: [] };
 	let lastNonSearchSelection: TaskSelection = { type: 'today' };
-	let syncNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 	let searchInFlight: Promise<void> | null = null;
 	let pendingSearchQuery: string | null = null;
 	const selectionInFlight = new Map<string, Promise<void>>();
-
-	const setSyncNotice = (message: string) => {
-		if (syncNoticeTimer) {
-			clearTimeout(syncNoticeTimer);
-		}
-		update((state) => ({ ...state, syncNotice: message }));
-		syncNoticeTimer = setTimeout(() => {
-			update((state) => ({ ...state, syncNotice: '' }));
-		}, 6000);
-	};
-
-	const selectionCount = (selection: TaskSelection, tasks: Task[], projects: TaskProject[]) => {
-		if (selection.type !== 'area') return tasks.length;
-		const projectIds = new Set(projects.map((project) => project.id));
-		return tasks.filter((task) => !projectIds.has(task.id) && task.status !== 'project').length;
-	};
-
-	const toCountsMap = (counts: TaskCountsResponse): Record<string, number> => {
-		const map: Record<string, number> = {
-			inbox: counts.counts.inbox ?? 0,
-			today: counts.counts.today ?? 0,
-			upcoming: counts.counts.upcoming ?? 0
-		};
-		counts.areas.forEach((area) => {
-			map[`area:${area.id}`] = area.count;
-		});
-		counts.projects.forEach((project) => {
-			map[`project:${project.id}`] = project.count;
-		});
-		return map;
-	};
-
-	const isCountsResponse = (
-		cached: TaskCountsResponse | Record<string, number>
-	): cached is TaskCountsResponse =>
-		typeof (cached as TaskCountsResponse).counts === 'object' &&
-		Array.isArray((cached as TaskCountsResponse).areas) &&
-		Array.isArray((cached as TaskCountsResponse).projects);
-
-	const normalizeCountsCache = (
-		cached: TaskCountsResponse | Record<string, number>
-	): { map: Record<string, number>; todayCount: number } => {
-		if (isCountsResponse(cached)) {
-			const map = toCountsMap(cached);
-			return { map, todayCount: cached.counts.today ?? 0 };
-		}
-		const todayCount = cached.today ?? cached.inbox ?? 0;
-		return { map: cached, todayCount };
-	};
+	let preloadAllSelections: (current: TaskSelection) => void = () => {};
+	const setSyncNotice = createSyncNotice(update);
 
 	const applyCountsResponse = (counts: TaskCountsResponse) => {
-		const map = toCountsMap(counts);
+		const map = buildCountsMap(counts);
 		update((state) => ({
 			...state,
 			counts: map,
@@ -146,86 +103,17 @@ function createTasksStore() {
 		setCachedData(COUNTS_CACHE_KEY, counts, { ttl: CACHE_TTL, version: CACHE_VERSION });
 	};
 
-	const applyResponse = (response: TaskListResponse, selection: TaskSelection) => {
-		const key = selectionKey(selection);
-		lastMeta = {
-			areas: response.areas ?? lastMeta.areas,
-			projects: response.projects ?? lastMeta.projects
-		};
-		update((state) => ({
-			...state,
-			tasks: response.tasks ?? [],
-			areas: response.areas ?? state.areas,
-			projects: response.projects ?? state.projects,
-			todayCount: response.scope === 'today' ? (response.tasks ?? []).length : state.todayCount,
-			counts: {
-				...state.counts,
-				[key]: selectionCount(selection, response.tasks ?? [], response.projects ?? state.projects)
-			},
-			error: ''
-		}));
-	};
-
-	const applyMetaCountsOnly = (response: TaskListResponse, selection: TaskSelection) => {
-		const key = selectionKey(selection);
-		lastMeta = {
-			areas: response.areas ?? lastMeta.areas,
-			projects: response.projects ?? lastMeta.projects
-		};
-		const taskCount = selectionCount(
-			selection,
-			response.tasks ?? [],
-			response.projects ?? lastMeta.projects
-		);
-		update((state) => ({
-			...state,
-			areas: response.areas ?? state.areas,
-			projects: response.projects ?? state.projects,
-			todayCount: response.scope === 'today' ? (response.tasks ?? []).length : state.todayCount,
-			counts: {
-				...state.counts,
-				[key]: taskCount
-			}
-		}));
-	};
-
-	const isSameSelection = (a: TaskSelection, b: TaskSelection) => {
-		if (a.type !== b.type) return false;
-		if (a.type === 'area' || a.type === 'project') {
-			return a.id === (b as { id: string }).id;
-		}
-		if (a.type === 'search') {
-			return a.query === (b as { query: string }).query;
-		}
-		return true;
-	};
-
-	const preloadAllSelections = (current: TaskSelection) => {
-		if (hasPreloaded) return;
-		hasPreloaded = true;
-		const baseSelections: TaskSelection[] = [{ type: 'today' }, { type: 'upcoming' }];
-		const allSelections = baseSelections.filter(
-			(selection) => !isSameSelection(selection, current)
-		);
-		void (async () => {
-			for (const selection of allSelections) {
-				await loadSelection(selection, { silent: true, notify: false });
-				await new Promise((resolve) => setTimeout(resolve, 50));
-			}
-		})();
-	};
-
-	const selectionKey = (selection: TaskSelection) => {
-		if (selection.type === 'area' || selection.type === 'project') {
-			return `${selection.type}:${selection.id}`;
-		}
-		if (selection.type === 'search') {
-			return `search:${selection.query.toLowerCase()}`;
-		}
-		return selection.type;
-	};
-
-	const tasksCacheKey = (selection: TaskSelection) => `tasks.tasks.${selectionKey(selection)}`;
+	const { handleSyncResponse, initialize: initializeSync } = createTasksSyncCoordinator({
+		cacheTtl: CACHE_TTL,
+		cacheVersion: CACHE_VERSION,
+		isBrowser,
+		tasksCacheKey,
+		updateState: update,
+		setMeta: (meta) => {
+			lastMeta = meta;
+		},
+		setSyncNotice
+	});
 
 	const updateTaskCaches = (taskId: string, task: Task, dueDate: string) => {
 		const todayKey = tasksCacheKey({ type: 'today' });
@@ -417,10 +305,19 @@ function createTasksStore() {
 						{ ttl: CACHE_TTL, version: CACHE_VERSION }
 					);
 				}
+				void cacheTaskListResponse(response);
 				const latestSelection = get({ subscribe }).selection;
 				const stillCurrent = isSameSelection(selection, latestSelection);
 				if (!silentFetch || stillCurrent) {
-					applyResponse(response, selection);
+					applyTaskListResponse({
+						response,
+						selection,
+						lastMeta,
+						setMeta: (meta) => {
+							lastMeta = meta;
+						},
+						updateState: update
+					});
 				} else {
 					const cached = getCachedData<Task[]>(key, {
 						ttl: CACHE_TTL,
@@ -429,7 +326,15 @@ function createTasksStore() {
 					const changed =
 						!cached || JSON.stringify(cached) !== JSON.stringify(response.tasks ?? []);
 					if (changed) {
-						applyMetaCountsOnly(response, selection);
+						applyTaskMetaCountsOnly({
+							response,
+							selection,
+							lastMeta,
+							setMeta: (meta) => {
+								lastMeta = meta;
+							},
+							updateState: update
+						});
 						if (notifyFetch) {
 							setSyncNotice('Tasks updated');
 						}
@@ -440,6 +345,9 @@ function createTasksStore() {
 				}
 			} catch (error) {
 				if (usesToken && token !== loadToken) return;
+				if (isBrowser && !navigator.onLine && cachedTasks) {
+					setSyncNotice('Offline - showing cached tasks');
+				}
 				if (!silent) {
 					update((state) => ({
 						...state,
@@ -467,6 +375,10 @@ function createTasksStore() {
 			}
 		}
 	};
+
+	preloadAllSelections = createPreloadAllSelections(loadSelection);
+
+	initializeSync();
 
 	return {
 		subscribe,
@@ -543,21 +455,14 @@ function createTasksStore() {
 			}
 			update((current) => ({ ...current, newTaskSaving: true, newTaskError: '' }));
 			try {
-				await tasksAPI.apply({
-					op: 'add',
-					title,
-					notes: payload.notes?.trim() ?? '',
-					due_date: payload.dueDate ?? draft.dueDate,
-					list_id: listId,
-					list_name: listName
-				});
 				const stateAfter = get({ subscribe });
 				const dueDate = payload.dueDate ?? draft.dueDate;
 				const project = listId ? stateAfter.projects.find((item) => item.id === listId) : undefined;
 				const area =
 					listId && !project ? stateAfter.areas.find((item) => item.id === listId) : undefined;
+				const tempId = `temp-${Date.now()}`;
 				const optimisticTask: Task = {
-					id: `temp-${Date.now()}`,
+					id: tempId,
 					title,
 					status: 'open',
 					deadlineStart: dueDate,
@@ -588,16 +493,40 @@ function createTasksStore() {
 						newTaskError: ''
 					};
 				});
-				await loadSelection(draft.selection, { force: true, silent: true, notify: false });
-				void tasksAPI
-					.counts()
-					.then(applyCountsResponse)
-					.catch(() => {
-						update((current) => ({
-							...current,
-							error: 'Failed to update task counts'
-						}));
+				const response = await enqueueTaskOperation({
+					op: 'add',
+					title,
+					notes: payload.notes?.trim() ?? '',
+					due_date: dueDate,
+					list_id: listId,
+					list_name: listName
+				});
+				if (response?.tasks?.length) {
+					const created = response.tasks[0];
+					update((current) => {
+						const nextTasks = current.tasks.map((task) => (task.id === tempId ? created : task));
+						setCachedData(tasksCacheKey(draft.selection), nextTasks, {
+							ttl: CACHE_TTL,
+							version: CACHE_VERSION
+						});
+						return { ...current, tasks: nextTasks };
 					});
+				}
+				handleSyncResponse(response);
+				if (isBrowser && navigator.onLine) {
+					await loadSelection(draft.selection, { force: true, silent: true, notify: false });
+					void tasksAPI
+						.counts()
+						.then(applyCountsResponse)
+						.catch(() => {
+							update((current) => ({
+								...current,
+								error: 'Failed to update task counts'
+							}));
+						});
+				} else {
+					setSyncNotice('Task saved offline');
+				}
 			} catch (error) {
 				update((current) => ({
 					...current,
@@ -656,7 +585,6 @@ function createTasksStore() {
 		},
 		clearSearch: () => loadSelection(lastNonSearchSelection),
 		completeTask: async (taskId: string) => {
-			await tasksAPI.apply({ op: 'complete', id: taskId });
 			update((state) => {
 				const nextTasks = state.tasks.filter((task) => task.id !== taskId);
 				const key = selectionKey(state.selection);
@@ -703,6 +631,25 @@ function createTasksStore() {
 					todayCount: state.selection.type === 'today' ? nextTasks.length : state.todayCount
 				};
 			});
+			try {
+				const response = await enqueueTaskOperation({ op: 'complete', id: taskId });
+				handleSyncResponse(response);
+				if (response?.nextTasks?.length) {
+					setSyncNotice('Next task instance scheduled');
+					if (isBrowser && navigator.onLine) {
+						void loadSelection(get({ subscribe }).selection, {
+							force: true,
+							silent: true,
+							notify: false
+						});
+					}
+				}
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to complete task'
+				}));
+			}
 		},
 		renameTask: async (taskId: string, title: string) => {
 			const nextTitle = title.trim();
@@ -726,7 +673,12 @@ function createTasksStore() {
 				return { ...current, tasks: nextTasks };
 			});
 			try {
-				await tasksAPI.apply({ op: 'rename', id: taskId, title: nextTitle });
+				const response = await enqueueTaskOperation({
+					op: 'rename',
+					id: taskId,
+					title: nextTitle
+				});
+				handleSyncResponse(response);
 			} catch (error) {
 				update((current) => {
 					const nextTasks = current.tasks.map((task) =>
@@ -745,7 +697,6 @@ function createTasksStore() {
 			}
 		},
 		updateNotes: async (taskId: string, notes: string) => {
-			await tasksAPI.apply({ op: 'notes', id: taskId, notes });
 			update((state) => {
 				const nextTasks = state.tasks.map((task) =>
 					task.id === taskId ? { ...task, notes } : task
@@ -756,29 +707,54 @@ function createTasksStore() {
 				});
 				return { ...state, tasks: nextTasks };
 			});
+			try {
+				const response = await enqueueTaskOperation({ op: 'notes', id: taskId, notes });
+				handleSyncResponse(response);
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to update task notes'
+				}));
+			}
 		},
 		moveTask: async (taskId: string, listId: string, listName?: string) => {
-			await tasksAPI.apply({ op: 'move', id: taskId, list_id: listId, list_name: listName });
-			const state = get({ subscribe });
-			void loadSelection(state.selection, { force: true, silent: true, notify: false });
-			if (state.selection.type !== 'today') {
-				void loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
-			}
-			if (state.selection.type !== 'upcoming') {
-				void loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
-			}
-			void tasksAPI
-				.counts()
-				.then(applyCountsResponse)
-				.catch(() => {
-					update((current) => ({
-						...current,
-						error: 'Failed to update task counts'
-					}));
+			try {
+				const response = await enqueueTaskOperation({
+					op: 'move',
+					id: taskId,
+					list_id: listId,
+					list_name: listName
 				});
+				handleSyncResponse(response);
+				if (isBrowser && navigator.onLine) {
+					const state = get({ subscribe });
+					void loadSelection(state.selection, { force: true, silent: true, notify: false });
+					if (state.selection.type !== 'today') {
+						void loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
+					}
+					if (state.selection.type !== 'upcoming') {
+						void loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
+					}
+					void tasksAPI
+						.counts()
+						.then(applyCountsResponse)
+						.catch(() => {
+							update((current) => ({
+								...current,
+								error: 'Failed to update task counts'
+							}));
+						});
+				} else {
+					setSyncNotice('Task moved offline');
+				}
+			} catch (error) {
+				update((current) => ({
+					...current,
+					error: error instanceof Error ? error.message : 'Failed to move task'
+				}));
+			}
 		},
 		trashTask: async (taskId: string) => {
-			await tasksAPI.apply({ op: 'trash', id: taskId });
 			update((state) => {
 				const nextTasks = state.tasks.filter((task) => task.id !== taskId);
 				const key = selectionKey(state.selection);
@@ -797,10 +773,18 @@ function createTasksStore() {
 					todayCount: state.selection.type === 'today' ? nextTasks.length : state.todayCount
 				};
 			});
+			try {
+				const response = await enqueueTaskOperation({ op: 'trash', id: taskId });
+				handleSyncResponse(response);
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to trash task'
+				}));
+			}
 		},
 		setDueDate: async (taskId: string, dueDate: string, op: 'set_due' | 'defer' = 'set_due') => {
 			const nextOp = op === 'set_due' ? 'defer' : op;
-			await tasksAPI.apply({ op: nextOp, id: taskId, due_date: dueDate });
 			const state = get({ subscribe });
 			const currentTask = state.tasks.find((task) => task.id === taskId);
 			if (currentTask) {
@@ -808,24 +792,51 @@ function createTasksStore() {
 					...currentTask,
 					deadlineStart: dueDate
 				};
-				updateTaskCaches(taskId, updatedTask, dueDate);
-			}
-			void loadSelection(state.selection, { force: true, silent: true, notify: false });
-			if (state.selection.type !== 'today') {
-				void loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
-			}
-			if (state.selection.type !== 'upcoming') {
-				void loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
-			}
-			void tasksAPI
-				.counts()
-				.then(applyCountsResponse)
-				.catch(() => {
-					update((current) => ({
-						...current,
-						error: 'Failed to update task counts'
-					}));
+				updateTaskCaches({
+					taskId,
+					task: updatedTask,
+					targetBucket: classifyDueBucket(dueDate),
+					cacheTtl: CACHE_TTL,
+					cacheVersion: CACHE_VERSION,
+					countsCacheKey: COUNTS_CACHE_KEY,
+					getCachedData,
+					setCachedData,
+					updateState: update
 				});
+			}
+			try {
+				const response = await enqueueTaskOperation({
+					op: nextOp,
+					id: taskId,
+					due_date: dueDate
+				});
+				handleSyncResponse(response);
+				if (isBrowser && navigator.onLine) {
+					void loadSelection(state.selection, { force: true, silent: true, notify: false });
+					if (state.selection.type !== 'today') {
+						void loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
+					}
+					if (state.selection.type !== 'upcoming') {
+						void loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
+					}
+					void tasksAPI
+						.counts()
+						.then(applyCountsResponse)
+						.catch(() => {
+							update((current) => ({
+								...current,
+								error: 'Failed to update task counts'
+							}));
+						});
+				} else {
+					setSyncNotice('Task updated offline');
+				}
+			} catch (error) {
+				update((current) => ({
+					...current,
+					error: error instanceof Error ? error.message : 'Failed to update due date'
+				}));
+			}
 		}
 	};
 }
