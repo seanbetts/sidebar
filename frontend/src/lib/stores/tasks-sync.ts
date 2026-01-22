@@ -34,6 +34,7 @@ type SyncCoordinatorOptions = {
 	updateState: (updater: (state: TaskStateLike) => TaskStateLike) => void;
 	setMeta: (meta: TasksMetaCache) => void;
 	setSyncNotice: (message: string) => void;
+	onNextTasks?: (tasks: Task[]) => void;
 };
 
 const mergeById = <T extends { id: string }>(existing: T[], updates: T[]) => {
@@ -91,6 +92,9 @@ export function createTasksSyncCoordinator(options: SyncCoordinatorOptions) {
 
 	const handleSyncResponse = (response: TaskSyncResponse | null) => {
 		if (!response) return;
+		if (response.nextTasks?.length) {
+			options.onNextTasks?.(response.nextTasks);
+		}
 		if (response.conflicts?.length) {
 			options.setSyncNotice('Tasks changed elsewhere. Review updates.');
 		}
