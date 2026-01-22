@@ -2,9 +2,9 @@ import { get, writable } from 'svelte/store';
 import { tasksAPI } from '$lib/services/api';
 import { cacheTaskListResponse, enqueueTaskOperation } from '$lib/services/task_sync';
 import {
-	buildCountsMap,
 	applyTaskListResponse,
 	applyTaskMetaCountsOnly,
+	buildCountsMap,
 	createPreloadAllSelections,
 	isSameSelection,
 	normalizeCountsCache,
@@ -13,7 +13,7 @@ import {
 	tasksCacheKey,
 	updateTaskCaches
 } from '$lib/stores/tasks-cache-helpers';
-import { createSyncNotice } from '$lib/stores/tasks-notice';
+import { createNotice } from '$lib/stores/tasks-notice';
 import { createTasksSyncCoordinator, type TasksMetaCache } from '$lib/stores/tasks-sync';
 import {
 	classifyDueBucket,
@@ -53,6 +53,7 @@ export type TasksState = {
 	todayCount: number;
 	counts: Record<string, number>;
 	syncNotice: string;
+	conflictNotice: string;
 	isLoading: boolean;
 	searchPending: boolean;
 	newTaskDraft: TaskNewTaskDraft | null;
@@ -75,6 +76,7 @@ const defaultState: TasksState = {
 	todayCount: 0,
 	counts: {},
 	syncNotice: '',
+	conflictNotice: '',
 	isLoading: false,
 	searchPending: false,
 	newTaskDraft: null,
@@ -92,7 +94,8 @@ function createTasksStore() {
 	let pendingSearchQuery: string | null = null;
 	const selectionInFlight = new Map<string, Promise<void>>();
 	let preloadAllSelections: (current: TaskSelection) => void = () => {};
-	const setSyncNotice = createSyncNotice(update);
+	const setSyncNotice = createNotice('syncNotice', update);
+	const setConflictNotice = createNotice('conflictNotice', update, null);
 
 	const applyCountsResponse = (counts: TaskCountsResponse) => {
 		const map = buildCountsMap(counts);
@@ -114,6 +117,7 @@ function createTasksStore() {
 			lastMeta = meta;
 		},
 		setSyncNotice,
+		setConflictNotice,
 		onNextTasks: (nextTasks) => {
 			if (!nextTasks.length) return;
 			if (nextTasks.length === 1) {
@@ -123,62 +127,6 @@ function createTasksStore() {
 			toast.message(`Next instances scheduled: ${nextTasks.length}`);
 		}
 	});
-
-	const updateTaskCaches = (taskId: string, task: Task, dueDate: string) => {
-		const todayKey = tasksCacheKey({ type: 'today' });
-		const upcomingKey = tasksCacheKey({ type: 'upcoming' });
-		const todayTasks =
-			getCachedData<Task[]>(todayKey, { ttl: CACHE_TTL, version: CACHE_VERSION }) ?? [];
-		const upcomingTasks =
-			getCachedData<Task[]>(upcomingKey, { ttl: CACHE_TTL, version: CACHE_VERSION }) ?? [];
-		const targetBucket = classifyDueBucket(dueDate);
-
-		const nextToday = todayTasks.filter((item) => item.id !== taskId);
-		const nextUpcoming = upcomingTasks.filter((item) => item.id !== taskId);
-
-		if (targetBucket === 'today') {
-			nextToday.unshift(task);
-		} else {
-			nextUpcoming.unshift(task);
-		}
-
-		setCachedData(todayKey, nextToday, { ttl: CACHE_TTL, version: CACHE_VERSION });
-		setCachedData(upcomingKey, nextUpcoming, { ttl: CACHE_TTL, version: CACHE_VERSION });
-
-		update((state) => {
-			let nextTasks = state.tasks;
-			const selectionType = state.selection.type;
-			if (selectionType === 'today') {
-				nextTasks = nextToday;
-			} else if (selectionType === 'upcoming') {
-				nextTasks = nextUpcoming;
-			} else if (state.selection.type === 'area' || state.selection.type === 'project') {
-				nextTasks = state.tasks.filter((item) => item.id !== taskId);
-			}
-			const nextCounts = {
-				...state.counts,
-				today: nextToday.length,
-				upcoming: nextUpcoming.length
-			};
-			return {
-				...state,
-				tasks: nextTasks,
-				counts: nextCounts,
-				todayCount: nextToday.length
-			};
-		});
-
-		const cachedCounts = getCachedData<TaskCountsResponse>(COUNTS_CACHE_KEY, {
-			ttl: CACHE_TTL,
-			version: CACHE_VERSION
-		});
-		if (cachedCounts) {
-			const updatedCounts = { ...cachedCounts };
-			updatedCounts.counts.today = nextToday.length;
-			updatedCounts.counts.upcoming = nextUpcoming.length;
-			setCachedData(COUNTS_CACHE_KEY, updatedCounts, { ttl: CACHE_TTL, version: CACHE_VERSION });
-		}
-	};
 
 	const loadSelection = async (
 		selection: TaskSelection,
@@ -392,6 +340,7 @@ function createTasksStore() {
 	return {
 		subscribe,
 		reset: () => set(defaultState),
+		clearConflictNotice: () => update((state) => ({ ...state, conflictNotice: '' })),
 		load: (
 			selection: TaskSelection,
 			options?: { force?: boolean; silent?: boolean; notify?: boolean }

@@ -1,19 +1,26 @@
 import type { TasksState } from '$lib/stores/tasks';
 
+type NoticeField = 'syncNotice' | 'conflictNotice';
+
 /**
- * Build a sync notice setter with auto-clear behavior.
+ * Build a notice setter with auto-clear behavior.
  */
-export const createSyncNotice = (
-	updateState: (updater: (state: TasksState) => TasksState) => void
+export const createNotice = (
+	field: NoticeField,
+	updateState: (updater: (state: TasksState) => TasksState) => void,
+	clearMs: number | null = 6000
 ) => {
 	let syncNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 	return (message: string) => {
 		if (syncNoticeTimer) {
 			clearTimeout(syncNoticeTimer);
 		}
-		updateState((state) => ({ ...state, syncNotice: message }));
+		updateState((state) => ({ ...state, [field]: message }));
+		if (clearMs === null) {
+			return;
+		}
 		syncNoticeTimer = setTimeout(() => {
-			updateState((state) => ({ ...state, syncNotice: '' }));
-		}, 6000);
+			updateState((state) => ({ ...state, [field]: '' }));
+		}, clearMs);
 	};
 };

@@ -47,12 +47,14 @@
 	let draftListId = '';
 	let draftListName = '';
 	let titleInput: HTMLInputElement | null = null;
+	let conflictNotice = '';
 	$: {
 		view = computeTasksViewState($tasksStore);
 		newTaskDraft = view.newTaskDraft;
 		draftSaving = $tasksStore.newTaskSaving;
 		draftError = $tasksStore.newTaskError;
 		showDraft = view.showDraft;
+		conflictNotice = $tasksStore.conflictNotice;
 	}
 
 	$: {
@@ -272,6 +274,11 @@
 		tasksStore.load(view.selection, { force: true, silent: true });
 	};
 
+	const handleRefreshConflicts = () => {
+		tasksStore.clearConflictNotice();
+		refreshTasks();
+	};
+
 	const handleVisibilityChange = () => {
 		if (document.visibilityState === 'visible') {
 			refreshTasks();
@@ -300,6 +307,14 @@
 		totalCount={view.totalCount}
 		hasLoaded={view.hasLoaded}
 	/>
+	{#if conflictNotice}
+		<div class="tasks-conflict-banner">
+			<span>{conflictNotice}</span>
+			<button class="tasks-conflict-action" onclick={handleRefreshConflicts}>
+				Refresh tasks
+			</button>
+		</div>
+	{/if}
 
 	<TasksContent
 		tasks={view.tasks}
@@ -379,5 +394,33 @@
 		height: 100%;
 		padding: 0;
 		gap: 1rem;
+	}
+
+	.tasks-conflict-banner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.6rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.75rem;
+		background: var(--color-secondary);
+		font-size: 0.8rem;
+		color: var(--color-foreground);
+	}
+
+	.tasks-conflict-action {
+		border-radius: 999px;
+		border: 1px solid var(--color-border);
+		padding: 0.25rem 0.7rem;
+		background: var(--color-card);
+		color: var(--color-foreground);
+		font-size: 0.75rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.tasks-conflict-action:hover {
+		border-color: var(--color-foreground);
 	}
 </style>
