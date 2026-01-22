@@ -58,6 +58,29 @@ const parseTaskDate = (task: Task): Date | null => {
 	return new Date(`${deadline.slice(0, 10)}T00:00:00`);
 };
 
+export const recurrenceLabel = (task: Task): string | null => {
+	const rule = task.recurrenceRule;
+	if (!rule) return null;
+	const interval = rule.interval ?? 1;
+	if (rule.type === 'daily') {
+		return interval === 1 ? 'Daily' : `Every ${interval} days`;
+	}
+	if (rule.type === 'weekly') {
+		const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+		const dayLabel = rule.weekday !== undefined ? weekdays[rule.weekday] : null;
+		if (interval === 1 && dayLabel) return `Weekly on ${dayLabel}`;
+		if (dayLabel) return `Every ${interval} weeks on ${dayLabel}`;
+		return interval === 1 ? 'Weekly' : `Every ${interval} weeks`;
+	}
+	if (rule.type === 'monthly') {
+		const day = rule.day_of_month ?? null;
+		if (day && interval === 1) return `Monthly on day ${day}`;
+		if (day) return `Every ${interval} months on day ${day}`;
+		return interval === 1 ? 'Monthly' : `Every ${interval} months`;
+	}
+	return null;
+};
+
 export const buildTodaySections = (
 	tasks: Task[],
 	areas: TaskArea[],
