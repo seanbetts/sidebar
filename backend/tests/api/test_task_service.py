@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from api.db.base import Base
@@ -104,3 +104,38 @@ def test_create_task_dates(db_session):
     assert tasks[0].scheduled_date == date(2026, 1, 1)
     assert tasks[0].deadline == date(2026, 1, 2)
     assert tasks[0].deadline_start == date(2025, 12, 31)
+
+
+def test_list_tasks_by_scope_and_counts(db_session):
+    today = date.today()
+    TaskService.create_task(
+        db_session, "user", "Inbox task", status="inbox"
+    )
+    TaskService.create_task(
+        db_session,
+        "user",
+        "Today task",
+        status="inbox",
+        scheduled_date=today,
+    )
+    TaskService.create_task(
+        db_session,
+        "user",
+        "Upcoming task",
+        status="inbox",
+        deadline=today + timedelta(days=1),
+    )
+    db_session.commit()
+
+    today_tasks, _, _ = TaskService.list_tasks_by_scope(db_session, "user", "today")
+    upcoming_tasks, _, _ = TaskService.list_tasks_by_scope(
+        db_session, "user", "upcoming"
+    )
+    inbox_tasks, _, _ = TaskService.list_tasks_by_scope(db_session, "user", "inbox")
+
+    assert any(task.title == "Today task" for task in today_tasks)
+    assert any(task.title == "Upcoming task" for task in upcoming_tasks)
+    assert any(task.title == "Inbox task" for task in inbox_tasks)
+
+    counts = TaskService.get_counts(db_session, "user")
+    assert counts.inbox == 3
