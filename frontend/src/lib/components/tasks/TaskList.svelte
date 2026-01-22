@@ -122,6 +122,11 @@
 						{#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
 							<span class="due-pill" title={recurrenceLabel(task) ?? ''}>
 								{dueLabel(task) ?? 'No Date'}
+								{#if recurrenceLabel(task)}
+									<span class="due-pill-icon">
+										<Repeat size={10} />
+									</span>
+								{/if}
 							</span>
 						{/if}
 						<DropdownMenu>
@@ -367,6 +372,15 @@
 		border: 1px solid var(--color-border);
 		color: var(--color-muted-foreground);
 		background: var(--color-secondary);
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+
+	.due-pill-icon {
+		display: inline-flex;
+		align-items: center;
+		color: var(--color-muted-foreground);
 	}
 
 	:global(.task-menu-btn) {
