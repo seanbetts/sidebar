@@ -30,6 +30,7 @@ def _task_payload(task) -> dict:
         "areaId": str(task.area_id) if task.area_id else None,
         "repeating": task.repeating,
         "repeatTemplate": task.repeat_template,
+        "recurrenceRule": task.recurrence_rule,
         "tags": task.tags or [],
         "updatedAt": task.updated_at.isoformat() if task.updated_at else None,
     }

@@ -9,9 +9,17 @@ export type Task = {
 	areaId?: string | null;
 	repeating?: boolean;
 	repeatTemplate?: boolean;
+	recurrenceRule?: RecurrenceRule | null;
 	tags?: string[];
 	updatedAt?: string | null;
 	deletedAt?: string | null;
+};
+
+export type RecurrenceRule = {
+	type: 'daily' | 'weekly' | 'monthly';
+	interval?: number;
+	weekday?: number;
+	day_of_month?: number;
 };
 
 export type TaskSelection =

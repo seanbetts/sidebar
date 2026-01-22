@@ -24,6 +24,7 @@
 		DropdownMenuSeparator,
 		DropdownMenuTrigger
 	} from '$lib/components/ui/dropdown-menu';
+	import { recurrenceLabel } from '$lib/components/tasks/tasksUtils';
 
 	export let sections: { id: string; title: string; tasks: Task[] }[] = [];
 	export let selectionType: TaskViewType = 'today';
@@ -106,6 +107,9 @@
 									</span>
 								{/if}
 								{#if task.repeating && !task.repeatTemplate}
+									{#if recurrenceLabel(task)}
+										<span class="repeat-label">{recurrenceLabel(task)}</span>
+									{/if}
 									<Repeat size={14} class="repeat-icon" title="Repeating task" />
 								{/if}
 							</div>
@@ -335,6 +339,16 @@
 		gap: 0.5rem;
 		font-size: 0.95rem;
 		font-weight: 500;
+	}
+
+	.repeat-label {
+		font-size: 0.7rem;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		color: var(--color-muted-foreground);
+		background: var(--color-secondary);
+		border-radius: 999px;
+		padding: 0.1rem 0.4rem;
 	}
 
 	.meta {
