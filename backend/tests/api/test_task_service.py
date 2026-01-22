@@ -1,10 +1,11 @@
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from api.db.base import Base
 from api.exceptions import TaskNotFoundError
 from api.services.task_service import TaskService
+from api.services.task_sync_service import TaskSyncService
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
@@ -147,14 +148,53 @@ def test_apply_operations_idempotent(db_session):
         "op": "add",
         "title": "New Task",
     }
-    result = TaskService.apply_operations(db_session, "user", [operation])
+    result = TaskSyncService.apply_operations(db_session, "user", [operation])
     db_session.commit()
 
     assert result.applied_ids == ["op-1"]
     assert len(result.tasks) == 1
 
-    second = TaskService.apply_operations(db_session, "user", [operation])
+    second = TaskSyncService.apply_operations(db_session, "user", [operation])
     db_session.commit()
 
     assert second.applied_ids == ["op-1"]
     assert len(TaskService.list_tasks(db_session, "user")) == 1
+
+
+def test_sync_operations_returns_updates(db_session):
+    task = TaskService.create_task(db_session, "user", "Sync task")
+    db_session.commit()
+
+    last_sync = datetime.now(UTC)
+    TaskService.update_task(db_session, "user", str(task.id), title="Synced")
+    db_session.commit()
+
+    payload = {"last_sync": last_sync.isoformat(), "operations": []}
+    result = TaskSyncService.sync_operations(db_session, "user", payload)
+
+    assert any(item.id == task.id for item in result.updated_tasks)
+
+
+def test_sync_operations_conflict(db_session):
+    task = TaskService.create_task(db_session, "user", "Original")
+    db_session.commit()
+
+    stale_time = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
+    payload = {
+        "last_sync": None,
+        "operations": [
+            {
+                "operation_id": "op-2",
+                "op": "rename",
+                "id": str(task.id),
+                "title": "Updated",
+                "client_updated_at": stale_time,
+            }
+        ],
+    }
+    result = TaskSyncService.sync_operations(db_session, "user", payload)
+    db_session.commit()
+
+    db_session.refresh(task)
+    assert task.title == "Original"
+    assert result.conflicts

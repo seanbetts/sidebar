@@ -10,6 +10,7 @@ from api.db.dependencies import get_current_user_id
 from api.db.session import SessionLocal, get_db, set_session_user_id
 from api.exceptions import BadRequestError
 from api.services.task_service import TaskService
+from api.services.task_sync_service import TaskSyncService
 from api.services.tasks_snapshot_service import TasksSnapshotService
 from api.services.user_settings_service import UserSettingsService
 
@@ -50,6 +51,30 @@ def _area_payload(area) -> dict:
         "title": area.title,
         "updatedAt": area.updated_at.isoformat() if area.updated_at else None,
     }
+
+
+def _task_sync_payload(task) -> dict:
+    payload = _task_payload(task)
+    payload["deletedAt"] = (
+        task.deleted_at.isoformat() if getattr(task, "deleted_at", None) else None
+    )
+    return payload
+
+
+def _project_sync_payload(project) -> dict:
+    payload = _project_payload(project)
+    payload["deletedAt"] = (
+        project.deleted_at.isoformat() if getattr(project, "deleted_at", None) else None
+    )
+    return payload
+
+
+def _area_sync_payload(area) -> dict:
+    payload = _area_payload(area)
+    payload["deletedAt"] = (
+        area.deleted_at.isoformat() if getattr(area, "deleted_at", None) else None
+    )
+    return payload
 
 
 def _update_snapshot_background(user_id: str, today_payload: dict) -> None:
@@ -126,7 +151,7 @@ async def apply_task_operation(
     set_session_user_id(db, user_id)
     operations = request.get("operations")
     op_list = operations if isinstance(operations, list) else [request]
-    result = TaskService.apply_operations(db, user_id, op_list)
+    result = TaskSyncService.apply_operations(db, user_id, op_list)
     db.commit()
     return {
         "applied": result.applied_ids,
@@ -134,6 +159,33 @@ async def apply_task_operation(
         "nextTasks": [_task_payload(task) for task in result.next_tasks],
         "conflicts": [],
         "serverUpdatedSince": datetime.now(UTC).isoformat(),
+    }
+
+
+@router.post("/sync")
+async def sync_tasks(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Apply offline operations and return updates since the last sync."""
+    set_session_user_id(db, user_id)
+    result = TaskSyncService.sync_operations(db, user_id, request)
+    db.commit()
+    return {
+        "applied": result.applied_ids,
+        "tasks": [_task_payload(task) for task in result.tasks],
+        "nextTasks": [_task_payload(task) for task in result.next_tasks],
+        "conflicts": result.conflicts,
+        "updates": {
+            "tasks": [_task_sync_payload(task) for task in result.updated_tasks],
+            "projects": [
+                _project_sync_payload(project) for project in result.updated_projects
+            ],
+            "areas": [_area_sync_payload(area) for area in result.updated_areas],
+        },
+        "serverUpdatedSince": result.server_updated_since.isoformat(),
     }
 
 

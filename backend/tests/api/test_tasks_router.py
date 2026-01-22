@@ -137,3 +137,26 @@ def test_tasks_apply_idempotent(test_client, test_db):
     payload_second = second.json()
     assert payload_second["applied"] == ["op-1"]
     assert payload_second["tasks"] == []
+
+
+def test_tasks_sync_returns_updates(test_client, test_db):
+    task = Task(
+        user_id=DEFAULT_USER_ID,
+        title="Sync me",
+        status="inbox",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(task)
+    test_db.commit()
+
+    last_sync = (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
+    response = test_client.post(
+        "/api/v1/tasks/sync",
+        json={"last_sync": last_sync, "operations": []},
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert any(item["title"] == "Sync me" for item in payload["updates"]["tasks"])
+    assert payload["serverUpdatedSince"]
