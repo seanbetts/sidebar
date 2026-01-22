@@ -31,15 +31,15 @@ class TasksImportService:
     """Import tasks from external payloads into native tables."""
 
     @staticmethod
-    def import_from_bridge(
-        db: Session, user_id: str, bridge_payload: dict[str, Any]
+    def import_from_payload(
+        db: Session, user_id: str, payload: dict[str, Any]
     ) -> TasksImportStats:
         """Import external data using a prepared payload.
 
         Args:
             db: Database session.
             user_id: Current user ID.
-            bridge_payload: Parsed payload (areas, projects, tasks).
+            payload: Parsed payload (areas, projects, tasks).
 
         Returns:
             TasksImportStats with counts and errors.
@@ -47,10 +47,10 @@ class TasksImportService:
         stats = TasksImportStats()
         now = datetime.now(UTC)
 
-        areas_data = TasksImportService._coerce_list(bridge_payload.get("areas"))
-        projects_data = TasksImportService._coerce_list(bridge_payload.get("projects"))
+        areas_data = TasksImportService._coerce_list(payload.get("areas"))
+        projects_data = TasksImportService._coerce_list(payload.get("projects"))
         tasks_data = TasksImportService._dedupe_items(
-            TasksImportService._coerce_list(bridge_payload.get("tasks"))
+            TasksImportService._coerce_list(payload.get("tasks"))
         )
 
         area_map: dict[str, TaskArea] = {}
