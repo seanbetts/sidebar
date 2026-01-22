@@ -27,9 +27,9 @@ public struct TasksView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Things integration will appear here.")
+            Text("Your tasks will appear here.")
                 .font(DesignTokens.Typography.subheadlineSemibold)
-            Text("Install Things on this device to view your tasks.")
+            Text("Create tasks in sideBar to get started.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

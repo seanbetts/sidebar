@@ -1,20 +1,20 @@
 # Custom Task System Migration Plan
 
 **Date**: 2026-01-11
-**Feature**: Native PostgreSQL Task System (Things Replacement)
+**Feature**: Native PostgreSQL Task System (LegacyTasks Replacement)
 
 ---
 
 ## Overview
 
-Replace the Things bridge-based task system with a native PostgreSQL implementation to achieve data ownership, offline-first capability, and dramatically improved performance. This migration eliminates the three-layer architecture (Backend → Bridge → AppleScript → Things) in favor of direct database access.
+Replace the LegacyTasks bridge-based task system with a native PostgreSQL implementation to achieve data ownership, offline-first capability, and dramatically improved performance. This migration eliminates the three-layer architecture (Backend → Bridge → AppleScript → LegacyTasks) in favor of direct database access.
 
 **Key Feature:** Full repeating task support with auto-creation of next instances (covers 100% of user's 20 existing repeating tasks).
 
 ### Current Architecture
 
 ```
-Frontend → Backend API → Bridge (127.0.0.1:8787) → AppleScript → Things DB
+Frontend → Backend API → Bridge (127.0.0.1:8787) → AppleScript → LegacyTasks DB
 - 5-minute cache TTL
 - 10-second AppleScript timeout
 - Requires local bridge running
@@ -37,14 +37,14 @@ Frontend → Backend API → PostgreSQL
 ## Key Design Decisions
 
 **Data Migration:**
-- ✅ One-time import of active Things data via existing bridge
+- ✅ One-time import of active LegacyTasks data via existing bridge
 - ✅ **Filter out** completed, trashed, and canceled tasks (keep only active/open tasks)
 - ✅ Import active areas and projects only
-- ✅ Preserve Things IDs for reference/rollback
+- ✅ Preserve LegacyTasks IDs for reference/rollback
 - ✅ Create snapshot before migration for safety
 
 **Database Schema:**
-- ✅ Mirror Things structure: Areas → Projects → Tasks hierarchy
+- ✅ Mirror LegacyTasks structure: Areas → Projects → Tasks hierarchy
 - ✅ Store tags as JSONB array for flexibility
 - ✅ Track completion with `completed_at` timestamp
 - ✅ Soft deletes only via `deleted_at` (no hard deletes for user data)
@@ -68,14 +68,14 @@ Frontend → Backend API → PostgreSQL
 **Bridge Decommission:**
 - ✅ Keep bridge code for emergency data sync
 - ✅ Disable bridge auto-start after migration
-- ✅ Optionally maintain read-only Things sync
+- ✅ Optionally maintain read-only LegacyTasks sync
 - ✅ Archive bridge in separate branch for reference
 
 ---
 
 ## Success Criteria
 
-- ✅ All **active** Things data imported successfully (completed/trashed filtered out)
+- ✅ All **active** LegacyTasks data imported successfully (completed/trashed filtered out)
 - ✅ All 20 repeating tasks imported with correct recurrence rules
 - ✅ Repeating tasks auto-create next instance on completion
 - ✅ Task list loads in <100ms (vs current ~500ms with bridge)
@@ -113,7 +113,7 @@ def upgrade() -> None:
         'task_areas',
         sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
         sa.Column('user_id', UUID(as_uuid=True), nullable=False),
-        sa.Column('things_id', sa.String(255), nullable=True, unique=True, index=True),  # Original Things ID
+        sa.Column('tasks_id', sa.String(255), nullable=True, unique=True, index=True),  # Original LegacyTasks ID
         sa.Column('title', sa.String(500), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -128,7 +128,7 @@ def upgrade() -> None:
         'task_projects',
         sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
         sa.Column('user_id', UUID(as_uuid=True), nullable=False),
-        sa.Column('things_id', sa.String(255), nullable=True, unique=True, index=True),
+        sa.Column('tasks_id', sa.String(255), nullable=True, unique=True, index=True),
         sa.Column('area_id', UUID(as_uuid=True), nullable=True),  # FK to task_areas
         sa.Column('title', sa.String(500), nullable=False),
         sa.Column('status', sa.String(50), nullable=False, default='active'),  # active, completed, canceled
@@ -150,7 +150,7 @@ def upgrade() -> None:
         'tasks',
         sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
         sa.Column('user_id', UUID(as_uuid=True), nullable=False),
-        sa.Column('things_id', sa.String(255), nullable=True, unique=True, index=True),
+        sa.Column('tasks_id', sa.String(255), nullable=True, unique=True, index=True),
         sa.Column('project_id', UUID(as_uuid=True), nullable=True),  # FK to task_projects
         sa.Column('area_id', UUID(as_uuid=True), nullable=True),     # FK to task_areas (for tasks without project)
 
@@ -161,7 +161,7 @@ def upgrade() -> None:
 
         # Dates
         sa.Column('deadline', sa.Date, nullable=True),           # When task is due
-        sa.Column('deadline_start', sa.Date, nullable=True),     # When task becomes active (Things "start date")
+        sa.Column('deadline_start', sa.Date, nullable=True),     # When task becomes active (LegacyTasks "start date")
         sa.Column('scheduled_date', sa.Date, nullable=True),     # User-scheduled date
 
         # Metadata
@@ -290,7 +290,7 @@ class TaskArea(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    things_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    tasks_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
@@ -322,7 +322,7 @@ class TaskProject(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    things_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    tasks_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
     area_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("task_areas.id", ondelete="SET NULL"))
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
@@ -360,7 +360,7 @@ class Task(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    things_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    tasks_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("task_projects.id", ondelete="SET NULL"))
     area_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("task_areas.id", ondelete="SET NULL"))
 
@@ -417,13 +417,13 @@ class Task(Base):
 
 ---
 
-## Phase 2: One-Time Things Import (2-3 days)
+## Phase 2: One-Time LegacyTasks Import (2-3 days)
 
 ### Objectives
 - Create import script using existing bridge
-- Fetch all data from Things (areas, projects, tasks)
-- Parse recurrence rules from Things SQLite database
-- Insert into PostgreSQL with Things IDs preserved
+- Fetch all data from LegacyTasks (areas, projects, tasks)
+- Parse recurrence rules from LegacyTasks SQLite database
+- Insert into PostgreSQL with LegacyTasks IDs preserved
 - Validate import completeness
 
 ### 2.1 Import Service
@@ -431,11 +431,11 @@ class Task(Base):
 **File: `/backend/api/services/tasks_import_service.py` (NEW)**
 
 ```python
-"""One-time import service from Things to native task system"""
+"""One-time import service from LegacyTasks to native task system"""
 import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
-from api.services.things_bridge_client import ThingsBridgeClient
+from api.services.tasks_bridge_client import LegacyTasksBridgeClient
 from api.models.task_area import TaskArea
 from api.models.task_project import TaskProject
 from api.models.task import Task
@@ -443,12 +443,12 @@ from api.models.task import Task
 logger = logging.getLogger(__name__)
 
 class TasksImportService:
-    """Import tasks from Things bridge into native task system"""
+    """Import tasks from LegacyTasks bridge into native task system"""
 
     @staticmethod
-    async def import_all_data(db: Session, user_id: str, bridge_client: ThingsBridgeClient):
+    async def import_all_data(db: Session, user_id: str, bridge_client: LegacyTasksBridgeClient):
         """
-        Import all Things data for a user.
+        Import all LegacyTasks data for a user.
 
         Returns:
             dict with import statistics
@@ -468,11 +468,11 @@ class TasksImportService:
             areas_response = await bridge_client.get_lists("inbox")  # Areas included in any list response
             areas_data = areas_response.get("areas", [])
 
-            area_id_map = {}  # Map Things ID -> New UUID
+            area_id_map = {}  # Map LegacyTasks ID -> New UUID
             for area_data in areas_data:
                 area = TaskArea(
                     user_id=user_id,
-                    things_id=area_data["id"],
+                    tasks_id=area_data["id"],
                     title=area_data["title"],
                     created_at=datetime.fromisoformat(area_data.get("updatedAt", datetime.now().isoformat())),
                     updated_at=datetime.fromisoformat(area_data.get("updatedAt", datetime.now().isoformat()))
@@ -489,7 +489,7 @@ class TasksImportService:
             logger.info(f"Fetching projects for user {user_id}")
             projects_data = areas_response.get("projects", [])
 
-            project_id_map = {}  # Map Things ID -> New UUID
+            project_id_map = {}  # Map LegacyTasks ID -> New UUID
             for project_data in projects_data:
                 # Skip completed, canceled projects
                 status = project_data.get("status", "active")
@@ -500,7 +500,7 @@ class TasksImportService:
 
                 project = TaskProject(
                     user_id=user_id,
-                    things_id=project_data["id"],
+                    tasks_id=project_data["id"],
                     area_id=area_id_map.get(project_data.get("areaId")),
                     title=project_data["title"],
                     status=status,
@@ -525,11 +525,11 @@ class TasksImportService:
                 all_tasks.extend(tasks_response.get("tasks", []))
 
             # Fetch tasks from each project
-            for project_things_id in project_id_map.keys():
-                project_tasks = await bridge_client.get_project_tasks(project_things_id)
+            for project_tasks_id in project_id_map.keys():
+                project_tasks = await bridge_client.get_project_tasks(project_tasks_id)
                 all_tasks.extend(project_tasks.get("tasks", []))
 
-            # Deduplicate by Things ID
+            # Deduplicate by LegacyTasks ID
             tasks_by_id = {t["id"]: t for t in all_tasks}
 
             # Filter and import only active tasks
@@ -549,7 +549,7 @@ class TasksImportService:
 
                 task = Task(
                     user_id=user_id,
-                    things_id=task_data["id"],
+                    tasks_id=task_data["id"],
                     project_id=project_id_map.get(task_data.get("projectId")),
                     area_id=area_id_map.get(task_data.get("areaId")),
                     title=task_data["title"],
@@ -579,33 +579,33 @@ class TasksImportService:
 
 ### 2.2 Import CLI Script
 
-**File: `/backend/scripts/import_things_data.py` (NEW)**
+**File: `/backend/scripts/import_tasks_data.py` (NEW)**
 
 ```python
 #!/usr/bin/env python3
-"""CLI script to import Things data into native task system"""
+"""CLI script to import LegacyTasks data into native task system"""
 import asyncio
 import sys
 from sqlalchemy.orm import Session
 from api.db.session import SessionLocal
 from api.services.tasks_import_service import TasksImportService
-from api.services.things_bridge_client import ThingsBridgeClient
-from api.services.things_bridge_service import ThingsBridgeService
+from api.services.tasks_bridge_client import LegacyTasksBridgeClient
+from api.services.tasks_bridge_service import LegacyTasksBridgeService
 
 async def main(user_id: str):
     db: Session = SessionLocal()
 
     try:
         # Get active bridge for user
-        bridge = ThingsBridgeService.get_active_bridge(db, user_id)
+        bridge = LegacyTasksBridgeService.get_active_bridge(db, user_id)
         if not bridge:
-            print(f"No active Things bridge found for user {user_id}")
+            print(f"No active LegacyTasks bridge found for user {user_id}")
             sys.exit(1)
 
         print(f"Found bridge: {bridge.device_name} at {bridge.base_url}")
 
         # Create bridge client
-        bridge_client = ThingsBridgeClient(
+        bridge_client = LegacyTasksBridgeClient(
             base_url=bridge.base_url,
             token=bridge.bridge_token
         )
@@ -631,7 +631,7 @@ async def main(user_id: str):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python import_things_data.py <user_id>")
+        print("Usage: python import_tasks_data.py <user_id>")
         sys.exit(1)
 
     user_id = sys.argv[1]
@@ -649,29 +649,29 @@ from sqlalchemy.orm import Session
 from api.db.dependencies import get_db, get_current_user_id
 from api.auth import verify_bearer_token
 from api.services.tasks_import_service import TasksImportService
-from api.services.things_bridge_client import ThingsBridgeClient
-from api.services.things_bridge_service import ThingsBridgeService
+from api.services.tasks_bridge_client import LegacyTasksBridgeClient
+from api.services.tasks_bridge_service import LegacyTasksBridgeService
 
 router = APIRouter(prefix="/tasks/admin", tags=["tasks-admin"])
 
-@router.post("/import-from-things")
-async def import_from_things(
+@router.post("/import-from-tasks")
+async def import_from_tasks(
     user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
     _: str = Depends(verify_bearer_token)
 ):
     """
-    One-time import of all Things data into native task system.
+    One-time import of all LegacyTasks data into native task system.
 
-    Requires active Things bridge.
+    Requires active LegacyTasks bridge.
     """
     # Get active bridge
-    bridge = ThingsBridgeService.get_active_bridge(db, user_id)
+    bridge = LegacyTasksBridgeService.get_active_bridge(db, user_id)
     if not bridge:
-        raise HTTPException(status_code=404, detail="No active Things bridge found")
+        raise HTTPException(status_code=404, detail="No active LegacyTasks bridge found")
 
     # Create client
-    bridge_client = ThingsBridgeClient(
+    bridge_client = LegacyTasksBridgeClient(
         base_url=bridge.base_url,
         token=bridge.bridge_token
     )
@@ -686,12 +686,12 @@ async def import_from_things(
 ```
 
 ### Deliverables
-- ✅ Import service handles all Things data types
+- ✅ Import service handles all LegacyTasks data types
 - ✅ **Filters out** completed, trashed, canceled tasks and projects
 - ✅ **Skips** repeat templates (imports only active instances)
 - ✅ CLI script for manual import with skip statistics
 - ✅ Admin API endpoint for web-based import
-- ✅ Things IDs preserved for reference
+- ✅ LegacyTasks IDs preserved for reference
 - ✅ Import statistics including skipped counts
 
 ### Import Filter Summary
@@ -713,15 +713,15 @@ async def import_from_things(
 **Why Filter?**
 - Reduces database size and improves performance
 - Only migrates actionable data (what you need going forward)
-- Completed/trashed items remain in Things as historical archive
-- Can always reference Things backup if historical data needed
+- Completed/trashed items remain in LegacyTasks as historical archive
+- Can always reference LegacyTasks backup if historical data needed
 
 ---
 
 ## Phase 2.5: Recurrence Implementation (2-3 days)
 
 ### Objectives
-- Parse Things proprietary recurrence format from SQLite
+- Parse LegacyTasks proprietary recurrence format from SQLite
 - Implement recurrence logic for task completion
 - Auto-create next instances when repeating tasks are completed
 - Support daily, weekly, and monthly patterns with intervals
@@ -736,8 +736,8 @@ async def import_from_things(
 - **3 monthly tasks** (e.g., "Monthly Budget", "Update Revenue Tracker")
   - Pattern: Every month on specific day (1st, 9th, 22nd)
 
-**Things Recurrence Format:**
-Things stores recurrence in binary plist format with these fields:
+**LegacyTasks Recurrence Format:**
+LegacyTasks stores recurrence in binary plist format with these fields:
 - `fu` (frequency unit): 16=Daily, 256=Weekly, 8=Monthly
 - `fa` (frequency amount): Interval multiplier (1-4)
 - `of` (occurrence frequency): `{'wd': N}` for weekday or `{'dy': N}` for day of month
@@ -774,26 +774,26 @@ Things stores recurrence in binary plist format with these fields:
 
 **Template linkage:** For imported repeating tasks, set `repeat_template=True` and `repeat_template_id=task.id` after insert so subsequent instances can be deduped and linked.
 
-### 2.5.2 Parse Things Plist Recurrence
+### 2.5.2 Parse LegacyTasks Plist Recurrence
 
-**File: `/backend/api/services/things_recurrence_parser.py` (NEW)**
+**File: `/backend/api/services/tasks_recurrence_parser.py` (NEW)**
 
 ```python
-"""Parse Things proprietary plist recurrence format"""
+"""Parse LegacyTasks proprietary plist recurrence format"""
 import plistlib
 from datetime import date
 from typing import Optional
 
-class ThingsRecurrenceParser:
-    """Parse Things recurrence rules from SQLite plist data"""
+class LegacyTasksRecurrenceParser:
+    """Parse LegacyTasks recurrence rules from SQLite plist data"""
 
     @staticmethod
     def parse_recurrence_rule(plist_data: bytes) -> Optional[dict]:
         """
-        Parse Things binary plist recurrence data.
+        Parse LegacyTasks binary plist recurrence data.
 
         Args:
-            plist_data: Raw bytes from Things SQLite rt1_recurrenceRule column
+            plist_data: Raw bytes from LegacyTasks SQLite rt1_recurrenceRule column
 
         Returns:
             Recurrence rule dict or None if not repeating
@@ -824,8 +824,8 @@ class ThingsRecurrenceParser:
             rule = {
                 'type': recurrence_type,
                 'interval': fa,
-                'start_date': ThingsRecurrenceParser._parse_things_date(sr) if sr else None,
-                'end_date': ThingsRecurrenceParser._parse_things_date(ed) if ed and ed < 64092211200 else None
+                'start_date': LegacyTasksRecurrenceParser._parse_tasks_date(sr) if sr else None,
+                'end_date': LegacyTasksRecurrenceParser._parse_tasks_date(ed) if ed and ed < 64092211200 else None
             }
 
             # Add weekday for weekly recurrence
@@ -843,16 +843,16 @@ class ThingsRecurrenceParser:
             return None
 
     @staticmethod
-    def _parse_things_date(things_timestamp: int) -> str:
+    def _parse_tasks_date(tasks_timestamp: int) -> str:
         """
-        Convert Things timestamp to ISO date.
+        Convert LegacyTasks timestamp to ISO date.
 
-        Things uses: 2001-01-01 + ((timestamp - 131611392) / 128) days
+        LegacyTasks uses: 2001-01-01 + ((timestamp - 131611392) / 128) days
         """
         from datetime import timedelta
 
         base_date = date(2001, 1, 1)
-        days_offset = (things_timestamp - 131611392) / 128
+        days_offset = (tasks_timestamp - 131611392) / 128
         result_date = base_date + timedelta(days=days_offset)
         return result_date.isoformat()
 ```
@@ -865,29 +865,29 @@ Add recurrence parsing to import:
 
 ```python
 import sqlite3
-from api.services.things_recurrence_parser import ThingsRecurrenceParser
+from api.services.tasks_recurrence_parser import LegacyTasksRecurrenceParser
 
 class TasksImportService:
     @staticmethod
-    async def import_all_data(db: Session, user_id: str, bridge_client: ThingsBridgeClient):
+    async def import_all_data(db: Session, user_id: str, bridge_client: LegacyTasksBridgeClient):
         # ... existing code ...
 
-        # Open Things SQLite database for recurrence data
-        things_db_path = ThingsRecurrenceParser.find_things_database()
-        things_conn = sqlite3.connect(things_db_path)
-        things_cursor = things_conn.cursor()
+        # Open LegacyTasks SQLite database for recurrence data
+        tasks_db_path = LegacyTasksRecurrenceParser.find_tasks_database()
+        tasks_conn = sqlite3.connect(tasks_db_path)
+        tasks_cursor = tasks_conn.cursor()
 
         # Fetch recurrence rules
-        things_cursor.execute("""
+        tasks_cursor.execute("""
             SELECT uuid, rt1_recurrenceRule
             FROM TMTask
             WHERE rt1_recurrenceRule IS NOT NULL
         """)
         recurrence_map = {
-            row[0]: ThingsRecurrenceParser.parse_recurrence_rule(row[1])
-            for row in things_cursor.fetchall()
+            row[0]: LegacyTasksRecurrenceParser.parse_recurrence_rule(row[1])
+            for row in tasks_cursor.fetchall()
         }
-        things_conn.close()
+        tasks_conn.close()
 
         # ... when creating tasks ...
         for task_data in tasks_by_id.values():
@@ -896,7 +896,7 @@ class TasksImportService:
             task = Task(
                 # ... existing fields ...
                 recurrence_rule=recurrence_rule,
-                next_instance_date=ThingsRecurrenceParser.calculate_next_occurrence(
+                next_instance_date=LegacyTasksRecurrenceParser.calculate_next_occurrence(
                     recurrence_rule
                 ) if recurrence_rule else None
             )
@@ -1028,15 +1028,15 @@ class RecurrenceService:
         return new_task
 
     @staticmethod
-    def find_things_database() -> str:
-        """Find Things SQLite database path"""
+    def find_tasks_database() -> str:
+        """Find LegacyTasks SQLite database path"""
         import glob
         pattern = os.path.expanduser(
-            "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-*/Things Database.thingsdatabase/main.sqlite"
+            "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.LegacyTasksMac/LegacyTasksData-*/LegacyTasks Database.tasksdatabase/main.sqlite"
         )
         matches = glob.glob(pattern)
         if not matches:
-            raise FileNotFoundError("Things database not found")
+            raise FileNotFoundError("LegacyTasks database not found")
         return matches[0]
 ```
 
@@ -1086,7 +1086,7 @@ class TaskService:
 ```
 
 ### Deliverables
-- ✅ Things plist recurrence parser
+- ✅ LegacyTasks plist recurrence parser
 - ✅ Recurrence rule schema defined
 - ✅ Import updated to parse and store recurrence rules
 - ✅ RecurrenceService implements next occurrence calculation
@@ -1100,7 +1100,7 @@ class TaskService:
 ### Objectives
 - Create native task CRUD service
 - Replace bridge client calls with direct DB queries
-- Update `/api/v1/things/*` endpoints to use new service
+- Update `/api/v1/tasks/*` endpoints to use new service
 - Maintain existing API response schemas
 - Keep business logic in services (routers stay thin)
 
@@ -1129,7 +1129,7 @@ class TaskService:
         """
         Get tasks by scope (today, upcoming, inbox).
 
-        Returns response matching Things API format.
+        Returns response matching LegacyTasks API format.
         """
         today = date.today()
 
@@ -1496,9 +1496,9 @@ class TaskService:
 
 **JSONB updates:** When mutating `tags` or `recurrence_rule`, call `flag_modified(task, "tags")` / `flag_modified(task, "recurrence_rule")` so SQLAlchemy persists changes.
 
-### 3.2 Update Things Router
+### 3.2 Update LegacyTasks Router
 
-**File: `/backend/api/routers/things.py`**
+**File: `/backend/api/routers/tasks.py`**
 
 Replace bridge calls with native task service:
 
@@ -1601,8 +1601,8 @@ Server-side behavior:
 
 ### Deliverables
 - ✅ TaskService implements all CRUD operations
-- ✅ All `/api/v1/things/*` endpoints updated
-- ✅ `/api/v1/things/apply` supports offline outbox replay (batch operations)
+- ✅ All `/api/v1/tasks/*` endpoints updated
+- ✅ `/api/v1/tasks/apply` supports offline outbox replay (batch operations)
 - ✅ API response schemas unchanged (frontend compatibility)
 - ✅ Direct DB queries replace bridge HTTP calls
 - ✅ Performance improvements measured (<100ms queries)
@@ -1612,15 +1612,15 @@ Server-side behavior:
 ## Phase 4: Frontend Migration (3 days)
 
 ### Objectives
-- Update Things store to work with new API
+- Update LegacyTasks store to work with new API
 - Remove bridge-specific logic
 - Reduce cache TTL (5min → 1min)
 - Add optimistic updates
 - Implement offline cache + outbox sync
 
-### 4.1 Update Things Store
+### 4.1 Update LegacyTasks Store
 
-**File: `/frontend/src/lib/stores/things.ts`**
+**File: `/frontend/src/lib/stores/tasks.ts`**
 
 Minimal changes needed (API contract unchanged):
 
@@ -1635,7 +1635,7 @@ const CACHE_TTL_MS = 60 * 1000; // 1 minute (down from 5)
 ### 4.2 Add Optimistic Updates
 
 ```typescript
-export const thingsStore = {
+export const tasksStore = {
   // ... existing methods
 
   async completeTaskOptimistic(taskId: string) {
@@ -1647,7 +1647,7 @@ export const thingsStore = {
 
     // Send to backend
     try {
-      const result = await thingsAPI.completeTask(taskId);
+      const result = await tasksAPI.completeTask(taskId);
 
       // Handle repeating task response (see 4.3)
       if (result.next_task) {
@@ -1669,8 +1669,8 @@ export const thingsStore = {
 When backend creates next instance of repeating task, frontend needs to:
 
 ```typescript
-// In things store
-handleNextTaskCreated(nextTask: ThingsTask) {
+// In tasks store
+handleNextTaskCreated(nextTask: LegacyTasksTask) {
   // Show subtle notification
   toast.info(`"${nextTask.title}" scheduled for ${formatDate(nextTask.scheduledDate)}`);
 
@@ -1688,8 +1688,8 @@ handleNextTaskCreated(nextTask: ThingsTask) {
 Update task display to show recurrence info:
 
 ```typescript
-// In ThingsTask component
-function getRecurrenceLabel(task: ThingsTask): string | null {
+// In LegacyTasksTask component
+function getRecurrenceLabel(task: LegacyTasksTask): string | null {
   if (!task.recurrenceRule) return null;
 
   const { type, interval } = task.recurrenceRule;
@@ -1743,7 +1743,7 @@ async function enqueueOperation(op: TaskOperation) {
 async function flushOutbox() {
   const batch = await outbox.peekBatch(50);
   if (!batch.length) return;
-  const response = await thingsAPI.apply({ lastSync, operations: batch });
+  const response = await tasksAPI.apply({ lastSync, operations: batch });
   await outbox.removeApplied(response.applied);
   await mergeServerDeltas(response.updated_since);
 }
@@ -1821,7 +1821,7 @@ tasks = db.execute(
 
 ### 6.1 Disable Bridge
 
-**File: `/backend/api/routers/things.py`**
+**File: `/backend/api/routers/tasks.py`**
 
 Add feature flag to toggle between bridge and native:
 
@@ -1842,8 +1842,8 @@ else:
 
 ```bash
 # Create archive branch
-git checkout -b archive/things-bridge
-git push origin archive/things-bridge
+git checkout -b archive/tasks-bridge
+git push origin archive/tasks-bridge
 
 # Remove bridge from main
 git checkout main
@@ -1928,12 +1928,12 @@ def test_calculate_next_occurrence_weekly(db, test_user):
 
     assert next_date == date(2026, 1, 26)  # 2 weeks later, still Monday
 
-def test_parse_things_recurrence_plist(db, test_user):
-    """Test parsing Things binary plist recurrence data"""
+def test_parse_tasks_recurrence_plist(db, test_user):
+    """Test parsing LegacyTasks binary plist recurrence data"""
     # Mock plist data for daily every 2 days
     plist_bytes = plistlib.dumps({"fu": 16, "fa": 2, "of": {"dy": 1}})
 
-    rule = ThingsRecurrenceParser.parse_recurrence_rule(plist_bytes)
+    rule = LegacyTasksRecurrenceParser.parse_recurrence_rule(plist_bytes)
 
     assert rule["type"] == "daily"
     assert rule["interval"] == 2
@@ -1978,12 +1978,12 @@ def test_parse_things_recurrence_plist(db, test_user):
 
 **Settings Page Notice:**
 ```svelte
-<!-- In SettingsThingsSection.svelte -->
+<!-- In SettingsLegacyTasksSection.svelte -->
 <div class="migration-notice">
   <h3>📦 Native Task Management Available</h3>
   <p>
     We're upgrading to a native task system with improved performance and offline support.
-    Your Things data will be imported automatically.
+    Your LegacyTasks data will be imported automatically.
   </p>
   <button on:click={startMigration}>
     Migrate to Native Tasks
@@ -1993,7 +1993,7 @@ def test_parse_things_recurrence_plist(db, test_user):
     <ul>
       <li>✅ All active tasks, projects, and areas</li>
       <li>✅ Repeating tasks with full recurrence rules</li>
-      <li>❌ Completed and trashed tasks (remain in Things)</li>
+      <li>❌ Completed and trashed tasks (remain in LegacyTasks)</li>
     </ul>
   </details>
 </div>
@@ -2044,7 +2044,7 @@ def test_parse_things_recurrence_plist(db, test_user):
   </p>
   {#if stats.tasks_skipped > 0}
     <p class="muted">
-      {stats.tasks_skipped} completed/trashed tasks remain in Things as archive.
+      {stats.tasks_skipped} completed/trashed tasks remain in LegacyTasks as archive.
     </p>
   {/if}
   <button on:click={viewTasks}>View My Tasks</button>
@@ -2056,7 +2056,7 @@ def test_parse_things_recurrence_plist(db, test_user):
 <div class="migration-error">
   <h3>⚠️ Migration Failed</h3>
   <p>We couldn't complete the migration: {error.message}</p>
-  <p>Your Things data is safe and unchanged.</p>
+  <p>Your LegacyTasks data is safe and unchanged.</p>
   <button on:click={retryMigration}>Try Again</button>
   <button on:click={contactSupport}>Contact Support</button>
 </div>
@@ -2078,41 +2078,41 @@ toast.info({
 
 ## Edge Cases & Error Handling
 
-### 1. Things Database Not Found
+### 1. LegacyTasks Database Not Found
 
-**Issue:** `glob.glob` returns empty list when searching for Things database
+**Issue:** `glob.glob` returns empty list when searching for LegacyTasks database
 
 **Handling:**
 ```python
 @staticmethod
-def find_things_database() -> str:
-    """Find Things SQLite database path"""
+def find_tasks_database() -> str:
+    """Find LegacyTasks SQLite database path"""
     import glob
     import os
 
     pattern = os.path.expanduser(
-        "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-*/Things Database.thingsdatabase/main.sqlite"
+        "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.LegacyTasksMac/LegacyTasksData-*/LegacyTasks Database.tasksdatabase/main.sqlite"
     )
     matches = glob.glob(pattern)
 
     if not matches:
-        # Try alternative location (Things 3.x vs 4.x)
-        alt_pattern = os.path.expanduser("~/Library/Containers/com.culturedcode.ThingsMac/*/Things Database.thingsdatabase/main.sqlite")
+        # Try alternative location (LegacyTasks 3.x vs 4.x)
+        alt_pattern = os.path.expanduser("~/Library/Containers/com.culturedcode.LegacyTasksMac/*/LegacyTasks Database.tasksdatabase/main.sqlite")
         matches = glob.glob(alt_pattern)
 
     if not matches:
         raise FileNotFoundError(
-            "Things database not found. Please ensure Things 3 is installed and you've granted Full Disk Access."
+            "LegacyTasks database not found. Please ensure LegacyTasks 3 is installed and you've granted Full Disk Access."
         )
 
     return matches[0]
 ```
 
-**User Message:** "Things database not found. Please ensure Things is installed and try again."
+**User Message:** "LegacyTasks database not found. Please ensure LegacyTasks is installed and try again."
 
 ### 2. Malformed Recurrence Rules
 
-**Issue:** Things plist data is corrupt or unparseable
+**Issue:** LegacyTasks plist data is corrupt or unparseable
 
 **Handling:**
 ```python
@@ -2136,7 +2136,7 @@ except Exception as e:
 
 ### 4. Timezone Handling
 
-**Issue:** Things stores dates without timezone, need consistency
+**Issue:** LegacyTasks stores dates without timezone, need consistency
 
 **Handling:**
 ```python
@@ -2208,7 +2208,7 @@ day = min(target_day, max_day)  # Clamp to valid day
 
 ### 8. Bridge Unavailable During Import
 
-**Issue:** Things bridge is offline or not responding
+**Issue:** LegacyTasks bridge is offline or not responding
 
 **Handling:**
 ```python
@@ -2217,25 +2217,25 @@ try:
 except httpx.TimeoutException:
     raise HTTPException(
         status_code=503,
-        detail="Things bridge is not responding. Please ensure the bridge is running."
+        detail="LegacyTasks bridge is not responding. Please ensure the bridge is running."
     )
 ```
 
-**User Message:** "Couldn't connect to Things. Please check that Things is running and try again."
+**User Message:** "Couldn't connect to LegacyTasks. Please check that LegacyTasks is running and try again."
 
 ### 9. Missing Permissions
 
-**Issue:** App lacks Full Disk Access to read Things database
+**Issue:** App lacks Full Disk Access to read LegacyTasks database
 
 **Handling:**
 ```python
 try:
-    conn = sqlite3.connect(things_db_path)
+    conn = sqlite3.connect(tasks_db_path)
     conn.execute("SELECT 1 FROM TMTask LIMIT 1")
 except sqlite3.OperationalError as e:
     if "unable to open database" in str(e):
         raise PermissionError(
-            "Cannot access Things database. Please grant Full Disk Access in System Settings > Privacy & Security."
+            "Cannot access LegacyTasks database. Please grant Full Disk Access in System Settings > Privacy & Security."
         )
 ```
 
@@ -2243,11 +2243,11 @@ except sqlite3.OperationalError as e:
 
 ### 10. Concurrent Modifications
 
-**Issue:** User modifies tasks in Things while import is running
+**Issue:** User modifies tasks in LegacyTasks while import is running
 
 **Handling:** Import is point-in-time snapshot
 
-**Note:** Document that users should not modify Things during migration (takes ~1 minute)
+**Note:** Document that users should not modify LegacyTasks during migration (takes ~1 minute)
 
 **After Migration:** Bridge remains functional until decommissioned, so changes made during migration can be manually synced if needed
 
@@ -2257,7 +2257,7 @@ except sqlite3.OperationalError as e:
 
 ### Pre-Migration
 
-1. **Backup Things data**: Export full Things backup
+1. **Backup LegacyTasks data**: Export full LegacyTasks backup
 2. **Test import on staging**: Validate with real user data
 3. **Performance baseline**: Measure current response times
 4. **Feature flag ready**: Can toggle back to bridge if needed
@@ -2265,7 +2265,7 @@ except sqlite3.OperationalError as e:
 ### Migration Steps
 
 1. **Deploy database schema** (Phase 1)
-2. **Run import script** for all users with Things connected
+2. **Run import script** for all users with LegacyTasks connected
 3. **Deploy backend API changes** with feature flag OFF
 4. **Test native system** in production with flag ON for internal users
 5. **Enable for all users** once validated
@@ -2296,7 +2296,7 @@ USE_NATIVE_TASK_SYSTEM=false
 | Cache TTL | 5 minutes | 1 minute | Code config |
 | Bridge dependency | Required | Optional | Architecture |
 | Offline support | None | Full | Feature availability |
-| Data ownership | Things | sideBar | Data location |
+| Data ownership | LegacyTasks | sideBar | Data location |
 | Repeating tasks | 20 tasks | 100% working | Manual verification |
 
 ---
@@ -2306,7 +2306,7 @@ USE_NATIVE_TASK_SYSTEM=false
 | Phase | Effort | Dependencies |
 |-------|--------|-------------|
 | 1. Database Schema | 2-3 days | None |
-| 2. Things Import | 2-3 days | Phase 1 |
+| 2. LegacyTasks Import | 2-3 days | Phase 1 |
 | 2.5. Recurrence Implementation | 2-3 days | Phase 2 |
 | 3. Backend API | 3-4 days | Phase 1, 2, 2.5 |
 | 4. Frontend Update | 3 days | Phase 3 |
@@ -2332,13 +2332,13 @@ backend/
 │   │   ├── task_service.py
 │   │   ├── tasks_import_service.py
 │   │   ├── recurrence_service.py              # NEW: Phase 2.5
-│   │   └── things_recurrence_parser.py        # NEW: Phase 2.5
+│   │   └── tasks_recurrence_parser.py        # NEW: Phase 2.5
 │   ├── routers/
 │   │   └── tasks_admin.py
 │   └── alembic/versions/
 │       └── 20260111_1500-030_create_task_system_schema.py
 └── scripts/
-    └── import_things_data.py
+    └── import_tasks_data.py
 ```
 
 ### Backend (Modify)
@@ -2347,7 +2347,7 @@ backend/
 backend/
 └── api/
     ├── routers/
-    │   └── things.py  # Replace bridge calls with TaskService
+    │   └── tasks.py  # Replace bridge calls with TaskService
     └── config.py      # Add USE_NATIVE_TASK_SYSTEM flag
 ```
 
@@ -2360,7 +2360,7 @@ frontend/
     │   └── task_sync.ts   # Offline sync + outbox replay
     └── stores/
         ├── task_cache.ts  # IndexedDB-backed cache
-        └── things.ts      # Reduce cache TTL, add optimistic updates
+        └── tasks.ts      # Reduce cache TTL, add optimistic updates
 ```
 
 ---
@@ -2369,7 +2369,7 @@ frontend/
 
 1. ✅ Review and approve this migration plan
 2. ⏭️ Begin Phase 1: Create database schema and models (2-3 days)
-3. ⏭️ Execute Phase 2: Import all Things data (2-3 days)
+3. ⏭️ Execute Phase 2: Import all LegacyTasks data (2-3 days)
 4. ⏭️ Implement Phase 2.5: Recurrence support (2-3 days)
 5. ⏭️ Implement Phase 3: Migrate backend API to native queries (3-4 days)
 6. ⏭️ Update Phase 4: Frontend optimizations (3 days)
@@ -2393,7 +2393,7 @@ This migration plan now includes:
 - Performance optimization strategy
 
 ### ✅ Recurrence System (Complete)
-- Things plist parser for 20 existing repeating tasks
+- LegacyTasks plist parser for 20 existing repeating tasks
 - Support for daily, weekly, monthly patterns with intervals
 - Auto-creation of next instances on completion
 - Frontend display of recurrence indicators

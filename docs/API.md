@@ -47,7 +47,7 @@ These are the standardized error codes returned by the backend:
 | `CONFLICT` | 409 | Resource state conflict (e.g., in-progress processing). |
 | `PAYLOAD_TOO_LARGE` | 413 | Upload exceeded size limits. |
 | `RANGE_NOT_SATISFIABLE` | 416 | Invalid content range requested. |
-| `SERVICE_UNAVAILABLE` | 503 | Required service unavailable (e.g., Things bridge). |
+| `SERVICE_UNAVAILABLE` | 503 | Required service unavailable. |
 | `INTERNAL_ERROR` | 500 | Unhandled server error. |
 | `EXTERNAL_SERVICE_ERROR` | 502 | Upstream service failed. |
 | `HTTP_ERROR` | varies | Legacy FastAPI HTTPException normalization. |
