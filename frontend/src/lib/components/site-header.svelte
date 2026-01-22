@@ -2,7 +2,6 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { useSiteHeaderData } from '$lib/hooks/useSiteHeaderData';
-	import { useThingsBridgeStatus } from '$lib/hooks/useThingsBridgeStatus';
 	import { get } from 'svelte/store';
 	import { websitesStore, type WebsiteTranscriptEntry } from '$lib/stores/websites';
 	import { transcriptStatusStore } from '$lib/stores/transcript-status';
@@ -20,9 +19,6 @@
 	let weatherTemp = '';
 	let weatherCode: number | null = null;
 	let weatherIsDay: number | null = null;
-	const thingsStatus = useThingsBridgeStatus();
-	let bridgeStatus: 'loading' | 'online' | 'offline' = 'loading';
-	let bridgeSeenAt: string | null = null;
 	let transcriptStatus: 'processing' | null = null;
 	let transcriptLabel = '';
 	let transcriptPollingId: ReturnType<typeof setInterval> | null = null;
@@ -36,7 +32,6 @@
 	let tooltipsEnabled = false;
 
 	$: ({ liveLocation, weatherTemp, weatherCode, weatherIsDay } = $siteHeaderData);
-	$: ({ status: bridgeStatus, lastSeenAt: bridgeSeenAt } = $thingsStatus);
 	onMount(() => {
 		tooltipsEnabled = canShowTooltips();
 	});
@@ -211,21 +206,8 @@
 			<div class="subtitle">Workspace</div>
 		</div>
 		<div class="status-stack">
-			<div
-				class="things-status"
-				aria-live="polite"
-				title={bridgeSeenAt ? `Last seen ${bridgeSeenAt}` : ''}
-			>
-				<span class="label">Bridge</span>
-				<span
-					class="dot"
-					class:online={bridgeStatus === 'online'}
-					class:offline={bridgeStatus === 'offline'}
-					class:loading={bridgeStatus === 'loading'}
-				></span>
-			</div>
 			{#if transcriptStatus}
-				<div class="things-status transcript-status" data-status={transcriptStatus}>
+				<div class="tasks-status transcript-status" data-status={transcriptStatus}>
 					<span class="label">{transcriptLabel}</span>
 					<span class="dot"></span>
 				</div>
@@ -370,7 +352,7 @@
 		align-items: flex-end;
 	}
 
-	.things-status {
+	.tasks-status {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -384,23 +366,11 @@
 		text-transform: uppercase;
 	}
 
-	.things-status .dot {
+	.tasks-status .dot {
 		width: 6px;
 		height: 6px;
 		border-radius: 999px;
 		background: var(--color-muted-foreground);
-	}
-
-	.things-status .dot.online {
-		background: #22c55e;
-	}
-
-	.things-status .dot.offline {
-		background: #ef4444;
-	}
-
-	.things-status .dot.loading {
-		background: #f59e0b;
 	}
 
 	.location {
@@ -438,7 +408,7 @@
 		:global(.swap-button) {
 			display: none;
 		}
-		.things-status {
+		.tasks-status {
 			display: none;
 		}
 	}

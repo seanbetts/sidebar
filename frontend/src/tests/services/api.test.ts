@@ -1,11 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-	conversationsAPI,
-	ingestionAPI,
-	notesAPI,
-	websitesAPI,
-	thingsAPI
-} from '$lib/services/api';
+import { conversationsAPI, ingestionAPI, notesAPI, websitesAPI, tasksAPI } from '$lib/services/api';
 
 const okJson = (value: unknown) =>
 	Promise.resolve({
@@ -186,7 +180,7 @@ describe('api services', () => {
 		);
 	});
 
-	it('thingsAPI.counts falls back on 404', async () => {
+	it('tasksAPI.counts falls back on 404', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(
 			Promise.resolve({
 				ok: false,
@@ -194,7 +188,7 @@ describe('api services', () => {
 			} as Response)
 		);
 
-		const data = await thingsAPI.counts();
+		const data = await tasksAPI.counts();
 
 		expect(data.counts.today).toBe(0);
 		expect(data.areas).toEqual([]);
@@ -208,46 +202,26 @@ describe('api services', () => {
 		expect(data.children).toHaveLength(1);
 	});
 
-	it('thingsAPI.diagnostics falls back on 404', async () => {
-		vi.spyOn(global, 'fetch').mockReturnValue(
-			Promise.resolve({ ok: false, status: 404 } as Response)
-		);
-
-		const data = await thingsAPI.diagnostics();
-
-		expect(data.dbAccess).toBe(false);
-	});
-
-	it('thingsAPI.status returns status payload', async () => {
-		vi.spyOn(global, 'fetch').mockReturnValue(
-			okJson({ activeBridgeId: 'bridge-1', activeBridge: null, bridges: [] })
-		);
-
-		const data = await thingsAPI.status();
-
-		expect(data.activeBridgeId).toBe('bridge-1');
-	});
-
-	it('thingsAPI.search returns list data', async () => {
+	it('tasksAPI.search returns list data', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(okJson({ tasks: [] }));
 
-		const data = await thingsAPI.search('query');
+		const data = await tasksAPI.search('query');
 
 		expect(data.tasks).toEqual([]);
 	});
 
-	it('thingsAPI.list returns list data', async () => {
+	it('tasksAPI.list returns list data', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(okJson({ scope: 'today', tasks: [] }));
 
-		const data = await thingsAPI.list('today');
+		const data = await tasksAPI.list('today');
 
 		expect(data.scope).toBe('today');
 	});
 
-	it('thingsAPI.projectTasks returns list data', async () => {
+	it('tasksAPI.projectTasks returns list data', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(okJson({ tasks: [{ id: 't1' }] }));
 
-		const data = await thingsAPI.projectTasks('p1');
+		const data = await tasksAPI.projectTasks('p1');
 
 		expect(data.tasks?.[0].id).toBe('t1');
 	});
@@ -276,23 +250,10 @@ describe('api services', () => {
 		);
 	});
 
-	it('thingsAPI.apply throws on failure', async () => {
+	it('tasksAPI.apply throws on failure', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(failJson());
 
-		await expect(thingsAPI.apply({ op: 'noop' })).rejects.toThrow(
-			'Failed to apply Things operation'
-		);
-	});
-
-	it('thingsAPI.setUrlToken posts the token', async () => {
-		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({}));
-
-		await thingsAPI.setUrlToken('token');
-
-		expect(fetchSpy).toHaveBeenCalledWith(
-			'/api/v1/things/bridges/url-token',
-			expect.objectContaining({ method: 'POST' })
-		);
+		await expect(tasksAPI.apply({ op: 'noop' })).rejects.toThrow('Failed to apply task operation');
 	});
 
 	it('ingestionAPI.upload resolves with response payload', async () => {

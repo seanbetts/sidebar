@@ -5,7 +5,7 @@
 	import ResizeHandle from '$lib/components/layout/ResizeHandle.svelte';
 	import WebsitesViewer from '$lib/components/websites/WebsitesViewer.svelte';
 	import UniversalViewer from '$lib/components/files/UniversalViewer.svelte';
-	import ThingsTasksView from '$lib/components/things/ThingsTasksView.svelte';
+	import TasksView from '$lib/components/tasks/TasksView.svelte';
 	import { layoutStore } from '$lib/stores/layout';
 	import { websitesStore } from '$lib/stores/websites';
 	import { ingestionViewerStore } from '$lib/stores/ingestion-viewer';
@@ -70,8 +70,8 @@
 	<div class="panel main-panel">
 		{#if isChatFocused}
 			<ChatSidebar />
-		{:else if $sidebarSectionStore === 'things'}
-			<ThingsTasksView />
+		{:else if $sidebarSectionStore === 'tasks'}
+			<TasksView />
 		{:else if $ingestionViewerStore.active}
 			<UniversalViewer />
 		{:else if $websitesStore.active}
@@ -96,8 +96,8 @@
 		style:min-width={`${minSidebarPx}px`}
 	>
 		{#if isChatFocused}
-			{#if $sidebarSectionStore === 'things'}
-				<ThingsTasksView />
+			{#if $sidebarSectionStore === 'tasks'}
+				<TasksView />
 			{:else if $ingestionViewerStore.active}
 				<UniversalViewer />
 			{:else if $websitesStore.active}

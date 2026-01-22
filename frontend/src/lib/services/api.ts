@@ -2,12 +2,7 @@ import type { Message } from '$lib/types/chat';
 import type { FileNode } from '$lib/types/file';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
-import type {
-	ThingsBridgeDiagnostics,
-	ThingsBridgeStatus,
-	ThingsCountsResponse,
-	ThingsListResponse
-} from '$lib/types/things';
+import type { TaskCountsResponse, TaskListResponse } from '$lib/types/tasks';
 
 /**
  * API service for conversations.
@@ -502,44 +497,38 @@ export const notesAPI = new NotesAPI();
 export const websitesAPI = new WebsitesAPI();
 
 /**
- * API service for Things bridge status.
+ * API service for tasks.
  */
-class ThingsAPI {
+class TasksAPI {
 	private get baseUrl(): string {
-		return '/api/v1/things';
+		return '/api/v1/tasks';
 	}
 
-	async status(): Promise<ThingsBridgeStatus> {
-		const response = await fetch(`${this.baseUrl}/bridges/status`);
-		if (!response.ok) throw new Error('Failed to load Things bridge status');
-		return response.json();
-	}
-
-	async list(scope: string): Promise<ThingsListResponse> {
+	async list(scope: string): Promise<TaskListResponse> {
 		const response = await fetch(`${this.baseUrl}/lists/${scope}`);
-		if (!response.ok) throw new Error('Failed to load Things list');
+		if (!response.ok) throw new Error('Failed to load task list');
 		return response.json();
 	}
 
-	async projectTasks(projectId: string): Promise<ThingsListResponse> {
+	async projectTasks(projectId: string): Promise<TaskListResponse> {
 		const response = await fetch(`${this.baseUrl}/projects/${projectId}/tasks`);
-		if (!response.ok) throw new Error('Failed to load Things project tasks');
+		if (!response.ok) throw new Error('Failed to load project tasks');
 		return response.json();
 	}
 
-	async areaTasks(areaId: string): Promise<ThingsListResponse> {
+	async areaTasks(areaId: string): Promise<TaskListResponse> {
 		const response = await fetch(`${this.baseUrl}/areas/${areaId}/tasks`);
-		if (!response.ok) throw new Error('Failed to load Things area tasks');
+		if (!response.ok) throw new Error('Failed to load area tasks');
 		return response.json();
 	}
 
-	async search(query: string): Promise<ThingsListResponse> {
+	async search(query: string): Promise<TaskListResponse> {
 		const response = await fetch(`${this.baseUrl}/search?query=${encodeURIComponent(query)}`);
-		if (!response.ok) throw new Error('Failed to search Things tasks');
+		if (!response.ok) throw new Error('Failed to search tasks');
 		return response.json();
 	}
 
-	async counts(): Promise<ThingsCountsResponse> {
+	async counts(): Promise<TaskCountsResponse> {
 		const response = await fetch(`${this.baseUrl}/counts`);
 		if (response.status === 404) {
 			return {
@@ -548,16 +537,7 @@ class ThingsAPI {
 				areas: []
 			};
 		}
-		if (!response.ok) throw new Error('Failed to load Things counts');
-		return response.json();
-	}
-
-	async diagnostics(): Promise<ThingsBridgeDiagnostics> {
-		const response = await fetch(`${this.baseUrl}/diagnostics`);
-		if (response.status === 404) {
-			return { dbAccess: false, dbPath: null, dbError: 'Diagnostics unavailable' };
-		}
-		if (!response.ok) throw new Error('Failed to load Things diagnostics');
+		if (!response.ok) throw new Error('Failed to load task counts');
 		return response.json();
 	}
 
@@ -581,17 +561,8 @@ class ThingsAPI {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(normalizedPayload)
 		});
-		if (!response.ok) throw new Error('Failed to apply Things operation');
-	}
-
-	async setUrlToken(token: string): Promise<void> {
-		const response = await fetch(`${this.baseUrl}/bridges/url-token`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ token })
-		});
-		if (!response.ok) throw new Error('Failed to save Things URL token');
+		if (!response.ok) throw new Error('Failed to apply task operation');
 	}
 }
 
-export const thingsAPI = new ThingsAPI();
+export const tasksAPI = new TasksAPI();
