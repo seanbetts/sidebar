@@ -70,10 +70,10 @@
 						{...props}
 						onclick={(event) => {
 							props.onclick?.(event);
-							onOpenSection?.('things');
+							onOpenSection?.('tasks');
 						}}
 						class="rail-btn"
-						class:active={activeSection === 'things'}
+						class:active={activeSection === 'tasks'}
 						aria-label="Tasks"
 					>
 						<CheckSquare size={18} />

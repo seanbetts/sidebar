@@ -1,0 +1,5 @@
+import { createProxyHandler } from '$lib/server/apiProxy';
+
+export const GET = createProxyHandler({
+	pathBuilder: () => '/api/v1/tasks/counts'
+});

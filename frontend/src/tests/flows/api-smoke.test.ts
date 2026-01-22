@@ -32,11 +32,9 @@ suite('API smoke (requires local server)', () => {
 		'/api/v1/notes/tree',
 		'/api/v1/websites',
 		'/api/v1/files',
-		'/api/v1/things/bridges/status',
-		'/api/v1/things/diagnostics',
-		'/api/v1/things/counts',
-		'/api/v1/things/lists/today',
-		'/api/v1/things/lists/upcoming',
+		'/api/v1/tasks/counts',
+		'/api/v1/tasks/lists/today',
+		'/api/v1/tasks/lists/upcoming',
 		'/api/v1/places/reverse?lat=51.05587&lng=-0.13055',
 		'/api/v1/weather?lat=51.05587&lon=-0.13055'
 	];
@@ -51,7 +49,7 @@ suite('API smoke (requires local server)', () => {
 	];
 
 	for (const path of getEndpoints) {
-		const timeoutMs = path.includes('/api/v1/things/lists/upcoming') ? 10000 : DEFAULT_TIMEOUT_MS;
+		const timeoutMs = path.includes('/api/v1/tasks/lists/upcoming') ? 10000 : DEFAULT_TIMEOUT_MS;
 		it(
 			`exposes ${path}`,
 			async () => {

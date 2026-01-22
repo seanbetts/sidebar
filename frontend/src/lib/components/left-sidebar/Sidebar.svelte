@@ -5,7 +5,7 @@
 	import { chatStore } from '$lib/stores/chat';
 	import { editorStore, currentNoteId } from '$lib/stores/editor';
 	import { treeStore } from '$lib/stores/tree';
-	import { thingsStore } from '$lib/stores/things';
+	import { tasksStore } from '$lib/stores/tasks';
 	import { websitesStore } from '$lib/stores/websites';
 	import { filesSearchStore } from '$lib/stores/files-search';
 	import { dispatchCacheEvent } from '$lib/utils/cacheEvents';
@@ -14,7 +14,7 @@
 	import NotesPanel from '$lib/components/left-sidebar/NotesPanel.svelte';
 	import FilesPanel from '$lib/components/left-sidebar/FilesPanel.svelte';
 	import SidebarWebsitesSection from '$lib/components/left-sidebar/SidebarWebsitesSection.svelte';
-	import ThingsPanel from '$lib/components/left-sidebar/ThingsPanel.svelte';
+	import TasksPanel from '$lib/components/left-sidebar/TasksPanel.svelte';
 	import { useSidebarSectionLoader, type SidebarSection } from '$lib/hooks/useSidebarSectionLoader';
 	import { useIngestionUploads } from '$lib/hooks/useIngestionUploads';
 	import SidebarRail from '$lib/components/left-sidebar/SidebarRail.svelte';
@@ -139,7 +139,7 @@
 			openSection('notes');
 		} else if (event.key === '2') {
 			event.preventDefault();
-			openSection('things');
+			openSection('tasks');
 		} else if (event.key === '3') {
 			event.preventDefault();
 			openSection('websites');
@@ -457,13 +457,13 @@
 				onNewWebsite={handleNewWebsite}
 			/>
 
-			<!-- Things Section -->
-			<div class="panel-section" class:hidden={activeSection !== 'things'}>
+			<!-- Tasks Section -->
+			<div class="panel-section" class:hidden={activeSection !== 'tasks'}>
 				<SidebarSectionHeader
 					title="Tasks"
 					searchPlaceholder="Search tasks..."
-					onSearch={(query) => thingsStore.search(query)}
-					onClear={() => thingsStore.clearSearch()}
+					onSearch={(query) => tasksStore.search(query)}
+					onClear={() => tasksStore.clearSearch()}
 				>
 					<svelte:fragment slot="actions">
 						<Tooltip disabled={!tooltipsEnabled}>
@@ -476,7 +476,7 @@
 										{...props}
 										onclick={(event) => {
 											props.onclick?.(event);
-											thingsStore.startNewTask();
+											tasksStore.startNewTask();
 										}}
 										aria-label="New task"
 									>
@@ -488,8 +488,8 @@
 						</Tooltip>
 					</svelte:fragment>
 				</SidebarSectionHeader>
-				<div class="things-content">
-					<ThingsPanel />
+				<div class="tasks-content">
+					<TasksPanel />
 				</div>
 			</div>
 
@@ -667,7 +667,7 @@
 		overflow-y: auto;
 	}
 
-	:global(.things-content) {
+	:global(.tasks-content) {
 		display: flex;
 		flex-direction: column;
 		flex: 1;

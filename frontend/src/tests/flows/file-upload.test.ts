@@ -26,7 +26,7 @@ const {
 	websitesStore,
 	treeStore,
 	filesSearchStore,
-	thingsStore,
+	tasksStore,
 	chatStore,
 	conversationListStore,
 	currentNoteId,
@@ -99,7 +99,7 @@ const {
 			set: vi.fn(),
 			clear: vi.fn()
 		},
-		thingsStore: {
+		tasksStore: {
 			search: vi.fn(),
 			clearSearch: vi.fn(),
 			startNewTask: vi.fn()
@@ -149,8 +149,8 @@ vi.mock('$lib/stores/files-search', () => ({
 	filesSearchStore
 }));
 
-vi.mock('$lib/stores/things', () => ({
-	thingsStore
+vi.mock('$lib/stores/tasks', () => ({
+	tasksStore
 }));
 
 vi.mock('$lib/stores/chat', () => ({
@@ -191,8 +191,8 @@ vi.mock('$lib/components/websites/WebsitesPanel.svelte', () => ({
 	default: createStubComponent('websites-panel')
 }));
 
-vi.mock('$lib/components/left-sidebar/ThingsPanel.svelte', () => ({
-	default: createStubComponent('things-panel')
+vi.mock('$lib/components/left-sidebar/TasksPanel.svelte', () => ({
+	default: createStubComponent('tasks-panel')
 }));
 
 vi.mock('$lib/components/left-sidebar/SidebarRail.svelte', () => ({
