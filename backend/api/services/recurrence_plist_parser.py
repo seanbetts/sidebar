@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import plistlib
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 
@@ -35,6 +35,8 @@ class RecurrencePlistParser:
 
         interval = int(payload.get("fa") or 1)
         occurrence = payload.get("of") or {}
+        if isinstance(occurrence, list):
+            occurrence = occurrence[0] if occurrence else {}
         start_date = RecurrencePlistParser._parse_date(payload.get("sr"))
         end_date = RecurrencePlistParser._parse_date(payload.get("ed"))
 
@@ -60,6 +62,11 @@ class RecurrencePlistParser:
     def _parse_date(value: Any) -> date | None:
         if not value:
             return None
+        if isinstance(value, int | float):
+            try:
+                return datetime.fromtimestamp(float(value), tz=UTC).date()
+            except (OSError, ValueError):
+                return None
         if isinstance(value, date) and not isinstance(value, datetime):
             return value
         if isinstance(value, datetime):
