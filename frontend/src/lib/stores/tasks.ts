@@ -22,6 +22,7 @@ import {
 	todayKey
 } from '$lib/stores/tasks-utils';
 import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
+import { toast } from 'svelte-sonner';
 import type {
 	Task,
 	TaskArea,
@@ -112,7 +113,15 @@ function createTasksStore() {
 		setMeta: (meta) => {
 			lastMeta = meta;
 		},
-		setSyncNotice
+		setSyncNotice,
+		onNextTasks: (nextTasks) => {
+			if (!nextTasks.length) return;
+			if (nextTasks.length === 1) {
+				toast.message(`Next instance scheduled: "${nextTasks[0].title}"`);
+				return;
+			}
+			toast.message(`Next instances scheduled: ${nextTasks.length}`);
+		}
 	});
 
 	const updateTaskCaches = (taskId: string, task: Task, dueDate: string) => {
@@ -634,15 +643,12 @@ function createTasksStore() {
 			try {
 				const response = await enqueueTaskOperation({ op: 'complete', id: taskId });
 				handleSyncResponse(response);
-				if (response?.nextTasks?.length) {
-					setSyncNotice('Next task instance scheduled');
-					if (isBrowser && navigator.onLine) {
-						void loadSelection(get({ subscribe }).selection, {
-							force: true,
-							silent: true,
-							notify: false
-						});
-					}
+				if (response?.nextTasks?.length && isBrowser && navigator.onLine) {
+					void loadSelection(get({ subscribe }).selection, {
+						force: true,
+						silent: true,
+						notify: false
+					});
 				}
 			} catch (error) {
 				update((state) => ({

@@ -106,7 +106,7 @@
 									</span>
 								{/if}
 								{#if task.repeating && !task.repeatTemplate}
-									<Repeat size={14} class="repeat-icon" />
+									<Repeat size={14} class="repeat-icon" title="Repeating task" />
 								{/if}
 							</div>
 							{#if taskSubtitle(task)}
