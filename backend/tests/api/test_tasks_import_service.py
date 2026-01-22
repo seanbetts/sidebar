@@ -50,6 +50,7 @@ def test_import_from_bridge_filters_and_maps(test_db_engine):
                     "deadlineStart": "2026-01-01T00:00:00Z",
                     "tags": ["urgent"],
                     "repeating": True,
+                    "recurrenceRule": {"type": "daily", "interval": 1},
                     "updatedAt": "2026-01-01T00:00:00Z",
                 },
                 {"id": "t2", "title": "Done", "status": "completed"},
@@ -71,6 +72,7 @@ def test_import_from_bridge_filters_and_maps(test_db_engine):
         assert task.deadline_start == date(2026, 1, 1)
         assert task.tags == ["urgent"]
         assert task.repeating is True
+        assert task.recurrence_rule == {"type": "daily", "interval": 1}
 
         project = session.query(TaskProject).one()
         assert project.title == "Project"
