@@ -271,6 +271,12 @@
 	}
 
 	const refreshTasks = () => {
+		if (typeof navigator !== 'undefined' && !navigator.onLine) {
+			return;
+		}
+		if (view.selectionType === 'search' && !view.selectionQuery) {
+			return;
+		}
 		tasksStore.load(view.selection, { force: true, silent: true });
 	};
 
