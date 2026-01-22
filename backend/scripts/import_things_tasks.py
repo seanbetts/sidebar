@@ -84,6 +84,23 @@ def _run_things_export() -> dict[str, Any]:
           }}
         }}
 
+        function safeValue(fn, fallback) {{
+          try {{
+            return fn();
+          }} catch (err) {{
+            return fallback;
+          }}
+        }}
+
+        function safeId(fn) {{
+          try {{
+            const obj = fn();
+            return obj ? obj.id() : null;
+          }} catch (err) {{
+            return null;
+          }}
+        }}
+
         const areas = (() => {{
           try {{
             return things.areas();
@@ -111,7 +128,6 @@ def _run_things_export() -> dict[str, Any]:
           updatedAt: isoOrNull(project.modificationDate())
         }}));
 
-        const listNames = {json.dumps(list(THINGS_LISTS))};
         let tasks = [];
         const lists = (() => {{
           try {{
@@ -120,9 +136,8 @@ def _run_things_export() -> dict[str, Any]:
             throw new Error('Failed to read lists: ' + err);
           }}
         }})();
-        listNames.forEach(name => {{
-          const list = lists.find(item => item.name() === name);
-          if (!list) return;
+        lists.forEach(list => {{
+          const listName = safeValue(() => list.name(), 'Unknown');
           list.toDos().forEach(todo => {{
             tasks.push({{
               id: todo.id(),
@@ -133,10 +148,10 @@ def _run_things_export() -> dict[str, Any]:
               activationDate: isoOrNull(todo.activationDate()),
               completionDate: isoOrNull(todo.completionDate()),
               tags: tagNames(todo),
-              projectId: todo.project() ? todo.project().id() : null,
-              areaId: todo.area() ? todo.area().id() : null,
+              projectId: safeId(() => todo.project()),
+              areaId: safeId(() => todo.area()),
               updatedAt: isoOrNull(todo.modificationDate()),
-              listName: name
+              listName: listName
             }});
           }});
         }});
