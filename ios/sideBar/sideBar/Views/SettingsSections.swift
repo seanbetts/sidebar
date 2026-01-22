@@ -445,13 +445,13 @@ struct ShortcutsSettingsView: View {
     }
 }
 
-struct ThingsSettingsView: View {
+struct TasksSettingsView: View {
     var body: some View {
         Form {
-            Section("Things") {
-                Text("Things integration uses native APIs on iOS and macOS.")
+            Section("Tasks") {
+                Text("Tasks sync uses the built-in sideBar task system.")
                     .foregroundStyle(.secondary)
-                Text("If Things is not installed, this section will remain inactive.")
+                Text("Set up your tasks in sideBar to see them here.")
                     .foregroundStyle(.secondary)
             }
         }

@@ -109,16 +109,6 @@ tail -n 200 /tmp/sidebar-backend.log
 cd backend && uv sync
 ```
 
-### Things Bridge (Multiple Devices)
-
-If you have more than one Things bridge registered (for example, multiple dev machines), the backend may switch between them based on the latest heartbeat. You can pin the active bridge for this machine by setting:
-
-```bash
-THINGS_BRIDGE_DEVICE_ID=your-device-id
-```
-
-The installer derives `deviceId` from your computer name (lowercase, non-alphanumerics replaced with `-`).
-
 ### Frontend Proxy Not Working
 
 ```bash

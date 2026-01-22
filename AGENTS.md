@@ -97,7 +97,6 @@ Write tests for new behavior. Prefer a failing test first when practical.
 
 ## Gotchas
 
-- **Things.app**: Bearer token required, bridge API
 - **Supabase**: Must use connection pooler (see DATABASE_URL in .env.example)
 
 ---

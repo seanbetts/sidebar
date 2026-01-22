@@ -125,13 +125,13 @@ Finish the remaining SwiftUI parity work with a short, focused checklist.
 ### 6) Future Work (Post-MVP, Not Blocking)
 
 **Task System Migration (Phase 7.T1)**
-- [ ] Replace Things dependency with in-app todo management (3-5 sessions estimated)
+- [ ] Replace legacy task dependency with in-app todo management (3-5 sessions estimated)
   - Design native task data model (title, notes, due, tags, project, area, status)
   - Build task list UI (today/upcoming/all/search views)
   - Implement task CRUD operations
   - Add backend API endpoints for task sync
-  - Build one-time import from Things
-  - Migrate UI to use InAppTaskProvider instead of ThingsTaskProvider
+  - Build one-time import from legacy task source
+  - Migrate UI to use InAppTaskProvider instead of legacy provider
 
 ## Definition of Done (Final Validation)
 
