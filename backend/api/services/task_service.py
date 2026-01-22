@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.exceptions import (
@@ -36,6 +36,13 @@ class TaskCounts:
 @dataclass
 class TaskService:
     """Service layer for task CRUD operations."""
+
+    @staticmethod
+    def _task_query_with_relations(db: Session):
+        return db.query(Task).options(
+            joinedload(Task.project).joinedload(TaskProject.area),
+            joinedload(Task.area),
+        )
 
     @staticmethod
     def create_task_area(
@@ -288,7 +295,7 @@ class TaskService:
     def list_tasks(db: Session, user_id: str) -> list[Task]:
         """List active tasks for a user."""
         return (
-            db.query(Task)
+            TaskService._task_query_with_relations(db)
             .filter(Task.user_id == user_id, Task.deleted_at.is_(None))
             .order_by(Task.created_at.desc())
             .all()
@@ -300,7 +307,7 @@ class TaskService:
     ) -> tuple[list[Task], list[TaskProject], list[TaskArea]]:
         """List tasks by scope with related areas/projects."""
         today = date.today()
-        base_query = db.query(Task).filter(
+        base_query = TaskService._task_query_with_relations(db).filter(
             Task.user_id == user_id,
             Task.deleted_at.is_(None),
             Task.status.notin_(["completed", "trashed"]),
@@ -339,7 +346,7 @@ class TaskService:
         """List tasks for a specific project."""
         parsed_id = parse_uuid(project_id, "project", "id")
         return (
-            db.query(Task)
+            TaskService._task_query_with_relations(db)
             .filter(
                 Task.user_id == user_id,
                 Task.project_id == parsed_id,
@@ -355,7 +362,7 @@ class TaskService:
         """List tasks for a specific area."""
         parsed_id = parse_uuid(area_id, "area", "id")
         return (
-            db.query(Task)
+            TaskService._task_query_with_relations(db)
             .filter(
                 Task.user_id == user_id,
                 Task.area_id == parsed_id,
@@ -370,7 +377,7 @@ class TaskService:
     def search_tasks(db: Session, user_id: str, query: str) -> list[Task]:
         """Search tasks by title or notes."""
         return (
-            db.query(Task)
+            TaskService._task_query_with_relations(db)
             .filter(
                 Task.user_id == user_id,
                 Task.deleted_at.is_(None),
