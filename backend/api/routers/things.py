@@ -20,6 +20,7 @@ from api.exceptions import (
     ServiceUnavailableError,
 )
 from api.models.things_bridge import ThingsBridge
+from api.services.task_service import TaskService
 from api.services.tasks_import_service import TasksImportService
 from api.services.things_bridge_client import ThingsBridgeClient
 from api.services.things_bridge_install_service import ThingsBridgeInstallService
@@ -84,6 +85,42 @@ def _merge_items_by_id(items: list[dict], *, key: str = "id") -> list[dict]:
             continue
         merged[item_id] = item
     return list(merged.values())
+
+
+def _task_payload(task) -> dict:
+    deadline_start = task.deadline_start or task.scheduled_date
+    return {
+        "id": str(task.id),
+        "title": task.title,
+        "status": task.status,
+        "deadline": task.deadline.isoformat() if task.deadline else None,
+        "deadlineStart": deadline_start.isoformat() if deadline_start else None,
+        "notes": task.notes,
+        "projectId": str(task.project_id) if task.project_id else None,
+        "areaId": str(task.area_id) if task.area_id else None,
+        "repeating": task.repeating,
+        "repeatTemplate": task.repeat_template,
+        "tags": task.tags or [],
+        "updatedAt": task.updated_at.isoformat() if task.updated_at else None,
+    }
+
+
+def _project_payload(project) -> dict:
+    return {
+        "id": str(project.id),
+        "title": project.title,
+        "areaId": str(project.area_id) if project.area_id else None,
+        "status": project.status,
+        "updatedAt": project.updated_at.isoformat() if project.updated_at else None,
+    }
+
+
+def _area_payload(area) -> dict:
+    return {
+        "id": str(area.id),
+        "title": area.title,
+        "updatedAt": area.updated_at.isoformat() if area.updated_at else None,
+    }
 
 
 @router.post("/bridges/register")
@@ -408,9 +445,19 @@ async def get_things_list(
 ):
     """Fetch a Things list from the active bridge."""
     set_session_user_id(db, user_id)
-    bridge = _get_active_bridge_or_503(db, user_id)
-    client = ThingsBridgeClient(bridge)
-    response = await client.get_list(scope)
+    if settings.use_native_task_system:
+        tasks, projects, areas = TaskService.list_tasks_by_scope(db, user_id, scope)
+        response = {
+            "scope": scope,
+            "generatedAt": datetime.now(UTC).isoformat(),
+            "tasks": [_task_payload(task) for task in tasks],
+            "projects": [_project_payload(project) for project in projects],
+            "areas": [_area_payload(area) for area in areas],
+        }
+    else:
+        bridge = _get_active_bridge_or_503(db, user_id)
+        client = ThingsBridgeClient(bridge)
+        response = await client.get_list(scope)
     if scope == "today":
         background_tasks.add_task(_update_snapshot_background, user_id, response)
     return response
@@ -428,6 +475,13 @@ async def search_things_tasks(
     if not query:
         raise BadRequestError("query required")
     set_session_user_id(db, user_id)
+    if settings.use_native_task_system:
+        tasks = TaskService.search_tasks(db, user_id, query)
+        return {
+            "scope": "search",
+            "generatedAt": datetime.now(UTC).isoformat(),
+            "tasks": [_task_payload(task) for task in tasks],
+        }
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
     return await client.search(query)
@@ -442,6 +496,16 @@ async def apply_things_operation(
 ):
     """Apply an operation via the active Things bridge."""
     set_session_user_id(db, user_id)
+    if settings.use_native_task_system:
+        operations = request.get("operations")
+        op_list = operations if isinstance(operations, list) else [request]
+        result = TaskService.apply_operations(db, user_id, op_list)
+        db.commit()
+        return {
+            "applied": result.applied_ids,
+            "tasks": [_task_payload(task) for task in result.tasks],
+            "nextTasks": [_task_payload(task) for task in result.next_tasks],
+        }
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
     return await client.apply(request)
@@ -473,6 +537,9 @@ async def get_project_tasks(
 ):
     """Fetch tasks for a Things project via the active bridge."""
     set_session_user_id(db, user_id)
+    if settings.use_native_task_system:
+        tasks = TaskService.list_tasks_by_project(db, user_id, project_id)
+        return {"tasks": [_task_payload(task) for task in tasks]}
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
     return await client.project_tasks(project_id)
@@ -487,6 +554,9 @@ async def get_area_tasks(
 ):
     """Fetch tasks for a Things area via the active bridge."""
     set_session_user_id(db, user_id)
+    if settings.use_native_task_system:
+        tasks = TaskService.list_tasks_by_area(db, user_id, area_id)
+        return {"tasks": [_task_payload(task) for task in tasks]}
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
     return await client.area_tasks(area_id)
@@ -500,6 +570,23 @@ async def get_counts(
 ):
     """Fetch Things counts via the active bridge."""
     set_session_user_id(db, user_id)
+    if settings.use_native_task_system:
+        counts = TaskService.get_counts(db, user_id)
+        return {
+            "generatedAt": datetime.now(UTC).isoformat(),
+            "counts": {
+                "inbox": counts.inbox,
+                "today": counts.today,
+                "upcoming": counts.upcoming,
+            },
+            "projects": [
+                {"id": project_id, "count": count}
+                for project_id, count in counts.project_counts
+            ],
+            "areas": [
+                {"id": area_id, "count": count} for area_id, count in counts.area_counts
+            ],
+        }
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
     return await client.counts()

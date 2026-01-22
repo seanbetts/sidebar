@@ -142,6 +142,7 @@ class Settings(BaseSettings):
     r2_secret_access_key: str = ""
 
     # Things bridge
+    use_native_task_system: bool = True
     things_bridge_stale_seconds: int = int(
         os.getenv("THINGS_BRIDGE_STALE_SECONDS", "120")
     )
