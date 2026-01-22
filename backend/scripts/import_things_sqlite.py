@@ -72,7 +72,11 @@ def build_start_converter(
 
 def load_tags(conn: sqlite3.Connection) -> dict[str, str]:
     tags: dict[str, str] = {}
-    for uuid, title in conn.execute("select uuid, title from TMTag"):
+    try:
+        rows = conn.execute("select uuid, title from TMTag").fetchall()
+    except sqlite3.OperationalError:
+        return tags
+    for uuid, title in rows:
         if not uuid or not title:
             continue
         tags[str(uuid)] = str(title)
@@ -81,7 +85,11 @@ def load_tags(conn: sqlite3.Connection) -> dict[str, str]:
 
 def load_task_tags(conn: sqlite3.Connection, tag_map: dict[str, str]) -> dict[str, list[str]]:
     task_tags: dict[str, list[str]] = defaultdict(list)
-    for task_id, tag_id in conn.execute("select tasks, tags from TMTaskTag"):
+    try:
+        rows = conn.execute("select tasks, tags from TMTaskTag").fetchall()
+    except sqlite3.OperationalError:
+        return task_tags
+    for task_id, tag_id in rows:
         if not task_id or not tag_id:
             continue
         tag_name = tag_map.get(str(tag_id))
@@ -110,9 +118,13 @@ def map_task_status(
 
 def fetch_areas(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     areas: list[dict[str, Any]] = []
-    for uuid, title, visible in conn.execute(
-        "select uuid, title, visible from TMArea"
-    ):
+    try:
+        rows = conn.execute(
+            "select uuid, title, visible from TMArea"
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return areas
+    for uuid, title, visible in rows:
         if not uuid or not title:
             continue
         if visible is not None and int(visible) == 0:
@@ -123,13 +135,17 @@ def fetch_areas(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
 def fetch_projects(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     projects: list[dict[str, Any]] = []
-    for uuid, title, area_id, status, notes, updated_at, trashed in conn.execute(
-        """
-        select uuid, title, area, status, notes, userModificationDate, trashed
-        from TMTask
-        where type = 1
-        """
-    ):
+    try:
+        rows = conn.execute(
+            """
+            select uuid, title, area, status, notes, userModificationDate, trashed
+            from TMTask
+            where type = 1
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return projects
+    for uuid, title, area_id, status, notes, updated_at, trashed in rows:
         if not uuid or not title:
             continue
         if trashed:
@@ -159,14 +175,18 @@ def fetch_tasks(
     tasks: list[dict[str, Any]] = []
     today = date.today()
 
-    for row in conn.execute(
-        """
-        select uuid, title, notes, status, trashed, stopDate, project, area,
-               startDate, deadline, userModificationDate, rt1_recurrenceRule
-        from TMTask
-        where type = 0
-        """
-    ):
+    try:
+        rows = conn.execute(
+            """
+            select uuid, title, notes, status, trashed, stopDate, project, area,
+                   startDate, deadline, userModificationDate, rt1_recurrenceRule
+            from TMTask
+            where type = 0
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return tasks
+    for row in rows:
         (
             uuid,
             title,
