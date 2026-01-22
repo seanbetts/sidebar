@@ -141,19 +141,6 @@ class Settings(BaseSettings):
     r2_access_key: str = ""
     r2_secret_access_key: str = ""
 
-    # Things bridge
-    use_native_task_system: bool = True
-    things_bridge_stale_seconds: int = int(
-        os.getenv("THINGS_BRIDGE_STALE_SECONDS", "120")
-    )
-    things_bridge_timeout_seconds: int = int(
-        os.getenv("THINGS_BRIDGE_TIMEOUT_SECONDS", "10")
-    )
-    things_bridge_backend_url: str = os.getenv(
-        "THINGS_BRIDGE_BACKEND_URL", "http://localhost:8001"
-    )
-    things_bridge_device_id: str | None = os.getenv("THINGS_BRIDGE_DEVICE_ID") or None
-
     # Observability
     sentry_dsn: str | None = os.getenv("SENTRY_DSN") or None
     sentry_traces_sample_rate: float = float(

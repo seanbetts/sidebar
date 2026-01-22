@@ -53,7 +53,7 @@ class TaskService:
         user_id: str,
         title: str,
         *,
-        things_id: str | None = None,
+        source_id: str | None = None,
     ) -> TaskArea:
         """Create a new task area.
 
@@ -61,7 +61,7 @@ class TaskService:
             db: Database session.
             user_id: Current user ID.
             title: Area title.
-            things_id: Optional Things identifier.
+            source_id: Optional external source identifier.
 
         Returns:
             Newly created TaskArea.
@@ -70,7 +70,7 @@ class TaskService:
         area = TaskArea(
             user_id=user_id,
             title=title,
-            things_id=things_id,
+            source_id=source_id,
             created_at=now,
             updated_at=now,
             deleted_at=None,
@@ -150,7 +150,7 @@ class TaskService:
         area_id: str | None = None,
         status: str = "active",
         notes: str | None = None,
-        things_id: str | None = None,
+        source_id: str | None = None,
     ) -> TaskProject:
         """Create a new task project."""
         now = datetime.now(UTC)
@@ -160,7 +160,7 @@ class TaskService:
             area_id=parse_optional_uuid(area_id, "task area", "id"),
             status=status,
             notes=notes,
-            things_id=things_id,
+            source_id=source_id,
             created_at=now,
             updated_at=now,
             deleted_at=None,
@@ -248,7 +248,7 @@ class TaskService:
         repeat_template: bool = False,
         repeat_template_id: str | None = None,
         next_instance_date: date | None = None,
-        things_id: str | None = None,
+        source_id: str | None = None,
     ) -> Task:
         """Create a new task."""
         now = datetime.now(UTC)
@@ -268,7 +268,7 @@ class TaskService:
             repeat_template=repeat_template,
             repeat_template_id=parse_optional_uuid(repeat_template_id, "task", "id"),
             next_instance_date=next_instance_date,
-            things_id=things_id,
+            source_id=source_id,
             created_at=now,
             updated_at=now,
             deleted_at=None,
@@ -308,7 +308,7 @@ class TaskService:
     def list_tasks_by_scope(
         db: Session, user_id: str, scope: str
     ) -> tuple[list[Task], list[TaskProject], list[TaskArea]]:
-        """List tasks by Things scope with related areas/projects."""
+        """List tasks by scope with related areas/projects."""
         today = date.today()
         base_query = db.query(Task).filter(
             Task.user_id == user_id,
@@ -397,7 +397,7 @@ class TaskService:
 
     @staticmethod
     def get_counts(db: Session, user_id: str) -> TaskCounts:
-        """Compute badge counts for Things lists."""
+        """Compute badge counts for task lists."""
         today = date.today()
         base = (
             db.query(Task)

@@ -145,14 +145,14 @@ def build_prompt_variables(
     current_time = f"{now.strftime('%H:%M')} {timezone_label}"
     formatted_levels = format_location_levels(current_location_levels)
     formatted_weather = format_weather(current_weather)
-    things_snapshot_raw = (
-        getattr(settings_record, "things_ai_snapshot", "") if settings_record else ""
+    tasks_snapshot_raw = (
+        getattr(settings_record, "tasks_ai_snapshot", "") if settings_record else ""
     )
-    things_snapshot = (
-        things_snapshot_raw.strip() if isinstance(things_snapshot_raw, str) else ""
+    tasks_snapshot = (
+        tasks_snapshot_raw.strip() if isinstance(tasks_snapshot_raw, str) else ""
     )
-    things_snapshot_block = (
-        f"<tasks>\n{things_snapshot}\n</tasks>" if things_snapshot else ""
+    tasks_snapshot_block = (
+        f"<tasks>\n{tasks_snapshot}\n</tasks>" if tasks_snapshot else ""
     )
 
     return {
@@ -177,7 +177,7 @@ def build_prompt_variables(
         "current_weather": formatted_weather,
         "home_location": home_location,
         "operating_system": operating_system,
-        "thingsSnapshot": things_snapshot_block,
+        "tasksSnapshot": tasks_snapshot_block,
     }
 
 

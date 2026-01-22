@@ -1,4 +1,4 @@
-"""Service for importing Things data into native task system."""
+"""Service for importing external task payloads into native task system."""
 
 from __future__ import annotations
 
@@ -28,18 +28,18 @@ class TasksImportStats:
 
 
 class TasksImportService:
-    """Import tasks from Things bridge into native tables."""
+    """Import tasks from external payloads into native tables."""
 
     @staticmethod
     def import_from_bridge(
         db: Session, user_id: str, bridge_payload: dict[str, Any]
     ) -> TasksImportStats:
-        """Import Things data using a prepared payload.
+        """Import external data using a prepared payload.
 
         Args:
             db: Database session.
             user_id: Current user ID.
-            bridge_payload: Parsed Things payload (areas, projects, tasks).
+            bridge_payload: Parsed payload (areas, projects, tasks).
 
         Returns:
             TasksImportStats with counts and errors.
@@ -55,10 +55,10 @@ class TasksImportService:
 
         area_map: dict[str, TaskArea] = {}
         for area_data in areas_data:
-            things_id = str(area_data.get("id") or "").strip()
-            if not things_id:
+            source_id = str(area_data.get("id") or "").strip()
+            if not source_id:
                 continue
-            existing_area = TasksImportService._find_area(db, user_id, things_id)
+            existing_area = TasksImportService._find_area(db, user_id, source_id)
             title = str(area_data.get("title") or "Untitled Area")
             updated_at = TasksImportService._parse_datetime(area_data.get("updatedAt"))
             if existing_area:
@@ -68,7 +68,7 @@ class TasksImportService:
             else:
                 area_record = TaskArea(
                     user_id=user_id,
-                    things_id=things_id,
+                    source_id=source_id,
                     title=title,
                     created_at=updated_at or now,
                     updated_at=updated_at or now,
@@ -76,7 +76,7 @@ class TasksImportService:
                 )
                 db.add(area_record)
                 stats.areas_imported += 1
-            area_map[things_id] = area_record
+            area_map[source_id] = area_record
 
         project_map: dict[str, TaskProject] = {}
         for project_data in projects_data:
@@ -84,8 +84,8 @@ class TasksImportService:
             if status in {"completed", "canceled"}:
                 stats.projects_skipped += 1
                 continue
-            things_id = str(project_data.get("id") or "").strip()
-            if not things_id:
+            source_id = str(project_data.get("id") or "").strip()
+            if not source_id:
                 continue
             title = str(project_data.get("title") or "Untitled Project")
             updated_at = TasksImportService._parse_datetime(
@@ -93,7 +93,7 @@ class TasksImportService:
             )
             area_id = project_data.get("areaId")
             project_area = area_map.get(str(area_id)) if area_id else None
-            existing_project = TasksImportService._find_project(db, user_id, things_id)
+            existing_project = TasksImportService._find_project(db, user_id, source_id)
             if existing_project:
                 existing_project.title = title
                 existing_project.status = status
@@ -103,7 +103,7 @@ class TasksImportService:
             else:
                 project_record = TaskProject(
                     user_id=user_id,
-                    things_id=things_id,
+                    source_id=source_id,
                     area_id=project_area.id if project_area else None,
                     title=title,
                     status=status,
@@ -115,7 +115,7 @@ class TasksImportService:
                 )
                 db.add(project_record)
                 stats.projects_imported += 1
-            project_map[things_id] = project_record
+            project_map[source_id] = project_record
 
         for task_data in tasks_data:
             status = str(task_data.get("status") or "inbox")
@@ -124,8 +124,8 @@ class TasksImportService:
                 continue
             if status in {"today", "upcoming"}:
                 status = "inbox"
-            things_id = str(task_data.get("id") or "").strip()
-            if not things_id:
+            source_id = str(task_data.get("id") or "").strip()
+            if not source_id:
                 continue
             title = str(task_data.get("title") or "Untitled Task")
             updated_at = TasksImportService._parse_datetime(task_data.get("updatedAt"))
@@ -139,7 +139,7 @@ class TasksImportService:
             area_id = task_data.get("areaId")
             task_project = project_map.get(str(project_id)) if project_id else None
             task_area = area_map.get(str(area_id)) if area_id else None
-            existing_task = TasksImportService._find_task(db, user_id, things_id)
+            existing_task = TasksImportService._find_task(db, user_id, source_id)
             if existing_task:
                 existing_task.title = title
                 existing_task.status = status
@@ -157,7 +157,7 @@ class TasksImportService:
             else:
                 task = Task(
                     user_id=user_id,
-                    things_id=things_id,
+                    source_id=source_id,
                     project_id=task_project.id if task_project else None,
                     area_id=task_area.id if task_area else None,
                     title=title,
@@ -219,36 +219,36 @@ class TasksImportService:
         return parsed.date() if parsed else None
 
     @staticmethod
-    def _find_area(db: Session, user_id: str, things_id: str) -> TaskArea | None:
+    def _find_area(db: Session, user_id: str, source_id: str) -> TaskArea | None:
         return (
             db.query(TaskArea)
             .filter(
                 TaskArea.user_id == user_id,
-                TaskArea.things_id == things_id,
+                TaskArea.source_id == source_id,
                 TaskArea.deleted_at.is_(None),
             )
             .one_or_none()
         )
 
     @staticmethod
-    def _find_project(db: Session, user_id: str, things_id: str) -> TaskProject | None:
+    def _find_project(db: Session, user_id: str, source_id: str) -> TaskProject | None:
         return (
             db.query(TaskProject)
             .filter(
                 TaskProject.user_id == user_id,
-                TaskProject.things_id == things_id,
+                TaskProject.source_id == source_id,
                 TaskProject.deleted_at.is_(None),
             )
             .one_or_none()
         )
 
     @staticmethod
-    def _find_task(db: Session, user_id: str, things_id: str) -> Task | None:
+    def _find_task(db: Session, user_id: str, source_id: str) -> Task | None:
         return (
             db.query(Task)
             .filter(
                 Task.user_id == user_id,
-                Task.things_id == things_id,
+                Task.source_id == source_id,
                 Task.deleted_at.is_(None),
             )
             .one_or_none()

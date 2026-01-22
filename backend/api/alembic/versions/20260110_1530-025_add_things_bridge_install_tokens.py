@@ -1,4 +1,4 @@
-"""Add Things bridge install tokens table.
+"""Add legacy bridge install tokens table.
 
 Revision ID: 025_add_things_bridge_install_tokens
 Revises: 024_add_things_bridges

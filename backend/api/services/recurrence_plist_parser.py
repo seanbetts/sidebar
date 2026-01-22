@@ -1,4 +1,4 @@
-"""Parser for Things recurrence rules stored in plist format."""
+"""Parser for recurrence rules stored in plist format."""
 
 from __future__ import annotations
 
@@ -7,17 +7,17 @@ from datetime import date, datetime
 from typing import Any
 
 
-class ThingsRecurrenceParser:
-    """Parse Things recurrence rules from plist bytes."""
+class RecurrencePlistParser:
+    """Parse recurrence rules from plist bytes."""
 
     TYPE_MAP = {16: "daily", 256: "weekly", 8: "monthly"}
 
     @staticmethod
     def parse_recurrence_rule(plist_data: bytes | None) -> dict[str, Any] | None:
-        """Parse Things binary plist recurrence data.
+        """Parse binary plist recurrence data.
 
         Args:
-            plist_data: Raw bytes from Things recurrence fields.
+            plist_data: Raw bytes from recurrence fields.
 
         Returns:
             Parsed recurrence rule dict or None if not repeating.
@@ -29,14 +29,14 @@ class ThingsRecurrenceParser:
         except Exception:
             return None
 
-        rule_type = ThingsRecurrenceParser.TYPE_MAP.get(payload.get("fu"))
+        rule_type = RecurrencePlistParser.TYPE_MAP.get(payload.get("fu"))
         if not rule_type:
             return None
 
         interval = int(payload.get("fa") or 1)
         occurrence = payload.get("of") or {}
-        start_date = ThingsRecurrenceParser._parse_date(payload.get("sr"))
-        end_date = ThingsRecurrenceParser._parse_date(payload.get("ed"))
+        start_date = RecurrencePlistParser._parse_date(payload.get("sr"))
+        end_date = RecurrencePlistParser._parse_date(payload.get("ed"))
 
         rule: dict[str, Any] = {
             "type": rule_type,

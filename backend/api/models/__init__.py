@@ -7,8 +7,6 @@ from api.models.task import Task
 from api.models.task_area import TaskArea
 from api.models.task_operation_log import TaskOperationLog
 from api.models.task_project import TaskProject
-from api.models.things_bridge import ThingsBridge
-from api.models.things_bridge_install_token import ThingsBridgeInstallToken
 from api.models.user_memory import UserMemory
 from api.models.user_settings import UserSettings
 from api.models.website import Website
@@ -26,6 +24,4 @@ __all__ = [
     "TaskArea",
     "TaskOperationLog",
     "TaskProject",
-    "ThingsBridge",
-    "ThingsBridgeInstallToken",
 ]

@@ -29,7 +29,7 @@ class UserSettings(Base):
     profile_image_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     enabled_skills: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     shortcuts_pat: Mapped[str | None] = mapped_column(Text, nullable=True)
-    things_ai_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tasks_ai_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

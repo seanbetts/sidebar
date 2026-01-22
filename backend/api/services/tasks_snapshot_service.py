@@ -1,4 +1,4 @@
-"""Build Things AI snapshot content."""
+"""Build tasks AI snapshot content."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
-class ThingsSnapshotService:
-    """Helpers for Things AI snapshot rendering."""
+class TasksSnapshotService:
+    """Helpers for tasks AI snapshot rendering."""
 
     @staticmethod
     def build_snapshot(
@@ -18,7 +18,7 @@ class ThingsSnapshotService:
         areas: list[dict[str, Any]],
         projects: list[dict[str, Any]],
     ) -> str:
-        """Build the Things snapshot markdown from task payloads."""
+        """Build the tasks snapshot markdown from task payloads."""
         area_map = {area.get("id"): area.get("title") for area in areas}
         project_map = {project.get("id"): project.get("title") for project in projects}
 
