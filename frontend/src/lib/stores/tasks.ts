@@ -1,6 +1,5 @@
 import { get, writable } from 'svelte/store';
 import { tasksAPI } from '$lib/services/api';
-import type { TaskCacheSnapshot } from '$lib/stores/task_cache';
 import { loadTaskCacheSnapshot } from '$lib/stores/task_cache';
 import { cacheTaskListResponse, enqueueTaskOperation } from '$lib/services/task_sync';
 import {
@@ -16,6 +15,7 @@ import {
 	tasksCacheKey,
 	updateTaskCaches
 } from '$lib/stores/tasks-cache-helpers';
+import { createCountsApplier, createSnapshotLoader } from '$lib/stores/tasks-store-helpers';
 import { createNotice } from '$lib/stores/tasks-notice';
 import { createTasksSyncCoordinator, type TasksMetaCache } from '$lib/stores/tasks-sync';
 import {
@@ -36,7 +36,6 @@ import type {
 } from '$lib/types/tasks';
 
 export type { TaskSelection } from '$lib/types/tasks';
-
 export type TaskNewTaskDraft = {
 	title: string;
 	notes: string;
@@ -47,7 +46,6 @@ export type TaskNewTaskDraft = {
 	areaId?: string;
 	projectId?: string;
 };
-
 export type TasksState = {
 	selection: TaskSelection;
 	tasks: Task[];
@@ -95,30 +93,23 @@ function createTasksStore() {
 	let lastNonSearchSelection: TaskSelection = { type: 'today' };
 	let searchInFlight: Promise<void> | null = null;
 	let pendingSearchQuery: string | null = null;
+	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	const selectionInFlight = new Map<string, Promise<void>>();
 	let preloadAllSelections: (current: TaskSelection) => void = () => {};
 	const setSyncNotice = createNotice('syncNotice', update);
 	const setConflictNotice = createNotice('conflictNotice', update, null);
-	let snapshotPromise: Promise<TaskCacheSnapshot> | null = null;
-	let snapshotCache: TaskCacheSnapshot | null = null;
-
-	const loadSnapshot = async () => {
-		if (snapshotCache) return snapshotCache;
-		if (!snapshotPromise) {
-			snapshotPromise = loadTaskCacheSnapshot();
-		}
-		snapshotCache = await snapshotPromise;
-		return snapshotCache;
-	};
-
-	const applyCountsResponse = (counts: TaskCountsResponse) => {
-		const map = buildCountsMap(counts);
-		update((state) => ({
-			...state,
-			counts: map,
-			todayCount: counts.counts.today
-		}));
-		setCachedData(COUNTS_CACHE_KEY, counts, { ttl: CACHE_TTL, version: CACHE_VERSION });
+	const snapshotLoader = createSnapshotLoader(loadTaskCacheSnapshot);
+	const applyCountsResponse = createCountsApplier(
+		update,
+		setCachedData,
+		COUNTS_CACHE_KEY,
+		{ ttl: CACHE_TTL, version: CACHE_VERSION },
+		buildCountsMap
+	);
+	const clearSearchDebounce = () => {
+		if (!searchDebounceTimer) return;
+		clearTimeout(searchDebounceTimer);
+		searchDebounceTimer = null;
 	};
 
 	const { handleSyncResponse, initialize: initializeSync } = createTasksSyncCoordinator({
@@ -246,7 +237,7 @@ function createTasksStore() {
 		}
 		if (!cachedTasks) {
 			void (async () => {
-				const snapshot = await loadSnapshot();
+				const snapshot = await snapshotLoader.load();
 				if (!snapshot) return;
 				const selectionTasks = filterTasksForSelection(snapshot.tasks, selection);
 				const latestSelection = get({ subscribe }).selection;
@@ -389,8 +380,9 @@ function createTasksStore() {
 	return {
 		subscribe,
 		reset: () => {
-			snapshotCache = null;
-			snapshotPromise = null;
+			snapshotLoader.reset();
+			pendingSearchQuery = null;
+			clearSearchDebounce();
 			set(defaultState);
 		},
 		clearConflictNotice: () => update((state) => ({ ...state, conflictNotice: '' })),
@@ -577,22 +569,28 @@ function createTasksStore() {
 		search: (query: string) => {
 			const trimmed = query.trim();
 			if (!trimmed) {
+				pendingSearchQuery = null;
+				clearSearchDebounce();
 				return loadSelection(lastNonSearchSelection);
 			}
 			pendingSearchQuery = trimmed;
 			if (searchInFlight) {
 				return searchInFlight;
 			}
-			searchInFlight = (async () => {
-				while (pendingSearchQuery) {
-					const nextQuery = pendingSearchQuery;
-					pendingSearchQuery = null;
-					await loadSelection({ type: 'search', query: nextQuery }, { force: true });
-				}
-			})().finally(() => {
-				searchInFlight = null;
-			});
-			return searchInFlight;
+			clearSearchDebounce();
+			searchDebounceTimer = setTimeout(() => {
+				searchDebounceTimer = null;
+				searchInFlight = (async () => {
+					while (pendingSearchQuery) {
+						const nextQuery = pendingSearchQuery;
+						pendingSearchQuery = null;
+						await loadSelection({ type: 'search', query: nextQuery }, { force: true });
+					}
+				})().finally(() => {
+					searchInFlight = null;
+				});
+			}, 250);
+			return searchInFlight ?? Promise.resolve();
 		},
 		clearSearch: () => loadSelection(lastNonSearchSelection),
 		completeTask: async (taskId: string) => {

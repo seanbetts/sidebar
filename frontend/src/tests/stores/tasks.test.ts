@@ -7,7 +7,8 @@ const cacheState = new Map<string, unknown>();
 const { tasksAPI } = vi.hoisted(() => ({
 	tasksAPI: {
 		list: vi.fn(),
-		counts: vi.fn()
+		counts: vi.fn(),
+		search: vi.fn()
 	}
 }));
 
@@ -228,5 +229,20 @@ describe('tasksStore', () => {
 		const state = get(tasksStore);
 		expect(state.tasks).toHaveLength(0);
 		expect(state.counts.today).toBe(0);
+	});
+
+	it('debounces search requests', async () => {
+		vi.useFakeTimers();
+		tasksAPI.search.mockResolvedValue({ scope: 'search', tasks: [], areas: [], projects: [] });
+
+		tasksStore.search('First');
+		tasksStore.search('Second');
+
+		expect(tasksAPI.search).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(300);
+
+		expect(tasksAPI.search).toHaveBeenCalledTimes(1);
+		expect(tasksAPI.search).toHaveBeenCalledWith('Second');
+		vi.useRealTimers();
 	});
 });
