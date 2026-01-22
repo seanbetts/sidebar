@@ -36,7 +36,7 @@ from api.routers import (
     places,
     scratchpad,
     skills,
-    things,
+    tasks,
     weather,
     websites,
 )
@@ -160,37 +160,6 @@ async def auth_middleware(request: Request, call_next):
         response = await call_next(request)
         return response
 
-    # Allow Things bridge heartbeat or install with bridge token headers.
-    if request.url.path in {
-        "/api/things/bridges/heartbeat",
-        "/api/things/bridges/install",
-    }:
-        bridge_id = request.headers.get("X-Bridge-Id")
-        bridge_token = request.headers.get("X-Bridge-Token")
-        if bridge_id and bridge_token:
-            from api.db.session import SessionLocal
-            from api.models.things_bridge import ThingsBridge
-
-            with SessionLocal() as db:
-                record = (
-                    db.query(ThingsBridge)
-                    .filter(
-                        ThingsBridge.id == bridge_id,
-                        ThingsBridge.bridge_token == bridge_token,
-                    )
-                    .first()
-                )
-            if record:
-                request.state.user_id = record.user_id
-                response = await call_next(request)
-                return response
-            return _auth_error(401, "INVALID_BRIDGE_TOKEN", "Invalid bridge token")
-        if request.url.path == "/api/things/bridges/install" and request.headers.get(
-            "X-Install-Token"
-        ):
-            response = await call_next(request)
-            return response
-
     # Check for Authorization header
     auth_header = request.headers.get("Authorization")
     if not auth_header:
@@ -256,7 +225,7 @@ app.include_router(memories.router, prefix="/api/v1", tags=["memories"])
 app.include_router(places.router, prefix="/api/v1", tags=["places"])
 app.include_router(skills.router, prefix="/api/v1", tags=["skills"])
 app.include_router(weather.router, prefix="/api/v1", tags=["weather"])
-app.include_router(things.router, prefix="/api/v1", tags=["things"])
+app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
 
 # Legacy routes (deprecated)
 app.include_router(
@@ -291,9 +260,7 @@ app.include_router(
 app.include_router(
     weather.router, prefix="/api", tags=["weather-legacy"], deprecated=True
 )
-app.include_router(
-    things.router, prefix="/api", tags=["things-legacy"], deprecated=True
-)
+app.include_router(tasks.router, prefix="/api", tags=["tasks-legacy"], deprecated=True)
 
 # Mount MCP endpoint (auth handled by middleware)
 # FastMCP creates its own /mcp route, so we mount at root

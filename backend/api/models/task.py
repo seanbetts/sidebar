@@ -31,7 +31,7 @@ class Task(Base):
 
     __tablename__ = "tasks"
     __table_args__ = (
-        UniqueConstraint("user_id", "things_id", name="uq_tasks_user_things"),
+        UniqueConstraint("user_id", "source_id", name="uq_tasks_user_source"),
         Index("idx_tasks_user_id", "user_id"),
         Index("idx_tasks_project_id", "project_id"),
         Index("idx_tasks_area_id", "area_id"),
@@ -58,7 +58,7 @@ class Task(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[str] = mapped_column(Text, nullable=False)
-    things_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("task_projects.id"), nullable=True
     )

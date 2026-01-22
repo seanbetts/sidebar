@@ -5,7 +5,7 @@ import plistlib
 from api.db.base import Base
 from api.models.task import Task
 from api.services.recurrence_service import RecurrenceService
-from api.services.things_recurrence_parser import ThingsRecurrenceParser
+from api.services.recurrence_plist_parser import RecurrencePlistParser
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
@@ -25,11 +25,11 @@ def _build_session(test_db_engine):
     return session, connection, schema
 
 
-def test_parse_things_recurrence_rule():
+def test_parse_plist_recurrence_rule():
     payload = {"fu": 16, "fa": 2, "of": {"dy": 1}, "sr": "2025-01-01"}
     plist_bytes = plistlib.dumps(payload)
 
-    rule = ThingsRecurrenceParser.parse_recurrence_rule(plist_bytes)
+    rule = RecurrencePlistParser.parse_recurrence_rule(plist_bytes)
 
     assert rule is not None
     assert rule["type"] == "daily"

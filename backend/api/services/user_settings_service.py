@@ -63,7 +63,7 @@ class UserSettingsService:
         profile_image_path: Any = UNSET,
         enabled_skills: Any = UNSET,
         shortcuts_pat: Any = UNSET,
-        things_ai_snapshot: Any = UNSET,
+        tasks_ai_snapshot: Any = UNSET,
     ) -> UserSettings:
         """Create or update a user's settings.
 
@@ -84,7 +84,7 @@ class UserSettingsService:
             profile_image_path: Optional profile image path.
             enabled_skills: Optional list of enabled skills.
             shortcuts_pat: Optional shortcuts PAT token.
-            things_ai_snapshot: Optional Things AI snapshot payload.
+            tasks_ai_snapshot: Optional tasks AI snapshot payload.
 
         Returns:
             Upserted UserSettings record.
@@ -121,8 +121,8 @@ class UserSettingsService:
                 flag_modified(settings, "enabled_skills")
             if shortcuts_pat is not UserSettingsService.UNSET:
                 settings.shortcuts_pat = shortcuts_pat
-            if things_ai_snapshot is not UserSettingsService.UNSET:
-                settings.things_ai_snapshot = things_ai_snapshot
+            if tasks_ai_snapshot is not UserSettingsService.UNSET:
+                settings.tasks_ai_snapshot = tasks_ai_snapshot
             settings.updated_at = now
         else:
             settings = UserSettings(
@@ -157,9 +157,9 @@ class UserSettingsService:
                 shortcuts_pat=None
                 if shortcuts_pat is UserSettingsService.UNSET
                 else shortcuts_pat,
-                things_ai_snapshot=None
-                if things_ai_snapshot is UserSettingsService.UNSET
-                else things_ai_snapshot,
+                tasks_ai_snapshot=None
+                if tasks_ai_snapshot is UserSettingsService.UNSET
+                else tasks_ai_snapshot,
                 created_at=now,
                 updated_at=now,
             )
@@ -170,9 +170,9 @@ class UserSettingsService:
         return settings
 
     @staticmethod
-    def update_things_snapshot(db: Session, user_id: str, snapshot: str) -> None:
-        """Update the Things AI snapshot if it has changed."""
+    def update_tasks_snapshot(db: Session, user_id: str, snapshot: str) -> None:
+        """Update the tasks AI snapshot if it has changed."""
         settings = UserSettingsService.get_settings(db, user_id)
-        if settings and settings.things_ai_snapshot == snapshot:
+        if settings and settings.tasks_ai_snapshot == snapshot:
             return
-        UserSettingsService.upsert_settings(db, user_id, things_ai_snapshot=snapshot)
+        UserSettingsService.upsert_settings(db, user_id, tasks_ai_snapshot=snapshot)

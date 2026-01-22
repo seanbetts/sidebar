@@ -20,7 +20,7 @@ DEPRECATED_PATHS = {
     "/api/places": "/api/v1/places",
     "/api/skills": "/api/v1/skills",
     "/api/weather": "/api/v1/weather",
-    "/api/things": "/api/v1/things",
+    "/api/tasks": "/api/v1/tasks",
 }
 
 

@@ -1,4 +1,4 @@
-"""Add Things AI snapshot to user settings.
+"""Add tasks AI snapshot to user settings.
 
 Revision ID: 026_add_user_settings_things_snapshot
 Revises: 025_add_things_bridge_install_tokens
