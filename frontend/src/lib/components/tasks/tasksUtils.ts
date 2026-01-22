@@ -278,22 +278,30 @@ export const taskSubtitle = (
 ): string => {
 	const projectTitle = task.projectId ? projectTitleById.get(task.projectId) : '';
 	const areaTitle = task.areaId ? areaTitleById.get(task.areaId) : '';
+	const recurrence = recurrenceLabel(task);
+	let base = '';
 	if (selectionType === 'project') {
-		return projectTitle || selectionLabel;
+		base = projectTitle || selectionLabel;
+		return recurrence ? `${base} - ${recurrence}` : base;
 	}
 	if (selectionType === 'area') {
-		return projectTitle || areaTitle || '';
+		base = projectTitle || areaTitle || '';
+		return recurrence && base ? `${base} - ${recurrence}` : (recurrence ?? base);
 	}
 	if (selectionType === 'today' || selectionType === 'upcoming') {
-		return projectTitle || areaTitle || '';
+		base = projectTitle || areaTitle || '';
+		return recurrence && base ? `${base} - ${recurrence}` : (recurrence ?? base);
 	}
 	if (selectionType === 'search') {
-		return projectTitle || areaTitle || '';
+		base = projectTitle || areaTitle || '';
+		return recurrence && base ? `${base} - ${recurrence}` : (recurrence ?? base);
 	}
 	if (taskDeadline(task)) {
-		return `Due ${taskDeadline(task)?.slice(0, 10)}`;
+		base = `Due ${taskDeadline(task)?.slice(0, 10)}`;
+		return recurrence ? `${base} - ${recurrence}` : base;
 	}
-	return projectTitle || areaTitle || '';
+	base = projectTitle || areaTitle || '';
+	return recurrence && base ? `${base} - ${recurrence}` : (recurrence ?? base);
 };
 
 export const dueLabel = (task: Task): string | null => {
