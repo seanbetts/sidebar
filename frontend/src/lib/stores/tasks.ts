@@ -1,11 +1,14 @@
 import { get, writable } from 'svelte/store';
 import { tasksAPI } from '$lib/services/api';
+import type { TaskCacheSnapshot } from '$lib/stores/task_cache';
+import { loadTaskCacheSnapshot } from '$lib/stores/task_cache';
 import { cacheTaskListResponse, enqueueTaskOperation } from '$lib/services/task_sync';
 import {
 	applyTaskListResponse,
 	applyTaskMetaCountsOnly,
 	buildCountsMap,
 	createPreloadAllSelections,
+	filterTasksForSelection,
 	isSameSelection,
 	normalizeCountsCache,
 	selectionCount,
@@ -96,6 +99,17 @@ function createTasksStore() {
 	let preloadAllSelections: (current: TaskSelection) => void = () => {};
 	const setSyncNotice = createNotice('syncNotice', update);
 	const setConflictNotice = createNotice('conflictNotice', update, null);
+	let snapshotPromise: Promise<TaskCacheSnapshot> | null = null;
+	let snapshotCache: TaskCacheSnapshot | null = null;
+
+	const loadSnapshot = async () => {
+		if (snapshotCache) return snapshotCache;
+		if (!snapshotPromise) {
+			snapshotPromise = loadTaskCacheSnapshot();
+		}
+		snapshotCache = await snapshotPromise;
+		return snapshotCache;
+	};
 
 	const applyCountsResponse = (counts: TaskCountsResponse) => {
 		const map = buildCountsMap(counts);
@@ -230,6 +244,41 @@ function createTasksStore() {
 				}));
 			}
 		}
+		if (!cachedTasks) {
+			void (async () => {
+				const snapshot = await loadSnapshot();
+				if (!snapshot) return;
+				const selectionTasks = filterTasksForSelection(snapshot.tasks, selection);
+				const latestSelection = get({ subscribe }).selection;
+				if (!isSameSelection(selection, latestSelection)) return;
+				setCachedData(key, selectionTasks, { ttl: CACHE_TTL, version: CACHE_VERSION });
+				if (snapshot.areas.length || snapshot.projects.length) {
+					setCachedData(
+						META_CACHE_KEY,
+						{ areas: snapshot.areas, projects: snapshot.projects },
+						{ ttl: CACHE_TTL, version: CACHE_VERSION }
+					);
+				}
+				update((state) => {
+					if (!isSameSelection(selection, state.selection)) return state;
+					if (state.tasks.length > 0) return state;
+					if (!state.isLoading && !state.error) return state;
+					const nextAreas = snapshot.areas.length ? snapshot.areas : state.areas;
+					const nextProjects = snapshot.projects.length ? snapshot.projects : state.projects;
+					return {
+						...state,
+						tasks: selectionTasks,
+						areas: nextAreas,
+						projects: nextProjects,
+						todayCount: selection.type === 'today' ? selectionTasks.length : state.todayCount,
+						counts: {
+							...state.counts,
+							[selectionKey(selection)]: selectionCount(selection, selectionTasks, nextProjects)
+						}
+					};
+				});
+			})();
+		}
 		const inFlight = selectionInFlight.get(key);
 		if (inFlight && !force) {
 			await inFlight;
@@ -339,7 +388,11 @@ function createTasksStore() {
 
 	return {
 		subscribe,
-		reset: () => set(defaultState),
+		reset: () => {
+			snapshotCache = null;
+			snapshotPromise = null;
+			set(defaultState);
+		},
 		clearConflictNotice: () => update((state) => ({ ...state, conflictNotice: '' })),
 		load: (
 			selection: TaskSelection,

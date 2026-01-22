@@ -31,6 +31,19 @@ const { taskSync } = vi.hoisted(() => ({
 
 vi.mock('$lib/services/task_sync', () => taskSync);
 
+const { taskCache } = vi.hoisted(() => ({
+	taskCache: {
+		loadTaskCacheSnapshot: vi.fn().mockResolvedValue({
+			tasks: [],
+			projects: [],
+			areas: [],
+			lastSync: null
+		})
+	}
+}));
+
+vi.mock('$lib/stores/task_cache', () => taskCache);
+
 vi.mock('$lib/utils/cache', () => ({
 	getCachedData: vi.fn((key: string) => cacheState.get(key) ?? null),
 	setCachedData: vi.fn((key: string, value: unknown) => cacheState.set(key, value)),
@@ -82,6 +95,30 @@ describe('tasksStore', () => {
 		expect(state.todayCount).toBe(2);
 		expect(state.counts.today).toBe(2);
 		expect(tasksAPI.counts).not.toHaveBeenCalled();
+	});
+
+	it('hydrates from cached snapshot when list cache is empty', async () => {
+		taskCache.loadTaskCacheSnapshot.mockResolvedValue({
+			tasks: [
+				{
+					id: 'task-9',
+					title: 'Cached',
+					status: 'inbox',
+					areaId: null,
+					projectId: null
+				}
+			],
+			projects: [],
+			areas: [],
+			lastSync: null
+		});
+		tasksAPI.list.mockRejectedValue(new Error('Offline'));
+
+		await tasksStore.load({ type: 'inbox' }, { force: true });
+		await new Promise((resolve) => setTimeout(resolve, 10));
+
+		const state = get(tasksStore);
+		expect(state.tasks[0].title).toBe('Cached');
 	});
 
 	it('removes completed tasks and updates counts', async () => {

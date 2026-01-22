@@ -6,7 +6,7 @@ import type {
 	TaskSyncUpdates
 } from '$lib/types/tasks';
 
-type TaskCacheSnapshot = {
+export type TaskCacheSnapshot = {
 	tasks: Task[];
 	projects: TaskProject[];
 	areas: TaskArea[];
