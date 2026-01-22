@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
@@ -18,7 +17,6 @@ from api.exceptions import (
 )
 from api.models.task import Task
 from api.models.task_area import TaskArea
-from api.models.task_operation_log import TaskOperationLog
 from api.models.task_project import TaskProject
 from api.services.recurrence_service import RecurrenceService
 from api.utils.validation import parse_optional_uuid, parse_uuid
@@ -36,14 +34,6 @@ class TaskCounts:
 
 
 @dataclass
-class ApplyResult:
-    """Result summary for applied operations."""
-
-    applied_ids: list[str]
-    tasks: list[Task]
-    next_tasks: list[Task]
-
-
 class TaskService:
     """Service layer for task CRUD operations."""
 
@@ -556,162 +546,3 @@ class TaskService:
 
         next_task = RecurrenceService.complete_repeating_task(db, task)
         return task, next_task
-
-    @staticmethod
-    def apply_operations(
-        db: Session, user_id: str, operations: list[dict[str, Any]]
-    ) -> ApplyResult:
-        """Apply task operations and log for idempotency."""
-        applied_ids: list[str] = []
-        tasks: list[Task] = []
-        next_tasks: list[Task] = []
-
-        for operation in operations:
-            operation_id = str(operation.get("operation_id") or "").strip()
-            if not operation_id:
-                operation_id = str(uuid.uuid4())
-            existing_log = (
-                db.query(TaskOperationLog)
-                .filter(
-                    TaskOperationLog.user_id == user_id,
-                    TaskOperationLog.operation_id == operation_id,
-                )
-                .one_or_none()
-            )
-            if existing_log:
-                applied_ids.append(operation_id)
-                continue
-
-            op = operation.get("op")
-            if op == "add":
-                task = TaskService._apply_add(db, user_id, operation)
-                tasks.append(task)
-            elif op == "complete":
-                task, next_task = TaskService.complete_task(
-                    db, user_id, operation["id"]
-                )
-                tasks.append(task)
-                if next_task:
-                    next_tasks.append(next_task)
-            elif op == "rename":
-                task = TaskService.update_task(
-                    db, user_id, operation["id"], title=operation["title"]
-                )
-                tasks.append(task)
-            elif op == "notes":
-                task = TaskService.update_task(
-                    db, user_id, operation["id"], notes=operation.get("notes")
-                )
-                tasks.append(task)
-            elif op == "move":
-                task = TaskService._apply_move(db, user_id, operation)
-                tasks.append(task)
-            elif op == "trash":
-                task = TaskService.update_task(
-                    db, user_id, operation["id"], status="trashed"
-                )
-                task.trashed_at = datetime.now(UTC)
-                task.deleted_at = datetime.now(UTC)
-                tasks.append(task)
-            elif op in {"set_due", "defer"}:
-                task = TaskService._apply_due_date(db, user_id, operation)
-                tasks.append(task)
-            else:
-                continue
-
-            log = TaskOperationLog(
-                user_id=user_id,
-                operation_id=operation_id,
-                operation_type=str(op),
-                payload=operation,
-                created_at=datetime.now(UTC),
-            )
-            db.add(log)
-            applied_ids.append(operation_id)
-
-        return ApplyResult(applied_ids=applied_ids, tasks=tasks, next_tasks=next_tasks)
-
-    @staticmethod
-    def _apply_add(db: Session, user_id: str, operation: dict[str, Any]) -> Task:
-        list_id = operation.get("list_id")
-        project = (
-            db.query(TaskProject)
-            .filter(
-                TaskProject.id == parse_optional_uuid(list_id, "task project", "id"),
-                TaskProject.user_id == user_id,
-                TaskProject.deleted_at.is_(None),
-            )
-            .one_or_none()
-            if list_id
-            else None
-        )
-        area = (
-            db.query(TaskArea)
-            .filter(
-                TaskArea.id == parse_optional_uuid(list_id, "task area", "id"),
-                TaskArea.user_id == user_id,
-                TaskArea.deleted_at.is_(None),
-            )
-            .one_or_none()
-            if list_id and not project
-            else None
-        )
-        due_date = TaskService._parse_date(operation.get("due_date"))
-        return TaskService.create_task(
-            db,
-            user_id,
-            title=operation.get("title") or "Untitled Task",
-            notes=operation.get("notes"),
-            deadline_start=due_date,
-            project_id=str(project.id) if project else None,
-            area_id=str(area.id) if area else None,
-        )
-
-    @staticmethod
-    def _apply_move(db: Session, user_id: str, operation: dict[str, Any]) -> Task:
-        list_id = operation.get("list_id")
-        project = (
-            db.query(TaskProject)
-            .filter(
-                TaskProject.id == parse_optional_uuid(list_id, "task project", "id"),
-                TaskProject.user_id == user_id,
-                TaskProject.deleted_at.is_(None),
-            )
-            .one_or_none()
-            if list_id
-            else None
-        )
-        area = (
-            db.query(TaskArea)
-            .filter(
-                TaskArea.id == parse_optional_uuid(list_id, "task area", "id"),
-                TaskArea.user_id == user_id,
-                TaskArea.deleted_at.is_(None),
-            )
-            .one_or_none()
-            if list_id and not project
-            else None
-        )
-        return TaskService.update_task(
-            db,
-            user_id,
-            operation["id"],
-            project_id=str(project.id) if project else None,
-            area_id=str(area.id) if area else None,
-        )
-
-    @staticmethod
-    def _apply_due_date(db: Session, user_id: str, operation: dict[str, Any]) -> Task:
-        due_date = TaskService._parse_date(operation.get("due_date"))
-        return TaskService.update_task(
-            db, user_id, operation["id"], deadline_start=due_date
-        )
-
-    @staticmethod
-    def _parse_date(value: Any) -> date | None:
-        if not value:
-            return None
-        try:
-            return datetime.fromisoformat(str(value).replace("Z", "+00:00")).date()
-        except ValueError:
-            return None
