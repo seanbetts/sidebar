@@ -524,6 +524,8 @@ async def apply_things_operation(
             "applied": result.applied_ids,
             "tasks": [_task_payload(task) for task in result.tasks],
             "nextTasks": [_task_payload(task) for task in result.next_tasks],
+            "conflicts": [],
+            "serverUpdatedSince": datetime.now(UTC).isoformat(),
         }
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
