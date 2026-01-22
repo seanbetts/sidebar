@@ -293,3 +293,51 @@ export const applyTaskMetaCountsOnly = (options: ApplyResponseOptions): void => 
 		}
 	}));
 };
+
+const taskDueDate = (task: Task): string | null => task.deadline ?? task.deadlineStart ?? null;
+
+/**
+ * Filter cached tasks for the current selection.
+ */
+export const filterTasksForSelection = (tasks: Task[], selection: TaskSelection): Task[] => {
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const normalized = tasks.filter(
+		(task) => !task.deletedAt && task.status !== 'completed' && task.status !== 'trashed'
+	);
+	if (selection.type === 'inbox') {
+		return normalized.filter((task) => task.status === 'inbox');
+	}
+	if (selection.type === 'area') {
+		return normalized.filter((task) => task.areaId === selection.id);
+	}
+	if (selection.type === 'project') {
+		return normalized.filter((task) => task.projectId === selection.id);
+	}
+	if (selection.type === 'search') {
+		const query = selection.query.trim().toLowerCase();
+		if (!query) return normalized;
+		return normalized.filter((task) => {
+			const haystack = `${task.title ?? ''} ${task.notes ?? ''}`.toLowerCase();
+			return haystack.includes(query);
+		});
+	}
+	const dueTasks = normalized.filter((task) => task.status !== 'someday');
+	if (selection.type === 'today') {
+		return dueTasks.filter((task) => {
+			const due = taskDueDate(task);
+			if (!due) return false;
+			const dueDate = new Date(`${due.slice(0, 10)}T00:00:00`);
+			return dueDate.getTime() <= today.getTime();
+		});
+	}
+	if (selection.type === 'upcoming') {
+		return dueTasks.filter((task) => {
+			const due = taskDueDate(task);
+			if (!due) return false;
+			const dueDate = new Date(`${due.slice(0, 10)}T00:00:00`);
+			return dueDate.getTime() > today.getTime();
+		});
+	}
+	return normalized;
+};
