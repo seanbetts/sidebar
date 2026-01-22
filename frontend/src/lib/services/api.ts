@@ -2,7 +2,7 @@ import type { Message } from '$lib/types/chat';
 import type { FileNode } from '$lib/types/file';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
-import type { TaskCountsResponse, TaskListResponse } from '$lib/types/tasks';
+import type { TaskCountsResponse, TaskListResponse, TaskSyncResponse } from '$lib/types/tasks';
 
 /**
  * API service for conversations.
@@ -504,6 +504,18 @@ class TasksAPI {
 		return '/api/v1/tasks';
 	}
 
+	private buildOperationId(): string {
+		if (globalThis.crypto?.randomUUID) {
+			return globalThis.crypto.randomUUID();
+		}
+		return `op-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+	}
+
+	private withOperationId(operation: Record<string, unknown>): Record<string, unknown> {
+		if (operation.operation_id) return operation;
+		return { ...operation, operation_id: this.buildOperationId() };
+	}
+
 	async list(scope: string): Promise<TaskListResponse> {
 		const response = await fetch(`${this.baseUrl}/lists/${scope}`);
 		if (!response.ok) throw new Error('Failed to load task list');
@@ -542,26 +554,33 @@ class TasksAPI {
 	}
 
 	async apply(payload: Record<string, unknown>): Promise<void> {
-		const buildOperationId = () => {
-			if (globalThis.crypto?.randomUUID) {
-				return globalThis.crypto.randomUUID();
-			}
-			return `op-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-		};
-		const withOperationId = (operation: Record<string, unknown>) => {
-			if (operation.operation_id) return operation;
-			return { ...operation, operation_id: buildOperationId() };
-		};
 		const normalizedPayload =
 			Array.isArray(payload.operations) && payload.operations.length
-				? { ...payload, operations: payload.operations.map(withOperationId) }
-				: withOperationId(payload);
+				? { ...payload, operations: payload.operations.map((op) => this.withOperationId(op)) }
+				: this.withOperationId(payload);
 		const response = await fetch(`${this.baseUrl}/apply`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(normalizedPayload)
 		});
 		if (!response.ok) throw new Error('Failed to apply task operation');
+	}
+
+	async sync(payload: {
+		last_sync: string | null;
+		operations: Record<string, unknown>[];
+	}): Promise<TaskSyncResponse> {
+		const normalized = {
+			...payload,
+			operations: payload.operations.map((operation) => this.withOperationId(operation))
+		};
+		const response = await fetch(`${this.baseUrl}/sync`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(normalized)
+		});
+		if (!response.ok) throw new Error('Failed to sync tasks');
+		return response.json();
 	}
 }
 

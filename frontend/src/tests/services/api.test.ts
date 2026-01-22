@@ -256,6 +256,29 @@ describe('api services', () => {
 		await expect(tasksAPI.apply({ op: 'noop' })).rejects.toThrow('Failed to apply task operation');
 	});
 
+	it('tasksAPI.sync posts operations', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(
+			okJson({
+				applied: [],
+				tasks: [],
+				nextTasks: [],
+				conflicts: [],
+				updates: { tasks: [], projects: [], areas: [] },
+				serverUpdatedSince: '2026-01-22T10:00:00Z'
+			})
+		);
+
+		const data = await tasksAPI.sync({ last_sync: null, operations: [{ op: 'noop' }] });
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/tasks/sync',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(data.serverUpdatedSince).toBe('2026-01-22T10:00:00Z');
+		const body = fetchSpy.mock.calls[0]?.[1]?.body;
+		expect(JSON.parse(String(body)).operations[0].operation_id).toBeTruthy();
+	});
+
 	it('ingestionAPI.upload resolves with response payload', async () => {
 		class MockXHR {
 			upload = {

@@ -7,14 +7,29 @@ const cacheState = new Map<string, unknown>();
 const { tasksAPI } = vi.hoisted(() => ({
 	tasksAPI: {
 		list: vi.fn(),
-		counts: vi.fn(),
-		apply: vi.fn()
+		counts: vi.fn()
 	}
 }));
 
 vi.mock('$lib/services/api', () => ({
 	tasksAPI
 }));
+
+const { taskSync } = vi.hoisted(() => ({
+	taskSync: {
+		cacheTaskListResponse: vi.fn(),
+		enqueueTaskOperation: vi.fn().mockResolvedValue(null),
+		flushTaskOutbox: vi.fn().mockResolvedValue(null),
+		hydrateTaskCache: vi.fn().mockResolvedValue({
+			tasks: [],
+			projects: [],
+			areas: [],
+			lastSync: null
+		})
+	}
+}));
+
+vi.mock('$lib/services/task_sync', () => taskSync);
 
 vi.mock('$lib/utils/cache', () => ({
 	getCachedData: vi.fn((key: string) => cacheState.get(key) ?? null),
@@ -76,7 +91,6 @@ describe('tasksStore', () => {
 			areas: [],
 			projects: []
 		});
-		tasksAPI.apply.mockResolvedValue(undefined);
 		cacheState.set('tasks.counts', {
 			counts: { inbox: 0, today: 1, upcoming: 0 },
 			areas: [],
@@ -101,14 +115,18 @@ describe('tasksStore', () => {
 			areas: [],
 			projects: []
 		});
-		tasksAPI.apply.mockResolvedValue(undefined);
+		taskSync.enqueueTaskOperation.mockResolvedValue(null);
 
 		await tasksStore.load({ type: 'today' });
 		await tasksStore.renameTask('task-2', 'New');
 
 		const state = get(tasksStore);
 		expect(state.tasks[0].title).toBe('New');
-		expect(tasksAPI.apply).toHaveBeenCalledWith({ op: 'rename', id: 'task-2', title: 'New' });
+		expect(taskSync.enqueueTaskOperation).toHaveBeenCalledWith({
+			op: 'rename',
+			id: 'task-2',
+			title: 'New'
+		});
 	});
 
 	it('moves tasks between today and upcoming caches', async () => {
@@ -126,7 +144,6 @@ describe('tasksStore', () => {
 			areas: [],
 			projects: []
 		});
-		tasksAPI.apply.mockResolvedValue(undefined);
 		tasksAPI.counts.mockResolvedValue({
 			counts: { inbox: 0, today: 0, upcoming: 1 },
 			areas: [],
@@ -150,7 +167,7 @@ describe('tasksStore', () => {
 			areas: [],
 			projects: []
 		});
-		tasksAPI.apply.mockResolvedValue(undefined);
+		taskSync.enqueueTaskOperation.mockResolvedValue(null);
 
 		await tasksStore.load({ type: 'today' }, { force: true });
 		await tasksStore.updateNotes('task-4', 'Details');
@@ -166,7 +183,7 @@ describe('tasksStore', () => {
 			areas: [],
 			projects: []
 		});
-		tasksAPI.apply.mockResolvedValue(undefined);
+		taskSync.enqueueTaskOperation.mockResolvedValue(null);
 
 		await tasksStore.load({ type: 'today' }, { force: true });
 		await tasksStore.trashTask('task-5');

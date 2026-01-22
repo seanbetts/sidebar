@@ -11,7 +11,16 @@ export type Task = {
 	repeatTemplate?: boolean;
 	tags?: string[];
 	updatedAt?: string | null;
+	deletedAt?: string | null;
 };
+
+export type TaskSelection =
+	| { type: 'inbox' }
+	| { type: 'today' }
+	| { type: 'upcoming' }
+	| { type: 'area'; id: string }
+	| { type: 'project'; id: string }
+	| { type: 'search'; query: string };
 
 export type TaskProject = {
 	id: string;
@@ -44,4 +53,35 @@ export type TaskCountsResponse = {
 	};
 	projects: Array<{ id: string; count: number }>;
 	areas: Array<{ id: string; count: number }>;
+};
+
+export type TaskSyncOperation = {
+	operation_id: string;
+	op: string;
+	client_updated_at?: string;
+	[key: string]: unknown;
+};
+
+export type TaskSyncConflict = {
+	operationId: string;
+	op?: string | null;
+	id: string;
+	clientUpdatedAt?: string | null;
+	serverUpdatedAt?: string | null;
+	serverTask: Task;
+};
+
+export type TaskSyncUpdates = {
+	tasks: Task[];
+	projects: TaskProject[];
+	areas: TaskArea[];
+};
+
+export type TaskSyncResponse = {
+	applied: string[];
+	tasks: Task[];
+	nextTasks: Task[];
+	conflicts: TaskSyncConflict[];
+	updates: TaskSyncUpdates;
+	serverUpdatedSince: string;
 };
