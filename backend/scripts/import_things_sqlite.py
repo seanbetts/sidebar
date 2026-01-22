@@ -268,10 +268,12 @@ def import_things_sqlite(
 
     for task in tasks:
         recurrence_blob = task.get("recurrenceRule")
-        task["recurrenceRule"] = RecurrencePlistParser.parse_recurrence_rule(
-            recurrence_blob
-        )
-        task["repeating"] = bool(task["recurrenceRule"])
+        try:
+            parsed_rule = RecurrencePlistParser.parse_recurrence_rule(recurrence_blob)
+        except Exception:
+            parsed_rule = None
+        task["recurrenceRule"] = parsed_rule
+        task["repeating"] = bool(parsed_rule)
 
     payload = {"areas": areas, "projects": projects, "tasks": tasks}
     logger.info(
