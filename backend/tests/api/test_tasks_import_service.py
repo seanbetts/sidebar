@@ -22,7 +22,7 @@ def _build_session(test_db_engine):
     return session, connection, schema
 
 
-def test_import_from_bridge_filters_and_maps(test_db_engine):
+def test_import_from_payload_filters_and_maps(test_db_engine):
     session, connection, schema = _build_session(test_db_engine)
     try:
         payload = {
@@ -57,7 +57,7 @@ def test_import_from_bridge_filters_and_maps(test_db_engine):
             ],
         }
 
-        stats = TasksImportService.import_from_bridge(session, "user", payload)
+        stats = TasksImportService.import_from_payload(session, "user", payload)
         session.commit()
 
         assert stats.areas_imported == 1
