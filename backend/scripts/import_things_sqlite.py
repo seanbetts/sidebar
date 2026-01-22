@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 REFERENCE_START_VALUE = 132782464
-REFERENCE_START_DATE = date(2026, 1, 19)
+REFERENCE_START_DATE = date(2026, 1, 23)
 
 
 @dataclass(frozen=True)
@@ -177,13 +177,14 @@ def fetch_tasks(
 
     try:
         rows = conn.execute(
-            """
-            select uuid, title, notes, status, trashed, stopDate, project, area,
-                   startDate, deadline, userModificationDate, rt1_recurrenceRule
-            from TMTask
-            where type = 0
-            """
-        ).fetchall()
+        """
+        select uuid, title, notes, status, trashed, stopDate, project, area,
+               startDate, deadline, userModificationDate, rt1_recurrenceRule,
+               rt1_nextInstanceStartDate
+        from TMTask
+        where type = 0
+        """
+    ).fetchall()
     except sqlite3.OperationalError:
         return tasks
     for row in rows:
@@ -200,10 +201,14 @@ def fetch_tasks(
             deadline_value,
             updated_at,
             recurrence_blob,
+            next_instance_start,
         ) = row
         if not uuid or not title:
             continue
         start_date = converter.to_date(start_date_value)
+        next_instance_date = converter.to_date(next_instance_start)
+        if start_date is None and next_instance_date is not None:
+            start_date = next_instance_date
         status_value = map_task_status(
             status=status,
             trashed=trashed,
