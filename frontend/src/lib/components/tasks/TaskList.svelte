@@ -120,7 +120,9 @@
 					</div>
 					<div class="task-right">
 						{#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
-							<span class="due-pill">{dueLabel(task) ?? 'No Date'}</span>
+							<span class="due-pill" title={recurrenceLabel(task) ?? ''}>
+								{dueLabel(task) ?? 'No Date'}
+							</span>
 						{/if}
 						<DropdownMenu>
 							<DropdownMenuTrigger
