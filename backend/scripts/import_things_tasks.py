@@ -54,6 +54,7 @@ def _run_things_export() -> dict[str, Any]:
     script = f"""
         const things = Application('Things3');
         things.includeStandardAdditions = true;
+        things.activate();
 
         function isoOrNull(value) {{
           if (!value) return null;
@@ -83,10 +84,12 @@ def _run_things_export() -> dict[str, Any]:
           updatedAt: isoOrNull(project.modificationDate())
         }}));
 
-        const lists = {json.dumps(list(THINGS_LISTS))};
+        const listNames = {json.dumps(list(THINGS_LISTS))};
         let tasks = [];
-        lists.forEach(name => {{
-          const list = things.lists.byName(name);
+        const lists = things.lists();
+        listNames.forEach(name => {{
+          const list = lists.find(item => item.name() === name);
+          if (!list) return;
           list.toDos().forEach(todo => {{
             tasks.push({{
               id: todo.id(),
