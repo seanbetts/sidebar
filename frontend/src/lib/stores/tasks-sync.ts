@@ -34,6 +34,7 @@ type SyncCoordinatorOptions = {
 	updateState: (updater: (state: TaskStateLike) => TaskStateLike) => void;
 	setMeta: (meta: TasksMetaCache) => void;
 	setSyncNotice: (message: string) => void;
+	setConflictNotice: (message: string) => void;
 	onNextTasks?: (tasks: Task[]) => void;
 };
 
@@ -96,7 +97,7 @@ export function createTasksSyncCoordinator(options: SyncCoordinatorOptions) {
 			options.onNextTasks?.(response.nextTasks);
 		}
 		if (response.conflicts?.length) {
-			options.setSyncNotice('Tasks changed elsewhere. Review updates.');
+			options.setConflictNotice('Tasks changed elsewhere. Refresh to continue.');
 		}
 		if (response.updates) {
 			mergeUpdatesIntoState(response.updates, options);
