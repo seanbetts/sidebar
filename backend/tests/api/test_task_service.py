@@ -139,3 +139,22 @@ def test_list_tasks_by_scope_and_counts(db_session):
 
     counts = TaskService.get_counts(db_session, "user")
     assert counts.inbox == 3
+
+
+def test_apply_operations_idempotent(db_session):
+    operation = {
+        "operation_id": "op-1",
+        "op": "add",
+        "title": "New Task",
+    }
+    result = TaskService.apply_operations(db_session, "user", [operation])
+    db_session.commit()
+
+    assert result.applied_ids == ["op-1"]
+    assert len(result.tasks) == 1
+
+    second = TaskService.apply_operations(db_session, "user", [operation])
+    db_session.commit()
+
+    assert second.applied_ids == ["op-1"]
+    assert len(TaskService.list_tasks(db_session, "user")) == 1
