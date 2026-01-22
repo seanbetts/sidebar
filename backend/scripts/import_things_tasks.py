@@ -50,7 +50,7 @@ def _map_status(list_name: str, raw_status: str | None) -> str:
     return "inbox"
 
 
-def _run_things_export() -> dict[str, Any]:
+def _run_things_export(timeout_seconds: int) -> dict[str, Any]:
     script = f"""
         const appCandidates = ['Things3', 'Things'];
         let appName = null;
@@ -163,13 +163,21 @@ def _run_things_export() -> dict[str, Any]:
 
         JSON.stringify({{ areas, projects, tasks }});
     """
+    logger.info("Starting Things export via osascript...")
     try:
         result = subprocess.run(
             ["osascript", "-l", "JavaScript", "-e", script],
             check=True,
             capture_output=True,
             text=True,
+            timeout=timeout_seconds,
         )
+    except subprocess.TimeoutExpired as exc:
+        logger.error("Things export timed out after %ss.", timeout_seconds)
+        raise RuntimeError(
+            "Things export timed out. Make sure Things is running and that "
+            "the Automation prompt is accepted."
+        ) from exc
     except subprocess.CalledProcessError as exc:
         stderr = exc.stderr.strip() if exc.stderr else "Unknown error"
         logger.error("Things export failed: %s", stderr)
@@ -224,11 +232,12 @@ def import_things(
     user_id: str,
     *,
     dry_run: bool,
+    export_timeout: int,
 ) -> None:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.tasks_import_service import TasksImportService
 
-    raw = _run_things_export()
+    raw = _run_things_export(export_timeout)
     payload = _build_payload(raw)
     logger.info(
         "Exported %s areas, %s projects, %s tasks from Things.",
@@ -275,6 +284,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--dry-run", action="store_true", help="Log actions without updating."
     )
+    parser.add_argument(
+        "--export-timeout",
+        type=int,
+        default=45,
+        help="Seconds to wait for the Things AppleScript export.",
+    )
     return parser.parse_args(argv)
 
 
@@ -286,7 +301,9 @@ def main(argv: Iterable[str] | None = None) -> None:
     if str(BACKEND_ROOT) not in sys.path:
         sys.path.insert(0, str(BACKEND_ROOT))
 
-    import_things(args.user_id, dry_run=args.dry_run)
+    import_things(
+        args.user_id, dry_run=args.dry_run, export_timeout=args.export_timeout
+    )
 
 
 if __name__ == "__main__":
