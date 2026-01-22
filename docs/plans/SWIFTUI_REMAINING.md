@@ -8,11 +8,10 @@ Finish the remaining SwiftUI parity work with a short, focused checklist.
 ### 1) Phase 11.2 (Markdown Editor)
 
 **Selection/Undo Parity**
-- [ ] Keep cursor stable on external updates
-  - When external content changes arrive (SSE, realtime), preserve user's cursor position
-  - Show banner: "This note was updated externally. Reload?" with Keep/Reload actions
-  - If user chooses Reload, attempt to restore cursor position by content matching
-  - Implementation: Store cursor position before update, calculate new position after reload
+- [x] Keep cursor stable on external updates
+  - ExternalUpdateBanner implemented with Keep/Reload actions
+  - Cursor position clamped to valid range after reload
+  - Note: Unified CM6 editor will simplify this (single view, no mode transition)
 
 **Performance Optimization**
 - [ ] Long-note performance: incremental rendering + minimal layout churn
@@ -34,12 +33,13 @@ Finish the remaining SwiftUI parity work with a short, focused checklist.
   - Edit mode: insert gallery block template via toolbar
   - Display multiple images in grid layout with captions
 
-**Live Preview**
-- [ ] Document live preview deferral decision
-  - Current: read mode uses MarkdownUI, edit mode shows raw markdown
-  - Future: caret-line live preview (hybrid rendering)
-  - Deferred until read-mode styling is fully locked
-  - Edit-mode guardrails needed: no line-geometry changes, token-only styling, marker fade before collapse
+**Live Preview / Unified Editor**
+- [ ] Implement unified CodeMirror editor (see `2026-01-22-unified-codemirror-editor.md`)
+  - Use single CM6 view for both read and edit modes
+  - Read mode: `setReadOnly(true)` + block preview widgets + marker hiding
+  - Edit mode: `setReadOnly(false)` + raw markdown with syntax highlighting
+  - Fixes tap-to-caret bug (caret landing at wrong position)
+  - Preserves scroll position across mode transitions
 
 ### 2) Phase 11.4 (Content Creation)
 
