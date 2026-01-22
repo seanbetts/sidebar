@@ -57,7 +57,7 @@ type ThingsMetaCache = {
 	projects: ThingsProject[];
 };
 
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 60 * 1000;
 const DIAGNOSTICS_TTL = 60 * 1000;
 const CACHE_VERSION = '1.0';
 const META_CACHE_KEY = 'things.meta';
