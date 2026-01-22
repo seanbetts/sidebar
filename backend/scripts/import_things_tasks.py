@@ -52,7 +52,22 @@ def _map_status(list_name: str, raw_status: str | None) -> str:
 
 def _run_things_export() -> dict[str, Any]:
     script = f"""
-        const things = Application('Things3');
+        const appCandidates = ['Things3', 'Things'];
+        let appName = null;
+        appCandidates.forEach(name => {{
+          if (appName) return;
+          try {{
+            const probe = Application(name);
+            probe.name();
+            appName = name;
+          }} catch (err) {{
+            // ignore
+          }}
+        }});
+        if (!appName) {{
+          throw new Error('Things app not found. Expected Things3 or Things.');
+        }}
+        const things = Application(appName);
         things.includeStandardAdditions = true;
         things.activate();
 
@@ -69,13 +84,25 @@ def _run_things_export() -> dict[str, Any]:
           }}
         }}
 
-        const areas = things.areas().map(area => ({{
+        const areas = (() => {{
+          try {{
+            return things.areas();
+          }} catch (err) {{
+            throw new Error('Failed to read areas: ' + err);
+          }}
+        }})().map(area => ({{
           id: area.id(),
           title: area.name(),
           updatedAt: isoOrNull(area.modificationDate())
         }}));
 
-        const projects = things.projects().map(project => ({{
+        const projects = (() => {{
+          try {{
+            return things.projects();
+          }} catch (err) {{
+            throw new Error('Failed to read projects: ' + err);
+          }}
+        }})().map(project => ({{
           id: project.id(),
           title: project.name(),
           areaId: project.area() ? project.area().id() : null,
@@ -86,7 +113,13 @@ def _run_things_export() -> dict[str, Any]:
 
         const listNames = {json.dumps(list(THINGS_LISTS))};
         let tasks = [];
-        const lists = things.lists();
+        const lists = (() => {{
+          try {{
+            return things.lists();
+          }} catch (err) {{
+            throw new Error('Failed to read lists: ' + err);
+          }}
+        }})();
         listNames.forEach(name => {{
           const list = lists.find(item => item.name() === name);
           if (!list) return;
