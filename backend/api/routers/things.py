@@ -35,24 +35,43 @@ router = APIRouter(prefix="/things", tags=["things"])
 async def _update_snapshot_async(user_id: str, today_payload: dict) -> None:
     with SessionLocal() as db:
         set_session_user_id(db, user_id)
-        bridge = ThingsBridgeService.select_active_bridge(db, user_id)
-        if not bridge:
-            return
-        client = ThingsBridgeClient(bridge)
         try:
-            upcoming = await client.get_list("upcoming")
-            tomorrow_tasks = ThingsSnapshotService.filter_tomorrow(
-                upcoming.get("tasks", [])
-            )
-            completed_today_payload = await client.completed_today()
-            completed_today = completed_today_payload.get("tasks", [])
-            snapshot = ThingsSnapshotService.build_snapshot(
-                today_tasks=today_payload.get("tasks", []),
-                tomorrow_tasks=tomorrow_tasks,
-                completed_today=completed_today,
-                areas=upcoming.get("areas") or today_payload.get("areas", []),
-                projects=upcoming.get("projects") or today_payload.get("projects", []),
-            )
+            if settings.use_native_task_system:
+                today_tasks = [
+                    _task_payload(task) for task in today_payload.get("tasks", [])
+                ]
+                upcoming_tasks, projects, areas = TaskService.list_tasks_by_scope(
+                    db, user_id, "upcoming"
+                )
+                upcoming_payload = [_task_payload(task) for task in upcoming_tasks]
+                snapshot = ThingsSnapshotService.build_snapshot(
+                    today_tasks=today_tasks,
+                    tomorrow_tasks=ThingsSnapshotService.filter_tomorrow(
+                        upcoming_payload
+                    ),
+                    completed_today=[],
+                    areas=[_area_payload(area) for area in areas],
+                    projects=[_project_payload(project) for project in projects],
+                )
+            else:
+                bridge = ThingsBridgeService.select_active_bridge(db, user_id)
+                if not bridge:
+                    return
+                client = ThingsBridgeClient(bridge)
+                upcoming = await client.get_list("upcoming")
+                tomorrow_tasks = ThingsSnapshotService.filter_tomorrow(
+                    upcoming.get("tasks", [])
+                )
+                completed_today_payload = await client.completed_today()
+                completed_today = completed_today_payload.get("tasks", [])
+                snapshot = ThingsSnapshotService.build_snapshot(
+                    today_tasks=today_payload.get("tasks", []),
+                    tomorrow_tasks=tomorrow_tasks,
+                    completed_today=completed_today,
+                    areas=upcoming.get("areas") or today_payload.get("areas", []),
+                    projects=upcoming.get("projects")
+                    or today_payload.get("projects", []),
+                )
             UserSettingsService.update_things_snapshot(db, user_id, snapshot)
         except Exception:
             return
@@ -600,6 +619,8 @@ async def get_diagnostics(
 ):
     """Fetch Things bridge diagnostics via the active bridge."""
     set_session_user_id(db, user_id)
+    if settings.use_native_task_system:
+        return {"dbAccess": True, "dbPath": None, "dbError": None}
     bridge = _get_active_bridge_or_503(db, user_id)
     client = ThingsBridgeClient(bridge)
     return await client.diagnostics()
