@@ -1,6 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+# Migration helper.
+# Usage:
+#   ./scripts/migrate.sh upgrade head
+#   ./scripts/migrate.sh --supabase upgrade head
+# Notes:
+#   - --supabase sets ALLOW_PROD_MIGRATIONS=true and prompts for the Supabase DB password.
+#   - Requires an interactive TTY for password prompts; configure env vars or Doppler as needed.
+
 load_env() {
   local env_file=""
   if [[ -f ".env.local" ]]; then
