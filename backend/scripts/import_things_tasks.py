@@ -107,12 +107,20 @@ def _run_things_export() -> dict[str, Any]:
 
         JSON.stringify({{ areas, projects, tasks }});
     """
-    result = subprocess.run(
-        ["osascript", "-l", "JavaScript", "-e", script],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["osascript", "-l", "JavaScript", "-e", script],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.strip() if exc.stderr else "Unknown error"
+        logger.error("Things export failed: %s", stderr)
+        raise RuntimeError(
+            "Failed to read Things via AppleScript. Ensure Things is installed, "
+            "running, and this terminal has Automation permission for Things."
+        ) from exc
     return json.loads(result.stdout)
 
 
