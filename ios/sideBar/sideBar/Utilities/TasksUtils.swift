@@ -154,7 +154,7 @@ public enum TasksUtils {
             if let areaId {
                 let key = "area:\(areaId)"
                 if buckets[key] == nil {
-                    let title = areaTitleById[areaId] ?? "Area"
+                    let title = areaTitleById[areaId] ?? "Group"
                     buckets[key] = TaskSection(id: key, title: title, tasks: [])
                 }
                 if var section = buckets[key] {

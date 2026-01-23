@@ -191,6 +191,41 @@ async def sync_tasks(
     }
 
 
+@router.post("/areas")
+async def create_task_area(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Create a task area."""
+    title = str(request.get("title") or "").strip()
+    if not title:
+        raise BadRequestError("title required")
+    set_session_user_id(db, user_id)
+    area = TaskService.create_task_area(db, user_id, title)
+    db.commit()
+    return _area_payload(area)
+
+
+@router.post("/projects")
+async def create_task_project(
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Create a task project."""
+    title = str(request.get("title") or "").strip()
+    if not title:
+        raise BadRequestError("title required")
+    area_id = request.get("areaId")
+    set_session_user_id(db, user_id)
+    project = TaskService.create_task_project(db, user_id, title, area_id=area_id)
+    db.commit()
+    return _project_payload(project)
+
+
 @router.get("/projects/{project_id}/tasks")
 async def get_project_tasks(
     project_id: str,

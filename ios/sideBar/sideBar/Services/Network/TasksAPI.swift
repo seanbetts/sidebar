@@ -6,6 +6,8 @@ public protocol TasksProviding {
     func areaTasks(areaId: String) async throws -> TaskListResponse
     func search(query: String) async throws -> TaskListResponse
     func counts() async throws -> TaskCountsResponse
+    func createGroup(title: String) async throws -> TaskArea
+    func createProject(title: String, groupId: String?) async throws -> TaskProject
     func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse
     func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse
 }
@@ -83,6 +85,20 @@ public struct TaskSyncRequest: Encodable {
     }
 }
 
+private struct TaskCreateGroupRequest: Encodable {
+    let title: String
+}
+
+private struct TaskCreateProjectRequest: Encodable {
+    let title: String
+    let areaId: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case title
+        case areaId = "areaId"
+    }
+}
+
 public struct TasksAPI {
     private let client: APIClient
 
@@ -109,6 +125,18 @@ public struct TasksAPI {
 
     public func counts() async throws -> TaskCountsResponse {
         try await client.request("tasks/counts")
+    }
+
+    public func createGroup(title: String) async throws -> TaskArea {
+        try await client.request("tasks/areas", method: "POST", body: TaskCreateGroupRequest(title: title))
+    }
+
+    public func createProject(title: String, groupId: String?) async throws -> TaskProject {
+        try await client.request(
+            "tasks/projects",
+            method: "POST",
+            body: TaskCreateProjectRequest(title: title, areaId: groupId)
+        )
     }
 
     public func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse {

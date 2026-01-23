@@ -74,7 +74,7 @@ public final class TasksViewModel: ObservableObject {
             titleIcon = "tray"
             sections = sortedTasks.isEmpty ? [] : [TaskSection(id: "all", title: "", tasks: sortedTasks)]
         case .area(let id):
-            let title = areas.first(where: { $0.id == id })?.title ?? "Area"
+            let title = areas.first(where: { $0.id == id })?.title ?? "Group"
             selectionLabel = title
             titleIcon = "square.3.layers.3d"
             sections = TasksUtils.buildAreaSections(
@@ -266,6 +266,26 @@ public final class TasksViewModel: ObservableObject {
         } catch {
             newTaskError = ErrorMapping.message(for: error)
         }
+    }
+
+    public func createGroup(title: String) async throws {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        _ = try await api.createGroup(title: trimmed)
+        await load(selection: selection, force: true)
+        await loadCounts(force: true)
+    }
+
+    public func createProject(title: String, groupId: String?) async throws {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        _ = try await api.createProject(title: trimmed, groupId: groupId)
+        await load(selection: selection, force: true)
+        await loadCounts(force: true)
+    }
+
+    public func setErrorMessage(_ message: String) {
+        errorMessage = message
     }
 
     public func completeTask(task: TaskItem) async {

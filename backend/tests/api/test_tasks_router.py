@@ -160,3 +160,24 @@ def test_tasks_sync_returns_updates(test_client, test_db):
     payload = response.json()
     assert any(item["title"] == "Sync me" for item in payload["updates"]["tasks"])
     assert payload["serverUpdatedSince"]
+
+
+def test_tasks_create_area_and_project(test_client, test_db):
+    response = test_client.post(
+        "/api/v1/tasks/areas",
+        json={"title": "Personal"},
+        headers=_auth_headers(),
+    )
+    assert response.status_code == 200
+    area_payload = response.json()
+    assert area_payload["title"] == "Personal"
+
+    project_response = test_client.post(
+        "/api/v1/tasks/projects",
+        json={"title": "Habits", "areaId": area_payload["id"]},
+        headers=_auth_headers(),
+    )
+    assert project_response.status_code == 200
+    project_payload = project_response.json()
+    assert project_payload["title"] == "Habits"
+    assert project_payload["areaId"] == area_payload["id"]
