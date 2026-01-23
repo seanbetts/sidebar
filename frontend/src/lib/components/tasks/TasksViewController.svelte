@@ -145,6 +145,14 @@
 		renameInput.select();
 	}
 
+	$: if (repeatType === 'weekly' && repeatStartDate) {
+		repeatWeekday = String(toDate(repeatStartDate).getDay());
+	}
+
+	$: if (repeatType === 'monthly' && repeatStartDate) {
+		repeatMonthDay = String(toDate(repeatStartDate).getDate());
+	}
+
 	function openNotesDialog(task: Task) {
 		notesTask = task;
 		notesValue = task.notes ?? '';
@@ -217,6 +225,58 @@
 		repeatStartDate = '';
 	}
 
+	const toDate = (value: string) => new Date(`${value}T00:00:00`);
+	const toDateKey = (value: Date) => formatDateKeyForDate(value);
+	const clampDay = (value: number) => Math.min(31, Math.max(1, value));
+
+	const nextOrSameWeekday = (date: Date, targetDay: number) => {
+		const current = date.getDay();
+		const delta = (targetDay - current + 7) % 7;
+		const next = new Date(date);
+		next.setDate(next.getDate() + delta);
+		return next;
+	};
+
+	const nextMonthDay = (date: Date, day: number) => {
+		const year = date.getFullYear();
+		const month = date.getMonth();
+		const daysInMonth = new Date(year, month + 1, 0).getDate();
+		if (day <= daysInMonth) {
+			return new Date(year, month, day);
+		}
+		const nextMonthDays = new Date(year, month + 2, 0).getDate();
+		return new Date(year, month + 1, Math.min(day, nextMonthDays));
+	};
+
+	function handleRepeatWeekdayChange(value: string) {
+		repeatWeekday = value;
+		const day = Number.parseInt(value, 10);
+		if (Number.isNaN(day)) return;
+		const base = repeatStartDate ? toDate(repeatStartDate) : new Date();
+		repeatStartDate = toDateKey(nextOrSameWeekday(base, day));
+	}
+
+	function handleRepeatMonthDayChange(value: string) {
+		repeatMonthDay = value;
+		const day = clampDay(Number.parseInt(value, 10));
+		if (Number.isNaN(day)) return;
+		const base = repeatStartDate ? toDate(repeatStartDate) : new Date();
+		const nextDate = nextMonthDay(base, day);
+		repeatStartDate = toDateKey(nextDate);
+		repeatMonthDay = String(nextDate.getDate());
+	}
+
+	function handleRepeatStartDateChange(value: string) {
+		repeatStartDate = value;
+		const date = value ? toDate(value) : new Date();
+		if (repeatType === 'weekly') {
+			repeatWeekday = String(date.getDay());
+		}
+		if (repeatType === 'monthly') {
+			repeatMonthDay = String(date.getDate());
+		}
+	}
+
 	async function saveRepeat() {
 		const task = repeatTask;
 		if (!task) return;
@@ -227,14 +287,17 @@
 		}
 		const interval = Math.max(1, Number.parseInt(repeatInterval, 10) || 1);
 		const rule = { type: repeatType, interval } as Task['recurrenceRule'];
+		const startDate = repeatStartDate || formatDateKeyForToday();
 		if (repeatType === 'weekly') {
-			rule.weekday = Number.parseInt(repeatWeekday, 10) || 0;
+			const date = toDate(startDate);
+			rule.weekday = date.getDay();
+			repeatWeekday = String(rule.weekday);
 		}
 		if (repeatType === 'monthly') {
-			const day = Number.parseInt(repeatMonthDay, 10) || 1;
-			rule.day_of_month = Math.min(31, Math.max(1, day));
+			const date = toDate(startDate);
+			rule.day_of_month = date.getDate();
+			repeatMonthDay = String(rule.day_of_month);
 		}
-		const startDate = repeatStartDate || formatDateKeyForToday();
 		await runTaskUpdate(task.id, () => tasksStore.setRepeat(task.id, rule, startDate));
 		closeRepeatDialog();
 	}
@@ -452,6 +515,9 @@
 		bind:repeatWeekday
 		bind:repeatMonthDay
 		bind:repeatStartDate
+		onRepeatWeekdayChange={handleRepeatWeekdayChange}
+		onRepeatMonthDayChange={handleRepeatMonthDayChange}
+		onRepeatStartDateChange={handleRepeatStartDateChange}
 		onCloseRepeat={closeRepeatDialog}
 		onSaveRepeat={saveRepeat}
 		bind:showTrashDialog
