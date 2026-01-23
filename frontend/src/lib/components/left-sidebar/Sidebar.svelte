@@ -667,7 +667,7 @@
 		overflow-y: auto;
 	}
 
-	:global(.tasks-content) {
+	:global(.sidebar-panel .tasks-content) {
 		display: flex;
 		flex-direction: column;
 		flex: 1;
