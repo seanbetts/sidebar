@@ -578,6 +578,33 @@ class TaskService:
         return task
 
     @staticmethod
+    def trash_task_series(db: Session, user_id: str, task_id: str) -> list[Task]:
+        """Soft-delete a task and any repeat instances in its series."""
+        task = TaskService.get_task(db, user_id, task_id)
+        template_id = task.repeat_template_id or task.id
+        now = datetime.now(UTC)
+
+        tasks = (
+            db.query(Task)
+            .filter(
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None),
+                or_(Task.id == template_id, Task.repeat_template_id == template_id),
+            )
+            .all()
+        )
+        if not tasks:
+            return []
+
+        for item in tasks:
+            item.status = "trashed"
+            item.trashed_at = now
+            item.deleted_at = now
+            item.updated_at = now
+
+        return tasks
+
+    @staticmethod
     def complete_task(
         db: Session, user_id: str, task_id: str
     ) -> tuple[Task, Task | None]:

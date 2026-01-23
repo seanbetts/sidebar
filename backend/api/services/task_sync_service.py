@@ -218,13 +218,8 @@ class TaskSyncService:
                 task = TaskSyncService._apply_move(db, user_id, operation)
                 tasks.append(task)
             elif op == "trash":
-                task = TaskService.update_task(
-                    db, user_id, operation["id"], status="trashed"
-                )
-                now = datetime.now(UTC)
-                task.trashed_at = now
-                task.deleted_at = now
-                tasks.append(task)
+                trashed = TaskService.trash_task_series(db, user_id, operation["id"])
+                tasks.extend(trashed)
             elif op in {"set_due", "defer"}:
                 task = TaskSyncService._apply_due_date(db, user_id, operation)
                 tasks.append(task)

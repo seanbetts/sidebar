@@ -137,6 +137,33 @@ def test_clear_task_due(db_session):
     assert refreshed.deadline is None
 
 
+def test_trash_task_series_removes_instances(db_session):
+    template = TaskService.create_task(
+        db_session,
+        "user",
+        "Repeat template",
+        repeating=True,
+        repeat_template=True,
+    )
+    template.repeat_template_id = template.id
+    instance = TaskService.create_task(
+        db_session,
+        "user",
+        "Repeat instance",
+        repeating=True,
+        repeat_template=False,
+        repeat_template_id=str(template.id),
+    )
+    db_session.commit()
+
+    trashed = TaskService.trash_task_series(db_session, "user", str(template.id))
+    db_session.commit()
+
+    assert len(trashed) == 2
+    assert all(item.deleted_at is not None for item in trashed)
+    assert all(item.status == "trashed" for item in trashed)
+
+
 def test_list_tasks_by_scope_and_counts(db_session):
     today = date.today()
     TaskService.create_task(
