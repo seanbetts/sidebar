@@ -359,7 +359,10 @@ class TaskService:
             TaskService._task_query_with_relations(db)
             .filter(
                 Task.user_id == user_id,
-                Task.area_id == parsed_id,
+                or_(
+                    Task.area_id == parsed_id,
+                    Task.project.has(TaskProject.area_id == parsed_id),
+                ),
                 Task.deleted_at.is_(None),
                 Task.status.notin_(["completed", "trashed"]),
             )
