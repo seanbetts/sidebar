@@ -59,7 +59,7 @@ public final class ShortcutActionRouter {
         case .notes, .websites, .files:
             environment.emitShortcutAction(.newItem)
         case .tasks:
-            environment.toastCenter.show(message: "Tasks are not available yet")
+            environment.tasksViewModel.startNewTask()
         case .settings, .none:
             break
         }
@@ -90,7 +90,10 @@ public final class ShortcutActionRouter {
             Task { await environment.websitesViewModel.load(force: true) }
         case .files:
             Task { await environment.ingestionViewModel.load() }
-        case .tasks, .settings, .none:
+        case .tasks:
+            Task { await environment.tasksViewModel.load(selection: environment.tasksViewModel.selection, force: true) }
+            Task { await environment.tasksViewModel.loadCounts(force: true) }
+        case .settings, .none:
             break
         }
     }
