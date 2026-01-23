@@ -33,7 +33,7 @@ class RecurrenceService:
             Next occurrence date.
         """
         rule_type = rule.get("type")
-        interval = int(rule.get("interval") or 1)
+        interval = max(1, int(rule.get("interval") or 1))
 
         if rule_type == "daily":
             return from_date + timedelta(days=interval)
@@ -71,8 +71,9 @@ class RecurrenceService:
             return None
 
         completed_at = task.completed_at.date() if task.completed_at else date.today()
+        anchor_date = task.scheduled_date or task.deadline or completed_at
         next_date = RecurrenceService.calculate_next_occurrence(
-            task.recurrence_rule, completed_at
+            task.recurrence_rule, anchor_date
         )
         template_id = task.repeat_template_id or task.id
 

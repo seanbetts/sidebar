@@ -60,7 +60,7 @@
 			{#each section.tasks as task}
 				<li class="tasks-task" class:completing={busyTasks.has(task.id)}>
 					<div class="task-left">
-						{#if task.repeatTemplate}
+						{#if task.isPreview}
 							<span class="repeat-badge" aria-label="Repeating task">
 								<Repeat size={14} />
 							</span>
@@ -107,9 +107,6 @@
 										<FileText size={14} />
 										<span class="notes-tooltip">{task.notes}</span>
 									</span>
-								{/if}
-								{#if task.repeating && !task.repeatTemplate}
-									<Repeat size={14} class="repeat-icon" title="Repeating task" />
 								{/if}
 							</div>
 							{#if taskSubtitle(task)}

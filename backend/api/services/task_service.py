@@ -527,6 +527,11 @@ class TaskService:
     ) -> list[Task]:
         """Update recurrence for a task and its template."""
         task = TaskService.get_task(db, user_id, task_id)
+        if recurrence_rule:
+            recurrence_rule = dict(recurrence_rule)
+            recurrence_rule["interval"] = max(
+                1, int(recurrence_rule.get("interval") or 1)
+            )
         template_id = task.repeat_template_id or task.id
         template = (
             TaskService.get_task(db, user_id, str(template_id))
