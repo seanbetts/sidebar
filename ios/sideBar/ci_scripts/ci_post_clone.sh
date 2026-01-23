@@ -13,6 +13,9 @@
 
 set -euo pipefail
 
+echo "=== ci_post_clone.sh: Installing SwiftLint ==="
+brew install swiftlint
+
 echo "=== ci_post_clone.sh: Generating SideBar.local.xcconfig ==="
 
 # Validate required environment variables
