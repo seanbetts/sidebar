@@ -2,6 +2,7 @@ import { CalendarCheck, CalendarClock, Inbox, Layers, List, Search } from 'lucid
 import type { TaskNewTaskDraft, TaskSelection, TasksState } from '$lib/stores/tasks';
 import type { Task, TaskArea, TaskProject } from '$lib/types/tasks';
 import {
+	buildAreaSections,
 	buildSearchSections,
 	buildTodaySections,
 	buildUpcomingSections,
@@ -97,9 +98,10 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 		titleIcon = Inbox;
 		sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
 	} else if (selectionType === 'area' && selection.type === 'area') {
-		selectionLabel = areas.find((area) => area.id === selection.id)?.title || 'Area';
+		const areaTitle = areas.find((area) => area.id === selection.id)?.title || 'Area';
+		selectionLabel = areaTitle;
 		titleIcon = Layers;
-		sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
+		sections = buildAreaSections(sortedTasks, selection.id, areaTitle, projects);
 	} else if (selectionType === 'project' && selection.type === 'project') {
 		selectionLabel = projects.find((project) => project.id === selection.id)?.title || 'Project';
 		titleIcon = List;

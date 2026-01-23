@@ -202,6 +202,46 @@ export const buildSearchSections = (tasks: Task[], areas: TaskArea[]): TaskSecti
 	return sections;
 };
 
+export const buildAreaSections = (
+	tasks: Task[],
+	areaId: string,
+	areaTitle: string,
+	projects: TaskProject[]
+): TaskSection[] => {
+	const sections: TaskSection[] = [];
+	const projectsInArea = projects.filter((project) => project.areaId === areaId);
+	const projectById = new Map(projectsInArea.map((project) => [project.id, project]));
+	const projectSections = new Map<string, Task[]>();
+	const areaTasks: Task[] = [];
+
+	tasks.forEach((task) => {
+		if (task.projectId && projectById.has(task.projectId)) {
+			const bucket = projectSections.get(task.projectId) ?? [];
+			bucket.push(task);
+			projectSections.set(task.projectId, bucket);
+			return;
+		}
+		if (task.areaId === areaId || task.projectId == null) {
+			areaTasks.push(task);
+		}
+	});
+
+	if (areaTasks.length) {
+		sections.push({ id: 'area', title: areaTitle, tasks: areaTasks });
+	}
+
+	projectsInArea
+		.sort((a, b) => a.title.localeCompare(b.title))
+		.forEach((project) => {
+			const bucket = projectSections.get(project.id);
+			if (bucket?.length) {
+				sections.push({ id: project.id, title: project.title, tasks: bucket });
+			}
+		});
+
+	return sections;
+};
+
 export const buildUpcomingSections = (tasks: Task[]): TaskSection[] => {
 	const today = startOfDay(new Date());
 	const overdue: Task[] = [];
