@@ -3,14 +3,12 @@ export type Task = {
 	title: string;
 	status: string;
 	deadline?: string | null;
-	deadlineStart?: string | null;
 	notes?: string | null;
 	projectId?: string | null;
 	areaId?: string | null;
 	repeating?: boolean;
 	repeatTemplate?: boolean;
 	recurrenceRule?: RecurrenceRule | null;
-	tags?: string[];
 	updatedAt?: string | null;
 	deletedAt?: string | null;
 };

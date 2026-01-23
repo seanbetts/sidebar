@@ -294,7 +294,7 @@ export const applyTaskMetaCountsOnly = (options: ApplyResponseOptions): void => 
 	}));
 };
 
-const taskDueDate = (task: Task): string | null => task.deadline ?? task.deadlineStart ?? null;
+const taskDueDate = (task: Task): string | null => task.deadline ?? null;
 
 /**
  * Filter cached tasks for the current selection.

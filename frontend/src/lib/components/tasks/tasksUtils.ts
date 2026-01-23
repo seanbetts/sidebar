@@ -50,7 +50,7 @@ export const nextWeekday = (date: Date, targetDay: number): Date => {
 	return addDays(date, daysAhead);
 };
 
-const taskDeadline = (task: Task): string | null => task.deadline ?? task.deadlineStart ?? null;
+const taskDeadline = (task: Task): string | null => task.deadline ?? null;
 
 const parseTaskDate = (task: Task): Date | null => {
 	const deadline = taskDeadline(task);

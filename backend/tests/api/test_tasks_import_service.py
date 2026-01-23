@@ -47,8 +47,7 @@ def test_import_from_payload_filters_and_maps(test_db_engine):
                     "projectId": "p1",
                     "areaId": "a1",
                     "deadline": "2026-01-02T00:00:00Z",
-                    "deadlineStart": "2026-01-01T00:00:00Z",
-                    "tags": ["urgent"],
+                    "scheduledDate": "2026-01-01T00:00:00Z",
                     "repeating": True,
                     "recurrenceRule": {"type": "daily", "interval": 1},
                     "updatedAt": "2026-01-01T00:00:00Z",
@@ -69,8 +68,7 @@ def test_import_from_payload_filters_and_maps(test_db_engine):
         task = session.query(Task).one()
         assert task.status == "inbox"
         assert task.deadline == date(2026, 1, 2)
-        assert task.deadline_start == date(2026, 1, 1)
-        assert task.tags == ["urgent"]
+        assert task.scheduled_date == date(2026, 1, 1)
         assert task.repeating is True
         assert task.recurrence_rule == {"type": "daily", "interval": 1}
 

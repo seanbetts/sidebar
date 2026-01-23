@@ -71,7 +71,7 @@ class TasksSnapshotService:
         tomorrow = (timestamp + timedelta(days=1)).date()
 
         def task_date(task: dict[str, Any]) -> datetime | None:
-            date_value = task.get("deadline") or task.get("deadlineStart")
+            date_value = task.get("deadline")
             if not date_value:
                 return None
             try:

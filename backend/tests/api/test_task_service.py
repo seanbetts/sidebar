@@ -65,13 +65,11 @@ def test_update_task_updates_jsonb(db_session):
         db_session,
         "user",
         str(task.id),
-        tags=["urgent", "work"],
         recurrence_rule={"type": "daily", "interval": 1},
     )
     db_session.commit()
 
     refreshed = TaskService.get_task(db_session, "user", str(task.id))
-    assert refreshed.tags == ["urgent", "work"]
     assert refreshed.recurrence_rule == {"type": "daily", "interval": 1}
 
 
@@ -97,14 +95,12 @@ def test_create_task_dates(db_session):
         "Scheduled task",
         scheduled_date=date(2026, 1, 1),
         deadline=date(2026, 1, 2),
-        deadline_start=date(2025, 12, 31),
     )
     db_session.commit()
 
     tasks = TaskService.list_tasks(db_session, "user")
     assert tasks[0].scheduled_date == date(2026, 1, 1)
     assert tasks[0].deadline == date(2026, 1, 2)
-    assert tasks[0].deadline_start == date(2025, 12, 31)
 
 
 def test_list_tasks_by_scope_and_counts(db_session):

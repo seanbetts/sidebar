@@ -304,20 +304,18 @@ class TaskSyncService:
 
     @staticmethod
     def _task_sync_payload(task: Task) -> dict[str, Any]:
-        deadline_start = task.deadline_start or task.scheduled_date
+        deadline = task.deadline or task.scheduled_date
         return {
             "id": str(task.id),
             "title": task.title,
             "status": task.status,
-            "deadline": task.deadline.isoformat() if task.deadline else None,
-            "deadlineStart": deadline_start.isoformat() if deadline_start else None,
+            "deadline": deadline.isoformat() if deadline else None,
             "notes": task.notes,
             "projectId": str(task.project_id) if task.project_id else None,
             "areaId": str(task.area_id) if task.area_id else None,
             "repeating": task.repeating,
             "repeatTemplate": task.repeat_template,
             "recurrenceRule": task.recurrence_rule,
-            "tags": task.tags or [],
             "updatedAt": task.updated_at.isoformat() if task.updated_at else None,
             "deletedAt": task.deleted_at.isoformat() if task.deleted_at else None,
         }
@@ -363,7 +361,7 @@ class TaskSyncService:
             user_id,
             title=operation.get("title") or "Untitled Task",
             notes=operation.get("notes"),
-            deadline_start=due_date,
+            deadline=due_date,
             project_id=str(project.id) if project else None,
             area_id=str(area.id) if area else None,
         )
@@ -404,8 +402,14 @@ class TaskSyncService:
     @staticmethod
     def _apply_due_date(db: Session, user_id: str, operation: dict[str, Any]) -> Task:
         due_date = TaskSyncService._parse_date(operation.get("due_date"))
+        task = TaskService.get_task(db, user_id, operation["id"])
+        scheduled_date = due_date if task.scheduled_date is not None else None
         return TaskService.update_task(
-            db, user_id, operation["id"], deadline_start=due_date
+            db,
+            user_id,
+            operation["id"],
+            deadline=due_date,
+            scheduled_date=scheduled_date,
         )
 
     @staticmethod

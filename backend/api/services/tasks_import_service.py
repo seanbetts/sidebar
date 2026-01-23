@@ -130,11 +130,11 @@ class TasksImportService:
             title = str(task_data.get("title") or "Untitled Task")
             updated_at = TasksImportService._parse_datetime(task_data.get("updatedAt"))
             deadline = TasksImportService._parse_date(task_data.get("deadline"))
-            deadline_start = TasksImportService._parse_date(
-                task_data.get("deadlineStart")
+            scheduled_date = TasksImportService._parse_date(
+                task_data.get("scheduledDate")
             )
-            tags = task_data.get("tags") or []
             recurrence_rule = task_data.get("recurrenceRule")
+            repeat_template = bool(task_data.get("repeatTemplate"))
             project_id = task_data.get("projectId")
             area_id = task_data.get("areaId")
             task_project = project_map.get(str(project_id)) if project_id else None
@@ -145,13 +145,12 @@ class TasksImportService:
                 existing_task.status = status
                 existing_task.notes = task_data.get("notes")
                 existing_task.deadline = deadline
-                existing_task.deadline_start = deadline_start
+                existing_task.scheduled_date = scheduled_date
                 existing_task.project_id = task_project.id if task_project else None
                 existing_task.area_id = task_area.id if task_area else None
-                existing_task.tags = tags
-                flag_modified(existing_task, "tags")
                 existing_task.updated_at = updated_at or now
                 existing_task.repeating = bool(task_data.get("repeating"))
+                existing_task.repeat_template = repeat_template
                 existing_task.recurrence_rule = recurrence_rule
                 flag_modified(existing_task, "recurrence_rule")
             else:
@@ -164,11 +163,9 @@ class TasksImportService:
                     notes=task_data.get("notes"),
                     status=status,
                     deadline=deadline,
-                    deadline_start=deadline_start,
-                    scheduled_date=None,
-                    tags=tags,
+                    scheduled_date=scheduled_date,
                     repeating=bool(task_data.get("repeating")),
-                    repeat_template=bool(task_data.get("repeating")),
+                    repeat_template=repeat_template,
                     repeat_template_id=None,
                     recurrence_rule=recurrence_rule,
                     next_instance_date=None,

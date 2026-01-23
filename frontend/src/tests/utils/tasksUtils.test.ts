@@ -8,13 +8,11 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
 	title: 'Task',
 	status: 'open',
 	deadline: null,
-	deadlineStart: null,
 	notes: null,
 	projectId: null,
 	areaId: null,
 	repeating: false,
 	repeatTemplate: false,
-	tags: [],
 	updatedAt: null,
 	deletedAt: null,
 	...overrides
