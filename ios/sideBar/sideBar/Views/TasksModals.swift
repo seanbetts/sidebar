@@ -209,6 +209,11 @@ struct NewTaskSheet: View {
     @State private var dueDate: Date = Date()
     @State private var hasDueDate: Bool = true
     @State private var listId: String = ""
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case title
+    }
 
     var body: some View {
         NavigationStack {
@@ -217,6 +222,9 @@ struct NewTaskSheet: View {
                     TextField("Task title", text: $title)
                         .textInputAutocapitalization(.sentences)
                         .disableAutocorrection(false)
+                        .focused($focusedField, equals: .title)
+                        .submitLabel(.done)
+                        .onSubmit { handleSave() }
                 }
 
                 Section {
@@ -286,9 +294,7 @@ struct NewTaskSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSaving ? "Saving..." : "Save") {
-                        let listValue = listId.isEmpty ? nil : listId
-                        let dateValue = hasDueDate ? dueDate : nil
-                        onSave(title, notes, dateValue, listValue)
+                        handleSave()
                     }
                     .disabled(
                         isSaving
@@ -303,12 +309,21 @@ struct NewTaskSheet: View {
                 hasDueDate = draft.dueDate != nil
                 dueDate = draft.dueDate ?? Date()
                 listId = draft.listId ?? ""
+                focusedField = .title
             }
         }
     }
 
     private var listOptions: [TaskListOption] {
         buildListOptions(areas: areas, projects: projects)
+    }
+
+    private func handleSave() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !isSaving, !trimmedTitle.isEmpty, !listId.isEmpty else { return }
+        let listValue = listId.isEmpty ? nil : listId
+        let dateValue = hasDueDate ? dueDate : nil
+        onSave(trimmedTitle, notes, dateValue, listValue)
     }
 
 }

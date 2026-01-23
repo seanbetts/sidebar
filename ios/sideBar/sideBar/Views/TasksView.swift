@@ -161,9 +161,16 @@ extension TasksDetailView {
             titleLayoutPriority: 1,
             subtitleLayoutPriority: 0
         ) {
-            Text(tasksCountLabel(for: state))
-                .font(.caption)
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
+            if state.totalCount == 0 {
+                Image(systemName: "checkmark")
+                    .font(.caption)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+                    .accessibilityLabel("No tasks")
+            } else if let label = tasksCountLabel(for: state) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+            }
         }
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
@@ -250,7 +257,8 @@ extension TasksDetailView {
         }
     }
 
-    private func tasksCountLabel(for state: TasksViewState) -> String {
+    private func tasksCountLabel(for state: TasksViewState) -> String? {
+        if state.totalCount == 0 { return nil }
         if state.totalCount == 1 { return "1 task" }
         return "\(state.totalCount) tasks"
     }
