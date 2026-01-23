@@ -11,11 +11,13 @@
 	let syncNotice = '';
 	$: ({ selection, areas, projects, counts, syncNotice } = $tasksStore);
 	$: tasksCount = $tasksStore.todayCount;
-	$: projectsByArea = areas.map((area) => ({
+	$: sortedAreas = [...areas].sort((a, b) => a.title.localeCompare(b.title));
+	$: sortedProjects = [...projects].sort((a, b) => a.title.localeCompare(b.title));
+	$: projectsByArea = sortedAreas.map((area) => ({
 		area,
-		projects: projects.filter((project) => project.areaId === area.id)
+		projects: sortedProjects.filter((project) => project.areaId === area.id)
 	}));
-	$: orphanProjects = projects.filter((project) => !project.areaId);
+	$: orphanProjects = sortedProjects.filter((project) => !project.areaId);
 
 	function select(selection: TaskSelection) {
 		tasksStore.load(selection);
