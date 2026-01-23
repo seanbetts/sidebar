@@ -109,18 +109,22 @@
 									</span>
 								{/if}
 								{#if task.repeating && !task.repeatTemplate}
-									{#if recurrenceLabel(task)}
-										<span class="repeat-label">{recurrenceLabel(task)}</span>
-									{/if}
 									<Repeat size={14} class="repeat-icon" title="Repeating task" />
 								{/if}
 							</div>
 							{#if taskSubtitle(task)}
-								<div class="meta">{taskSubtitle(task)}</div>
+								<div class="meta">
+									{#if taskSubtitle(task)}
+										<span class="meta-text">{taskSubtitle(task)}</span>
+									{/if}
+								</div>
 							{/if}
 						</div>
 					</div>
 					<div class="task-right">
+						{#if recurrenceLabel(task)}
+							<span class="repeat-pill">{recurrenceLabel(task)}</span>
+						{/if}
 						{#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
 							<span class="due-pill" title={recurrenceLabel(task) ?? ''}>
 								{dueLabel(task) ?? 'No Date'}
@@ -357,7 +361,27 @@
 		font-size: 0.75rem;
 		color: var(--color-muted-foreground);
 		margin-top: 0.15rem;
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.meta-text {
 		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+
+	.repeat-pill {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.15rem 0.5rem;
+		border-radius: 999px;
+		border: 1px solid var(--color-border);
+		background: var(--color-secondary);
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: var(--color-muted-foreground);
 	}
 
 	.due-pill {
