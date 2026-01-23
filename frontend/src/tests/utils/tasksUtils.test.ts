@@ -46,13 +46,13 @@ describe('tasksUtils taskSubtitle', () => {
 
 		const subtitle = taskSubtitle(task, 'project', 'Project Alpha', projectTitles, areaTitles);
 
-		expect(subtitle).toBe('Project Alpha - Weekly on Mon');
+		expect(subtitle).toBe('Project Alpha');
 	});
 
 	it('returns recurrence label when no project or area', () => {
 		const task = baseTask({ recurrenceRule: { type: 'daily', interval: 1 } });
 		const subtitle = taskSubtitle(task, 'today', 'Today', new Map(), new Map());
 
-		expect(subtitle).toBe('Daily');
+		expect(subtitle).toBe('');
 	});
 });

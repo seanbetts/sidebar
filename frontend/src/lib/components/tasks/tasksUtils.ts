@@ -274,30 +274,29 @@ export const taskSubtitle = (
 ): string => {
 	const projectTitle = task.projectId ? projectTitleById.get(task.projectId) : '';
 	const areaTitle = task.areaId ? areaTitleById.get(task.areaId) : '';
-	const recurrence = recurrenceLabel(task);
 	let base = '';
 	if (selectionType === 'project') {
 		base = projectTitle || selectionLabel;
-		return recurrence ? `${base} - ${recurrence}` : base;
+		return base;
 	}
 	if (selectionType === 'area') {
 		base = projectTitle || areaTitle || '';
-		return recurrence && base ? `${base} - ${recurrence}` : (recurrence ?? base);
+		return base;
 	}
 	if (selectionType === 'today' || selectionType === 'upcoming') {
 		base = projectTitle || areaTitle || '';
-		return recurrence && base ? `${base} - ${recurrence}` : (recurrence ?? base);
+		return base;
 	}
 	if (selectionType === 'search') {
 		base = projectTitle || areaTitle || '';
-		return recurrence && base ? `${base} - ${recurrence}` : (recurrence ?? base);
+		return base;
 	}
 	if (taskDeadline(task)) {
 		base = `Due ${taskDeadline(task)?.slice(0, 10)}`;
-		return recurrence ? `${base} - ${recurrence}` : base;
+		return base;
 	}
 	base = projectTitle || areaTitle || '';
-	return recurrence && base ? `${base} - ${recurrence}` : (recurrence ?? base);
+	return base;
 };
 
 export const dueLabel = (task: Task): string | null => {
