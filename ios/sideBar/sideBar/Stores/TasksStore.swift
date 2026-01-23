@@ -26,8 +26,10 @@ public final class TasksStore: ObservableObject {
         self.selection = selection
         errorMessage = nil
         if selection.isSearch {
-            searchPending = true
-        } else {
+            if tasks.isEmpty {
+                searchPending = true
+            }
+        } else if tasks.isEmpty {
             isLoading = true
         }
         let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)

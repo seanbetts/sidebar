@@ -79,8 +79,18 @@ extension ContentView {
             Task { await loadPhoneSectionIfNeeded(newValue) }
             updateActiveSection()
         })
-        content = AnyView(content.onChange(of: sidebarSelection) { _, _ in
+        content = AnyView(content.onChange(of: sidebarSelection) { _, newValue in
             updateActiveSection()
+            #if !os(macOS)
+            guard horizontalSizeClass != .compact else { return }
+            guard let newValue else { return }
+            if newValue == .chat {
+                primarySection = nil
+                secondarySection = .chat
+                return
+            }
+            handleNonChatSelection(newValue)
+            #endif
         })
         content = AnyView(content.onChange(of: primarySection) { _, _ in
             updateActiveSection()

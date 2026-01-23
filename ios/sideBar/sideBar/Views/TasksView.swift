@@ -155,12 +155,16 @@ extension TasksDetailView {
         ContentHeaderRow(
             iconName: state.titleIcon,
             title: state.selectionLabel,
-            subtitle: tasksCountLabel(for: state),
+            subtitle: nil,
             titleLineLimit: 1,
             subtitleLineLimit: 1,
-            titleLayoutPriority: 0,
-            subtitleLayoutPriority: 1
-        )
+            titleLayoutPriority: 1,
+            subtitleLayoutPriority: 0
+        ) {
+            Text(tasksCountLabel(for: state))
+                .font(.caption)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+        }
         .padding(DesignTokens.Spacing.md)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
     }
@@ -186,7 +190,7 @@ extension TasksDetailView {
             )
         } else {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                     ForEach(state.sections) { section in
                         if !section.title.isEmpty {
                             Text(section.title)
@@ -216,6 +220,8 @@ extension TasksDetailView {
                 }
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.lg)
+                .frame(maxWidth: DesignTokens.Size.contentMaxWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
             }
         }
     }
