@@ -237,7 +237,6 @@ class TaskService:
         area_id: str | None = None,
         notes: str | None = None,
         deadline: date | None = None,
-        scheduled_date: date | None = None,
         recurrence_rule: dict[str, Any] | None = None,
         repeating: bool = False,
         repeat_template: bool = False,
@@ -255,7 +254,6 @@ class TaskService:
             area_id=parse_optional_uuid(area_id, "task area", "id"),
             notes=notes,
             deadline=deadline,
-            scheduled_date=scheduled_date,
             recurrence_rule=recurrence_rule,
             repeating=repeating,
             repeat_template=repeat_template,
@@ -313,7 +311,6 @@ class TaskService:
             query = base_query.filter(
                 Task.status != "someday",
                 or_(
-                    Task.scheduled_date == today,
                     Task.deadline <= today,
                 ),
             )
@@ -321,7 +318,6 @@ class TaskService:
             query = base_query.filter(
                 Task.status != "someday",
                 or_(
-                    Task.scheduled_date > today,
                     Task.deadline > today,
                 ),
             )
@@ -416,7 +412,6 @@ class TaskService:
             .filter(
                 base.c.status != "someday",
                 or_(
-                    base.c.scheduled_date == today,
                     base.c.deadline <= today,
                 ),
             )
@@ -429,7 +424,6 @@ class TaskService:
             .filter(
                 base.c.status != "someday",
                 or_(
-                    base.c.scheduled_date > today,
                     base.c.deadline > today,
                 ),
             )
@@ -482,7 +476,6 @@ class TaskService:
         area_id: str | None = None,
         notes: str | None = None,
         deadline: date | None = None,
-        scheduled_date: date | None = None,
         recurrence_rule: dict[str, Any] | None = None,
         repeating: bool | None = None,
         repeat_template: bool | None = None,
@@ -503,8 +496,6 @@ class TaskService:
             task.notes = notes
         if deadline is not None:
             task.deadline = deadline
-        if scheduled_date is not None:
-            task.scheduled_date = scheduled_date
         if recurrence_rule is not None:
             task.recurrence_rule = recurrence_rule
             flag_modified(task, "recurrence_rule")
@@ -564,8 +555,6 @@ class TaskService:
         if recurrence_rule and anchor_date:
             if task.deadline is None:
                 task.deadline = anchor_date
-            if task.scheduled_date is None:
-                task.scheduled_date = anchor_date
             if task.id == template.id:
                 task.updated_at = now
 
@@ -576,7 +565,6 @@ class TaskService:
         """Clear due and scheduled dates for a task."""
         task = TaskService.get_task(db, user_id, task_id)
         task.deadline = None
-        task.scheduled_date = None
         task.updated_at = datetime.now(UTC)
         return task
 
