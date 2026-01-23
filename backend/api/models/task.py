@@ -37,16 +37,15 @@ class Task(Base):
         Index("idx_tasks_area_id", "area_id"),
         Index("idx_tasks_status", "status"),
         Index("idx_tasks_deadline", "deadline"),
-        Index("idx_tasks_scheduled_date", "scheduled_date"),
         Index("idx_tasks_completed_at", "completed_at"),
         Index("idx_tasks_next_instance_date", "next_instance_date"),
         Index("idx_tasks_deleted_at", "deleted_at"),
         Index("idx_tasks_repeat_template_id", "repeat_template_id"),
         Index("idx_tasks_user_status", "user_id", "status"),
         Index(
-            "uq_tasks_repeat_template_date",
+            "uq_tasks_repeat_template_deadline",
             "repeat_template_id",
-            "scheduled_date",
+            "deadline",
             unique=True,
             postgresql_where=text("repeat_template_id IS NOT NULL"),
         ),
@@ -69,7 +68,6 @@ class Task(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, default="inbox")
 
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
-    scheduled_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     repeating: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     repeat_template: Mapped[bool] = mapped_column(

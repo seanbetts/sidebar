@@ -19,7 +19,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 def _task_payload(task) -> dict:
-    deadline = task.deadline or task.scheduled_date
+    deadline = task.deadline
     next_instance = RecurrenceService.next_instance_date(task)
     return {
         "id": str(task.id),

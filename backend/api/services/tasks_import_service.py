@@ -133,6 +133,8 @@ class TasksImportService:
             scheduled_date = TasksImportService._parse_date(
                 task_data.get("scheduledDate")
             )
+            if deadline is None and scheduled_date is not None:
+                deadline = scheduled_date
             recurrence_rule = task_data.get("recurrenceRule")
             repeat_template = bool(task_data.get("repeatTemplate"))
             project_id = task_data.get("projectId")
@@ -145,7 +147,6 @@ class TasksImportService:
                 existing_task.status = status
                 existing_task.notes = task_data.get("notes")
                 existing_task.deadline = deadline
-                existing_task.scheduled_date = scheduled_date
                 existing_task.project_id = task_project.id if task_project else None
                 existing_task.area_id = task_area.id if task_area else None
                 existing_task.updated_at = updated_at or now
@@ -163,7 +164,6 @@ class TasksImportService:
                     notes=task_data.get("notes"),
                     status=status,
                     deadline=deadline,
-                    scheduled_date=scheduled_date,
                     repeating=bool(task_data.get("repeating")),
                     repeat_template=repeat_template,
                     repeat_template_id=None,

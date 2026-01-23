@@ -18,7 +18,7 @@ class RecurrenceService:
         """Calculate the next instance date for a repeating task."""
         if not task.recurrence_rule or not task.repeating:
             return None
-        anchor = base_date or task.scheduled_date or task.deadline or date.today()
+        anchor = base_date or task.deadline or date.today()
         return RecurrenceService.calculate_next_occurrence(task.recurrence_rule, anchor)
 
     @staticmethod
@@ -71,7 +71,7 @@ class RecurrenceService:
             return None
 
         completed_at = task.completed_at.date() if task.completed_at else date.today()
-        anchor_date = task.scheduled_date or task.deadline or completed_at
+        anchor_date = task.deadline or completed_at
         next_date = RecurrenceService.calculate_next_occurrence(
             task.recurrence_rule, anchor_date
         )
@@ -81,7 +81,7 @@ class RecurrenceService:
             db.query(Task)
             .filter(
                 Task.repeat_template_id == template_id,
-                Task.scheduled_date == next_date,
+                Task.deadline == next_date,
                 Task.deleted_at.is_(None),
             )
             .one_or_none()
@@ -98,7 +98,6 @@ class RecurrenceService:
             notes=task.notes,
             status="inbox",
             deadline=next_date,
-            scheduled_date=next_date,
             repeating=True,
             repeat_template=False,
             repeat_template_id=template_id,
