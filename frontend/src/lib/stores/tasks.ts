@@ -431,9 +431,11 @@ function createTasksStore() {
 				handleSyncResponse(response);
 				if (currentTask?.repeating && response?.nextTasks?.length) {
 					update((state) => {
-						const mergedTasks = state.tasks.map((task) =>
-							task.id === taskId ? response.nextTasks[0] : task
-						);
+						const nextTask = response.nextTasks[0];
+						const baseTasks = state.tasks.filter((task) => task.id !== taskId);
+						const mergedTasks = baseTasks.some((task) => task.id === nextTask.id)
+							? baseTasks.map((task) => (task.id === nextTask.id ? nextTask : task))
+							: [...baseTasks, nextTask];
 						const nextTasks = filterTasksForSelection(mergedTasks, state.selection);
 						setCachedData(tasksCacheKey(state.selection), nextTasks, {
 							ttl: CACHE_TTL,
