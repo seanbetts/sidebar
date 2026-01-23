@@ -56,6 +56,9 @@ const titleForSort = (task: Task) => (task.title ?? '').toLowerCase();
 const compareByDueThenTitle = (a: Task, b: Task) => {
 	const dateA = parseTaskDate(a);
 	const dateB = parseTaskDate(b);
+	if (a.isPreview !== b.isPreview) {
+		return a.isPreview ? 1 : -1;
+	}
 	if (!dateA && !dateB) return titleForSort(a).localeCompare(titleForSort(b));
 	if (!dateA) return 1;
 	if (!dateB) return -1;
