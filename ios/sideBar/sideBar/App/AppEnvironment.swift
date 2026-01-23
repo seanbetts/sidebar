@@ -26,6 +26,7 @@ public final class AppEnvironment: ObservableObject {
     public let notesEditorViewModel: NotesEditorViewModel
     public let ingestionViewModel: IngestionViewModel
     public let websitesViewModel: WebsitesViewModel
+    public let tasksViewModel: TasksViewModel
     public let memoriesViewModel: MemoriesViewModel
     public let settingsViewModel: SettingsViewModel
     public let weatherViewModel: WeatherViewModel
@@ -79,6 +80,7 @@ public final class AppEnvironment: ObservableObject {
         self.notesEditorViewModel = dependencies.notesEditorViewModel
         self.ingestionViewModel = dependencies.ingestionViewModel
         self.websitesViewModel = dependencies.websitesViewModel
+        self.tasksViewModel = dependencies.tasksViewModel
         self.memoriesViewModel = dependencies.memoriesViewModel
         self.settingsViewModel = dependencies.settingsViewModel
         self.weatherViewModel = dependencies.weatherViewModel
@@ -130,6 +132,7 @@ public final class AppEnvironment: ObservableObject {
         let notesEditorViewModel: NotesEditorViewModel
         let ingestionViewModel: IngestionViewModel
         let websitesViewModel: WebsitesViewModel
+        let tasksViewModel: TasksViewModel
         let memoriesViewModel: MemoriesViewModel
         let settingsViewModel: SettingsViewModel
         let weatherViewModel: WeatherViewModel
@@ -147,7 +150,7 @@ public final class AppEnvironment: ObservableObject {
         let notesStore = NotesStore(api: container.notesAPI, cache: container.cacheClient)
         let websitesStore = WebsitesStore(api: container.websitesAPI, cache: container.cacheClient)
         let ingestionStore = IngestionStore(api: container.ingestionAPI, cache: container.cacheClient)
-        let tasksStore = TasksStore()
+        let tasksStore = TasksStore(api: container.tasksAPI, cache: container.cacheClient)
         let scratchpadStore = ScratchpadStore()
         let toastCenter = ToastCenter()
         let chatViewModel = ChatViewModel(
@@ -179,6 +182,7 @@ public final class AppEnvironment: ObservableObject {
             uploadManager: IngestionUploadManager(config: container.apiClient.config)
         )
         let websitesViewModel = WebsitesViewModel(api: container.websitesAPI, store: websitesStore)
+        let tasksViewModel = TasksViewModel(api: container.tasksAPI, store: tasksStore, toastCenter: toastCenter)
         let memoriesViewModel = MemoriesViewModel(api: container.memoriesAPI, cache: container.cacheClient)
         let settingsViewModel = SettingsViewModel(
             settingsAPI: container.settingsAPI,
@@ -203,6 +207,7 @@ public final class AppEnvironment: ObservableObject {
             notesEditorViewModel: notesEditorViewModel,
             ingestionViewModel: ingestionViewModel,
             websitesViewModel: websitesViewModel,
+            tasksViewModel: tasksViewModel,
             memoriesViewModel: memoriesViewModel,
             settingsViewModel: settingsViewModel,
             weatherViewModel: weatherViewModel,
@@ -435,6 +440,8 @@ extension AppEnvironment {
             await notesViewModel.loadTree()
             await websitesViewModel.load()
             await ingestionViewModel.load()
+            await tasksViewModel.load(selection: tasksViewModel.selection, force: true)
+            await tasksViewModel.loadCounts(force: true)
         }
     }
 }

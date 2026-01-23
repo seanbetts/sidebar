@@ -18,6 +18,7 @@ public final class ServiceContainer {
     public let weatherAPI: WeatherAPI
     public let placesAPI: PlacesAPI
     public let scratchpadAPI: ScratchpadAPI
+    public let tasksAPI: TasksAPI
 
     public init(config: EnvironmentConfig, authSession: AuthSession, cacheClient: CacheClient) {
         self.config = config
@@ -40,6 +41,7 @@ public final class ServiceContainer {
         self.weatherAPI = WeatherAPI(client: apiClient)
         self.placesAPI = PlacesAPI(client: apiClient)
         self.scratchpadAPI = ScratchpadAPI(client: apiClient)
+        self.tasksAPI = TasksAPI(client: apiClient)
     }
 
     public func makeChatStreamClient(handler: ChatStreamEventHandler?) -> ChatStreamClient {

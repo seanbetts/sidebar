@@ -3,16 +3,134 @@ import Combine
 
 // MARK: - TasksStore
 
-/// Placeholder store for tasks feature.
-///
-/// Reserved for future implementation of task list management.
-/// Currently provides empty reset functionality for app state cleanup.
 @MainActor
 public final class TasksStore: ObservableObject {
-    // TODO: Wire task list + detail once TasksViewModel is implemented.
-    public init() {
+    @Published public private(set) var selection: TaskSelection = .today
+    @Published public private(set) var tasks: [TaskItem] = []
+    @Published public private(set) var areas: [TaskArea] = []
+    @Published public private(set) var projects: [TaskProject] = []
+    @Published public private(set) var counts: TaskCountsResponse? = nil
+    @Published public private(set) var isLoading: Bool = false
+    @Published public private(set) var searchPending: Bool = false
+    @Published public private(set) var errorMessage: String? = nil
+
+    private let api: any TasksProviding
+    private let cache: CacheClient
+
+    public init(api: any TasksProviding, cache: CacheClient) {
+        self.api = api
+        self.cache = cache
+    }
+
+    public func load(selection: TaskSelection, force: Bool = false) async {
+        self.selection = selection
+        errorMessage = nil
+        if selection.isSearch {
+            searchPending = true
+        } else {
+            isLoading = true
+        }
+        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
+        if !force, let cached: TaskListResponse = cache.get(key: cacheKey) {
+            apply(list: cached, persist: false)
+            Task { [weak self] in
+                await self?.refresh(selection: selection)
+            }
+            finishLoading(isSearch: selection.isSearch)
+            return
+        }
+        await refresh(selection: selection)
+        finishLoading(isSearch: selection.isSearch)
+    }
+
+    public func loadCounts(force: Bool = false) async {
+        errorMessage = nil
+        if !force, let cached: TaskCountsResponse = cache.get(key: CacheKeys.tasksCounts) {
+            counts = cached
+            Task { [weak self] in
+                await self?.refreshCounts()
+            }
+            return
+        }
+        await refreshCounts()
     }
 
     public func reset() {
+        selection = .today
+        tasks = []
+        areas = []
+        projects = []
+        counts = nil
+        isLoading = false
+        searchPending = false
+        errorMessage = nil
+    }
+
+    private func refresh(selection: TaskSelection) async {
+        do {
+            let response = try await fetch(selection: selection)
+            apply(list: response, persist: true)
+        } catch {
+            if tasks.isEmpty {
+                errorMessage = ErrorMapping.message(for: error)
+            }
+        }
+    }
+
+    private func refreshCounts() async {
+        do {
+            let response = try await api.counts()
+            counts = response
+            cache.set(key: CacheKeys.tasksCounts, value: response, ttlSeconds: CachePolicy.tasksCounts)
+        } catch {
+            // Ignore counts refresh failures; keep last known counts.
+        }
+    }
+
+    private func fetch(selection: TaskSelection) async throws -> TaskListResponse {
+        switch selection {
+        case .search(let query):
+            return try await api.search(query: query)
+        case .area(let id):
+            return try await api.areaTasks(areaId: id)
+        case .project(let id):
+            return try await api.projectTasks(projectId: id)
+        case .inbox, .today, .upcoming:
+            guard let scope = selection.scope else {
+                throw APIClientError.invalidUrl
+            }
+            return try await api.list(scope: scope)
+        }
+    }
+
+    private func apply(list: TaskListResponse, persist: Bool) {
+        tasks = list.tasks
+        if let areas = list.areas {
+            self.areas = areas
+        }
+        if let projects = list.projects {
+            self.projects = projects
+        }
+        if persist {
+            let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
+            cache.set(key: cacheKey, value: list, ttlSeconds: CachePolicy.tasksList)
+        }
+    }
+
+    private func finishLoading(isSearch: Bool) {
+        if isSearch {
+            searchPending = false
+        } else {
+            isLoading = false
+        }
+    }
+}
+
+private extension TaskSelection {
+    var isSearch: Bool {
+        if case .search = self {
+            return true
+        }
+        return false
     }
 }
