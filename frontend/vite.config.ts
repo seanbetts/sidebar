@@ -21,6 +21,7 @@ export default defineConfig({
 		},
 		coverage: {
 			include: ['src/lib/stores/*.ts', 'src/lib/stores/chat/**', 'src/lib/services/**'],
+			exclude: ['src/lib/stores/tasks-types.ts'],
 			reporter: ['text', 'html'],
 			provider: 'v8',
 			thresholds: {
