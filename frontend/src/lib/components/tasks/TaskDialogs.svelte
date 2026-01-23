@@ -176,7 +176,7 @@
 					<label class="task-repeat-label" for="repeat-start">Start date</label>
 					<input
 						id="repeat-start"
-						class="task-repeat-input"
+						class="task-repeat-input task-repeat-input--date"
 						type="date"
 						bind:value={repeatStartDate}
 					/>
@@ -288,6 +288,16 @@
 
 	.task-repeat-input {
 		width: 120px;
+	}
+
+	.task-repeat-input--date {
+		width: 180px;
+	}
+
+	:global(.dark) .task-date-input::-webkit-calendar-picker-indicator,
+	:global(.dark) .task-repeat-input--date::-webkit-calendar-picker-indicator {
+		filter: invert(1);
+		opacity: 0.85;
 	}
 
 	.task-repeat-select {
