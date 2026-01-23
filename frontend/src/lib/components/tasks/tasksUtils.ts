@@ -93,6 +93,23 @@ export const recurrenceLabel = (task: Task): string | null => {
 	return null;
 };
 
+export const expandRepeatingTasks = (tasks: Task[]): Task[] => {
+	const expanded: Task[] = [];
+	tasks.forEach((task) => {
+		expanded.push(task);
+		if (task.repeating && task.nextInstanceDate) {
+			expanded.push({
+				...task,
+				id: `${task.id}-next`,
+				deadline: task.nextInstanceDate,
+				repeatTemplate: true,
+				isPreview: true
+			});
+		}
+	});
+	return expanded;
+};
+
 export const buildTodaySections = (
 	tasks: Task[],
 	areas: TaskArea[],

@@ -14,6 +14,14 @@ class RecurrenceService:
     """Service for recurrence computations and task duplication."""
 
     @staticmethod
+    def next_instance_date(task: Task, *, base_date: date | None = None) -> date | None:
+        """Calculate the next instance date for a repeating task."""
+        if not task.recurrence_rule or not task.repeating:
+            return None
+        anchor = base_date or task.scheduled_date or task.deadline or date.today()
+        return RecurrenceService.calculate_next_occurrence(task.recurrence_rule, anchor)
+
+    @staticmethod
     def calculate_next_occurrence(rule: dict, from_date: date) -> date:
         """Calculate the next occurrence date for a recurrence rule.
 

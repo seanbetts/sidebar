@@ -9,6 +9,7 @@ from api.auth import verify_bearer_token
 from api.db.dependencies import get_current_user_id
 from api.db.session import SessionLocal, get_db, set_session_user_id
 from api.exceptions import BadRequestError
+from api.services.recurrence_service import RecurrenceService
 from api.services.task_service import TaskService
 from api.services.task_sync_service import TaskSyncService
 from api.services.tasks_snapshot_service import TasksSnapshotService
@@ -19,6 +20,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 def _task_payload(task) -> dict:
     deadline = task.deadline or task.scheduled_date
+    next_instance = RecurrenceService.next_instance_date(task)
     return {
         "id": str(task.id),
         "title": task.title,
@@ -30,6 +32,7 @@ def _task_payload(task) -> dict:
         "repeating": task.repeating,
         "repeatTemplate": task.repeat_template,
         "recurrenceRule": task.recurrence_rule,
+        "nextInstanceDate": next_instance.isoformat() if next_instance else None,
         "updatedAt": task.updated_at.isoformat() if task.updated_at else None,
     }
 
