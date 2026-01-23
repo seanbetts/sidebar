@@ -119,19 +119,30 @@
 						</div>
 					</div>
 					<div class="task-right">
-						{#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
-							<span class="due-pill" title={recurrenceLabel(task) ?? ''}>
-								{dueLabel(task) ?? 'No Date'}
-								{#if recurrenceLabel(task)}
-									<span class="due-pill-icon">
+						<div
+							class="task-menu-wrap"
+							class:repeat-actions={!!recurrenceLabel(task) ||
+								selectionType === 'area' ||
+								selectionType === 'project' ||
+								selectionType === 'search'}
+						>
+							{#if recurrenceLabel(task)}
+								<span class="repeat-pill">
+									<span class="repeat-pill-icon">
 										<Repeat size={10} />
 									</span>
-								{/if}
-							</span>
-						{/if}
-						<div class="task-menu-wrap" class:repeat-actions={!!recurrenceLabel(task)}>
-							{#if recurrenceLabel(task)}
-								<span class="repeat-pill">{recurrenceLabel(task)}</span>
+									{recurrenceLabel(task)}
+								</span>
+							{/if}
+							{#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
+								<span class="due-pill">
+									{dueLabel(task) ?? 'No Date'}
+									{#if recurrenceLabel(task) && !task.repeating}
+										<span class="due-pill-icon">
+											<Repeat size={10} />
+										</span>
+									{/if}
+								</span>
 							{/if}
 							<DropdownMenu>
 								<DropdownMenuTrigger
@@ -389,6 +400,12 @@
 		will-change: transform;
 	}
 
+	.repeat-pill-icon {
+		display: inline-flex;
+		align-items: center;
+		margin-right: 0.25rem;
+	}
+
 	.repeat-actions {
 		position: relative;
 		display: inline-flex;
@@ -399,10 +416,16 @@
 	.task-menu-wrap {
 		display: inline-flex;
 		align-items: center;
+		gap: 0.35rem;
 	}
 
 	.repeat-actions:hover .repeat-pill,
 	.repeat-actions:focus-within .repeat-pill {
+		transform: translateX(-40px);
+	}
+
+	.repeat-actions:hover .due-pill,
+	.repeat-actions:focus-within .due-pill {
 		transform: translateX(-40px);
 	}
 
@@ -416,6 +439,8 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
+		transition: transform 180ms ease;
+		will-change: transform;
 	}
 
 	.due-pill-icon {
