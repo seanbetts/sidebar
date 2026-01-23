@@ -537,13 +537,15 @@
 		padding: 0;
 		gap: 1rem;
 		overflow: hidden;
+		box-sizing: border-box;
+		padding-bottom: 1rem;
 	}
 
 	.tasks-scroll {
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
-		padding-bottom: 1rem;
+		padding-bottom: 0;
 	}
 
 	.tasks-conflict-banner {
