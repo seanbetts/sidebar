@@ -319,6 +319,7 @@ class TaskService:
                 Task.status != "someday",
                 or_(
                     Task.deadline > today,
+                    Task.deadline.is_(None),
                 ),
             )
         elif scope == "inbox":
@@ -425,6 +426,7 @@ class TaskService:
                 base.c.status != "someday",
                 or_(
                     base.c.deadline > today,
+                    base.c.deadline.is_(None),
                 ),
             )
             .scalar()

@@ -48,9 +48,16 @@ struct TaskPanelRow: View, Equatable {
                     .lineLimit(1)
                 Spacer()
                 if let count {
-                    Text("\(count)")
-                        .font(.caption)
-                        .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
+                    if count == 0 {
+                        Image(systemName: "checkmark")
+                            .font(.caption)
+                            .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
+                            .accessibilityLabel("No tasks")
+                    } else {
+                        Text("\(count)")
+                            .font(.caption)
+                            .foregroundStyle(isSelected ? selectedSecondaryText : secondaryTextColor)
+                    }
                 }
             }
         }

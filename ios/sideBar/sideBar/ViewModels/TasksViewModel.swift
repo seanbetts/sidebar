@@ -24,23 +24,27 @@ public final class TasksViewModel: ObservableObject {
     private var lastNonSearchSelection: TaskSelection = .today
 
     public var viewState: TasksViewState {
-        let projectIds = Set(projects.map { $0.id })
         let filteredTasks = tasks.filter { $0.status != "project" }
         let expanded = TasksUtils.expandRepeatingTasks(filteredTasks)
-        let visibleTasks: [TaskItem]
-        switch selection {
-        case .area, .search:
-            visibleTasks = expanded.filter { !projectIds.contains($0.id) }
-        default:
-            visibleTasks = expanded
-        }
 
         let sortedTasks: [TaskItem]
         switch selection {
-        case .area, .project, .search:
-            sortedTasks = TasksUtils.sortByDueDate(visibleTasks)
+        case .area(let areaId):
+            let projectIds = Set(projects.filter { $0.areaId == areaId }.map { $0.id })
+            let scoped = expanded.filter { task in
+                if let projectId = task.projectId {
+                    return projectIds.isEmpty || projectIds.contains(projectId)
+                }
+                return task.areaId == areaId || projectIds.isEmpty
+            }
+            sortedTasks = TasksUtils.sortByDueDate(scoped)
+        case .project(let projectId):
+            let scoped = expanded.filter { $0.projectId == projectId }
+            sortedTasks = TasksUtils.sortByDueDate(scoped)
+        case .search:
+            sortedTasks = TasksUtils.sortByDueDate(expanded)
         default:
-            sortedTasks = visibleTasks
+            sortedTasks = expanded
         }
 
         let projectTitleById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.title) })

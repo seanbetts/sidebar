@@ -97,9 +97,7 @@ extension TasksPanelView {
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.isLoading && viewModel.tasks.isEmpty {
-            SidebarListSkeleton(rowCount: 8, showSubtitle: false)
-        } else if let error = viewModel.errorMessage {
+        if let error = viewModel.errorMessage {
             SidebarPanelPlaceholder(
                 title: "Unable to load tasks",
                 subtitle: error,
@@ -109,18 +107,12 @@ extension TasksPanelView {
             }
         } else {
             List {
-                Section("Lists") {
+                Section {
                     tasksListRow(
                         title: "Today",
                         iconName: "calendar",
                         count: viewModel.counts?.counts.today,
                         selection: .today
-                    )
-                    tasksListRow(
-                        title: "Inbox",
-                        iconName: "tray",
-                        count: viewModel.counts?.counts.inbox,
-                        selection: .inbox
                     )
                     tasksListRow(
                         title: "Upcoming",
@@ -130,14 +122,12 @@ extension TasksPanelView {
                     )
                 }
 
-                if areasSorted.isEmpty {
-                    Section("Areas") {
+                Section {
+                    if areasSorted.isEmpty {
                         Text("No areas")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                    }
-                } else {
-                    Section("Areas") {
+                    } else {
                         ForEach(areasSorted, id: \.id) { area in
                             tasksListRow(
                                 title: area.title,
@@ -222,11 +212,23 @@ extension TasksPanelView {
     }
 
     private var areaCounts: [String: Int] {
-        Dictionary(uniqueKeysWithValues: (viewModel.counts?.areas ?? []).map { ($0.id, $0.count) })
+        var counts = Dictionary(uniqueKeysWithValues: (viewModel.counts?.areas ?? []).map { ($0.id, $0.count) })
+        viewModel.areas.forEach { area in
+            if counts[area.id] == nil {
+                counts[area.id] = 0
+            }
+        }
+        return counts
     }
 
     private var projectCounts: [String: Int] {
-        Dictionary(uniqueKeysWithValues: (viewModel.counts?.projects ?? []).map { ($0.id, $0.count) })
+        var counts = Dictionary(uniqueKeysWithValues: (viewModel.counts?.projects ?? []).map { ($0.id, $0.count) })
+        viewModel.projects.forEach { project in
+            if counts[project.id] == nil {
+                counts[project.id] = 0
+            }
+        }
+        return counts
     }
 
     private var panelBackground: Color {
