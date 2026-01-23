@@ -448,15 +448,17 @@ class TaskService:
             .group_by(Task.project_id)
             .all()
         )
+        area_id = func.coalesce(Task.area_id, TaskProject.area_id)
         area_counts = (
-            db.query(Task.area_id, func.count(Task.id))
+            db.query(area_id, func.count(Task.id))
+            .outerjoin(TaskProject, Task.project_id == TaskProject.id)
             .filter(
                 Task.user_id == user_id,
                 Task.deleted_at.is_(None),
                 Task.status.notin_(["completed", "trashed"]),
-                Task.area_id.isnot(None),
+                area_id.isnot(None),
             )
-            .group_by(Task.area_id)
+            .group_by(area_id)
             .all()
         )
 

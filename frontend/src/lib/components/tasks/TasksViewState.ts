@@ -114,7 +114,10 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 		sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
 	}
 
-	const totalCount = sections.reduce((sum, section) => sum + section.tasks.length, 0);
+	const totalCount = sections.reduce(
+		(sum, section) => sum + section.tasks.filter((task) => !task.isPreview).length,
+		0
+	);
 	const hasLoaded = !isLoading;
 	const showDraft = Boolean(newTaskDraft && isSameSelection(selection, newTaskDraft.selection));
 
