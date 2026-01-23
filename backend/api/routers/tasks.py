@@ -18,20 +18,18 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 def _task_payload(task) -> dict:
-    deadline_start = task.deadline_start or task.scheduled_date
+    deadline = task.deadline or task.scheduled_date
     return {
         "id": str(task.id),
         "title": task.title,
         "status": task.status,
-        "deadline": task.deadline.isoformat() if task.deadline else None,
-        "deadlineStart": deadline_start.isoformat() if deadline_start else None,
+        "deadline": deadline.isoformat() if deadline else None,
         "notes": task.notes,
         "projectId": str(task.project_id) if task.project_id else None,
         "areaId": str(task.area_id) if task.area_id else None,
         "repeating": task.repeating,
         "repeatTemplate": task.repeat_template,
         "recurrenceRule": task.recurrence_rule,
-        "tags": task.tags or [],
         "updatedAt": task.updated_at.isoformat() if task.updated_at else None,
     }
 

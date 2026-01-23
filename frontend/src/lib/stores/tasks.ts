@@ -468,7 +468,7 @@ function createTasksStore() {
 					id: tempId,
 					title,
 					status: 'open',
-					deadlineStart: dueDate,
+					deadline: dueDate,
 					notes: payload.notes?.trim() ?? '',
 					projectId: project?.id ?? null,
 					areaId: project?.areaId ?? area?.id ?? null
@@ -796,7 +796,7 @@ function createTasksStore() {
 			if (currentTask) {
 				const updatedTask: Task = {
 					...currentTask,
-					deadlineStart: dueDate
+					deadline: dueDate
 				};
 				updateTaskCaches({
 					taskId,

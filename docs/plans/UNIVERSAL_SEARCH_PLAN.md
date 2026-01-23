@@ -1267,7 +1267,7 @@ async def execute_search_local_knowledge(
 
 | Type | FTS | Vector | Metadata | Special Features |
 |------|-----|--------|----------|------------------|
-| **Notes** | ✅ | ✅ | Folder, tags | Scratchpad excluded by default |
+| **Notes** | ✅ | ✅ | Folder | Scratchpad excluded by default |
 | **Websites** | ✅ | ✅ | Domain, URL | Published date in citation |
 | **Files** | ✅ | ❌ | Path, type | Search ai_md derivatives |
 | **Conversations** | ✅ | ❌ | Message count | Search in JSONB messages |

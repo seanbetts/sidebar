@@ -72,13 +72,11 @@ Response (example):
       "title": "Do the thing",
       "status": "inbox",
       "deadline": "2026-01-22",
-      "deadlineStart": "2026-01-22",
       "notes": "Optional",
       "projectId": "uuid",
       "areaId": "uuid",
       "repeating": false,
       "repeatTemplate": false,
-      "tags": [],
       "updatedAt": "2026-01-22T10:14:00Z"
     }
   ],

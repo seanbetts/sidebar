@@ -75,7 +75,6 @@ def upgrade() -> None:
         sa.Column("deadline", sa.Date(), nullable=True),
         sa.Column("deadline_start", sa.Date(), nullable=True),
         sa.Column("scheduled_date", sa.Date(), nullable=True),
-        sa.Column("tags", postgresql.JSONB(), nullable=True),
         sa.Column("repeating", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column(
             "repeat_template",
@@ -109,12 +108,6 @@ def upgrade() -> None:
     op.create_index("idx_tasks_next_instance_date", "tasks", ["next_instance_date"])
     op.create_index("idx_tasks_deleted_at", "tasks", ["deleted_at"])
     op.create_index("idx_tasks_repeat_template_id", "tasks", ["repeat_template_id"])
-    op.create_index(
-        "idx_tasks_tags_gin",
-        "tasks",
-        ["tags"],
-        postgresql_using="gin",
-    )
     op.create_index("idx_tasks_user_status", "tasks", ["user_id", "status"])
     op.create_index(
         "uq_tasks_repeat_template_date",
@@ -171,7 +164,6 @@ def downgrade() -> None:
 
     op.drop_index("uq_tasks_repeat_template_date", table_name="tasks")
     op.drop_index("idx_tasks_user_status", table_name="tasks")
-    op.drop_index("idx_tasks_tags_gin", table_name="tasks")
     op.drop_index("idx_tasks_repeat_template_id", table_name="tasks")
     op.drop_index("idx_tasks_deleted_at", table_name="tasks")
     op.drop_index("idx_tasks_next_instance_date", table_name="tasks")

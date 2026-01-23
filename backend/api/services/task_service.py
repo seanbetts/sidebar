@@ -237,9 +237,7 @@ class TaskService:
         area_id: str | None = None,
         notes: str | None = None,
         deadline: date | None = None,
-        deadline_start: date | None = None,
         scheduled_date: date | None = None,
-        tags: list[str] | None = None,
         recurrence_rule: dict[str, Any] | None = None,
         repeating: bool = False,
         repeat_template: bool = False,
@@ -257,9 +255,7 @@ class TaskService:
             area_id=parse_optional_uuid(area_id, "task area", "id"),
             notes=notes,
             deadline=deadline,
-            deadline_start=deadline_start,
             scheduled_date=scheduled_date,
-            tags=tags or [],
             recurrence_rule=recurrence_rule,
             repeating=repeating,
             repeat_template=repeat_template,
@@ -319,7 +315,6 @@ class TaskService:
                 or_(
                     Task.scheduled_date == today,
                     Task.deadline <= today,
-                    Task.deadline_start <= today,
                 ),
             )
         elif scope == "upcoming":
@@ -328,7 +323,6 @@ class TaskService:
                 or_(
                     Task.scheduled_date > today,
                     Task.deadline > today,
-                    Task.deadline_start > today,
                 ),
             )
         elif scope == "inbox":
@@ -421,7 +415,6 @@ class TaskService:
                 or_(
                     base.c.scheduled_date == today,
                     base.c.deadline <= today,
-                    base.c.deadline_start <= today,
                 ),
             )
             .scalar()
@@ -435,7 +428,6 @@ class TaskService:
                 or_(
                     base.c.scheduled_date > today,
                     base.c.deadline > today,
-                    base.c.deadline_start > today,
                 ),
             )
             .scalar()
@@ -485,9 +477,7 @@ class TaskService:
         area_id: str | None = None,
         notes: str | None = None,
         deadline: date | None = None,
-        deadline_start: date | None = None,
         scheduled_date: date | None = None,
-        tags: list[str] | None = None,
         recurrence_rule: dict[str, Any] | None = None,
         repeating: bool | None = None,
         repeat_template: bool | None = None,
@@ -508,13 +498,8 @@ class TaskService:
             task.notes = notes
         if deadline is not None:
             task.deadline = deadline
-        if deadline_start is not None:
-            task.deadline_start = deadline_start
         if scheduled_date is not None:
             task.scheduled_date = scheduled_date
-        if tags is not None:
-            task.tags = tags
-            flag_modified(task, "tags")
         if recurrence_rule is not None:
             task.recurrence_rule = recurrence_rule
             flag_modified(task, "recurrence_rule")
