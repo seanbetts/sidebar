@@ -49,6 +49,15 @@
 
 	export let taskSubtitle: (task: Task) => string;
 	export let dueLabel: (task: Task) => string | null;
+
+	const formatRepeatLabel = (label: string | null) => {
+		if (!label) return null;
+		return label
+			.toLowerCase()
+			.split(' ')
+			.map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word))
+			.join(' ');
+	};
 </script>
 
 {#each sections as section}
@@ -58,6 +67,7 @@
 		{/if}
 		<ul class="tasks-list">
 			{#each section.tasks as task}
+				{@const repeatText = formatRepeatLabel(recurrenceLabel(task))}
 				<li class="tasks-task" class:completing={busyTasks.has(task.id)}>
 					<div class="task-left">
 						{#if task.isPreview}
@@ -121,27 +131,27 @@
 					<div class="task-right">
 						<div
 							class="task-menu-wrap"
-							class:repeat-actions={!!recurrenceLabel(task) ||
+							class:repeat-actions={!!repeatText ||
 								selectionType === 'area' ||
 								selectionType === 'project' ||
 								selectionType === 'search'}
 						>
-							{#if recurrenceLabel(task)}
-								<span class="repeat-pill">
-									<span class="repeat-pill-icon">
-										<Repeat size={10} />
-									</span>
-									{recurrenceLabel(task)}
-								</span>
-							{/if}
 							{#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
 								<span class="due-pill">
 									{dueLabel(task) ?? 'No Date'}
-									{#if recurrenceLabel(task) && !task.repeating}
+									{#if repeatText && !task.repeating}
 										<span class="due-pill-icon">
 											<Repeat size={10} />
 										</span>
 									{/if}
+								</span>
+							{/if}
+							{#if repeatText}
+								<span class="repeat-pill">
+									<span class="repeat-pill-icon">
+										<Repeat size={10} />
+									</span>
+									{repeatText}
 								</span>
 							{/if}
 							<DropdownMenu>
@@ -393,7 +403,6 @@
 		border: 1px solid var(--color-border);
 		background: var(--color-secondary);
 		font-size: 0.7rem;
-		text-transform: uppercase;
 		letter-spacing: 0.02em;
 		color: var(--color-muted-foreground);
 		transition: transform 180ms ease;
@@ -430,7 +439,7 @@
 	}
 
 	.due-pill {
-		font-size: 0.75rem;
+		font-size: 0.7rem;
 		padding: 0.15rem 0.5rem;
 		border-radius: 999px;
 		border: 1px solid var(--color-border);
