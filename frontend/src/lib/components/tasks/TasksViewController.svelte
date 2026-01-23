@@ -31,6 +31,13 @@
 	let moveTask: Task | null = null;
 	let moveListId = '';
 	let moveListName = '';
+	let showRepeatDialog = false;
+	let repeatTask: Task | null = null;
+	let repeatType: 'none' | 'daily' | 'weekly' | 'monthly' = 'daily';
+	let repeatInterval = '1';
+	let repeatWeekday = '1';
+	let repeatMonthDay = '1';
+	let repeatStartDate = '';
 	let showTrashDialog = false;
 	let trashTask: Task | null = null;
 	let renameInput: HTMLInputElement | null = null;
@@ -186,9 +193,59 @@
 		closeMoveDialog();
 	}
 
+	function openRepeatDialog(task: Task) {
+		repeatTask = task;
+		const rule = task.recurrenceRule;
+		if (rule?.type === 'daily' || rule?.type === 'weekly' || rule?.type === 'monthly') {
+			repeatType = rule.type;
+			repeatInterval = String(rule.interval ?? 1);
+			repeatWeekday = String(rule.weekday ?? new Date().getDay());
+			repeatMonthDay = String(rule.day_of_month ?? new Date().getDate());
+		} else {
+			repeatType = 'daily';
+			repeatInterval = '1';
+			repeatWeekday = String(new Date().getDay());
+			repeatMonthDay = String(new Date().getDate());
+		}
+		repeatStartDate = (getTaskDueDate(task) ?? formatDateKeyForToday()).slice(0, 10);
+		showRepeatDialog = true;
+	}
+
+	function closeRepeatDialog() {
+		showRepeatDialog = false;
+		repeatTask = null;
+		repeatStartDate = '';
+	}
+
+	async function saveRepeat() {
+		const task = repeatTask;
+		if (!task) return;
+		if (repeatType === 'none') {
+			await runTaskUpdate(task.id, () => tasksStore.setRepeat(task.id, null, null));
+			closeRepeatDialog();
+			return;
+		}
+		const interval = Math.max(1, Number.parseInt(repeatInterval, 10) || 1);
+		const rule = { type: repeatType, interval } as Task['recurrenceRule'];
+		if (repeatType === 'weekly') {
+			rule.weekday = Number.parseInt(repeatWeekday, 10) || 0;
+		}
+		if (repeatType === 'monthly') {
+			const day = Number.parseInt(repeatMonthDay, 10) || 1;
+			rule.day_of_month = Math.min(31, Math.max(1, day));
+		}
+		const startDate = repeatStartDate || formatDateKeyForToday();
+		await runTaskUpdate(task.id, () => tasksStore.setRepeat(task.id, rule, startDate));
+		closeRepeatDialog();
+	}
+
 	function openTrashDialog(task: Task) {
 		trashTask = task;
 		showTrashDialog = true;
+	}
+
+	async function handleClearDue(task: Task) {
+		await runTaskUpdate(task.id, () => tasksStore.clearDueDate(task.id));
 	}
 
 	function closeTrashDialog() {
@@ -358,6 +415,8 @@
 		onOpenNotes={openNotesDialog}
 		onOpenMove={openMoveDialog}
 		onOpenDue={openDueDialog}
+		onOpenRepeat={openRepeatDialog}
+		onClearDue={handleClearDue}
 		onOpenTrash={openTrashDialog}
 		onDefer={handleDefer}
 		onDeferToWeekday={handleDeferToWeekday}
@@ -386,6 +445,15 @@
 		onCloseMove={closeMoveDialog}
 		onMoveListChange={handleMoveListChange}
 		onCommitMove={commitMove}
+		bind:showRepeatDialog
+		{repeatTask}
+		bind:repeatType
+		bind:repeatInterval
+		bind:repeatWeekday
+		bind:repeatMonthDay
+		bind:repeatStartDate
+		onCloseRepeat={closeRepeatDialog}
+		onSaveRepeat={saveRepeat}
 		bind:showTrashDialog
 		{trashTask}
 		onCloseTrash={closeTrashDialog}

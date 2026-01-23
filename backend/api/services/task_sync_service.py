@@ -170,6 +170,8 @@ class TaskSyncService:
                 "trash",
                 "set_due",
                 "defer",
+                "clear_due",
+                "set_repeat",
             }:
                 client_updated_at = TaskSyncService._parse_datetime(
                     operation.get("client_updated_at"), field_name="client_updated_at"
@@ -225,6 +227,12 @@ class TaskSyncService:
             elif op in {"set_due", "defer"}:
                 task = TaskSyncService._apply_due_date(db, user_id, operation)
                 tasks.append(task)
+            elif op == "clear_due":
+                task = TaskSyncService._apply_clear_due(db, user_id, operation)
+                tasks.append(task)
+            elif op == "set_repeat":
+                updated = TaskSyncService._apply_repeat(db, user_id, operation)
+                tasks.extend(updated)
             else:
                 continue
 
@@ -411,6 +419,26 @@ class TaskSyncService:
             deadline=due_date,
             scheduled_date=scheduled_date,
         )
+
+    @staticmethod
+    def _apply_repeat(
+        db: Session, user_id: str, operation: dict[str, Any]
+    ) -> list[Task]:
+        rule = operation.get("recurrence_rule")
+        if rule is not None and not isinstance(rule, dict):
+            raise BadRequestError("Invalid recurrence rule")
+        anchor_date = TaskSyncService._parse_date(operation.get("start_date"))
+        return TaskService.set_task_recurrence(
+            db,
+            user_id,
+            operation["id"],
+            recurrence_rule=rule,
+            anchor_date=anchor_date,
+        )
+
+    @staticmethod
+    def _apply_clear_due(db: Session, user_id: str, operation: dict[str, Any]) -> Task:
+        return TaskService.clear_task_due(db, user_id, operation["id"])
 
     @staticmethod
     def _parse_date(value: Any) -> date | None:

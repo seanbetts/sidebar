@@ -33,6 +33,16 @@
 	export let onMoveListChange: (value: string) => void;
 	export let onCommitMove: () => void;
 
+	export let showRepeatDialog = false;
+	export let repeatTask: Task | null = null;
+	export let repeatType = 'daily';
+	export let repeatInterval = '1';
+	export let repeatWeekday = '1';
+	export let repeatMonthDay = '1';
+	export let repeatStartDate = '';
+	export let onCloseRepeat: () => void;
+	export let onSaveRepeat: () => void;
+
 	export let showTrashDialog = false;
 	export let trashTask: Task | null = null;
 	export let onCloseTrash: () => void;
@@ -104,6 +114,82 @@
 	</AlertDialogContent>
 </AlertDialog>
 
+<AlertDialog bind:open={showRepeatDialog}>
+	<AlertDialogContent class="task-repeat-dialog">
+		<AlertDialogHeader>
+			<AlertDialogTitle>Repeat task</AlertDialogTitle>
+			<AlertDialogDescription>
+				Adjust how often {repeatTask?.title ?? 'this task'} repeats.
+			</AlertDialogDescription>
+		</AlertDialogHeader>
+		<div class="task-repeat-fields">
+			<label class="task-repeat-label" for="repeat-type">Repeat</label>
+			<select id="repeat-type" class="task-repeat-select" bind:value={repeatType}>
+				<option value="none">Does not repeat</option>
+				<option value="daily">Daily</option>
+				<option value="weekly">Weekly</option>
+				<option value="monthly">Monthly</option>
+			</select>
+
+			{#if repeatType !== 'none'}
+				<div class="task-repeat-row">
+					<label class="task-repeat-label" for="repeat-interval">Every</label>
+					<input
+						id="repeat-interval"
+						class="task-repeat-input"
+						type="number"
+						min="1"
+						bind:value={repeatInterval}
+					/>
+					<span class="task-repeat-suffix">
+						{repeatType === 'daily' ? 'days' : repeatType === 'weekly' ? 'weeks' : 'months'}
+					</span>
+				</div>
+				{#if repeatType === 'weekly'}
+					<div class="task-repeat-row">
+						<label class="task-repeat-label" for="repeat-weekday">On</label>
+						<select id="repeat-weekday" class="task-repeat-select" bind:value={repeatWeekday}>
+							<option value="0">Sunday</option>
+							<option value="1">Monday</option>
+							<option value="2">Tuesday</option>
+							<option value="3">Wednesday</option>
+							<option value="4">Thursday</option>
+							<option value="5">Friday</option>
+							<option value="6">Saturday</option>
+						</select>
+					</div>
+				{/if}
+				{#if repeatType === 'monthly'}
+					<div class="task-repeat-row">
+						<label class="task-repeat-label" for="repeat-month-day">On day</label>
+						<input
+							id="repeat-month-day"
+							class="task-repeat-input"
+							type="number"
+							min="1"
+							max="31"
+							bind:value={repeatMonthDay}
+						/>
+					</div>
+				{/if}
+				<div class="task-repeat-row">
+					<label class="task-repeat-label" for="repeat-start">Start date</label>
+					<input
+						id="repeat-start"
+						class="task-repeat-input"
+						type="date"
+						bind:value={repeatStartDate}
+					/>
+				</div>
+			{/if}
+		</div>
+		<AlertDialogFooter>
+			<AlertDialogCancel onclick={onCloseRepeat}>Cancel</AlertDialogCancel>
+			<AlertDialogAction onclick={onSaveRepeat}>Save</AlertDialogAction>
+		</AlertDialogFooter>
+	</AlertDialogContent>
+</AlertDialog>
+
 <AlertDialog bind:open={showTrashDialog}>
 	<AlertDialogContent class="task-trash-dialog">
 		<AlertDialogHeader>
@@ -166,5 +252,50 @@
 		background-position: right 1rem center;
 		background-size: 0.9rem;
 		padding-right: 2.5rem;
+	}
+
+	:global(.task-repeat-dialog) {
+		max-width: 460px;
+	}
+
+	.task-repeat-fields {
+		display: grid;
+		gap: 0.75rem;
+		margin-top: 0.75rem;
+	}
+
+	.task-repeat-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.task-repeat-label {
+		min-width: 80px;
+		font-size: 0.8rem;
+		color: var(--color-muted-foreground);
+	}
+
+	.task-repeat-input,
+	.task-repeat-select {
+		border-radius: 0.5rem;
+		border: 1px solid var(--color-border);
+		background: transparent;
+		padding: 0.45rem 0.7rem;
+		color: var(--color-foreground);
+	}
+
+	.task-repeat-input {
+		width: 120px;
+	}
+
+	.task-repeat-select {
+		min-width: 180px;
+	}
+
+	.task-repeat-suffix {
+		font-size: 0.8rem;
+		color: var(--color-muted-foreground);
 	}
 </style>

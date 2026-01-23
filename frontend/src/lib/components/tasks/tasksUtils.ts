@@ -51,6 +51,18 @@ export const nextWeekday = (date: Date, targetDay: number): Date => {
 };
 
 const taskDeadline = (task: Task): string | null => task.deadline ?? null;
+const titleForSort = (task: Task) => (task.title ?? '').toLowerCase();
+
+const compareByDueThenTitle = (a: Task, b: Task) => {
+	const dateA = parseTaskDate(a);
+	const dateB = parseTaskDate(b);
+	if (!dateA && !dateB) return titleForSort(a).localeCompare(titleForSort(b));
+	if (!dateA) return 1;
+	if (!dateB) return -1;
+	const diff = dateA.getTime() - dateB.getTime();
+	if (diff !== 0) return diff;
+	return titleForSort(a).localeCompare(titleForSort(b));
+};
 
 const parseTaskDate = (task: Task): Date | null => {
 	const deadline = taskDeadline(task);
@@ -181,14 +193,7 @@ export const buildUpcomingSections = (tasks: Task[]): TaskSection[] => {
 	const weekly = new Map<number, TaskSection>();
 	const monthly = new Map<string, { date: Date; section: TaskSection }>();
 
-	const sorted = [...tasks].sort((a, b) => {
-		const dateA = parseTaskDate(a);
-		const dateB = parseTaskDate(b);
-		if (!dateA && !dateB) return 0;
-		if (!dateA) return 1;
-		if (!dateB) return -1;
-		return dateA.getTime() - dateB.getTime();
-	});
+	const sorted = [...tasks].sort(compareByDueThenTitle);
 
 	sorted.forEach((task) => {
 		const date = parseTaskDate(task);
@@ -258,16 +263,7 @@ export const buildUpcomingSections = (tasks: Task[]): TaskSection[] => {
 	return sections;
 };
 
-export const sortByDueDate = (tasks: Task[]): Task[] => {
-	return [...tasks].sort((a, b) => {
-		const dateA = parseTaskDate(a);
-		const dateB = parseTaskDate(b);
-		if (!dateA && !dateB) return 0;
-		if (!dateA) return 1;
-		if (!dateB) return -1;
-		return dateA.getTime() - dateB.getTime();
-	});
-};
+export const sortByDueDate = (tasks: Task[]): Task[] => [...tasks].sort(compareByDueThenTitle);
 
 export const taskSubtitle = (
 	task: Task,
