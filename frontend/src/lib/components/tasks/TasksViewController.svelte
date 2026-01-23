@@ -319,8 +319,8 @@
 	async function confirmTrash() {
 		const task = trashTask;
 		if (!task) return;
-		await runTaskUpdate(task.id, () => tasksStore.trashTask(task.id));
 		closeTrashDialog();
+		await runTaskUpdate(task.id, () => tasksStore.trashTask(task.id));
 	}
 
 	async function handleSetDueDate() {

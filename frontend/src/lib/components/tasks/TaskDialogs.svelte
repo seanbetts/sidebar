@@ -208,7 +208,11 @@
 		<AlertDialogHeader>
 			<AlertDialogTitle>Delete task</AlertDialogTitle>
 			<AlertDialogDescription>
-				Delete {trashTask?.title ?? 'this task'}? This will move it to the task trash.
+				{#if trashTask?.repeating}
+					Delete {trashTask?.title ?? 'this task'}? This will delete it and its repeats.
+				{:else}
+					Delete {trashTask?.title ?? 'this task'}? This will move it to the task trash.
+				{/if}
 			</AlertDialogDescription>
 		</AlertDialogHeader>
 		<AlertDialogFooter>
