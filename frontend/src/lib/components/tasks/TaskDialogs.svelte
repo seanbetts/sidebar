@@ -40,6 +40,9 @@
 	export let repeatWeekday = '1';
 	export let repeatMonthDay = '1';
 	export let repeatStartDate = '';
+	export let onRepeatWeekdayChange: (value: string) => void;
+	export let onRepeatMonthDayChange: (value: string) => void;
+	export let onRepeatStartDateChange: (value: string) => void;
 	export let onCloseRepeat: () => void;
 	export let onSaveRepeat: () => void;
 
@@ -148,7 +151,13 @@
 				{#if repeatType === 'weekly'}
 					<div class="task-repeat-row">
 						<label class="task-repeat-label" for="repeat-weekday">On</label>
-						<select id="repeat-weekday" class="task-repeat-select" bind:value={repeatWeekday}>
+						<select
+							id="repeat-weekday"
+							class="task-repeat-select"
+							bind:value={repeatWeekday}
+							onchange={(event) =>
+								onRepeatWeekdayChange((event.currentTarget as HTMLSelectElement).value)}
+						>
 							<option value="0">Sunday</option>
 							<option value="1">Monday</option>
 							<option value="2">Tuesday</option>
@@ -169,6 +178,8 @@
 							min="1"
 							max="31"
 							bind:value={repeatMonthDay}
+							onchange={(event) =>
+								onRepeatMonthDayChange((event.currentTarget as HTMLInputElement).value)}
 						/>
 					</div>
 				{/if}
@@ -179,6 +190,8 @@
 						class="task-repeat-input task-repeat-input--date"
 						type="date"
 						bind:value={repeatStartDate}
+						onchange={(event) =>
+							onRepeatStartDateChange((event.currentTarget as HTMLInputElement).value)}
 					/>
 				</div>
 			{/if}
@@ -301,7 +314,7 @@
 	}
 
 	.task-repeat-select {
-		min-width: 180px;
+		min-width: 150px;
 	}
 
 	.task-repeat-suffix {
