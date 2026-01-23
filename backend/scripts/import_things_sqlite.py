@@ -29,8 +29,9 @@ from db_env import setup_environment  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-REFERENCE_START_VALUE = 132782464
-REFERENCE_START_DATE = date(2026, 1, 23)
+REFERENCE_START_VALUE = 132783104
+REFERENCE_START_DATE = date(2026, 1, 24)
+REFERENCE_SCALE_SECONDS = 135
 
 
 @dataclass(frozen=True)
@@ -38,11 +39,15 @@ class StartDateConverter:
     """Convert Things start/deadline integers into dates."""
 
     base_datetime: datetime
+    scale_seconds: int
 
     def to_date(self, value: int | None) -> date | None:
         if value is None:
             return None
-        return (self.base_datetime + timedelta(seconds=int(value))).date()
+        return (
+            self.base_datetime
+            + timedelta(seconds=int(value) * self.scale_seconds)
+        ).date()
 
 
 def parse_bool(value: str | None) -> bool | None:
@@ -63,11 +68,11 @@ def iso_from_timestamp(value: float | int | None) -> str | None:
 
 
 def build_start_converter(
-    reference_value: int, reference_date: date
+    reference_value: int, reference_date: date, scale_seconds: int
 ) -> StartDateConverter:
     base = datetime.combine(reference_date, datetime.min.time(), tzinfo=timezone.utc)
-    base -= timedelta(seconds=reference_value)
-    return StartDateConverter(base_datetime=base)
+    base -= timedelta(seconds=reference_value * scale_seconds)
+    return StartDateConverter(base_datetime=base, scale_seconds=scale_seconds)
 
 
 def load_tags(conn: sqlite3.Connection) -> dict[str, str]:
@@ -180,7 +185,7 @@ def fetch_tasks(
         """
         select uuid, title, notes, status, trashed, stopDate, project, area,
                startDate, deadline, userModificationDate, rt1_recurrenceRule,
-               rt1_nextInstanceStartDate
+               rt1_nextInstanceStartDate, todayIndexReferenceDate
         from TMTask
         where type = 0
         """
@@ -202,18 +207,20 @@ def fetch_tasks(
             updated_at,
             recurrence_blob,
             next_instance_start,
+            today_index_reference_date,
         ) = row
         if not uuid or not title:
             continue
-        start_date = converter.to_date(start_date_value)
+        reference_date_value = today_index_reference_date or start_date_value
+        due_date = converter.to_date(reference_date_value)
         next_instance_date = converter.to_date(next_instance_start)
-        if start_date is None and next_instance_date is not None:
-            start_date = next_instance_date
+        if due_date is None and next_instance_date is not None:
+            due_date = next_instance_date
         status_value = map_task_status(
             status=status,
             trashed=trashed,
             stop_date=stop_date,
-            start_date=start_date,
+            start_date=due_date,
             today=today,
         )
         if status_value == "completed" and not include_completed:
@@ -230,8 +237,8 @@ def fetch_tasks(
                 "projectId": str(project_id) if project_id else None,
                 "areaId": str(area_id) if area_id else None,
                 "tags": task_tags.get(str(uuid), []),
-                "deadline": converter.to_date(deadline_value),
-                "deadlineStart": start_date,
+                "deadline": due_date or converter.to_date(deadline_value),
+                "deadlineStart": due_date,
                 "updatedAt": iso_from_timestamp(updated_at),
                 "repeating": recurrence_blob is not None,
                 "recurrenceRule": recurrence_blob,
@@ -249,12 +256,13 @@ def import_things_sqlite(
     include_trashed: bool,
     reference_value: int,
     reference_date: date,
+    scale_seconds: int,
 ) -> None:
     from api.db.session import SessionLocal, set_session_user_id
     from api.services.recurrence_plist_parser import RecurrencePlistParser
     from api.services.tasks_import_service import TasksImportService
 
-    converter = build_start_converter(reference_value, reference_date)
+    converter = build_start_converter(reference_value, reference_date, scale_seconds)
     conn = sqlite3.connect(str(db_path))
     try:
         tag_map = load_tags(conn)
@@ -350,6 +358,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         default=REFERENCE_START_DATE.isoformat(),
         help="Reference date (YYYY-MM-DD) for date conversion.",
     )
+    parser.add_argument(
+        "--reference-scale-seconds",
+        type=int,
+        default=REFERENCE_SCALE_SECONDS,
+        help="Seconds per integer unit for date conversion.",
+    )
     return parser.parse_args(argv)
 
 
@@ -369,6 +383,7 @@ def main(argv: Iterable[str] | None = None) -> None:
         include_trashed=args.include_trashed,
         reference_value=args.reference_start_value,
         reference_date=date.fromisoformat(args.reference_start_date),
+        scale_seconds=args.reference_scale_seconds,
     )
 
 
