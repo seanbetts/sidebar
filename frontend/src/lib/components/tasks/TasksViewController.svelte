@@ -433,60 +433,62 @@
 		totalCount={view.totalCount}
 		hasLoaded={view.hasLoaded}
 	/>
-	{#if conflictNotice}
-		<div class="tasks-conflict-banner">
-			<span>{conflictNotice}</span>
-			<button class="tasks-conflict-action" onclick={handleRefreshConflicts}>
-				Refresh tasks
-			</button>
-		</div>
-	{/if}
+	<div class="tasks-scroll">
+		{#if conflictNotice}
+			<div class="tasks-conflict-banner">
+				<span>{conflictNotice}</span>
+				<button class="tasks-conflict-action" onclick={handleRefreshConflicts}>
+					Refresh tasks
+				</button>
+			</div>
+		{/if}
 
-	<TasksContent
-		tasks={view.tasks}
-		sections={view.sections}
-		selectionType={view.selectionType}
-		selectionLabel={view.selectionLabel}
-		selectionQuery={view.selectionQuery}
-		isLoading={view.isLoading}
-		searchPending={view.searchPending}
-		error={view.error}
-		{showDraft}
-		bind:draftTitle
-		bind:draftNotes
-		bind:draftDueDate
-		{draftSaving}
-		{draftError}
-		{draftTargetLabel}
-		bind:draftListId
-		bind:titleInput
-		areaOptions={view.areaOptions}
-		projectsByArea={view.projectsByArea}
-		orphanProjects={view.orphanProjects}
-		{busyTasks}
-		{editingTaskId}
-		bind:renameValue
-		bind:renameInput
-		onDraftInput={() => tasksStore.clearNewTaskError()}
-		onCreateTask={handleCreateTask}
-		onCancelDraft={handleCancelDraft}
-		onDraftListChange={handleDraftListChange}
-		onComplete={handleComplete}
-		onStartRename={startRename}
-		onCommitRename={commitRename}
-		onCancelRename={cancelRename}
-		onOpenNotes={openNotesDialog}
-		onOpenMove={openMoveDialog}
-		onOpenDue={openDueDialog}
-		onOpenRepeat={openRepeatDialog}
-		onClearDue={handleClearDue}
-		onOpenTrash={openTrashDialog}
-		onDefer={handleDefer}
-		onDeferToWeekday={handleDeferToWeekday}
-		onSetDueToday={handleSetDueToday}
-		{taskSubtitle}
-		{dueLabel}
-	/>
+		<TasksContent
+			tasks={view.tasks}
+			sections={view.sections}
+			selectionType={view.selectionType}
+			selectionLabel={view.selectionLabel}
+			selectionQuery={view.selectionQuery}
+			isLoading={view.isLoading}
+			searchPending={view.searchPending}
+			error={view.error}
+			{showDraft}
+			bind:draftTitle
+			bind:draftNotes
+			bind:draftDueDate
+			{draftSaving}
+			{draftError}
+			{draftTargetLabel}
+			bind:draftListId
+			bind:titleInput
+			areaOptions={view.areaOptions}
+			projectsByArea={view.projectsByArea}
+			orphanProjects={view.orphanProjects}
+			{busyTasks}
+			{editingTaskId}
+			bind:renameValue
+			bind:renameInput
+			onDraftInput={() => tasksStore.clearNewTaskError()}
+			onCreateTask={handleCreateTask}
+			onCancelDraft={handleCancelDraft}
+			onDraftListChange={handleDraftListChange}
+			onComplete={handleComplete}
+			onStartRename={startRename}
+			onCommitRename={commitRename}
+			onCancelRename={cancelRename}
+			onOpenNotes={openNotesDialog}
+			onOpenMove={openMoveDialog}
+			onOpenDue={openDueDialog}
+			onOpenRepeat={openRepeatDialog}
+			onClearDue={handleClearDue}
+			onOpenTrash={openTrashDialog}
+			onDefer={handleDefer}
+			onDeferToWeekday={handleDeferToWeekday}
+			onSetDueToday={handleSetDueToday}
+			{taskSubtitle}
+			{dueLabel}
+		/>
+	</div>
 
 	<TaskDialogs
 		bind:showDueDialog
@@ -534,6 +536,14 @@
 		height: 100%;
 		padding: 0;
 		gap: 1rem;
+		overflow: hidden;
+	}
+
+	.tasks-scroll {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		padding-bottom: 1rem;
 	}
 
 	.tasks-conflict-banner {
