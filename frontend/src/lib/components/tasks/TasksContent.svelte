@@ -47,6 +47,8 @@
 	export let onOpenNotes: (task: Task) => void;
 	export let onOpenMove: (task: Task) => void;
 	export let onOpenDue: (task: Task) => void;
+	export let onOpenRepeat: (task: Task) => void;
+	export let onClearDue: (task: Task) => void;
 	export let onOpenTrash: (task: Task) => void;
 	export let onDefer: (task: Task, days: number) => void;
 	export let onDeferToWeekday: (task: Task, targetDay: number) => void;
@@ -118,6 +120,8 @@
 				{onOpenNotes}
 				{onOpenMove}
 				{onOpenDue}
+				{onOpenRepeat}
+				{onClearDue}
 				{onOpenTrash}
 				{onDefer}
 				{onDeferToWeekday}

@@ -103,6 +103,45 @@ def test_create_task_dates(db_session):
     assert tasks[0].deadline == date(2026, 1, 2)
 
 
+def test_set_task_recurrence_sets_anchor(db_session):
+    task = TaskService.create_task(db_session, "user", "Recurring task")
+    db_session.commit()
+
+    TaskService.set_task_recurrence(
+        db_session,
+        "user",
+        str(task.id),
+        recurrence_rule={"type": "weekly", "interval": 2, "weekday": 1},
+        anchor_date=date(2026, 1, 5),
+    )
+    db_session.commit()
+
+    refreshed = TaskService.get_task(db_session, "user", str(task.id))
+    assert refreshed.repeating is True
+    assert refreshed.recurrence_rule == {"type": "weekly", "interval": 2, "weekday": 1}
+    assert refreshed.repeat_template_id == task.id
+    assert refreshed.deadline == date(2026, 1, 5)
+    assert refreshed.scheduled_date == date(2026, 1, 5)
+
+
+def test_clear_task_due(db_session):
+    task = TaskService.create_task(
+        db_session,
+        "user",
+        "Dated task",
+        scheduled_date=date(2026, 1, 1),
+        deadline=date(2026, 1, 2),
+    )
+    db_session.commit()
+
+    TaskService.clear_task_due(db_session, "user", str(task.id))
+    db_session.commit()
+
+    refreshed = TaskService.get_task(db_session, "user", str(task.id))
+    assert refreshed.deadline is None
+    assert refreshed.scheduled_date is None
+
+
 def test_list_tasks_by_scope_and_counts(db_session):
     today = date.today()
     TaskService.create_task(

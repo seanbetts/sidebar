@@ -18,6 +18,9 @@ import {
 import { createCountsApplier, createSnapshotLoader } from '$lib/stores/tasks-store-helpers';
 import { createNotice } from '$lib/stores/tasks-notice';
 import { createTasksSyncCoordinator, type TasksMetaCache } from '$lib/stores/tasks-sync';
+import { createDueActions } from '$lib/stores/tasks-due-actions';
+import { createTaskLoader } from '$lib/stores/tasks-loader';
+import type { TaskNewTaskDraft, TasksState } from '$lib/stores/tasks-types';
 import {
 	classifyDueBucket,
 	normalizeDateKey,
@@ -26,42 +29,10 @@ import {
 } from '$lib/stores/tasks-utils';
 import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
 import { toast } from 'svelte-sonner';
-import type {
-	Task,
-	TaskArea,
-	TaskCountsResponse,
-	TaskListResponse,
-	TaskProject,
-	TaskSelection
-} from '$lib/types/tasks';
+import type { Task, TaskCountsResponse, TaskProject, TaskSelection } from '$lib/types/tasks';
 
 export type { TaskSelection } from '$lib/types/tasks';
-export type TaskNewTaskDraft = {
-	title: string;
-	notes: string;
-	dueDate: string;
-	selection: TaskSelection;
-	listId?: string;
-	listName?: string;
-	areaId?: string;
-	projectId?: string;
-};
-export type TasksState = {
-	selection: TaskSelection;
-	tasks: Task[];
-	areas: TaskArea[];
-	projects: TaskProject[];
-	todayCount: number;
-	counts: Record<string, number>;
-	syncNotice: string;
-	conflictNotice: string;
-	isLoading: boolean;
-	searchPending: boolean;
-	newTaskDraft: TaskNewTaskDraft | null;
-	newTaskSaving: boolean;
-	newTaskError: string;
-	error: string;
-};
+export type { TaskNewTaskDraft, TasksState } from '$lib/stores/tasks-types';
 
 const CACHE_TTL = 60 * 1000;
 const CACHE_VERSION = '1.0';
@@ -88,14 +59,11 @@ const defaultState: TasksState = {
 
 function createTasksStore() {
 	const { subscribe, set, update } = writable<TasksState>(defaultState);
-	let loadToken = 0;
 	let lastMeta: TasksMetaCache = { areas: [], projects: [] };
 	let lastNonSearchSelection: TaskSelection = { type: 'today' };
 	let searchInFlight: Promise<void> | null = null;
 	let pendingSearchQuery: string | null = null;
 	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-	const selectionInFlight = new Map<string, Promise<void>>();
-	let preloadAllSelections: (current: TaskSelection) => void = () => {};
 	const setSyncNotice = createNotice('syncNotice', update);
 	const setConflictNotice = createNotice('conflictNotice', update, null);
 	const snapshotLoader = createSnapshotLoader(loadTaskCacheSnapshot);
@@ -133,247 +101,62 @@ function createTasksStore() {
 		}
 	});
 
-	const loadSelection = async (
-		selection: TaskSelection,
-		options?: { force?: boolean; silent?: boolean; notify?: boolean }
-	) => {
-		if (selection.type !== 'search') {
+	const { loadSelection, setPreloadAllSelections } = createTaskLoader({
+		tasksAPI,
+		getState: () => get({ subscribe }),
+		updateState: update,
+		getCachedData,
+		setCachedData,
+		isCacheStale,
+		cacheTtl: CACHE_TTL,
+		cacheVersion: CACHE_VERSION,
+		metaCacheKey: META_CACHE_KEY,
+		countsCacheKey: COUNTS_CACHE_KEY,
+		snapshotLoader,
+		filterTasksForSelection,
+		normalizeCountsCache,
+		selectionCount,
+		selectionKey,
+		tasksCacheKey,
+		isSameSelection,
+		cacheTaskListResponse,
+		setSyncNotice,
+		applyTaskListResponse,
+		applyTaskMetaCountsOnly,
+		getLastMeta: () => lastMeta,
+		setLastMeta: (meta) => {
+			lastMeta = meta;
+		},
+		setLastNonSearchSelection: (selection) => {
 			lastNonSearchSelection = selection;
-		}
-		const force = options?.force ?? false;
-		const silent = options?.silent ?? false;
-		const notify = options?.notify ?? true;
-		const currentState = get({ subscribe });
-		const isCurrent = isSameSelection(selection, currentState.selection);
-		let silentFetch = silent;
-		let notifyFetch = notify;
-		let usesToken = false;
-		let token = loadToken;
-		const key = tasksCacheKey(selection);
-		const cachedTasks = getCachedData<Task[]>(key, {
-			ttl: CACHE_TTL,
-			version: CACHE_VERSION
-		});
-		const cachedCounts = getCachedData<TaskCountsResponse | Record<string, number>>(
-			COUNTS_CACHE_KEY,
-			{
-				ttl: CACHE_TTL,
-				version: CACHE_VERSION
-			}
-		);
-		const cachedToday =
-			selection.type === 'today'
-				? cachedTasks
-				: getCachedData<Task[]>(tasksCacheKey({ type: 'today' }), {
-						ttl: CACHE_TTL,
-						version: CACHE_VERSION
-					});
-		const cachedMeta = getCachedData<TasksMetaCache>(META_CACHE_KEY, {
-			ttl: CACHE_TTL,
-			version: CACHE_VERSION
-		});
-		if (cachedMeta) {
-			update((state) => ({
-				...state,
-				areas: cachedMeta.areas,
-				projects: cachedMeta.projects
-			}));
-		}
-		if (cachedCounts) {
-			const normalized = normalizeCountsCache(cachedCounts);
-			update((state) => ({
-				...state,
-				counts: normalized.map,
-				todayCount: normalized.todayCount
-			}));
-		}
-		if (cachedToday) {
-			update((state) => ({
-				...state,
-				todayCount: cachedToday.length
-			}));
-		}
-		if (!force && cachedTasks) {
-			const cachedCount = selectionCount(selection, cachedTasks, cachedMeta?.projects ?? []);
-			const showSearchLoading = selection.type === 'search' && cachedTasks.length === 0 && !silent;
-			if (!silent || isCurrent) {
-				update((state) => ({
-					...state,
-					selection,
-					tasks: cachedTasks,
-					isLoading: showSearchLoading ? true : false,
-					searchPending: showSearchLoading ? true : state.searchPending,
-					error: '',
-					counts: {
-						...state.counts,
-						[selectionKey(selection)]: cachedCount
-					}
-				}));
-			} else {
-				update((state) => ({
-					...state,
-					counts: {
-						...state.counts,
-						[selectionKey(selection)]: cachedCount
-					}
-				}));
-			}
-			if (!isCacheStale(key, CACHE_TTL)) {
-				silentFetch = true;
-				notifyFetch = false;
-			}
-		} else {
-			if (!silentFetch || isCurrent) {
-				const clearTasks = selection.type === 'search';
-				update((state) => ({
-					...state,
-					selection,
-					tasks: clearTasks ? [] : state.tasks,
-					isLoading: silentFetch ? state.isLoading : true,
-					searchPending: selection.type === 'search' ? true : state.searchPending,
-					error: ''
-				}));
-			}
-		}
-		if (!cachedTasks) {
-			void (async () => {
-				const snapshot = await snapshotLoader.load();
-				if (!snapshot) return;
-				const selectionTasks = filterTasksForSelection(snapshot.tasks, selection);
-				const latestSelection = get({ subscribe }).selection;
-				if (!isSameSelection(selection, latestSelection)) return;
-				setCachedData(key, selectionTasks, { ttl: CACHE_TTL, version: CACHE_VERSION });
-				if (snapshot.areas.length || snapshot.projects.length) {
-					setCachedData(
-						META_CACHE_KEY,
-						{ areas: snapshot.areas, projects: snapshot.projects },
-						{ ttl: CACHE_TTL, version: CACHE_VERSION }
-					);
-				}
-				update((state) => {
-					if (!isSameSelection(selection, state.selection)) return state;
-					if (state.tasks.length > 0) return state;
-					if (!state.isLoading && !state.error) return state;
-					const nextAreas = snapshot.areas.length ? snapshot.areas : state.areas;
-					const nextProjects = snapshot.projects.length ? snapshot.projects : state.projects;
-					return {
-						...state,
-						tasks: selectionTasks,
-						areas: nextAreas,
-						projects: nextProjects,
-						todayCount: selection.type === 'today' ? selectionTasks.length : state.todayCount,
-						counts: {
-							...state.counts,
-							[selectionKey(selection)]: selectionCount(selection, selectionTasks, nextProjects)
-						}
-					};
-				});
-			})();
-		}
-		const inFlight = selectionInFlight.get(key);
-		if (inFlight && !force) {
-			await inFlight;
-			return;
-		}
-		usesToken = !silentFetch || isCurrent;
-		token = usesToken ? ++loadToken : loadToken;
-		const request = (async () => {
-			try {
-				let response: TaskListResponse;
-				if (
-					selection.type === 'today' ||
-					selection.type === 'upcoming' ||
-					selection.type === 'inbox'
-				) {
-					response = await tasksAPI.list(selection.type);
-				} else if (selection.type === 'area') {
-					response = await tasksAPI.areaTasks(selection.id);
-				} else if (selection.type === 'project') {
-					response = await tasksAPI.projectTasks(selection.id);
-				} else {
-					response = await tasksAPI.search(selection.query);
-				}
-				if (usesToken && token !== loadToken) return;
-				setCachedData(key, response.tasks ?? [], { ttl: CACHE_TTL, version: CACHE_VERSION });
-				if (response.areas && response.projects) {
-					setCachedData(
-						META_CACHE_KEY,
-						{ areas: response.areas ?? [], projects: response.projects ?? [] },
-						{ ttl: CACHE_TTL, version: CACHE_VERSION }
-					);
-				}
-				void cacheTaskListResponse(response);
-				const latestSelection = get({ subscribe }).selection;
-				const stillCurrent = isSameSelection(selection, latestSelection);
-				if (!silentFetch || stillCurrent) {
-					applyTaskListResponse({
-						response,
-						selection,
-						lastMeta,
-						setMeta: (meta) => {
-							lastMeta = meta;
-						},
-						updateState: update
-					});
-				} else {
-					const cached = getCachedData<Task[]>(key, {
-						ttl: CACHE_TTL,
-						version: CACHE_VERSION
-					});
-					const changed =
-						!cached || JSON.stringify(cached) !== JSON.stringify(response.tasks ?? []);
-					if (changed) {
-						applyTaskMetaCountsOnly({
-							response,
-							selection,
-							lastMeta,
-							setMeta: (meta) => {
-								lastMeta = meta;
-							},
-							updateState: update
-						});
-						if (notifyFetch) {
-							setSyncNotice('Tasks updated');
-						}
-					}
-				}
-				if (!silentFetch) {
-					preloadAllSelections(selection);
-				}
-			} catch (error) {
-				if (usesToken && token !== loadToken) return;
-				if (isBrowser && !navigator.onLine && cachedTasks) {
-					setSyncNotice('Offline - showing cached tasks');
-				}
-				if (!silent) {
-					update((state) => ({
-						...state,
-						error: error instanceof Error ? error.message : 'Failed to load tasks data'
-					}));
-				}
-			} finally {
-				const isStale = usesToken && token !== loadToken;
-				if (!isStale && !silent) {
-					update((state) => ({
-						...state,
-						isLoading: false,
-						searchPending: selection.type === 'search' ? false : state.searchPending
-					}));
-				}
-			}
-		})();
+		},
+		isBrowser
+	});
 
-		selectionInFlight.set(key, request);
-		try {
-			await request;
-		} finally {
-			if (selectionInFlight.get(key) === request) {
-				selectionInFlight.delete(key);
-			}
-		}
-	};
+	setPreloadAllSelections(createPreloadAllSelections(loadSelection));
 
-	preloadAllSelections = createPreloadAllSelections(loadSelection);
+	const dueActions = createDueActions({
+		update,
+		getState: () => get({ subscribe }),
+		selectionKey,
+		tasksCacheKey,
+		updateTaskCaches,
+		classifyDueBucket,
+		getCachedData,
+		setCachedData,
+		enqueueTaskOperation,
+		handleSyncResponse,
+		loadSelection,
+		applyCountsResponse,
+		setSyncNotice,
+		isBrowser,
+		tasksAPI,
+		cacheConfig: {
+			cacheTtl: CACHE_TTL,
+			cacheVersion: CACHE_VERSION,
+			countsCacheKey: COUNTS_CACHE_KEY
+		}
+	});
 
 	initializeSync();
 
@@ -789,61 +572,9 @@ function createTasksStore() {
 				}));
 			}
 		},
-		setDueDate: async (taskId: string, dueDate: string, op: 'set_due' | 'defer' = 'set_due') => {
-			const nextOp = op === 'set_due' ? 'defer' : op;
-			const state = get({ subscribe });
-			const currentTask = state.tasks.find((task) => task.id === taskId);
-			if (currentTask) {
-				const updatedTask: Task = {
-					...currentTask,
-					deadline: dueDate
-				};
-				updateTaskCaches({
-					taskId,
-					task: updatedTask,
-					targetBucket: classifyDueBucket(dueDate),
-					cacheTtl: CACHE_TTL,
-					cacheVersion: CACHE_VERSION,
-					countsCacheKey: COUNTS_CACHE_KEY,
-					getCachedData,
-					setCachedData,
-					updateState: update
-				});
-			}
-			try {
-				const response = await enqueueTaskOperation({
-					op: nextOp,
-					id: taskId,
-					due_date: dueDate
-				});
-				handleSyncResponse(response);
-				if (isBrowser && navigator.onLine) {
-					void loadSelection(state.selection, { force: true, silent: true, notify: false });
-					if (state.selection.type !== 'today') {
-						void loadSelection({ type: 'today' }, { force: true, silent: true, notify: false });
-					}
-					if (state.selection.type !== 'upcoming') {
-						void loadSelection({ type: 'upcoming' }, { force: true, silent: true, notify: false });
-					}
-					void tasksAPI
-						.counts()
-						.then(applyCountsResponse)
-						.catch(() => {
-							update((current) => ({
-								...current,
-								error: 'Failed to update task counts'
-							}));
-						});
-				} else {
-					setSyncNotice('Task updated offline');
-				}
-			} catch (error) {
-				update((current) => ({
-					...current,
-					error: error instanceof Error ? error.message : 'Failed to update due date'
-				}));
-			}
-		}
+		setRepeat: dueActions.setRepeat,
+		clearDueDate: dueActions.clearDueDate,
+		setDueDate: dueActions.setDueDate
 	};
 }
 

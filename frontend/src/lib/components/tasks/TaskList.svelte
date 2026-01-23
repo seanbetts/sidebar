@@ -40,6 +40,8 @@
 	export let onOpenNotes: (task: Task) => void;
 	export let onOpenMove: (task: Task) => void;
 	export let onOpenDue: (task: Task) => void;
+	export let onOpenRepeat: (task: Task) => void;
+	export let onClearDue: (task: Task) => void;
 	export let onOpenTrash: (task: Task) => void;
 	export let onDefer: (task: Task, days: number) => void;
 	export let onDeferToWeekday: (task: Task, targetDay: number) => void;
@@ -130,11 +132,7 @@
 							</span>
 						{/if}
 						<DropdownMenu>
-							<DropdownMenuTrigger
-								class="task-menu-btn"
-								aria-label="Task options"
-								disabled={task.repeatTemplate}
-							>
+							<DropdownMenuTrigger class="task-menu-btn" aria-label="Task options">
 								<MoreHorizontal size={16} />
 							</DropdownMenuTrigger>
 							<DropdownMenuContent class="task-menu" align="end" sideOffset={6}>
@@ -151,51 +149,48 @@
 									Move to…
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
-								{#if selectionType !== 'today'}
+								<DropdownMenuItem class="task-menu-item" onclick={() => onOpenRepeat(task)}>
+									<Repeat size={14} />
+									{task.repeating ? 'Edit repeat…' : 'Repeat…'}
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								{#if !task.repeating}
+									{#if selectionType !== 'today'}
+										<DropdownMenuItem class="task-menu-item" onclick={() => onSetDueToday(task)}>
+											<CalendarCheck size={14} />
+											Set due today
+										</DropdownMenuItem>
+										<DropdownMenuSeparator />
+									{/if}
+									<DropdownMenuItem class="task-menu-item" onclick={() => onDefer(task, 1)}>
+										<CalendarClock size={14} />
+										Defer to tomorrow
+									</DropdownMenuItem>
 									<DropdownMenuItem
 										class="task-menu-item"
-										onclick={() => onSetDueToday(task)}
-										disabled={task.repeatTemplate}
+										onclick={() => onDeferToWeekday(task, 5)}
 									>
-										<CalendarCheck size={14} />
-										Set due today
+										<CalendarClock size={14} />
+										Defer to Friday
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										class="task-menu-item"
+										onclick={() => onDeferToWeekday(task, 6)}
+									>
+										<CalendarClock size={14} />
+										Defer to weekend
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem class="task-menu-item" onclick={() => onOpenDue(task)}>
+										<CalendarPlus size={14} />
+										Set due date…
+									</DropdownMenuItem>
+									<DropdownMenuItem class="task-menu-item" onclick={() => onClearDue(task)}>
+										<CalendarPlus size={14} />
+										Clear due date
 									</DropdownMenuItem>
 									<DropdownMenuSeparator />
 								{/if}
-								<DropdownMenuItem
-									class="task-menu-item"
-									onclick={() => onDefer(task, 1)}
-									disabled={task.repeatTemplate}
-								>
-									<CalendarClock size={14} />
-									Defer to tomorrow
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									class="task-menu-item"
-									onclick={() => onDeferToWeekday(task, 5)}
-									disabled={task.repeatTemplate}
-								>
-									<CalendarClock size={14} />
-									Defer to Friday
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									class="task-menu-item"
-									onclick={() => onDeferToWeekday(task, 6)}
-									disabled={task.repeatTemplate}
-								>
-									<CalendarClock size={14} />
-									Defer to weekend
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem
-									class="task-menu-item"
-									onclick={() => onOpenDue(task)}
-									disabled={task.repeatTemplate}
-								>
-									<CalendarPlus size={14} />
-									Set due date…
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
 								<DropdownMenuItem class="task-menu-item" onclick={() => onOpenTrash(task)}>
 									<Trash2 size={14} />
 									Delete

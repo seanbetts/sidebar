@@ -517,6 +517,60 @@ class TaskService:
         return task
 
     @staticmethod
+    def set_task_recurrence(
+        db: Session,
+        user_id: str,
+        task_id: str,
+        *,
+        recurrence_rule: dict[str, Any] | None,
+        anchor_date: date | None,
+    ) -> list[Task]:
+        """Update recurrence for a task and its template."""
+        task = TaskService.get_task(db, user_id, task_id)
+        template_id = task.repeat_template_id or task.id
+        template = (
+            TaskService.get_task(db, user_id, str(template_id))
+            if template_id != task.id
+            else task
+        )
+        now = datetime.now(UTC)
+
+        def apply_rule(target: Task) -> None:
+            target.recurrence_rule = recurrence_rule
+            flag_modified(target, "recurrence_rule")
+            target.repeating = bool(recurrence_rule)
+            if recurrence_rule:
+                if target.repeat_template_id is None:
+                    target.repeat_template_id = template_id
+            else:
+                target.repeat_template_id = None
+                target.repeat_template = False
+            target.updated_at = now
+
+        apply_rule(template)
+        if task.id != template.id:
+            apply_rule(task)
+
+        if recurrence_rule and anchor_date:
+            if task.deadline is None:
+                task.deadline = anchor_date
+            if task.scheduled_date is None:
+                task.scheduled_date = anchor_date
+            if task.id == template.id:
+                task.updated_at = now
+
+        return [template] if task.id == template.id else [template, task]
+
+    @staticmethod
+    def clear_task_due(db: Session, user_id: str, task_id: str) -> Task:
+        """Clear due and scheduled dates for a task."""
+        task = TaskService.get_task(db, user_id, task_id)
+        task.deadline = None
+        task.scheduled_date = None
+        task.updated_at = datetime.now(UTC)
+        return task
+
+    @staticmethod
     def delete_task(db: Session, user_id: str, task_id: str) -> Task:
         """Soft-delete a task."""
         task = TaskService.get_task(db, user_id, task_id)
