@@ -287,11 +287,11 @@
 	}
 
 	.task-repeat-input {
-		width: 120px;
+		width: 150px;
 	}
 
 	.task-repeat-input--date {
-		width: 180px;
+		width: 150px;
 	}
 
 	:global(.dark) .task-date-input::-webkit-calendar-picker-indicator,
