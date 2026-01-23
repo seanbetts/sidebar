@@ -33,7 +33,7 @@ class RecurrencePlistParser:
         if not rule_type:
             return None
 
-        interval = int(payload.get("fa") or 1)
+        interval = max(1, int(payload.get("fa") or 1))
         occurrence = payload.get("of") or {}
         if isinstance(occurrence, list):
             occurrence = occurrence[0] if occurrence else {}

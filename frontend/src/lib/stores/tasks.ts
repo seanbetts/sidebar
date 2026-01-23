@@ -377,56 +377,85 @@ function createTasksStore() {
 		},
 		clearSearch: () => loadSelection(lastNonSearchSelection),
 		completeTask: async (taskId: string) => {
-			update((state) => {
-				const nextTasks = state.tasks.filter((task) => task.id !== taskId);
-				const key = selectionKey(state.selection);
-				setCachedData(tasksCacheKey(state.selection), nextTasks, {
-					ttl: CACHE_TTL,
-					version: CACHE_VERSION
-				});
-				const nextCounts = {
-					...state.counts,
-					[key]: nextTasks.length
-				};
-				const cachedCounts = getCachedData<TaskCountsResponse>(COUNTS_CACHE_KEY, {
-					ttl: CACHE_TTL,
-					version: CACHE_VERSION
-				});
-				if (cachedCounts) {
-					const updatedCounts = { ...cachedCounts };
-					if (key === 'today') {
-						updatedCounts.counts.today = nextTasks.length;
-					} else if (key === 'inbox') {
-						updatedCounts.counts.inbox = nextTasks.length;
-					} else if (key === 'upcoming') {
-						updatedCounts.counts.upcoming = nextTasks.length;
-					} else if (key.startsWith('area:')) {
-						const areaId = key.split(':')[1];
-						updatedCounts.areas = updatedCounts.areas.map((area) =>
-							area.id === areaId ? { ...area, count: nextTasks.length } : area
-						);
-					} else if (key.startsWith('project:')) {
-						const projectId = key.split(':')[1];
-						updatedCounts.projects = updatedCounts.projects.map((project) =>
-							project.id === projectId ? { ...project, count: nextTasks.length } : project
-						);
-					}
-					setCachedData(COUNTS_CACHE_KEY, updatedCounts, {
+			const currentTask = get({ subscribe }).tasks.find((task) => task.id === taskId);
+			if (!currentTask?.repeating) {
+				update((state) => {
+					const nextTasks = state.tasks.filter((task) => task.id !== taskId);
+					const key = selectionKey(state.selection);
+					setCachedData(tasksCacheKey(state.selection), nextTasks, {
 						ttl: CACHE_TTL,
 						version: CACHE_VERSION
 					});
-				}
-				return {
-					...state,
-					tasks: nextTasks,
-					counts: nextCounts,
-					todayCount: state.selection.type === 'today' ? nextTasks.length : state.todayCount
-				};
-			});
+					const nextCounts = {
+						...state.counts,
+						[key]: nextTasks.length
+					};
+					const cachedCounts = getCachedData<TaskCountsResponse>(COUNTS_CACHE_KEY, {
+						ttl: CACHE_TTL,
+						version: CACHE_VERSION
+					});
+					if (cachedCounts) {
+						const updatedCounts = { ...cachedCounts };
+						if (key === 'today') {
+							updatedCounts.counts.today = nextTasks.length;
+						} else if (key === 'inbox') {
+							updatedCounts.counts.inbox = nextTasks.length;
+						} else if (key === 'upcoming') {
+							updatedCounts.counts.upcoming = nextTasks.length;
+						} else if (key.startsWith('area:')) {
+							const areaId = key.split(':')[1];
+							updatedCounts.areas = updatedCounts.areas.map((area) =>
+								area.id === areaId ? { ...area, count: nextTasks.length } : area
+							);
+						} else if (key.startsWith('project:')) {
+							const projectId = key.split(':')[1];
+							updatedCounts.projects = updatedCounts.projects.map((project) =>
+								project.id === projectId ? { ...project, count: nextTasks.length } : project
+							);
+						}
+						setCachedData(COUNTS_CACHE_KEY, updatedCounts, {
+							ttl: CACHE_TTL,
+							version: CACHE_VERSION
+						});
+					}
+					return {
+						...state,
+						tasks: nextTasks,
+						counts: nextCounts,
+						todayCount: state.selection.type === 'today' ? nextTasks.length : state.todayCount
+					};
+				});
+			}
 			try {
 				const response = await enqueueTaskOperation({ op: 'complete', id: taskId });
 				handleSyncResponse(response);
-				if (response?.nextTasks?.length && isBrowser && navigator.onLine) {
+				if (currentTask?.repeating && response?.nextTasks?.length) {
+					update((state) => {
+						const mergedTasks = state.tasks.map((task) =>
+							task.id === taskId ? response.nextTasks[0] : task
+						);
+						const nextTasks = filterTasksForSelection(mergedTasks, state.selection);
+						setCachedData(tasksCacheKey(state.selection), nextTasks, {
+							ttl: CACHE_TTL,
+							version: CACHE_VERSION
+						});
+						return {
+							...state,
+							tasks: nextTasks,
+							counts: {
+								...state.counts,
+								[selectionKey(state.selection)]: nextTasks.length
+							},
+							todayCount: state.selection.type === 'today' ? nextTasks.length : state.todayCount
+						};
+					});
+				}
+				if (
+					response?.nextTasks?.length &&
+					isBrowser &&
+					navigator.onLine &&
+					!currentTask?.repeating
+				) {
 					void loadSelection(get({ subscribe }).selection, {
 						force: true,
 						silent: true,
