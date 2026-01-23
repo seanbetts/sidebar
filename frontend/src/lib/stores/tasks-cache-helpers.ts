@@ -299,7 +299,11 @@ const taskDueDate = (task: Task): string | null => task.deadline ?? null;
 /**
  * Filter cached tasks for the current selection.
  */
-export const filterTasksForSelection = (tasks: Task[], selection: TaskSelection): Task[] => {
+export const filterTasksForSelection = (
+	tasks: Task[],
+	selection: TaskSelection,
+	projects: TaskProject[] = []
+): Task[] => {
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 	const normalized = tasks.filter(
@@ -309,7 +313,14 @@ export const filterTasksForSelection = (tasks: Task[], selection: TaskSelection)
 		return normalized.filter((task) => task.status === 'inbox');
 	}
 	if (selection.type === 'area') {
-		return normalized.filter((task) => task.areaId === selection.id);
+		const projectAreaById = new Map(
+			projects.map((project) => [project.id, project.areaId ?? null])
+		);
+		return normalized.filter((task) => {
+			if (task.areaId === selection.id) return true;
+			if (!task.projectId) return false;
+			return projectAreaById.get(task.projectId) === selection.id;
+		});
 	}
 	if (selection.type === 'project') {
 		return normalized.filter((task) => task.projectId === selection.id);

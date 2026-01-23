@@ -436,7 +436,7 @@ function createTasksStore() {
 						const mergedTasks = baseTasks.some((task) => task.id === nextTask.id)
 							? baseTasks.map((task) => (task.id === nextTask.id ? nextTask : task))
 							: [...baseTasks, nextTask];
-						const nextTasks = filterTasksForSelection(mergedTasks, state.selection);
+						const nextTasks = filterTasksForSelection(mergedTasks, state.selection, state.projects);
 						setCachedData(tasksCacheKey(state.selection), nextTasks, {
 							ttl: CACHE_TTL,
 							version: CACHE_VERSION

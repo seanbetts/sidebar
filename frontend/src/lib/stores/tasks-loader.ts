@@ -1,4 +1,10 @@
-import type { Task, TaskCountsResponse, TaskListResponse, TaskSelection } from '$lib/types/tasks';
+import type {
+	Task,
+	TaskCountsResponse,
+	TaskListResponse,
+	TaskProject,
+	TaskSelection
+} from '$lib/types/tasks';
 import type { TasksMetaCache } from '$lib/stores/tasks-sync';
 
 type StoreState = {
@@ -30,7 +36,11 @@ type LoaderDeps = {
 	metaCacheKey: string;
 	countsCacheKey: string;
 	snapshotLoader: { load: () => Promise<{ tasks: Task[]; areas: any[]; projects: any[] } | null> };
-	filterTasksForSelection: (tasks: Task[], selection: TaskSelection) => Task[];
+	filterTasksForSelection: (
+		tasks: Task[],
+		selection: TaskSelection,
+		projects?: TaskProject[]
+	) => Task[];
 	normalizeCountsCache: (cached: TaskCountsResponse | Record<string, number>) => {
 		map: Record<string, number>;
 		todayCount: number;
@@ -176,7 +186,11 @@ export const createTaskLoader = (deps: LoaderDeps) => {
 			void (async () => {
 				const snapshot = await deps.snapshotLoader.load();
 				if (!snapshot) return;
-				const selectionTasks = deps.filterTasksForSelection(snapshot.tasks, selection);
+				const selectionTasks = deps.filterTasksForSelection(
+					snapshot.tasks,
+					selection,
+					snapshot.projects
+				);
 				const latestSelection = deps.getState().selection;
 				if (!deps.isSameSelection(selection, latestSelection)) return;
 				deps.setCachedData(key, selectionTasks, { ttl: deps.cacheTtl, version: deps.cacheVersion });
