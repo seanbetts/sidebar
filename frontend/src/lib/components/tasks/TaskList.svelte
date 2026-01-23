@@ -119,9 +119,6 @@
 						</div>
 					</div>
 					<div class="task-right">
-						{#if recurrenceLabel(task)}
-							<span class="repeat-pill">{recurrenceLabel(task)}</span>
-						{/if}
 						{#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
 							<span class="due-pill" title={recurrenceLabel(task) ?? ''}>
 								{dueLabel(task) ?? 'No Date'}
@@ -132,76 +129,81 @@
 								{/if}
 							</span>
 						{/if}
-						<DropdownMenu>
-							<DropdownMenuTrigger
-								class="task-menu-btn"
-								aria-label="Task options"
-								disabled={task.isPreview}
-							>
-								<MoreHorizontal size={16} />
-							</DropdownMenuTrigger>
-							<DropdownMenuContent class="task-menu" align="end" sideOffset={6}>
-								<DropdownMenuItem class="task-menu-item" onclick={() => onStartRename(task)}>
-									<Pencil size={14} />
-									Rename
-								</DropdownMenuItem>
-								<DropdownMenuItem class="task-menu-item" onclick={() => onOpenNotes(task)}>
-									<FileText size={14} />
-									Edit notes
-								</DropdownMenuItem>
-								<DropdownMenuItem class="task-menu-item" onclick={() => onOpenMove(task)}>
-									<Layers size={14} />
-									Move to…
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem class="task-menu-item" onclick={() => onOpenRepeat(task)}>
-									<Repeat size={14} />
-									{task.repeating ? 'Edit repeat…' : 'Repeat…'}
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								{#if !task.repeating}
-									{#if selectionType !== 'today'}
-										<DropdownMenuItem class="task-menu-item" onclick={() => onSetDueToday(task)}>
-											<CalendarCheck size={14} />
-											Set due today
+						<div class="task-menu-wrap" class:repeat-actions={!!recurrenceLabel(task)}>
+							{#if recurrenceLabel(task)}
+								<span class="repeat-pill">{recurrenceLabel(task)}</span>
+							{/if}
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									class="task-menu-btn"
+									aria-label="Task options"
+									disabled={task.isPreview}
+								>
+									<MoreHorizontal size={16} />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent class="task-menu" align="end" sideOffset={6}>
+									<DropdownMenuItem class="task-menu-item" onclick={() => onStartRename(task)}>
+										<Pencil size={14} />
+										Rename
+									</DropdownMenuItem>
+									<DropdownMenuItem class="task-menu-item" onclick={() => onOpenNotes(task)}>
+										<FileText size={14} />
+										Edit notes
+									</DropdownMenuItem>
+									<DropdownMenuItem class="task-menu-item" onclick={() => onOpenMove(task)}>
+										<Layers size={14} />
+										Move to…
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem class="task-menu-item" onclick={() => onOpenRepeat(task)}>
+										<Repeat size={14} />
+										{task.repeating ? 'Edit repeat…' : 'Repeat…'}
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									{#if !task.repeating}
+										{#if selectionType !== 'today'}
+											<DropdownMenuItem class="task-menu-item" onclick={() => onSetDueToday(task)}>
+												<CalendarCheck size={14} />
+												Set due today
+											</DropdownMenuItem>
+											<DropdownMenuSeparator />
+										{/if}
+										<DropdownMenuItem class="task-menu-item" onclick={() => onDefer(task, 1)}>
+											<CalendarClock size={14} />
+											Defer to tomorrow
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											class="task-menu-item"
+											onclick={() => onDeferToWeekday(task, 5)}
+										>
+											<CalendarClock size={14} />
+											Defer to Friday
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											class="task-menu-item"
+											onclick={() => onDeferToWeekday(task, 6)}
+										>
+											<CalendarClock size={14} />
+											Defer to weekend
+										</DropdownMenuItem>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem class="task-menu-item" onclick={() => onOpenDue(task)}>
+											<CalendarPlus size={14} />
+											Set due date…
+										</DropdownMenuItem>
+										<DropdownMenuItem class="task-menu-item" onclick={() => onClearDue(task)}>
+											<CalendarPlus size={14} />
+											Clear due date
 										</DropdownMenuItem>
 										<DropdownMenuSeparator />
 									{/if}
-									<DropdownMenuItem class="task-menu-item" onclick={() => onDefer(task, 1)}>
-										<CalendarClock size={14} />
-										Defer to tomorrow
+									<DropdownMenuItem class="task-menu-item" onclick={() => onOpenTrash(task)}>
+										<Trash2 size={14} />
+										Delete
 									</DropdownMenuItem>
-									<DropdownMenuItem
-										class="task-menu-item"
-										onclick={() => onDeferToWeekday(task, 5)}
-									>
-										<CalendarClock size={14} />
-										Defer to Friday
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										class="task-menu-item"
-										onclick={() => onDeferToWeekday(task, 6)}
-									>
-										<CalendarClock size={14} />
-										Defer to weekend
-									</DropdownMenuItem>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem class="task-menu-item" onclick={() => onOpenDue(task)}>
-										<CalendarPlus size={14} />
-										Set due date…
-									</DropdownMenuItem>
-									<DropdownMenuItem class="task-menu-item" onclick={() => onClearDue(task)}>
-										<CalendarPlus size={14} />
-										Clear due date
-									</DropdownMenuItem>
-									<DropdownMenuSeparator />
-								{/if}
-								<DropdownMenuItem class="task-menu-item" onclick={() => onOpenTrash(task)}>
-									<Trash2 size={14} />
-									Delete
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
 					</div>
 				</li>
 			{/each}
@@ -383,6 +385,25 @@
 		text-transform: uppercase;
 		letter-spacing: 0.02em;
 		color: var(--color-muted-foreground);
+		transition: transform 180ms ease;
+		will-change: transform;
+	}
+
+	.repeat-actions {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.task-menu-wrap {
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.repeat-actions:hover .repeat-pill,
+	.repeat-actions:focus-within .repeat-pill {
+		transform: translateX(-40px);
 	}
 
 	.due-pill {
@@ -412,6 +433,7 @@
 		border-radius: 999px;
 		border: 1px solid transparent;
 		background: transparent;
+		cursor: pointer;
 		color: var(--color-muted-foreground);
 		opacity: 0;
 		pointer-events: none;
@@ -424,6 +446,21 @@
 
 	:global(.tasks-task:hover .task-menu-btn),
 	:global(.task-menu-btn:focus-visible) {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.repeat-actions :global(.task-menu-btn) {
+		position: absolute;
+		right: 0;
+		top: 50%;
+		transform: translateY(-50%);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.repeat-actions:hover :global(.task-menu-btn),
+	.repeat-actions:focus-within :global(.task-menu-btn) {
 		opacity: 1;
 		pointer-events: auto;
 	}
