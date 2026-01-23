@@ -254,8 +254,8 @@ struct NewTaskSheet: View {
                         }
                     }
                     .frame(minHeight: 44)
-                    Picker("Project", selection: $listId) {
-                        Text("Select area or project").tag("")
+                    Picker("Group or project", selection: $listId) {
+                        Text("Select group or project").tag("")
                         ForEach(listOptions, id: \.id) { option in
                             Text(option.label).tag(option.id)
                         }
@@ -326,6 +326,152 @@ struct NewTaskSheet: View {
         onSave(trimmedTitle, notes, dateValue, listValue)
     }
 
+}
+
+struct NewGroupSheet: View {
+    let onCreate: (String) async throws -> Void
+    let onDismiss: () -> Void
+
+    @State private var title: String = ""
+    @State private var isSaving: Bool = false
+    @State private var errorMessage: String = ""
+    @FocusState private var isTitleFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Group") {
+                    TextField("Group name", text: $title)
+                        .textInputAutocapitalization(.sentences)
+                        .disableAutocorrection(false)
+                        .focused($isTitleFocused)
+                        .submitLabel(.done)
+                        .onSubmit { handleSave() }
+                }
+
+                if !errorMessage.isEmpty {
+                    Section {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("New group")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onDismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSaving ? "Saving..." : "Save") {
+                        handleSave()
+                    }
+                    .disabled(isSaving || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear {
+                isTitleFocused = true
+            }
+        }
+    }
+
+    private func handleSave() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty, !isSaving else { return }
+        isSaving = true
+        errorMessage = ""
+        Task {
+            do {
+                try await onCreate(trimmedTitle)
+                onDismiss()
+            } catch {
+                errorMessage = ErrorMapping.message(for: error)
+            }
+            isSaving = false
+        }
+    }
+}
+
+struct NewProjectSheet: View {
+    let groups: [TaskArea]
+    let onCreate: (String, String?) async throws -> Void
+    let onDismiss: () -> Void
+
+    @State private var title: String = ""
+    @State private var groupId: String = ""
+    @State private var isSaving: Bool = false
+    @State private var errorMessage: String = ""
+    @FocusState private var isTitleFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Project") {
+                    TextField("Project name", text: $title)
+                        .textInputAutocapitalization(.sentences)
+                        .disableAutocorrection(false)
+                        .focused($isTitleFocused)
+                        .submitLabel(.done)
+                        .onSubmit { handleSave() }
+                }
+
+                Section("Group") {
+                    Picker("Group", selection: $groupId) {
+                        Text("No group").tag("")
+                        ForEach(groupsSorted, id: \.id) { group in
+                            Text(group.title).tag(group.id)
+                        }
+                    }
+                }
+
+                if !errorMessage.isEmpty {
+                    Section {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("New project")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onDismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSaving ? "Saving..." : "Save") {
+                        handleSave()
+                    }
+                    .disabled(isSaving || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear {
+                isTitleFocused = true
+            }
+        }
+    }
+
+    private var groupsSorted: [TaskArea] {
+        groups.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
+
+    private func handleSave() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty, !isSaving else { return }
+        let selectedGroupId = groupId.isEmpty ? nil : groupId
+        isSaving = true
+        errorMessage = ""
+        Task {
+            do {
+                try await onCreate(trimmedTitle, selectedGroupId)
+                onDismiss()
+            } catch {
+                errorMessage = ErrorMapping.message(for: error)
+            }
+            isSaving = false
+        }
+    }
 }
 
 private struct TaskListOption: Identifiable {

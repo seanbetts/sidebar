@@ -20,6 +20,12 @@ private struct TasksPanelView: View {
     #endif
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
+    @State private var showNewGroupAlert: Bool = false
+    @State private var showNewProjectAlert: Bool = false
+    @State private var showProjectGroupDialog: Bool = false
+    @State private var newGroupTitle: String = ""
+    @State private var newProjectTitle: String = ""
+    @State private var pendingProjectTitle: String = ""
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
@@ -65,6 +71,26 @@ private struct TasksPanelView: View {
                 break
             }
         }
+        .alert("New group", isPresented: $showNewGroupAlert) {
+            TextField("Group name", text: $newGroupTitle)
+            Button("Cancel", role: .cancel) { newGroupTitle = "" }
+            Button("Save") { handleCreateGroup() }
+        } message: {
+            Text("Add a new group for your tasks.")
+        }
+        .alert("New project", isPresented: $showNewProjectAlert) {
+            TextField("Project name", text: $newProjectTitle)
+            Button("Cancel", role: .cancel) { newProjectTitle = "" }
+            Button("Next") { handleProjectTitleNext() }
+        } message: {
+            Text("Name your project, then pick a group.")
+        }
+        .confirmationDialog("Choose group", isPresented: $showProjectGroupDialog, titleVisibility: .visible) {
+            Button("No group") { handleCreateProject(groupId: nil) }
+            ForEach(viewModel.areas.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }, id: \.id) { group in
+                Button(group.title) { handleCreateProject(groupId: group.id) }
+            }
+        }
     }
 }
 
@@ -73,15 +99,29 @@ extension TasksPanelView {
         VStack(spacing: DesignTokens.Spacing.sm) {
             PanelHeader(title: "Tasks") {
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    Button {
-                        viewModel.startNewTask()
+                    Menu {
+                        Button {
+                            viewModel.startNewTask()
+                        } label: {
+                            Label("New task", systemImage: "checkmark.circle")
+                        }
+                        Button {
+                            showNewGroupAlert = true
+                        } label: {
+                            Label("New group", systemImage: "folder")
+                        }
+                        Button {
+                            showNewProjectAlert = true
+                        } label: {
+                            Label("New project", systemImage: "list.bullet.rectangle")
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .font(DesignTokens.Typography.labelMd)
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Add task")
+                    .accessibilityLabel("Add")
                     if isCompact {
                         SettingsAvatarButton()
                     }
@@ -124,7 +164,7 @@ extension TasksPanelView {
 
                 Section {
                     if areasSorted.isEmpty {
-                        Text("No areas")
+                        Text("No groups")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
@@ -241,5 +281,45 @@ extension TasksPanelView {
         #else
         return horizontalSizeClass == .compact
         #endif
+    }
+}
+
+private extension TasksPanelView {
+    func handleCreateGroup() {
+        let title = newGroupTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        newGroupTitle = ""
+        Task {
+            do {
+                try await viewModel.createGroup(title: title)
+            } catch {
+                viewModel.setErrorMessage(ErrorMapping.message(for: error))
+            }
+        }
+    }
+
+    func handleProjectTitleNext() {
+        let title = newProjectTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        pendingProjectTitle = title
+        newProjectTitle = ""
+        if viewModel.areas.isEmpty {
+            handleCreateProject(groupId: nil)
+            return
+        }
+        showProjectGroupDialog = true
+    }
+
+    func handleCreateProject(groupId: String?) {
+        let title = pendingProjectTitle
+        pendingProjectTitle = ""
+        guard !title.isEmpty else { return }
+        Task {
+            do {
+                try await viewModel.createProject(title: title, groupId: groupId)
+            } catch {
+                viewModel.setErrorMessage(ErrorMapping.message(for: error))
+            }
+        }
     }
 }
