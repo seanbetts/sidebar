@@ -14,6 +14,7 @@ from api.models.task import Task
 from api.models.task_area import TaskArea
 from api.models.task_operation_log import TaskOperationLog
 from api.models.task_project import TaskProject
+from api.services.recurrence_service import RecurrenceService
 from api.services.task_service import TaskService
 from api.utils.validation import parse_optional_uuid
 
@@ -313,6 +314,7 @@ class TaskSyncService:
     @staticmethod
     def _task_sync_payload(task: Task) -> dict[str, Any]:
         deadline = task.deadline or task.scheduled_date
+        next_instance = RecurrenceService.next_instance_date(task)
         return {
             "id": str(task.id),
             "title": task.title,
@@ -324,6 +326,7 @@ class TaskSyncService:
             "repeating": task.repeating,
             "repeatTemplate": task.repeat_template,
             "recurrenceRule": task.recurrence_rule,
+            "nextInstanceDate": next_instance.isoformat() if next_instance else None,
             "updatedAt": task.updated_at.isoformat() if task.updated_at else None,
             "deletedAt": task.deleted_at.isoformat() if task.deleted_at else None,
         }

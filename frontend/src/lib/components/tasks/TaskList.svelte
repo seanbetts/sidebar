@@ -136,7 +136,11 @@
 							</span>
 						{/if}
 						<DropdownMenu>
-							<DropdownMenuTrigger class="task-menu-btn" aria-label="Task options">
+							<DropdownMenuTrigger
+								class="task-menu-btn"
+								aria-label="Task options"
+								disabled={task.isPreview}
+							>
 								<MoreHorizontal size={16} />
 							</DropdownMenuTrigger>
 							<DropdownMenuContent class="task-menu" align="end" sideOffset={6}>

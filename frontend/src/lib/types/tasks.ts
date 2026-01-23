@@ -9,6 +9,8 @@ export type Task = {
 	repeating?: boolean;
 	repeatTemplate?: boolean;
 	recurrenceRule?: RecurrenceRule | null;
+	nextInstanceDate?: string | null;
+	isPreview?: boolean;
 	updatedAt?: string | null;
 	deletedAt?: string | null;
 };

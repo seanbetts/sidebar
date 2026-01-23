@@ -5,6 +5,7 @@ import {
 	buildSearchSections,
 	buildTodaySections,
 	buildUpcomingSections,
+	expandRepeatingTasks,
 	sortByDueDate,
 	type TaskSection
 } from '$lib/components/tasks/tasksUtils';
@@ -52,10 +53,11 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 	const selectionType = selection.type as TaskViewType;
 	const projectIds = new Set(projects.map((project) => project.id));
 	const filteredTasks = tasks.filter((task) => task.status !== 'project');
+	const expandedTasks = expandRepeatingTasks(filteredTasks);
 	const visibleTasks =
 		selectionType === 'area' || selectionType === 'search'
-			? filteredTasks.filter((task) => !projectIds.has(task.id))
-			: filteredTasks;
+			? expandedTasks.filter((task) => !projectIds.has(task.id))
+			: expandedTasks;
 	const sortedTasks =
 		selectionType === 'area' || selectionType === 'project' || selectionType === 'search'
 			? sortByDueDate(visibleTasks)
