@@ -214,22 +214,62 @@ struct NewTaskSheet: View {
         NavigationStack {
             Form {
                 Section("Task") {
-                    TextField("Title", text: $title)
-                    TextEditor(text: $notes)
-                        .frame(minHeight: 80)
-                    Toggle("Has due date", isOn: $hasDueDate)
-                    if hasDueDate {
-                        DatePicker("Due date", selection: $dueDate, displayedComponents: .date)
-                    }
+                    TextField("Task title", text: $title)
+                        .textInputAutocapitalization(.sentences)
+                        .disableAutocorrection(false)
                 }
-                Section("List") {
-                    Picker("", selection: $listId) {
-                        Text("No list").tag("")
+
+                Section {
+                    HStack {
+                        if hasDueDate {
+                            DatePicker("Due date", selection: $dueDate, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                        } else {
+                            Text("Due date")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Button("Add") {
+                                hasDueDate = true
+                                dueDate = Date()
+                            }
+                            .foregroundStyle(.accent)
+                        }
+                        if hasDueDate {
+                            Button {
+                                hasDueDate = false
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Clear due date")
+                        }
+                    }
+                    .frame(minHeight: 44)
+                    Picker("Project", selection: $listId) {
+                        Text("Select area or project").tag("")
                         ForEach(listOptions, id: \.id) { option in
                             Text(option.label).tag(option.id)
                         }
                     }
+                    .frame(minHeight: 44)
+                } header: {
+                    Text("Details")
                 }
+
+                Section("Notes") {
+                    ZStack(alignment: .topLeading) {
+                        if notes.isEmpty {
+                            Text("Notes (optional)")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                        }
+                        TextEditor(text: $notes)
+                            .frame(minHeight: 120)
+                    }
+                }
+
                 if !errorMessage.isEmpty {
                     Section {
                         Text(errorMessage)
@@ -239,6 +279,7 @@ struct NewTaskSheet: View {
                 }
             }
             .navigationTitle("New task")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
@@ -249,7 +290,11 @@ struct NewTaskSheet: View {
                         let dateValue = hasDueDate ? dueDate : nil
                         onSave(title, notes, dateValue, listValue)
                     }
-                    .disabled(isSaving || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(
+                        isSaving
+                            || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            || listId.isEmpty
+                    )
                 }
             }
             .onAppear {
@@ -265,6 +310,7 @@ struct NewTaskSheet: View {
     private var listOptions: [TaskListOption] {
         buildListOptions(areas: areas, projects: projects)
     }
+
 }
 
 private struct TaskListOption: Identifiable {
@@ -273,11 +319,28 @@ private struct TaskListOption: Identifiable {
 }
 
 private func buildListOptions(areas: [TaskArea], projects: [TaskProject]) -> [TaskListOption] {
-    let areaOptions = areas
-        .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-        .map { TaskListOption(id: $0.id, label: "Area: \($0.title)") }
-    let projectOptions = projects
-        .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-        .map { TaskListOption(id: $0.id, label: "Project: \($0.title)") }
-    return areaOptions + projectOptions
+    let sortedAreas = areas.sorted {
+        $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+    }
+    let projectsByArea = Dictionary(grouping: projects, by: { $0.areaId ?? "" })
+    var options: [TaskListOption] = []
+
+    for area in sortedAreas {
+        options.append(TaskListOption(id: area.id, label: area.title))
+        let areaProjects = (projectsByArea[area.id] ?? []).sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+        for project in areaProjects {
+            options.append(TaskListOption(id: project.id, label: "- \(project.title)"))
+        }
+    }
+
+    let orphanProjects = (projectsByArea[""] ?? []).sorted {
+        $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+    }
+    for project in orphanProjects {
+        options.append(TaskListOption(id: project.id, label: "- \(project.title)"))
+    }
+
+    return options
 }
