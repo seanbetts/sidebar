@@ -28,7 +28,14 @@ public struct NativeMarkdownEditorView: View {
                     .scrollDisabled(true)
                     .frame(maxWidth: maxContentWidth)
                     .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
-                    .padding(EdgeInsets(top: DesignTokens.Spacing.md, leading: DesignTokens.Spacing.lg, bottom: DesignTokens.Spacing.md, trailing: DesignTokens.Spacing.lg))
+                    .padding(
+                        EdgeInsets(
+                            top: DesignTokens.Spacing.md,
+                            leading: DesignTokens.Spacing.lg,
+                            bottom: DesignTokens.Spacing.md,
+                            trailing: DesignTokens.Spacing.lg
+                        )
+                    )
                     .onChange(of: viewModel.attributedContent) { oldValue, _ in
                         viewModel.handleContentChange(previous: oldValue)
                     }

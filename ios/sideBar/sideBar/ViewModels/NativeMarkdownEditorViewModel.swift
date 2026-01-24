@@ -37,6 +37,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         hasUnsavedChanges = false
     }
 
+    // swiftlint:disable cyclomatic_complexity
     public func applyFormatting(_ formatting: MarkdownFormatting) {
         guard !isReadOnly else { return }
 
@@ -67,6 +68,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             insertHorizontalRule()
         }
     }
+    // swiftlint:enable cyclomatic_complexity
 
     public func handleContentChange(previous: AttributedString) {
         guard !isReadOnly, !isApplyingShortcut else {
