@@ -16,6 +16,7 @@
 		14DFA3342F110406001DAF5B /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3332F110406001DAF5B /* Realtime */; };
 		14DFA3362F110406001DAF5B /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3352F110406001DAF5B /* Storage */; };
 		14DFA3392F116F2C001DAF5B /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 14DFA3382F116F2C001DAF5B /* Supabase */; };
+		14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 14F1A0B92F31000000BEEF03 /* Markdown */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -140,6 +141,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				14014D2C2F126C5A00DCEBC5 /* MarkdownUI in Frameworks */,
+				14F1A0B82F31000000BEEF03 /* Markdown in Frameworks */,
 				14DFA3322F110406001DAF5B /* PostgREST in Frameworks */,
 				14DFA3302F110406001DAF5B /* Functions in Frameworks */,
 				14DFA32E2F110406001DAF5B /* Auth in Frameworks */,
@@ -254,6 +256,7 @@
 				14DFA3352F110406001DAF5B /* Storage */,
 				14DFA3382F116F2C001DAF5B /* Supabase */,
 				14F1A0A12F21000000BEEF02 /* MarkdownUI */,
+				14F1A0B92F31000000BEEF03 /* Markdown */,
 			);
 			productName = sideBar;
 			productReference = 14C84A482F10562300FE0C16 /* sideBar.app */;
@@ -975,6 +978,14 @@
 				minimumVersion = 2.4.1;
 			};
 		};
+		14F1A0BA2F31000000BEEF03 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-markdown";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1012,6 +1023,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 14F1A0A02F21000000BEEF02 /* XCRemoteSwiftPackageReference "MarkdownUI" */;
 			productName = MarkdownUI;
+		};
+		14F1A0B92F31000000BEEF03 /* Markdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 14F1A0BA2F31000000BEEF03 /* XCRemoteSwiftPackageReference "swift-markdown" */;
+			productName = Markdown;
 		};
 /* End XCSwiftPackageProductDependency section */
 
