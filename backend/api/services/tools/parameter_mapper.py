@@ -206,3 +206,8 @@ def build_tasks_delete_project_args(params: dict) -> list:
 def build_tasks_delete_group_args(params: dict) -> list:
     """Build CLI arguments for delete group."""
     return TasksParameterBuilder.build_delete_group_args(params)
+
+
+def build_tasks_move_args(params: dict) -> list:
+    """Build CLI arguments for move task."""
+    return TasksParameterBuilder.build_move_args(params)

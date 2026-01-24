@@ -98,3 +98,16 @@ class TasksParameterBuilder(BaseParameterBuilder):
         args = [params["group_id"]]
         TasksParameterBuilder.append_user_id(args, params)
         return args
+
+    @staticmethod
+    def build_move_args(params: dict) -> list:
+        """Build CLI arguments for move task."""
+        args = [params["task_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+
+        if params.get("project_id"):
+            args.extend(["--project-id", params["project_id"]])
+        elif params.get("group_id"):
+            args.extend(["--group-id", params["group_id"]])
+
+        return args

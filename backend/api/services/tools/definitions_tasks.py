@@ -239,4 +239,31 @@ def get_tasks_definitions() -> dict:
             "script": "delete_group.py",
             "build_args": pm.build_tasks_delete_group_args,
         },
+        "Move Task": {
+            "description": (
+                "Move a task to a different project or group. "
+                "Provide either a project_id or group_id as the destination."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID to move",
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "description": "Target project ID",
+                    },
+                    "group_id": {
+                        "type": "string",
+                        "description": "Target group ID (if not using project)",
+                    },
+                },
+                "required": ["task_id"],
+            },
+            "skill": "tasks",
+            "script": "move_task.py",
+            "build_args": pm.build_tasks_move_args,
+        },
     }
