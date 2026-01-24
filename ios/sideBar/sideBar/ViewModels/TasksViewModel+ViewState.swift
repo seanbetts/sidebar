@@ -9,6 +9,7 @@ private extension TaskSelection {
     }
 }
 
+/// Stores UI state derived from tasks data and selection.
 public struct TasksViewState: Equatable {
     public let selectionLabel: String
     public let titleIcon: String

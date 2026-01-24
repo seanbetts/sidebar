@@ -13,6 +13,7 @@ public protocol IngestionUploadManaging: AnyObject {
     func cancelUpload(uploadId: String)
 }
 
+/// Describes an ingestion upload request and its metadata.
 public struct UploadRequest {
     public let uploadId: String
     public let fileURL: URL

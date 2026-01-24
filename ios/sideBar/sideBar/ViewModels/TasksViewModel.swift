@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 @MainActor
+/// Manages tasks state, networking, and user actions for the tasks UI.
 public final class TasksViewModel: ObservableObject {
     @Published public private(set) var tasks: [TaskItem] = []
     @Published public private(set) var groups: [TaskGroup] = []
