@@ -6,15 +6,43 @@ import OSLog
 /// Defines the requirements for IngestionUploadManaging.
 public protocol IngestionUploadManaging: AnyObject {
     func startUpload(
-        uploadId: String,
-        fileURL: URL,
-        filename: String,
-        mimeType: String,
-        folder: String,
+        request: UploadRequest,
         onProgress: @escaping (Double) -> Void,
         onCompletion: @escaping (Result<String, Error>) -> Void
     )
     func cancelUpload(uploadId: String)
+}
+
+public struct UploadRequest {
+    public let uploadId: String
+    public let fileURL: URL
+    public let filename: String
+    public let mimeType: String
+    public let folder: String
+
+    public init(uploadId: String, fileURL: URL, filename: String, mimeType: String, folder: String) {
+        self.uploadId = uploadId
+        self.fileURL = fileURL
+        self.filename = filename
+        self.mimeType = mimeType
+        self.folder = folder
+    }
+}
+
+private struct UploadPayload {
+    let fileURL: URL
+    let filename: String
+    let mimeType: String
+    let folder: String
+}
+
+private struct UploadResponse: Decodable {
+    let fileId: String?
+    let data: UploadResponseData?
+}
+
+private struct UploadResponseData: Decodable {
+    let fileId: String?
 }
 
 /// Handles background uploads for ingestion.
@@ -43,11 +71,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
     }
 
     public func startUpload(
-        uploadId: String,
-        fileURL: URL,
-        filename: String,
-        mimeType: String,
-        folder: String,
+        request: UploadRequest,
         onProgress: @escaping (Double) -> Void,
         onCompletion: @escaping (Result<String, Error>) -> Void
     ) {
@@ -66,10 +90,12 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
                 try IngestionUploadHelpers.writeMultipartBody(
                     to: bodyURL,
                     boundary: boundary,
-                    fileURL: fileURL,
-                    filename: filename,
-                    mimeType: mimeType,
-                    folder: folder,
+                    payload: UploadPayload(
+                        fileURL: request.fileURL,
+                        filename: request.filename,
+                        mimeType: request.mimeType,
+                        folder: request.folder
+                    ),
                     logger: self.logger
                 )
             } catch {
@@ -79,14 +105,14 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
 
             let task = self.session.uploadTask(with: request, fromFile: bodyURL)
             let context = UploadContext(
-                uploadId: uploadId,
+                uploadId: request.uploadId,
                 bodyFileURL: bodyURL,
                 onProgress: onProgress,
                 onCompletion: onCompletion
             )
             self.queue.async {
                 self.contexts[task.taskIdentifier] = context
-                self.taskIdsByUploadId[uploadId] = task.taskIdentifier
+                self.taskIdsByUploadId[request.uploadId] = task.taskIdentifier
             }
             task.resume()
         }
@@ -149,10 +175,7 @@ enum IngestionUploadHelpers {
     static func writeMultipartBody(
         to url: URL,
         boundary: String,
-        fileURL: URL,
-        filename: String,
-        mimeType: String,
-        folder: String,
+        payload: UploadPayload,
         logger: Logger
     ) throws {
         FileManager.default.createFile(atPath: url.path, contents: nil)
@@ -167,12 +190,12 @@ enum IngestionUploadHelpers {
 
         try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
         try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"folder\"\r\n\r\n".utf8))
-        try handle.write(contentsOf: Data("\(folder)\r\n".utf8))
+        try handle.write(contentsOf: Data("\(payload.folder)\r\n".utf8))
         try handle.write(contentsOf: Data("--\(boundary)\r\n".utf8))
-        try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".utf8))
-        try handle.write(contentsOf: Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
+        try handle.write(contentsOf: Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(payload.filename)\"\r\n".utf8))
+        try handle.write(contentsOf: Data("Content-Type: \(payload.mimeType)\r\n\r\n".utf8))
 
-        let input = try FileHandle(forReadingFrom: fileURL)
+        let input = try FileHandle(forReadingFrom: payload.fileURL)
         defer {
             do {
                 try input.close()
@@ -202,15 +225,6 @@ enum IngestionUploadHelpers {
     }
 
     static func parseUploadResponse(data: Data) throws -> String {
-        struct UploadResponse: Decodable {
-            let fileId: String?
-            let data: Inner?
-
-            struct Inner: Decodable {
-                let fileId: String?
-            }
-        }
-
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let payload = try decoder.decode(UploadResponse.self, from: data)

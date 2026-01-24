@@ -143,14 +143,16 @@ extension IngestionViewModel {
         defer { isIngestingYouTube = false }
         let tempId = "youtube-\(UUID().uuidString)"
         let pendingItem = makeLocalItem(
-            id: tempId,
-            filename: "YouTube Video",
-            mimeType: "video/youtube",
-            sizeBytes: 0,
-            status: "processing",
-            stage: "queued",
-            progress: nil,
-            sourceUrl: normalized
+            input: LocalIngestionItemInput(
+                id: tempId,
+                filename: "YouTube Video",
+                mimeType: "video/youtube",
+                sizeBytes: 0,
+                status: "processing",
+                stage: "queued",
+                progress: nil,
+                sourceUrl: normalized
+            )
         )
         store.addLocalUpload(pendingItem)
         prepareSelection(fileId: tempId)

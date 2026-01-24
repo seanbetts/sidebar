@@ -205,24 +205,28 @@ extension IngestionViewModel {
         }
         let sizeBytes = fileSizeBytes(for: url)
         let item = makeLocalItem(
-            id: tempId,
-            filename: filename,
-            mimeType: mimeType,
-            sizeBytes: sizeBytes,
-            status: "uploading",
-            stage: "uploading",
-            progress: 0,
-            sourceUrl: nil
+            input: LocalIngestionItemInput(
+                id: tempId,
+                filename: filename,
+                mimeType: mimeType,
+                sizeBytes: sizeBytes,
+                status: "uploading",
+                stage: "uploading",
+                progress: 0,
+                sourceUrl: nil
+            )
         )
         store.addLocalUpload(item)
         prepareSelection(fileId: tempId)
 
         uploadManager.startUpload(
-            uploadId: tempId,
-            fileURL: url,
-            filename: filename,
-            mimeType: mimeType,
-            folder: "",
+            request: UploadRequest(
+                uploadId: tempId,
+                fileURL: url,
+                filename: filename,
+                mimeType: mimeType,
+                folder: ""
+            ),
             onProgress: { [weak self] progress in
                 guard let self else { return }
                 self.store.updateLocalUpload(
@@ -280,37 +284,28 @@ extension IngestionViewModel {
         }
     }
 
-    func makeLocalItem(
-        id: String,
-        filename: String,
-        mimeType: String,
-        sizeBytes: Int,
-        status: String,
-        stage: String,
-        progress: Double?,
-        sourceUrl: String?
-    ) -> IngestionListItem {
+    func makeLocalItem(input: LocalIngestionItemInput) -> IngestionListItem {
         let file = IngestedFileMeta(
-            id: id,
-            filenameOriginal: filename,
+            id: input.id,
+            filenameOriginal: input.filename,
             path: nil,
-            mimeOriginal: mimeType,
-            sizeBytes: sizeBytes,
+            mimeOriginal: input.mimeType,
+            sizeBytes: input.sizeBytes,
             sha256: nil,
             pinned: false,
             pinnedOrder: nil,
             category: nil,
-            sourceUrl: sourceUrl,
+            sourceUrl: input.sourceUrl,
             sourceMetadata: nil,
             createdAt: ISO8601DateFormatter().string(from: Date())
         )
         let job = IngestionJob(
-            status: status,
-            stage: stage,
+            status: input.status,
+            stage: input.stage,
             errorCode: nil,
             errorMessage: nil,
             userMessage: nil,
-            progress: progress,
+            progress: input.progress,
             attempts: 0,
             updatedAt: nil
         )
