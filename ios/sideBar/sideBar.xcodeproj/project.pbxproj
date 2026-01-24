@@ -345,6 +345,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				14DFA32C2F110406001DAF5B /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				14F1A0BA2F31000000BEEF03 /* XCRemoteSwiftPackageReference "swift-markdown" */,
 				14F1A0A02F21000000BEEF02 /* XCRemoteSwiftPackageReference "MarkdownUI" */,
 			);
 			preferredProjectObjectVersion = 77;
