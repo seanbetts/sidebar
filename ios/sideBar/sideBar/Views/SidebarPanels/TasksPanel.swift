@@ -162,12 +162,8 @@ extension TasksPanelView {
                     )
                 }
 
-                Section {
-                    if areasSorted.isEmpty {
-                        Text("No groups")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
+                if !areasSorted.isEmpty {
+                    Section {
                         ForEach(areasSorted, id: \.id) { area in
                             tasksListRow(
                                 title: area.title,

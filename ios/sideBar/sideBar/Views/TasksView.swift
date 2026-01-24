@@ -218,7 +218,8 @@ extension TasksDetailView {
                                 dueLabel: TasksUtils.dueLabel(for: task),
                                 repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
                                 selection: state.selection,
-                                onComplete: { Task { await viewModel.completeTask(task: task) } }
+                                onComplete: { Task { await viewModel.completeTask(task: task) } },
+                                onOpenNotes: { openNotes(task) }
                             ) {
                                 taskMenu(for: task, selection: state.selection)
                             }
