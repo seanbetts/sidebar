@@ -25,7 +25,9 @@ public final class TasksViewModel: ObservableObject {
 
     public var viewState: TasksViewState {
         let filteredTasks = tasks.filter { $0.status != "project" }
-        let expanded = TasksUtils.expandRepeatingTasks(filteredTasks)
+        let expanded = selection == .today
+            ? filteredTasks
+            : TasksUtils.expandRepeatingTasks(filteredTasks)
 
         let sortedTasks: [TaskItem]
         switch selection {
