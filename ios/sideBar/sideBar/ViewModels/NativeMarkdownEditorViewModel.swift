@@ -90,7 +90,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func toggleInlineIntent(_ intent: InlinePresentationIntent) {
-        let ranges = selection.indices(in: attributedContent).ranges
+        let ranges = selectionRanges()
         for range in ranges where !range.isEmpty {
             let current = attributedContent[range].inlinePresentationIntent ?? []
             if current.contains(intent) {
@@ -102,7 +102,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func toggleStrikethrough() {
-        let ranges = selection.indices(in: attributedContent).ranges
+        let ranges = selectionRanges()
         for range in ranges where !range.isEmpty {
             if attributedContent[range].strikethroughStyle == nil {
                 attributedContent[range].strikethroughStyle = .single
@@ -113,7 +113,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func setBlockKind(_ blockKind: BlockKind, listDepth: Int? = nil) {
-        let ranges = selection.indices(in: attributedContent).ranges
+        let ranges = selectionRanges()
         for range in ranges {
             let paragraphRange = findParagraphRange(containing: range)
             attributedContent[paragraphRange].blockKind = blockKind
@@ -148,15 +148,16 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func insertLink(_ url: URL) {
-        let ranges = selection.indices(in: attributedContent).ranges
+        let ranges = selectionRanges()
         guard let range = ranges.first else { return }
 
         if range.isEmpty {
             let placeholder = AttributedString("link")
             var insert = placeholder
-            insert.link = url
+            insert[insert.startIndex..<insert.endIndex].link = url
             attributedContent.insert(insert, at: range.lowerBound)
-            selection = AttributedTextSelection(insertion: attributedContent.index(range.lowerBound, offsetByCharacters: placeholder.characters.count))
+            let cursorIndex = attributedContent.index(range.lowerBound, offsetByCharacters: placeholder.characters.count)
+            selection = AttributedTextSelection(range: cursorIndex..<cursorIndex)
         } else {
             attributedContent[range].link = url
             attributedContent[range].foregroundColor = .accentColor
@@ -166,10 +167,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func insertHorizontalRule() {
         var hr = AttributedString("---")
-        hr.blockKind = .horizontalRule
-        hr.foregroundColor = DesignTokens.Colors.border
+        let range = hr.startIndex..<hr.endIndex
+        hr[range].blockKind = .horizontalRule
+        hr[range].foregroundColor = DesignTokens.Colors.border
 
-        let insertIndex = selection.indices(in: attributedContent).ranges.first?.lowerBound ?? attributedContent.endIndex
+        let insertIndex = selectionRanges().first?.lowerBound ?? attributedContent.endIndex
         attributedContent.insert(hr, at: insertIndex)
     }
 
@@ -214,6 +216,15 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         case 4: return .heading4
         case 5: return .heading5
         default: return .heading6
+        }
+    }
+
+    private func selectionRanges() -> RangeSet<AttributedString.Index> {
+        switch selection.indices(in: attributedContent) {
+        case .insertionPoint(let index):
+            return RangeSet([index..<index])
+        case .ranges(let ranges):
+            return ranges
         }
     }
 }

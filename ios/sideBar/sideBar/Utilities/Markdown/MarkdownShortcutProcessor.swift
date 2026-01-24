@@ -34,12 +34,9 @@ public struct MarkdownShortcutProcessor {
         selection: AttributedTextSelection,
         lastInsertedCharacter: Character?
     ) -> AttributedTextSelection? {
-        guard let cursorRange = selection.indices(in: text).ranges.first,
-              cursorRange.isEmpty else {
+        guard let cursorIndex = cursorIndex(in: text, selection: selection) else {
             return nil
         }
-
-        let cursorIndex = cursorRange.lowerBound
 
         if let newSelection = processBlockShortcut(in: &text, at: cursorIndex) {
             return newSelection
@@ -85,7 +82,7 @@ public struct MarkdownShortcutProcessor {
                     }
                 }
 
-                return AttributedTextSelection(insertion: newLineStart)
+                return AttributedTextSelection(range: newLineStart..<newLineStart)
             }
         }
 
@@ -101,7 +98,7 @@ public struct MarkdownShortcutProcessor {
                 text[newLineStart..<lineEnd].listDepth = 1
             }
 
-            return AttributedTextSelection(insertion: newLineStart)
+            return AttributedTextSelection(range: newLineStart..<newLineStart)
         }
 
         return nil
@@ -185,7 +182,7 @@ public struct MarkdownShortcutProcessor {
         text.removeSubrange(prefixStart..<contentStartAttr)
 
         let newCursorIndex = text.index(prefixStart, offsetByCharacters: content.count)
-        return AttributedTextSelection(insertion: newCursorIndex)
+        return AttributedTextSelection(range: newCursorIndex..<newCursorIndex)
     }
 
     private static func nextLineEnd(in text: AttributedString, from start: AttributedString.Index) -> AttributedString.Index {
@@ -197,5 +194,15 @@ public struct MarkdownShortcutProcessor {
             current = text.index(afterCharacter: current)
         }
         return current
+    }
+
+    private static func cursorIndex(in text: AttributedString, selection: AttributedTextSelection) -> AttributedString.Index? {
+        switch selection.indices(in: text) {
+        case .insertionPoint(let index):
+            return index
+        case .ranges(let ranges):
+            guard let range = ranges.first, range.isEmpty else { return nil }
+            return range.lowerBound
+        }
     }
 }

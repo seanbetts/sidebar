@@ -32,8 +32,7 @@ public enum BlockKindAttribute: CodableAttributedStringKey {
     public static let name = "sideBar.blockKind"
 
     public static var inheritedByAddedText: Bool { false }
-    public static var invalidationConditions: InvalidationConditions { [.textChanged] }
-    public static var runBoundaries: AttributeRunBoundaries { .paragraph }
+    public static var runBoundaries: AttributedString.AttributeRunBoundaries? { .paragraph }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -42,8 +41,7 @@ public enum ListDepthAttribute: CodableAttributedStringKey {
     public static let name = "sideBar.listDepth"
 
     public static var inheritedByAddedText: Bool { false }
-    public static var invalidationConditions: InvalidationConditions { [.textChanged] }
-    public static var runBoundaries: AttributeRunBoundaries { .paragraph }
+    public static var runBoundaries: AttributedString.AttributeRunBoundaries? { .paragraph }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -52,8 +50,7 @@ public enum CodeLanguageAttribute: CodableAttributedStringKey {
     public static let name = "sideBar.codeLanguage"
 
     public static var inheritedByAddedText: Bool { false }
-    public static var invalidationConditions: InvalidationConditions { [.textChanged] }
-    public static var runBoundaries: AttributeRunBoundaries { .paragraph }
+    public static var runBoundaries: AttributedString.AttributeRunBoundaries? { .paragraph }
 }
 
 // MARK: - Attribute Scope
@@ -88,10 +85,6 @@ public extension AttributeDynamicLookup {
 
 @available(iOS 26.0, macOS 26.0, *)
 public extension AttributedString {
-    func blockKind(at index: Index) -> BlockKind? {
-        self[index].blockKind
-    }
-
     func blockKind(in range: Range<Index>) -> BlockKind? {
         var result: BlockKind?
         for run in self[range].runs {
