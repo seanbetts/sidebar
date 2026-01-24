@@ -81,14 +81,14 @@
   - [x] Base body font size matches `SideBarMarkdown` (16)
   - [x] Inline code font size and background match `SideBarMarkdown`
   - [x] Strikethrough color matches `SideBarMarkdown`
-- [ ] **8.2** Block presentation
-  - [ ] Headings use presentation intent for consistent spacing
-  - [ ] Lists render bullets/ordinals using presentation intent + delimiters
-  - [ ] Blockquotes render with appropriate intent
-  - [ ] Thematic breaks render with intent
-- [ ] **8.3** Code blocks and tables
-  - [ ] Code blocks visually match `SideBarMarkdown` (padding/border/background)
-  - [ ] Tables parse and render with basic styling
+- [x] **8.2** Block presentation
+  - [x] Headings use presentation intent for consistent spacing
+  - [x] Lists render bullets/ordinals using presentation intent + delimiters
+  - [x] Blockquotes render with appropriate intent
+  - [x] Thematic breaks render with intent
+- [x] **8.3** Code blocks and tables
+  - [x] Code blocks visually match `SideBarMarkdown` (padding/border/background)
+  - [x] Tables parse and render with basic styling
 
 ### Testing
 - [x] Unit tests for `MarkdownImporter`

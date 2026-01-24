@@ -30,8 +30,9 @@ public struct MarkdownImporter {
 private struct MarkdownToAttributedStringWalker: MarkupWalker {
     var result = AttributedString()
 
-    private var listStack: [(ordered: Bool, depth: Int)] = []
+    private var listStack: [(ordered: Bool, depth: Int, listId: Int, itemIndex: Int)] = []
     private var blockquoteDepth: Int = 0
+    private var nextListId: Int = 1
     private let bodyFont = Font.system(size: 16)
     private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
@@ -52,6 +53,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             applyBlockKind(.imageCaption, to: &captionText)
             captionText[fullRange(in: captionText)].font = DesignTokens.Typography.footnote
             captionText[fullRange(in: captionText)].foregroundColor = DesignTokens.Colors.textTertiary
+            applyPresentationIntent(for: .imageCaption, to: &captionText)
             appendBlock(captionText)
             return
         }
@@ -69,6 +71,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
 
         paragraphText[fullRange(in: paragraphText)].font = bodyFont
+        applyPresentationIntent(for: blockquoteDepth > 0 ? .blockquote : .paragraph, to: &paragraphText)
         appendBlock(paragraphText)
     }
 
@@ -100,12 +103,15 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
 
         headingText[fullRange(in: headingText)].foregroundColor = DesignTokens.Colors.textPrimary
+        applyPresentationIntent(for: blockKindForHeading(level: heading.level), to: &headingText)
         appendBlock(headingText)
     }
 
     mutating func visitUnorderedList(_ unorderedList: UnorderedList) {
         let depth = listStack.count + 1
-        listStack.append((ordered: false, depth: depth))
+        let listId = nextListId
+        nextListId += 1
+        listStack.append((ordered: false, depth: depth, listId: listId, itemIndex: 0))
         for item in unorderedList.listItems {
             visitListItem(item)
         }
@@ -114,7 +120,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
     mutating func visitOrderedList(_ orderedList: OrderedList) {
         let depth = listStack.count + 1
-        listStack.append((ordered: true, depth: depth))
+        let listId = nextListId
+        nextListId += 1
+        listStack.append((ordered: true, depth: depth, listId: listId, itemIndex: 0))
         for item in orderedList.listItems {
             visitListItem(item)
         }
@@ -133,6 +141,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         var rule = AttributedString("---")
         applyBlockKind(.horizontalRule, to: &rule)
         rule[fullRange(in: rule)].foregroundColor = DesignTokens.Colors.border
+        applyPresentationIntent(for: .horizontalRule, to: &rule)
         appendBlock(rule)
     }
 
@@ -147,6 +156,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             lineText[fullRange(in: lineText)].font = blockCodeFont
             lineText[fullRange(in: lineText)].foregroundColor = DesignTokens.Colors.textPrimary
             lineText[fullRange(in: lineText)].backgroundColor = DesignTokens.Colors.muted
+            applyPresentationIntent(for: .codeBlock, codeLanguage: language, to: &lineText)
             appendBlock(lineText)
         }
     }
@@ -162,11 +172,14 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
         htmlText[fullRange(in: htmlText)].font = blockCodeFont
         htmlText[fullRange(in: htmlText)].foregroundColor = DesignTokens.Colors.textSecondary
+        applyPresentationIntent(for: .htmlBlock, to: &htmlText)
         appendBlock(htmlText)
     }
 
     mutating func visitListItem(_ listItem: ListItem) {
-        guard let context = listStack.last else { return }
+        guard !listStack.isEmpty else { return }
+        listStack[listStack.count - 1].itemIndex += 1
+        let context = listStack[listStack.count - 1]
         var itemText = AttributedString()
 
         for child in listItem.children {
@@ -190,7 +203,38 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
         itemText[fullRange(in: itemText)].listDepth = context.depth
         itemText[fullRange(in: itemText)].font = bodyFont
+        applyPresentationIntent(
+            for: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph,
+            listDepth: context.depth,
+            listOrdinal: context.ordered ? context.itemIndex : nil,
+            listId: context.listId,
+            to: &itemText
+        )
         appendBlock(itemText)
+    }
+
+    mutating func visitTable(_ table: Table) {
+        let alignments = table.columnAlignments
+        let tableIntent = makeTableIntent(columnAlignments: alignments)
+
+        var rowIndex = 0
+        appendTableRow(
+            cells: table.head.children.compactMap { $0 as? Table.Cell },
+            rowIndex: rowIndex,
+            isHeader: true,
+            tableIntent: tableIntent
+        )
+        rowIndex += 1
+
+        for row in table.body.rows {
+            appendTableRow(
+                cells: row.children.compactMap { $0 as? Table.Cell },
+                rowIndex: rowIndex,
+                isHeader: false,
+                tableIntent: tableIntent
+            )
+            rowIndex += 1
+        }
     }
 
     // swiftlint:disable cyclomatic_complexity
@@ -278,6 +322,138 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private func applyBlockKind(_ kind: BlockKind, to text: inout AttributedString) {
         let range = fullRange(in: text)
         text[range].blockKind = kind
+    }
+
+    private func applyPresentationIntent(
+        for blockKind: BlockKind,
+        listDepth: Int? = nil,
+        listOrdinal: Int? = nil,
+        listId: Int? = nil,
+        codeLanguage: String? = nil,
+        to text: inout AttributedString
+    ) {
+        let range = fullRange(in: text)
+        switch blockKind {
+        case .heading1:
+            text[range].presentationIntent = PresentationIntent(.header(level: 1), identity: 1)
+        case .heading2:
+            text[range].presentationIntent = PresentationIntent(.header(level: 2), identity: 2)
+        case .heading3:
+            text[range].presentationIntent = PresentationIntent(.header(level: 3), identity: 3)
+        case .heading4:
+            text[range].presentationIntent = PresentationIntent(.header(level: 4), identity: 4)
+        case .heading5:
+            text[range].presentationIntent = PresentationIntent(.header(level: 5), identity: 5)
+        case .heading6:
+            text[range].presentationIntent = PresentationIntent(.header(level: 6), identity: 6)
+        case .blockquote:
+            text[range].presentationIntent = PresentationIntent(.blockQuote, identity: 1)
+        case .codeBlock:
+            text[range].presentationIntent = PresentationIntent(.codeBlock(languageHint: codeLanguage), identity: 1)
+        case .horizontalRule:
+            text[range].presentationIntent = PresentationIntent(.thematicBreak, identity: 1)
+        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            let isOrdered = blockKind == .orderedList
+            let listKind: PresentationIntent.Kind = isOrdered ? .orderedList : .unorderedList
+            let listIdentity = listId ?? (listDepth ?? 1)
+            let listIntent = PresentationIntent(listKind, identity: listIdentity)
+            let ordinal = listOrdinal ?? 1
+            text[range].presentationIntent = PresentationIntent(.listItem(ordinal: ordinal), identity: listIdentity * 1000 + ordinal, parent: listIntent)
+            if blockKind == .bulletList {
+                text[range].listItemDelimiter = "•"
+            } else if blockKind == .taskChecked {
+                text[range].listItemDelimiter = "☑"
+            } else if blockKind == .taskUnchecked {
+                text[range].listItemDelimiter = "☐"
+            }
+        case .paragraph, .imageCaption, .gallery, .htmlBlock:
+            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1)
+        }
+    }
+
+    private func blockKindForHeading(level: Int) -> BlockKind {
+        switch level {
+        case 1: return .heading1
+        case 2: return .heading2
+        case 3: return .heading3
+        case 4: return .heading4
+        case 5: return .heading5
+        default: return .heading6
+        }
+    }
+
+    private func appendTableRow(
+        cells: [Table.Cell],
+        rowIndex: Int,
+        isHeader: Bool,
+        tableIntent: PresentationIntent
+    ) {
+        var rowText = AttributedString()
+        for (index, cell) in cells.enumerated() {
+            var cellText = AttributedString()
+            for child in cell.children {
+                cellText.append(inlineAttributedString(for: child))
+            }
+
+            let startIndex = rowText.endIndex
+            rowText.append(cellText)
+            let endIndex = rowText.endIndex
+            let cellRange = startIndex..<endIndex
+            applyTablePresentationIntent(
+                to: &rowText,
+                range: cellRange,
+                rowIndex: rowIndex,
+                columnIndex: index,
+                isHeader: isHeader,
+                tableIntent: tableIntent
+            )
+
+            if index < cells.count - 1 {
+                rowText.append(AttributedString("\t"))
+            }
+        }
+
+        let full = fullRange(in: rowText)
+        rowText[full].font = bodyFont
+        if isHeader {
+            rowText[full].font = .system(size: 16, weight: .semibold)
+            rowText[full].backgroundColor = DesignTokens.Colors.muted
+        }
+        appendBlock(rowText)
+    }
+
+    private func applyTablePresentationIntent(
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        rowIndex: Int,
+        columnIndex: Int,
+        isHeader: Bool,
+        tableIntent: PresentationIntent
+    ) {
+        let rowKind: PresentationIntent.Kind = isHeader ? .tableHeaderRow : .tableRow(rowIndex: rowIndex)
+        let rowIntent = PresentationIntent(rowKind, identity: rowIndex + 1, parent: tableIntent)
+        let cellIntent = PresentationIntent(
+            .tableCell(columnIndex: columnIndex),
+            identity: (rowIndex + 1) * 1000 + columnIndex,
+            parent: rowIntent
+        )
+        text[range].presentationIntent = cellIntent
+    }
+
+    private func makeTableIntent(columnAlignments: [Table.ColumnAlignment?]) -> PresentationIntent {
+        let columns = columnAlignments.map { alignment -> PresentationIntent.TableColumn in
+            let mapped: PresentationIntent.TableColumn.Alignment
+            switch alignment {
+            case .center:
+                mapped = .center
+            case .right:
+                mapped = .right
+            default:
+                mapped = .left
+            }
+            return PresentationIntent.TableColumn(alignment: mapped)
+        }
+        return PresentationIntent(.table(columns: columns), identity: nextListId + 100)
     }
 
     private func unwrapOptionalString(_ value: String) -> String {

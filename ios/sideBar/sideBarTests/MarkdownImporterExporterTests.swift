@@ -98,4 +98,21 @@ final class MarkdownImporterExporterTests: XCTestCase {
 
         XCTAssertEqual(String(first.characters), String(roundTrip.characters))
     }
+
+    func testTableRoundTrip() {
+        let markdown = """
+        | Name | Count |
+        | --- | ---: |
+        | Alpha | 1 |
+        """
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let first = importer.attributedString(from: markdown).attributedString
+        let exported = exporter.markdown(from: first)
+
+        XCTAssertTrue(exported.contains("| Name | Count |"))
+        XCTAssertTrue(exported.contains("| --- | ---: |"))
+        XCTAssertTrue(exported.contains("| Alpha | 1 |"))
+    }
 }

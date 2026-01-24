@@ -179,6 +179,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 attributedContent[paragraphRange].listDepth = nil
             }
             applyBlockStyle(blockKind: blockKind, range: paragraphRange)
+            applyPresentationIntent(blockKind: blockKind, listDepth: listDepth, range: paragraphRange)
         }
     }
 
@@ -395,6 +396,49 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         if blockKind == .taskChecked {
             attributedContent[range].strikethroughStyle = .single
             attributedContent[range].foregroundColor = DesignTokens.Colors.textSecondary
+        }
+    }
+
+    private func applyPresentationIntent(
+        blockKind: BlockKind,
+        listDepth: Int?,
+        range: Range<AttributedString.Index>
+    ) {
+        switch blockKind {
+        case .heading1:
+            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 1), identity: 1)
+        case .heading2:
+            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 2), identity: 2)
+        case .heading3:
+            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 3), identity: 3)
+        case .heading4:
+            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 4), identity: 4)
+        case .heading5:
+            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 5), identity: 5)
+        case .heading6:
+            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 6), identity: 6)
+        case .blockquote:
+            attributedContent[range].presentationIntent = PresentationIntent(.blockQuote, identity: 1)
+        case .codeBlock:
+            attributedContent[range].presentationIntent = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
+        case .horizontalRule:
+            attributedContent[range].presentationIntent = PresentationIntent(.thematicBreak, identity: 1)
+        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
+            let listId = listDepth ?? 1
+            let listIntent = PresentationIntent(listKind, identity: listId)
+            attributedContent[range].presentationIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
+            if blockKind == .bulletList {
+                attributedContent[range].listItemDelimiter = "•"
+            } else if blockKind == .taskChecked {
+                attributedContent[range].listItemDelimiter = "☑"
+            } else if blockKind == .taskUnchecked {
+                attributedContent[range].listItemDelimiter = "☐"
+            } else {
+                attributedContent[range].listItemDelimiter = nil
+            }
+        case .paragraph, .imageCaption, .gallery, .htmlBlock:
+            attributedContent[range].presentationIntent = PresentationIntent(.paragraph, identity: 1)
         }
     }
 
