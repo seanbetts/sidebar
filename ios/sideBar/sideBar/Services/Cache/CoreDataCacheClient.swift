@@ -78,6 +78,7 @@ public final class CoreDataCacheClient: CacheClient {
         let typeName = String(reflecting: T.self)
 
         container.performBackgroundTask { context in
+            context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
             let request = NSFetchRequest<NSManagedObject>(entityName: "CacheEntry")
             request.fetchLimit = 1
             request.predicate = NSPredicate(format: "key == %@", key)
