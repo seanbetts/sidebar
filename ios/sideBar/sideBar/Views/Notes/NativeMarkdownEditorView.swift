@@ -5,6 +5,8 @@ public struct NativeMarkdownEditorView: View {
     @ObservedObject var viewModel: NativeMarkdownEditorViewModel
     let maxContentWidth: CGFloat
     let onSave: (String) -> Void
+    @State private var isLinkPromptPresented = false
+    @State private var linkValue = "https://"
 
     public init(
         viewModel: NativeMarkdownEditorViewModel,
@@ -18,10 +20,6 @@ public struct NativeMarkdownEditorView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            if !viewModel.isReadOnly {
-                formattingToolbar
-            }
-
             ScrollView {
                 TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
                     .attributedTextFormattingDefinition(\.markdownEditor)
@@ -42,64 +40,78 @@ public struct NativeMarkdownEditorView: View {
             }
         }
         .background(DesignTokens.Colors.background)
-    }
-
-    private var formattingToolbar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                toolbarButton(systemImage: "bold") {
-                    viewModel.applyFormatting(.bold)
+        #if os(iOS)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Toggle(isOn: boldBinding) {
+                    Image(systemName: "bold")
                 }
-                toolbarButton(systemImage: "italic") {
-                    viewModel.applyFormatting(.italic)
+                Toggle(isOn: italicBinding) {
+                    Image(systemName: "italic")
                 }
-                toolbarButton(systemImage: "strikethrough") {
-                    viewModel.applyFormatting(.strikethrough)
+                Button {
+                    viewModel.toggleInlineCode()
+                } label: {
+                    Image(systemName: "chevron.left.slash.chevron.right")
                 }
-                toolbarButton(systemImage: "chevron.left.slash.chevron.right") {
-                    viewModel.applyFormatting(.inlineCode)
-                }
-
-                Divider()
-                    .frame(height: 20)
-
-                toolbarButton(systemImage: "list.bullet") {
-                    viewModel.applyFormatting(.bulletList)
-                }
-                toolbarButton(systemImage: "list.number") {
-                    viewModel.applyFormatting(.orderedList)
-                }
-                toolbarButton(systemImage: "checkmark.square") {
-                    viewModel.applyFormatting(.taskList)
+                Button {
+                    isLinkPromptPresented = true
+                } label: {
+                    Image(systemName: "link")
                 }
 
-                Divider()
-                    .frame(height: 20)
+                Spacer()
 
-                toolbarButton(systemImage: "text.quote") {
-                    viewModel.applyFormatting(.blockquote)
-                }
-                toolbarButton(systemImage: "link") {
-                    if let url = URL(string: "https://") {
-                        viewModel.applyFormatting(.link(url))
-                    }
-                }
-                toolbarButton(systemImage: "minus") {
-                    viewModel.applyFormatting(.horizontalRule)
+                blockMenu
+            }
+        }
+        #endif
+        .alert("Insert Link", isPresented: $isLinkPromptPresented) {
+            TextField("https://", text: $linkValue)
+            Button("Insert") {
+                let trimmed = linkValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let url = URL(string: trimmed) {
+                    viewModel.applyLink(url)
                 }
             }
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.vertical, DesignTokens.Spacing.sm)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Apply a URL to the current selection.")
         }
-        .background(DesignTokens.Colors.surface)
     }
 
-    private func toolbarButton(systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .medium))
-                .frame(width: 28, height: 28)
+    private var boldBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.isBoldActive() },
+            set: { enabled in
+                viewModel.setBold(enabled)
+            }
+        )
+    }
+
+    private var italicBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.isItalicActive() },
+            set: { enabled in
+                viewModel.setItalic(enabled)
+            }
+        )
+    }
+
+    private var blockMenu: some View {
+        Menu {
+            Button("Heading 1") { viewModel.applyHeading(level: 1) }
+            Button("Heading 2") { viewModel.applyHeading(level: 2) }
+            Button("Heading 3") { viewModel.applyHeading(level: 3) }
+            Divider()
+            Button("Bulleted list") { viewModel.applyList(ordered: false) }
+            Button("Numbered list") { viewModel.applyList(ordered: true) }
+            Button("Task") { viewModel.applyTask() }
+            Divider()
+            Button("Quote") { viewModel.applyQuote() }
+            Button("Code block") { viewModel.applyCodeBlock(language: nil) }
+        } label: {
+            Image(systemName: "textformat")
         }
-        .buttonStyle(.plain)
     }
 }
