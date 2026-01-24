@@ -23,6 +23,73 @@ public final class TasksViewModel: ObservableObject {
     private var searchDebounce: Task<Void, Never>? = nil
     private var lastNonSearchSelection: TaskSelection = .today
 
+    public init(api: any TasksProviding, store: TasksStore, toastCenter: ToastCenter) {
+        self.api = api
+        self.store = store
+        self.toastCenter = toastCenter
+
+        store.$tasks
+            .sink { [weak self] tasks in
+                self?.tasks = tasks
+            }
+            .store(in: &cancellables)
+
+        store.$groups
+            .sink { [weak self] groups in
+                self?.groups = groups
+            }
+            .store(in: &cancellables)
+
+        store.$projects
+            .sink { [weak self] projects in
+                self?.projects = projects
+            }
+            .store(in: &cancellables)
+
+        store.$counts
+            .sink { [weak self] counts in
+                self?.counts = counts
+            }
+            .store(in: &cancellables)
+
+        store.$isLoading
+            .sink { [weak self] isLoading in
+                self?.isLoading = isLoading
+            }
+            .store(in: &cancellables)
+
+        store.$searchPending
+            .sink { [weak self] searchPending in
+                self?.searchPending = searchPending
+            }
+            .store(in: &cancellables)
+
+        store.$errorMessage
+            .sink { [weak self] error in
+                self?.errorMessage = error
+            }
+            .store(in: &cancellables)
+
+        store.$selection
+            .sink { [weak self] selection in
+                self?.selection = selection
+            }
+            .store(in: &cancellables)
+    }
+
+    public func load(selection: TaskSelection, force: Bool = false) async {
+        if !selection.isSearch {
+            lastNonSearchSelection = selection
+        }
+        await store.load(selection: selection, force: force)
+    }
+
+    public func loadCounts(force: Bool = false) async {
+        await store.loadCounts(force: force)
+    }
+}
+
+extension TasksViewModel {
     public var viewState: TasksViewState {
         let filteredTasks = tasks.filter { $0.status != "project" }
         let expanded = selection == .today
@@ -108,71 +175,6 @@ public final class TasksViewModel: ObservableObject {
             projectTitleById: projectTitleById,
             groupTitleById: groupTitleById
         )
-    }
-
-    public init(api: any TasksProviding, store: TasksStore, toastCenter: ToastCenter) {
-        self.api = api
-        self.store = store
-        self.toastCenter = toastCenter
-
-        store.$tasks
-            .sink { [weak self] tasks in
-                self?.tasks = tasks
-            }
-            .store(in: &cancellables)
-
-        store.$groups
-            .sink { [weak self] groups in
-                self?.groups = groups
-            }
-            .store(in: &cancellables)
-
-        store.$projects
-            .sink { [weak self] projects in
-                self?.projects = projects
-            }
-            .store(in: &cancellables)
-
-        store.$counts
-            .sink { [weak self] counts in
-                self?.counts = counts
-            }
-            .store(in: &cancellables)
-
-        store.$isLoading
-            .sink { [weak self] isLoading in
-                self?.isLoading = isLoading
-            }
-            .store(in: &cancellables)
-
-        store.$searchPending
-            .sink { [weak self] searchPending in
-                self?.searchPending = searchPending
-            }
-            .store(in: &cancellables)
-
-        store.$errorMessage
-            .sink { [weak self] error in
-                self?.errorMessage = error
-            }
-            .store(in: &cancellables)
-
-        store.$selection
-            .sink { [weak self] selection in
-                self?.selection = selection
-            }
-            .store(in: &cancellables)
-    }
-
-    public func load(selection: TaskSelection, force: Bool = false) async {
-        if !selection.isSearch {
-            lastNonSearchSelection = selection
-        }
-        await store.load(selection: selection, force: force)
-    }
-
-    public func loadCounts(force: Bool = false) async {
-        await store.loadCounts(force: force)
     }
 
     public func updateSearch(query: String) {
