@@ -25,7 +25,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from db_env import setup_environment  # noqa: E402
+from .db_env import setup_environment  # noqa: E402
 
 from api.services.test_data_plan import build_seed_plan  # noqa: E402
 
