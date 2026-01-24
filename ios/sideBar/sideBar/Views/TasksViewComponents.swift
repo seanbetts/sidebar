@@ -34,14 +34,28 @@ struct TaskRow<MenuContent: View>: View {
     let onComplete: () -> Void
     let onOpenNotes: () -> Void
     let menuContent: () -> MenuContent
+    @State private var showRepeatInfo = false
 
     var body: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
             if task.isPreview {
-                Image(systemName: "repeat")
-                    .font(.caption)
-                    .foregroundStyle(DesignTokens.Colors.textSecondary)
-                    .frame(width: 20, height: 20)
+                Button {
+                    if repeatLabel != nil {
+                        showRepeatInfo = true
+                    }
+                } label: {
+                    Image(systemName: "repeat")
+                        .font(.caption)
+                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Repeat details")
+                .alert("Repeats", isPresented: $showRepeatInfo) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(repeatLabel ?? "")
+                }
             } else {
                 Button {
                     onComplete()
@@ -83,9 +97,6 @@ struct TaskRow<MenuContent: View>: View {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 if showsDuePill, let dueLabel {
                     TaskPill(text: dueLabel)
-                }
-                if let repeatLabel {
-                    TaskPill(text: repeatLabel, iconName: "repeat")
                 }
                 Menu {
                     menuContent()
