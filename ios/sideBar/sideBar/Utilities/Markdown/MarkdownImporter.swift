@@ -46,9 +46,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
                 .dropFirst(MarkdownRendering.imageCaptionMarker.count)
                 .trimmingCharacters(in: .whitespaces)
             var captionText = AttributedString(String(caption))
-            captionText.blockKind = .imageCaption
-            captionText.font = DesignTokens.Typography.footnote
-            captionText.foregroundColor = DesignTokens.Colors.textTertiary
+            applyBlockKind(.imageCaption, to: &captionText)
+            captionText[fullRange(in: captionText)].font = DesignTokens.Typography.footnote
+            captionText[fullRange(in: captionText)].foregroundColor = DesignTokens.Colors.textTertiary
             appendBlock(captionText)
             return
         }
@@ -59,13 +59,13 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
 
         if blockquoteDepth > 0 {
-            paragraphText.blockKind = .blockquote
-            paragraphText.foregroundColor = DesignTokens.Colors.textSecondary
+            applyBlockKind(.blockquote, to: &paragraphText)
+            paragraphText[fullRange(in: paragraphText)].foregroundColor = DesignTokens.Colors.textSecondary
         } else {
-            paragraphText.blockKind = .paragraph
+            applyBlockKind(.paragraph, to: &paragraphText)
         }
 
-        paragraphText.font = DesignTokens.Typography.body
+        paragraphText[fullRange(in: paragraphText)].font = DesignTokens.Typography.body
         appendBlock(paragraphText)
     }
 
@@ -77,26 +77,26 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
         switch heading.level {
         case 1:
-            headingText.blockKind = .heading1
-            headingText.font = .system(size: 32, weight: .bold)
+            applyBlockKind(.heading1, to: &headingText)
+            headingText[fullRange(in: headingText)].font = .system(size: 32, weight: .bold)
         case 2:
-            headingText.blockKind = .heading2
-            headingText.font = .system(size: 24, weight: .semibold)
+            applyBlockKind(.heading2, to: &headingText)
+            headingText[fullRange(in: headingText)].font = .system(size: 24, weight: .semibold)
         case 3:
-            headingText.blockKind = .heading3
-            headingText.font = .system(size: 20, weight: .semibold)
+            applyBlockKind(.heading3, to: &headingText)
+            headingText[fullRange(in: headingText)].font = .system(size: 20, weight: .semibold)
         case 4:
-            headingText.blockKind = .heading4
-            headingText.font = .system(size: 18, weight: .semibold)
+            applyBlockKind(.heading4, to: &headingText)
+            headingText[fullRange(in: headingText)].font = .system(size: 18, weight: .semibold)
         case 5:
-            headingText.blockKind = .heading5
-            headingText.font = .system(size: 17, weight: .semibold)
+            applyBlockKind(.heading5, to: &headingText)
+            headingText[fullRange(in: headingText)].font = .system(size: 17, weight: .semibold)
         default:
-            headingText.blockKind = .heading6
-            headingText.font = .system(size: 16, weight: .semibold)
+            applyBlockKind(.heading6, to: &headingText)
+            headingText[fullRange(in: headingText)].font = .system(size: 16, weight: .semibold)
         }
 
-        headingText.foregroundColor = DesignTokens.Colors.textPrimary
+        headingText[fullRange(in: headingText)].foregroundColor = DesignTokens.Colors.textPrimary
         appendBlock(headingText)
     }
 
@@ -128,8 +128,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
     mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) -> () {
         var rule = AttributedString("---")
-        rule.blockKind = .horizontalRule
-        rule.foregroundColor = DesignTokens.Colors.border
+        applyBlockKind(.horizontalRule, to: &rule)
+        rule[fullRange(in: rule)].foregroundColor = DesignTokens.Colors.border
         appendBlock(rule)
     }
 
@@ -139,11 +139,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
         for line in content {
             var lineText = AttributedString(String(line))
-            lineText.blockKind = .codeBlock
-            lineText.codeLanguage = language
-            lineText.font = DesignTokens.Typography.monoBody
-            lineText.foregroundColor = DesignTokens.Colors.textPrimary
-            lineText.backgroundColor = DesignTokens.Colors.muted
+            applyBlockKind(.codeBlock, to: &lineText)
+            lineText[fullRange(in: lineText)].codeLanguage = language
+            lineText[fullRange(in: lineText)].font = DesignTokens.Typography.monoBody
+            lineText[fullRange(in: lineText)].foregroundColor = DesignTokens.Colors.textPrimary
+            lineText[fullRange(in: lineText)].backgroundColor = DesignTokens.Colors.muted
             appendBlock(lineText)
         }
     }
@@ -153,16 +153,16 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         guard !raw.isEmpty else { return }
         var htmlText = AttributedString(raw)
         if raw.contains("image-gallery") {
-            htmlText.blockKind = .gallery
+            applyBlockKind(.gallery, to: &htmlText)
         } else {
-            htmlText.blockKind = .htmlBlock
+            applyBlockKind(.htmlBlock, to: &htmlText)
         }
-        htmlText.font = DesignTokens.Typography.monoBody
-        htmlText.foregroundColor = DesignTokens.Colors.textSecondary
+        htmlText[fullRange(in: htmlText)].font = DesignTokens.Typography.monoBody
+        htmlText[fullRange(in: htmlText)].foregroundColor = DesignTokens.Colors.textSecondary
         appendBlock(htmlText)
     }
 
-    private mutating func visitListItem(_ listItem: ListItem) {
+    mutating func visitListItem(_ listItem: ListItem) -> () {
         guard let context = listStack.last else { return }
         var itemText = AttributedString()
 
@@ -176,23 +176,23 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
         if let checkbox = listItem.checkbox {
             let isChecked = checkbox == .checked
-            itemText.blockKind = isChecked ? .taskChecked : .taskUnchecked
+            applyBlockKind(isChecked ? .taskChecked : .taskUnchecked, to: &itemText)
             if isChecked {
-                itemText.strikethroughStyle = .single
-                itemText.foregroundColor = DesignTokens.Colors.textSecondary
+                itemText[fullRange(in: itemText)].strikethroughStyle = .single
+                itemText[fullRange(in: itemText)].foregroundColor = DesignTokens.Colors.textSecondary
             }
         } else {
-            itemText.blockKind = context.ordered ? .orderedList : .bulletList
+            applyBlockKind(context.ordered ? .orderedList : .bulletList, to: &itemText)
         }
 
-        itemText.listDepth = context.depth
-        itemText.font = DesignTokens.Typography.body
+        itemText[fullRange(in: itemText)].listDepth = context.depth
+        itemText[fullRange(in: itemText)].font = DesignTokens.Typography.body
         appendBlock(itemText)
     }
 
     private func inlineAttributedString(for markup: Markup) -> AttributedString {
         switch markup {
-        case let text as Text:
+        case let text as Markdown.Text:
             return AttributedString(text.string)
         case let softBreak as SoftBreak:
             return AttributedString(" ")
@@ -203,45 +203,48 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             for child in emphasis.children {
                 inner.append(inlineAttributedString(for: child))
             }
-            let current = inner.inlinePresentationIntent ?? []
-            inner.inlinePresentationIntent = current.union(.emphasized)
+            let range = fullRange(in: inner)
+            let current = inner[range].inlinePresentationIntent ?? []
+            inner[range].inlinePresentationIntent = current.union(.emphasized)
             return inner
         case let strong as Strong:
             var inner = AttributedString()
             for child in strong.children {
                 inner.append(inlineAttributedString(for: child))
             }
-            let current = inner.inlinePresentationIntent ?? []
-            inner.inlinePresentationIntent = current.union(.stronglyEmphasized)
+            let range = fullRange(in: inner)
+            let current = inner[range].inlinePresentationIntent ?? []
+            inner[range].inlinePresentationIntent = current.union(.stronglyEmphasized)
             return inner
         case let strike as Strikethrough:
             var inner = AttributedString()
             for child in strike.children {
                 inner.append(inlineAttributedString(for: child))
             }
-            inner.strikethroughStyle = .single
+            inner[fullRange(in: inner)].strikethroughStyle = .single
             return inner
         case let code as InlineCode:
             var inner = AttributedString(code.code)
-            let current = inner.inlinePresentationIntent ?? []
-            inner.inlinePresentationIntent = current.union(.code)
-            inner.font = DesignTokens.Typography.monoBody
-            inner.backgroundColor = DesignTokens.Colors.muted
+            let range = fullRange(in: inner)
+            let current = inner[range].inlinePresentationIntent ?? []
+            inner[range].inlinePresentationIntent = current.union(.code)
+            inner[range].font = DesignTokens.Typography.monoBody
+            inner[range].backgroundColor = DesignTokens.Colors.muted
             return inner
-        case let link as Link:
+        case let link as Markdown.Link:
             var inner = AttributedString()
             for child in link.children {
                 inner.append(inlineAttributedString(for: child))
             }
             if let destination = URL(string: link.destination) {
-                inner.link = destination
-                inner.foregroundColor = .accentColor
-                inner.underlineStyle = .single
+                inner[fullRange(in: inner)].link = destination
+                inner[fullRange(in: inner)].foregroundColor = .accentColor
+                inner[fullRange(in: inner)].underlineStyle = .single
             }
             return inner
-        case let image as Image:
+        case let image as Markdown.Image:
             return AttributedString("![\(image.plainText)](\(image.source))")
-        case let html as InlineHTML:
+        case let html as Markdown.InlineHTML:
             return AttributedString(html.rawHTML)
         default:
             var fallback = AttributedString()
@@ -257,6 +260,15 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             result.append(AttributedString("\n"))
         }
         result.append(block)
+    }
+
+    private func fullRange(in text: AttributedString) -> Range<AttributedString.Index> {
+        text.startIndex..<text.endIndex
+    }
+
+    private func applyBlockKind(_ kind: BlockKind, to text: inout AttributedString) {
+        let range = fullRange(in: text)
+        text[range].blockKind = kind
     }
 }
 

@@ -145,7 +145,7 @@ private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-private func serializeInline(_ attributed: AttributedString) -> String {
+private func serializeInline(_ attributed: AttributedSubstring) -> String {
     var output = ""
     for run in attributed.runs {
         let text = String(attributed[run.range].characters)

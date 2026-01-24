@@ -7,32 +7,7 @@ public struct MarkdownFormattingDefinition: AttributedTextFormattingDefinition {
 
     public init() {}
 
-    public var valueConstraints: [any AttributedTextValueConstraint] {
-        [
-            CodeBlockFontConstraint(),
-            HeadingFontConstraint()
-        ]
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-struct CodeBlockFontConstraint: AttributedTextValueConstraint {
-    func contains(_ value: Font?) -> Bool {
-        true
-    }
-
-    func constrain(_ value: Font?) -> Font? {
-        value
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-struct HeadingFontConstraint: AttributedTextValueConstraint {
-    func contains(_ value: Font?) -> Bool {
-        true
-    }
-
-    func constrain(_ value: Font?) -> Font? {
-        value
+    public var body: some AttributedTextFormattingDefinition<Scope> {
+        AttributedTextFormatting.EmptyDefinition()
     }
 }
