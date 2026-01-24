@@ -79,12 +79,12 @@
 ### Testing
 - [ ] Unit tests for `MarkdownImporter`
   - [ ] Test each block type
-  - [ ] Test each inline style
-  - [ ] Test nested structures
+  - [x] Test each inline style
+  - [x] Test nested structures
   - [x] Test frontmatter + caption/gallery handling
 - [ ] Unit tests for `MarkdownExporter`
   - [ ] Test each block type
-  - [ ] Test each inline style
+  - [x] Test each inline style
   - [x] Test frontmatter + caption/gallery handling
 - [ ] Round-trip tests
   - [ ] Import → Export → Import produces equivalent result
