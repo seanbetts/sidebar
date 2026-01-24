@@ -236,15 +236,16 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             for child in link.children {
                 inner.append(inlineAttributedString(for: child))
             }
-            if let destination = URL(string: link.destination) {
-                inner[fullRange(in: inner)].link = destination
+            if let destination = link.destination,
+               let url = URL(string: destination) {
+                inner[fullRange(in: inner)].link = url
                 inner[fullRange(in: inner)].foregroundColor = .accentColor
                 inner[fullRange(in: inner)].underlineStyle = .single
             }
             return inner
         case let image as Markdown.Image:
-            let alt = image.plainText ?? ""
-            let source = image.source ?? ""
+            let alt = image.plainText
+            let source = image.source
             return AttributedString("![\(alt)](\(source))")
         case let html as Markdown.InlineHTML:
             return AttributedString(html.rawHTML)
