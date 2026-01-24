@@ -525,7 +525,6 @@ extension WebsitesPanelView {
     }
 }
 
-
 private struct ArchiveHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 

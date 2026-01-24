@@ -289,9 +289,7 @@ struct SideBarMarkdown: View, Equatable {
             }
     }
     #endif
-
 }
-
 
 #if canImport(MarkdownUI)
 private struct CappedImageProvider: ImageProvider {

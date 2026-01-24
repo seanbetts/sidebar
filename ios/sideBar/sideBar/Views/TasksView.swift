@@ -246,10 +246,11 @@ extension TasksDetailView {
                                 selection: state.selection,
                                 onComplete: { Task { await viewModel.completeTask(task: task) } },
                                 onOpenNotes: { openNotes(task) },
-                                onSelect: { setActiveTask(task) }
-                            ) {
+                                onSelect: { setActiveTask(task) },
+                                menuContent: {
                                 taskMenu(for: task, selection: state.selection)
                             }
+                            )
                         }
                     }
                 }

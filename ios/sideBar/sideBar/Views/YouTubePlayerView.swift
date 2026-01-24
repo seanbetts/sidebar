@@ -91,9 +91,18 @@ public struct YouTubePlayerView: NSViewRepresentable {
                     }
                   }
                 }
-                console.log = function() { post("log", Array.from(arguments)); if (originalLog) { originalLog.apply(console, arguments); } };
-                console.warn = function() { post("warn", Array.from(arguments)); if (originalWarn) { originalWarn.apply(console, arguments); } };
-                console.error = function() { post("error", Array.from(arguments)); if (originalError) { originalError.apply(console, arguments); } };
+                console.log = function() {
+                  post("log", Array.from(arguments));
+                  if (originalLog) { originalLog.apply(console, arguments); }
+                };
+                console.warn = function() {
+                  post("warn", Array.from(arguments));
+                  if (originalWarn) { originalWarn.apply(console, arguments); }
+                };
+                console.error = function() {
+                  post("error", Array.from(arguments));
+                  if (originalError) { originalError.apply(console, arguments); }
+                };
                 window.addEventListener("error", function(event) {
                   post("window.error", [event.message || "unknown"]);
                 });
@@ -101,7 +110,11 @@ public struct YouTubePlayerView: NSViewRepresentable {
             </script>
           </head>
           <body>
-            <iframe src=\"\(escaped)\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>
+            <iframe
+              src=\"\(escaped)\"
+              allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\"
+              allowfullscreen
+            ></iframe>
           </body>
         </html>
         """
@@ -201,9 +214,18 @@ public struct YouTubePlayerView: UIViewRepresentable {
                 var originalLog = console.log;
                 var originalWarn = console.warn;
                 var originalError = console.error;
-                console.log = function() { post("log", Array.from(arguments)); if (originalLog) { originalLog.apply(console, arguments); } };
-                console.warn = function() { post("warn", Array.from(arguments)); if (originalWarn) { originalWarn.apply(console, arguments); } };
-                console.error = function() { post("error", Array.from(arguments)); if (originalError) { originalError.apply(console, arguments); } };
+                console.log = function() {
+                  post("log", Array.from(arguments));
+                  if (originalLog) { originalLog.apply(console, arguments); }
+                };
+                console.warn = function() {
+                  post("warn", Array.from(arguments));
+                  if (originalWarn) { originalWarn.apply(console, arguments); }
+                };
+                console.error = function() {
+                  post("error", Array.from(arguments));
+                  if (originalError) { originalError.apply(console, arguments); }
+                };
                 window.addEventListener("error", function(event) {
                   post("window.error", [event.message || "unknown"]);
                 });
@@ -211,7 +233,11 @@ public struct YouTubePlayerView: UIViewRepresentable {
             </script>
           </head>
           <body>
-            <iframe src=\"\(escaped)\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>
+            <iframe
+              src=\"\(escaped)\"
+              allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\"
+              allowfullscreen
+            ></iframe>
           </body>
         </html>
         """

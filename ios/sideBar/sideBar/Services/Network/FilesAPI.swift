@@ -31,23 +31,53 @@ public struct FilesAPI {
     }
 
     public func createFolder(basePath: String = "documents", path: String) async throws {
-        struct FolderRequest: Codable { let basePath: String; let path: String }
-        try await client.requestVoid("files/folder", method: "POST", body: FolderRequest(basePath: basePath, path: path))
+        struct FolderRequest: Codable {
+            let basePath: String
+            let path: String
+        }
+        try await client.requestVoid(
+            "files/folder",
+            method: "POST",
+            body: FolderRequest(basePath: basePath, path: path)
+        )
     }
 
     public func rename(basePath: String = "documents", oldPath: String, newName: String) async throws {
-        struct RenameRequest: Codable { let basePath: String; let oldPath: String; let newName: String }
-        try await client.requestVoid("files/rename", method: "POST", body: RenameRequest(basePath: basePath, oldPath: oldPath, newName: newName))
+        struct RenameRequest: Codable {
+            let basePath: String
+            let oldPath: String
+            let newName: String
+        }
+        try await client.requestVoid(
+            "files/rename",
+            method: "POST",
+            body: RenameRequest(basePath: basePath, oldPath: oldPath, newName: newName)
+        )
     }
 
     public func move(basePath: String = "documents", path: String, destination: String) async throws {
-        struct MoveRequest: Codable { let basePath: String; let path: String; let destination: String }
-        try await client.requestVoid("files/move", method: "POST", body: MoveRequest(basePath: basePath, path: path, destination: destination))
+        struct MoveRequest: Codable {
+            let basePath: String
+            let path: String
+            let destination: String
+        }
+        try await client.requestVoid(
+            "files/move",
+            method: "POST",
+            body: MoveRequest(basePath: basePath, path: path, destination: destination)
+        )
     }
 
     public func delete(basePath: String = "documents", path: String) async throws {
-        struct DeleteRequest: Codable { let basePath: String; let path: String }
-        try await client.requestVoid("files/delete", method: "POST", body: DeleteRequest(basePath: basePath, path: path))
+        struct DeleteRequest: Codable {
+            let basePath: String
+            let path: String
+        }
+        try await client.requestVoid(
+            "files/delete",
+            method: "POST",
+            body: DeleteRequest(basePath: basePath, path: path)
+        )
     }
 
     public func getContent(basePath: String = "documents", path: String) async throws -> FileContent {

@@ -155,10 +155,13 @@ public struct SiteHeaderBar: View {
                 .font(.subheadline)
                 .padding(.trailing, DesignTokens.Spacing.smPlus)
 
-                Button(action: { onSwapContent?() }) {
-                    Image(systemName: "arrow.left.arrow.right")
-                        .frame(width: 28, height: 28)
-                }
+                Button(
+                    action: { onSwapContent?() },
+                    label: {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .frame(width: 28, height: 28)
+                    }
+                )
                 .buttonStyle(.plain)
                 .disabled(onSwapContent == nil)
                 .accessibilityLabel("Swap panels")
@@ -228,7 +231,6 @@ public struct SiteHeaderBar: View {
     private var barBackground: Color {
         DesignTokens.Colors.background
     }
-
 
     private var buttonBackground: Color {
         DesignTokens.Colors.surface

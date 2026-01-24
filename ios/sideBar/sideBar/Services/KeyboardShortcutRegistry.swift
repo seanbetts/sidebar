@@ -70,7 +70,11 @@ public final class KeyboardShortcutRegistry {
             guard hasContextOverlap(shortcuts) else { continue }
             let contexts = shortcuts.flatMap { $0.contexts.map { $0.rawValue } }.sorted()
             let titles = shortcuts.map { $0.title }.sorted()
-            logger.warning("Shortcut conflict for \(signature, privacy: .public): \(titles.joined(separator: ", "), privacy: .public) contexts: \(contexts.joined(separator: ", "), privacy: .public)")
+            logger.warning(
+                "Shortcut conflict for \(signature, privacy: .public): " +
+                    "\(titles.joined(separator: ", "), privacy: .public) " +
+                    "contexts: \(contexts.joined(separator: ", "), privacy: .public)"
+            )
         }
         #endif
     }

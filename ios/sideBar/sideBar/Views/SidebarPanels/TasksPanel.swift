@@ -87,7 +87,10 @@ private struct TasksPanelView: View {
         }
         .confirmationDialog("Choose group", isPresented: $showProjectGroupDialog, titleVisibility: .visible) {
             Button("No group") { handleCreateProject(groupId: nil) }
-            ForEach(viewModel.groups.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }, id: \.id) { group in
+            let sortedGroups = viewModel.groups.sorted {
+                $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+            ForEach(sortedGroups, id: \.id) { group in
                 Button(group.title) { handleCreateProject(groupId: group.id) }
             }
         }
