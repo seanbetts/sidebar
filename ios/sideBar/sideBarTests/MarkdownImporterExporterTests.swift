@@ -51,4 +51,49 @@ final class MarkdownImporterExporterTests: XCTestCase {
         XCTAssertTrue(exported.contains("- Item 1"))
         XCTAssertTrue(exported.contains("  - Item 1.1"))
     }
+
+    func testBlockTypesRoundTrip() {
+        let markdown = """
+        # Heading
+
+        > Quote
+
+        - Item
+
+        1. Ordered
+
+        - [x] Done
+
+        ```
+        code
+        ```
+
+        ---
+        """
+        let result = MarkdownImporter().attributedString(from: markdown)
+        let exported = MarkdownExporter().markdown(from: result.attributedString)
+
+        XCTAssertTrue(exported.contains("# Heading"))
+        XCTAssertTrue(exported.contains("> Quote"))
+        XCTAssertTrue(exported.contains("- Item"))
+        XCTAssertTrue(exported.contains("1. Ordered"))
+        XCTAssertTrue(exported.contains("- [x] Done"))
+        XCTAssertTrue(exported.contains("```\ncode\n```"))
+        XCTAssertTrue(exported.contains("---"))
+    }
+
+    func testRoundTripPreservesText() {
+        let markdown = """
+        # Title
+
+        Paragraph with **bold** and *italic*.
+        """
+        let importer = MarkdownImporter()
+        let exporter = MarkdownExporter()
+
+        let first = importer.attributedString(from: markdown).attributedString
+        let roundTrip = importer.attributedString(from: exporter.markdown(from: first)).attributedString
+
+        XCTAssertEqual(String(first.characters), String(roundTrip.characters))
+    }
 }
