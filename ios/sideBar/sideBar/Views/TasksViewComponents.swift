@@ -3,6 +3,7 @@ import SwiftUI
 struct TaskPill: View {
     let text: String
     let iconName: String?
+    @Environment(\.colorScheme) private var colorScheme
 
     init(text: String, iconName: String? = nil) {
         self.text = text
@@ -17,11 +18,20 @@ struct TaskPill: View {
             }
             Text(text)
                 .font(.caption2)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
         .padding(.horizontal, DesignTokens.Spacing.xs)
         .padding(.vertical, DesignTokens.Spacing.xxs)
-        .background(DesignTokens.Colors.muted)
+        .background(pillBackground)
+        .overlay(
+            Capsule()
+                .stroke(DesignTokens.Colors.border, lineWidth: 1)
+        )
         .clipShape(Capsule())
+    }
+
+    private var pillBackground: Color {
+        colorScheme == .dark ? .black : .white
     }
 }
 
