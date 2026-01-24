@@ -13,7 +13,8 @@ final class MarkdownImporterExporterTests: XCTestCase {
 
     func testImageCaptionExportsMarker() {
         var text = AttributedString("Caption")
-        text.blockKind = .imageCaption
+        let range = text.startIndex..<text.endIndex
+        text[range].blockKind = .imageCaption
 
         let markdown = MarkdownExporter().markdown(from: text)
         XCTAssertEqual(markdown, "^caption: Caption")
@@ -22,7 +23,8 @@ final class MarkdownImporterExporterTests: XCTestCase {
     func testGalleryBlockExportsRawHTML() {
         let html = "<figure class=\"image-gallery\"><img src=\"https://example.com/a.png\" /></figure>"
         var text = AttributedString(html)
-        text.blockKind = .gallery
+        let range = text.startIndex..<text.endIndex
+        text[range].blockKind = .gallery
 
         let markdown = MarkdownExporter().markdown(from: text)
         XCTAssertEqual(markdown, html)

@@ -10,12 +10,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
-        let viewModel = NotesEditorViewModel(
-            api: api,
-            notesStore: store,
-            notesViewModel: notesViewModel,
-            toastCenter: toast
-        )
+        let viewModel = NotesEditorViewModel(notesViewModel: notesViewModel)
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
 
         store.applyEditorUpdate(note)
@@ -23,89 +18,53 @@ final class NotesEditorViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.currentNoteId, "n1")
         XCTAssertEqual(viewModel.content, "Hello")
-        XCTAssertFalse(viewModel.isDirty)
-        XCTAssertFalse(viewModel.hasExternalUpdate)
     }
 
-    func testExternalUpdateWhileDirtySetsFlag() async {
+    func testHandleNoteUpdateClearsContentWhenNoteNil() async {
         let api = MockNotesAPI(updateResult: .failure(MockError.forced))
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
-        let viewModel = NotesEditorViewModel(
-            api: api,
-            notesStore: store,
-            notesViewModel: notesViewModel,
-            toastCenter: toast
-        )
+        let viewModel = NotesEditorViewModel(notesViewModel: notesViewModel)
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
+
         store.applyEditorUpdate(note)
         await Task.yield()
-
-        viewModel.handleUserMarkdownEdit("Local edit")
-
-        let updated = NotePayload(id: "n1", name: "Note", content: "Remote", path: "/note.md", modified: nil)
-        store.applyEditorUpdate(updated)
+        store.clearActiveNote()
         await Task.yield()
 
-        XCTAssertTrue(viewModel.isDirty)
-        XCTAssertTrue(viewModel.hasExternalUpdate)
-        XCTAssertEqual(viewModel.content, "Local edit")
+        XCTAssertNil(viewModel.currentNoteId)
+        XCTAssertEqual(viewModel.content, "")
     }
 
-    func testAcceptExternalUpdateAppliesContent() async {
-        let api = MockNotesAPI(updateResult: .failure(MockError.forced))
-        let cache = TestCacheClient()
-        let store = NotesStore(api: api, cache: cache)
-        let toast = ToastCenter()
-        let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
-        let viewModel = NotesEditorViewModel(
-            api: api,
-            notesStore: store,
-            notesViewModel: notesViewModel,
-            toastCenter: toast
-        )
-        let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
-        store.applyEditorUpdate(note)
-        await Task.yield()
-
-        viewModel.handleUserMarkdownEdit("Local edit")
-        let updated = NotePayload(id: "n1", name: "Note", content: "Remote", path: "/note.md", modified: nil)
-        store.applyEditorUpdate(updated)
-        await Task.yield()
-
-        viewModel.acceptExternalUpdate()
-
-        XCTAssertEqual(viewModel.content, "Remote")
-        XCTAssertFalse(viewModel.hasExternalUpdate)
-        XCTAssertFalse(viewModel.isDirty)
-    }
-
-    func testSaveNowUpdatesStoreAndClearsDirty() async {
-        let updated = NotePayload(id: "n1", name: "Note", content: "Saved", path: "/note.md", modified: 100)
+    func testSyncFromNativeEditorUpdatesContent() async throws {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw XCTSkip("Requires iOS 26 or macOS 26")
+        }
+        let updated = NotePayload(id: "n1", name: "Note", content: "Updated", path: "/note.md", modified: 100)
         let api = MockNotesAPI(updateResult: .success(updated))
         let cache = TestCacheClient()
         let store = NotesStore(api: api, cache: cache)
         let toast = ToastCenter()
         let notesViewModel = NotesViewModel(api: api, store: store, toastCenter: toast)
-        let viewModel = NotesEditorViewModel(
-            api: api,
-            notesStore: store,
-            notesViewModel: notesViewModel,
-            toastCenter: toast
-        )
+        let viewModel = NotesEditorViewModel(notesViewModel: notesViewModel)
         let note = NotePayload(id: "n1", name: "Note", content: "Hello", path: "/note.md", modified: nil)
+
         store.applyEditorUpdate(note)
         await Task.yield()
 
-        viewModel.handleUserMarkdownEdit("Saved")
-        viewModel.saveNow()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        let nativeViewModel = viewModel.makeNativeEditorViewModel()
+        nativeViewModel.attributedContent = AttributedString("Updated")
+        nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
+        try? await Task.sleep(nanoseconds: 700_000_000)
 
-        XCTAssertFalse(viewModel.isDirty)
-        XCTAssertNil(viewModel.saveError)
-        XCTAssertEqual(store.activeNote?.content, "Saved")
+        XCTAssertTrue(nativeViewModel.hasUnsavedChanges)
+
+        await viewModel.syncFromNativeEditor(nativeViewModel)
+
+        XCTAssertEqual(store.activeNote?.content, "Updated")
+        XCTAssertFalse(nativeViewModel.hasUnsavedChanges)
     }
 }
 

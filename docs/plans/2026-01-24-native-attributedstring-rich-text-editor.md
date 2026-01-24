@@ -2,7 +2,7 @@
 
 **Created:** 2026-01-24
 **Platform:** iOS 26+ / macOS 26+
-**Status:** Planning
+**Status:** Implemented (testing pending)
 
 ---
 
@@ -77,16 +77,16 @@
   - [x] Fallback to SideBarMarkdown
 
 ### Testing
-- [ ] Unit tests for `MarkdownImporter`
+- [x] Unit tests for `MarkdownImporter`
   - [x] Test each block type
   - [x] Test each inline style
   - [x] Test nested structures
   - [x] Test frontmatter + caption/gallery handling
-- [ ] Unit tests for `MarkdownExporter`
+- [x] Unit tests for `MarkdownExporter`
   - [x] Test each block type
   - [x] Test each inline style
   - [x] Test frontmatter + caption/gallery handling
-- [ ] Round-trip tests
+- [x] Round-trip tests
   - [x] Import → Export → Import produces equivalent result
 - [ ] Integration tests
   - [ ] Load note → Edit → Save → Reload preserves formatting

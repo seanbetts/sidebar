@@ -30,7 +30,7 @@ public struct UploadRequest {
     }
 }
 
-private struct UploadPayload {
+struct UploadPayload {
     let fileURL: URL
     let filename: String
     let mimeType: String
@@ -178,7 +178,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
 
 }
 
-private enum IngestionUploadHelpers {
+enum IngestionUploadHelpers {
     static func writeMultipartBody(
         to url: URL,
         boundary: String,

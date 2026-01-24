@@ -36,13 +36,16 @@ final class IngestionUploadManagerTests: XCTestCase {
         }
         try Data("Hello".utf8).write(to: inputURL)
 
-        try IngestionUploadHelpers.writeMultipartBody(
-            to: outputURL,
-            boundary: boundary,
+        let payload = UploadPayload(
             fileURL: inputURL,
             filename: "hello.txt",
             mimeType: "text/plain",
-            folder: "docs",
+            folder: "docs"
+        )
+        try IngestionUploadHelpers.writeMultipartBody(
+            to: outputURL,
+            boundary: boundary,
+            payload: payload,
             logger: Logger(subsystem: "sideBar", category: "Test")
         )
 
