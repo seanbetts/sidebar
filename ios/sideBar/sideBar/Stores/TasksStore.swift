@@ -23,17 +23,19 @@ public final class TasksStore: ObservableObject {
     }
 
     public func load(selection: TaskSelection, force: Bool = false) async {
+        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
+        let cached: TaskListResponse? = force ? nil : cache.get(key: cacheKey)
         self.selection = selection
         errorMessage = nil
         if selection.isSearch {
             if tasks.isEmpty {
                 searchPending = true
             }
-        } else if tasks.isEmpty {
+        } else if cached == nil {
             isLoading = true
+            tasks = []
         }
-        let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
-        if !force, let cached: TaskListResponse = cache.get(key: cacheKey) {
+        if let cached {
             apply(list: cached, persist: false)
             Task { [weak self] in
                 await self?.refresh(selection: selection)
