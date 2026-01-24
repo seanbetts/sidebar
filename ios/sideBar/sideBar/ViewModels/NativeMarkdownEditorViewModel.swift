@@ -31,6 +31,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         exporter.markdown(from: attributedContent, frontmatter: frontmatter)
     }
 
+    public func markSaved(markdown: String) {
+        lastSavedContent = markdown
+        hasUnsavedChanges = false
+    }
+
     public func applyFormatting(_ formatting: MarkdownFormatting) {
         guard !isReadOnly else { return }
 

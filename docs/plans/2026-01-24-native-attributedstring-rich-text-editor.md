@@ -68,22 +68,24 @@
   - [x] Update selection after consuming shortcuts
 
 ### Phase 7: Integration
-- [ ] **7.1** Create `NotesEditorViewModel+Native.swift`
-  - [ ] `makeNativeEditorViewModel()` factory method
-  - [ ] `syncFromNativeEditor()` for saving changes
-- [ ] **7.2** Update note editor view to use native editor
-  - [ ] Add `@available` check for iOS 26
-  - [ ] Feature flag for gradual rollout
-  - [ ] Fallback to SideBarMarkdown
+- [x] **7.1** Create `NotesEditorViewModel+Native.swift`
+  - [x] `makeNativeEditorViewModel()` factory method
+  - [x] `syncFromNativeEditor()` for saving changes
+- [x] **7.2** Update note editor view to use native editor
+  - [x] Add `@available` check for iOS 26
+  - [x] Feature flag for gradual rollout
+  - [x] Fallback to SideBarMarkdown
 
 ### Testing
 - [ ] Unit tests for `MarkdownImporter`
   - [ ] Test each block type
   - [ ] Test each inline style
   - [ ] Test nested structures
+  - [x] Test frontmatter + caption/gallery handling
 - [ ] Unit tests for `MarkdownExporter`
   - [ ] Test each block type
   - [ ] Test each inline style
+  - [x] Test frontmatter + caption/gallery handling
 - [ ] Round-trip tests
   - [ ] Import → Export → Import produces equivalent result
 - [ ] Integration tests
