@@ -78,16 +78,16 @@
 
 ### Testing
 - [ ] Unit tests for `MarkdownImporter`
-  - [ ] Test each block type
+  - [x] Test each block type
   - [x] Test each inline style
   - [x] Test nested structures
   - [x] Test frontmatter + caption/gallery handling
 - [ ] Unit tests for `MarkdownExporter`
-  - [ ] Test each block type
+  - [x] Test each block type
   - [x] Test each inline style
   - [x] Test frontmatter + caption/gallery handling
 - [ ] Round-trip tests
-  - [ ] Import → Export → Import produces equivalent result
+  - [x] Import → Export → Import produces equivalent result
 - [ ] Integration tests
   - [ ] Load note → Edit → Save → Reload preserves formatting
 - [ ] UI tests
