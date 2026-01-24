@@ -8,7 +8,7 @@ public struct NativeMarkdownEditorView: View {
 
     public init(
         viewModel: NativeMarkdownEditorViewModel,
-        maxContentWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth,
+        maxContentWidth: CGFloat,
         onSave: @escaping (String) -> Void
     ) {
         self.viewModel = viewModel
