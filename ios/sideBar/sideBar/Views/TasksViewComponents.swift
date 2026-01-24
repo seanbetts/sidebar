@@ -32,6 +32,7 @@ struct TaskRow<MenuContent: View>: View {
     let repeatLabel: String?
     let selection: TaskSelection
     let onComplete: () -> Void
+    let onOpenNotes: () -> Void
     let menuContent: () -> MenuContent
 
     var body: some View {
@@ -60,10 +61,15 @@ struct TaskRow<MenuContent: View>: View {
                         .foregroundStyle(DesignTokens.Colors.textPrimary)
                         .lineLimit(1)
                     if let notes = task.notes, !notes.isEmpty {
-                        Image(systemName: "note.text")
-                            .font(.caption)
-                            .foregroundStyle(DesignTokens.Colors.textSecondary)
-                            .accessibilityLabel("Task notes")
+                        Button {
+                            onOpenNotes()
+                        } label: {
+                            Image(systemName: "note.text")
+                                .font(.caption)
+                                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit notes")
                     }
                 }
                 if !subtitle.isEmpty {
