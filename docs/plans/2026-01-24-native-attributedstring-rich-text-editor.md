@@ -9,17 +9,17 @@
 ## Progress Tracking
 
 ### Phase 1: Foundation
-- [ ] **1.1** Create `MarkdownEditorAttributes.swift` - Custom attribute scope
-  - [ ] Define `BlockKind` enum with all block types
-  - [ ] Create `BlockKindAttribute` with `inheritedByAddedText`, `invalidationConditions`, `runBoundaries`
-  - [ ] Create `ListDepthAttribute` for nested lists
-  - [ ] Create `CodeLanguageAttribute` for fenced code blocks
-  - [ ] Add `AttributeScopes.MarkdownEditorAttributes` extension
-  - [ ] Add `AttributeDynamicLookup` extension for dot syntax
-  - [ ] Add convenience accessors on `AttributedString`
-- [ ] **1.2** Create `MarkdownFormattingDefinition.swift`
-  - [ ] Implement `AttributedTextFormattingDefinition` protocol
-  - [ ] Add value constraints for code blocks and headings
+- [x] **1.1** Create `MarkdownEditorAttributes.swift` - Custom attribute scope
+  - [x] Define `BlockKind` enum with all block types
+  - [x] Create `BlockKindAttribute` with `inheritedByAddedText`, `invalidationConditions`, `runBoundaries`
+  - [x] Create `ListDepthAttribute` for nested lists
+  - [x] Create `CodeLanguageAttribute` for fenced code blocks
+  - [x] Add `AttributeScopes.MarkdownEditorAttributes` extension
+  - [x] Add `AttributeDynamicLookup` extension for dot syntax
+  - [x] Add convenience accessors on `AttributedString`
+- [x] **1.2** Create `MarkdownFormattingDefinition.swift`
+  - [x] Implement `AttributedTextFormattingDefinition` protocol
+  - [x] Add value constraints for code blocks and headings
 
 ### Phase 2: Markdown Import
 - [ ] **2.1** Add swift-markdown package dependency
