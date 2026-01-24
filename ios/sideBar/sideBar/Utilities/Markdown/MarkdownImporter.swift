@@ -33,13 +33,13 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private var listStack: [(ordered: Bool, depth: Int)] = []
     private var blockquoteDepth: Int = 0
 
-    mutating func visitDocument(_ document: Document) -> () {
+    mutating func visitDocument(_ document: Document) {
         for child in document.children {
             visit(child)
         }
     }
 
-    mutating func visitParagraph(_ paragraph: Paragraph) -> () {
+    mutating func visitParagraph(_ paragraph: Paragraph) {
         let plainText = paragraph.plainText.trimmed
         if plainText.hasPrefix(MarkdownRendering.imageCaptionMarker) {
             let caption = plainText
@@ -69,7 +69,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         appendBlock(paragraphText)
     }
 
-    mutating func visitHeading(_ heading: Heading) -> () {
+    mutating func visitHeading(_ heading: Heading) {
         var headingText = AttributedString()
         for child in heading.children {
             headingText.append(inlineAttributedString(for: child))
@@ -100,7 +100,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         appendBlock(headingText)
     }
 
-    mutating func visitUnorderedList(_ unorderedList: UnorderedList) -> () {
+    mutating func visitUnorderedList(_ unorderedList: UnorderedList) {
         let depth = listStack.count + 1
         listStack.append((ordered: false, depth: depth))
         for item in unorderedList.listItems {
@@ -109,7 +109,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         listStack.removeLast()
     }
 
-    mutating func visitOrderedList(_ orderedList: OrderedList) -> () {
+    mutating func visitOrderedList(_ orderedList: OrderedList) {
         let depth = listStack.count + 1
         listStack.append((ordered: true, depth: depth))
         for item in orderedList.listItems {
@@ -118,7 +118,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         listStack.removeLast()
     }
 
-    mutating func visitBlockQuote(_ blockQuote: BlockQuote) -> () {
+    mutating func visitBlockQuote(_ blockQuote: BlockQuote) {
         blockquoteDepth += 1
         for child in blockQuote.children {
             visit(child)
@@ -126,14 +126,14 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         blockquoteDepth = max(0, blockquoteDepth - 1)
     }
 
-    mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) -> () {
+    mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) {
         var rule = AttributedString("---")
         applyBlockKind(.horizontalRule, to: &rule)
         rule[fullRange(in: rule)].foregroundColor = DesignTokens.Colors.border
         appendBlock(rule)
     }
 
-    mutating func visitCodeBlock(_ codeBlock: CodeBlock) -> () {
+    mutating func visitCodeBlock(_ codeBlock: CodeBlock) {
         let language = codeBlock.language?.trimmingCharacters(in: .whitespacesAndNewlines)
         let content = codeBlock.code.split(separator: "\n", omittingEmptySubsequences: false)
 
@@ -148,7 +148,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
     }
 
-    mutating func visitHTMLBlock(_ html: HTMLBlock) -> () {
+    mutating func visitHTMLBlock(_ html: HTMLBlock) {
         let raw = html.rawHTML.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return }
         var htmlText = AttributedString(raw)
@@ -162,7 +162,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         appendBlock(htmlText)
     }
 
-    mutating func visitListItem(_ listItem: ListItem) -> () {
+    mutating func visitListItem(_ listItem: ListItem) {
         guard let context = listStack.last else { return }
         var itemText = AttributedString()
 
@@ -190,6 +190,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         appendBlock(itemText)
     }
 
+    // swiftlint:disable cyclomatic_complexity
     private func inlineAttributedString(for markup: Markup) -> AttributedString {
         switch markup {
         case let text as Markdown.Text:
@@ -257,6 +258,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             return fallback
         }
     }
+    // swiftlint:enable cyclomatic_complexity
 
     private mutating func appendBlock(_ block: AttributedString) {
         if !result.characters.isEmpty {

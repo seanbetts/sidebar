@@ -114,6 +114,7 @@ private func codeLanguage(in text: AttributedString, range: Range<AttributedStri
 }
 
 @available(iOS 26.0, macOS 26.0, *)
+// swiftlint:disable cyclomatic_complexity
 private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
     let indent = String(repeating: "  ", count: max(0, (listDepth ?? 1) - 1))
     switch blockKind {
@@ -143,6 +144,7 @@ private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
         return ""
     }
 }
+// swiftlint:enable cyclomatic_complexity
 
 @available(iOS 26.0, macOS 26.0, *)
 private func serializeInline(_ attributed: AttributedSubstring) -> String {
