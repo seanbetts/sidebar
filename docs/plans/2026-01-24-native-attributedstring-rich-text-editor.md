@@ -76,6 +76,20 @@
   - [x] Feature flag for gradual rollout
   - [x] Fallback to SideBarMarkdown
 
+### Phase 8: Display Parity
+- [ ] **8.1** Typography and inline styles
+  - [ ] Base body font size matches `SideBarMarkdown` (16)
+  - [ ] Inline code font size and background match `SideBarMarkdown`
+  - [ ] Strikethrough color matches `SideBarMarkdown`
+- [ ] **8.2** Block presentation
+  - [ ] Headings use presentation intent for consistent spacing
+  - [ ] Lists render bullets/ordinals using presentation intent + delimiters
+  - [ ] Blockquotes render with appropriate intent
+  - [ ] Thematic breaks render with intent
+- [ ] **8.3** Code blocks and tables
+  - [ ] Code blocks visually match `SideBarMarkdown` (padding/border/background)
+  - [ ] Tables parse and render with basic styling
+
 ### Testing
 - [x] Unit tests for `MarkdownImporter`
   - [x] Test each block type
