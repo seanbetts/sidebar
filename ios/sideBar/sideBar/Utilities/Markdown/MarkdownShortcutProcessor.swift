@@ -201,8 +201,11 @@ public struct MarkdownShortcutProcessor {
         case .insertionPoint(let index):
             return index
         case .ranges(let ranges):
-            guard let range = ranges.first, range.isEmpty else { return nil }
-            return range.lowerBound
+            for range in ranges {
+                guard range.isEmpty else { return nil }
+                return range.lowerBound
+            }
+            return nil
         }
     }
 }
