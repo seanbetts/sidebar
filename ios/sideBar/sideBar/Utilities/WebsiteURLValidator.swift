@@ -17,27 +17,38 @@ enum WebsiteURLValidator {
               !host.isEmpty else {
             return nil
         }
-        if host == "localhost" { return nil }
         if url.port != nil { return nil }
-        if isIPv4Address(host) { return nil }
-        if host.contains(":") { return nil }
-        if !host.contains(".") { return nil }
-        let labels = host.split(separator: ".")
-        guard let tld = labels.last, tld.count >= 2, tld.count <= 24 else {
-            return nil
-        }
-        if !isAlphaOnly(tld) { return nil }
-        for label in labels {
-            if label.isEmpty { return nil }
-            if label.hasPrefix("-") || label.hasSuffix("-") { return nil }
-            if !isAlphaNumericHyphen(label) { return nil }
-        }
+        if !isValidHost(host) { return nil }
         return url
     }
 
     private static func isIPv4Address(_ host: String) -> Bool {
         let pattern = #"^\d{1,3}(\.\d{1,3}){3}$"#
         return host.range(of: pattern, options: .regularExpression) != nil
+    }
+
+    private static func isValidHost(_ host: String) -> Bool {
+        if host == "localhost" { return false }
+        if host.contains(":") { return false }
+        if isIPv4Address(host) { return false }
+        if !host.contains(".") { return false }
+
+        let labels = host.split(separator: ".")
+        guard let tld = labels.last, isValidTld(tld) else {
+            return false
+        }
+        return labels.allSatisfy { isValidLabel($0) }
+    }
+
+    private static func isValidTld(_ value: Substring) -> Bool {
+        let count = value.count
+        return count >= 2 && count <= 24 && isAlphaOnly(value)
+    }
+
+    private static func isValidLabel(_ value: Substring) -> Bool {
+        if value.isEmpty { return false }
+        if value.hasPrefix("-") || value.hasSuffix("-") { return false }
+        return isAlphaNumericHyphen(value)
     }
 
     private static func isAlphaOnly(_ value: Substring) -> Bool {

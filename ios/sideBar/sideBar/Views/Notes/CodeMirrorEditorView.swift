@@ -146,57 +146,77 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         switch message.name {
         case CodeMirrorBridge.editorReady:
-            isReady = true
-            logger.info("CodeMirror editorReady received")
-            if let pendingMarkdown {
-                setMarkdown(pendingMarkdown)
-                self.pendingMarkdown = nil
-            }
-            if let pendingReadOnly {
-                setReadOnly(pendingReadOnly)
-                self.pendingReadOnly = nil
-            }
-            if pendingFocus {
-                pendingFocus = false
-                evaluateJavaScript("window.editorAPI?.focus?.()")
-            }
+            handleEditorReady()
         case CodeMirrorBridge.contentChanged:
-            guard let body = message.body as? [String: Any],
-                  let text = body["text"] as? String else {
-                return
-            }
-            lastKnownMarkdown = text
-            debounceWorkItem?.cancel()
-            let workItem = DispatchWorkItem { [weak self] in
-                self?.onContentChanged(text)
-            }
-            debounceWorkItem = workItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
+            handleContentChanged(message)
         case CodeMirrorBridge.linkTapped:
-            guard let body = message.body as? [String: Any],
-                  let href = body["href"] as? String else {
-                return
-            }
-            openExternalLink(href)
+            handleLinkTapped(message)
         case CodeMirrorBridge.jsError:
-            if let body = message.body as? [String: Any] {
-                let messageText = body["message"] as? String ?? "Unknown error"
-                let type = body["type"] as? String ?? "error"
-                logger.error("CodeMirror JS error (\(type, privacy: .public)): \(messageText, privacy: .public)")
-                logger.error("CodeMirror JS error payload: \(String(describing: body), privacy: .public)")
-                if let data = try? JSONSerialization.data(withJSONObject: body, options: [.prettyPrinted]),
-                   let jsonString = String(data: data, encoding: .utf8) {
-                    logger.error("CodeMirror JS error payload JSON: \(jsonString, privacy: .public)")
-                }
-            } else {
-                logger.error("CodeMirror JS error: \(String(describing: message.body), privacy: .public)")
-            }
+            handleJsError(message)
         case CodeMirrorBridge.escapePressed:
-            DispatchQueue.main.async { [weak self] in
-                self?.onEscape?()
-            }
+            handleEscapePressed()
         default:
             break
+        }
+    }
+
+    private func handleEditorReady() {
+        isReady = true
+        logger.info("CodeMirror editorReady received")
+        if let pendingMarkdown {
+            setMarkdown(pendingMarkdown)
+            self.pendingMarkdown = nil
+        }
+        if let pendingReadOnly {
+            setReadOnly(pendingReadOnly)
+            self.pendingReadOnly = nil
+        }
+        if pendingFocus {
+            pendingFocus = false
+            evaluateJavaScript("window.editorAPI?.focus?.()")
+        }
+    }
+
+    private func handleContentChanged(_ message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any],
+              let text = body["text"] as? String else {
+            return
+        }
+        lastKnownMarkdown = text
+        debounceWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.onContentChanged(text)
+        }
+        debounceWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
+    }
+
+    private func handleLinkTapped(_ message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any],
+              let href = body["href"] as? String else {
+            return
+        }
+        openExternalLink(href)
+    }
+
+    private func handleJsError(_ message: WKScriptMessage) {
+        if let body = message.body as? [String: Any] {
+            let messageText = body["message"] as? String ?? "Unknown error"
+            let type = body["type"] as? String ?? "error"
+            logger.error("CodeMirror JS error (\(type, privacy: .public)): \(messageText, privacy: .public)")
+            logger.error("CodeMirror JS error payload: \(String(describing: body), privacy: .public)")
+            if let data = try? JSONSerialization.data(withJSONObject: body, options: [.prettyPrinted]),
+               let jsonString = String(data: data, encoding: .utf8) {
+                logger.error("CodeMirror JS error payload JSON: \(jsonString, privacy: .public)")
+            }
+        } else {
+            logger.error("CodeMirror JS error: \(String(describing: message.body), privacy: .public)")
+        }
+    }
+
+    private func handleEscapePressed() {
+        DispatchQueue.main.async { [weak self] in
+            self?.onEscape?()
         }
     }
 

@@ -142,61 +142,18 @@ public enum TasksUtils {
         groupTitleById: [String: String],
         projectTitleById: [String: String]
     ) -> [TaskSection] {
-        var buckets: [String: TaskSection] = [:]
-        for group in groups {
-            buckets["group:\(group.id)"] = TaskSection(id: group.id, title: group.title, tasks: [])
-        }
-
+        var buckets = buildGroupBuckets(groups)
         for task in tasks {
-            let project = task.projectId.flatMap { id in projects.first(where: { $0.id == id }) }
-            let groupId = task.groupId ?? project?.groupId
-
-            if let groupId {
-                let key = "group:\(groupId)"
-                if buckets[key] == nil {
-                    let title = groupTitleById[groupId] ?? "Group"
-                    buckets[key] = TaskSection(id: key, title: title, tasks: [])
-                }
-                if var section = buckets[key] {
-                    section.tasks.append(task)
-                    buckets[key] = section
-                }
-                continue
-            }
-            if let projectId = task.projectId {
-                let key = "project:\(projectId)"
-                if buckets[key] == nil {
-                    let title = projectTitleById[projectId] ?? "Project"
-                    buckets[key] = TaskSection(id: key, title: title, tasks: [])
-                }
-                if var section = buckets[key] {
-                    section.tasks.append(task)
-                    buckets[key] = section
-                }
-                continue
-            }
-            if buckets["other"] == nil {
-                buckets["other"] = TaskSection(id: "other", title: "Other", tasks: [])
-            }
-            if var section = buckets["other"] {
-                section.tasks.append(task)
-                buckets["other"] = section
-            }
+            appendTaskToTodayBuckets(
+                task,
+                buckets: &buckets,
+                projects: projects,
+                groupTitleById: groupTitleById,
+                projectTitleById: projectTitleById
+            )
         }
 
-        var sections: [TaskSection] = []
-        for group in groups {
-            if let section = buckets["group:\(group.id)"], !section.tasks.isEmpty {
-                sections.append(TaskSection(id: group.id, title: section.title, tasks: section.tasks))
-            }
-        }
-        for (key, section) in buckets where key.hasPrefix("project:") && !section.tasks.isEmpty {
-            sections.append(TaskSection(id: key, title: section.title, tasks: section.tasks))
-        }
-        if let other = buckets["other"], !other.tasks.isEmpty {
-            sections.append(other)
-        }
-        return sections
+        return orderedTodaySections(from: buckets, groups: groups)
     }
 
     public static func buildSearchSections(tasks: [TaskItem], groups: [TaskGroup]) -> [TaskSection] {
@@ -276,39 +233,16 @@ public enum TasksUtils {
         let sorted = tasks.sorted { compareByDueThenTitle($0, $1) }
 
         for task in sorted {
-            guard let date = parseTaskDate(task) else {
-                undated.append(task)
-                continue
-            }
-            let diff = dayDiff(from: today, to: date)
-            if diff < 0 {
-                overdue.append(task)
-                continue
-            }
-            if diff <= 6 {
-                let key = formatDateKey(date)
-                let label = formatDayLabel(date: date, dayDiff: diff)
-                var section = daily[key] ?? TaskSection(id: key, title: label, tasks: [])
-                section.tasks.append(task)
-                daily[key] = section
-                continue
-            }
-            if diff <= 27 {
-                let weekIndex = Int(floor(Double(diff) / 7.0))
-                let weekStart = Calendar.current.date(byAdding: .day, value: weekIndex * 7, to: today) ?? today
-                let label = formatWeekLabel(date: weekStart)
-                var section = weekly[weekIndex] ?? TaskSection(id: "week-\(weekIndex)", title: label, tasks: [])
-                section.tasks.append(task)
-                weekly[weekIndex] = section
-                continue
-            }
-            let monthKey = "\(Calendar.current.component(.year, from: date))-\(Calendar.current.component(.month, from: date))"
-            if var entry = monthly[monthKey] {
-                entry.section.tasks.append(task)
-                monthly[monthKey] = entry
-            } else {
-                monthly[monthKey] = (date, TaskSection(id: "month-\(monthKey)", title: formatMonthLabel(date: date), tasks: [task]))
-            }
+            let bucket = upcomingBucket(for: task, today: today)
+            addUpcomingTask(
+                task,
+                bucket: bucket,
+                overdue: &overdue,
+                undated: &undated,
+                daily: &daily,
+                weekly: &weekly,
+                monthly: &monthly
+            )
         }
 
         var sections: [TaskSection] = []
@@ -338,6 +272,145 @@ public enum TasksUtils {
         }
 
         return sections
+    }
+
+    private enum UpcomingBucket {
+        case undated
+        case overdue
+        case daily(key: String, label: String)
+        case weekly(index: Int, label: String)
+        case monthly(key: String, date: Date, label: String)
+    }
+
+    private static func buildGroupBuckets(_ groups: [TaskGroup]) -> [String: TaskSection] {
+        var buckets: [String: TaskSection] = [:]
+        for group in groups {
+            buckets["group:\(group.id)"] = TaskSection(id: group.id, title: group.title, tasks: [])
+        }
+        return buckets
+    }
+
+    private static func appendTaskToTodayBuckets(
+        _ task: TaskItem,
+        buckets: inout [String: TaskSection],
+        projects: [TaskProject],
+        groupTitleById: [String: String],
+        projectTitleById: [String: String]
+    ) {
+        if let groupId = resolvedGroupId(for: task, projects: projects) {
+            let key = "group:\(groupId)"
+            let title = groupTitleById[groupId] ?? "Group"
+            appendTask(task, buckets: &buckets, key: key, title: title)
+            return
+        }
+        if let projectId = task.projectId {
+            let key = "project:\(projectId)"
+            let title = projectTitleById[projectId] ?? "Project"
+            appendTask(task, buckets: &buckets, key: key, title: title)
+            return
+        }
+        appendTask(task, buckets: &buckets, key: "other", title: "Other")
+    }
+
+    private static func resolvedGroupId(for task: TaskItem, projects: [TaskProject]) -> String? {
+        if let groupId = task.groupId {
+            return groupId
+        }
+        guard let projectId = task.projectId else {
+            return nil
+        }
+        return projects.first(where: { $0.id == projectId })?.groupId
+    }
+
+    private static func appendTask(
+        _ task: TaskItem,
+        buckets: inout [String: TaskSection],
+        key: String,
+        title: String
+    ) {
+        if buckets[key] == nil {
+            buckets[key] = TaskSection(id: key, title: title, tasks: [])
+        }
+        guard var section = buckets[key] else {
+            return
+        }
+        section.tasks.append(task)
+        buckets[key] = section
+    }
+
+    private static func orderedTodaySections(
+        from buckets: [String: TaskSection],
+        groups: [TaskGroup]
+    ) -> [TaskSection] {
+        var sections: [TaskSection] = []
+        for group in groups {
+            if let section = buckets["group:\(group.id)"], !section.tasks.isEmpty {
+                sections.append(TaskSection(id: group.id, title: section.title, tasks: section.tasks))
+            }
+        }
+        for (key, section) in buckets where key.hasPrefix("project:") && !section.tasks.isEmpty {
+            sections.append(TaskSection(id: key, title: section.title, tasks: section.tasks))
+        }
+        if let other = buckets["other"], !other.tasks.isEmpty {
+            sections.append(other)
+        }
+        return sections
+    }
+
+    private static func upcomingBucket(for task: TaskItem, today: Date) -> UpcomingBucket {
+        guard let date = parseTaskDate(task) else {
+            return .undated
+        }
+        let diff = dayDiff(from: today, to: date)
+        if diff < 0 {
+            return .overdue
+        }
+        if diff <= 6 {
+            let key = formatDateKey(date)
+            let label = formatDayLabel(date: date, dayDiff: diff)
+            return .daily(key: key, label: label)
+        }
+        if diff <= 27 {
+            let weekIndex = Int(floor(Double(diff) / 7.0))
+            let weekStart = Calendar.current.date(byAdding: .day, value: weekIndex * 7, to: today) ?? today
+            let label = formatWeekLabel(date: weekStart)
+            return .weekly(index: weekIndex, label: label)
+        }
+        let monthKey = "\(Calendar.current.component(.year, from: date))-\(Calendar.current.component(.month, from: date))"
+        let label = formatMonthLabel(date: date)
+        return .monthly(key: monthKey, date: date, label: label)
+    }
+
+    private static func addUpcomingTask(
+        _ task: TaskItem,
+        bucket: UpcomingBucket,
+        overdue: inout [TaskItem],
+        undated: inout [TaskItem],
+        daily: inout [String: TaskSection],
+        weekly: inout [Int: TaskSection],
+        monthly: inout [String: (date: Date, section: TaskSection)]
+    ) {
+        switch bucket {
+        case .undated:
+            undated.append(task)
+        case .overdue:
+            overdue.append(task)
+        case let .daily(key, label):
+            var section = daily[key] ?? TaskSection(id: key, title: label, tasks: [])
+            section.tasks.append(task)
+            daily[key] = section
+        case let .weekly(index, label):
+            var section = weekly[index] ?? TaskSection(id: "week-\(index)", title: label, tasks: [])
+            section.tasks.append(task)
+            weekly[index] = section
+        case let .monthly(key, date, label):
+            if var entry = monthly[key] {
+                entry.section.tasks.append(task)
+                monthly[key] = entry
+            } else {
+                monthly[key] = (date, TaskSection(id: "month-\(key)", title: label, tasks: [task]))
+            }
+        }
     }
 
     private static func startOfDay(_ date: Date) -> Date {

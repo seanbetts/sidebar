@@ -12,48 +12,60 @@ public final class ShortcutActionRouter {
 
     public func handle(_ action: ShortcutAction, environment: AppEnvironment) {
         let section = environment.activeSection
+        if handleNavigation(action, environment: environment) {
+            return
+        }
+        if handleSectionAction(action, section: section, environment: environment) {
+            return
+        }
+        environment.emitShortcutAction(action)
+    }
+
+    private func handleNavigation(_ action: ShortcutAction, environment: AppEnvironment) -> Bool {
         switch action {
         case .navigate(let target):
             environment.commandSelection = target
+            return true
         case .openSettings:
             environment.commandSelection = .settings
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func handleSectionAction(
+        _ action: ShortcutAction,
+        section: AppSection?,
+        environment: AppEnvironment
+    ) -> Bool {
+        switch action {
         case .newItem:
             handleNewItem(section: section, environment: environment)
+            return true
         case .closeItem:
             handleCloseItem(section: section, environment: environment)
-        case .focusSearch,
-             .showShortcuts,
-             .openScratchpad,
-             .toggleSidebar,
-             .sendMessage,
-             .attachFile,
-             .completeTask,
-             .editTaskNotes,
-             .moveTask,
-             .setTaskDueDate,
-             .setTaskRepeat,
-             .renameItem,
-             .deleteItem,
-             .archiveItem,
-             .openInBrowser,
-             .toggleEditMode,
-             .createFolder,
-             .navigateList,
-             .openInDefaultApp,
-             .quickLook:
-            environment.emitShortcutAction(action)
+            return true
         case .refreshSection:
             handleRefresh(section: section, environment: environment)
+            return true
         case .pinItem:
             handlePinToggle(section: section, environment: environment)
+            return true
         case .saveNote:
             environment.notesEditorViewModel.saveNow()
+            return true
         case .formatBold:
             environment.notesEditorViewModel.applyBold()
+            return true
         case .formatItalic:
             environment.notesEditorViewModel.applyItalic()
+            return true
         case .insertCodeBlock:
             environment.notesEditorViewModel.insertCodeBlock()
+            return true
+        default:
+            return false
         }
     }
 
