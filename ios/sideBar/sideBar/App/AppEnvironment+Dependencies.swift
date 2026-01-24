@@ -52,12 +52,7 @@ extension AppEnvironment {
         )
         let temporaryStore = TemporaryFileStore.shared
         let notesViewModel = NotesViewModel(api: container.notesAPI, store: notesStore, toastCenter: toastCenter)
-        let notesEditorViewModel = NotesEditorViewModel(
-            api: container.notesAPI,
-            notesStore: notesStore,
-            notesViewModel: notesViewModel,
-            toastCenter: toastCenter
-        )
+        let notesEditorViewModel = NotesEditorViewModel(notesViewModel: notesViewModel)
         let ingestionViewModel = IngestionViewModel(
             api: container.ingestionAPI,
             store: ingestionStore,

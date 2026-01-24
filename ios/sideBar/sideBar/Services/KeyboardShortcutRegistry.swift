@@ -46,7 +46,6 @@ public final class KeyboardShortcutRegistry {
 
     private func priorityScore(for shortcut: KeyboardShortcut, contexts: Set<ShortcutContext>) -> Int {
         let priorities: [ShortcutContext: Int] = [
-            .notesEditing: 6,
             .chat: 5,
             .notes: 4,
             .websites: 3,

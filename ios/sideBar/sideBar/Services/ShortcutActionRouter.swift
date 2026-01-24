@@ -52,18 +52,6 @@ public final class ShortcutActionRouter {
         case .pinItem:
             handlePinToggle(section: section, environment: environment)
             return true
-        case .saveNote:
-            environment.notesEditorViewModel.saveNow()
-            return true
-        case .formatBold:
-            environment.notesEditorViewModel.applyBold()
-            return true
-        case .formatItalic:
-            environment.notesEditorViewModel.applyItalic()
-            return true
-        case .insertCodeBlock:
-            environment.notesEditorViewModel.insertCodeBlock()
-            return true
         default:
             return false
         }

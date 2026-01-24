@@ -58,17 +58,12 @@ extension NotesPanelView {
         let trimmed = newNoteName.trimmed
         guard !trimmed.isEmpty, !isCreatingNote else { return }
         isCreatingNote = true
-        // Set the flag BEFORE creating the note so it's ready when currentNoteId changes
-        environment.notesEditorViewModel.requestEditingOnNextLoad()
         Task {
             let created = await viewModel.createNote(title: trimmed, folder: nil)
             await MainActor.run {
                 isCreatingNote = false
                 if created != nil {
                     isNewNotePresented = false
-                } else {
-                    // Reset flag if creation failed
-                    environment.notesEditorViewModel.wantsEditingOnNextLoad = false
                 }
             }
         }
