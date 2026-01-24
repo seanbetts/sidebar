@@ -44,28 +44,28 @@
   - [x] Handle list indentation from `listDepth`
 
 ### Phase 4: Editor ViewModel
-- [ ] **4.1** Create `NativeMarkdownEditorViewModel.swift`
-  - [ ] Published properties: `attributedContent`, `selection`, `isReadOnly`, `hasUnsavedChanges`
-  - [ ] `loadMarkdown()` using importer
-  - [ ] `currentMarkdown()` using exporter
-  - [ ] Inline formatting: `toggleInlineIntent()`, `toggleStrikethrough()`
-  - [ ] Block formatting: `setBlockKind()`, `findParagraphRange()`
-  - [ ] Insert operations: `insertLink()`, `insertHorizontalRule()`
-  - [ ] Autosave with debounce
+- [x] **4.1** Create `NativeMarkdownEditorViewModel.swift`
+  - [x] Published properties: `attributedContent`, `selection`, `isReadOnly`, `hasUnsavedChanges`
+  - [x] `loadMarkdown()` using importer
+  - [x] `currentMarkdown()` using exporter
+  - [x] Inline formatting: `toggleInlineIntent()`, `toggleStrikethrough()`
+  - [x] Block formatting: `setBlockKind()`, `findParagraphRange()`
+  - [x] Insert operations: `insertLink()`, `insertHorizontalRule()`
+  - [x] Autosave with debounce
 
 ### Phase 5: SwiftUI Editor View
-- [ ] **5.1** Create `NativeMarkdownEditorView.swift`
-  - [ ] `TextEditor` with `AttributedString` binding
-  - [ ] Apply `MarkdownFormattingDefinition`
-  - [ ] Formatting toolbar with all buttons
-  - [ ] Proper spacing and max width constraints
+- [x] **5.1** Create `NativeMarkdownEditorView.swift`
+  - [x] `TextEditor` with `AttributedString` binding
+  - [x] Apply `MarkdownFormattingDefinition`
+  - [x] Formatting toolbar with all buttons
+  - [x] Proper spacing and max width constraints
 
 ### Phase 6: Live Shortcuts
-- [ ] **6.1** Create `MarkdownShortcutProcessor.swift`
-  - [ ] Block shortcuts: `# `, `## `, `- `, `1. `, `> `, `- [ ] `, etc.
-  - [ ] Inline shortcuts: `**bold**`, `*italic*`, `` `code` ``, `~~strike~~`
-  - [ ] Link shortcuts: `[text](url)`
-  - [ ] Update selection after consuming shortcuts
+- [x] **6.1** Create `MarkdownShortcutProcessor.swift`
+  - [x] Block shortcuts: `# `, `## `, `- `, `1. `, `> `, `- [ ] `, etc.
+  - [x] Inline shortcuts: `**bold**`, `*italic*`, `` `code` ``, `~~strike~~`
+  - [x] Link shortcuts: `[text](url)`
+  - [x] Update selection after consuming shortcuts
 
 ### Phase 7: Integration
 - [ ] **7.1** Create `NotesEditorViewModel+Native.swift`
