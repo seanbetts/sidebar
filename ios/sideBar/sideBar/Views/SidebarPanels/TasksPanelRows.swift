@@ -7,6 +7,8 @@ struct TaskPanelRow: View, Equatable {
     let isSelected: Bool
     let indent: CGFloat
     let useListStyling: Bool
+    let onRename: (() -> Void)?
+    let onDelete: (() -> Void)?
 
     init(
         title: String,
@@ -14,7 +16,9 @@ struct TaskPanelRow: View, Equatable {
         count: Int? = nil,
         isSelected: Bool = false,
         indent: CGFloat = 0,
-        useListStyling: Bool = true
+        useListStyling: Bool = true,
+        onRename: (() -> Void)? = nil,
+        onDelete: (() -> Void)? = nil
     ) {
         self.title = title
         self.iconName = iconName
@@ -22,6 +26,8 @@ struct TaskPanelRow: View, Equatable {
         self.isSelected = isSelected
         self.indent = indent
         self.useListStyling = useListStyling
+        self.onRename = onRename
+        self.onDelete = onDelete
     }
 
     static func == (lhs: TaskPanelRow, rhs: TaskPanelRow) -> Bool {
@@ -61,6 +67,40 @@ struct TaskPanelRow: View, Equatable {
                 }
             }
         }
+        #if os(iOS)
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let onRename {
+                Button("Rename") {
+                    onRename()
+                }
+                .tint(.blue)
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if let onDelete {
+                Button("Delete") {
+                    onDelete()
+                }
+                .tint(.red)
+            }
+        }
+        #endif
+        #if os(macOS)
+        .contextMenu {
+            if let onRename {
+                Button("Rename") {
+                    onRename()
+                }
+            }
+            if let onDelete {
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Text("Delete")
+                }
+            }
+        }
+        #endif
     }
 
     private var primaryTextColor: Color {

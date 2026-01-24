@@ -281,11 +281,56 @@ extension TasksViewModel {
         await loadCounts(force: true)
     }
 
+    public func renameGroup(groupId: String, title: String) async throws {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        _ = try await api.renameGroup(groupId: groupId, title: trimmed)
+        await load(selection: selection, force: true)
+        await loadCounts(force: true)
+    }
+
+    public func deleteGroup(groupId: String) async throws {
+        let projectIds = projects.filter { $0.groupId == groupId }.map { $0.id }
+        let nextSelection: TaskSelection
+        switch selection {
+        case .group(let id) where id == groupId:
+            nextSelection = .today
+        case .project(let id) where projectIds.contains(id):
+            nextSelection = .today
+        default:
+            nextSelection = selection
+        }
+        try await api.deleteGroup(groupId: groupId)
+        await load(selection: nextSelection, force: true)
+        await loadCounts(force: true)
+    }
+
     public func createProject(title: String, groupId: String?) async throws {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         _ = try await api.createProject(title: trimmed, groupId: groupId)
         await load(selection: selection, force: true)
+        await loadCounts(force: true)
+    }
+
+    public func renameProject(projectId: String, title: String) async throws {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        _ = try await api.renameProject(projectId: projectId, title: trimmed)
+        await load(selection: selection, force: true)
+        await loadCounts(force: true)
+    }
+
+    public func deleteProject(projectId: String) async throws {
+        let nextSelection: TaskSelection
+        switch selection {
+        case .project(let id) where id == projectId:
+            nextSelection = .today
+        default:
+            nextSelection = selection
+        }
+        try await api.deleteProject(projectId: projectId)
+        await load(selection: nextSelection, force: true)
         await loadCounts(force: true)
     }
 }
