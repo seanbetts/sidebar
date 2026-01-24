@@ -12,3 +12,14 @@ public struct ReadyFileNotification: Identifiable, Equatable {
         self.filename = filename
     }
 }
+
+struct LocalIngestionItemInput {
+    let id: String
+    let filename: String
+    let mimeType: String
+    let sizeBytes: Int
+    let status: String
+    let stage: String
+    let progress: Double?
+    let sourceUrl: String?
+}
