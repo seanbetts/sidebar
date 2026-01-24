@@ -27,4 +27,28 @@ final class MarkdownImporterExporterTests: XCTestCase {
         let markdown = MarkdownExporter().markdown(from: text)
         XCTAssertEqual(markdown, html)
     }
+
+    func testInlineStylesRoundTrip() {
+        let markdown = "**bold** *italic* `code` ~~strike~~ [Link](https://example.com)"
+        let result = MarkdownImporter().attributedString(from: markdown)
+        let exported = MarkdownExporter().markdown(from: result.attributedString)
+
+        XCTAssertTrue(exported.contains("**bold**"))
+        XCTAssertTrue(exported.contains("*italic*"))
+        XCTAssertTrue(exported.contains("`code`"))
+        XCTAssertTrue(exported.contains("~~strike~~"))
+        XCTAssertTrue(exported.contains("[Link](https://example.com)"))
+    }
+
+    func testNestedListPreservesIndentation() {
+        let markdown = """
+        - Item 1
+          - Item 1.1
+        """
+        let result = MarkdownImporter().attributedString(from: markdown)
+        let exported = MarkdownExporter().markdown(from: result.attributedString)
+
+        XCTAssertTrue(exported.contains("- Item 1"))
+        XCTAssertTrue(exported.contains("  - Item 1.1"))
+    }
 }
