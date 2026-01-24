@@ -54,7 +54,8 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 	const selectionType = selection.type as TaskViewType;
 	const projectIds = new Set(projects.map((project) => project.id));
 	const filteredTasks = tasks.filter((task) => task.status !== 'project');
-	const expandedTasks = expandRepeatingTasks(filteredTasks);
+	const expandedTasks =
+		selectionType === 'today' ? filteredTasks : expandRepeatingTasks(filteredTasks);
 	const visibleTasks =
 		selectionType === 'area' || selectionType === 'search'
 			? expandedTasks.filter((task) => !projectIds.has(task.id))
