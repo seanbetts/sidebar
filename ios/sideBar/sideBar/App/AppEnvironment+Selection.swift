@@ -54,7 +54,7 @@ extension AppEnvironment {
         // NOTE: Clear tasks selection once TasksViewModel exists.
     }
 
-    private func refreshOnReconnect() {
+    func refreshOnReconnect() {
         guard isAuthenticated else {
             return
         }
