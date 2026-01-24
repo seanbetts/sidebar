@@ -74,7 +74,7 @@
 - [ ] **7.2** Update note editor view to use native editor
   - [ ] Add `@available` check for iOS 26
   - [ ] Feature flag for gradual rollout
-  - [ ] Fallback to CodeMirror
+  - [ ] Fallback to SideBarMarkdown
 
 ### Testing
 - [ ] Unit tests for `MarkdownImporter`
@@ -99,11 +99,18 @@
 This plan implements a native SwiftUI rich text editing experience using iOS 26/macOS 26's new `TextEditor` support for `AttributedString`. Users edit styled text (bold, italic, headings, lists, etc.) while the canonical storage format remains Markdown. The system "consumes" Markdown syntax as the user types (e.g., typing `**bold**` becomes styled bold text with the asterisks removed).
 
 ### Goals
-1. Replace CodeMirror WebView-based editor with native SwiftUI
+1. Replace the current read-only notes view with a native SwiftUI editor
 2. Maintain Markdown as the canonical storage format for server sync
 3. Provide rich text editing with formatting toolbar support
 4. Implement semantic block attributes for reliable round-trip conversion
 5. Support all current Markdown features: headings, bold, italic, strikethrough, code, lists, task lists, blockquotes, links
+
+### Plan Alignment with Current iOS Markdown
+- Use `SideBarMarkdown` as the non-iOS 26 fallback renderer (read-only).
+- Treat `MarkdownFormatting` as deprecated; do not use it in the new pipeline.
+- Mirror `SideBarMarkdown` typography and spacing when applying formatting in the importer.
+- Hide frontmatter in the editor: strip on import, preserve on export (store it in view model state).
+- Preserve sideBar-specific markdown conventions: `^caption:` lines and `<figure class="image-gallery">…</figure>` blocks should round-trip without loss.
 
 ---
 
@@ -1634,8 +1641,8 @@ Test the full flow:
 
 1. **Feature Flag:** Add `useNativeMarkdownEditor` flag in settings
 2. **A/B Testing:** Enable for subset of users
-3. **Fallback:** Keep CodeMirror editor as fallback
-4. **Full Migration:** Remove CodeMirror once native is stable
+3. **Fallback:** Use `SideBarMarkdown` as read-only fallback
+4. **Full Migration:** Keep `SideBarMarkdown` for read-only contexts once native is stable
 
 ### Coexistence Period
 
@@ -1647,7 +1654,7 @@ var noteEditor: some View {
     if #available(iOS 26.0, macOS 26.0, *), settings.useNativeMarkdownEditor {
         NativeMarkdownEditorView(viewModel: nativeVM, onSave: save)
     } else {
-        CodeMirrorEditorView(markdown: content, ...)
+        SideBarMarkdownContainer(text: content)
     }
 }
 ```
