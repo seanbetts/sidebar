@@ -26,9 +26,9 @@ private struct TasksPanelView: View {
     @State private var newGroupTitle: String = ""
     @State private var newProjectTitle: String = ""
     @State private var pendingProjectTitle: String = ""
-    @State private var renameTarget: TaskListTarget? = nil
+    @State private var renameTarget: TaskListTarget?
     @State private var renameValue: String = ""
-    @State private var deleteTarget: TaskListTarget? = nil
+    @State private var deleteTarget: TaskListTarget?
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
