@@ -102,7 +102,9 @@ const {
 		tasksStore: {
 			search: vi.fn(),
 			clearSearch: vi.fn(),
-			startNewTask: vi.fn()
+			startNewTask: vi.fn(),
+			createArea: vi.fn(),
+			createProject: vi.fn()
 		},
 		chatStore: {
 			subscribe: createStore({ conversationId: null, messages: [] }).subscribe

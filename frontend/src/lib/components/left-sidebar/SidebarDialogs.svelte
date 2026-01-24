@@ -5,6 +5,7 @@
 	import SaveChangesDialog from '$lib/components/left-sidebar/dialogs/SaveChangesDialog.svelte';
 	import SidebarErrorDialog from '$lib/components/left-sidebar/dialogs/SidebarErrorDialog.svelte';
 	import TextInputDialog from '$lib/components/left-sidebar/dialogs/TextInputDialog.svelte';
+	import NewTaskProjectDialog from '$lib/components/left-sidebar/dialogs/NewTaskProjectDialog.svelte';
 	import SettingsDialogContainer from '$lib/components/left-sidebar/panels/SettingsDialogContainer.svelte';
 
 	export let isNewNoteDialogOpen = false;
@@ -30,6 +31,18 @@
 	export let youtubeUrl = '';
 	export let isAddingYoutube = false;
 	export let confirmAddYouTube: () => void | Promise<void>;
+
+	export let isNewTaskAreaDialogOpen = false;
+	export let newTaskAreaName = '';
+	export let isCreatingTaskArea = false;
+	export let createTaskAreaFromDialog: () => void | Promise<void>;
+
+	export let isNewTaskProjectDialogOpen = false;
+	export let newTaskProjectName = '';
+	export let newTaskProjectAreaId = '';
+	export let taskAreas: Array<{ id: string; title: string }> = [];
+	export let isCreatingTaskProject = false;
+	export let createTaskProjectFromDialog: () => void | Promise<void>;
 
 	export let isSaveChangesDialogOpen = false;
 	export let confirmSaveAndSwitch: () => void | Promise<void>;
@@ -83,6 +96,30 @@
 	isBusy={isAddingYoutube}
 	onConfirm={confirmAddYouTube}
 	onCancel={() => (isYouTubeDialogOpen = false)}
+/>
+
+<TextInputDialog
+	bind:open={isNewTaskAreaDialogOpen}
+	title="New area"
+	description="Add a new area to group your tasks."
+	placeholder="Area name"
+	bind:value={newTaskAreaName}
+	confirmLabel="Create area"
+	cancelLabel="Cancel"
+	busyLabel="Creating..."
+	isBusy={isCreatingTaskArea}
+	onConfirm={createTaskAreaFromDialog}
+	onCancel={() => (isNewTaskAreaDialogOpen = false)}
+/>
+
+<NewTaskProjectDialog
+	bind:open={isNewTaskProjectDialogOpen}
+	bind:value={newTaskProjectName}
+	bind:areaId={newTaskProjectAreaId}
+	areas={taskAreas}
+	isBusy={isCreatingTaskProject}
+	onConfirm={createTaskProjectFromDialog}
+	onCancel={() => (isNewTaskProjectDialogOpen = false)}
 />
 
 <SaveChangesDialog
