@@ -109,32 +109,34 @@ public struct MarkdownShortcutProcessor {
         at cursorIndex: AttributedString.Index
     ) -> AttributedTextSelection? {
         for (prefix, suffix, intent) in inlinePatterns {
+            let apply: (inout AttributedString, Range<AttributedString.Index>) -> Void = { text, range in
+                var slice = text[range]
+                let current = slice.inlinePresentationIntent ?? []
+                slice.inlinePresentationIntent = current.union(intent)
+                text.replaceSubrange(range, with: slice)
+            }
             if let result = consumeInlinePattern(
                 in: &text,
                 at: cursorIndex,
                 prefix: prefix,
                 suffix: suffix,
-                apply: { range in
-                    var slice = text[range]
-                    let current = slice.inlinePresentationIntent ?? []
-                    slice.inlinePresentationIntent = current.union(intent)
-                    text.replaceSubrange(range, with: slice)
-                }
+                apply: apply
             ) {
                 return result
             }
         }
 
+        let applyStrike: (inout AttributedString, Range<AttributedString.Index>) -> Void = { text, range in
+            var slice = text[range]
+            slice.strikethroughStyle = .single
+            text.replaceSubrange(range, with: slice)
+        }
         if let result = consumeInlinePattern(
             in: &text,
             at: cursorIndex,
             prefix: strikethroughPattern.0,
             suffix: strikethroughPattern.1,
-            apply: { range in
-                var slice = text[range]
-                slice.strikethroughStyle = .single
-                text.replaceSubrange(range, with: slice)
-            }
+            apply: applyStrike
         ) {
             return result
         }
@@ -147,7 +149,7 @@ public struct MarkdownShortcutProcessor {
         at cursorIndex: AttributedString.Index,
         prefix: String,
         suffix: String,
-        apply: (Range<AttributedString.Index>) -> Void
+        apply: (inout AttributedString, Range<AttributedString.Index>) -> Void
     ) -> AttributedTextSelection? {
         let prefixCount = prefix.count
         let suffixCount = suffix.count
@@ -180,7 +182,7 @@ public struct MarkdownShortcutProcessor {
         let contentStartAttr = text.index(prefixStart, offsetByCharacters: prefixCount)
         let contentEndAttr = text.index(cursorIndex, offsetByCharacters: -suffixCount)
 
-        apply(contentStartAttr..<contentEndAttr)
+        apply(&text, contentStartAttr..<contentEndAttr)
 
         text.removeSubrange(contentEndAttr..<cursorIndex)
         text.removeSubrange(prefixStart..<contentStartAttr)
