@@ -30,16 +30,16 @@ public final class AppEnvironment: ObservableObject {
     public let memoriesViewModel: MemoriesViewModel
     public let settingsViewModel: SettingsViewModel
     public let weatherViewModel: WeatherViewModel
-    private let realtimeClient: RealtimeClient
+    let realtimeClient: RealtimeClient
     public let configError: EnvironmentConfigLoadError?
     private let networkMonitor: NetworkMonitor
     public let biometricMonitor: BiometricMonitor
 
-    @Published public private(set) var isAuthenticated: Bool = false
+    @Published public internal(set) var isAuthenticated: Bool = false
     @Published public private(set) var isOffline: Bool = false
     @Published public var commandSelection: AppSection?
     @Published public var sessionExpiryWarning: Date?
-    @Published public private(set) var signOutEvent: UUID?
+    @Published public internal(set) var signOutEvent: UUID?
     @Published public var activeSection: AppSection?
     @Published public var isNotesEditing: Bool = false {
         didSet {
@@ -56,7 +56,7 @@ public final class AppEnvironment: ObservableObject {
         }
     }
     @Published public var shortcutActionEvent: ShortcutActionEvent?
-    private var cancellables = Set<AnyCancellable>()
+    var cancellables = Set<AnyCancellable>()
 
     public init(container: ServiceContainer, configError: EnvironmentConfigLoadError? = nil) {
         let isTestMode = EnvironmentConfig.isRunningTestsOrPreviews()
@@ -124,3 +124,4 @@ public final class AppEnvironment: ObservableObject {
         logStep("Realtime + monitors", initStart)
         #endif
     }
+}

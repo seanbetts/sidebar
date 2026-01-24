@@ -1,4 +1,6 @@
 #if os(iOS)
+import UIKit
+
 extension KeyboardShortcutRegistry {
     private static func buildShortcuts() -> [KeyboardShortcut] {
         buildUniversalShortcuts()

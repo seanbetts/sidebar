@@ -7,13 +7,13 @@ import UIKit
 // MARK: - AppLaunchDelegate
 
 final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
-    private enum ShortcutCommandKeys {
+    enum ShortcutCommandKeys {
         static let type = "type"
         static let section = "section"
         static let direction = "direction"
     }
 
-    private enum ShortcutCommandType: String {
+    enum ShortcutCommandType: String {
         case navigate
         case openSettings
         case newItem
