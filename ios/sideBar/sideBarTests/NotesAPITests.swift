@@ -19,7 +19,23 @@ final class NotesAPITests: XCTestCase {
                 headerFields: nil
             )!
             let payload = """
-            {"items":[{"name":"Doc","path":"/doc.md","type":"file","size":1,"modified":1,"children":null,"expanded":null,"pinned":null,"pinned_order":null,"archived":null,"folder_marker":null}]}
+            {
+              "items": [
+                {
+                  "name": "Doc",
+                  "path": "/doc.md",
+                  "type": "file",
+                  "size": 1,
+                  "modified": 1,
+                  "children": null,
+                  "expanded": null,
+                  "pinned": null,
+                  "pinned_order": null,
+                  "archived": null,
+                  "folder_marker": null
+                }
+              ]
+            }
             """
             return (response, Data(payload.utf8))
         }
@@ -44,11 +60,11 @@ final class NotesAPITests: XCTestCase {
 final class NotesURLProtocolMock: URLProtocol {
     static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 
-    override class func canInit(with request: URLRequest) -> Bool {
+    override static func canInit(with request: URLRequest) -> Bool {
         true
     }
 
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
     }
 
