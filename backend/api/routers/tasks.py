@@ -210,6 +210,38 @@ async def create_task_group(
     return _group_payload(group)
 
 
+@router.patch("/groups/{group_id}")
+async def rename_task_group(
+    group_id: str,
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Rename a task group."""
+    title = str(request.get("title") or "").strip()
+    if not title:
+        raise BadRequestError("title required")
+    set_session_user_id(db, user_id)
+    group = TaskService.update_task_group(db, user_id, group_id, title=title)
+    db.commit()
+    return _group_payload(group)
+
+
+@router.delete("/groups/{group_id}")
+async def delete_task_group(
+    group_id: str,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Delete a task group and its nested projects/tasks."""
+    set_session_user_id(db, user_id)
+    group = TaskService.delete_task_group(db, user_id, group_id)
+    db.commit()
+    return _group_sync_payload(group)
+
+
 @router.post("/projects")
 async def create_task_project(
     request: dict,
@@ -226,6 +258,38 @@ async def create_task_project(
     project = TaskService.create_task_project(db, user_id, title, group_id=group_id)
     db.commit()
     return _project_payload(project)
+
+
+@router.patch("/projects/{project_id}")
+async def rename_task_project(
+    project_id: str,
+    request: dict,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Rename a task project."""
+    title = str(request.get("title") or "").strip()
+    if not title:
+        raise BadRequestError("title required")
+    set_session_user_id(db, user_id)
+    project = TaskService.update_task_project(db, user_id, project_id, title=title)
+    db.commit()
+    return _project_payload(project)
+
+
+@router.delete("/projects/{project_id}")
+async def delete_task_project(
+    project_id: str,
+    user_id: str = Depends(get_current_user_id),
+    _: str = Depends(verify_bearer_token),
+    db: Session = Depends(get_db),
+):
+    """Delete a task project and its tasks."""
+    set_session_user_id(db, user_id)
+    project = TaskService.delete_task_project(db, user_id, project_id)
+    db.commit()
+    return _project_sync_payload(project)
 
 
 @router.get("/projects/{project_id}/tasks")

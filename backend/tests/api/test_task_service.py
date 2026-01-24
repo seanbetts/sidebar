@@ -83,6 +83,74 @@ def test_delete_task_hides_from_list(db_session):
     assert TaskService.list_tasks(db_session, "user") == []
 
 
+def test_delete_task_project_cascades_to_tasks(db_session):
+    group = TaskService.create_task_group(db_session, "user", "Work")
+    project = TaskService.create_task_project(
+        db_session, "user", "Launch", group_id=str(group.id)
+    )
+    task_in_project = TaskService.create_task(
+        db_session,
+        "user",
+        "Project task",
+        project_id=str(project.id),
+    )
+    task_in_group = TaskService.create_task(
+        db_session,
+        "user",
+        "Group task",
+        group_id=str(group.id),
+    )
+    db_session.commit()
+
+    TaskService.delete_task_project(db_session, "user", str(project.id))
+    db_session.commit()
+
+    assert TaskService.list_task_projects(db_session, "user") == []
+    remaining_tasks = TaskService.list_tasks(db_session, "user")
+    assert [task.id for task in remaining_tasks] == [task_in_group.id]
+    assert TaskService.get_task_group(db_session, "user", str(group.id)).id == group.id
+    assert task_in_project.deleted_at is not None
+
+
+def test_delete_task_group_cascades_to_projects_and_tasks(db_session):
+    group = TaskService.create_task_group(db_session, "user", "Home")
+    project = TaskService.create_task_project(
+        db_session, "user", "Chores", group_id=str(group.id)
+    )
+    group_task = TaskService.create_task(
+        db_session,
+        "user",
+        "Group task",
+        group_id=str(group.id),
+    )
+    project_task = TaskService.create_task(
+        db_session,
+        "user",
+        "Project task",
+        project_id=str(project.id),
+    )
+    other_group = TaskService.create_task_group(db_session, "user", "Side")
+    other_task = TaskService.create_task(
+        db_session,
+        "user",
+        "Other task",
+        group_id=str(other_group.id),
+    )
+    db_session.commit()
+
+    TaskService.delete_task_group(db_session, "user", str(group.id))
+    db_session.commit()
+
+    assert [group.id for group in TaskService.list_task_groups(db_session, "user")] == [
+        other_group.id
+    ]
+    assert TaskService.list_task_projects(db_session, "user") == []
+    remaining_tasks = TaskService.list_tasks(db_session, "user")
+    assert [task.id for task in remaining_tasks] == [other_task.id]
+    assert group_task.deleted_at is not None
+    assert project_task.deleted_at is not None
+
+
 def test_get_task_not_found_raises(db_session):
     with pytest.raises(TaskNotFoundError):
         TaskService.get_task(db_session, "user", str(uuid.uuid4()))
