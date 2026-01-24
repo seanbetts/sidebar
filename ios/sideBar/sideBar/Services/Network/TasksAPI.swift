@@ -1,5 +1,6 @@
 import Foundation
 
+/// Defines task API operations used by the app.
 public protocol TasksProviding {
     func list(scope: String) async throws -> TaskListResponse
     func projectTasks(projectId: String) async throws -> TaskListResponse
@@ -12,6 +13,7 @@ public protocol TasksProviding {
     func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse
 }
 
+/// Encodes a batch of task operations for sync.
 public struct TaskOperationBatch: Encodable {
     public let operations: [TaskOperationPayload]
 
@@ -20,6 +22,7 @@ public struct TaskOperationBatch: Encodable {
     }
 }
 
+/// Encodes an individual task operation for sync.
 public struct TaskOperationPayload: Encodable {
     public let operationId: String
     public let op: String
@@ -70,6 +73,7 @@ public struct TaskOperationPayload: Encodable {
     }
 }
 
+/// Encodes a task sync request payload.
 public struct TaskSyncRequest: Encodable {
     public let lastSync: String?
     public let operations: [TaskOperationPayload]
@@ -99,6 +103,7 @@ private struct TaskCreateProjectRequest: Encodable {
     }
 }
 
+/// Concrete network client for task endpoints.
 public struct TasksAPI {
     private let client: APIClient
 
@@ -150,6 +155,7 @@ public struct TasksAPI {
 
 extension TasksAPI: TasksProviding {}
 
+/// Identifiers for supported task operations.
 public enum TaskOperationId {
     public static func make() -> String {
         UUID().uuidString
