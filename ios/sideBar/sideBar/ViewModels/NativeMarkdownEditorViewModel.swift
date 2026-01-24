@@ -325,9 +325,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         range: Range<AttributedString.Index>? = nil
     ) {
         if let range {
-            attributedContent.transformAttributes(in: range) { attrs in
-                updateInlineIntent(intent, enabled: enabled, attrs: &attrs)
-            }
+            applyInlineIntentToRange(intent, enabled: enabled, range: range)
             return
         }
         attributedContent.transformAttributes(in: &selection) { attrs in
@@ -359,6 +357,33 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 attrs.foregroundColor = baseForegroundColor(for: blockKind)
                 attrs.backgroundColor = baseBackgroundColor(for: blockKind)
             }
+        }
+    }
+
+    private func applyInlineIntentToRange(
+        _ intent: InlinePresentationIntent,
+        enabled: Bool,
+        range: Range<AttributedString.Index>
+    ) {
+        var intents = attributedContent[range].inlinePresentationIntent ?? []
+        if enabled {
+            intents.insert(intent)
+        } else {
+            intents.remove(intent)
+        }
+        attributedContent[range].inlinePresentationIntent = intents
+
+        guard intent == .code else { return }
+
+        if enabled {
+            attributedContent[range].font = inlineCodeFont
+            attributedContent[range].foregroundColor = DesignTokens.Colors.textPrimary
+            attributedContent[range].backgroundColor = DesignTokens.Colors.muted
+        } else {
+            let blockKind = attributedContent.blockKind(in: range)
+            attributedContent[range].font = baseFont(for: blockKind)
+            attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
+            attributedContent[range].backgroundColor = baseBackgroundColor(for: blockKind)
         }
     }
 
