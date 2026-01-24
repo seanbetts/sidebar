@@ -12,6 +12,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private let importer = MarkdownImporter()
     private let exporter = MarkdownExporter()
+    private let bodyFont = Font.system(size: 16)
+    private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private var frontmatter: String?
     private var lastSavedContent: String = ""
     private var autosaveTask: Task<Void, Never>?
@@ -98,8 +100,19 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             let current = attributedContent[range].inlinePresentationIntent ?? []
             if current.contains(intent) {
                 attributedContent[range].inlinePresentationIntent = current.subtracting(intent)
+                if intent == .code {
+                    let blockKind = attributedContent.blockKind(in: range)
+                    attributedContent[range].font = baseFont(for: blockKind)
+                    attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
+                    attributedContent[range].backgroundColor = nil
+                }
             } else {
                 attributedContent[range].inlinePresentationIntent = current.union(intent)
+                if intent == .code {
+                    attributedContent[range].font = inlineCodeFont
+                    attributedContent[range].foregroundColor = DesignTokens.Colors.textPrimary
+                    attributedContent[range].backgroundColor = DesignTokens.Colors.muted
+                }
             }
         }
     }
@@ -109,8 +122,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         for range in ranges.ranges where !range.isEmpty {
             if attributedContent[range].strikethroughStyle == nil {
                 attributedContent[range].strikethroughStyle = .single
+                attributedContent[range].foregroundColor = DesignTokens.Colors.textSecondary
             } else {
                 attributedContent[range].strikethroughStyle = nil
+                let blockKind = attributedContent.blockKind(in: range)
+                attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
             }
         }
     }
@@ -219,6 +235,34 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         case 4: return .heading4
         case 5: return .heading5
         default: return .heading6
+        }
+    }
+
+    private func baseFont(for blockKind: BlockKind?) -> Font {
+        switch blockKind {
+        case .heading1:
+            return .system(size: 32, weight: .bold)
+        case .heading2:
+            return .system(size: 24, weight: .semibold)
+        case .heading3:
+            return .system(size: 20, weight: .semibold)
+        case .heading4:
+            return .system(size: 18, weight: .semibold)
+        case .heading5:
+            return .system(size: 17, weight: .semibold)
+        case .heading6:
+            return .system(size: 16, weight: .semibold)
+        default:
+            return bodyFont
+        }
+    }
+
+    private func baseForegroundColor(for blockKind: BlockKind?) -> Color {
+        switch blockKind {
+        case .blockquote, .taskChecked:
+            return DesignTokens.Colors.textSecondary
+        default:
+            return DesignTokens.Colors.textPrimary
         }
     }
 

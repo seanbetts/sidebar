@@ -32,6 +32,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
     private var listStack: [(ordered: Bool, depth: Int)] = []
     private var blockquoteDepth: Int = 0
+    private let bodyFont = Font.system(size: 16)
+    private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
+    private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
 
     mutating func visitDocument(_ document: Document) {
         for child in document.children {
@@ -65,7 +68,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             applyBlockKind(.paragraph, to: &paragraphText)
         }
 
-        paragraphText[fullRange(in: paragraphText)].font = DesignTokens.Typography.body
+        paragraphText[fullRange(in: paragraphText)].font = bodyFont
         appendBlock(paragraphText)
     }
 
@@ -141,7 +144,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             var lineText = AttributedString(String(line))
             applyBlockKind(.codeBlock, to: &lineText)
             lineText[fullRange(in: lineText)].codeLanguage = language
-            lineText[fullRange(in: lineText)].font = DesignTokens.Typography.monoBody
+            lineText[fullRange(in: lineText)].font = blockCodeFont
             lineText[fullRange(in: lineText)].foregroundColor = DesignTokens.Colors.textPrimary
             lineText[fullRange(in: lineText)].backgroundColor = DesignTokens.Colors.muted
             appendBlock(lineText)
@@ -157,7 +160,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         } else {
             applyBlockKind(.htmlBlock, to: &htmlText)
         }
-        htmlText[fullRange(in: htmlText)].font = DesignTokens.Typography.monoBody
+        htmlText[fullRange(in: htmlText)].font = blockCodeFont
         htmlText[fullRange(in: htmlText)].foregroundColor = DesignTokens.Colors.textSecondary
         appendBlock(htmlText)
     }
@@ -186,7 +189,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
 
         itemText[fullRange(in: itemText)].listDepth = context.depth
-        itemText[fullRange(in: itemText)].font = DesignTokens.Typography.body
+        itemText[fullRange(in: itemText)].font = bodyFont
         appendBlock(itemText)
     }
 
@@ -223,13 +226,14 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
                 inner.append(inlineAttributedString(for: child))
             }
             inner[fullRange(in: inner)].strikethroughStyle = .single
+            inner[fullRange(in: inner)].foregroundColor = DesignTokens.Colors.textSecondary
             return inner
         case let code as InlineCode:
             var inner = AttributedString(code.code)
             let range = fullRange(in: inner)
             let current = inner[range].inlinePresentationIntent ?? []
             inner[range].inlinePresentationIntent = current.union(.code)
-            inner[range].font = DesignTokens.Typography.monoBody
+            inner[range].font = inlineCodeFont
             inner[range].backgroundColor = DesignTokens.Colors.muted
             return inner
         case let link as Markdown.Link:

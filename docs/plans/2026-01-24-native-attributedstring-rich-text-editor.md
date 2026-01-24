@@ -77,10 +77,10 @@
   - [x] Fallback to SideBarMarkdown
 
 ### Phase 8: Display Parity
-- [ ] **8.1** Typography and inline styles
-  - [ ] Base body font size matches `SideBarMarkdown` (16)
-  - [ ] Inline code font size and background match `SideBarMarkdown`
-  - [ ] Strikethrough color matches `SideBarMarkdown`
+- [x] **8.1** Typography and inline styles
+  - [x] Base body font size matches `SideBarMarkdown` (16)
+  - [x] Inline code font size and background match `SideBarMarkdown`
+  - [x] Strikethrough color matches `SideBarMarkdown`
 - [ ] **8.2** Block presentation
   - [ ] Headings use presentation intent for consistent spacing
   - [ ] Lists render bullets/ordinals using presentation intent + delimiters
