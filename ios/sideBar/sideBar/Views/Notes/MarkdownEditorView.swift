@@ -6,7 +6,6 @@ struct MarkdownEditorView: View {
     let showsCompactStatus: Bool
     @ObservedObject var editorHandle: CodeMirrorEditorHandle
     @Binding var isEditing: Bool
-    @Binding var editorFrame: CGRect
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,10 +57,6 @@ struct MarkdownEditorView: View {
         }
         .onChange(of: isEditing) { _, newValue in
             guard newValue, !viewModel.isReadOnly else { return }
-            if let coords = viewModel.pendingCaretCoords {
-                viewModel.pendingCaretCoords = nil
-                editorHandle.setSelectionAtDeferred(x: coords.x, y: coords.y)
-            }
             editorHandle.focus()
         }
         #if os(macOS)
@@ -73,54 +68,23 @@ struct MarkdownEditorView: View {
 
     private var editorSurface: some View {
         ZStack(alignment: .topLeading) {
-            if isEditing && !viewModel.isReadOnly {
-                CodeMirrorEditorView(
-                    markdown: viewModel.content,
-                    isReadOnly: false,
-                    handle: editorHandle,
-                    onContentChanged: viewModel.handleUserMarkdownEdit,
-                    onEscape: {
-                        isEditing = false
-                    }
-                )
-                .frame(maxWidth: maxContentWidth)
-            } else {
-                ScrollView {
-                    SideBarMarkdownContainer(text: viewModel.content)
+            CodeMirrorEditorView(
+                markdown: viewModel.content,
+                isReadOnly: !isEditing || viewModel.isReadOnly,
+                handle: editorHandle,
+                onContentChanged: viewModel.handleUserMarkdownEdit,
+                onEscape: {
+                    isEditing = false
                 }
-            }
+            )
+            .frame(maxWidth: maxContentWidth)
         }
-        .background(
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear {
-                        editorFrame = proxy.frame(in: .named("appRoot"))
-                    }
-                    .onChange(of: proxy.size) { _, _ in
-                        editorFrame = proxy.frame(in: .named("appRoot"))
-                    }
-            }
-        )
         .contentShape(Rectangle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .named("appRoot"))
-                .onEnded { value in
-                    guard !viewModel.isReadOnly else { return }
-                    let dragDistance = hypot(value.translation.width, value.translation.height)
-                    let predictedDistance = hypot(
-                        value.predictedEndTranslation.width,
-                        value.predictedEndTranslation.height
-                    )
-                    guard dragDistance < 6, predictedDistance < 12 else { return }
-                    if !isEditing {
-                        let localX = value.location.x - editorFrame.origin.x
-                        let localY = value.location.y - editorFrame.origin.y
-                        viewModel.pendingCaretCoords = CGPoint(x: localX, y: localY)
-                        isEditing = true
-                        editorHandle.focus()
-                    }
-                }
-        )
+        .onTapGesture {
+            guard !viewModel.isReadOnly else { return }
+            isEditing = true
+            editorHandle.focus()
+        }
     }
 }
 

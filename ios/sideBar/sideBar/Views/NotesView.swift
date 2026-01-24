@@ -253,8 +253,7 @@ extension NotesDetailView {
                     maxContentWidth: contentMaxWidth,
                     showsCompactStatus: isCompact,
                     editorHandle: editorHandle,
-                    isEditing: isEditingBinding,
-                    editorFrame: editorFrameBinding
+                    isEditing: isEditingBinding
                 )
             } else if viewModel.selectedNoteId != nil {
                 if let error = viewModel.errorMessage {
@@ -500,13 +499,6 @@ extension NotesDetailView {
         Binding(
             get: { editorViewModel.isEditing },
             set: { editorViewModel.isEditing = $0 }
-        )
-    }
-
-    private var editorFrameBinding: Binding<CGRect> {
-        Binding(
-            get: { editorViewModel.editorFrame },
-            set: { editorViewModel.editorFrame = $0 }
         )
     }
 
