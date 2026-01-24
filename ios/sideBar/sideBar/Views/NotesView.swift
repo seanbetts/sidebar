@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 import UniformTypeIdentifiers
 #if os(iOS)
 import UIKit
@@ -60,7 +59,6 @@ private struct NotesDetailView: View {
     @ObservedObject var editorViewModel: NotesEditorViewModel
     private let contentMaxWidth: CGFloat = SideBarMarkdownLayout.maxContentWidth
     @EnvironmentObject private var environment: AppEnvironment
-    @StateObject private var editorHandle = CodeMirrorEditorHandle()
     @State private var isRenameDialogPresented = false
     @State private var renameValue: String = ""
     @State private var isMoveSheetPresented = false
@@ -136,7 +134,6 @@ private struct NotesDetailView: View {
         .alert("Delete note", isPresented: $isDeleteAlertPresented) {
             Button("Delete", role: .destructive) {
                 guard let noteId = viewModel.activeNote?.path else { return }
-                editorViewModel.isEditing = false
                 Task {
                     await viewModel.deleteNote(id: noteId)
                 }
@@ -149,7 +146,6 @@ private struct NotesDetailView: View {
         .alert(archiveAlertTitle, isPresented: $isArchiveAlertPresented) {
             Button(archiveActionTitle, role: .destructive) {
                 guard let noteId = viewModel.activeNote?.path else { return }
-                editorViewModel.isEditing = false
                 Task {
                     await viewModel.setArchived(id: noteId, archived: !isArchived)
                 }
@@ -159,21 +155,9 @@ private struct NotesDetailView: View {
         } message: {
             Text(archiveAlertMessage)
         }
-        .onAppear {
-            environment.isNotesEditing = editorViewModel.isEditing
-        }
-        .onChange(of: editorViewModel.isEditing) { _, newValue in
-            environment.isNotesEditing = newValue
-        }
-        .onDisappear {
-            environment.isNotesEditing = false
-        }
         .onReceive(environment.$shortcutActionEvent) { event in
             guard let event, event.section == .notes else { return }
             switch event.action {
-            case .toggleEditMode:
-                guard !editorViewModel.isReadOnly else { return }
-                editorViewModel.isEditing.toggle()
             case .renameItem:
                 guard viewModel.activeNote != nil else { return }
                 renameValue = displayTitle
@@ -209,7 +193,6 @@ extension NotesDetailView {
                 title: displayTitle
             ) {
                 if viewModel.activeNote != nil {
-                    SaveStatusView(editorViewModel: editorViewModel)
                     HeaderActionRow {
                         noteActionsMenu
                         closeButton
@@ -217,32 +200,9 @@ extension NotesDetailView {
                 }
             }
             .padding(DesignTokens.Spacing.md)
-            .opacity(isEditingToolbarVisible ? 0 : 1)
-            .allowsHitTesting(!isEditingToolbarVisible)
-            if isEditingToolbarVisible {
-                GeometryReader { proxy in
-                    Color.platformSecondarySystemBackground
-                        .overlay(alignment: .center) {
-                            MarkdownFormattingToolbar(
-                                isReadOnly: editorViewModel.isReadOnly,
-                                onClose: {
-                                    editorViewModel.isEditing = false
-                                },
-                                onCommand: { command in
-                                    editorHandle.applyCommand(command)
-                                }
-                            )
-                            .background(Color.clear)
-                        }
-                        .frame(height: proxy.size.height)
-                        .transition(.opacity)
-                        .zIndex(1)
-                }
-            }
         }
         .frame(maxWidth: .infinity)
         .frame(height: LayoutMetrics.contentHeaderMinHeight)
-        .animation(.easeInOut(duration: 0.2), value: editorViewModel.isEditing)
     }
 
     @ViewBuilder
@@ -250,10 +210,7 @@ extension NotesDetailView {
             if viewModel.activeNote != nil {
                 MarkdownEditorView(
                     viewModel: editorViewModel,
-                    maxContentWidth: contentMaxWidth,
-                    showsCompactStatus: isCompact,
-                    editorHandle: editorHandle,
-                    isEditing: isEditingBinding
+                    maxContentWidth: contentMaxWidth
                 )
             } else if viewModel.selectedNoteId != nil {
                 if let error = viewModel.errorMessage {
@@ -294,30 +251,6 @@ extension NotesDetailView {
 
     private var contentWithToolbar: some View {
         content
-            .overlay(alignment: .top) {
-                if isCompact && isEditingToolbarVisible {
-                    GeometryReader { proxy in
-                        Color.platformSecondarySystemBackground
-                            .overlay(alignment: .center) {
-                                MarkdownFormattingToolbar(
-                                    isReadOnly: editorViewModel.isReadOnly,
-                                    onClose: {
-                                        editorViewModel.isEditing = false
-                                    },
-                                    onCommand: { command in
-                                        editorHandle.applyCommand(command)
-                                    }
-                                )
-                                .background(Color.clear)
-                            }
-                            .frame(height: min(proxy.size.height, LayoutMetrics.contentHeaderMinHeight))
-                            .transition(.opacity)
-                            .zIndex(1)
-                    }
-                    .frame(height: LayoutMetrics.contentHeaderMinHeight)
-                }
-            }
-            .animation(.easeInOut(duration: 0.2), value: editorViewModel.isEditing)
     }
 
     private var displayTitle: String {
@@ -431,7 +364,6 @@ extension NotesDetailView {
             systemName: "xmark",
             accessibilityLabel: "Close note",
             action: {
-                editorViewModel.isEditing = false
                 viewModel.clearSelection()
             },
             isDisabled: viewModel.activeNote == nil
@@ -489,17 +421,6 @@ extension NotesDetailView {
 
     private var folderOptions: [FolderOption] {
         FolderOption.build(from: viewModel.tree?.children ?? [])
-    }
-
-    private var isEditingToolbarVisible: Bool {
-        editorViewModel.isEditing && !editorViewModel.isReadOnly
-    }
-
-    private var isEditingBinding: Binding<Bool> {
-        Binding(
-            get: { editorViewModel.isEditing },
-            set: { editorViewModel.isEditing = $0 }
-        )
     }
 
     private func copyMarkdown() {
