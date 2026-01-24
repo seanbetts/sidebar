@@ -329,7 +329,6 @@ describe('api services', () => {
 			});
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		(global as any).XMLHttpRequest = MockXHR;
 
 		const result = await ingestionAPI.upload(new File(['content'], 'test.txt'));

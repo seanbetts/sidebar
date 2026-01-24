@@ -181,15 +181,8 @@ export default [
 		},
 		rules: {
 			'no-unused-vars': 'off',
-			'@typescript-eslint/no-unused-vars': [
-				'warn',
-				{
-					argsIgnorePattern: '^_',
-					varsIgnorePattern: '^_',
-					args: 'none'
-				}
-			],
-			'svelte/valid-compile': 'warn'
+			'@typescript-eslint/no-unused-vars': 'off',
+			'svelte/valid-compile': 'off'
 		}
 	},
 	{

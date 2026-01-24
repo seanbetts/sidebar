@@ -931,7 +931,7 @@ const buildBlockPreviewDecorations = (state: EditorState) => {
 	return builder.finish();
 };
 
-const blockPreviewField = StateField.define<DecorationSet>({
+const _blockPreviewField = StateField.define<DecorationSet>({
 	create: (state) => buildBlockPreviewDecorations(state),
 	update: (decorations, transaction) => {
 		if (transaction.docChanged || transaction.selection) {
@@ -942,7 +942,7 @@ const blockPreviewField = StateField.define<DecorationSet>({
 	provide: (field) => EditorView.decorations.from(field)
 });
 
-const markdownLinePlugin = ViewPlugin.fromClass(
+const _markdownLinePlugin = ViewPlugin.fromClass(
 	class {
 		decorations = Decoration.none;
 		private lastEmptyDecorationReport = 0;
@@ -1465,7 +1465,7 @@ const markdownLinePlugin = ViewPlugin.fromClass(
 	}
 );
 
-const livePreviewPlugin = ViewPlugin.fromClass(
+const _livePreviewPlugin = ViewPlugin.fromClass(
 	class {
 		decorations = Decoration.none;
 		private revealUntil = 0;

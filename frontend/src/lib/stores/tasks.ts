@@ -21,15 +21,10 @@ import { createTasksSyncCoordinator, type TasksMetaCache } from '$lib/stores/tas
 import { createDueActions } from '$lib/stores/tasks-due-actions';
 import { createTaskLoader } from '$lib/stores/tasks-loader';
 import type { TaskNewTaskDraft, TasksState } from '$lib/stores/tasks-types';
-import {
-	classifyDueBucket,
-	normalizeDateKey,
-	offsetDateKey,
-	todayKey
-} from '$lib/stores/tasks-utils';
+import { classifyDueBucket, offsetDateKey, todayKey } from '$lib/stores/tasks-utils';
 import { getCachedData, isCacheStale, setCachedData } from '$lib/utils/cache';
 import { toast } from 'svelte-sonner';
-import type { Task, TaskCountsResponse, TaskProject, TaskSelection } from '$lib/types/tasks';
+import type { Task, TaskCountsResponse, TaskSelection } from '$lib/types/tasks';
 
 export type { TaskSelection } from '$lib/types/tasks';
 export type { TaskNewTaskDraft, TasksState } from '$lib/stores/tasks-types';

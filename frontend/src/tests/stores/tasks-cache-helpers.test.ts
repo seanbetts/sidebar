@@ -8,7 +8,7 @@ import {
 	buildCountsMap,
 	filterTasksForSelection
 } from '$lib/stores/tasks-cache-helpers';
-import type { Task, TaskProject, TaskSelection, TaskCountsResponse } from '$lib/types/tasks';
+import type { Task, TaskProject, TaskCountsResponse } from '$lib/types/tasks';
 
 const createTask = (overrides: Partial<Task> = {}): Task => ({
 	id: 'task-1',
