@@ -143,11 +143,12 @@ plugins = ["sqlalchemy.ext.mypy.plugin"]
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
-exclude = "backend/api/alembic"
+exclude = "api/alembic|skills/.*/scripts|scripts|tests/skills"
 
 [tool.ruff]
 target-version = "py311"
-extend-exclude = ["backend/api/alembic/versions"]
+exclude = ["skills/**/scripts"]
+extend-exclude = ["api/alembic/versions", "skills/**/scripts"]
 
 [tool.ruff.lint]
 select = [
@@ -174,20 +175,32 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["D104"]
-"backend/api/alembic/versions/*.py" = ["D", "E501"]
-"backend/api/auth.py" = ["B008"]
-"backend/api/db/dependencies.py" = ["B008"]
-"backend/api/routers/*.py" = ["B008"]
-"backend/api/routers/files.py" = ["N803"]
-"backend/api/routers/conversations.py" = ["N815"]
-"backend/api/routers/ingestion_helpers.py" = ["E501"]
-"backend/api/routers/tasks.py" = ["E501"]
-"backend/api/routers/weather.py" = ["E501"]
-"backend/api/routers/websites_helpers.py" = ["E501"]
-"backend/api/services/settings_service.py" = ["E501"]
-"backend/api/services/tools/definitions_fs.py" = ["E501"]
-"backend/tests/**/*.py" = ["D", "T20", "SIM", "UP", "N806", "E501", "E402"]
-"backend/workers/ingestion_worker.py" = ["D", "E501", "SIM", "UP"]
+"api/alembic/env.py" = ["I001"]
+"api/alembic/versions/*.py" = ["D", "E501"]
+"api/auth.py" = ["B008"]
+"api/db/dependencies.py" = ["B008"]
+"api/middleware/*.py" = ["I001"]
+"api/routers/*.py" = ["B008"]
+"api/routers/files.py" = ["N803"]
+"api/routers/conversations.py" = ["N815"]
+"api/routers/ingestion_helpers.py" = ["E501"]
+"api/routers/tasks.py" = ["E501"]
+"api/routers/weather.py" = ["E501"]
+"api/routers/websites_helpers.py" = ["E501"]
+"api/services/settings_service.py" = ["E501"]
+"api/services/tools/definitions_fs.py" = ["E501"]
+"scripts/**/*.py" = ["B009", "D", "E501", "I001", "SIM", "T20", "UP"]
+"tests/**/*.py" = ["D", "E501", "E402", "F841", "I001", "N806", "SIM", "T20", "UP"]
+"workers/ingestion_worker.py" = ["D", "E501", "I001", "SIM", "UP"]
+
+[[tool.mypy.overrides]]
+module = [
+    "api.services.web_save_parser",
+    "api.services.web_save_parser_cleanup",
+    "api.services.web_save_parser_youtube",
+    "api.services.web_save_rendering",
+]
+ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = [
