@@ -68,6 +68,7 @@ private struct NotesDetailView: View {
     @State private var isExporting = false
     @State private var exportDocument: MarkdownFileDocument?
     @State private var exportFilename: String = "note.md"
+    @AppStorage(AppStorageKeys.useNativeMarkdownEditor) private var useNativeMarkdownEditor = true
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -208,10 +209,14 @@ extension NotesDetailView {
     @ViewBuilder
     private var content: some View {
             if viewModel.activeNote != nil {
-                MarkdownEditorView(
-                    viewModel: editorViewModel,
-                    maxContentWidth: contentMaxWidth
-                )
+                if #available(iOS 26.0, macOS 26.0, *), useNativeMarkdownEditor {
+                    NativeMarkdownEditorContainer(
+                        editorViewModel: editorViewModel,
+                        maxContentWidth: contentMaxWidth
+                    )
+                } else {
+                    SideBarMarkdownContainer(text: editorViewModel.content)
+                }
             } else if viewModel.selectedNoteId != nil {
                 if let error = viewModel.errorMessage {
                     PlaceholderView(

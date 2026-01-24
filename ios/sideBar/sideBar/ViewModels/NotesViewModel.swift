@@ -236,6 +236,17 @@ public final class NotesViewModel: ObservableObject {
         }
     }
 
+    public func updateNoteContent(id: String, content: String) async -> Bool {
+        do {
+            let updated = try await api.updateNote(id: id, content: content)
+            store.applyEditorUpdate(updated)
+            return true
+        } catch {
+            toastCenter.show(message: "Failed to update note")
+            return false
+        }
+    }
+
     public func renameFolder(path: String, newName: String) async {
         guard let trimmed = newName.trimmedOrNil else { return }
         let normalized = normalizeFolderPath(path)
