@@ -92,7 +92,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func toggleInlineIntent(_ intent: InlinePresentationIntent) {
         let ranges = selectionRanges()
-        for range in ranges where !range.isEmpty {
+        for range in ranges.ranges where !range.isEmpty {
             let current = attributedContent[range].inlinePresentationIntent ?? []
             if current.contains(intent) {
                 attributedContent[range].inlinePresentationIntent = current.subtracting(intent)
@@ -104,7 +104,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func toggleStrikethrough() {
         let ranges = selectionRanges()
-        for range in ranges where !range.isEmpty {
+        for range in ranges.ranges where !range.isEmpty {
             if attributedContent[range].strikethroughStyle == nil {
                 attributedContent[range].strikethroughStyle = .single
             } else {
@@ -115,7 +115,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func setBlockKind(_ blockKind: BlockKind, listDepth: Int? = nil) {
         let ranges = selectionRanges()
-        for range in ranges {
+        for range in ranges.ranges {
             let paragraphRange = findParagraphRange(containing: range)
             attributedContent[paragraphRange].blockKind = blockKind
             if let listDepth {
@@ -150,7 +150,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func insertLink(_ url: URL) {
         let ranges = selectionRanges()
-        guard let range = ranges.first else { return }
+        guard let range = ranges.ranges.first else { return }
 
         if range.isEmpty {
             let placeholder = AttributedString("link")
@@ -172,7 +172,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         hr[range].blockKind = .horizontalRule
         hr[range].foregroundColor = DesignTokens.Colors.border
 
-        let insertIndex = selectionRanges().first?.lowerBound ?? attributedContent.endIndex
+        let insertIndex = selectionRanges().ranges.first?.lowerBound ?? attributedContent.endIndex
         attributedContent.insert(hr, at: insertIndex)
     }
 
