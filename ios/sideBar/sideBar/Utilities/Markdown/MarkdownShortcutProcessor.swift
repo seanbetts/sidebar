@@ -24,6 +24,7 @@ public struct MarkdownShortcutProcessor {
     ]
 
     private static let strikethroughPattern = InlinePattern(prefix: "~~", suffix: "~~", intent: .stronglyEmphasized)
+    private static let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
 
     private static let blockPatterns: [BlockPattern] = [
         BlockPattern(prefix: "# ", blockKind: .heading1, listDepth: nil),
@@ -123,6 +124,11 @@ public struct MarkdownShortcutProcessor {
                 var slice = text[range]
                 let current = slice.inlinePresentationIntent ?? []
                 slice.inlinePresentationIntent = current.union(pattern.intent)
+                if pattern.intent == .code {
+                    slice.font = inlineCodeFont
+                    slice.foregroundColor = DesignTokens.Colors.textPrimary
+                    slice.backgroundColor = DesignTokens.Colors.muted
+                }
                 text.replaceSubrange(range, with: slice)
             }
             if let result = consumeInlinePattern(
@@ -139,6 +145,7 @@ public struct MarkdownShortcutProcessor {
         let applyStrike: (inout AttributedString, Range<AttributedString.Index>) -> Void = { text, range in
             var slice = text[range]
             slice.strikethroughStyle = .single
+            slice.foregroundColor = DesignTokens.Colors.textSecondary
             text.replaceSubrange(range, with: slice)
         }
         if let result = consumeInlinePattern(
