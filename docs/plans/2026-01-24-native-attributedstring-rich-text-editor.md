@@ -22,26 +22,26 @@
   - [x] Add value constraints for code blocks and headings
 
 ### Phase 2: Markdown Import
-- [ ] **2.1** Add swift-markdown package dependency
-- [ ] **2.2** Create `MarkdownImporter.swift`
-  - [ ] Implement `MarkupWalker` for document traversal
-  - [ ] Handle paragraphs with block kind attribute
-  - [ ] Handle headings 1-6 with font styling
-  - [ ] Handle unordered lists with depth tracking
-  - [ ] Handle ordered lists with depth tracking
-  - [ ] Handle task lists (checked/unchecked)
-  - [ ] Handle blockquotes with depth tracking
-  - [ ] Handle fenced code blocks with language
-  - [ ] Handle thematic breaks (horizontal rules)
-  - [ ] Handle inline: bold, italic, strikethrough, code, links
+- [x] **2.1** Add swift-markdown package dependency
+- [x] **2.2** Create `MarkdownImporter.swift`
+  - [x] Implement `MarkupWalker` for document traversal
+  - [x] Handle paragraphs with block kind attribute
+  - [x] Handle headings 1-6 with font styling
+  - [x] Handle unordered lists with depth tracking
+  - [x] Handle ordered lists with depth tracking
+  - [x] Handle task lists (checked/unchecked)
+  - [x] Handle blockquotes with depth tracking
+  - [x] Handle fenced code blocks with language
+  - [x] Handle thematic breaks (horizontal rules)
+  - [x] Handle inline: bold, italic, strikethrough, code, links
 
 ### Phase 3: Markdown Export
-- [ ] **3.1** Create `MarkdownExporter.swift`
-  - [ ] Split attributed string by newlines
-  - [ ] Generate block prefixes from `blockKind` attribute
-  - [ ] Handle code block fence generation
-  - [ ] Export inline formatting (bold, italic, code, strike, links)
-  - [ ] Handle list indentation from `listDepth`
+- [x] **3.1** Create `MarkdownExporter.swift`
+  - [x] Split attributed string by newlines
+  - [x] Generate block prefixes from `blockKind` attribute
+  - [x] Handle code block fence generation
+  - [x] Export inline formatting (bold, italic, code, strike, links)
+  - [x] Handle list indentation from `listDepth`
 
 ### Phase 4: Editor ViewModel
 - [ ] **4.1** Create `NativeMarkdownEditorViewModel.swift`
