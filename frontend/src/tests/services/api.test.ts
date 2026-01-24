@@ -226,6 +226,32 @@ describe('api services', () => {
 		expect(data.tasks?.[0].id).toBe('t1');
 	});
 
+	it('tasksAPI.createArea posts area data', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({ id: 'a1' }));
+
+		await tasksAPI.createArea('Home');
+
+		const body = fetchSpy.mock.calls[0]?.[1]?.body;
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/tasks/areas',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(JSON.parse(String(body))).toEqual({ title: 'Home' });
+	});
+
+	it('tasksAPI.createProject posts project data', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({ id: 'p1' }));
+
+		await tasksAPI.createProject('Launch', null);
+
+		const body = fetchSpy.mock.calls[0]?.[1]?.body;
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/v1/tasks/projects',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(JSON.parse(String(body))).toEqual({ title: 'Launch', areaId: null });
+	});
+
 	it('ingestionAPI.delete ignores 404', async () => {
 		vi.spyOn(global, 'fetch').mockReturnValue(
 			Promise.resolve({ ok: false, status: 404 } as Response)

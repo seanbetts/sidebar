@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { Plus, Folder, FileVideoCamera } from 'lucide-svelte';
+	import { Plus, Folder, FileVideoCamera, Layers, List, CheckCircle } from 'lucide-svelte';
 	import { conversationListStore } from '$lib/stores/conversations';
 	import { chatStore } from '$lib/stores/chat';
 	import { editorStore, currentNoteId } from '$lib/stores/editor';
@@ -20,8 +20,15 @@
 	import SidebarRail from '$lib/components/left-sidebar/SidebarRail.svelte';
 	import SidebarSectionHeader from '$lib/components/left-sidebar/SidebarSectionHeader.svelte';
 	import SidebarDialogs from '$lib/components/left-sidebar/SidebarDialogs.svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	import {
+		DropdownMenu,
+		DropdownMenuContent,
+		DropdownMenuItem,
+		DropdownMenuSeparator,
+		DropdownMenuTrigger
+	} from '$lib/components/ui/dropdown-menu';
 	import { TOOLTIP_COPY } from '$lib/constants/tooltips';
 	import { sidebarSectionStore } from '$lib/stores/sidebar-section';
 	import { logError } from '$lib/utils/errorHandling';
@@ -41,6 +48,13 @@
 	let isSavingWebsite = false;
 	let isCreatingNote = false;
 	let isCreatingFolder = false;
+	let isNewTaskAreaDialogOpen = false;
+	let newTaskAreaName = '';
+	let isCreatingTaskArea = false;
+	let isNewTaskProjectDialogOpen = false;
+	let newTaskProjectName = '';
+	let newTaskProjectAreaId = '';
+	let isCreatingTaskProject = false;
 	let isSaveChangesDialogOpen = false;
 	let pendingNotePath: string | null = null;
 	let settingsDialog: { handleProfileImageError: () => void } | null = null;
@@ -57,6 +71,7 @@
 	let lastConversationId: string | null = null;
 	let lastMessageCount = 0;
 	const { loadSectionData } = useSidebarSectionLoader();
+	const panelActionClasses = `${buttonVariants({ variant: 'ghost', size: 'icon' })} panel-action`;
 	const {
 		handleUploadFileClick,
 		handleFileSelected,
@@ -97,6 +112,7 @@
 		return current ? current.messageCount === 0 : false;
 	})();
 	$: showNewChatButton = !isBlankChat;
+	$: sortedTaskAreas = [...$tasksStore.areas].sort((a, b) => a.title.localeCompare(b.title));
 	$: if ($chatStore.conversationId) {
 		if (lastConversationId !== $chatStore.conversationId) {
 			lastConversationId = $chatStore.conversationId;
@@ -347,6 +363,69 @@
 			isCreatingFolder = false;
 		}
 	}
+
+	function openNewTaskAreaDialog() {
+		newTaskAreaName = '';
+		isNewTaskAreaDialogOpen = true;
+	}
+
+	function openNewTaskProjectDialog() {
+		newTaskProjectName = '';
+		newTaskProjectAreaId = getDefaultProjectAreaId();
+		isNewTaskProjectDialogOpen = true;
+	}
+
+	function getDefaultProjectAreaId() {
+		const selection = $tasksStore.selection;
+		if (selection.type === 'area') {
+			return selection.id;
+		}
+		if (selection.type === 'project') {
+			const project = $tasksStore.projects.find((item) => item.id === selection.id);
+			return project?.areaId ?? '';
+		}
+		return '';
+	}
+
+	async function createTaskAreaFromDialog() {
+		if (isCreatingTaskArea) return;
+		isCreatingTaskArea = true;
+		errorTitle = 'Unable to create area';
+		errorMessage = 'Failed to create area. Please try again.';
+		try {
+			await tasksStore.createArea(newTaskAreaName);
+			isNewTaskAreaDialogOpen = false;
+			newTaskAreaName = '';
+		} catch (error) {
+			if (error instanceof Error && error.message) {
+				errorMessage = error.message;
+			}
+			isErrorDialogOpen = true;
+		} finally {
+			isCreatingTaskArea = false;
+		}
+	}
+
+	async function createTaskProjectFromDialog() {
+		if (isCreatingTaskProject) return;
+		isCreatingTaskProject = true;
+		errorTitle = 'Unable to create project';
+		errorMessage = 'Failed to create project. Please try again.';
+		try {
+			const areaId = newTaskProjectAreaId.trim() ? newTaskProjectAreaId : null;
+			await tasksStore.createProject(newTaskProjectName, areaId);
+			isNewTaskProjectDialogOpen = false;
+			newTaskProjectName = '';
+			newTaskProjectAreaId = '';
+		} catch (error) {
+			if (error instanceof Error && error.message) {
+				errorMessage = error.message;
+			}
+			isErrorDialogOpen = true;
+		} finally {
+			isCreatingTaskProject = false;
+		}
+	}
 </script>
 
 <SidebarDialogs
@@ -358,6 +437,16 @@
 	bind:newFolderName
 	{isCreatingFolder}
 	{createFolderFromDialog}
+	bind:isNewTaskAreaDialogOpen
+	bind:newTaskAreaName
+	{isCreatingTaskArea}
+	{createTaskAreaFromDialog}
+	bind:isNewTaskProjectDialogOpen
+	bind:newTaskProjectName
+	bind:newTaskProjectAreaId
+	taskAreas={sortedTaskAreas}
+	{isCreatingTaskProject}
+	{createTaskProjectFromDialog}
 	bind:isNewWebsiteDialogOpen
 	bind:newWebsiteUrl
 	{isSavingWebsite}
@@ -466,26 +555,37 @@
 					onClear={() => tasksStore.clearSearch()}
 				>
 					<svelte:fragment slot="actions">
-						<Tooltip disabled={!tooltipsEnabled}>
-							<TooltipTrigger>
-								{#snippet child({ props })}
-									<Button
-										size="icon"
-										variant="ghost"
-										class="panel-action"
-										{...props}
-										onclick={(event) => {
-											props.onclick?.(event);
-											tasksStore.startNewTask();
-										}}
-										aria-label="New task"
-									>
-										<Plus size={16} />
-									</Button>
-								{/snippet}
-							</TooltipTrigger>
-							<TooltipContent side="right">{TOOLTIP_COPY.newTask}</TooltipContent>
-						</Tooltip>
+						<DropdownMenu>
+							<Tooltip disabled={!tooltipsEnabled}>
+								<TooltipTrigger>
+									{#snippet child({ props })}
+										<DropdownMenuTrigger
+											class={panelActionClasses}
+											{...props}
+											aria-label="Add task"
+										>
+											<Plus size={16} />
+										</DropdownMenuTrigger>
+									{/snippet}
+								</TooltipTrigger>
+								<TooltipContent side="right">{TOOLTIP_COPY.newTask}</TooltipContent>
+							</Tooltip>
+							<DropdownMenuContent align="end" sideOffset={6}>
+								<DropdownMenuItem onclick={() => tasksStore.startNewTask()}>
+									<CheckCircle size={14} />
+									New task
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem onclick={openNewTaskAreaDialog}>
+									<Layers size={14} />
+									New area
+								</DropdownMenuItem>
+								<DropdownMenuItem onclick={openNewTaskProjectDialog}>
+									<List size={14} />
+									New project
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</svelte:fragment>
 				</SidebarSectionHeader>
 				<div class="tasks-content">

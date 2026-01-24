@@ -2,7 +2,13 @@ import type { Message } from '$lib/types/chat';
 import type { FileNode } from '$lib/types/file';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
-import type { TaskCountsResponse, TaskListResponse, TaskSyncResponse } from '$lib/types/tasks';
+import type {
+	TaskArea,
+	TaskCountsResponse,
+	TaskListResponse,
+	TaskProject,
+	TaskSyncResponse
+} from '$lib/types/tasks';
 
 /**
  * API service for conversations.
@@ -550,6 +556,26 @@ class TasksAPI {
 			};
 		}
 		if (!response.ok) throw new Error('Failed to load task counts');
+		return response.json();
+	}
+
+	async createArea(title: string): Promise<TaskArea> {
+		const response = await fetch(`${this.baseUrl}/areas`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ title })
+		});
+		if (!response.ok) throw new Error('Failed to create task area');
+		return response.json();
+	}
+
+	async createProject(title: string, areaId: string | null): Promise<TaskProject> {
+		const response = await fetch(`${this.baseUrl}/projects`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ title, areaId })
+		});
+		if (!response.ok) throw new Error('Failed to create task project');
 		return response.json();
 	}
 

@@ -321,6 +321,54 @@ function createTasksStore() {
 				}));
 			}
 		},
+		createArea: async (title: string) => {
+			const trimmed = title.trim();
+			if (!trimmed) return;
+			try {
+				await tasksAPI.createArea(trimmed);
+				const selection = get({ subscribe }).selection;
+				await loadSelection(selection, { force: true, silent: true, notify: false });
+				void tasksAPI
+					.counts()
+					.then(applyCountsResponse)
+					.catch(() => {
+						update((current) => ({
+							...current,
+							error: 'Failed to update task counts'
+						}));
+					});
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to create area'
+				}));
+				throw error;
+			}
+		},
+		createProject: async (title: string, areaId: string | null) => {
+			const trimmed = title.trim();
+			if (!trimmed) return;
+			try {
+				await tasksAPI.createProject(trimmed, areaId);
+				const selection = get({ subscribe }).selection;
+				await loadSelection(selection, { force: true, silent: true, notify: false });
+				void tasksAPI
+					.counts()
+					.then(applyCountsResponse)
+					.catch(() => {
+						update((current) => ({
+							...current,
+							error: 'Failed to update task counts'
+						}));
+					});
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to create project'
+				}));
+				throw error;
+			}
+		},
 		loadCounts: async (force: boolean = false) => {
 			const cached = getCachedData<TaskCountsResponse | Record<string, number>>(COUNTS_CACHE_KEY, {
 				ttl: CACHE_TTL,

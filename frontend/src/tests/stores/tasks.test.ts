@@ -8,7 +8,9 @@ const { tasksAPI } = vi.hoisted(() => ({
 	tasksAPI: {
 		list: vi.fn(),
 		counts: vi.fn(),
-		search: vi.fn()
+		search: vi.fn(),
+		createArea: vi.fn(),
+		createProject: vi.fn()
 	}
 }));
 
@@ -81,6 +83,55 @@ describe('tasksStore', () => {
 
 		const state = get(tasksStore);
 		expect(state.newTaskError).toBe('Select a project or area.');
+	});
+
+	it('creates task areas and refreshes data', async () => {
+		tasksAPI.list.mockResolvedValue({
+			scope: 'today',
+			tasks: [],
+			areas: [],
+			projects: []
+		});
+		tasksAPI.counts.mockResolvedValue({
+			counts: { inbox: 0, today: 0, upcoming: 0 },
+			areas: [],
+			projects: []
+		});
+		tasksAPI.createArea.mockResolvedValue({ id: 'area-1', title: 'Work' });
+
+		await tasksStore.load({ type: 'today' }, { force: true });
+		await tasksStore.createArea('Work');
+
+		expect(tasksAPI.createArea).toHaveBeenCalledWith('Work');
+		expect(tasksAPI.list).toHaveBeenCalledWith('today');
+		expect(tasksAPI.counts).toHaveBeenCalled();
+	});
+
+	it('creates task projects and refreshes data', async () => {
+		tasksAPI.list.mockResolvedValue({
+			scope: 'today',
+			tasks: [],
+			areas: [],
+			projects: []
+		});
+		tasksAPI.counts.mockResolvedValue({
+			counts: { inbox: 0, today: 0, upcoming: 0 },
+			areas: [],
+			projects: []
+		});
+		tasksAPI.createProject.mockResolvedValue({
+			id: 'project-1',
+			title: 'Launch',
+			areaId: 'area-1',
+			status: 'active'
+		});
+
+		await tasksStore.load({ type: 'today' }, { force: true });
+		await tasksStore.createProject('Launch', 'area-1');
+
+		expect(tasksAPI.createProject).toHaveBeenCalledWith('Launch', 'area-1');
+		expect(tasksAPI.list).toHaveBeenCalledWith('today');
+		expect(tasksAPI.counts).toHaveBeenCalled();
 	});
 
 	it('loads cached counts without calling the API', async () => {
