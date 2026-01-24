@@ -19,7 +19,7 @@ struct NotesSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Notes") {
+                Section {
                     ZStack(alignment: .topLeading) {
                         if value.isEmpty {
                             Text("Notes")
@@ -82,7 +82,7 @@ private struct NotesTextEditor: NSViewRepresentable {
         textView.isEditable = true
         textView.isSelectable = true
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 16, height: 12)
+        textView.textContainerInset = NSSize(width: 8, height: 12)
         textView.textContainer?.lineFragmentPadding = 0
         textView.delegate = context.coordinator
         textView.onSubmit = onSubmit
@@ -159,7 +159,7 @@ private struct NotesTextEditor: UIViewRepresentable {
         textView.isSelectable = true
         textView.font = UIFont.preferredFont(forTextStyle: .body)
         textView.adjustsFontForContentSizeCategory = true
-        textView.textContainerInset = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
+        textView.textContainerInset = UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8)
         textView.textContainer.lineFragmentPadding = 0
         textView.delegate = context.coordinator
         textView.onSubmit = onSubmit
