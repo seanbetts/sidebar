@@ -3,30 +3,42 @@ import SwiftUI
 
 @available(iOS 26.0, macOS 26.0, *)
 public struct MarkdownShortcutProcessor {
-    private static let inlinePatterns: [(prefix: String, suffix: String, intent: InlinePresentationIntent)] = [
-        ("**", "**", .stronglyEmphasized),
-        ("__", "__", .stronglyEmphasized),
-        ("*", "*", .emphasized),
-        ("_", "_", .emphasized),
-        ("`", "`", .code)
+    private struct InlinePattern {
+        let prefix: String
+        let suffix: String
+        let intent: InlinePresentationIntent
+    }
+
+    private struct BlockPattern {
+        let prefix: String
+        let blockKind: BlockKind
+        let listDepth: Int?
+    }
+
+    private static let inlinePatterns: [InlinePattern] = [
+        InlinePattern(prefix: "**", suffix: "**", intent: .stronglyEmphasized),
+        InlinePattern(prefix: "__", suffix: "__", intent: .stronglyEmphasized),
+        InlinePattern(prefix: "*", suffix: "*", intent: .emphasized),
+        InlinePattern(prefix: "_", suffix: "_", intent: .emphasized),
+        InlinePattern(prefix: "`", suffix: "`", intent: .code)
     ]
 
-    private static let strikethroughPattern = ("~~", "~~")
+    private static let strikethroughPattern = InlinePattern(prefix: "~~", suffix: "~~", intent: .stronglyEmphasized)
 
-    private static let blockPatterns: [(prefix: String, blockKind: BlockKind, listDepth: Int?)] = [
-        ("# ", .heading1, nil),
-        ("## ", .heading2, nil),
-        ("### ", .heading3, nil),
-        ("#### ", .heading4, nil),
-        ("##### ", .heading5, nil),
-        ("###### ", .heading6, nil),
-        ("- ", .bulletList, 1),
-        ("* ", .bulletList, 1),
-        ("+ ", .bulletList, 1),
-        ("> ", .blockquote, nil),
-        ("- [ ] ", .taskUnchecked, 1),
-        ("- [x] ", .taskChecked, 1),
-        ("- [X] ", .taskChecked, 1)
+    private static let blockPatterns: [BlockPattern] = [
+        BlockPattern(prefix: "# ", blockKind: .heading1, listDepth: nil),
+        BlockPattern(prefix: "## ", blockKind: .heading2, listDepth: nil),
+        BlockPattern(prefix: "### ", blockKind: .heading3, listDepth: nil),
+        BlockPattern(prefix: "#### ", blockKind: .heading4, listDepth: nil),
+        BlockPattern(prefix: "##### ", blockKind: .heading5, listDepth: nil),
+        BlockPattern(prefix: "###### ", blockKind: .heading6, listDepth: nil),
+        BlockPattern(prefix: "- ", blockKind: .bulletList, listDepth: 1),
+        BlockPattern(prefix: "* ", blockKind: .bulletList, listDepth: 1),
+        BlockPattern(prefix: "+ ", blockKind: .bulletList, listDepth: 1),
+        BlockPattern(prefix: "> ", blockKind: .blockquote, listDepth: nil),
+        BlockPattern(prefix: "- [ ] ", blockKind: .taskUnchecked, listDepth: 1),
+        BlockPattern(prefix: "- [x] ", blockKind: .taskChecked, listDepth: 1),
+        BlockPattern(prefix: "- [X] ", blockKind: .taskChecked, listDepth: 1)
     ]
 
     public static func processShortcuts(
@@ -68,22 +80,20 @@ public struct MarkdownShortcutProcessor {
         let lineRange = lineStart..<cursorIndex
         let lineText = String(text[lineRange].characters)
 
-        for (prefix, blockKind, listDepth) in blockPatterns {
-            if lineText == prefix {
-                text.removeSubrange(lineRange)
+        for pattern in blockPatterns where lineText == pattern.prefix {
+            text.removeSubrange(lineRange)
 
-                let newLineStart = lineStart
-                let lineEnd = nextLineEnd(in: text, from: newLineStart)
+            let newLineStart = lineStart
+            let lineEnd = nextLineEnd(in: text, from: newLineStart)
 
-                if newLineStart < lineEnd {
-                    text[newLineStart..<lineEnd].blockKind = blockKind
-                    if let listDepth {
-                        text[newLineStart..<lineEnd].listDepth = listDepth
-                    }
+            if newLineStart < lineEnd {
+                text[newLineStart..<lineEnd].blockKind = pattern.blockKind
+                if let listDepth = pattern.listDepth {
+                    text[newLineStart..<lineEnd].listDepth = listDepth
                 }
-
-                return AttributedTextSelection(range: newLineStart..<newLineStart)
             }
+
+            return AttributedTextSelection(range: newLineStart..<newLineStart)
         }
 
         if let match = lineText.wholeMatch(of: /^(\d+)\.\s$/) {
@@ -108,18 +118,18 @@ public struct MarkdownShortcutProcessor {
         in text: inout AttributedString,
         at cursorIndex: AttributedString.Index
     ) -> AttributedTextSelection? {
-        for (prefix, suffix, intent) in inlinePatterns {
+        for pattern in inlinePatterns {
             let apply: (inout AttributedString, Range<AttributedString.Index>) -> Void = { text, range in
                 var slice = text[range]
                 let current = slice.inlinePresentationIntent ?? []
-                slice.inlinePresentationIntent = current.union(intent)
+                slice.inlinePresentationIntent = current.union(pattern.intent)
                 text.replaceSubrange(range, with: slice)
             }
             if let result = consumeInlinePattern(
                 in: &text,
                 at: cursorIndex,
-                prefix: prefix,
-                suffix: suffix,
+                prefix: pattern.prefix,
+                suffix: pattern.suffix,
                 apply: apply
             ) {
                 return result
@@ -134,8 +144,8 @@ public struct MarkdownShortcutProcessor {
         if let result = consumeInlinePattern(
             in: &text,
             at: cursorIndex,
-            prefix: strikethroughPattern.0,
-            suffix: strikethroughPattern.1,
+            prefix: strikethroughPattern.prefix,
+            suffix: strikethroughPattern.suffix,
             apply: applyStrike
         ) {
             return result
