@@ -42,7 +42,6 @@ private struct TasksDetailView: View {
     @State private var renameTask: TaskItem? = nil
     @State private var renameValue: String = ""
     @State private var notesTask: TaskItem? = nil
-    @State private var notesValue: String = ""
     @State private var dueTask: TaskItem? = nil
     @State private var dueDate: Date = Date()
     @State private var moveTask: TaskItem? = nil
@@ -87,7 +86,7 @@ private struct TasksDetailView: View {
         .sheet(item: $notesTask) { task in
             NotesSheet(
                 task: task,
-                notes: notesValue,
+                notes: task.notes ?? "",
                 onSave: { value in
                     Task { await viewModel.updateNotes(task: task, notes: value) }
                 },
@@ -279,7 +278,6 @@ extension TasksDetailView {
 
     private func openNotes(_ task: TaskItem) {
         notesTask = task
-        notesValue = task.notes ?? ""
     }
 
     private func openDue(_ task: TaskItem) {
