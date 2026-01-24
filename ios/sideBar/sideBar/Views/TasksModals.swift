@@ -19,11 +19,20 @@ struct NotesSheet: View {
         NavigationStack {
             Form {
                 Section("Notes") {
-                    TextEditor(text: $value)
-                        .frame(minHeight: 140)
+                    ZStack(alignment: .topLeading) {
+                        if value.isEmpty {
+                            Text("Notes")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 8)
+                        }
+                        TextEditor(text: $value)
+                            .frame(minHeight: 160)
+                    }
                 }
             }
             .navigationTitle("Notes")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
