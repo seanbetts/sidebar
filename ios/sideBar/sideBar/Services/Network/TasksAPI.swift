@@ -8,7 +8,11 @@ public protocol TasksProviding {
     func search(query: String) async throws -> TaskListResponse
     func counts() async throws -> TaskCountsResponse
     func createGroup(title: String) async throws -> TaskGroup
+    func renameGroup(groupId: String, title: String) async throws -> TaskGroup
+    func deleteGroup(groupId: String) async throws
     func createProject(title: String, groupId: String?) async throws -> TaskProject
+    func renameProject(projectId: String, title: String) async throws -> TaskProject
+    func deleteProject(projectId: String) async throws
     func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse
     func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse
 }
@@ -103,6 +107,10 @@ private struct TaskCreateProjectRequest: Encodable {
     }
 }
 
+private struct TaskRenameRequest: Encodable {
+    let title: String
+}
+
 /// Concrete network client for task endpoints.
 public struct TasksAPI {
     private let client: APIClient
@@ -136,12 +144,36 @@ public struct TasksAPI {
         try await client.request("tasks/groups", method: "POST", body: TaskCreateGroupRequest(title: title))
     }
 
+    public func renameGroup(groupId: String, title: String) async throws -> TaskGroup {
+        try await client.request(
+            "tasks/groups/\(groupId)",
+            method: "PATCH",
+            body: TaskRenameRequest(title: title)
+        )
+    }
+
+    public func deleteGroup(groupId: String) async throws {
+        try await client.requestVoid("tasks/groups/\(groupId)", method: "DELETE")
+    }
+
     public func createProject(title: String, groupId: String?) async throws -> TaskProject {
         try await client.request(
             "tasks/projects",
             method: "POST",
             body: TaskCreateProjectRequest(title: title, groupId: groupId)
         )
+    }
+
+    public func renameProject(projectId: String, title: String) async throws -> TaskProject {
+        try await client.request(
+            "tasks/projects/\(projectId)",
+            method: "PATCH",
+            body: TaskRenameRequest(title: title)
+        )
+    }
+
+    public func deleteProject(projectId: String) async throws {
+        try await client.requestVoid("tasks/projects/\(projectId)", method: "DELETE")
     }
 
     public func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse {

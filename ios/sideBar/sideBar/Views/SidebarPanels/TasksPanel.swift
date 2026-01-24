@@ -26,6 +26,9 @@ private struct TasksPanelView: View {
     @State private var newGroupTitle: String = ""
     @State private var newProjectTitle: String = ""
     @State private var pendingProjectTitle: String = ""
+    @State private var renameTarget: TaskListTarget? = nil
+    @State private var renameValue: String = ""
+    @State private var deleteTarget: TaskListTarget? = nil
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
@@ -84,6 +87,19 @@ private struct TasksPanelView: View {
             Button("Next") { handleProjectTitleNext() }
         } message: {
             Text("Name your project, then pick a group.")
+        }
+        .alert(renameAlertTitle, isPresented: renameAlertBinding) {
+            TextField(renamePlaceholder, text: $renameValue)
+            Button("Cancel", role: .cancel) { clearRenameState() }
+            Button("Save") { handleRenameTarget() }
+        } message: {
+            Text(renameAlertMessage)
+        }
+        .alert(deleteAlertTitle, isPresented: deleteAlertBinding) {
+            Button("Delete", role: .destructive) { handleDeleteTarget() }
+            Button("Cancel", role: .cancel) { clearDeleteState() }
+        } message: {
+            Text(deleteAlertMessage)
         }
         .confirmationDialog("Choose group", isPresented: $showProjectGroupDialog, titleVisibility: .visible) {
             Button("No group") { handleCreateProject(groupId: nil) }
@@ -172,7 +188,9 @@ extension TasksPanelView {
                                 title: group.title,
                                 iconName: "square.3.layers.3d",
                                 count: groupCounts[group.id],
-                                selection: .group(id: group.id)
+                                selection: .group(id: group.id),
+                                onRename: { promptRename(group: group) },
+                                onDelete: { promptDelete(group: group) }
                             )
                             let projects = projectsByGroup[group.id] ?? []
                             ForEach(projects, id: \.id) { project in
@@ -181,7 +199,9 @@ extension TasksPanelView {
                                     iconName: "list.bullet",
                                     count: projectCounts[project.id],
                                     selection: .project(id: project.id),
-                                    indent: 18
+                                    indent: 18,
+                                    onRename: { promptRename(project: project) },
+                                    onDelete: { promptDelete(project: project) }
                                 )
                             }
                         }
@@ -195,7 +215,9 @@ extension TasksPanelView {
                                 title: project.title,
                                 iconName: "list.bullet",
                                 count: projectCounts[project.id],
-                                selection: .project(id: project.id)
+                                selection: .project(id: project.id),
+                                onRename: { promptRename(project: project) },
+                                onDelete: { promptDelete(project: project) }
                             )
                         }
                     }
@@ -217,14 +239,18 @@ extension TasksPanelView {
         iconName: String,
         count: Int?,
         selection: TaskSelection,
-        indent: CGFloat = 0
+        indent: CGFloat = 0,
+        onRename: (() -> Void)? = nil,
+        onDelete: (() -> Void)? = nil
     ) -> some View {
         TaskPanelRow(
             title: title,
             iconName: iconName,
             count: count,
             isSelected: viewModel.selection == selection,
-            indent: indent
+            indent: indent,
+            onRename: onRename,
+            onDelete: onDelete
         )
         .onTapGesture {
             Task { await viewModel.load(selection: selection) }
@@ -321,4 +347,158 @@ private extension TasksPanelView {
             }
         }
     }
+
+    func promptRename(group: TaskGroup) {
+        renameTarget = TaskListTarget(id: group.id, title: group.title, kind: .group)
+        renameValue = group.title
+    }
+
+    func promptRename(project: TaskProject) {
+        renameTarget = TaskListTarget(id: project.id, title: project.title, kind: .project)
+        renameValue = project.title
+    }
+
+    func promptDelete(group: TaskGroup) {
+        deleteTarget = TaskListTarget(id: group.id, title: group.title, kind: .group)
+    }
+
+    func promptDelete(project: TaskProject) {
+        deleteTarget = TaskListTarget(id: project.id, title: project.title, kind: .project)
+    }
+
+    func handleRenameTarget() {
+        guard let target = renameTarget else { return }
+        let title = renameValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else {
+            clearRenameState()
+            return
+        }
+        Task {
+            do {
+                switch target.kind {
+                case .group:
+                    try await viewModel.renameGroup(groupId: target.id, title: title)
+                case .project:
+                    try await viewModel.renameProject(projectId: target.id, title: title)
+                }
+                clearRenameState()
+            } catch {
+                viewModel.setErrorMessage(ErrorMapping.message(for: error))
+            }
+        }
+    }
+
+    func handleDeleteTarget() {
+        guard let target = deleteTarget else { return }
+        Task {
+            do {
+                switch target.kind {
+                case .group:
+                    try await viewModel.deleteGroup(groupId: target.id)
+                case .project:
+                    try await viewModel.deleteProject(projectId: target.id)
+                }
+                clearDeleteState()
+            } catch {
+                viewModel.setErrorMessage(ErrorMapping.message(for: error))
+            }
+        }
+    }
+
+    func clearRenameState() {
+        renameTarget = nil
+        renameValue = ""
+    }
+
+    func clearDeleteState() {
+        deleteTarget = nil
+    }
+
+    var renameAlertBinding: Binding<Bool> {
+        Binding(
+            get: { renameTarget != nil },
+            set: { isPresented in
+                if !isPresented {
+                    clearRenameState()
+                }
+            }
+        )
+    }
+
+    var deleteAlertBinding: Binding<Bool> {
+        Binding(
+            get: { deleteTarget != nil },
+            set: { isPresented in
+                if !isPresented {
+                    clearDeleteState()
+                }
+            }
+        )
+    }
+
+    var renameAlertTitle: String {
+        switch renameTarget?.kind {
+        case .group:
+            return "Rename group"
+        case .project:
+            return "Rename project"
+        case .none:
+            return "Rename"
+        }
+    }
+
+    var renameAlertMessage: String {
+        switch renameTarget?.kind {
+        case .group:
+            return "Update the group name."
+        case .project:
+            return "Update the project name."
+        case .none:
+            return ""
+        }
+    }
+
+    var renamePlaceholder: String {
+        switch renameTarget?.kind {
+        case .group:
+            return "Group name"
+        case .project:
+            return "Project name"
+        case .none:
+            return "Name"
+        }
+    }
+
+    var deleteAlertTitle: String {
+        switch deleteTarget?.kind {
+        case .group:
+            return "Delete group"
+        case .project:
+            return "Delete project"
+        case .none:
+            return "Delete"
+        }
+    }
+
+    var deleteAlertMessage: String {
+        switch deleteTarget?.kind {
+        case .group:
+            return "This will delete the group and all nested projects and tasks."
+        case .project:
+            return "This will delete the project and all of its tasks."
+        case .none:
+            return ""
+        }
+    }
+}
+
+private struct TaskListTarget {
+    let id: String
+    let title: String
+    let kind: TaskListTargetKind
+}
+
+private enum TaskListTargetKind {
+    case group
+    case project
 }
