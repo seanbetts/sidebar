@@ -243,7 +243,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             }
             return inner
         case let image as Markdown.Image:
-            return AttributedString("![\(image.plainText)](\(image.source))")
+            let alt = image.plainText ?? ""
+            let source = image.source ?? ""
+            return AttributedString("![\(alt)](\(source))")
         case let html as Markdown.InlineHTML:
             return AttributedString(html.rawHTML)
         default:
