@@ -16,7 +16,7 @@ import Combine
 /// - Handle real-time file job events
 public final class IngestionStore: CachedStoreBase<IngestionListResponse> {
     @Published public private(set) var items: [IngestionListItem] = []
-    @Published public private(set) var activeMeta: IngestionMetaResponse? = nil
+    @Published public private(set) var activeMeta: IngestionMetaResponse?
     @Published public private(set) var isOffline: Bool = false
 
     private let api: any IngestionProviding

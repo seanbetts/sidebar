@@ -6,13 +6,13 @@ public final class TasksViewModel: ObservableObject {
     @Published public private(set) var tasks: [TaskItem] = []
     @Published public private(set) var groups: [TaskGroup] = []
     @Published public private(set) var projects: [TaskProject] = []
-    @Published public private(set) var counts: TaskCountsResponse? = nil
+    @Published public private(set) var counts: TaskCountsResponse?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var searchPending: Bool = false
-    @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var errorMessage: String?
     @Published public private(set) var selection: TaskSelection = .today
     @Published public var searchQuery: String = ""
-    @Published public var newTaskDraft: TaskDraft? = nil
+    @Published public var newTaskDraft: TaskDraft?
     @Published public private(set) var newTaskSaving: Bool = false
     @Published public private(set) var newTaskError: String = ""
 
@@ -20,7 +20,7 @@ public final class TasksViewModel: ObservableObject {
     private let store: TasksStore
     private let toastCenter: ToastCenter
     private var cancellables = Set<AnyCancellable>()
-    private var searchDebounce: Task<Void, Never>? = nil
+    private var searchDebounce: Task<Void, Never>?
     private var lastNonSearchSelection: TaskSelection = .today
 
     public init(api: any TasksProviding, store: TasksStore, toastCenter: ToastCenter) {
@@ -200,8 +200,8 @@ extension TasksViewModel {
         } else {
             dueDate = Date()
         }
-        var listId: String? = nil
-        var listName: String? = nil
+        var listId: String?
+        var listName: String?
 
         switch baseSelection {
         case .group(let id):

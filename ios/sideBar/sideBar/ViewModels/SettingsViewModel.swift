@@ -1,23 +1,23 @@
 import Foundation
 import Combine
 
-// TODO: Revisit to prefer native-first data sources where applicable.
+// NOTE: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
 /// Manages user settings, skills, and profile image state.
 public final class SettingsViewModel: ObservableObject {
-    @Published public private(set) var settings: UserSettings? = nil
+    @Published public private(set) var settings: UserSettings?
     @Published public private(set) var skills: [SkillItem] = []
-    @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var errorMessage: String?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingSkills: Bool = false
     @Published public private(set) var isSavingSkills: Bool = false
-    @Published public private(set) var skillsError: String? = nil
+    @Published public private(set) var skillsError: String?
     @Published public private(set) var shortcutsToken: String = ""
-    @Published public private(set) var shortcutsError: String? = nil
+    @Published public private(set) var shortcutsError: String?
     @Published public private(set) var isLoadingShortcuts: Bool = false
     @Published public private(set) var isRotatingShortcuts: Bool = false
-    @Published public private(set) var profileImageData: Data? = nil
+    @Published public private(set) var profileImageData: Data?
     @Published public private(set) var isLoadingProfileImage: Bool = false
 
     private let settingsAPI: any SettingsProviding

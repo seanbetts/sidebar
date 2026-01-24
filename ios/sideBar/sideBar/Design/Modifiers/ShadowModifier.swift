@@ -3,11 +3,11 @@ import SwiftUI
 struct AppShadowModifier: ViewModifier {
     let color: Color
     let radius: CGFloat
-    let x: CGFloat
-    let y: CGFloat
+    let xOffset: CGFloat
+    let yOffset: CGFloat
 
     func body(content: Content) -> some View {
-        content.shadow(color: color, radius: radius, x: x, y: y)
+        content.shadow(color: color, radius: radius, x: xOffset, y: yOffset)
     }
 }
 
@@ -15,9 +15,9 @@ extension View {
     func appShadow(
         color: Color,
         radius: CGFloat,
-        x: CGFloat = 0,
-        y: CGFloat = 0
+        x xOffset: CGFloat = 0,
+        y yOffset: CGFloat = 0
     ) -> some View {
-        modifier(AppShadowModifier(color: color, radius: radius, x: x, y: y))
+        modifier(AppShadowModifier(color: color, radius: radius, xOffset: xOffset, yOffset: yOffset))
     }
 }

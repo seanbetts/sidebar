@@ -146,7 +146,7 @@ struct FilesDetailContainer: View {
 
     private func shouldShowProcessingState(for item: IngestionListItem) -> Bool {
         let status = item.statusValue
-        return !Array<IngestionListItem>.terminalStatuses.contains(status)
+        return ![IngestionListItem].terminalStatuses.contains(status)
     }
 }
 

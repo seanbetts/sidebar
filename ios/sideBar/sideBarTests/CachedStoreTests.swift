@@ -43,7 +43,7 @@ private final class MockCachedStore: CachedStoreBase<String> {
     override var cacheTTL: TimeInterval { 60 }
     let fetchResult: String
     var appliedData: [Applied] = []
-    var onBackgroundRefresh: (() -> Void)? = nil
+    var onBackgroundRefresh: (() -> Void)?
 
     init(cache: CacheClient, fetchResult: String) {
         self.fetchResult = fetchResult

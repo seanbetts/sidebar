@@ -62,7 +62,7 @@ public struct WebsitesView: View {
 private struct WebsitesDetailView: View {
     @ObservedObject var viewModel: WebsitesViewModel
     @Environment(\.openURL) private var openURL
-    @State private var safariURL: URL? = nil
+    @State private var safariURL: URL?
     @State private var exportDocument: MarkdownFileDocument?
     @State private var exportFilename: String = "website.md"
     @State private var isExporting = false

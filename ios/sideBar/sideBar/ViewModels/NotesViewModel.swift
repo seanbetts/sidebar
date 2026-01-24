@@ -28,13 +28,13 @@ import Combine
 /// await viewModel.createNote(title: "New Note", folder: "subfolder")
 /// ```
 public final class NotesViewModel: ObservableObject {
-    @Published public private(set) var tree: FileTree? = nil
-    @Published public private(set) var activeNote: NotePayload? = nil
-    @Published public private(set) var selectedNoteId: String? = nil
+    @Published public private(set) var tree: FileTree?
+    @Published public private(set) var activeNote: NotePayload?
+    @Published public private(set) var selectedNoteId: String?
     @Published public var searchQuery: String = ""
     @Published public private(set) var searchResults: [FileNode] = []
     @Published public private(set) var isSearching: Bool = false
-    @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var errorMessage: String?
 
     private let api: any NotesProviding
     private let store: NotesStore

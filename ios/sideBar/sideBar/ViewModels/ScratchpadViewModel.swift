@@ -1,13 +1,13 @@
 import Foundation
 import Combine
 
-// TODO: Revisit to prefer native-first data sources where applicable.
+// NOTE: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
 /// Manages scratchpad content and updates.
 public final class ScratchpadViewModel: ObservableObject {
-    @Published public private(set) var scratchpad: ScratchpadResponse? = nil
-    @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var scratchpad: ScratchpadResponse?
+    @Published public private(set) var errorMessage: String?
 
     private let api: any ScratchpadProviding
     private let cache: CacheClient

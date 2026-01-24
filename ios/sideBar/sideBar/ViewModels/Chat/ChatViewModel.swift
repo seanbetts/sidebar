@@ -30,15 +30,15 @@ import Foundation
 /// ```
 public final class ChatViewModel: ObservableObject, ChatStreamEventHandler {
     @Published public var conversations: [Conversation] = []
-    @Published public var selectedConversationId: String? = nil
+    @Published public var selectedConversationId: String?
     @Published public var messages: [Message] = []
     @Published public var isStreaming: Bool = false
     @Published public var isLoadingConversations: Bool = false
     @Published public var isLoadingMessages: Bool = false
     @Published public var attachments: [ChatAttachmentItem] = []
-    @Published public var errorMessage: String? = nil
-    @Published public var activeTool: ChatActiveTool? = nil
-    @Published public var promptPreview: ChatPromptPreview? = nil
+    @Published public var errorMessage: String?
+    @Published public var activeTool: ChatActiveTool?
+    @Published public var promptPreview: ChatPromptPreview?
 
     let chatAPI: ChatAPI
     let conversationsAPI: ConversationsAPIProviding

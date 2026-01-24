@@ -95,7 +95,7 @@ private struct TaskCreateProjectRequest: Encodable {
 
     private enum CodingKeys: String, CodingKey {
         case title
-        case groupId = "groupId"
+        case groupId
     }
 }
 

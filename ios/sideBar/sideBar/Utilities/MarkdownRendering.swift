@@ -66,12 +66,10 @@ public enum MarkdownRendering {
         guard let first = parts.first, first.trimmed == marker else {
             return content
         }
-        var endIndex: Int? = nil
-        for (index, line) in parts.enumerated().dropFirst() {
-            if line.trimmed == marker {
-                endIndex = index
-                break
-            }
+        var endIndex: Int?
+        for (index, line) in parts.enumerated().dropFirst() where line.trimmed == marker {
+            endIndex = index
+            break
         }
         guard let endIndex else { return content }
         let body = parts.dropFirst(endIndex + 1).joined(separator: "\n")

@@ -90,8 +90,8 @@ private enum MockError: Error {
 private final class MockNotesAPI: NotesProviding {
     let treeResult: Result<FileTree, Error>
     let noteResult: Result<NotePayload, Error>
-    var onList: (() -> Void)? = nil
-    var listDelay: TimeInterval? = nil
+    var onList: (() -> Void)?
+    var listDelay: TimeInterval?
 
     init(treeResult: Result<FileTree, Error>, noteResult: Result<NotePayload, Error>) {
         self.treeResult = treeResult

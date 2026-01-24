@@ -155,7 +155,7 @@ extension IngestionViewModel {
             let youtubeEmbedURL = buildYouTubeEmbedURL(from: meta.file)
             switch kind {
             case .markdown, .text, .json:
-                let rawText = String(decoding: data, as: UTF8.self)
+                let rawText = String(bytes: data, encoding: .utf8) ?? ""
                 let shouldStrip = derivative.kind == "ai_md" || kind == .markdown
                 let text = shouldStrip ? MarkdownRendering.stripFrontmatter(rawText) : rawText
                 let fileURL = try temporaryStore.store(data: data, filename: filename)

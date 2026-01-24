@@ -37,10 +37,10 @@ public final class AppEnvironment: ObservableObject {
 
     @Published public private(set) var isAuthenticated: Bool = false
     @Published public private(set) var isOffline: Bool = false
-    @Published public var commandSelection: AppSection? = nil
+    @Published public var commandSelection: AppSection?
     @Published public var sessionExpiryWarning: Date?
     @Published public private(set) var signOutEvent: UUID?
-    @Published public var activeSection: AppSection? = nil
+    @Published public var activeSection: AppSection?
     @Published public var isNotesEditing: Bool = false {
         didSet {
             #if os(iOS)
@@ -428,19 +428,19 @@ extension AppEnvironment {
     private func clearNonNoteSelections() {
         websitesViewModel.clearSelection()
         ingestionViewModel.clearSelection()
-        // TODO: Clear tasks selection once TasksViewModel exists.
+        // NOTE: Clear tasks selection once TasksViewModel exists.
     }
 
     private func clearNonWebsiteSelections() {
         notesViewModel.clearSelection()
         ingestionViewModel.clearSelection()
-        // TODO: Clear tasks selection once TasksViewModel exists.
+        // NOTE: Clear tasks selection once TasksViewModel exists.
     }
 
     private func clearNonFileSelections() {
         notesViewModel.clearSelection()
         websitesViewModel.clearSelection()
-        // TODO: Clear tasks selection once TasksViewModel exists.
+        // NOTE: Clear tasks selection once TasksViewModel exists.
     }
 
     private func refreshOnReconnect() {

@@ -40,12 +40,12 @@ final class CodeMirrorEditorHandle: ObservableObject {
         applyCommandHandler?(command, payload)
     }
 
-    func setSelectionAt(x: CGFloat, y: CGFloat) {
-        setSelectionAtHandler?(CGPoint(x: x, y: y))
+    func setSelectionAt(x xOffset: CGFloat, y yOffset: CGFloat) {
+        setSelectionAtHandler?(CGPoint(x: xOffset, y: yOffset))
     }
 
-    func setSelectionAtDeferred(x: CGFloat, y: CGFloat) {
-        setSelectionAtDeferredHandler?(CGPoint(x: x, y: y))
+    func setSelectionAtDeferred(x xOffset: CGFloat, y yOffset: CGFloat) {
+        setSelectionAtDeferredHandler?(CGPoint(x: xOffset, y: yOffset))
     }
 }
 

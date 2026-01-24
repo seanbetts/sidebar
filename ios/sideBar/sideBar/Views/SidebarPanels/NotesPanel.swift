@@ -29,9 +29,9 @@ struct NotesPanelView: View {
     @State var newFolderParent: String = ""
     @State var isCreatingNote = false
     @State var isCreatingFolder = false
-    @State var renameTarget: FileNodeItem? = nil
+    @State var renameTarget: FileNodeItem?
     @State var renameValue: String = ""
-    @State var deleteTarget: FileNodeItem? = nil
+    @State var deleteTarget: FileNodeItem?
     @FocusState var isSearchFocused: Bool
 
     var body: some View {

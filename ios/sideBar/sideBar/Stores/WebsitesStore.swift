@@ -15,7 +15,7 @@ import Combine
 /// - Handle real-time website events (insert, update, delete)
 public final class WebsitesStore: CachedStoreBase<WebsitesResponse> {
     @Published public private(set) var items: [WebsiteItem] = []
-    @Published public private(set) var active: WebsiteDetail? = nil
+    @Published public private(set) var active: WebsiteDetail?
 
     private let api: any WebsitesProviding
     private var isRefreshingList = false

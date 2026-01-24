@@ -27,8 +27,8 @@ private struct FilesPanelView: View {
     @State private var searchQuery: String = ""
     @State private var listAppeared = false
     @State private var isDeleteAlertPresented = false
-    @State private var deleteTarget: IngestionListItem? = nil
-    @State private var pinTarget: IngestionListItem? = nil
+    @State private var deleteTarget: IngestionListItem?
+    @State private var pinTarget: IngestionListItem?
     @State private var isFileImporterPresented = false
     @State private var isYouTubeAlertPresented = false
     @State private var newYouTubeUrl: String = ""

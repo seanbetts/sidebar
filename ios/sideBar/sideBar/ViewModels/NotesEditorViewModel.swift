@@ -12,14 +12,14 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var attributedContent: NSAttributedString = NSAttributedString(string: "")
     @Published public private(set) var isDirty: Bool = false
     @Published public private(set) var isSaving: Bool = false
-    @Published public private(set) var saveError: String? = nil
-    @Published public private(set) var lastSaved: Date? = nil
-    @Published public private(set) var currentNoteId: String? = nil
+    @Published public private(set) var saveError: String?
+    @Published public private(set) var lastSaved: Date?
+    @Published public private(set) var currentNoteId: String?
     @Published public private(set) var isReadOnly: Bool = false
     @Published public var selectedRange: NSRange = NSRange(location: 0, length: 0)
     @Published public var isEditing: Bool = false
     @Published public var editorFrame: CGRect = .zero
-    @Published public var pendingCaretCoords: CGPoint? = nil
+    @Published public var pendingCaretCoords: CGPoint?
     @Published public private(set) var hasExternalUpdate: Bool = false
     @Published public var wantsEditingOnNextLoad: Bool = false
 
@@ -31,7 +31,7 @@ public final class NotesEditorViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let saveTask = ManagedTask()
     private var baselineContent: String = ""
-    private var pendingExternalContent: String? = nil
+    private var pendingExternalContent: String?
     private var ignoreNextStoreUpdate = false
     private var isSaveInProgress = false
     private var pendingSaveRequested = false

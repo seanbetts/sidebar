@@ -35,7 +35,7 @@ extension ContentView {
             }
         })
         content = AnyView(content.animation(.easeOut(duration: 0.2), value: environment.toastCenter.toast))
-        content = AnyView(content.onChange(of: scenePhase) { oldValue, newValue in
+        content = AnyView(content.onChange(of: scenePhase) { _, newValue in
             if newValue == .background && biometricUnlockEnabled {
                 // Record when we went to background (don't lock yet)
                 backgroundedAt = Date()

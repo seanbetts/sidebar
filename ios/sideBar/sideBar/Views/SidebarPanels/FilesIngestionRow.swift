@@ -133,7 +133,7 @@ struct FilesIngestionRow: View, Equatable {
 
     private var isProcessing: Bool {
         let status = item.statusValue
-        return !status.isEmpty && !Array<IngestionListItem>.terminalStatuses.contains(status)
+        return !status.isEmpty && ![IngestionListItem].terminalStatuses.contains(status)
     }
 
     private var isFailed: Bool {

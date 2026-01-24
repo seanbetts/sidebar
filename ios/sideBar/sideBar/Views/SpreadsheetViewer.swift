@@ -6,7 +6,7 @@ public struct SpreadsheetViewer: View {
     public let payload: SpreadsheetPayload
     @State private var selectedSheetIndex: Int = 0
     @State private var filterText: String = ""
-    @State private var sortColumn: Int? = nil
+    @State private var sortColumn: Int?
     @State private var sortDirection: SortDirection = .ascending
     @State private var baseRowsPerView: Int = 1
     @State private var loadMorePages: Int = 0
