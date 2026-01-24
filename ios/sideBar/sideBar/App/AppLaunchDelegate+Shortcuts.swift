@@ -102,11 +102,6 @@ extension AppLaunchDelegate {
              .deleteItem,
              .archiveItem,
              .pinItem,
-             .saveNote,
-             .toggleEditMode,
-             .formatBold,
-             .formatItalic,
-             .insertCodeBlock,
              .createFolder:
             return .edit
         case .navigateList:
@@ -202,11 +197,6 @@ extension AppLaunchDelegate {
         .pinItem: "pin",
         .archiveItem: "archivebox",
         .openInBrowser: "safari",
-        .saveNote: "square.and.arrow.down",
-        .toggleEditMode: "square.and.pencil",
-        .formatBold: "bold",
-        .formatItalic: "italic",
-        .insertCodeBlock: "chevron.left.slash.chevron.right",
         .createFolder: "folder.badge.plus",
         .openInDefaultApp: "arrow.up.right.square",
         .quickLook: "eye"
@@ -233,11 +223,6 @@ extension AppLaunchDelegate {
         .pinItem: .pinItem,
         .archiveItem: .archiveItem,
         .openInBrowser: .openInBrowser,
-        .saveNote: .saveNote,
-        .toggleEditMode: .toggleEditMode,
-        .formatBold: .formatBold,
-        .formatItalic: .formatItalic,
-        .insertCodeBlock: .insertCodeBlock,
         .createFolder: .createFolder,
         .openInDefaultApp: .openInDefaultApp,
         .quickLook: .quickLook
@@ -264,11 +249,6 @@ extension AppLaunchDelegate {
         .pinItem: .pinItem,
         .archiveItem: .archiveItem,
         .openInBrowser: .openInBrowser,
-        .saveNote: .saveNote,
-        .toggleEditMode: .toggleEditMode,
-        .formatBold: .formatBold,
-        .formatItalic: .formatItalic,
-        .insertCodeBlock: .insertCodeBlock,
         .createFolder: .createFolder,
         .openInDefaultApp: .openInDefaultApp,
         .quickLook: .quickLook

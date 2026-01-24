@@ -6,6 +6,94 @@
 
 ---
 
+## Progress Tracking
+
+### Phase 1: Foundation
+- [ ] **1.1** Create `MarkdownEditorAttributes.swift` - Custom attribute scope
+  - [ ] Define `BlockKind` enum with all block types
+  - [ ] Create `BlockKindAttribute` with `inheritedByAddedText`, `invalidationConditions`, `runBoundaries`
+  - [ ] Create `ListDepthAttribute` for nested lists
+  - [ ] Create `CodeLanguageAttribute` for fenced code blocks
+  - [ ] Add `AttributeScopes.MarkdownEditorAttributes` extension
+  - [ ] Add `AttributeDynamicLookup` extension for dot syntax
+  - [ ] Add convenience accessors on `AttributedString`
+- [ ] **1.2** Create `MarkdownFormattingDefinition.swift`
+  - [ ] Implement `AttributedTextFormattingDefinition` protocol
+  - [ ] Add value constraints for code blocks and headings
+
+### Phase 2: Markdown Import
+- [ ] **2.1** Add swift-markdown package dependency
+- [ ] **2.2** Create `MarkdownImporter.swift`
+  - [ ] Implement `MarkupWalker` for document traversal
+  - [ ] Handle paragraphs with block kind attribute
+  - [ ] Handle headings 1-6 with font styling
+  - [ ] Handle unordered lists with depth tracking
+  - [ ] Handle ordered lists with depth tracking
+  - [ ] Handle task lists (checked/unchecked)
+  - [ ] Handle blockquotes with depth tracking
+  - [ ] Handle fenced code blocks with language
+  - [ ] Handle thematic breaks (horizontal rules)
+  - [ ] Handle inline: bold, italic, strikethrough, code, links
+
+### Phase 3: Markdown Export
+- [ ] **3.1** Create `MarkdownExporter.swift`
+  - [ ] Split attributed string by newlines
+  - [ ] Generate block prefixes from `blockKind` attribute
+  - [ ] Handle code block fence generation
+  - [ ] Export inline formatting (bold, italic, code, strike, links)
+  - [ ] Handle list indentation from `listDepth`
+
+### Phase 4: Editor ViewModel
+- [ ] **4.1** Create `NativeMarkdownEditorViewModel.swift`
+  - [ ] Published properties: `attributedContent`, `selection`, `isReadOnly`, `hasUnsavedChanges`
+  - [ ] `loadMarkdown()` using importer
+  - [ ] `currentMarkdown()` using exporter
+  - [ ] Inline formatting: `toggleInlineIntent()`, `toggleStrikethrough()`
+  - [ ] Block formatting: `setBlockKind()`, `findParagraphRange()`
+  - [ ] Insert operations: `insertLink()`, `insertHorizontalRule()`
+  - [ ] Autosave with debounce
+
+### Phase 5: SwiftUI Editor View
+- [ ] **5.1** Create `NativeMarkdownEditorView.swift`
+  - [ ] `TextEditor` with `AttributedString` binding
+  - [ ] Apply `MarkdownFormattingDefinition`
+  - [ ] Formatting toolbar with all buttons
+  - [ ] Proper spacing and max width constraints
+
+### Phase 6: Live Shortcuts
+- [ ] **6.1** Create `MarkdownShortcutProcessor.swift`
+  - [ ] Block shortcuts: `# `, `## `, `- `, `1. `, `> `, `- [ ] `, etc.
+  - [ ] Inline shortcuts: `**bold**`, `*italic*`, `` `code` ``, `~~strike~~`
+  - [ ] Link shortcuts: `[text](url)`
+  - [ ] Update selection after consuming shortcuts
+
+### Phase 7: Integration
+- [ ] **7.1** Create `NotesEditorViewModel+Native.swift`
+  - [ ] `makeNativeEditorViewModel()` factory method
+  - [ ] `syncFromNativeEditor()` for saving changes
+- [ ] **7.2** Update note editor view to use native editor
+  - [ ] Add `@available` check for iOS 26
+  - [ ] Feature flag for gradual rollout
+  - [ ] Fallback to CodeMirror
+
+### Testing
+- [ ] Unit tests for `MarkdownImporter`
+  - [ ] Test each block type
+  - [ ] Test each inline style
+  - [ ] Test nested structures
+- [ ] Unit tests for `MarkdownExporter`
+  - [ ] Test each block type
+  - [ ] Test each inline style
+- [ ] Round-trip tests
+  - [ ] Import → Export → Import produces equivalent result
+- [ ] Integration tests
+  - [ ] Load note → Edit → Save → Reload preserves formatting
+- [ ] UI tests
+  - [ ] Toolbar buttons apply formatting
+  - [ ] Keyboard shortcuts work
+
+---
+
 ## Executive Summary
 
 This plan implements a native SwiftUI rich text editing experience using iOS 26/macOS 26's new `TextEditor` support for `AttributedString`. Users edit styled text (bold, italic, headings, lists, etc.) while the canonical storage format remains Markdown. The system "consumes" Markdown syntax as the user types (e.g., typing `**bold**` becomes styled bold text with the asterisks removed).

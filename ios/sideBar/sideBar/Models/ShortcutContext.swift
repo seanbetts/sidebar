@@ -4,7 +4,6 @@ public enum ShortcutContext: String, CaseIterable, Identifiable {
     case universal
     case chat
     case notes
-    case notesEditing
     case websites
     case files
     case tasks
@@ -19,8 +18,6 @@ public enum ShortcutContext: String, CaseIterable, Identifiable {
             return "Chat"
         case .notes:
             return "Notes"
-        case .notesEditing:
-            return "Notes Editing"
         case .websites:
             return "Websites"
         case .files:

@@ -27,11 +27,6 @@ public enum ShortcutAction: Hashable {
     case pinItem
     case archiveItem
     case openInBrowser
-    case saveNote
-    case toggleEditMode
-    case formatBold
-    case formatItalic
-    case insertCodeBlock
     case createFolder
     case navigateList(ShortcutListDirection)
     case openInDefaultApp

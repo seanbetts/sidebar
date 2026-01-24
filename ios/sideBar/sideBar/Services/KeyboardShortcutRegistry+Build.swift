@@ -6,7 +6,6 @@ extension KeyboardShortcutRegistry {
         buildUniversalShortcuts()
             + buildChatShortcuts()
             + buildNotesShortcuts()
-            + buildNotesEditingShortcuts()
             + buildWebsitesShortcuts()
             + buildFilesShortcuts()
             + buildTasksShortcuts()
@@ -159,13 +158,6 @@ extension KeyboardShortcutRegistry {
                 contexts: [.notes]
             ),
             KeyboardShortcut(
-                input: "e",
-                title: "Toggle Edit",
-                description: "Toggle between edit and preview",
-                action: .toggleEditMode,
-                contexts: [.notes]
-            ),
-            KeyboardShortcut(
                 input: "p",
                 modifiers: [.command, .shift],
                 title: "Pin Note",
@@ -196,33 +188,6 @@ extension KeyboardShortcutRegistry {
                 description: "Delete the current note",
                 action: .deleteItem,
                 contexts: [.notes]
-            )
-        ]
-    }
-
-    private static func buildNotesEditingShortcuts() -> [KeyboardShortcut] {
-        [
-            KeyboardShortcut(
-                input: "b",
-                title: "Bold",
-                description: "Apply bold formatting",
-                action: .formatBold,
-                contexts: [.notesEditing]
-            ),
-            KeyboardShortcut(
-                input: "i",
-                title: "Italic",
-                description: "Apply italic formatting",
-                action: .formatItalic,
-                contexts: [.notesEditing]
-            ),
-            KeyboardShortcut(
-                input: "k",
-                modifiers: [.command, .shift],
-                title: "Code Block",
-                description: "Insert a code block",
-                action: .insertCodeBlock,
-                contexts: [.notesEditing]
             )
         ]
     }

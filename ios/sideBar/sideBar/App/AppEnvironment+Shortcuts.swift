@@ -13,9 +13,6 @@ extension AppEnvironment {
                 contexts.insert(ShortcutContext.from(section: activeSection))
             }
         }
-        if isNotesEditing {
-            contexts.insert(.notesEditing)
-        }
         return contexts
     }
 

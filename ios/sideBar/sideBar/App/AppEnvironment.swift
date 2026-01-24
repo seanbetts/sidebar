@@ -41,13 +41,6 @@ public final class AppEnvironment: ObservableObject {
     @Published public var sessionExpiryWarning: Date?
     @Published public internal(set) var signOutEvent: UUID?
     @Published public var activeSection: AppSection?
-    @Published public var isNotesEditing: Bool = false {
-        didSet {
-            #if os(iOS)
-            UIMenuSystem.main.setNeedsRebuild()
-            #endif
-        }
-    }
     @Published public var isTasksFocused: Bool = false {
         didSet {
             #if os(iOS)

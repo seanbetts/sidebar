@@ -35,11 +35,6 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         case pinItem
         case archiveItem
         case openInBrowser
-        case saveNote
-        case toggleEditMode
-        case formatBold
-        case formatItalic
-        case insertCodeBlock
         case createFolder
         case navigateList
         case openInDefaultApp
