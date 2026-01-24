@@ -186,4 +186,57 @@ def get_tasks_definitions() -> dict:
             "script": "create_group.py",
             "build_args": pm.build_tasks_create_group_args,
         },
+        "Delete Task": {
+            "description": (
+                "Delete a task. For repeating tasks, this also deletes "
+                "all instances in the repeat series."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID to delete",
+                    },
+                },
+                "required": ["task_id"],
+            },
+            "skill": "tasks",
+            "script": "trash_task.py",
+            "build_args": pm.build_tasks_trash_args,
+        },
+        "Delete Project": {
+            "description": "Delete a project. Tasks in the project are not deleted.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID to delete",
+                    },
+                },
+                "required": ["project_id"],
+            },
+            "skill": "tasks",
+            "script": "delete_project.py",
+            "build_args": pm.build_tasks_delete_project_args,
+        },
+        "Delete Group": {
+            "description": (
+                "Delete a group. Projects and tasks in the group are not deleted."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "group_id": {
+                        "type": "string",
+                        "description": "Group ID to delete",
+                    },
+                },
+                "required": ["group_id"],
+            },
+            "skill": "tasks",
+            "script": "delete_group.py",
+            "build_args": pm.build_tasks_delete_group_args,
+        },
     }

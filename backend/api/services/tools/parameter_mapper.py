@@ -191,3 +191,18 @@ def build_tasks_create_project_args(params: dict) -> list:
 def build_tasks_create_group_args(params: dict) -> list:
     """Build CLI arguments for create group."""
     return TasksParameterBuilder.build_create_group_args(params)
+
+
+def build_tasks_trash_args(params: dict) -> list:
+    """Build CLI arguments for trash task."""
+    return TasksParameterBuilder.build_trash_args(params)
+
+
+def build_tasks_delete_project_args(params: dict) -> list:
+    """Build CLI arguments for delete project."""
+    return TasksParameterBuilder.build_delete_project_args(params)
+
+
+def build_tasks_delete_group_args(params: dict) -> list:
+    """Build CLI arguments for delete group."""
+    return TasksParameterBuilder.build_delete_group_args(params)
