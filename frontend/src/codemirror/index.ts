@@ -14,7 +14,13 @@ import {
 	WidgetType
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { LanguageDescription, indentOnInput, syntaxTree } from '@codemirror/language';
+import {
+	HighlightStyle,
+	LanguageDescription,
+	indentOnInput,
+	syntaxHighlighting,
+	syntaxTree
+} from '@codemirror/language';
 import { markdown } from '@codemirror/lang-markdown';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
@@ -24,6 +30,7 @@ import { python } from '@codemirror/lang-python';
 import { sql } from '@codemirror/lang-sql';
 import { yaml } from '@codemirror/lang-yaml';
 import { xml } from '@codemirror/lang-xml';
+import { type Tag, tags } from '@lezer/highlight';
 import { Autolink, GFM } from '@lezer/markdown';
 
 type WebKitMessageHandler = {
@@ -108,6 +115,20 @@ const codeLanguages = [
 		support: xml()
 	})
 ];
+
+const highlightSpecs: Array<{ tag: Tag | Tag[]; class: string }> = [];
+const addHighlightTag = (tag: Tag | Tag[] | undefined, className: string) => {
+	if (!tag) return;
+	highlightSpecs.push({ tag, class: className });
+};
+addHighlightTag(tags.strong, 'cm-strong');
+addHighlightTag(tags.emphasis, 'cm-emphasis');
+addHighlightTag(tags.strikethrough, 'cm-strikethrough');
+addHighlightTag(tags.link, 'cm-link');
+addHighlightTag(tags.code, 'cm-inline-code');
+addHighlightTag(tags.monospace, 'cm-inline-code');
+
+const markdownHighlightStyle = HighlightStyle.define(highlightSpecs);
 
 /** Post a message to the native WKWebView bridge if available. */
 function postToNative(handlerName: string, payload: unknown) {
@@ -753,6 +774,25 @@ class ListMarkerWidget extends WidgetType {
 	}
 }
 
+class TaskCheckboxWidget extends WidgetType {
+	constructor(private checked: boolean) {
+		super();
+	}
+
+	eq(other: TaskCheckboxWidget) {
+		return this.checked === other.checked;
+	}
+
+	toDOM() {
+		const span = document.createElement('span');
+		span.className = this.checked
+			? 'cm-task-checkbox cm-task-checkbox--checked'
+			: 'cm-task-checkbox';
+		span.setAttribute('aria-hidden', 'true');
+		return span;
+	}
+}
+
 const heading1Decoration = Decoration.line({ class: 'cm-heading cm-heading-1' });
 const heading2Decoration = Decoration.line({ class: 'cm-heading cm-heading-2' });
 const heading3Decoration = Decoration.line({ class: 'cm-heading cm-heading-3' });
@@ -776,6 +816,10 @@ const mediaDecoration = Decoration.line({ class: 'cm-media-line' });
 const blankLineDecoration = Decoration.line({ class: 'cm-blank-line' });
 const livePreviewHideDecoration = Decoration.mark({ class: 'cm-live-hide' });
 const listMarkerDecoration = Decoration.mark({ class: 'cm-list-marker' });
+const listDepthDecoration = (depth: number) =>
+	Decoration.line({
+		attributes: { class: 'cm-list-depth', style: `--cm-list-depth: ${Math.max(depth, 1)}` }
+	});
 
 const tableDelimiterRegex = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/;
 
@@ -1263,6 +1307,10 @@ const _markdownLinePlugin = ViewPlugin.fromClass(
 							listInfoByLine.has(lineNumber - 1) || taskMarkersByLine.has(lineNumber - 1);
 						const nextIsListItem =
 							listInfoByLine.has(lineNumber + 1) || taskMarkersByLine.has(lineNumber + 1);
+						const selectionIntersectsLine = selection.ranges.some(
+							(range) => range.from <= line.to && range.to >= line.from
+						);
+						const showPreviewWidgets = isReadOnly || !selectionIntersectsLine;
 
 						if (isBlockquote) {
 							addDecoration(
@@ -1277,6 +1325,8 @@ const _markdownLinePlugin = ViewPlugin.fromClass(
 							const markerText = listMarker?.text ?? '';
 							const isOrdered =
 								listInfo?.ordered ?? (markerText.trim().endsWith('.') ? true : false);
+							const listDepth = listInfo?.depth ?? 1;
+							addDecoration(line.from, line.from, listDepthDecoration(listDepth));
 							if (isOrdered) {
 								addDecoration(line.from, line.from, orderedListDecoration);
 							} else if (listInfo) {
@@ -1349,10 +1399,19 @@ const _markdownLinePlugin = ViewPlugin.fromClass(
 							);
 							const markerStart = listMarker?.from ?? taskInfo.from;
 							const markerEnd = taskInfo.to;
-							addDecoration(markerStart, markerEnd, listMarkerDecoration);
+							if (showPreviewWidgets && markerStart < markerEnd) {
+								addDecoration(
+									markerStart,
+									markerEnd,
+									Decoration.replace({
+										widget: new TaskCheckboxWidget(taskInfo.checked),
+										side: 1
+									})
+								);
+							}
 						} else if (listMarker) {
 							const markerText = listMarker.text.trim();
-							if (!markerText.endsWith('.')) {
+							if (!markerText.endsWith('.') && showPreviewWidgets) {
 								addDecoration(
 									listMarker.from,
 									listMarker.to,
@@ -1583,6 +1642,7 @@ function initializeEditor() {
 			history(),
 			indentOnInput(),
 			markdown({ extensions: [GFM, Autolink], addKeymap: true, codeLanguages }),
+			syntaxHighlighting(markdownHighlightStyle),
 			_markdownLinePlugin,
 			_blockPreviewField,
 			_livePreviewPlugin,
