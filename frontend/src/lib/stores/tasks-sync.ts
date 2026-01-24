@@ -2,7 +2,7 @@ import { flushTaskOutbox, hydrateTaskCache } from '$lib/services/task_sync';
 import { setCachedData } from '$lib/utils/cache';
 import type {
 	Task,
-	TaskArea,
+	TaskGroup,
 	TaskProject,
 	TaskSyncResponse,
 	TaskSyncUpdates
@@ -17,12 +17,12 @@ type TaskSelectionLike = {
 type TaskStateLike = {
 	selection: TaskSelectionLike;
 	tasks: Task[];
-	areas: TaskArea[];
+	groups: TaskGroup[];
 	projects: TaskProject[];
 };
 
 export type TasksMetaCache = {
-	areas: TaskArea[];
+	groups: TaskGroup[];
 	projects: TaskProject[];
 };
 
@@ -54,11 +54,13 @@ const mergeUpdatesIntoState = (
 		'cacheTtl' | 'cacheVersion' | 'tasksCacheKey' | 'updateState' | 'setMeta'
 	>
 ) => {
-	if (!updates.tasks?.length && !updates.projects?.length && !updates.areas?.length) {
+	if (!updates.tasks?.length && !updates.projects?.length && !updates.groups?.length) {
 		return;
 	}
 	options.updateState((state) => {
-		const nextAreas = updates.areas?.length ? mergeById(state.areas, updates.areas) : state.areas;
+		const nextGroups = updates.groups?.length
+			? mergeById(state.groups, updates.groups)
+			: state.groups;
 		const nextProjects = updates.projects?.length
 			? mergeById(state.projects, updates.projects)
 			: state.projects;
@@ -75,11 +77,11 @@ const mergeUpdatesIntoState = (
 				version: options.cacheVersion
 			});
 		}
-		options.setMeta({ areas: nextAreas, projects: nextProjects });
+		options.setMeta({ groups: nextGroups, projects: nextProjects });
 		return {
 			...state,
 			tasks: nextTasks,
-			areas: nextAreas,
+			groups: nextGroups,
 			projects: nextProjects
 		};
 	});
@@ -110,11 +112,11 @@ export function createTasksSyncCoordinator(options: SyncCoordinatorOptions) {
 		void hydrateTaskCache().then((snapshot) => {
 			if (!snapshot) return;
 			options.updateState((state) => {
-				if (state.areas.length || state.projects.length) {
+				if (state.groups.length || state.projects.length) {
 					return state;
 				}
-				options.setMeta({ areas: snapshot.areas, projects: snapshot.projects });
-				return { ...state, areas: snapshot.areas, projects: snapshot.projects };
+				options.setMeta({ groups: snapshot.groups, projects: snapshot.projects });
+				return { ...state, groups: snapshot.groups, projects: snapshot.projects };
 			});
 		});
 		window.addEventListener('online', () => {

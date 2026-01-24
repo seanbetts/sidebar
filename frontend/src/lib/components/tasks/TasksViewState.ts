@@ -1,8 +1,8 @@
 import { CalendarCheck, CalendarClock, Inbox, Layers, List, Search } from 'lucide-svelte';
 import type { TaskNewTaskDraft, TaskSelection, TasksState } from '$lib/stores/tasks';
-import type { Task, TaskArea, TaskProject } from '$lib/types/tasks';
+import type { Task, TaskGroup, TaskProject } from '$lib/types/tasks';
 import {
-	buildAreaSections,
+	buildGroupSections,
 	buildSearchSections,
 	buildTodaySections,
 	buildUpcomingSections,
@@ -11,14 +11,14 @@ import {
 	type TaskSection
 } from '$lib/components/tasks/tasksUtils';
 
-export type TaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
+export type TaskViewType = 'inbox' | 'today' | 'upcoming' | 'group' | 'project' | 'search';
 
 export type TasksViewState = {
 	tasks: Task[];
 	selectionLabel: string;
 	titleIcon: typeof CalendarCheck;
 	selectionQuery: string;
-	areas: TaskArea[];
+	groups: TaskGroup[];
 	projects: TaskProject[];
 	isLoading: boolean;
 	searchPending: boolean;
@@ -27,19 +27,19 @@ export type TasksViewState = {
 	totalCount: number;
 	hasLoaded: boolean;
 	projectTitleById: Map<string, string>;
-	areaTitleById: Map<string, string>;
+	groupTitleById: Map<string, string>;
 	selectionType: TaskViewType;
 	selection: TaskSelection;
 	newTaskDraft: TaskNewTaskDraft | null;
 	showDraft: boolean;
-	areaOptions: TaskArea[];
-	projectsByArea: Map<string, TaskProject[]>;
+	groupOptions: TaskGroup[];
+	projectsByGroup: Map<string, TaskProject[]>;
 	orphanProjects: TaskProject[];
 };
 
 export const isSameSelection = (a: TaskSelection, b: TaskSelection) => {
 	if (a.type !== b.type) return false;
-	if (a.type === 'area' || a.type === 'project') {
+	if (a.type === 'group' || a.type === 'project') {
 		return a.id === (b as { id: string }).id;
 	}
 	if (a.type === 'search') {
@@ -49,7 +49,7 @@ export const isSameSelection = (a: TaskSelection, b: TaskSelection) => {
 };
 
 export const computeTasksViewState = (state: TasksState): TasksViewState => {
-	const { tasks, areas, projects, selection, isLoading, searchPending, error, newTaskDraft } =
+	const { tasks, groups, projects, selection, isLoading, searchPending, error, newTaskDraft } =
 		state;
 	const selectionType = selection.type as TaskViewType;
 	const projectIds = new Set(projects.map((project) => project.id));
@@ -57,25 +57,25 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 	const expandedTasks =
 		selectionType === 'today' ? filteredTasks : expandRepeatingTasks(filteredTasks);
 	const visibleTasks =
-		selectionType === 'area' || selectionType === 'search'
+		selectionType === 'group' || selectionType === 'search'
 			? expandedTasks.filter((task) => !projectIds.has(task.id))
 			: expandedTasks;
 	const sortedTasks =
-		selectionType === 'area' || selectionType === 'project' || selectionType === 'search'
+		selectionType === 'group' || selectionType === 'project' || selectionType === 'search'
 			? sortByDueDate(visibleTasks)
 			: visibleTasks;
 	const projectTitleById = new Map(projects.map((project) => [project.id, project.title]));
-	const areaTitleById = new Map(areas.map((area) => [area.id, area.title]));
-	const areaOptions = [...areas].sort((a, b) => a.title.localeCompare(b.title));
+	const groupTitleById = new Map(groups.map((group) => [group.id, group.title]));
+	const groupOptions = [...groups].sort((a, b) => a.title.localeCompare(b.title));
 	const projectOptions = [...projects].sort((a, b) => a.title.localeCompare(b.title));
-	const projectsByArea = new Map<string, TaskProject[]>();
+	const projectsByGroup = new Map<string, TaskProject[]>();
 	const orphanProjects: TaskProject[] = [];
 
 	projectOptions.forEach((project) => {
-		if (project.areaId) {
-			const bucket = projectsByArea.get(project.areaId) ?? [];
+		if (project.groupId) {
+			const bucket = projectsByGroup.get(project.groupId) ?? [];
 			bucket.push(project);
-			projectsByArea.set(project.areaId, bucket);
+			projectsByGroup.set(project.groupId, bucket);
 		} else {
 			orphanProjects.push(project);
 		}
@@ -89,7 +89,7 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 	if (selectionType === 'today') {
 		selectionLabel = 'Today';
 		titleIcon = CalendarCheck;
-		sections = buildTodaySections(sortedTasks, areas, projects, areaTitleById, projectTitleById);
+		sections = buildTodaySections(sortedTasks, groups, projects, groupTitleById, projectTitleById);
 	} else if (selectionType === 'upcoming') {
 		selectionLabel = 'Upcoming';
 		titleIcon = CalendarClock;
@@ -98,11 +98,11 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 		selectionLabel = 'Inbox';
 		titleIcon = Inbox;
 		sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
-	} else if (selectionType === 'area' && selection.type === 'area') {
-		const areaTitle = areas.find((area) => area.id === selection.id)?.title || 'Area';
-		selectionLabel = areaTitle;
+	} else if (selectionType === 'group' && selection.type === 'group') {
+		const groupTitle = groups.find((group) => group.id === selection.id)?.title || 'Group';
+		selectionLabel = groupTitle;
 		titleIcon = Layers;
-		sections = buildAreaSections(sortedTasks, selection.id, areaTitle, projects);
+		sections = buildGroupSections(sortedTasks, selection.id, groupTitle, projects);
 	} else if (selectionType === 'project' && selection.type === 'project') {
 		selectionLabel = projects.find((project) => project.id === selection.id)?.title || 'Project';
 		titleIcon = List;
@@ -110,7 +110,7 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 	} else if (selectionType === 'search') {
 		selectionLabel = selectionQuery ? `Search: ${selectionQuery}` : 'Search';
 		titleIcon = Search;
-		sections = buildSearchSections(sortedTasks, areas);
+		sections = buildSearchSections(sortedTasks, groups);
 	} else {
 		sections = sortedTasks.length ? [{ id: 'all', title: '', tasks: sortedTasks }] : [];
 	}
@@ -127,7 +127,7 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 		selectionLabel,
 		titleIcon,
 		selectionQuery,
-		areas,
+		groups,
 		projects,
 		isLoading,
 		searchPending,
@@ -136,13 +136,13 @@ export const computeTasksViewState = (state: TasksState): TasksViewState => {
 		totalCount,
 		hasLoaded,
 		projectTitleById,
-		areaTitleById,
+		groupTitleById,
 		selectionType,
 		selection,
 		newTaskDraft,
 		showDraft,
-		areaOptions,
-		projectsByArea,
+		groupOptions,
+		projectsByGroup,
 		orphanProjects
 	};
 };

@@ -75,7 +75,7 @@ def validate_user_id(value: str) -> str:
 def log_summary(prefix: str, summary: object) -> None:
     logger.info(
         "%s notes=%s websites=%s conversations=%s memories=%s tasks=%s projects=%s "
-        "areas=%s settings=%s scratchpad=%s",
+        "groups=%s settings=%s scratchpad=%s",
         prefix,
         getattr(summary, "notes"),
         getattr(summary, "websites"),
@@ -83,7 +83,7 @@ def log_summary(prefix: str, summary: object) -> None:
         getattr(summary, "memories"),
         getattr(summary, "tasks"),
         getattr(summary, "task_projects"),
-        getattr(summary, "task_areas"),
+        getattr(summary, "task_groups"),
         getattr(summary, "settings"),
         getattr(summary, "scratchpad"),
     )
@@ -107,7 +107,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             websites=len(plan.websites),
             conversations=len(plan.conversations),
             memories=len(plan.memories),
-            task_areas=len(plan.task_areas),
+            task_groups=len(plan.task_groups),
             task_projects=len(plan.task_projects),
             tasks=len(plan.tasks),
             settings=1,

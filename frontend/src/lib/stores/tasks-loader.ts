@@ -10,7 +10,7 @@ import type { TasksMetaCache } from '$lib/stores/tasks-sync';
 type StoreState = {
 	selection: TaskSelection;
 	tasks: Task[];
-	areas: unknown[];
+	groups: unknown[];
 	projects: unknown[];
 	isLoading: boolean;
 	searchPending: boolean;
@@ -22,7 +22,7 @@ type StoreState = {
 type LoaderDeps = {
 	tasksAPI: {
 		list: (scope: string) => Promise<TaskListResponse>;
-		areaTasks: (id: string) => Promise<TaskListResponse>;
+		groupTasks: (id: string) => Promise<TaskListResponse>;
 		projectTasks: (id: string) => Promise<TaskListResponse>;
 		search: (query: string) => Promise<TaskListResponse>;
 	};
@@ -35,7 +35,7 @@ type LoaderDeps = {
 	cacheVersion: string;
 	metaCacheKey: string;
 	countsCacheKey: string;
-	snapshotLoader: { load: () => Promise<{ tasks: Task[]; areas: any[]; projects: any[] } | null> };
+	snapshotLoader: { load: () => Promise<{ tasks: Task[]; groups: any[]; projects: any[] } | null> };
 	filterTasksForSelection: (
 		tasks: Task[],
 		selection: TaskSelection,
@@ -122,7 +122,7 @@ export const createTaskLoader = (deps: LoaderDeps) => {
 		if (cachedMeta) {
 			deps.updateState((state) => ({
 				...state,
-				areas: cachedMeta.areas,
+				groups: cachedMeta.groups,
 				projects: cachedMeta.projects
 			}));
 		}
@@ -194,10 +194,10 @@ export const createTaskLoader = (deps: LoaderDeps) => {
 				const latestSelection = deps.getState().selection;
 				if (!deps.isSameSelection(selection, latestSelection)) return;
 				deps.setCachedData(key, selectionTasks, { ttl: deps.cacheTtl, version: deps.cacheVersion });
-				if (snapshot.areas.length || snapshot.projects.length) {
+				if (snapshot.groups.length || snapshot.projects.length) {
 					deps.setCachedData(
 						deps.metaCacheKey,
-						{ areas: snapshot.areas, projects: snapshot.projects },
+						{ groups: snapshot.groups, projects: snapshot.projects },
 						{ ttl: deps.cacheTtl, version: deps.cacheVersion }
 					);
 				}
@@ -205,12 +205,12 @@ export const createTaskLoader = (deps: LoaderDeps) => {
 					if (!deps.isSameSelection(selection, state.selection)) return state;
 					if (state.tasks.length > 0) return state;
 					if (!state.isLoading && !state.error) return state;
-					const nextAreas = snapshot.areas.length ? snapshot.areas : state.areas;
+					const nextAreas = snapshot.groups.length ? snapshot.groups : state.groups;
 					const nextProjects = snapshot.projects.length ? snapshot.projects : state.projects;
 					return {
 						...state,
 						tasks: selectionTasks,
-						areas: nextAreas,
+						groups: nextAreas,
 						projects: nextProjects,
 						todayCount: selection.type === 'today' ? selectionTasks.length : state.todayCount,
 						counts: {
@@ -241,8 +241,8 @@ export const createTaskLoader = (deps: LoaderDeps) => {
 					selection.type === 'inbox'
 				) {
 					response = await deps.tasksAPI.list(selection.type);
-				} else if (selection.type === 'area') {
-					response = await deps.tasksAPI.areaTasks(selection.id);
+				} else if (selection.type === 'group') {
+					response = await deps.tasksAPI.groupTasks(selection.id);
 				} else if (selection.type === 'project') {
 					response = await deps.tasksAPI.projectTasks(selection.id);
 				} else {
@@ -253,10 +253,10 @@ export const createTaskLoader = (deps: LoaderDeps) => {
 					ttl: deps.cacheTtl,
 					version: deps.cacheVersion
 				});
-				if (response.areas && response.projects) {
+				if (response.groups && response.projects) {
 					deps.setCachedData(
 						deps.metaCacheKey,
-						{ areas: response.areas ?? [], projects: response.projects ?? [] },
+						{ groups: response.groups ?? [], projects: response.projects ?? [] },
 						{ ttl: deps.cacheTtl, version: deps.cacheVersion }
 					);
 				}

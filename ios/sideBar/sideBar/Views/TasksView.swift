@@ -17,6 +17,12 @@ public struct TasksView: View {
                 await environment.tasksViewModel.loadCounts()
             }
             #if os(iOS)
+            .onAppear {
+                environment.isTasksFocused = true
+            }
+            .onDisappear {
+                environment.isTasksFocused = false
+            }
             .onChange(of: scenePhase) {
                 guard scenePhase == .active else { return }
                 Task {
@@ -51,6 +57,7 @@ private struct TasksDetailView: View {
     @State private var repeatInterval: Int = 1
     @State private var repeatStartDate: Date = Date()
     @State private var deleteTask: TaskItem? = nil
+    @State private var activeTaskId: String? = nil
 
     var body: some View {
         let state = viewModel.viewState
@@ -110,7 +117,7 @@ private struct TasksDetailView: View {
             MoveTaskSheet(
                 task: task,
                 selectedListId: selectedListId,
-                areas: viewModel.areas,
+                groups: viewModel.groups,
                 projects: viewModel.projects,
                 onSave: { listId in
                     Task { await viewModel.moveTask(task: task, listId: listId) }
@@ -135,7 +142,7 @@ private struct TasksDetailView: View {
             if let draft = viewModel.newTaskDraft {
                 NewTaskSheet(
                     draft: draft,
-                    areas: viewModel.areas,
+                    groups: viewModel.groups,
                     projects: viewModel.projects,
                     isSaving: viewModel.newTaskSaving,
                     errorMessage: viewModel.newTaskError,
@@ -144,6 +151,26 @@ private struct TasksDetailView: View {
                     },
                     onDismiss: { viewModel.cancelNewTask() }
                 )
+            }
+        }
+        .onReceive(environment.$shortcutActionEvent) { event in
+            guard let event, event.section == .tasks else { return }
+            guard let task = activeTask(in: state) else { return }
+            switch event.action {
+            case .completeTask:
+                Task { await viewModel.completeTask(task: task) }
+            case .editTaskNotes:
+                openNotes(task)
+            case .moveTask:
+                openMove(task)
+            case .setTaskDueDate:
+                openDue(task)
+            case .setTaskRepeat:
+                openRepeat(task)
+            case .deleteItem:
+                deleteTask = task
+            default:
+                break
             }
         }
     }
@@ -212,13 +239,14 @@ extension TasksDetailView {
                                     selection: state.selection,
                                     selectionLabel: state.selectionLabel,
                                     projectTitleById: state.projectTitleById,
-                                    areaTitleById: state.areaTitleById
+                                    groupTitleById: state.groupTitleById
                                 ),
                                 dueLabel: TasksUtils.dueLabel(for: task),
                                 repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
                                 selection: state.selection,
                                 onComplete: { Task { await viewModel.completeTask(task: task) } },
-                                onOpenNotes: { openNotes(task) }
+                                onOpenNotes: { openNotes(task) },
+                                onSelect: { setActiveTask(task) }
                             ) {
                                 taskMenu(for: task, selection: state.selection)
                             }
@@ -266,6 +294,7 @@ extension TasksDetailView {
     private func openRename(_ task: TaskItem) {
         renameTask = task
         renameValue = task.title
+        setActiveTask(task)
     }
 
     private func commitRename() {
@@ -278,16 +307,19 @@ extension TasksDetailView {
 
     private func openNotes(_ task: TaskItem) {
         notesTask = task
+        setActiveTask(task)
     }
 
     private func openDue(_ task: TaskItem) {
         dueTask = task
         dueDate = TasksUtils.parseTaskDate(task) ?? Date()
+        setActiveTask(task)
     }
 
     private func openMove(_ task: TaskItem) {
         moveTask = task
-        selectedListId = task.projectId ?? task.areaId ?? ""
+        selectedListId = task.projectId ?? task.groupId ?? ""
+        setActiveTask(task)
     }
 
     private func openRepeat(_ task: TaskItem) {
@@ -300,6 +332,7 @@ extension TasksDetailView {
             repeatInterval = 1
         }
         repeatStartDate = TasksUtils.parseTaskDate(task) ?? Date()
+        setActiveTask(task)
     }
 
     private func formatRepeatLabel(_ label: String?) -> String? {
@@ -308,6 +341,21 @@ extension TasksDetailView {
             .split(separator: " ")
             .map { $0.isEmpty ? "" : $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
             .joined(separator: " ")
+    }
+
+    private func setActiveTask(_ task: TaskItem) {
+        guard !task.isPreview else { return }
+        activeTaskId = task.id
+    }
+
+    private func activeTask(in state: TasksViewState) -> TaskItem? {
+        guard let activeTaskId else { return nil }
+        for section in state.sections {
+            if let task = section.tasks.first(where: { $0.id == activeTaskId && !$0.isPreview }) {
+                return task
+            }
+        }
+        return nil
     }
 
     private func buildRecurrenceRule(type: RepeatType, interval: Int, startDate: Date) -> RecurrenceRule? {

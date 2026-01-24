@@ -7,7 +7,7 @@ import type { Task } from '$lib/types/tasks';
 const baseState = (overrides: Partial<TasksState> = {}): TasksState => ({
 	selection: { type: 'today' },
 	tasks: [],
-	areas: [],
+	groups: [],
 	projects: [],
 	todayCount: 0,
 	counts: {},
@@ -31,7 +31,7 @@ describe('computeTasksViewState', () => {
 			deadline: '2025-01-01',
 			notes: '',
 			projectId: null,
-			areaId: null,
+			groupId: null,
 			repeating: true,
 			repeatTemplate: false,
 			recurrenceRule: { type: 'daily', interval: 1 },

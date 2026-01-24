@@ -17,6 +17,11 @@ public enum ShortcutAction: Hashable {
     case toggleSidebar
     case sendMessage
     case attachFile
+    case completeTask
+    case editTaskNotes
+    case moveTask
+    case setTaskDueDate
+    case setTaskRepeat
     case renameItem
     case deleteItem
     case pinItem

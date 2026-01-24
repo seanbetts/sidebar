@@ -7,7 +7,7 @@ public struct TaskItem: Codable, Identifiable, Equatable {
     public let deadline: String?
     public let notes: String?
     public let projectId: String?
-    public let areaId: String?
+    public let groupId: String?
     public let repeating: Bool?
     public let repeatTemplate: Bool?
     public let recurrenceRule: RecurrenceRule?
@@ -23,7 +23,7 @@ public struct TaskItem: Codable, Identifiable, Equatable {
         deadline: String? = nil,
         notes: String? = nil,
         projectId: String? = nil,
-        areaId: String? = nil,
+        groupId: String? = nil,
         repeating: Bool? = nil,
         repeatTemplate: Bool? = nil,
         recurrenceRule: RecurrenceRule? = nil,
@@ -38,7 +38,7 @@ public struct TaskItem: Codable, Identifiable, Equatable {
         self.deadline = deadline
         self.notes = notes
         self.projectId = projectId
-        self.areaId = areaId
+        self.groupId = groupId
         self.repeating = repeating
         self.repeatTemplate = repeatTemplate
         self.recurrenceRule = recurrenceRule
@@ -55,7 +55,7 @@ public struct TaskItem: Codable, Identifiable, Equatable {
         case deadline
         case notes
         case projectId
-        case areaId
+        case groupId
         case repeating
         case repeatTemplate
         case recurrenceRule
@@ -79,7 +79,7 @@ public struct RecurrenceRule: Codable, Equatable {
     }
 }
 
-public struct TaskArea: Codable, Identifiable, Equatable {
+public struct TaskGroup: Codable, Identifiable, Equatable {
     public let id: String
     public let title: String
     public let updatedAt: String?
@@ -88,7 +88,7 @@ public struct TaskArea: Codable, Identifiable, Equatable {
 public struct TaskProject: Codable, Identifiable, Equatable {
     public let id: String
     public let title: String
-    public let areaId: String?
+    public let groupId: String?
     public let status: String
     public let updatedAt: String?
 }
@@ -98,14 +98,14 @@ public struct TaskListResponse: Codable, Equatable {
     public let generatedAt: String?
     public let tasks: [TaskItem]
     public let projects: [TaskProject]?
-    public let areas: [TaskArea]?
+    public let groups: [TaskGroup]?
 }
 
 public struct TaskCountsResponse: Codable, Equatable {
     public let generatedAt: String?
     public let counts: TaskCounts
     public let projects: [TaskCountBucket]
-    public let areas: [TaskCountBucket]
+    public let groups: [TaskCountBucket]
 }
 
 public struct TaskCounts: Codable, Equatable {
@@ -131,7 +131,7 @@ public struct TaskSyncResponse: Codable, Equatable {
 public struct TaskSyncUpdates: Codable, Equatable {
     public let tasks: [TaskItem]
     public let projects: [TaskProject]
-    public let areas: [TaskArea]
+    public let groups: [TaskGroup]
 }
 
 public struct TaskSyncConflict: Codable, Equatable {
@@ -147,7 +147,7 @@ public enum TaskSelection: Equatable, Hashable {
     case inbox
     case today
     case upcoming
-    case area(id: String)
+    case group(id: String)
     case project(id: String)
     case search(query: String)
 
@@ -159,8 +159,8 @@ public enum TaskSelection: Equatable, Hashable {
             return "today"
         case .upcoming:
             return "upcoming"
-        case .area:
-            return "area"
+        case .group:
+            return "group"
         case .project:
             return "project"
         case .search:
@@ -176,8 +176,8 @@ public enum TaskSelection: Equatable, Hashable {
             return "today"
         case .upcoming:
             return "upcoming"
-        case .area(let id):
-            return "area:\(id)"
+        case .group(let id):
+            return "group:\(id)"
         case .project(let id):
             return "project:\(id)"
         case .search(let query):

@@ -68,11 +68,16 @@ SKILL_DISPLAY = {
         "name": "Memory",
         "description": "Store and manage persistent user memories.",
     },
+    "tasks": {
+        "name": "Tasks",
+        "description": "Create, complete, defer, and organize tasks and projects.",
+    },
 }
 
 EXPOSED_SKILLS = {
     "fs",
     "notes",
+    "tasks",
     "web-save",
     "web-search",
     "memory",

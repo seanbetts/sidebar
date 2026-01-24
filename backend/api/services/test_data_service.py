@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from api.models.conversation import Conversation
 from api.models.note import Note
 from api.models.task import Task
-from api.models.task_area import TaskArea
+from api.models.task_group import TaskGroup
 from api.models.task_project import TaskProject
 from api.models.user_memory import UserMemory
 from api.models.user_settings import UserSettings
@@ -40,7 +40,7 @@ class SeedSummary:
     websites: int = 0
     conversations: int = 0
     memories: int = 0
-    task_areas: int = 0
+    task_groups: int = 0
     task_projects: int = 0
     tasks: int = 0
     settings: int = 0
@@ -128,21 +128,21 @@ class TestDataService:
             )
             memory_ids.append(created_memory.id)
 
-        area_map: dict[str, str] = {}
+        group_map: dict[str, str] = {}
         project_map: dict[str, str] = {}
-        for area in plan.task_areas:
-            created_area = TaskService.create_task_area(
-                db, user_id, area.title, source_id=plan.seed_tag
+        for group in plan.task_groups:
+            created_group = TaskService.create_task_group(
+                db, user_id, group.title, source_id=plan.seed_tag
             )
-            area_map[area.key] = str(created_area.id)
+            group_map[group.key] = str(created_group.id)
 
         for project in plan.task_projects:
-            area_id = area_map.get(project.area_key) if project.area_key else None
+            group_id = group_map.get(project.group_key) if project.group_key else None
             created_project = TaskService.create_task_project(
                 db,
                 user_id,
                 project.title,
-                area_id=area_id,
+                group_id=group_id,
                 status=project.status,
                 notes=project.notes,
                 source_id=plan.seed_tag,
@@ -152,14 +152,14 @@ class TestDataService:
         task_ids: list[uuid.UUID] = []
         for task in plan.tasks:
             project_id = project_map.get(task.project_key) if task.project_key else None
-            area_id = area_map.get(task.area_key) if task.area_key else None
+            group_id = group_map.get(task.group_key) if task.group_key else None
             created_task = TaskService.create_task(
                 db,
                 user_id,
                 task.title,
                 status=task.status,
                 project_id=project_id,
-                area_id=area_id,
+                group_id=group_id,
                 notes=task.notes,
                 deadline=task.deadline,
                 recurrence_rule=task.recurrence_rule,
@@ -174,7 +174,7 @@ class TestDataService:
         db.commit()
 
         snapshot = TestDataService._build_tasks_snapshot(
-            db, user_id, task_ids, project_map, area_map
+            db, user_id, task_ids, project_map, group_map
         )
         UserSettingsService.upsert_settings(
             db,
@@ -197,7 +197,7 @@ class TestDataService:
             websites=len(website_ids),
             conversations=len(conversation_ids),
             memories=len(memory_ids),
-            task_areas=len(area_map),
+            task_groups=len(group_map),
             task_projects=len(project_map),
             tasks=len(task_ids),
             settings=1,
@@ -213,7 +213,7 @@ class TestDataService:
             websites=len(targets["websites"]),
             conversations=len(targets["conversations"]),
             memories=len(targets["memories"]),
-            task_areas=len(targets["task_areas"]),
+            task_groups=len(targets["task_groups"]),
             task_projects=len(targets["task_projects"]),
             tasks=len(targets["tasks"]),
             settings=1 if targets["settings"] else 0,
@@ -253,8 +253,8 @@ class TestDataService:
             TaskService.delete_task(db, user_id, str(task.id))
         for project in targets["task_projects"]:
             TaskService.delete_task_project(db, user_id, str(project.id))
-        for area in targets["task_areas"]:
-            TaskService.delete_task_area(db, user_id, str(area.id))
+        for group in targets["task_groups"]:
+            TaskService.delete_task_group(db, user_id, str(group.id))
         db.commit()
 
         if targets["settings"]:
@@ -279,7 +279,7 @@ class TestDataService:
             websites=len(targets["websites"]),
             conversations=len(targets["conversations"]),
             memories=len(targets["memories"]),
-            task_areas=len(targets["task_areas"]),
+            task_groups=len(targets["task_groups"]),
             task_projects=len(targets["task_projects"]),
             tasks=len(targets["tasks"]),
             settings=1 if targets["settings"] else 0,
@@ -331,9 +331,9 @@ class TestDataService:
             .all()
         )
 
-        task_areas = (
-            db.query(TaskArea)
-            .filter(TaskArea.user_id == user_id, TaskArea.source_id == seed_tag)
+        task_groups = (
+            db.query(TaskGroup)
+            .filter(TaskGroup.user_id == user_id, TaskGroup.source_id == seed_tag)
             .all()
         )
         task_projects = (
@@ -366,7 +366,7 @@ class TestDataService:
             "websites": websites,
             "conversations": conversations,
             "memories": memories,
-            "task_areas": task_areas,
+            "task_groups": task_groups,
             "task_projects": task_projects,
             "tasks": tasks,
             "settings": settings,
@@ -379,7 +379,7 @@ class TestDataService:
         user_id: str,
         task_ids: Iterable[uuid.UUID],
         project_map: dict[str, str],
-        area_map: dict[str, str],
+        group_map: dict[str, str],
     ) -> str | None:
         if not task_ids:
             return None
@@ -397,11 +397,11 @@ class TestDataService:
                 "deadline": item.deadline.isoformat() if item.deadline else None,
                 "notes": item.notes,
                 "projectId": str(item.project_id) if item.project_id else None,
-                "areaId": str(item.area_id) if item.area_id else None,
+                "groupId": str(item.group_id) if item.group_id else None,
             }
 
         project_ids = [uuid.UUID(value) for value in project_map.values()]
-        area_ids = [uuid.UUID(value) for value in area_map.values()]
+        group_ids = [uuid.UUID(value) for value in group_map.values()]
         projects = (
             db.query(TaskProject)
             .filter(TaskProject.user_id == user_id, TaskProject.id.in_(project_ids))
@@ -409,23 +409,25 @@ class TestDataService:
             if project_ids
             else []
         )
-        areas = (
-            db.query(TaskArea)
-            .filter(TaskArea.user_id == user_id, TaskArea.id.in_(area_ids))
+        groups = (
+            db.query(TaskGroup)
+            .filter(TaskGroup.user_id == user_id, TaskGroup.id.in_(group_ids))
             .all()
-            if area_ids
+            if group_ids
             else []
         )
         projects_payload = [
             {"id": str(project.id), "title": project.title} for project in projects
         ]
-        areas_payload = [{"id": str(area.id), "title": area.title} for area in areas]
+        groups_payload = [
+            {"id": str(group.id), "title": group.title} for group in groups
+        ]
         return TasksSnapshotService.build_snapshot(
             today_tasks=[task_payload(task) for task in tasks],
             tomorrow_tasks=TasksSnapshotService.filter_tomorrow(
                 [task_payload(task) for task in tasks]
             ),
             completed_today=[],
-            areas=areas_payload,
+            groups=groups_payload,
             projects=projects_payload,
         )

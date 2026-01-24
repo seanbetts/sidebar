@@ -3,8 +3,8 @@ import type { FileNode } from '$lib/types/file';
 import type { Conversation, ConversationWithMessages } from '$lib/types/history';
 import type { IngestionListResponse, IngestionMetaResponse } from '$lib/types/ingestion';
 import type {
-	TaskArea,
 	TaskCountsResponse,
+	TaskGroup,
 	TaskListResponse,
 	TaskProject,
 	TaskSyncResponse
@@ -534,9 +534,9 @@ class TasksAPI {
 		return response.json();
 	}
 
-	async areaTasks(areaId: string): Promise<TaskListResponse> {
-		const response = await fetch(`${this.baseUrl}/areas/${areaId}/tasks`);
-		if (!response.ok) throw new Error('Failed to load area tasks');
+	async groupTasks(groupId: string): Promise<TaskListResponse> {
+		const response = await fetch(`${this.baseUrl}/groups/${groupId}/tasks`);
+		if (!response.ok) throw new Error('Failed to load group tasks');
 		return response.json();
 	}
 
@@ -552,28 +552,28 @@ class TasksAPI {
 			return {
 				counts: { inbox: 0, today: 0, upcoming: 0 },
 				projects: [],
-				areas: []
+				groups: []
 			};
 		}
 		if (!response.ok) throw new Error('Failed to load task counts');
 		return response.json();
 	}
 
-	async createArea(title: string): Promise<TaskArea> {
-		const response = await fetch(`${this.baseUrl}/areas`, {
+	async createGroup(title: string): Promise<TaskGroup> {
+		const response = await fetch(`${this.baseUrl}/groups`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ title })
 		});
-		if (!response.ok) throw new Error('Failed to create task area');
+		if (!response.ok) throw new Error('Failed to create task group');
 		return response.json();
 	}
 
-	async createProject(title: string, areaId: string | null): Promise<TaskProject> {
+	async createProject(title: string, groupId: string | null): Promise<TaskProject> {
 		const response = await fetch(`${this.baseUrl}/projects`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ title, areaId })
+			body: JSON.stringify({ title, groupId })
 		});
 		if (!response.ok) throw new Error('Failed to create task project');
 		return response.json();

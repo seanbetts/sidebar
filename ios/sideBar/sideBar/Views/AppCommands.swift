@@ -44,6 +44,40 @@ struct SidebarCommands: Commands {
                 .keyboardShortcut(",", modifiers: [.command])
             }
         }
+
+        CommandMenu("Tasks") {
+            Button("Complete Task") {
+                environment.emitShortcutAction(.completeTask)
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+
+            Button("Edit Notes") {
+                environment.emitShortcutAction(.editTaskNotes)
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+
+            Button("Move Task") {
+                environment.emitShortcutAction(.moveTask)
+            }
+            .keyboardShortcut("m", modifiers: [.command, .shift])
+
+            Button("Set Due Date") {
+                environment.emitShortcutAction(.setTaskDueDate)
+            }
+            .keyboardShortcut("d", modifiers: [.command])
+
+            Button("Edit Repeat") {
+                environment.emitShortcutAction(.setTaskRepeat)
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Delete Task") {
+                environment.emitShortcutAction(.deleteItem)
+            }
+            .keyboardShortcut(.delete, modifiers: [.command, .shift])
+        }
     }
 }
 #endif

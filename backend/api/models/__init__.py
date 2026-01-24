@@ -4,7 +4,7 @@ from api.models.conversation import Conversation
 from api.models.file_ingestion import FileDerivative, FileProcessingJob, IngestedFile
 from api.models.note import Note
 from api.models.task import Task
-from api.models.task_area import TaskArea
+from api.models.task_group import TaskGroup
 from api.models.task_operation_log import TaskOperationLog
 from api.models.task_project import TaskProject
 from api.models.user_memory import UserMemory
@@ -21,7 +21,7 @@ __all__ = [
     "FileDerivative",
     "FileProcessingJob",
     "Task",
-    "TaskArea",
+    "TaskGroup",
     "TaskOperationLog",
     "TaskProject",
 ]

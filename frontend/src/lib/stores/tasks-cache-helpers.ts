@@ -1,6 +1,6 @@
 import type {
 	Task,
-	TaskArea,
+	TaskGroup,
 	TaskCountsResponse,
 	TaskListResponse,
 	TaskProject,
@@ -39,19 +39,19 @@ type UpdateTaskCachesOptions = {
 type ApplyResponseOptions = {
 	response: TaskListResponse;
 	selection: TaskSelection;
-	lastMeta: { areas: TaskArea[]; projects: TaskProject[] };
-	setMeta: (meta: { areas: TaskArea[]; projects: TaskProject[] }) => void;
+	lastMeta: { groups: TaskGroup[]; projects: TaskProject[] };
+	setMeta: (meta: { groups: TaskGroup[]; projects: TaskProject[] }) => void;
 	updateState: (
 		updater: (state: {
 			tasks: Task[];
-			areas: TaskArea[];
+			groups: TaskGroup[];
 			projects: TaskProject[];
 			todayCount: number;
 			counts: Record<string, number>;
 			error?: string;
 		}) => {
 			tasks: Task[];
-			areas: TaskArea[];
+			groups: TaskGroup[];
 			projects: TaskProject[];
 			todayCount: number;
 			counts: Record<string, number>;
@@ -64,7 +64,7 @@ type ApplyResponseOptions = {
  * Build a cache key for a task selection.
  */
 export const selectionKey = (selection: TaskSelection): string => {
-	if (selection.type === 'area' || selection.type === 'project') {
+	if (selection.type === 'group' || selection.type === 'project') {
 		return `${selection.type}:${selection.id}`;
 	}
 	if (selection.type === 'search') {
@@ -87,7 +87,7 @@ export const selectionCount = (
 	tasks: Task[],
 	projects: TaskProject[]
 ): number => {
-	if (selection.type !== 'area') return tasks.length;
+	if (selection.type !== 'group') return tasks.length;
 	const projectIds = new Set(projects.map((project) => project.id));
 	return tasks.filter((task) => !projectIds.has(task.id) && task.status !== 'project').length;
 };
@@ -97,7 +97,7 @@ export const selectionCount = (
  */
 export const isSameSelection = (a: TaskSelection, b: TaskSelection): boolean => {
 	if (a.type !== b.type) return false;
-	if (a.type === 'area' || a.type === 'project') {
+	if (a.type === 'group' || a.type === 'project') {
 		return a.id === (b as { id: string }).id;
 	}
 	if (a.type === 'search') {
@@ -140,7 +140,7 @@ export const normalizeCountsCache = (
 ): NormalizeCountsResult => {
 	const isCountsResponse =
 		typeof (cached as TaskCountsResponse).counts === 'object' &&
-		Array.isArray((cached as TaskCountsResponse).areas) &&
+		Array.isArray((cached as TaskCountsResponse).groups) &&
 		Array.isArray((cached as TaskCountsResponse).projects);
 	if (isCountsResponse) {
 		return { map: buildCountsMap(cached), todayCount: cached.counts.today ?? 0 };
@@ -158,8 +158,8 @@ export const buildCountsMap = (counts: TaskCountsResponse): Record<string, numbe
 		today: counts.counts.today ?? 0,
 		upcoming: counts.counts.upcoming ?? 0
 	};
-	counts.areas.forEach((area) => {
-		map[`area:${area.id}`] = area.count;
+	counts.groups.forEach((group) => {
+		map[`group:${group.id}`] = group.count;
 	});
 	counts.projects.forEach((project) => {
 		map[`project:${project.id}`] = project.count;
@@ -208,7 +208,7 @@ export const updateTaskCaches = (options: UpdateTaskCachesOptions): void => {
 			nextTasks = nextToday;
 		} else if (state.selection.type === 'upcoming') {
 			nextTasks = nextUpcoming;
-		} else if (state.selection.type === 'area' || state.selection.type === 'project') {
+		} else if (state.selection.type === 'group' || state.selection.type === 'project') {
 			nextTasks = state.tasks.filter((item) => item.id !== options.taskId);
 		}
 		const nextCounts = {
@@ -244,14 +244,14 @@ export const updateTaskCaches = (options: UpdateTaskCachesOptions): void => {
  */
 export const applyTaskListResponse = (options: ApplyResponseOptions): void => {
 	const meta = {
-		areas: options.response.areas ?? options.lastMeta.areas,
+		groups: options.response.groups ?? options.lastMeta.groups,
 		projects: options.response.projects ?? options.lastMeta.projects
 	};
 	options.setMeta(meta);
 	options.updateState((state) => ({
 		...state,
 		tasks: options.response.tasks ?? [],
-		areas: options.response.areas ?? state.areas,
+		groups: options.response.groups ?? state.groups,
 		projects: options.response.projects ?? state.projects,
 		todayCount:
 			options.response.scope === 'today' ? (options.response.tasks ?? []).length : state.todayCount,
@@ -272,7 +272,7 @@ export const applyTaskListResponse = (options: ApplyResponseOptions): void => {
  */
 export const applyTaskMetaCountsOnly = (options: ApplyResponseOptions): void => {
 	const meta = {
-		areas: options.response.areas ?? options.lastMeta.areas,
+		groups: options.response.groups ?? options.lastMeta.groups,
 		projects: options.response.projects ?? options.lastMeta.projects
 	};
 	options.setMeta(meta);
@@ -283,7 +283,7 @@ export const applyTaskMetaCountsOnly = (options: ApplyResponseOptions): void => 
 	);
 	options.updateState((state) => ({
 		...state,
-		areas: options.response.areas ?? state.areas,
+		groups: options.response.groups ?? state.groups,
 		projects: options.response.projects ?? state.projects,
 		todayCount:
 			options.response.scope === 'today' ? (options.response.tasks ?? []).length : state.todayCount,
@@ -312,14 +312,14 @@ export const filterTasksForSelection = (
 	if (selection.type === 'inbox') {
 		return normalized.filter((task) => task.status === 'inbox');
 	}
-	if (selection.type === 'area') {
-		const projectAreaById = new Map(
-			projects.map((project) => [project.id, project.areaId ?? null])
+	if (selection.type === 'group') {
+		const projectGroupById = new Map(
+			projects.map((project) => [project.id, project.groupId ?? null])
 		);
 		return normalized.filter((task) => {
-			if (task.areaId === selection.id) return true;
+			if (task.groupId === selection.id) return true;
 			if (!task.projectId) return false;
-			return projectAreaById.get(task.projectId) === selection.id;
+			return projectGroupById.get(task.projectId) === selection.id;
 		});
 	}
 	if (selection.type === 'project') {

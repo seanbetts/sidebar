@@ -1,4 +1,4 @@
-import type { Task, TaskArea, TaskProject } from '$lib/types/tasks';
+import type { Task, TaskGroup, TaskProject } from '$lib/types/tasks';
 
 export type TaskSection = {
 	id: string;
@@ -115,25 +115,25 @@ export const expandRepeatingTasks = (tasks: Task[]): Task[] => {
 
 export const buildTodaySections = (
 	tasks: Task[],
-	areas: TaskArea[],
+	groups: TaskGroup[],
 	projects: TaskProject[],
-	areaTitleById: Map<string, string>,
+	groupTitleById: Map<string, string>,
 	projectTitleById: Map<string, string>
 ): TaskSection[] => {
 	const sections: TaskSection[] = [];
 	const buckets = new Map<string, { title: string; tasks: Task[] }>();
 
-	areas.forEach((area) => {
-		buckets.set(`area:${area.id}`, { title: area.title, tasks: [] });
+	groups.forEach((group) => {
+		buckets.set(`group:${group.id}`, { title: group.title, tasks: [] });
 	});
 
 	tasks.forEach((task) => {
 		const project = task.projectId ? projects.find((item) => item.id === task.projectId) : null;
-		const areaId = task.areaId ?? project?.areaId ?? null;
-		if (areaId) {
-			const key = `area:${areaId}`;
+		const groupId = task.groupId ?? project?.groupId ?? null;
+		if (groupId) {
+			const key = `group:${groupId}`;
 			if (!buckets.has(key)) {
-				const title = areaTitleById.get(areaId) ?? 'Area';
+				const title = groupTitleById.get(groupId) ?? 'Group';
 				buckets.set(key, { title, tasks: [] });
 			}
 			buckets.get(key)?.tasks.push(task);
@@ -156,10 +156,10 @@ export const buildTodaySections = (
 		buckets.get('other')?.tasks.push(task);
 	});
 
-	areas.forEach((area) => {
-		const bucket = buckets.get(`area:${area.id}`);
+	groups.forEach((group) => {
+		const bucket = buckets.get(`group:${group.id}`);
 		if (bucket?.tasks.length) {
-			sections.push({ id: area.id, title: bucket.title, tasks: bucket.tasks });
+			sections.push({ id: group.id, title: bucket.title, tasks: bucket.tasks });
 		}
 	});
 
@@ -177,24 +177,24 @@ export const buildTodaySections = (
 	return sections;
 };
 
-export const buildSearchSections = (tasks: Task[], areas: TaskArea[]): TaskSection[] => {
+export const buildSearchSections = (tasks: Task[], groups: TaskGroup[]): TaskSection[] => {
 	const sections: TaskSection[] = [];
-	const tasksByArea = new Map<string, Task[]>();
+	const tasksByGroup = new Map<string, Task[]>();
 	const unassigned: Task[] = [];
 
-	areas.forEach((area) => tasksByArea.set(area.id, []));
+	groups.forEach((group) => tasksByGroup.set(group.id, []));
 	tasks.forEach((task) => {
-		if (task.areaId && tasksByArea.has(task.areaId)) {
-			tasksByArea.get(task.areaId)?.push(task);
+		if (task.groupId && tasksByGroup.has(task.groupId)) {
+			tasksByGroup.get(task.groupId)?.push(task);
 		} else {
 			unassigned.push(task);
 		}
 	});
 
-	areas.forEach((area) => {
-		const bucket = tasksByArea.get(area.id) ?? [];
+	groups.forEach((group) => {
+		const bucket = tasksByGroup.get(group.id) ?? [];
 		if (bucket.length) {
-			sections.push({ id: area.id, title: area.title, tasks: sortByDueDate(bucket) });
+			sections.push({ id: group.id, title: group.title, tasks: sortByDueDate(bucket) });
 		}
 	});
 
@@ -205,17 +205,17 @@ export const buildSearchSections = (tasks: Task[], areas: TaskArea[]): TaskSecti
 	return sections;
 };
 
-export const buildAreaSections = (
+export const buildGroupSections = (
 	tasks: Task[],
-	areaId: string,
-	areaTitle: string,
+	groupId: string,
+	groupTitle: string,
 	projects: TaskProject[]
 ): TaskSection[] => {
 	const sections: TaskSection[] = [];
-	const projectsInArea = projects.filter((project) => project.areaId === areaId);
-	const projectById = new Map(projectsInArea.map((project) => [project.id, project]));
+	const projectsInGroup = projects.filter((project) => project.groupId === groupId);
+	const projectById = new Map(projectsInGroup.map((project) => [project.id, project]));
 	const projectSections = new Map<string, Task[]>();
-	const areaTasks: Task[] = [];
+	const groupTasks: Task[] = [];
 
 	tasks.forEach((task) => {
 		if (task.projectId && projectById.has(task.projectId)) {
@@ -224,16 +224,16 @@ export const buildAreaSections = (
 			projectSections.set(task.projectId, bucket);
 			return;
 		}
-		if (task.areaId === areaId || task.projectId == null) {
-			areaTasks.push(task);
+		if (task.groupId === groupId || task.projectId == null) {
+			groupTasks.push(task);
 		}
 	});
 
-	if (areaTasks.length) {
-		sections.push({ id: 'area', title: areaTitle, tasks: areaTasks });
+	if (groupTasks.length) {
+		sections.push({ id: 'group', title: groupTitle, tasks: groupTasks });
 	}
 
-	projectsInArea
+	projectsInGroup
 		.sort((a, b) => a.title.localeCompare(b.title))
 		.forEach((project) => {
 			const bucket = projectSections.get(project.id);
@@ -327,35 +327,35 @@ export const sortByDueDate = (tasks: Task[]): Task[] => [...tasks].sort(compareB
 
 export const taskSubtitle = (
 	task: Task,
-	selectionType: 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search',
+	selectionType: 'inbox' | 'today' | 'upcoming' | 'group' | 'project' | 'search',
 	selectionLabel: string,
 	projectTitleById: Map<string, string>,
-	areaTitleById: Map<string, string>
+	groupTitleById: Map<string, string>
 ): string => {
 	const projectTitle = task.projectId ? projectTitleById.get(task.projectId) : '';
-	const areaTitle = task.areaId ? areaTitleById.get(task.areaId) : '';
+	const groupTitle = task.groupId ? groupTitleById.get(task.groupId) : '';
 	let base = '';
 	if (selectionType === 'project') {
 		base = projectTitle || selectionLabel;
 		return base;
 	}
-	if (selectionType === 'area') {
-		base = projectTitle || areaTitle || '';
+	if (selectionType === 'group') {
+		base = projectTitle || groupTitle || '';
 		return base;
 	}
 	if (selectionType === 'today' || selectionType === 'upcoming') {
-		base = projectTitle || areaTitle || '';
+		base = projectTitle || groupTitle || '';
 		return base;
 	}
 	if (selectionType === 'search') {
-		base = projectTitle || areaTitle || '';
+		base = projectTitle || groupTitle || '';
 		return base;
 	}
 	if (taskDeadline(task)) {
 		base = `Due ${taskDeadline(task)?.slice(0, 10)}`;
 		return base;
 	}
-	base = projectTitle || areaTitle || '';
+	base = projectTitle || groupTitle || '';
 	return base;
 };
 

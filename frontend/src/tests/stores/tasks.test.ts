@@ -9,7 +9,7 @@ const { tasksAPI } = vi.hoisted(() => ({
 		list: vi.fn(),
 		counts: vi.fn(),
 		search: vi.fn(),
-		createArea: vi.fn(),
+		createGroup: vi.fn(),
 		createProject: vi.fn()
 	}
 }));
@@ -26,7 +26,7 @@ const { taskSync } = vi.hoisted(() => ({
 		hydrateTaskCache: vi.fn().mockResolvedValue({
 			tasks: [],
 			projects: [],
-			areas: [],
+			groups: [],
 			lastSync: null
 		})
 	}
@@ -39,7 +39,7 @@ const { taskCache } = vi.hoisted(() => ({
 		loadTaskCacheSnapshot: vi.fn().mockResolvedValue({
 			tasks: [],
 			projects: [],
-			areas: [],
+			groups: [],
 			lastSync: null
 		})
 	}
@@ -64,7 +64,7 @@ describe('tasksStore', () => {
 		tasksAPI.list.mockResolvedValue({
 			scope: 'today',
 			tasks: [],
-			areas: [{ id: 'home', title: 'Home' }],
+			groups: [{ id: 'home', title: 'Home' }],
 			projects: []
 		});
 
@@ -82,27 +82,27 @@ describe('tasksStore', () => {
 		await tasksStore.createTask({ title: 'New task' });
 
 		const state = get(tasksStore);
-		expect(state.newTaskError).toBe('Select a project or area.');
+		expect(state.newTaskError).toBe('Select a project or group.');
 	});
 
-	it('creates task areas and refreshes data', async () => {
+	it('creates task groups and refreshes data', async () => {
 		tasksAPI.list.mockResolvedValue({
 			scope: 'today',
 			tasks: [],
-			areas: [],
+			groups: [],
 			projects: []
 		});
 		tasksAPI.counts.mockResolvedValue({
 			counts: { inbox: 0, today: 0, upcoming: 0 },
-			areas: [],
+			groups: [],
 			projects: []
 		});
-		tasksAPI.createArea.mockResolvedValue({ id: 'area-1', title: 'Work' });
+		tasksAPI.createGroup.mockResolvedValue({ id: 'group-1', title: 'Work' });
 
 		await tasksStore.load({ type: 'today' }, { force: true });
-		await tasksStore.createArea('Work');
+		await tasksStore.createGroup('Work');
 
-		expect(tasksAPI.createArea).toHaveBeenCalledWith('Work');
+		expect(tasksAPI.createGroup).toHaveBeenCalledWith('Work');
 		expect(tasksAPI.list).toHaveBeenCalledWith('today');
 		expect(tasksAPI.counts).toHaveBeenCalled();
 	});
@@ -111,25 +111,25 @@ describe('tasksStore', () => {
 		tasksAPI.list.mockResolvedValue({
 			scope: 'today',
 			tasks: [],
-			areas: [],
+			groups: [],
 			projects: []
 		});
 		tasksAPI.counts.mockResolvedValue({
 			counts: { inbox: 0, today: 0, upcoming: 0 },
-			areas: [],
+			groups: [],
 			projects: []
 		});
 		tasksAPI.createProject.mockResolvedValue({
 			id: 'project-1',
 			title: 'Launch',
-			areaId: 'area-1',
+			groupId: 'group-1',
 			status: 'active'
 		});
 
 		await tasksStore.load({ type: 'today' }, { force: true });
-		await tasksStore.createProject('Launch', 'area-1');
+		await tasksStore.createProject('Launch', 'group-1');
 
-		expect(tasksAPI.createProject).toHaveBeenCalledWith('Launch', 'area-1');
+		expect(tasksAPI.createProject).toHaveBeenCalledWith('Launch', 'group-1');
 		expect(tasksAPI.list).toHaveBeenCalledWith('today');
 		expect(tasksAPI.counts).toHaveBeenCalled();
 	});
@@ -137,7 +137,7 @@ describe('tasksStore', () => {
 	it('loads cached counts without calling the API', async () => {
 		cacheState.set('tasks.counts', {
 			counts: { inbox: 1, today: 2, upcoming: 3 },
-			areas: [],
+			groups: [],
 			projects: []
 		});
 
@@ -156,12 +156,12 @@ describe('tasksStore', () => {
 					id: 'task-9',
 					title: 'Cached',
 					status: 'inbox',
-					areaId: null,
+					groupId: null,
 					projectId: null
 				}
 			],
 			projects: [],
-			areas: [],
+			groups: [],
 			lastSync: null
 		});
 		tasksAPI.list.mockRejectedValue(new Error('Offline'));
@@ -176,13 +176,13 @@ describe('tasksStore', () => {
 	it('removes completed tasks and updates counts', async () => {
 		tasksAPI.list.mockResolvedValue({
 			scope: 'today',
-			tasks: [{ id: 'task-1', title: 'Task', status: 'open', areaId: null, projectId: null }],
-			areas: [],
+			tasks: [{ id: 'task-1', title: 'Task', status: 'open', groupId: null, projectId: null }],
+			groups: [],
 			projects: []
 		});
 		cacheState.set('tasks.counts', {
 			counts: { inbox: 0, today: 1, upcoming: 0 },
-			areas: [],
+			groups: [],
 			projects: []
 		});
 
@@ -196,12 +196,12 @@ describe('tasksStore', () => {
 
 	it('renames tasks optimistically', async () => {
 		cacheState.set('tasks.tasks.today', [
-			{ id: 'task-2', title: 'Old', status: 'open', areaId: null, projectId: null }
+			{ id: 'task-2', title: 'Old', status: 'open', groupId: null, projectId: null }
 		]);
 		tasksAPI.list.mockResolvedValue({
 			scope: 'today',
-			tasks: [{ id: 'task-2', title: 'Old', status: 'open', areaId: null, projectId: null }],
-			areas: [],
+			tasks: [{ id: 'task-2', title: 'Old', status: 'open', groupId: null, projectId: null }],
+			groups: [],
 			projects: []
 		});
 		taskSync.enqueueTaskOperation.mockResolvedValue(null);
@@ -219,23 +219,23 @@ describe('tasksStore', () => {
 	});
 
 	it('moves tasks between today and upcoming caches', async () => {
-		const task = { id: 'task-3', title: 'Task', status: 'open', areaId: null, projectId: null };
+		const task = { id: 'task-3', title: 'Task', status: 'open', groupId: null, projectId: null };
 		cacheState.set('tasks.tasks.today', [task]);
 		cacheState.set('tasks.tasks.upcoming', []);
 		cacheState.set('tasks.counts', {
 			counts: { inbox: 0, today: 1, upcoming: 0 },
-			areas: [],
+			groups: [],
 			projects: []
 		});
 		tasksAPI.list.mockResolvedValue({
 			scope: 'today',
 			tasks: [],
-			areas: [],
+			groups: [],
 			projects: []
 		});
 		tasksAPI.counts.mockResolvedValue({
 			counts: { inbox: 0, today: 0, upcoming: 1 },
-			areas: [],
+			groups: [],
 			projects: []
 		});
 
@@ -251,9 +251,9 @@ describe('tasksStore', () => {
 		tasksAPI.list.mockResolvedValue({
 			scope: 'today',
 			tasks: [
-				{ id: 'task-4', title: 'Note', status: 'open', notes: '', areaId: null, projectId: null }
+				{ id: 'task-4', title: 'Note', status: 'open', notes: '', groupId: null, projectId: null }
 			],
-			areas: [],
+			groups: [],
 			projects: []
 		});
 		taskSync.enqueueTaskOperation.mockResolvedValue(null);
@@ -268,8 +268,8 @@ describe('tasksStore', () => {
 	it('trashes tasks and updates counts', async () => {
 		tasksAPI.list.mockResolvedValue({
 			scope: 'today',
-			tasks: [{ id: 'task-5', title: 'Trash', status: 'open', areaId: null, projectId: null }],
-			areas: [],
+			tasks: [{ id: 'task-5', title: 'Trash', status: 'open', groupId: null, projectId: null }],
+			groups: [],
 			projects: []
 		});
 		taskSync.enqueueTaskOperation.mockResolvedValue(null);
@@ -284,7 +284,7 @@ describe('tasksStore', () => {
 
 	it('debounces search requests', async () => {
 		vi.useFakeTimers();
-		tasksAPI.search.mockResolvedValue({ scope: 'search', tasks: [], areas: [], projects: [] });
+		tasksAPI.search.mockResolvedValue({ scope: 'search', tasks: [], groups: [], projects: [] });
 
 		tasksStore.search('First');
 		tasksStore.search('Second');

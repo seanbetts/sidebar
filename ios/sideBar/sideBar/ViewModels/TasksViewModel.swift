@@ -4,7 +4,7 @@ import Combine
 @MainActor
 public final class TasksViewModel: ObservableObject {
     @Published public private(set) var tasks: [TaskItem] = []
-    @Published public private(set) var areas: [TaskArea] = []
+    @Published public private(set) var groups: [TaskGroup] = []
     @Published public private(set) var projects: [TaskProject] = []
     @Published public private(set) var counts: TaskCountsResponse? = nil
     @Published public private(set) var isLoading: Bool = false
@@ -31,13 +31,13 @@ public final class TasksViewModel: ObservableObject {
 
         let sortedTasks: [TaskItem]
         switch selection {
-        case .area(let areaId):
-            let projectIds = Set(projects.filter { $0.areaId == areaId }.map { $0.id })
+        case .group(let groupId):
+            let projectIds = Set(projects.filter { $0.groupId == groupId }.map { $0.id })
             let scoped = expanded.filter { task in
                 if let projectId = task.projectId {
                     return projectIds.isEmpty || projectIds.contains(projectId)
                 }
-                return task.areaId == areaId || projectIds.isEmpty
+                return task.groupId == groupId || projectIds.isEmpty
             }
             sortedTasks = TasksUtils.sortByDueDate(scoped)
         case .project(let projectId):
@@ -50,7 +50,7 @@ public final class TasksViewModel: ObservableObject {
         }
 
         let projectTitleById = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.title) })
-        let areaTitleById = Dictionary(uniqueKeysWithValues: areas.map { ($0.id, $0.title) })
+        let groupTitleById = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0.title) })
 
         let selectionLabel: String
         let titleIcon: String
@@ -62,9 +62,9 @@ public final class TasksViewModel: ObservableObject {
             titleIcon = "calendar"
             sections = TasksUtils.buildTodaySections(
                 tasks: sortedTasks,
-                areas: areas,
+                groups: groups,
                 projects: projects,
-                areaTitleById: areaTitleById,
+                groupTitleById: groupTitleById,
                 projectTitleById: projectTitleById
             )
         case .upcoming:
@@ -75,14 +75,14 @@ public final class TasksViewModel: ObservableObject {
             selectionLabel = "Inbox"
             titleIcon = "tray"
             sections = sortedTasks.isEmpty ? [] : [TaskSection(id: "all", title: "", tasks: sortedTasks)]
-        case .area(let id):
-            let title = areas.first(where: { $0.id == id })?.title ?? "Group"
+        case .group(let id):
+            let title = groups.first(where: { $0.id == id })?.title ?? "Group"
             selectionLabel = title
             titleIcon = "square.3.layers.3d"
-            sections = TasksUtils.buildAreaSections(
+            sections = TasksUtils.buildGroupSections(
                 tasks: sortedTasks,
-                areaId: id,
-                areaTitle: title,
+                groupId: id,
+                groupTitle: title,
                 projects: projects
             )
         case .project(let id):
@@ -92,7 +92,7 @@ public final class TasksViewModel: ObservableObject {
         case .search(let query):
             selectionLabel = query.isEmpty ? "Search" : "Search: \(query)"
             titleIcon = "magnifyingglass"
-            sections = TasksUtils.buildSearchSections(tasks: sortedTasks, areas: areas)
+            sections = TasksUtils.buildSearchSections(tasks: sortedTasks, groups: groups)
         }
 
         let totalCount = sections.reduce(0) { result, section in
@@ -106,7 +106,7 @@ public final class TasksViewModel: ObservableObject {
             totalCount: totalCount,
             selection: selection,
             projectTitleById: projectTitleById,
-            areaTitleById: areaTitleById
+            groupTitleById: groupTitleById
         )
     }
 
@@ -121,9 +121,9 @@ public final class TasksViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        store.$areas
-            .sink { [weak self] areas in
-                self?.areas = areas
+        store.$groups
+            .sink { [weak self] groups in
+                self?.groups = groups
             }
             .store(in: &cancellables)
 
@@ -202,14 +202,14 @@ public final class TasksViewModel: ObservableObject {
         var listName: String? = nil
 
         switch baseSelection {
-        case .area(let id):
+        case .group(let id):
             listId = id
-            listName = areas.first(where: { $0.id == id })?.title
+            listName = groups.first(where: { $0.id == id })?.title
         case .project(let id):
             listId = id
             listName = projects.first(where: { $0.id == id })?.title
         case .today, .upcoming, .inbox, .search:
-            if let home = areas.first(where: { $0.title.lowercased() == "home" }) {
+            if let home = groups.first(where: { $0.title.lowercased() == "home" }) {
                 listId = home.id
                 listName = home.title
             }
@@ -434,5 +434,5 @@ public struct TasksViewState: Equatable {
     public let totalCount: Int
     public let selection: TaskSelection
     public let projectTitleById: [String: String]
-    public let areaTitleById: [String: String]
+    public let groupTitleById: [String: String]
 }

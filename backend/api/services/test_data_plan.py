@@ -56,8 +56,8 @@ class SeedMemory:
 
 
 @dataclass(frozen=True)
-class SeedTaskArea:
-    """Seed task area payload."""
+class SeedTaskGroup:
+    """Seed task group payload."""
 
     key: str
     title: str
@@ -69,7 +69,7 @@ class SeedTaskProject:
 
     key: str
     title: str
-    area_key: str | None = None
+    group_key: str | None = None
     status: str = "active"
     notes: str | None = None
 
@@ -81,7 +81,7 @@ class SeedTask:
     title: str
     status: str = "inbox"
     project_key: str | None = None
-    area_key: str | None = None
+    group_key: str | None = None
     notes: str | None = None
     deadline: date | None = None
     recurrence_rule: dict[str, Any] | None = None
@@ -120,7 +120,7 @@ class SeedPlan:
     websites: list[SeedWebsite]
     conversations: list[SeedConversation]
     memories: list[SeedMemory]
-    task_areas: list[SeedTaskArea]
+    task_groups: list[SeedTaskGroup]
     task_projects: list[SeedTaskProject]
     tasks: list[SeedTask]
     settings: SeedSettings
@@ -306,28 +306,28 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         ),
     ]
 
-    task_areas = [
-        SeedTaskArea(key="work", title="Work"),
-        SeedTaskArea(key="personal", title="Personal"),
+    task_groups = [
+        SeedTaskGroup(key="work", title="Work"),
+        SeedTaskGroup(key="personal", title="Personal"),
     ]
 
     task_projects = [
         SeedTaskProject(
             key="sidebar_ios",
             title="sideBar iOS",
-            area_key="work",
+            group_key="work",
             notes="Ship the beta experience.",
         ),
         SeedTaskProject(
             key="launch",
             title="Beta launch",
-            area_key="work",
+            group_key="work",
             notes="Coordinate TestFlight rollout.",
         ),
         SeedTaskProject(
             key="home",
             title="Home admin",
-            area_key="personal",
+            group_key="personal",
             notes="Keep weekly maintenance tasks.",
         ),
     ]
@@ -340,14 +340,14 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
             title="Review onboarding checklist",
             status="inbox",
             project_key="launch",
-            area_key="work",
+            group_key="work",
             notes="Confirm beta testers list.",
         ),
         SeedTask(
             title="Draft beta release notes",
             status="inbox",
             project_key="launch",
-            area_key="work",
+            group_key="work",
             deadline=tomorrow,
             notes="Include iOS and web highlights.",
         ),
@@ -355,14 +355,14 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
             title="Refine chat input layout",
             status="inbox",
             project_key="sidebar_ios",
-            area_key="work",
+            group_key="work",
             deadline=today,
             notes="Check keyboard behavior on iPhone.",
         ),
         SeedTask(
             title="Daily inbox review",
             status="inbox",
-            area_key="personal",
+            group_key="personal",
             deadline=today,
             recurrence_rule=daily_rule,
             repeating=True,
@@ -371,7 +371,7 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         SeedTask(
             title="Weekly planning session",
             status="inbox",
-            area_key="personal",
+            group_key="personal",
             deadline=next_week,
             recurrence_rule=weekly_rule,
             repeating=True,
@@ -404,7 +404,7 @@ def build_seed_plan(seed_tag: str, *, now: datetime | None = None) -> SeedPlan:
         websites=websites,
         conversations=conversations,
         memories=memories,
-        task_areas=task_areas,
+        task_groups=task_groups,
         task_projects=task_projects,
         tasks=tasks,
         settings=settings,

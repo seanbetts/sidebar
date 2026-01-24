@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime, timedelta
 from api.config import settings
 from api.db.dependencies import DEFAULT_USER_ID
 from api.models.task import Task
-from api.models.task_area import TaskArea
+from api.models.task_group import TaskGroup
 from api.models.task_project import TaskProject
 
 
@@ -12,7 +12,7 @@ def _auth_headers() -> dict[str, str]:
 
 
 def test_tasks_list_today(test_client, test_db):
-    area = TaskArea(
+    group = TaskGroup(
         user_id=DEFAULT_USER_ID,
         title="Work",
         created_at=datetime.now(UTC),
@@ -21,14 +21,14 @@ def test_tasks_list_today(test_client, test_db):
     project = TaskProject(
         user_id=DEFAULT_USER_ID,
         title="Alpha",
-        area_id=area.id,
+        group_id=group.id,
         status="active",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
-    test_db.add(area)
+    test_db.add(group)
     test_db.flush()
-    project.area_id = area.id
+    project.group_id = group.id
     test_db.add(project)
 
     today = date.today()
@@ -57,7 +57,7 @@ def test_tasks_list_today(test_client, test_db):
     titles = {task["title"] for task in payload.get("tasks", [])}
     assert "Today task" in titles
     assert "Inbox task" not in titles
-    assert payload.get("areas")
+    assert payload.get("groups")
     assert payload.get("projects")
 
 
@@ -120,19 +120,19 @@ def test_tasks_counts(test_client, test_db):
     assert payload["counts"]["upcoming"] == 1
 
 
-def test_tasks_area_and_project_payloads(test_client, test_db):
-    area = TaskArea(
+def test_tasks_group_and_project_payloads(test_client, test_db):
+    group = TaskGroup(
         user_id=DEFAULT_USER_ID,
         title="Home",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
-    test_db.add(area)
+    test_db.add(group)
     test_db.flush()
     project = TaskProject(
         user_id=DEFAULT_USER_ID,
         title="Household",
-        area_id=area.id,
+        group_id=group.id,
         status="active",
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -148,15 +148,15 @@ def test_tasks_area_and_project_payloads(test_client, test_db):
     test_db.add_all([project, task])
     test_db.commit()
 
-    area_response = test_client.get(
-        f"/api/v1/tasks/areas/{area.id}/tasks", headers=_auth_headers()
+    group_response = test_client.get(
+        f"/api/v1/tasks/groups/{group.id}/tasks", headers=_auth_headers()
     )
-    assert area_response.status_code == 200
-    area_payload = area_response.json()
-    assert area_payload["scope"] == "area"
-    assert area_payload["areas"]
-    assert area_payload["projects"]
-    assert any(item["title"] == "Vacuum" for item in area_payload["tasks"])
+    assert group_response.status_code == 200
+    group_payload = group_response.json()
+    assert group_payload["scope"] == "group"
+    assert group_payload["groups"]
+    assert group_payload["projects"]
+    assert any(item["title"] == "Vacuum" for item in group_payload["tasks"])
 
     project_response = test_client.get(
         f"/api/v1/tasks/projects/{project.id}/tasks", headers=_auth_headers()
@@ -164,7 +164,7 @@ def test_tasks_area_and_project_payloads(test_client, test_db):
     assert project_response.status_code == 200
     project_payload = project_response.json()
     assert project_payload["scope"] == "project"
-    assert project_payload["areas"]
+    assert project_payload["groups"]
     assert project_payload["projects"]
     assert any(item["title"] == "Vacuum" for item in project_payload["tasks"])
 
@@ -211,22 +211,22 @@ def test_tasks_sync_returns_updates(test_client, test_db):
     assert payload["serverUpdatedSince"]
 
 
-def test_tasks_create_area_and_project(test_client, test_db):
+def test_tasks_create_group_and_project(test_client, test_db):
     response = test_client.post(
-        "/api/v1/tasks/areas",
+        "/api/v1/tasks/groups",
         json={"title": "Personal"},
         headers=_auth_headers(),
     )
     assert response.status_code == 200
-    area_payload = response.json()
-    assert area_payload["title"] == "Personal"
+    group_payload = response.json()
+    assert group_payload["title"] == "Personal"
 
     project_response = test_client.post(
         "/api/v1/tasks/projects",
-        json={"title": "Habits", "areaId": area_payload["id"]},
+        json={"title": "Habits", "groupId": group_payload["id"]},
         headers=_auth_headers(),
     )
     assert project_response.status_code == 200
     project_payload = project_response.json()
     assert project_payload["title"] == "Habits"
-    assert project_payload["areaId"] == area_payload["id"]
+    assert project_payload["groupId"] == group_payload["id"]

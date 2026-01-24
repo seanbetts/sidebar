@@ -5,7 +5,7 @@ export type Task = {
 	deadline?: string | null;
 	notes?: string | null;
 	projectId?: string | null;
-	areaId?: string | null;
+	groupId?: string | null;
 	repeating?: boolean;
 	repeatTemplate?: boolean;
 	recurrenceRule?: RecurrenceRule | null;
@@ -26,19 +26,19 @@ export type TaskSelection =
 	| { type: 'inbox' }
 	| { type: 'today' }
 	| { type: 'upcoming' }
-	| { type: 'area'; id: string }
+	| { type: 'group'; id: string }
 	| { type: 'project'; id: string }
 	| { type: 'search'; query: string };
 
 export type TaskProject = {
 	id: string;
 	title: string;
-	areaId?: string | null;
+	groupId?: string | null;
 	status: string;
 	updatedAt?: string | null;
 };
 
-export type TaskArea = {
+export type TaskGroup = {
 	id: string;
 	title: string;
 	updatedAt?: string | null;
@@ -49,7 +49,7 @@ export type TaskListResponse = {
 	generatedAt?: string;
 	tasks: Task[];
 	projects?: TaskProject[];
-	areas?: TaskArea[];
+	groups?: TaskGroup[];
 };
 
 export type TaskCountsResponse = {
@@ -60,7 +60,7 @@ export type TaskCountsResponse = {
 		upcoming: number;
 	};
 	projects: Array<{ id: string; count: number }>;
-	areas: Array<{ id: string; count: number }>;
+	groups: Array<{ id: string; count: number }>;
 };
 
 export type TaskSyncOperation = {
@@ -82,7 +82,7 @@ export type TaskSyncConflict = {
 export type TaskSyncUpdates = {
 	tasks: Task[];
 	projects: TaskProject[];
-	areas: TaskArea[];
+	groups: TaskGroup[];
 };
 
 export type TaskSyncResponse = {

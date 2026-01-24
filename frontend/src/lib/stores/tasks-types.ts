@@ -1,4 +1,4 @@
-import type { Task, TaskArea, TaskProject, TaskSelection } from '$lib/types/tasks';
+import type { Task, TaskGroup, TaskProject, TaskSelection } from '$lib/types/tasks';
 
 export type TaskNewTaskDraft = {
 	title: string;
@@ -7,14 +7,14 @@ export type TaskNewTaskDraft = {
 	selection: TaskSelection;
 	listId?: string;
 	listName?: string;
-	areaId?: string;
+	groupId?: string;
 	projectId?: string;
 };
 
 export type TasksState = {
 	selection: TaskSelection;
 	tasks: Task[];
-	areas: TaskArea[];
+	groups: TaskGroup[];
 	projects: TaskProject[];
 	todayCount: number;
 	counts: Record<string, number>;

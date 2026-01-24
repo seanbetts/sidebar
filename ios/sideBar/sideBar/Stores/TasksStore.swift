@@ -7,7 +7,7 @@ import Combine
 public final class TasksStore: ObservableObject {
     @Published public private(set) var selection: TaskSelection = .today
     @Published public private(set) var tasks: [TaskItem] = []
-    @Published public private(set) var areas: [TaskArea] = []
+    @Published public private(set) var groups: [TaskGroup] = []
     @Published public private(set) var projects: [TaskProject] = []
     @Published public private(set) var counts: TaskCountsResponse? = nil
     @Published public private(set) var isLoading: Bool = false
@@ -24,7 +24,7 @@ public final class TasksStore: ObservableObject {
 
     public func load(selection: TaskSelection, force: Bool = false) async {
         let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
-        let cached: TaskListResponse? = force ? nil : cache.get(key: cacheKey)
+        let cached: TaskListResponse? = cache.get(key: cacheKey)
         self.selection = selection
         errorMessage = nil
         if selection.isSearch {
@@ -49,7 +49,7 @@ public final class TasksStore: ObservableObject {
 
     public func loadCounts(force: Bool = false) async {
         errorMessage = nil
-        if !force, let cached: TaskCountsResponse = cache.get(key: CacheKeys.tasksCounts) {
+        if let cached: TaskCountsResponse = cache.get(key: CacheKeys.tasksCounts) {
             counts = cached
             Task { [weak self] in
                 await self?.refreshCounts()
@@ -62,7 +62,7 @@ public final class TasksStore: ObservableObject {
     public func reset() {
         selection = .today
         tasks = []
-        areas = []
+        groups = []
         projects = []
         counts = nil
         isLoading = false
@@ -95,8 +95,8 @@ public final class TasksStore: ObservableObject {
         switch selection {
         case .search(let query):
             return try await api.search(query: query)
-        case .area(let id):
-            return try await api.areaTasks(areaId: id)
+        case .group(let id):
+            return try await api.groupTasks(groupId: id)
         case .project(let id):
             return try await api.projectTasks(projectId: id)
         case .inbox, .today, .upcoming:
@@ -109,8 +109,8 @@ public final class TasksStore: ObservableObject {
 
     private func apply(list: TaskListResponse, persist: Bool) {
         tasks = list.tasks
-        if let areas = list.areas {
-            self.areas = areas
+        if let groups = list.groups {
+            self.groups = groups
         }
         if let projects = list.projects {
             self.projects = projects

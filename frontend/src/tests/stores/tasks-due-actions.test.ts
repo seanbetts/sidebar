@@ -9,7 +9,7 @@ const createMockTask = (overrides: Partial<Task> = {}): Task => ({
 	deadline: '2026-01-23',
 	notes: null,
 	projectId: null,
-	areaId: null,
+	groupId: null,
 	repeating: false,
 	repeatTemplate: false,
 	recurrenceRule: null,
@@ -323,13 +323,13 @@ describe('tasks-due-actions', () => {
 		it('reloads current selection and both today/upcoming', async () => {
 			mockDeps._setState({
 				...mockDeps._getState(),
-				selection: { type: 'area', areaId: 'area-1' }
+				selection: { type: 'group', id: 'group-1' }
 			});
 
 			await actions.setDueDate('task-1', '2026-01-25');
 
 			expect(mockDeps.loadSelection).toHaveBeenCalledWith(
-				{ type: 'area', areaId: 'area-1' },
+				{ type: 'group', id: 'group-1' },
 				expect.objectContaining({ force: true })
 			);
 			expect(mockDeps.loadSelection).toHaveBeenCalledWith(

@@ -19,6 +19,7 @@ from api.services.tools.execution_handlers import (
 SKILLS_REQUIRING_USER_ID = {
     "fs",
     "notes",
+    "tasks",
     "web-save",
     "audio-transcribe",
     "youtube-transcribe",

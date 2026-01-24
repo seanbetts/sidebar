@@ -32,15 +32,15 @@
 	export let isAddingYoutube = false;
 	export let confirmAddYouTube: () => void | Promise<void>;
 
-	export let isNewTaskAreaDialogOpen = false;
-	export let newTaskAreaName = '';
-	export let isCreatingTaskArea = false;
-	export let createTaskAreaFromDialog: () => void | Promise<void>;
+	export let isNewTaskGroupDialogOpen = false;
+	export let newTaskGroupName = '';
+	export let isCreatingTaskGroup = false;
+	export let createTaskGroupFromDialog: () => void | Promise<void>;
 
 	export let isNewTaskProjectDialogOpen = false;
 	export let newTaskProjectName = '';
-	export let newTaskProjectAreaId = '';
-	export let taskAreas: Array<{ id: string; title: string }> = [];
+	export let newTaskProjectGroupId = '';
+	export let taskGroups: Array<{ id: string; title: string }> = [];
 	export let isCreatingTaskProject = false;
 	export let createTaskProjectFromDialog: () => void | Promise<void>;
 
@@ -99,24 +99,24 @@
 />
 
 <TextInputDialog
-	bind:open={isNewTaskAreaDialogOpen}
-	title="New area"
-	description="Add a new area to group your tasks."
-	placeholder="Area name"
-	bind:value={newTaskAreaName}
-	confirmLabel="Create area"
+	bind:open={isNewTaskGroupDialogOpen}
+	title="New group"
+	description="Add a new group to organize your tasks."
+	placeholder="Group name"
+	bind:value={newTaskGroupName}
+	confirmLabel="Create group"
 	cancelLabel="Cancel"
 	busyLabel="Creating..."
-	isBusy={isCreatingTaskArea}
-	onConfirm={createTaskAreaFromDialog}
-	onCancel={() => (isNewTaskAreaDialogOpen = false)}
+	isBusy={isCreatingTaskGroup}
+	onConfirm={createTaskGroupFromDialog}
+	onCancel={() => (isNewTaskGroupDialogOpen = false)}
 />
 
 <NewTaskProjectDialog
 	bind:open={isNewTaskProjectDialogOpen}
 	bind:value={newTaskProjectName}
-	bind:areaId={newTaskProjectAreaId}
-	areas={taskAreas}
+	bind:groupId={newTaskProjectGroupId}
+	groups={taskGroups}
 	isBusy={isCreatingTaskProject}
 	onConfirm={createTaskProjectFromDialog}
 	onCancel={() => (isNewTaskProjectDialogOpen = false)}

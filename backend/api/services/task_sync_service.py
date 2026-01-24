@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from api.exceptions import BadRequestError
 from api.models.task import Task
-from api.models.task_area import TaskArea
+from api.models.task_group import TaskGroup
 from api.models.task_operation_log import TaskOperationLog
 from api.models.task_project import TaskProject
 from api.services.recurrence_service import RecurrenceService
@@ -48,7 +48,7 @@ class SyncResult:
     conflicts: list[dict[str, Any]]
     updated_tasks: list[Task]
     updated_projects: list[TaskProject]
-    updated_areas: list[TaskArea]
+    updated_groups: list[TaskGroup]
     server_updated_since: datetime
 
 
@@ -84,13 +84,13 @@ class TaskSyncService:
         outcome = TaskSyncService._apply_operations(
             db, user_id, operations, check_conflicts=True
         )
-        updated_tasks, updated_projects, updated_areas = (
+        updated_tasks, updated_projects, updated_groups = (
             TaskSyncService.list_updates_since(db, user_id, last_sync)
         )
         server_updated_since = TaskSyncService._max_updated_at(
             updated_tasks,
             updated_projects,
-            updated_areas,
+            updated_groups,
             outcome.tasks,
             outcome.next_tasks,
         )
@@ -101,32 +101,32 @@ class TaskSyncService:
             conflicts=outcome.conflicts,
             updated_tasks=updated_tasks,
             updated_projects=updated_projects,
-            updated_areas=updated_areas,
+            updated_groups=updated_groups,
             server_updated_since=server_updated_since,
         )
 
     @staticmethod
     def list_updates_since(
         db: Session, user_id: str, last_sync: datetime | None
-    ) -> tuple[list[Task], list[TaskProject], list[TaskArea]]:
+    ) -> tuple[list[Task], list[TaskProject], list[TaskGroup]]:
         """List task data updated since the provided timestamp."""
         tasks_query = db.query(Task).filter(Task.user_id == user_id)
         projects_query = db.query(TaskProject).filter(TaskProject.user_id == user_id)
-        areas_query = db.query(TaskArea).filter(TaskArea.user_id == user_id)
+        groups_query = db.query(TaskGroup).filter(TaskGroup.user_id == user_id)
 
         if last_sync is None:
             tasks_query = tasks_query.filter(Task.deleted_at.is_(None))
             projects_query = projects_query.filter(TaskProject.deleted_at.is_(None))
-            areas_query = areas_query.filter(TaskArea.deleted_at.is_(None))
+            groups_query = groups_query.filter(TaskGroup.deleted_at.is_(None))
         else:
             tasks_query = tasks_query.filter(Task.updated_at >= last_sync)
             projects_query = projects_query.filter(TaskProject.updated_at >= last_sync)
-            areas_query = areas_query.filter(TaskArea.updated_at >= last_sync)
+            groups_query = groups_query.filter(TaskGroup.updated_at >= last_sync)
 
         tasks = tasks_query.order_by(Task.updated_at.asc()).all()
         projects = projects_query.order_by(TaskProject.updated_at.asc()).all()
-        areas = areas_query.order_by(TaskArea.updated_at.asc()).all()
-        return tasks, projects, areas
+        groups = groups_query.order_by(TaskGroup.updated_at.asc()).all()
+        return tasks, projects, groups
 
     @staticmethod
     def _apply_operations(
@@ -317,7 +317,7 @@ class TaskSyncService:
             "deadline": deadline.isoformat() if deadline else None,
             "notes": task.notes,
             "projectId": str(task.project_id) if task.project_id else None,
-            "areaId": str(task.area_id) if task.area_id else None,
+            "groupId": str(task.group_id) if task.group_id else None,
             "repeating": task.repeating,
             "repeatTemplate": task.repeat_template,
             "recurrenceRule": task.recurrence_rule,
@@ -350,12 +350,12 @@ class TaskSyncService:
             if list_id
             else None
         )
-        area = (
-            db.query(TaskArea)
+        group = (
+            db.query(TaskGroup)
             .filter(
-                TaskArea.id == parse_optional_uuid(list_id, "task area", "id"),
-                TaskArea.user_id == user_id,
-                TaskArea.deleted_at.is_(None),
+                TaskGroup.id == parse_optional_uuid(list_id, "task group", "id"),
+                TaskGroup.user_id == user_id,
+                TaskGroup.deleted_at.is_(None),
             )
             .one_or_none()
             if list_id and not project
@@ -369,7 +369,7 @@ class TaskSyncService:
             notes=operation.get("notes"),
             deadline=due_date,
             project_id=str(project.id) if project else None,
-            area_id=str(area.id) if area else None,
+            group_id=str(group.id) if group else None,
         )
 
     @staticmethod
@@ -386,12 +386,12 @@ class TaskSyncService:
             if list_id
             else None
         )
-        area = (
-            db.query(TaskArea)
+        group = (
+            db.query(TaskGroup)
             .filter(
-                TaskArea.id == parse_optional_uuid(list_id, "task area", "id"),
-                TaskArea.user_id == user_id,
-                TaskArea.deleted_at.is_(None),
+                TaskGroup.id == parse_optional_uuid(list_id, "task group", "id"),
+                TaskGroup.user_id == user_id,
+                TaskGroup.deleted_at.is_(None),
             )
             .one_or_none()
             if list_id and not project
@@ -402,7 +402,7 @@ class TaskSyncService:
             user_id,
             operation["id"],
             project_id=str(project.id) if project else None,
-            area_id=str(area.id) if area else None,
+            group_id=str(group.id) if group else None,
         )
 
     @staticmethod

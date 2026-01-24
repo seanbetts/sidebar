@@ -28,7 +28,7 @@ def _task_payload(task) -> dict:
         "deadline": deadline.isoformat() if deadline else None,
         "notes": task.notes,
         "projectId": str(task.project_id) if task.project_id else None,
-        "areaId": str(task.area_id) if task.area_id else None,
+        "groupId": str(task.group_id) if task.group_id else None,
         "repeating": task.repeating,
         "repeatTemplate": task.repeat_template,
         "recurrenceRule": task.recurrence_rule,
@@ -41,17 +41,17 @@ def _project_payload(project) -> dict:
     return {
         "id": str(project.id),
         "title": project.title,
-        "areaId": str(project.area_id) if project.area_id else None,
+        "groupId": str(project.group_id) if project.group_id else None,
         "status": project.status,
         "updatedAt": project.updated_at.isoformat() if project.updated_at else None,
     }
 
 
-def _area_payload(area) -> dict:
+def _group_payload(group) -> dict:
     return {
-        "id": str(area.id),
-        "title": area.title,
-        "updatedAt": area.updated_at.isoformat() if area.updated_at else None,
+        "id": str(group.id),
+        "title": group.title,
+        "updatedAt": group.updated_at.isoformat() if group.updated_at else None,
     }
 
 
@@ -71,10 +71,10 @@ def _project_sync_payload(project) -> dict:
     return payload
 
 
-def _area_sync_payload(area) -> dict:
-    payload = _area_payload(area)
+def _group_sync_payload(group) -> dict:
+    payload = _group_payload(group)
     payload["deletedAt"] = (
-        area.deleted_at.isoformat() if getattr(area, "deleted_at", None) else None
+        group.deleted_at.isoformat() if getattr(group, "deleted_at", None) else None
     )
     return payload
 
@@ -83,15 +83,17 @@ def _update_snapshot_background(user_id: str, today_payload: dict) -> None:
     with SessionLocal() as db:
         set_session_user_id(db, user_id)
         try:
-            upcoming_tasks, projects, areas = TaskService.list_tasks_by_scope(
+            upcoming_tasks, projects, groups = TaskService.list_tasks_by_scope(
                 db, user_id, "upcoming"
             )
             upcoming_payload = [_task_payload(task) for task in upcoming_tasks]
+            completed_tasks = TaskService.list_completed_today(db, user_id)
+            completed_payload = [_task_payload(task) for task in completed_tasks]
             snapshot = TasksSnapshotService.build_snapshot(
                 today_tasks=today_payload.get("tasks", []),
                 tomorrow_tasks=TasksSnapshotService.filter_tomorrow(upcoming_payload),
-                completed_today=[],
-                areas=[_area_payload(area) for area in areas],
+                completed_today=completed_payload,
+                groups=[_group_payload(group) for group in groups],
                 projects=[_project_payload(project) for project in projects],
             )
             UserSettingsService.update_tasks_snapshot(db, user_id, snapshot)
@@ -109,13 +111,13 @@ async def get_tasks_list(
 ):
     """Fetch a task list for the requested scope."""
     set_session_user_id(db, user_id)
-    tasks, projects, areas = TaskService.list_tasks_by_scope(db, user_id, scope)
+    tasks, projects, groups = TaskService.list_tasks_by_scope(db, user_id, scope)
     response = {
         "scope": scope,
         "generatedAt": datetime.now(UTC).isoformat(),
         "tasks": [_task_payload(task) for task in tasks],
         "projects": [_project_payload(project) for project in projects],
-        "areas": [_area_payload(area) for area in areas],
+        "groups": [_group_payload(group) for group in groups],
     }
     if scope == "today":
         background_tasks.add_task(_update_snapshot_background, user_id, response)
@@ -185,27 +187,27 @@ async def sync_tasks(
             "projects": [
                 _project_sync_payload(project) for project in result.updated_projects
             ],
-            "areas": [_area_sync_payload(area) for area in result.updated_areas],
+            "groups": [_group_sync_payload(group) for group in result.updated_groups],
         },
         "serverUpdatedSince": result.server_updated_since.isoformat(),
     }
 
 
-@router.post("/areas")
-async def create_task_area(
+@router.post("/groups")
+async def create_task_group(
     request: dict,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """Create a task area."""
+    """Create a task group."""
     title = str(request.get("title") or "").strip()
     if not title:
         raise BadRequestError("title required")
     set_session_user_id(db, user_id)
-    area = TaskService.create_task_area(db, user_id, title)
+    group = TaskService.create_task_group(db, user_id, title)
     db.commit()
-    return _area_payload(area)
+    return _group_payload(group)
 
 
 @router.post("/projects")
@@ -219,9 +221,9 @@ async def create_task_project(
     title = str(request.get("title") or "").strip()
     if not title:
         raise BadRequestError("title required")
-    area_id = request.get("areaId")
+    group_id = request.get("groupId")
     set_session_user_id(db, user_id)
-    project = TaskService.create_task_project(db, user_id, title, area_id=area_id)
+    project = TaskService.create_task_project(db, user_id, title, group_id=group_id)
     db.commit()
     return _project_payload(project)
 
@@ -237,34 +239,34 @@ async def get_project_tasks(
     set_session_user_id(db, user_id)
     tasks = TaskService.list_tasks_by_project(db, user_id, project_id)
     projects = TaskService.list_task_projects(db, user_id)
-    areas = TaskService.list_task_areas(db, user_id)
+    groups = TaskService.list_task_groups(db, user_id)
     return {
         "scope": "project",
         "generatedAt": datetime.now(UTC).isoformat(),
         "tasks": [_task_payload(task) for task in tasks],
         "projects": [_project_payload(project) for project in projects],
-        "areas": [_area_payload(area) for area in areas],
+        "groups": [_group_payload(group) for group in groups],
     }
 
 
-@router.get("/areas/{area_id}/tasks")
-async def get_area_tasks(
-    area_id: str,
+@router.get("/groups/{group_id}/tasks")
+async def get_group_tasks(
+    group_id: str,
     user_id: str = Depends(get_current_user_id),
     _: str = Depends(verify_bearer_token),
     db: Session = Depends(get_db),
 ):
-    """Fetch tasks for an area."""
+    """Fetch tasks for a group."""
     set_session_user_id(db, user_id)
-    tasks = TaskService.list_tasks_by_area(db, user_id, area_id)
+    tasks = TaskService.list_tasks_by_group(db, user_id, group_id)
     projects = TaskService.list_task_projects(db, user_id)
-    areas = TaskService.list_task_areas(db, user_id)
+    groups = TaskService.list_task_groups(db, user_id)
     return {
-        "scope": "area",
+        "scope": "group",
         "generatedAt": datetime.now(UTC).isoformat(),
         "tasks": [_task_payload(task) for task in tasks],
         "projects": [_project_payload(project) for project in projects],
-        "areas": [_area_payload(area) for area in areas],
+        "groups": [_group_payload(group) for group in groups],
     }
 
 
@@ -288,7 +290,7 @@ async def get_counts(
             {"id": project_id, "count": count}
             for project_id, count in counts.project_counts
         ],
-        "areas": [
-            {"id": area_id, "count": count} for area_id, count in counts.area_counts
+        "groups": [
+            {"id": group_id, "count": count} for group_id, count in counts.group_counts
         ],
     }

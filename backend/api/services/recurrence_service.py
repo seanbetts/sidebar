@@ -93,7 +93,7 @@ class RecurrenceService:
         next_instance = Task(
             user_id=task.user_id,
             project_id=task.project_id,
-            area_id=task.area_id,
+            group_id=task.group_id,
             title=task.title,
             notes=task.notes,
             status="inbox",

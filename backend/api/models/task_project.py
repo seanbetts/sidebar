@@ -14,7 +14,7 @@ from api.db.base import Base
 
 if TYPE_CHECKING:
     from api.models.task import Task
-    from api.models.task_area import TaskArea
+    from api.models.task_group import TaskGroup
 
 
 class TaskProject(Base):
@@ -24,7 +24,7 @@ class TaskProject(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "source_id", name="uq_task_projects_user_source"),
         Index("idx_task_projects_user_id", "user_id"),
-        Index("idx_task_projects_area_id", "area_id"),
+        Index("idx_task_projects_group_id", "group_id"),
         Index("idx_task_projects_status", "status"),
         Index("idx_task_projects_deleted_at", "deleted_at"),
     )
@@ -34,8 +34,8 @@ class TaskProject(Base):
     )
     user_id: Mapped[str] = mapped_column(Text, nullable=False)
     source_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    area_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("task_areas.id"), nullable=True
+    group_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("task_groups.id"), nullable=True
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
@@ -53,7 +53,9 @@ class TaskProject(Base):
         DateTime(timezone=True), nullable=True, index=True
     )
 
-    area: Mapped[TaskArea | None] = relationship("TaskArea", back_populates="projects")
+    group: Mapped[TaskGroup | None] = relationship(
+        "TaskGroup", back_populates="projects"
+    )
     tasks: Mapped[list[Task]] = relationship("Task", back_populates="project")
 
     def __repr__(self) -> str:

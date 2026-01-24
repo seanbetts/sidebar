@@ -17,7 +17,7 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
 	deadline: null,
 	notes: null,
 	projectId: null,
-	areaId: null,
+	groupId: null,
 	repeating: false,
 	repeatTemplate: false,
 	updatedAt: null,
@@ -28,7 +28,7 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
 const createProject = (overrides: Partial<TaskProject> = {}): TaskProject => ({
 	id: 'proj-1',
 	title: 'Test Project',
-	areaId: null,
+	groupId: null,
 	...overrides
 });
 
@@ -40,8 +40,8 @@ describe('tasks-cache-helpers', () => {
 			expect(selectionKey({ type: 'inbox' })).toBe('inbox');
 		});
 
-		it('includes id for area selection', () => {
-			expect(selectionKey({ type: 'area', id: 'area-123' })).toBe('area:area-123');
+		it('includes id for group selection', () => {
+			expect(selectionKey({ type: 'group', id: 'group-123' })).toBe('group:group-123');
 		});
 
 		it('includes id for project selection', () => {
@@ -56,24 +56,24 @@ describe('tasks-cache-helpers', () => {
 	describe('tasksCacheKey', () => {
 		it('prefixes selection key with tasks.tasks', () => {
 			expect(tasksCacheKey({ type: 'today' })).toBe('tasks.tasks.today');
-			expect(tasksCacheKey({ type: 'area', id: 'a1' })).toBe('tasks.tasks.area:a1');
+			expect(tasksCacheKey({ type: 'group', id: 'g1' })).toBe('tasks.tasks.group:g1');
 		});
 	});
 
 	describe('selectionCount', () => {
-		it('returns task count for non-area selections', () => {
+		it('returns task count for non-group selections', () => {
 			const tasks = [createTask(), createTask({ id: 'task-2' })];
 			expect(selectionCount({ type: 'today' }, tasks, [])).toBe(2);
 		});
 
-		it('excludes project tasks from area count', () => {
+		it('excludes project tasks from group count', () => {
 			const tasks = [
 				createTask({ id: 'task-1', status: 'open' }),
 				createTask({ id: 'proj-1', status: 'project' })
 			];
 			const projects = [createProject({ id: 'proj-1' })];
 
-			expect(selectionCount({ type: 'area', id: 'area-1' }, tasks, projects)).toBe(1);
+			expect(selectionCount({ type: 'group', id: 'group-1' }, tasks, projects)).toBe(1);
 		});
 	});
 
@@ -87,9 +87,9 @@ describe('tasks-cache-helpers', () => {
 			expect(isSameSelection({ type: 'today' }, { type: 'upcoming' })).toBe(false);
 		});
 
-		it('compares ids for area selections', () => {
-			expect(isSameSelection({ type: 'area', id: 'a1' }, { type: 'area', id: 'a1' })).toBe(true);
-			expect(isSameSelection({ type: 'area', id: 'a1' }, { type: 'area', id: 'a2' })).toBe(false);
+		it('compares ids for group selections', () => {
+			expect(isSameSelection({ type: 'group', id: 'g1' }, { type: 'group', id: 'g1' })).toBe(true);
+			expect(isSameSelection({ type: 'group', id: 'g1' }, { type: 'group', id: 'g2' })).toBe(false);
 		});
 
 		it('compares ids for project selections', () => {
@@ -115,8 +115,8 @@ describe('tasks-cache-helpers', () => {
 		it('normalizes TaskCountsResponse format', () => {
 			const response: TaskCountsResponse = {
 				counts: { inbox: 5, today: 10, upcoming: 15 },
-				areas: [{ id: 'a1', title: 'Area', count: 3 }],
-				projects: [{ id: 'p1', title: 'Project', areaId: null, count: 7 }]
+				groups: [{ id: 'g1', title: 'Group', count: 3 }],
+				projects: [{ id: 'p1', title: 'Project', groupId: null, count: 7 }]
 			};
 
 			const result = normalizeCountsCache(response);
@@ -124,7 +124,7 @@ describe('tasks-cache-helpers', () => {
 			expect(result.todayCount).toBe(10);
 			expect(result.map.inbox).toBe(5);
 			expect(result.map.today).toBe(10);
-			expect(result.map['area:a1']).toBe(3);
+			expect(result.map['group:g1']).toBe(3);
 			expect(result.map['project:p1']).toBe(7);
 		});
 
@@ -150,11 +150,11 @@ describe('tasks-cache-helpers', () => {
 		it('builds map from counts response', () => {
 			const response: TaskCountsResponse = {
 				counts: { inbox: 1, today: 2, upcoming: 3 },
-				areas: [
-					{ id: 'a1', title: 'Area 1', count: 10 },
-					{ id: 'a2', title: 'Area 2', count: 20 }
+				groups: [
+					{ id: 'g1', title: 'Group 1', count: 10 },
+					{ id: 'g2', title: 'Group 2', count: 20 }
 				],
-				projects: [{ id: 'p1', title: 'Project 1', areaId: 'a1', count: 5 }]
+				projects: [{ id: 'p1', title: 'Project 1', groupId: 'g1', count: 5 }]
 			};
 
 			const map = buildCountsMap(response);
@@ -163,16 +163,16 @@ describe('tasks-cache-helpers', () => {
 				inbox: 1,
 				today: 2,
 				upcoming: 3,
-				'area:a1': 10,
-				'area:a2': 20,
+				'group:g1': 10,
+				'group:g2': 20,
 				'project:p1': 5
 			});
 		});
 
-		it('handles empty areas and projects', () => {
+		it('handles empty groups and projects', () => {
 			const response: TaskCountsResponse = {
 				counts: { inbox: 0, today: 0, upcoming: 0 },
-				areas: [],
+				groups: [],
 				projects: []
 			};
 
@@ -184,8 +184,8 @@ describe('tasks-cache-helpers', () => {
 
 	describe('filterTasksForSelection', () => {
 		const baseTasks = [
-			createTask({ id: 't1', status: 'inbox', areaId: null, projectId: null }),
-			createTask({ id: 't2', status: 'open', areaId: 'a1', deadline: '2026-01-23' }),
+			createTask({ id: 't1', status: 'inbox', groupId: null, projectId: null }),
+			createTask({ id: 't2', status: 'open', groupId: 'g1', deadline: '2026-01-23' }),
 			createTask({ id: 't3', status: 'open', projectId: 'p1', deadline: '2026-01-25' }),
 			createTask({ id: 't4', status: 'someday', deadline: null }),
 			createTask({ id: 't5', status: 'completed' }),
@@ -208,9 +208,9 @@ describe('tasks-cache-helpers', () => {
 			expect(result.map((t) => t.id)).toEqual(['t1']);
 		});
 
-		it('filters tasks by area including project tasks', () => {
-			const projects = [createProject({ id: 'p1', areaId: 'a1' })];
-			const result = filterTasksForSelection(baseTasks, { type: 'area', id: 'a1' }, projects);
+		it('filters tasks by group including project tasks', () => {
+			const projects = [createProject({ id: 'p1', groupId: 'g1' })];
+			const result = filterTasksForSelection(baseTasks, { type: 'group', id: 'g1' }, projects);
 
 			const ids = result.map((t) => t.id);
 			expect(ids).toContain('t2');

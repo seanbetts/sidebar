@@ -6,18 +6,18 @@
 	let selection: TaskSelection = { type: 'today' };
 	let tasksCount = 0;
 	let counts: Record<string, number> = {};
-	let areas: Array<{ id: string; title: string }> = [];
-	let projects: Array<{ id: string; title: string; areaId?: string | null }> = [];
+	let groups: Array<{ id: string; title: string }> = [];
+	let projects: Array<{ id: string; title: string; groupId?: string | null }> = [];
 	let syncNotice = '';
-	$: ({ selection, areas, projects, counts, syncNotice } = $tasksStore);
+	$: ({ selection, groups, projects, counts, syncNotice } = $tasksStore);
 	$: tasksCount = $tasksStore.todayCount;
-	$: sortedAreas = [...areas].sort((a, b) => a.title.localeCompare(b.title));
+	$: sortedGroups = [...groups].sort((a, b) => a.title.localeCompare(b.title));
 	$: sortedProjects = [...projects].sort((a, b) => a.title.localeCompare(b.title));
-	$: projectsByArea = sortedAreas.map((area) => ({
-		area,
-		projects: sortedProjects.filter((project) => project.areaId === area.id)
+	$: projectsByGroup = sortedGroups.map((group) => ({
+		group,
+		projects: sortedProjects.filter((project) => project.groupId === group.id)
 	}));
-	$: orphanProjects = sortedProjects.filter((project) => !project.areaId);
+	$: orphanProjects = sortedProjects.filter((project) => !project.groupId);
 
 	function select(selection: TaskSelection) {
 		tasksStore.load(selection);
@@ -64,28 +64,28 @@
 		</span>
 	</button>
 	<div class="tasks-divider"></div>
-	{#if projectsByArea.length === 0}
-		<div class="tasks-empty">No areas</div>
+	{#if projectsByGroup.length === 0}
+		<div class="tasks-empty">No groups</div>
 	{:else}
-		{#each projectsByArea as group}
+		{#each projectsByGroup as groupEntry}
 			<button
-				class="tasks-item area-item"
-				class:active={selection.type === 'area' && selection.id === group.area.id}
-				onclick={() => select({ type: 'area', id: group.area.id })}
+				class="tasks-item group-item"
+				class:active={selection.type === 'group' && selection.id === groupEntry.group.id}
+				onclick={() => select({ type: 'group', id: groupEntry.group.id })}
 			>
 				<span class="row-label">
 					<Layers size={14} />
-					{group.area.title}
+					{groupEntry.group.title}
 				</span>
 				<span class="meta">
-					{#if (counts[`area:${group.area.id}`] ?? 0) === 0}
+					{#if (counts[`group:${groupEntry.group.id}`] ?? 0) === 0}
 						<Check size={12} />
 					{:else}
-						{counts[`area:${group.area.id}`] ?? 0}
+						{counts[`group:${groupEntry.group.id}`] ?? 0}
 					{/if}
 				</span>
 			</button>
-			{#each group.projects as project}
+			{#each groupEntry.projects as project}
 				<button
 					class="tasks-item project-item"
 					class:active={selection.type === 'project' && selection.id === project.id}
@@ -175,7 +175,7 @@
 		gap: 0.5rem;
 	}
 
-	.area-item {
+	.group-item {
 		font-weight: 600;
 	}
 

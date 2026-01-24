@@ -279,7 +279,7 @@ struct DueDateSheet: View {
 struct MoveTaskSheet: View {
     let task: TaskItem
     let selectedListId: String
-    let areas: [TaskArea]
+    let groups: [TaskGroup]
     let projects: [TaskProject]
     let onSave: (String?) -> Void
     let onDismiss: () -> Void
@@ -317,7 +317,7 @@ struct MoveTaskSheet: View {
     }
 
     private var listOptions: [TaskListOption] {
-        buildListOptions(areas: areas, projects: projects)
+        buildListOptions(groups: groups, projects: projects)
     }
 }
 
@@ -410,7 +410,7 @@ struct RepeatTaskSheet: View {
 
 struct NewTaskSheet: View {
     let draft: TaskDraft
-    let areas: [TaskArea]
+    let groups: [TaskGroup]
     let projects: [TaskProject]
     let isSaving: Bool
     let errorMessage: String
@@ -528,7 +528,7 @@ struct NewTaskSheet: View {
     }
 
     private var listOptions: [TaskListOption] {
-        buildListOptions(areas: areas, projects: projects)
+        buildListOptions(groups: groups, projects: projects)
     }
 
     private func handleSave() {
@@ -607,7 +607,7 @@ struct NewGroupSheet: View {
 }
 
 struct NewProjectSheet: View {
-    let groups: [TaskArea]
+    let groups: [TaskGroup]
     let onCreate: (String, String?) async throws -> Void
     let onDismiss: () -> Void
 
@@ -665,7 +665,7 @@ struct NewProjectSheet: View {
         }
     }
 
-    private var groupsSorted: [TaskArea] {
+    private var groupsSorted: [TaskGroup] {
         groups.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
@@ -692,24 +692,24 @@ private struct TaskListOption: Identifiable {
     let label: String
 }
 
-private func buildListOptions(areas: [TaskArea], projects: [TaskProject]) -> [TaskListOption] {
-    let sortedAreas = areas.sorted {
+private func buildListOptions(groups: [TaskGroup], projects: [TaskProject]) -> [TaskListOption] {
+    let sortedGroups = groups.sorted {
         $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
     }
-    let projectsByArea = Dictionary(grouping: projects, by: { $0.areaId ?? "" })
+    let projectsByGroup = Dictionary(grouping: projects, by: { $0.groupId ?? "" })
     var options: [TaskListOption] = []
 
-    for area in sortedAreas {
-        options.append(TaskListOption(id: area.id, label: area.title))
-        let areaProjects = (projectsByArea[area.id] ?? []).sorted {
+    for group in sortedGroups {
+        options.append(TaskListOption(id: group.id, label: group.title))
+        let groupProjects = (projectsByGroup[group.id] ?? []).sorted {
             $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
         }
-        for project in areaProjects {
+        for project in groupProjects {
             options.append(TaskListOption(id: project.id, label: "- \(project.title)"))
         }
     }
 
-    let orphanProjects = (projectsByArea[""] ?? []).sorted {
+    let orphanProjects = (projectsByGroup[""] ?? []).sorted {
         $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
     }
     for project in orphanProjects {

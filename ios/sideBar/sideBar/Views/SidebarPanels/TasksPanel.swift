@@ -87,7 +87,7 @@ private struct TasksPanelView: View {
         }
         .confirmationDialog("Choose group", isPresented: $showProjectGroupDialog, titleVisibility: .visible) {
             Button("No group") { handleCreateProject(groupId: nil) }
-            ForEach(viewModel.areas.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }, id: \.id) { group in
+            ForEach(viewModel.groups.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }, id: \.id) { group in
                 Button(group.title) { handleCreateProject(groupId: group.id) }
             }
         }
@@ -162,16 +162,16 @@ extension TasksPanelView {
                     )
                 }
 
-                if !areasSorted.isEmpty {
+                if !groupsSorted.isEmpty {
                     Section {
-                        ForEach(areasSorted, id: \.id) { area in
+                        ForEach(groupsSorted, id: \.id) { group in
                             tasksListRow(
-                                title: area.title,
+                                title: group.title,
                                 iconName: "square.3.layers.3d",
-                                count: areaCounts[area.id],
-                                selection: .area(id: area.id)
+                                count: groupCounts[group.id],
+                                selection: .group(id: group.id)
                             )
-                            let projects = projectsByArea[area.id] ?? []
+                            let projects = projectsByGroup[group.id] ?? []
                             ForEach(projects, id: \.id) { project in
                                 tasksListRow(
                                     title: project.title,
@@ -228,30 +228,30 @@ extension TasksPanelView {
         }
     }
 
-    private var areasSorted: [TaskArea] {
-        viewModel.areas.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    private var groupsSorted: [TaskGroup] {
+        viewModel.groups.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
-    private var projectsByArea: [String: [TaskProject]] {
+    private var projectsByGroup: [String: [TaskProject]] {
         var map: [String: [TaskProject]] = [:]
         for project in viewModel.projects.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }) {
-            if let areaId = project.areaId {
-                map[areaId, default: []].append(project)
+            if let groupId = project.groupId {
+                map[groupId, default: []].append(project)
             }
         }
         return map
     }
 
     private var orphanProjects: [TaskProject] {
-        viewModel.projects.filter { $0.areaId == nil }
+        viewModel.projects.filter { $0.groupId == nil }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
-    private var areaCounts: [String: Int] {
-        var counts = Dictionary(uniqueKeysWithValues: (viewModel.counts?.areas ?? []).map { ($0.id, $0.count) })
-        viewModel.areas.forEach { area in
-            if counts[area.id] == nil {
-                counts[area.id] = 0
+    private var groupCounts: [String: Int] {
+        var counts = Dictionary(uniqueKeysWithValues: (viewModel.counts?.groups ?? []).map { ($0.id, $0.count) })
+        viewModel.groups.forEach { group in
+            if counts[group.id] == nil {
+                counts[group.id] = 0
             }
         }
         return counts
@@ -299,7 +299,7 @@ private extension TasksPanelView {
         guard !title.isEmpty else { return }
         pendingProjectTitle = title
         newProjectTitle = ""
-        if viewModel.areas.isEmpty {
+        if viewModel.groups.isEmpty {
             handleCreateProject(groupId: nil)
             return
         }

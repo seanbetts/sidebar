@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 
@@ -15,31 +15,70 @@ class TasksSnapshotService:
         today_tasks: list[dict[str, Any]],
         tomorrow_tasks: list[dict[str, Any]],
         completed_today: list[dict[str, Any]],
-        areas: list[dict[str, Any]],
+        groups: list[dict[str, Any]],
         projects: list[dict[str, Any]],
+        now: datetime | None = None,
     ) -> str:
         """Build the tasks snapshot markdown from task payloads."""
-        area_map = {area.get("id"): area.get("title") for area in areas}
+        timestamp = now or datetime.now(UTC)
+        today_date = timestamp.date()
+        group_map = {group.get("id"): group.get("title") for group in groups}
         project_map = {project.get("id"): project.get("title") for project in projects}
+
+        def parse_deadline(task: dict[str, Any]) -> date | None:
+            deadline = task.get("deadline")
+            if not deadline:
+                return None
+            try:
+                return date.fromisoformat(str(deadline)[:10])
+            except ValueError:
+                return None
 
         def format_task(task: dict[str, Any], *, checked: bool) -> list[str]:
             title = task.get("title") or "Untitled task"
-            area = area_map.get(task.get("areaId"))
+            group = group_map.get(task.get("groupId"))
             project = project_map.get(task.get("projectId"))
-            context = "/".join([value for value in [area, project] if value])
+            context_parts = [v for v in [group, project] if v]
+
+            # Check for overdue status
+            deadline = parse_deadline(task)
+            if deadline and deadline < today_date and not checked:
+                days_overdue = (today_date - deadline).days
+                if days_overdue == 1:
+                    context_parts.append("overdue 1 day")
+                else:
+                    context_parts.append(f"overdue {days_overdue} days")
+
             label = f"- [{'x' if checked else ' '}] {title}"
-            if context:
-                label = f"{label} ({context})"
+            if context_parts:
+                label = f"{label} ({', '.join(context_parts)})"
             lines = [label]
             notes = (task.get("notes") or "").strip()
             if notes:
                 lines.append(f"  - Notes: {notes}")
             return lines
 
+        # Separate overdue from today
+        overdue_tasks = []
+        due_today_tasks = []
+        for task in today_tasks:
+            deadline = parse_deadline(task)
+            if deadline and deadline < today_date:
+                overdue_tasks.append(task)
+            else:
+                due_today_tasks.append(task)
+
         blocks: list[str] = []
+
+        if overdue_tasks:
+            blocks.append("Overdue")
+            for task in overdue_tasks:
+                blocks.extend(format_task(task, checked=False))
+            blocks.append("")
+
         blocks.append("Today")
-        if today_tasks:
-            for task in today_tasks:
+        if due_today_tasks:
+            for task in due_today_tasks:
                 blocks.extend(format_task(task, checked=False))
         else:
             blocks.append("- [ ] None")

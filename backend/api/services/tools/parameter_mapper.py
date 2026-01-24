@@ -6,6 +6,7 @@ from api.services.tools.parameter_builders import (
     FsParameterBuilder,
     NotesParameterBuilder,
     SkillsParameterBuilder,
+    TasksParameterBuilder,
     TranscriptionParameterBuilder,
     WebParameterBuilder,
     WebsiteParameterBuilder,
@@ -150,3 +151,43 @@ def build_skill_package_args(params: dict) -> list:
 def build_mcp_evaluation_args(params: dict) -> list:
     """Build CLI arguments for MCP evaluation runs."""
     return SkillsParameterBuilder.build_mcp_evaluation_args(params)
+
+
+def build_tasks_list_args(params: dict) -> list:
+    """Build CLI arguments for list tasks."""
+    return TasksParameterBuilder.build_list_args(params)
+
+
+def build_tasks_search_args(params: dict) -> list:
+    """Build CLI arguments for search tasks."""
+    return TasksParameterBuilder.build_search_args(params)
+
+
+def build_tasks_create_args(params: dict) -> list:
+    """Build CLI arguments for create task."""
+    return TasksParameterBuilder.build_create_args(params)
+
+
+def build_tasks_complete_args(params: dict) -> list:
+    """Build CLI arguments for complete task."""
+    return TasksParameterBuilder.build_complete_args(params)
+
+
+def build_tasks_defer_args(params: dict) -> list:
+    """Build CLI arguments for defer task."""
+    return TasksParameterBuilder.build_defer_args(params)
+
+
+def build_tasks_clear_due_args(params: dict) -> list:
+    """Build CLI arguments for clear task due date."""
+    return TasksParameterBuilder.build_clear_due_args(params)
+
+
+def build_tasks_create_project_args(params: dict) -> list:
+    """Build CLI arguments for create project."""
+    return TasksParameterBuilder.build_create_project_args(params)
+
+
+def build_tasks_create_group_args(params: dict) -> list:
+    """Build CLI arguments for create group."""
+    return TasksParameterBuilder.build_create_group_args(params)

@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-	export type TaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
+	export type TaskViewType = 'inbox' | 'today' | 'upcoming' | 'group' | 'project' | 'search';
 </script>
 
 <script lang="ts">
@@ -132,11 +132,11 @@
 						<div
 							class="task-menu-wrap"
 							class:repeat-actions={!!repeatText ||
-								selectionType === 'area' ||
+								selectionType === 'group' ||
 								selectionType === 'project' ||
 								selectionType === 'search'}
 						>
-							{#if selectionType === 'area' || selectionType === 'project' || selectionType === 'search'}
+							{#if selectionType === 'group' || selectionType === 'project' || selectionType === 'search'}
 								<span class="due-pill">
 									{dueLabel(task) ?? 'No Date'}
 									{#if repeatText && !task.repeating}

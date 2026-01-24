@@ -22,7 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from api.db.base import Base
 
 if TYPE_CHECKING:
-    from api.models.task_area import TaskArea
+    from api.models.task_group import TaskGroup
     from api.models.task_project import TaskProject
 
 
@@ -34,7 +34,7 @@ class Task(Base):
         UniqueConstraint("user_id", "source_id", name="uq_tasks_user_source"),
         Index("idx_tasks_user_id", "user_id"),
         Index("idx_tasks_project_id", "project_id"),
-        Index("idx_tasks_area_id", "area_id"),
+        Index("idx_tasks_group_id", "group_id"),
         Index("idx_tasks_status", "status"),
         Index("idx_tasks_deadline", "deadline"),
         Index("idx_tasks_completed_at", "completed_at"),
@@ -59,8 +59,8 @@ class Task(Base):
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("task_projects.id"), nullable=True
     )
-    area_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("task_areas.id"), nullable=True
+    group_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("task_groups.id"), nullable=True
     )
 
     title: Mapped[str] = mapped_column(Text, nullable=False)
@@ -99,7 +99,7 @@ class Task(Base):
     project: Mapped[TaskProject | None] = relationship(
         "TaskProject", back_populates="tasks"
     )
-    area: Mapped[TaskArea | None] = relationship("TaskArea", back_populates="tasks")
+    group: Mapped[TaskGroup | None] = relationship("TaskGroup", back_populates="tasks")
 
     def __repr__(self) -> str:
         """Return a readable representation for debugging."""

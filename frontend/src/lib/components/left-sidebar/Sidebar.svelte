@@ -48,12 +48,12 @@
 	let isSavingWebsite = false;
 	let isCreatingNote = false;
 	let isCreatingFolder = false;
-	let isNewTaskAreaDialogOpen = false;
-	let newTaskAreaName = '';
-	let isCreatingTaskArea = false;
+	let isNewTaskGroupDialogOpen = false;
+	let newTaskGroupName = '';
+	let isCreatingTaskGroup = false;
 	let isNewTaskProjectDialogOpen = false;
 	let newTaskProjectName = '';
-	let newTaskProjectAreaId = '';
+	let newTaskProjectGroupId = '';
 	let isCreatingTaskProject = false;
 	let isSaveChangesDialogOpen = false;
 	let pendingNotePath: string | null = null;
@@ -112,7 +112,7 @@
 		return current ? current.messageCount === 0 : false;
 	})();
 	$: showNewChatButton = !isBlankChat;
-	$: sortedTaskAreas = [...$tasksStore.areas].sort((a, b) => a.title.localeCompare(b.title));
+	$: sortedTaskGroups = [...$tasksStore.groups].sort((a, b) => a.title.localeCompare(b.title));
 	$: if ($chatStore.conversationId) {
 		if (lastConversationId !== $chatStore.conversationId) {
 			lastConversationId = $chatStore.conversationId;
@@ -364,45 +364,45 @@
 		}
 	}
 
-	function openNewTaskAreaDialog() {
-		newTaskAreaName = '';
-		isNewTaskAreaDialogOpen = true;
+	function openNewTaskGroupDialog() {
+		newTaskGroupName = '';
+		isNewTaskGroupDialogOpen = true;
 	}
 
 	function openNewTaskProjectDialog() {
 		newTaskProjectName = '';
-		newTaskProjectAreaId = getDefaultProjectAreaId();
+		newTaskProjectGroupId = getDefaultProjectGroupId();
 		isNewTaskProjectDialogOpen = true;
 	}
 
-	function getDefaultProjectAreaId() {
+	function getDefaultProjectGroupId() {
 		const selection = $tasksStore.selection;
-		if (selection.type === 'area') {
+		if (selection.type === 'group') {
 			return selection.id;
 		}
 		if (selection.type === 'project') {
 			const project = $tasksStore.projects.find((item) => item.id === selection.id);
-			return project?.areaId ?? '';
+			return project?.groupId ?? '';
 		}
 		return '';
 	}
 
-	async function createTaskAreaFromDialog() {
-		if (isCreatingTaskArea) return;
-		isCreatingTaskArea = true;
-		errorTitle = 'Unable to create area';
-		errorMessage = 'Failed to create area. Please try again.';
+	async function createTaskGroupFromDialog() {
+		if (isCreatingTaskGroup) return;
+		isCreatingTaskGroup = true;
+		errorTitle = 'Unable to create group';
+		errorMessage = 'Failed to create group. Please try again.';
 		try {
-			await tasksStore.createArea(newTaskAreaName);
-			isNewTaskAreaDialogOpen = false;
-			newTaskAreaName = '';
+			await tasksStore.createGroup(newTaskGroupName);
+			isNewTaskGroupDialogOpen = false;
+			newTaskGroupName = '';
 		} catch (error) {
 			if (error instanceof Error && error.message) {
 				errorMessage = error.message;
 			}
 			isErrorDialogOpen = true;
 		} finally {
-			isCreatingTaskArea = false;
+			isCreatingTaskGroup = false;
 		}
 	}
 
@@ -412,11 +412,11 @@
 		errorTitle = 'Unable to create project';
 		errorMessage = 'Failed to create project. Please try again.';
 		try {
-			const areaId = newTaskProjectAreaId.trim() ? newTaskProjectAreaId : null;
-			await tasksStore.createProject(newTaskProjectName, areaId);
+			const groupId = newTaskProjectGroupId.trim() ? newTaskProjectGroupId : null;
+			await tasksStore.createProject(newTaskProjectName, groupId);
 			isNewTaskProjectDialogOpen = false;
 			newTaskProjectName = '';
-			newTaskProjectAreaId = '';
+			newTaskProjectGroupId = '';
 		} catch (error) {
 			if (error instanceof Error && error.message) {
 				errorMessage = error.message;
@@ -437,14 +437,14 @@
 	bind:newFolderName
 	{isCreatingFolder}
 	{createFolderFromDialog}
-	bind:isNewTaskAreaDialogOpen
-	bind:newTaskAreaName
-	{isCreatingTaskArea}
-	{createTaskAreaFromDialog}
+	bind:isNewTaskGroupDialogOpen
+	bind:newTaskGroupName
+	{isCreatingTaskGroup}
+	{createTaskGroupFromDialog}
 	bind:isNewTaskProjectDialogOpen
 	bind:newTaskProjectName
-	bind:newTaskProjectAreaId
-	taskAreas={sortedTaskAreas}
+	bind:newTaskProjectGroupId
+	taskGroups={sortedTaskGroups}
 	{isCreatingTaskProject}
 	{createTaskProjectFromDialog}
 	bind:isNewWebsiteDialogOpen
@@ -576,9 +576,9 @@
 									New task
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
-								<DropdownMenuItem onclick={openNewTaskAreaDialog}>
+								<DropdownMenuItem onclick={openNewTaskGroupDialog}>
 									<Layers size={14} />
-									New area
+									New group
 								</DropdownMenuItem>
 								<DropdownMenuItem onclick={openNewTaskProjectDialog}>
 									<List size={14} />

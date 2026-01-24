@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Task, TaskArea, TaskProject } from '$lib/types/tasks';
+	import type { Task, TaskGroup, TaskProject } from '$lib/types/tasks';
 	import {
 		AlertDialog,
 		AlertDialogAction,
@@ -26,8 +26,8 @@
 	export let showMoveDialog = false;
 	export let moveTask: Task | null = null;
 	export let moveListId = '';
-	export let areaOptions: TaskArea[] = [];
-	export let projectsByArea: Map<string, TaskProject[]> = new Map();
+	export let groupOptions: TaskGroup[] = [];
+	export let projectsByGroup: Map<string, TaskProject[]> = new Map();
 	export let orphanProjects: TaskProject[] = [];
 	export let onCloseMove: () => void;
 	export let onMoveListChange: (value: string) => void;
@@ -89,7 +89,7 @@
 		<AlertDialogHeader>
 			<AlertDialogTitle>Move task</AlertDialogTitle>
 			<AlertDialogDescription>
-				Choose a new area or project for {moveTask?.title ?? 'this task'}.
+				Choose a new group or project for {moveTask?.title ?? 'this task'}.
 			</AlertDialogDescription>
 		</AlertDialogHeader>
 		<select
@@ -97,10 +97,10 @@
 			bind:value={moveListId}
 			onchange={(event) => onMoveListChange((event.currentTarget as HTMLSelectElement).value)}
 		>
-			<option value="">Select area or project</option>
-			{#each areaOptions as area}
-				<option value={area.id}>{area.title}</option>
-				{#each projectsByArea.get(area.id) ?? [] as project}
+			<option value="">Select group or project</option>
+			{#each groupOptions as group}
+				<option value={group.id}>{group.title}</option>
+				{#each projectsByGroup.get(group.id) ?? [] as project}
 					<option value={project.id}>- {project.title}</option>
 				{/each}
 			{/each}

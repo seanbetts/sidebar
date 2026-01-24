@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.models.task import Task
-from api.models.task_area import TaskArea
+from api.models.task_group import TaskGroup
 from api.models.task_project import TaskProject
 
 
@@ -19,7 +19,7 @@ from api.models.task_project import TaskProject
 class TasksImportStats:
     """Summary statistics for an import run."""
 
-    areas_imported: int = 0
+    groups_imported: int = 0
     projects_imported: int = 0
     projects_skipped: int = 0
     tasks_imported: int = 0
@@ -39,7 +39,7 @@ class TasksImportService:
         Args:
             db: Database session.
             user_id: Current user ID.
-            payload: Parsed payload (areas, projects, tasks).
+            payload: Parsed payload (groups, projects, tasks).
 
         Returns:
             TasksImportStats with counts and errors.
@@ -47,26 +47,26 @@ class TasksImportService:
         stats = TasksImportStats()
         now = datetime.now(UTC)
 
-        areas_data = TasksImportService._coerce_list(payload.get("areas"))
+        groups_data = TasksImportService._coerce_list(payload.get("groups"))
         projects_data = TasksImportService._coerce_list(payload.get("projects"))
         tasks_data = TasksImportService._dedupe_items(
             TasksImportService._coerce_list(payload.get("tasks"))
         )
 
-        area_map: dict[str, TaskArea] = {}
-        for area_data in areas_data:
-            source_id = str(area_data.get("id") or "").strip()
+        group_map: dict[str, TaskGroup] = {}
+        for group_data in groups_data:
+            source_id = str(group_data.get("id") or "").strip()
             if not source_id:
                 continue
-            existing_area = TasksImportService._find_area(db, user_id, source_id)
-            title = str(area_data.get("title") or "Untitled Area")
-            updated_at = TasksImportService._parse_datetime(area_data.get("updatedAt"))
-            if existing_area:
-                existing_area.title = title
-                existing_area.updated_at = updated_at or now
-                area_record = existing_area
+            existing_group = TasksImportService._find_group(db, user_id, source_id)
+            title = str(group_data.get("title") or "Untitled Group")
+            updated_at = TasksImportService._parse_datetime(group_data.get("updatedAt"))
+            if existing_group:
+                existing_group.title = title
+                existing_group.updated_at = updated_at or now
+                group_record = existing_group
             else:
-                area_record = TaskArea(
+                group_record = TaskGroup(
                     user_id=user_id,
                     source_id=source_id,
                     title=title,
@@ -74,9 +74,9 @@ class TasksImportService:
                     updated_at=updated_at or now,
                     deleted_at=None,
                 )
-                db.add(area_record)
-                stats.areas_imported += 1
-            area_map[source_id] = area_record
+                db.add(group_record)
+                stats.groups_imported += 1
+            group_map[source_id] = group_record
 
         project_map: dict[str, TaskProject] = {}
         for project_data in projects_data:
@@ -91,20 +91,20 @@ class TasksImportService:
             updated_at = TasksImportService._parse_datetime(
                 project_data.get("updatedAt")
             )
-            area_id = project_data.get("areaId")
-            project_area = area_map.get(str(area_id)) if area_id else None
+            group_id = project_data.get("groupId")
+            project_group = group_map.get(str(group_id)) if group_id else None
             existing_project = TasksImportService._find_project(db, user_id, source_id)
             if existing_project:
                 existing_project.title = title
                 existing_project.status = status
                 existing_project.updated_at = updated_at or now
-                existing_project.area_id = project_area.id if project_area else None
+                existing_project.group_id = project_group.id if project_group else None
                 project_record = existing_project
             else:
                 project_record = TaskProject(
                     user_id=user_id,
                     source_id=source_id,
-                    area_id=project_area.id if project_area else None,
+                    group_id=project_group.id if project_group else None,
                     title=title,
                     status=status,
                     notes=None,
@@ -138,9 +138,9 @@ class TasksImportService:
             recurrence_rule = task_data.get("recurrenceRule")
             repeat_template = bool(task_data.get("repeatTemplate"))
             project_id = task_data.get("projectId")
-            area_id = task_data.get("areaId")
+            group_id = task_data.get("groupId")
             task_project = project_map.get(str(project_id)) if project_id else None
-            task_area = area_map.get(str(area_id)) if area_id else None
+            task_group = group_map.get(str(group_id)) if group_id else None
             existing_task = TasksImportService._find_task(db, user_id, source_id)
             if existing_task:
                 existing_task.title = title
@@ -148,7 +148,7 @@ class TasksImportService:
                 existing_task.notes = task_data.get("notes")
                 existing_task.deadline = deadline
                 existing_task.project_id = task_project.id if task_project else None
-                existing_task.area_id = task_area.id if task_area else None
+                existing_task.group_id = task_group.id if task_group else None
                 existing_task.updated_at = updated_at or now
                 existing_task.repeating = bool(task_data.get("repeating"))
                 existing_task.repeat_template = repeat_template
@@ -159,7 +159,7 @@ class TasksImportService:
                     user_id=user_id,
                     source_id=source_id,
                     project_id=task_project.id if task_project else None,
-                    area_id=task_area.id if task_area else None,
+                    group_id=task_group.id if task_group else None,
                     title=title,
                     notes=task_data.get("notes"),
                     status=status,
@@ -216,13 +216,13 @@ class TasksImportService:
         return parsed.date() if parsed else None
 
     @staticmethod
-    def _find_area(db: Session, user_id: str, source_id: str) -> TaskArea | None:
+    def _find_group(db: Session, user_id: str, source_id: str) -> TaskGroup | None:
         return (
-            db.query(TaskArea)
+            db.query(TaskGroup)
             .filter(
-                TaskArea.user_id == user_id,
-                TaskArea.source_id == source_id,
-                TaskArea.deleted_at.is_(None),
+                TaskGroup.user_id == user_id,
+                TaskGroup.source_id == source_id,
+                TaskGroup.deleted_at.is_(None),
             )
             .one_or_none()
         )

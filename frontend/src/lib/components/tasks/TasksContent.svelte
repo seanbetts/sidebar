@@ -1,9 +1,9 @@
 <script context="module" lang="ts">
-	export type TaskViewType = 'inbox' | 'today' | 'upcoming' | 'area' | 'project' | 'search';
+	export type TaskViewType = 'inbox' | 'today' | 'upcoming' | 'group' | 'project' | 'search';
 </script>
 
 <script lang="ts">
-	import type { Task, TaskArea, TaskProject } from '$lib/types/tasks';
+	import type { Task, TaskGroup, TaskProject } from '$lib/types/tasks';
 	import { List, Search } from 'lucide-svelte';
 	import TaskDraftForm from './TaskDraftForm.svelte';
 	import TaskList from './TaskList.svelte';
@@ -26,8 +26,8 @@
 	export let draftTargetLabel = '';
 	export let draftListId = '';
 	export let titleInput: HTMLInputElement | null = null;
-	export let areaOptions: TaskArea[] = [];
-	export let projectsByArea: Map<string, TaskProject[]> = new Map();
+	export let groupOptions: TaskGroup[] = [];
+	export let projectsByGroup: Map<string, TaskProject[]> = new Map();
 	export let orphanProjects: TaskProject[] = [];
 
 	export let busyTasks: Set<string> = new Set();
@@ -85,8 +85,8 @@
 				{draftSaving}
 				{draftError}
 				{draftTargetLabel}
-				{areaOptions}
-				{projectsByArea}
+				{groupOptions}
+				{projectsByGroup}
 				{orphanProjects}
 				{onDraftInput}
 				{onCreateTask}
