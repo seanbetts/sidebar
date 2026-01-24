@@ -55,6 +55,7 @@ struct CodeMirrorEditorView: View {
     let handle: CodeMirrorEditorHandle
     let onContentChanged: (String) -> Void
     let onEscape: (() -> Void)?
+    let onRequestEdit: ((CGPoint) -> Void)?
 
     var body: some View {
         #if os(macOS)
@@ -63,7 +64,8 @@ struct CodeMirrorEditorView: View {
             isReadOnly: isReadOnly,
             handle: handle,
             onContentChanged: onContentChanged,
-            onEscape: onEscape
+            onEscape: onEscape,
+            onRequestEdit: onRequestEdit
         )
         #else
         CodeMirrorEditorIOS(
@@ -71,7 +73,8 @@ struct CodeMirrorEditorView: View {
             isReadOnly: isReadOnly,
             handle: handle,
             onContentChanged: onContentChanged,
-            onEscape: onEscape
+            onEscape: onEscape,
+            onRequestEdit: onRequestEdit
         )
         #endif
     }
@@ -83,11 +86,13 @@ private enum CodeMirrorBridge {
     static let linkTapped = "linkTapped"
     static let jsError = "jsError"
     static let escapePressed = "escapePressed"
+    static let requestEdit = "requestEdit"
 }
 
 private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private let onContentChanged: (String) -> Void
     private let onEscape: (() -> Void)?
+    private let onRequestEdit: ((CGPoint) -> Void)?
     private var webView: WKWebView?
     private var schemeHandler: CodeMirrorSchemeHandler?
     private var lastKnownMarkdown = ""
@@ -99,9 +104,14 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private let debounceInterval: TimeInterval = 0.3
     private let logger = Logger(subsystem: "sideBar", category: "CodeMirrorEditor")
 
-    init(onContentChanged: @escaping (String) -> Void, onEscape: (() -> Void)?) {
+    init(
+        onContentChanged: @escaping (String) -> Void,
+        onEscape: (() -> Void)?,
+        onRequestEdit: ((CGPoint) -> Void)?
+    ) {
         self.onContentChanged = onContentChanged
         self.onEscape = onEscape
+        self.onRequestEdit = onRequestEdit
     }
 
     func attach(webView: WKWebView, handle: CodeMirrorEditorHandle, schemeHandler: CodeMirrorSchemeHandler) {
@@ -155,6 +165,8 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
             handleJsError(message)
         case CodeMirrorBridge.escapePressed:
             handleEscapePressed()
+        case CodeMirrorBridge.requestEdit:
+            handleRequestEdit(message)
         default:
             break
         }
@@ -217,6 +229,17 @@ private final class CodeMirrorCoordinator: NSObject, WKScriptMessageHandler {
     private func handleEscapePressed() {
         DispatchQueue.main.async { [weak self] in
             self?.onEscape?()
+        }
+    }
+
+    private func handleRequestEdit(_ message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any],
+              let x = body["x"] as? CGFloat,
+              let y = body["y"] as? CGFloat else {
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.onRequestEdit?(CGPoint(x: x, y: y))
         }
     }
 
@@ -351,9 +374,14 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
     let handle: CodeMirrorEditorHandle
     let onContentChanged: (String) -> Void
     let onEscape: (() -> Void)?
+    let onRequestEdit: ((CGPoint) -> Void)?
 
     func makeCoordinator() -> CodeMirrorCoordinator {
-        CodeMirrorCoordinator(onContentChanged: onContentChanged, onEscape: onEscape)
+        CodeMirrorCoordinator(
+            onContentChanged: onContentChanged,
+            onEscape: onEscape,
+            onRequestEdit: onRequestEdit
+        )
     }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -394,6 +422,7 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.linkTapped)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.jsError)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.escapePressed)
+        configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.requestEdit)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
@@ -412,6 +441,7 @@ private struct CodeMirrorEditorMac: NSViewRepresentable {
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.linkTapped)
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.jsError)
         nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.escapePressed)
+        nsView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.requestEdit)
     }
 }
 #else
@@ -421,9 +451,14 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
     let handle: CodeMirrorEditorHandle
     let onContentChanged: (String) -> Void
     let onEscape: (() -> Void)?
+    let onRequestEdit: ((CGPoint) -> Void)?
 
     func makeCoordinator() -> CodeMirrorCoordinator {
-        CodeMirrorCoordinator(onContentChanged: onContentChanged, onEscape: onEscape)
+        CodeMirrorCoordinator(
+            onContentChanged: onContentChanged,
+            onEscape: onEscape,
+            onRequestEdit: onRequestEdit
+        )
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -464,6 +499,7 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.linkTapped)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.jsError)
         configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.escapePressed)
+        configuration.userContentController.add(context.coordinator, name: CodeMirrorBridge.requestEdit)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
@@ -484,6 +520,7 @@ private struct CodeMirrorEditorIOS: UIViewRepresentable {
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.linkTapped)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.jsError)
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.escapePressed)
+        uiView.configuration.userContentController.removeScriptMessageHandler(forName: CodeMirrorBridge.requestEdit)
     }
 }
 #endif

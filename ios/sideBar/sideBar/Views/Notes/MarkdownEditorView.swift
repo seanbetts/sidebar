@@ -75,15 +75,15 @@ struct MarkdownEditorView: View {
                 onContentChanged: viewModel.handleUserMarkdownEdit,
                 onEscape: {
                     isEditing = false
+                },
+                onRequestEdit: { point in
+                    guard !viewModel.isReadOnly else { return }
+                    isEditing = true
+                    editorHandle.setSelectionAtDeferred(x: point.x, y: point.y)
+                    editorHandle.focus()
                 }
             )
             .frame(maxWidth: maxContentWidth)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard !viewModel.isReadOnly else { return }
-            isEditing = true
-            editorHandle.focus()
         }
     }
 }
