@@ -1502,6 +1502,9 @@ const livePreviewPlugin = ViewPlugin.fromClass(
 
 		private buildDecorations(view: EditorView) {
 			const builder = new RangeSetBuilder<Decoration>();
+			const addDecoration = (from: number, to: number, decoration: Decoration) => {
+				builder.add(from, to, decoration);
+			};
 			const selection = view.state.selection;
 			const tree = syntaxTree(view.state);
 			const revealActive = Date.now() < this.revealUntil;

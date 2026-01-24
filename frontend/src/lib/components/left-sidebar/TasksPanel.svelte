@@ -155,7 +155,7 @@
 						{groupEntry.group.title}
 					</span>
 				</button>
-				<div class="tasks-menu-wrap" onclick={(event) => event.stopPropagation()}>
+				<div class="tasks-menu-wrap">
 					<DropdownMenu>
 						<DropdownMenuTrigger class="tasks-menu" aria-label="Group actions">
 							<MoreHorizontal size={16} />
@@ -188,10 +188,9 @@
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
-				<span
+				<button
+					type="button"
 					class="meta tasks-meta"
-					role="button"
-					tabindex="-1"
 					onclick={() => select({ type: 'group', id: groupEntry.group.id })}
 				>
 					{#if (counts[`group:${groupEntry.group.id}`] ?? 0) === 0}
@@ -199,7 +198,7 @@
 					{:else}
 						{counts[`group:${groupEntry.group.id}`] ?? 0}
 					{/if}
-				</span>
+				</button>
 			</div>
 			{#each groupEntry.projects as project}
 				<div
@@ -216,7 +215,7 @@
 							{project.title}
 						</span>
 					</button>
-					<div class="tasks-menu-wrap" onclick={(event) => event.stopPropagation()}>
+					<div class="tasks-menu-wrap">
 						<DropdownMenu>
 							<DropdownMenuTrigger class="tasks-menu" aria-label="Project actions">
 								<MoreHorizontal size={16} />
@@ -241,10 +240,9 @@
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>
-					<span
+					<button
+						type="button"
 						class="meta tasks-meta"
-						role="button"
-						tabindex="-1"
 						onclick={() => select({ type: 'project', id: project.id })}
 					>
 						{#if (counts[`project:${project.id}`] ?? 0) === 0}
@@ -252,7 +250,7 @@
 						{:else}
 							{counts[`project:${project.id}`] ?? 0}
 						{/if}
-					</span>
+					</button>
 				</div>
 			{/each}
 		{/each}
@@ -274,7 +272,7 @@
 						{project.title}
 					</span>
 				</button>
-				<div class="tasks-menu-wrap" onclick={(event) => event.stopPropagation()}>
+				<div class="tasks-menu-wrap">
 					<DropdownMenu>
 						<DropdownMenuTrigger class="tasks-menu" aria-label="Project actions">
 							<MoreHorizontal size={16} />
@@ -299,10 +297,9 @@
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
-				<span
+				<button
+					type="button"
 					class="meta tasks-meta"
-					role="button"
-					tabindex="-1"
 					onclick={() => select({ type: 'project', id: project.id })}
 				>
 					{#if (counts[`project:${project.id}`] ?? 0) === 0}
@@ -310,7 +307,7 @@
 					{:else}
 						{counts[`project:${project.id}`] ?? 0}
 					{/if}
-				</span>
+				</button>
 			</div>
 		{/each}
 	{/if}
@@ -429,7 +426,7 @@
 		cursor: pointer;
 	}
 
-	.tasks-menu {
+	:global(.tasks-menu) {
 		border: none;
 		background: transparent;
 		color: var(--color-muted-foreground);
@@ -449,12 +446,15 @@
 		pointer-events: auto;
 	}
 
-	.tasks-menu:hover {
+	:global(.tasks-menu:hover) {
 		background: var(--color-sidebar-accent);
 		color: var(--color-sidebar-foreground);
 	}
 
 	.tasks-meta {
+		background: none;
+		border: 0;
+		padding: 0;
 		min-width: 1.5rem;
 		text-align: right;
 		cursor: pointer;

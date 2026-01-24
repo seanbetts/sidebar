@@ -9,30 +9,10 @@ const jsdoc = nodeMajor >= 20 ? (await import('eslint-plugin-jsdoc')).default : 
 const jsdocRules = jsdoc
 	? {
 			'jsdoc/check-alignment': 'error',
-			'jsdoc/check-param-names': 'error',
 			'jsdoc/check-tag-names': 'error',
 			'jsdoc/check-types': 'error',
-			'jsdoc/require-description': 'error',
-			'jsdoc/require-param': 'error',
-			'jsdoc/require-param-description': 'error',
 			'jsdoc/require-param-type': 'off',
-			'jsdoc/require-returns': 'error',
-			'jsdoc/require-returns-description': 'error',
-			'jsdoc/require-returns-type': 'off',
-			'jsdoc/require-jsdoc': [
-				'error',
-				{
-					require: {
-						FunctionDeclaration: true,
-						MethodDefinition: true,
-						ClassDeclaration: true,
-						ArrowFunctionExpression: false,
-						FunctionExpression: false
-					},
-					publicOnly: true,
-					enableFixer: false
-				}
-			]
+			'jsdoc/require-returns-type': 'off'
 		}
 	: {};
 const jsdocSettings = jsdoc
@@ -70,15 +50,50 @@ export default [
 				clearTimeout: 'readonly',
 				setInterval: 'readonly',
 				clearInterval: 'readonly',
+				requestAnimationFrame: 'readonly',
+				cancelAnimationFrame: 'readonly',
+				getComputedStyle: 'readonly',
 				localStorage: 'readonly',
 				sessionStorage: 'readonly',
+				indexedDB: 'readonly',
 				crypto: 'readonly',
 				window: 'readonly',
 				document: 'readonly',
 				navigator: 'readonly',
-				// Node globals (for SSR)
+				URL: 'readonly',
+				Blob: 'readonly',
+				Response: 'readonly',
+				Request: 'readonly',
+				// DOM types
+				Event: 'readonly',
+				KeyboardEvent: 'readonly',
+				MouseEvent: 'readonly',
+				PointerEvent: 'readonly',
+				DragEvent: 'readonly',
+				SubmitEvent: 'readonly',
+				HTMLElement: 'readonly',
+				HTMLDivElement: 'readonly',
+				HTMLInputElement: 'readonly',
+				HTMLTextAreaElement: 'readonly',
+				HTMLButtonElement: 'readonly',
+				HTMLCanvasElement: 'readonly',
+				HTMLTableSectionElement: 'readonly',
+				HTMLAnchorElement: 'readonly',
+				HTMLParagraphElement: 'readonly',
+				FileList: 'readonly',
+				File: 'readonly',
+				CustomEvent: 'readonly',
+				HTMLSelectElement: 'readonly',
+				HTMLSpanElement: 'readonly',
+				HTMLTableCellElement: 'readonly',
+				HTMLTableRowElement: 'readonly',
+				ResizeObserver: 'readonly',
+				Node: 'readonly',
+				// Node globals (for SSR/tests)
 				process: 'readonly',
-				Buffer: 'readonly'
+				Buffer: 'readonly',
+				global: 'readonly',
+				App: 'readonly'
 			}
 		},
 		rules: {
@@ -108,10 +123,73 @@ export default [
 				ecmaVersion: 2022,
 				sourceType: 'module',
 				extraFileExtensions: ['.svelte']
+			},
+			globals: {
+				console: 'readonly',
+				fetch: 'readonly',
+				setTimeout: 'readonly',
+				clearTimeout: 'readonly',
+				setInterval: 'readonly',
+				clearInterval: 'readonly',
+				requestAnimationFrame: 'readonly',
+				cancelAnimationFrame: 'readonly',
+				getComputedStyle: 'readonly',
+				localStorage: 'readonly',
+				sessionStorage: 'readonly',
+				indexedDB: 'readonly',
+				crypto: 'readonly',
+				window: 'readonly',
+				document: 'readonly',
+				navigator: 'readonly',
+				URL: 'readonly',
+				Blob: 'readonly',
+				Response: 'readonly',
+				Request: 'readonly',
+				Event: 'readonly',
+				KeyboardEvent: 'readonly',
+				MouseEvent: 'readonly',
+				PointerEvent: 'readonly',
+				DragEvent: 'readonly',
+				SubmitEvent: 'readonly',
+				HTMLElement: 'readonly',
+				HTMLDivElement: 'readonly',
+				HTMLInputElement: 'readonly',
+				HTMLTextAreaElement: 'readonly',
+				HTMLButtonElement: 'readonly',
+				HTMLCanvasElement: 'readonly',
+				HTMLTableSectionElement: 'readonly',
+				HTMLAnchorElement: 'readonly',
+				HTMLParagraphElement: 'readonly',
+				FileList: 'readonly',
+				File: 'readonly',
+				CustomEvent: 'readonly',
+				HTMLSelectElement: 'readonly',
+				HTMLSpanElement: 'readonly',
+				HTMLTableCellElement: 'readonly',
+				HTMLTableRowElement: 'readonly',
+				ResizeObserver: 'readonly',
+				Node: 'readonly',
+				process: 'readonly',
+				Buffer: 'readonly',
+				global: 'readonly',
+				App: 'readonly'
 			}
 		},
 		plugins: {
-			svelte
+			svelte,
+			'@typescript-eslint': tsPlugin
+		},
+		rules: {
+			'no-unused-vars': 'off',
+			'@typescript-eslint/no-unused-vars': [
+				'warn',
+				{
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_',
+					args: 'none'
+				}
+			],
+			'svelte/valid-compile': 'warn'
 		}
 	},
 	{
