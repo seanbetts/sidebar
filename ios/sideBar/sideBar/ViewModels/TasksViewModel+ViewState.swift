@@ -1,14 +1,5 @@
 import Foundation
 
-private extension TaskSelection {
-    var isSearch: Bool {
-        if case .search = self {
-            return true
-        }
-        return false
-    }
-}
-
 /// Stores UI state derived from tasks data and selection.
 public struct TasksViewState: Equatable {
     public let selectionLabel: String

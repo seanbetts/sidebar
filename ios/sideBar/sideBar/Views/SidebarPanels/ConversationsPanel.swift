@@ -16,18 +16,18 @@ public struct ConversationsPanel: View {
             }
     }
 }
-private struct ConversationsPanelView: View {
+struct ConversationsPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
-    @EnvironmentObject private var environment: AppEnvironment
-    @State private var searchQuery: String = ""
-    @FocusState private var isSearchFocused: Bool
-    @State private var renameConversationId: String?
-    @State private var renameValue: String = ""
-    @State private var deleteConversationId: String?
-    @State private var deleteConversationTitle: String = ""
-    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject var environment: AppEnvironment
+    @State var searchQuery: String = ""
+    @FocusState var isSearchFocused: Bool
+    @State var renameConversationId: String?
+    @State var renameValue: String = ""
+    @State var deleteConversationId: String?
+    @State var deleteConversationTitle: String = ""
+    @Environment(\.colorScheme) var colorScheme
     #if !os(macOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     #endif
 
     var body: some View {

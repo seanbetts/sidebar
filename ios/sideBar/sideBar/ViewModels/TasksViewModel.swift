@@ -10,16 +10,16 @@ public final class TasksViewModel: ObservableObject {
     @Published public private(set) var counts: TaskCountsResponse?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var searchPending: Bool = false
-    @Published public private(set) var errorMessage: String?
+    @Published public internal(set) var errorMessage: String?
     @Published public private(set) var selection: TaskSelection = .today
     @Published public var searchQuery: String = ""
     @Published public var newTaskDraft: TaskDraft?
     @Published public private(set) var newTaskSaving: Bool = false
     @Published public private(set) var newTaskError: String = ""
 
-    private let api: any TasksProviding
+    let api: any TasksProviding
     private let store: TasksStore
-    private let toastCenter: ToastCenter
+    let toastCenter: ToastCenter
     private var cancellables = Set<AnyCancellable>()
     private var searchDebounce: Task<Void, Never>?
     private var lastNonSearchSelection: TaskSelection = .today

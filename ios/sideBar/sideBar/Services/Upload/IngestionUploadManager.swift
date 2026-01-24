@@ -76,14 +76,20 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
         onProgress: @escaping (Double) -> Void,
         onCompletion: @escaping (Result<String, Error>) -> Void
     ) {
+        let baseUrl = config.baseUrl
+        let accessTokenProvider = config.accessTokenProvider
+        let session = self.session
+        let queue = self.queue
+        let logger = self.logger
+
         DispatchQueue.global(qos: .utility).async {
             let boundary = "Boundary-\(UUID().uuidString)"
-            var request = URLRequest(url: self.config.baseUrl.appendingPathComponent("files"))
-            request.httpMethod = "POST"
-            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-            request.setValue("application/json", forHTTPHeaderField: "Accept")
-            if let token = self.config.accessTokenProvider() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            var urlRequest = URLRequest(url: baseUrl.appendingPathComponent("files"))
+            urlRequest.httpMethod = "POST"
+            urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+            if let token = accessTokenProvider() {
+                urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
 
             let bodyURL = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString)")
@@ -97,21 +103,21 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
                         mimeType: request.mimeType,
                         folder: request.folder
                     ),
-                    logger: self.logger
+                    logger: logger
                 )
             } catch {
                 DispatchQueue.main.async { onCompletion(.failure(error)) }
                 return
             }
 
-            let task = self.session.uploadTask(with: request, fromFile: bodyURL)
+            let task = session.uploadTask(with: urlRequest, fromFile: bodyURL)
             let context = UploadContext(
                 uploadId: request.uploadId,
                 bodyFileURL: bodyURL,
                 onProgress: onProgress,
                 onCompletion: onCompletion
             )
-            self.queue.async {
+            queue.async {
                 self.contexts[task.taskIdentifier] = context
                 self.taskIdsByUploadId[request.uploadId] = task.taskIdentifier
             }
@@ -172,7 +178,7 @@ public final class IngestionUploadManager: NSObject, IngestionUploadManaging {
 
 }
 
-enum IngestionUploadHelpers {
+private enum IngestionUploadHelpers {
     static func writeMultipartBody(
         to url: URL,
         boundary: String,

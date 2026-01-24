@@ -2,7 +2,7 @@
 import UIKit
 
 extension KeyboardShortcutRegistry {
-    private static func buildShortcuts() -> [KeyboardShortcut] {
+    static func buildShortcuts() -> [KeyboardShortcut] {
         buildUniversalShortcuts()
             + buildChatShortcuts()
             + buildNotesShortcuts()

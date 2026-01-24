@@ -130,7 +130,7 @@ public final class TasksStore: ObservableObject {
     }
 }
 
-private extension TaskSelection {
+extension TaskSelection {
     var isSearch: Bool {
         if case .search = self {
             return true
