@@ -49,5 +49,5 @@ final class LoadableStateTests: XCTestCase {
 
 @MainActor
 private final class TestLoadableViewModel: LoadableViewModel {
-    var lastValue: String? = nil
+    var lastValue: String?
 }

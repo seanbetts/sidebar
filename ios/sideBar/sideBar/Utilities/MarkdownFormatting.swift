@@ -5,6 +5,12 @@ import AppKit
 import UIKit
 #endif
 
+private struct MarkdownParsedLine {
+    let content: String
+    let blockKind: String
+    let paragraphStyle: NSParagraphStyle?
+}
+
 // MARK: - MarkdownFormatting
 
 public enum MarkdownFormatting {
@@ -22,21 +28,21 @@ public enum MarkdownFormatting {
                 continue
             }
 
-            let (content, blockKind, paragraphStyle) = parseLine(lineString, isInCodeBlock: isInCodeBlock)
-            let lineAttributed = inlineAttributed(from: content, isCodeBlock: blockKind == "code")
-            if let paragraphStyle {
+            let parsedLine = parseLine(lineString, isInCodeBlock: isInCodeBlock)
+            let lineAttributed = inlineAttributed(from: parsedLine.content, isCodeBlock: parsedLine.blockKind == "code")
+            if let paragraphStyle = parsedLine.paragraphStyle {
                 lineAttributed.addAttribute(.paragraphStyle, value: paragraphStyle, range: lineAttributed.fullRange)
             }
-            if let blockFont = font(for: blockKind) {
+            if let blockFont = font(for: parsedLine.blockKind) {
                 lineAttributed.addAttribute(.font, value: blockFont, range: lineAttributed.fullRange)
             }
-            if blockKind == "blockquote" {
+            if parsedLine.blockKind == "blockquote" {
                 lineAttributed.addAttribute(.foregroundColor, value: secondaryTextColor(), range: lineAttributed.fullRange)
             }
-            if blockKind == "code" {
+            if parsedLine.blockKind == "code" {
                 lineAttributed.addAttribute(.backgroundColor, value: codeBlockBackground(), range: lineAttributed.fullRange)
             }
-            lineAttributed.addAttribute(blockAttribute, value: blockKind, range: lineAttributed.fullRange)
+            lineAttributed.addAttribute(blockAttribute, value: parsedLine.blockKind, range: lineAttributed.fullRange)
             result.append(lineAttributed)
             if index < lines.count - 1 {
                 result.append(NSAttributedString(string: "\n"))
@@ -86,47 +92,6 @@ public enum MarkdownFormatting {
         return output.joined(separator: "\n")
     }
 
-    private static func parseLine(_ line: String, isInCodeBlock: Bool) -> (String, String, NSParagraphStyle?) {
-        if isInCodeBlock {
-            return (line, "code", codeBlockStyle())
-        }
-
-        if line.hasPrefix("# ") {
-            return (String(line.dropFirst(2)), "heading1", headingStyle(level: 1))
-        }
-        if line.hasPrefix("## ") {
-            return (String(line.dropFirst(3)), "heading2", headingStyle(level: 2))
-        }
-        if line.hasPrefix("### ") {
-            return (String(line.dropFirst(4)), "heading3", headingStyle(level: 3))
-        }
-        if line.hasPrefix("> ") {
-            return (String(line.dropFirst(2)), "blockquote", blockquoteStyle())
-        }
-        if line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
-            return ("☑ " + String(line.dropFirst(6)), "task:checked", listStyle(ordered: false))
-        }
-        if line.hasPrefix("- [ ] ") {
-            return ("☐ " + String(line.dropFirst(6)), "task:unchecked", listStyle(ordered: false))
-        }
-        if line.hasPrefix("- ") {
-            return (String(line.dropFirst(2)), "list:bullet", listStyle(ordered: false))
-        }
-        if let orderedContent = orderedListPrefix(line) {
-            return (orderedContent, "list:ordered", listStyle(ordered: true))
-        }
-        return (line, "paragraph", nil)
-    }
-
-    private static func orderedListPrefix(_ line: String) -> String? {
-        let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: false)
-        guard parts.count == 2 else { return nil }
-        let numberPart = parts[0]
-        guard numberPart.hasSuffix("."),
-              Int(numberPart.dropLast()) != nil else { return nil }
-        return String(parts[1])
-    }
-
     private static func inlineAttributed(from text: String, isCodeBlock: Bool) -> NSMutableAttributedString {
         if isCodeBlock {
             let attributed = NSMutableAttributedString(string: text)
@@ -144,7 +109,7 @@ public enum MarkdownFormatting {
 
     private static func stripTaskMarker(from attributed: NSAttributedString) -> NSAttributedString {
         let string = attributed.string
-        if (string.hasPrefix("☐ ") || string.hasPrefix("☑ ")), attributed.length >= 2 {
+        if string.hasPrefix("☐ ") || string.hasPrefix("☑ "), attributed.length >= 2 {
             let range = NSRange(location: 2, length: attributed.length - 2)
             return attributed.attributedSubstring(from: range)
         }
@@ -272,6 +237,65 @@ public enum MarkdownFormatting {
         default:
             return nil
         }
+    }
+}
+
+private extension MarkdownFormatting {
+    static func parseLine(_ line: String, isInCodeBlock: Bool) -> MarkdownParsedLine {
+        if isInCodeBlock {
+            return MarkdownParsedLine(content: line, blockKind: "code", paragraphStyle: codeBlockStyle())
+        }
+
+        if line.hasPrefix("# ") {
+            return MarkdownParsedLine(content: String(line.dropFirst(2)), blockKind: "heading1", paragraphStyle: headingStyle(level: 1))
+        }
+        if line.hasPrefix("## ") {
+            return MarkdownParsedLine(content: String(line.dropFirst(3)), blockKind: "heading2", paragraphStyle: headingStyle(level: 2))
+        }
+        if line.hasPrefix("### ") {
+            return MarkdownParsedLine(content: String(line.dropFirst(4)), blockKind: "heading3", paragraphStyle: headingStyle(level: 3))
+        }
+        if line.hasPrefix("> ") {
+            return MarkdownParsedLine(content: String(line.dropFirst(2)), blockKind: "blockquote", paragraphStyle: blockquoteStyle())
+        }
+        if line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
+            return MarkdownParsedLine(
+                content: "☑ " + String(line.dropFirst(6)),
+                blockKind: "task:checked",
+                paragraphStyle: listStyle(ordered: false)
+            )
+        }
+        if line.hasPrefix("- [ ] ") {
+            return MarkdownParsedLine(
+                content: "☐ " + String(line.dropFirst(6)),
+                blockKind: "task:unchecked",
+                paragraphStyle: listStyle(ordered: false)
+            )
+        }
+        if line.hasPrefix("- ") {
+            return MarkdownParsedLine(
+                content: String(line.dropFirst(2)),
+                blockKind: "list:bullet",
+                paragraphStyle: listStyle(ordered: false)
+            )
+        }
+        if let orderedContent = orderedListPrefix(line) {
+            return MarkdownParsedLine(
+                content: orderedContent,
+                blockKind: "list:ordered",
+                paragraphStyle: listStyle(ordered: true)
+            )
+        }
+        return MarkdownParsedLine(content: line, blockKind: "paragraph", paragraphStyle: nil)
+    }
+
+    static func orderedListPrefix(_ line: String) -> String? {
+        let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2 else { return nil }
+        let numberPart = parts[0]
+        guard numberPart.hasSuffix("."),
+              Int(numberPart.dropLast()) != nil else { return nil }
+        return String(parts[1])
     }
 }
 

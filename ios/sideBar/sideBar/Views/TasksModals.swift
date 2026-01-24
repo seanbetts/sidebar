@@ -214,7 +214,7 @@ private final class NotesTextView: UITextView {
     override var keyCommands: [UIKeyCommand]? {
         [
             UIKeyCommand(input: "\r", modifierFlags: [], action: #selector(handleReturn)),
-            UIKeyCommand(input: "\r", modifierFlags: [.shift], action: #selector(handleShiftReturn)),
+            UIKeyCommand(input: "\r", modifierFlags: [.shift], action: #selector(handleShiftReturn))
         ]
     }
 

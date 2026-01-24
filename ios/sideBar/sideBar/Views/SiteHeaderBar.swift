@@ -263,11 +263,11 @@ public struct SiteHeaderBar: View {
 
     private func temperatureText(_ celsius: Double) -> String {
         if weatherUsesFahrenheit {
-            let f = Int(round(celsius * 9 / 5 + 32))
-            return "\(f)°F"
+            let fahrenheit = Int(round(celsius * 9 / 5 + 32))
+            return "\(fahrenheit)°F"
         }
-        let c = Int(round(celsius))
-        return "\(c)°C"
+        let roundedCelsius = Int(round(celsius))
+        return "\(roundedCelsius)°C"
     }
 
     private func formattedLocation(_ value: String) -> String {

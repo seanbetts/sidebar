@@ -21,9 +21,9 @@ private struct ConversationsPanelView: View {
     @EnvironmentObject private var environment: AppEnvironment
     @State private var searchQuery: String = ""
     @FocusState private var isSearchFocused: Bool
-    @State private var renameConversationId: String? = nil
+    @State private var renameConversationId: String?
     @State private var renameValue: String = ""
-    @State private var deleteConversationId: String? = nil
+    @State private var deleteConversationId: String?
     @State private var deleteConversationTitle: String = ""
     @Environment(\.colorScheme) private var colorScheme
     #if !os(macOS)

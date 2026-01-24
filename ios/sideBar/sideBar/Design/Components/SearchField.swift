@@ -3,7 +3,7 @@ import SwiftUI
 struct SearchField: View {
     @Binding var text: String
     var placeholder: String = "Search"
-    var isFocused: FocusState<Bool>.Binding? = nil
+    var isFocused: FocusState<Bool>.Binding?
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {

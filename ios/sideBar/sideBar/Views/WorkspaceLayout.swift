@@ -17,6 +17,12 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
     private let minRightSidebarWidth: Double = 280
     private let minMainWidth: Double = 320
 
+    private struct LayoutWidths {
+        let leftPanel: Double
+        let main: Double
+        let right: Double
+    }
+
     private let header: () -> Header
     private let mainContent: () -> Main
     private let rightSidebar: () -> Sidebar
@@ -111,7 +117,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
         }
     }
 
-    private func layoutWidths(for proxy: GeometryProxy) -> (leftPanel: Double, main: Double, right: Double) {
+    private func layoutWidths(for proxy: GeometryProxy) -> LayoutWidths {
         let total = proxy.size.width
         let leftPanel = isLeftPanelExpanded ? leftPanelWidth : 0
         let right = clampedRightWidth(draggingRightWidth ?? rightSidebarWidth, proxy: proxy, leftPanelWidth: leftPanel)
@@ -119,7 +125,7 @@ public struct WorkspaceLayout<Header: View, Main: View, Sidebar: View>: View {
             minMainWidth,
             total - railWidth - leftPanel - right - dividerWidth
         )
-        return (leftPanel, main, right)
+        return LayoutWidths(leftPanel: leftPanel, main: main, right: right)
     }
 
     private func clampedRightWidth(_ value: Double, proxy: GeometryProxy, leftPanelWidth: Double) -> Double {

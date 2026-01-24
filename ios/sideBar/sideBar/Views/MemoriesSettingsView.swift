@@ -6,7 +6,7 @@ import MarkdownUI
 struct MemoriesSettingsDetailView: View {
     @ObservedObject var viewModel: MemoriesViewModel
     @State private var searchQuery: String = ""
-    @State private var selection: String? = nil
+    @State private var selection: String?
     @State private var hasLoaded = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var colorScheme

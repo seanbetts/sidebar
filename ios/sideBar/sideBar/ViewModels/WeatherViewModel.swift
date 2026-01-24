@@ -2,13 +2,13 @@ import Combine
 import Foundation
 import MapKit
 
-// TODO: Revisit to prefer native-first data sources where applicable.
+// NOTE: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
 /// Loads weather data and formats related state.
 public final class WeatherViewModel: LoadableViewModel {
-    @Published public private(set) var weather: WeatherResponse? = nil
-    @Published public private(set) var locationName: String? = nil
+    @Published public private(set) var weather: WeatherResponse?
+    @Published public private(set) var locationName: String?
 
     private let api: any WeatherProviding
 

@@ -28,7 +28,7 @@ public enum LoadingState<T> {
 @MainActor
 open class LoadableViewModel: ObservableObject {
     @Published public private(set) var isLoading: Bool = false
-    @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var errorMessage: String?
 
     public init() {
     }

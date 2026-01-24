@@ -88,10 +88,10 @@ final class SupabaseRealtimeAdapterTests: XCTestCase {
 }
 
 private final class RecordingRealtimeHandler: RealtimeEventHandler {
-    var notePayload: RealtimePayload<NoteRealtimeRecord>? = nil
-    var websitePayload: RealtimePayload<WebsiteRealtimeRecord>? = nil
-    var ingestedPayload: RealtimePayload<IngestedFileRealtimeRecord>? = nil
-    var fileJobPayload: RealtimePayload<FileJobRealtimeRecord>? = nil
+    var notePayload: RealtimePayload<NoteRealtimeRecord>?
+    var websitePayload: RealtimePayload<WebsiteRealtimeRecord>?
+    var ingestedPayload: RealtimePayload<IngestedFileRealtimeRecord>?
+    var fileJobPayload: RealtimePayload<FileJobRealtimeRecord>?
     private let noteExpectation: XCTestExpectation?
     private let websiteExpectation: XCTestExpectation?
     private let ingestedExpectation: XCTestExpectation?

@@ -1,8 +1,5 @@
 import SwiftUI
 import UniformTypeIdentifiers
-
-import SwiftUI
-import UniformTypeIdentifiers
 import Combine
 
 // MARK: - ChatView

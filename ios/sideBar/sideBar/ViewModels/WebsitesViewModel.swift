@@ -42,14 +42,14 @@ public final class WebsitesViewModel: ObservableObject {
     }
 
     @Published public private(set) var items: [WebsiteItem] = []
-    @Published public private(set) var active: WebsiteDetail? = nil
-    @Published public private(set) var selectedWebsiteId: String? = nil
+    @Published public private(set) var active: WebsiteDetail?
+    @Published public private(set) var selectedWebsiteId: String?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingDetail: Bool = false
-    @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var errorMessage: String?
     @Published public private(set) var isSavingWebsite: Bool = false
-    @Published public private(set) var saveErrorMessage: String? = nil
-    @Published public private(set) var pendingWebsite: PendingWebsiteItem? = nil
+    @Published public private(set) var saveErrorMessage: String?
+    @Published public private(set) var pendingWebsite: PendingWebsiteItem?
 
     private let api: any WebsitesProviding
     private let store: WebsitesStore

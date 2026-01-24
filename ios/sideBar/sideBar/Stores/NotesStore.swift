@@ -14,8 +14,8 @@ import Combine
 /// - Apply editor updates from `NotesEditorViewModel`
 /// - Handle real-time note events (insert, update, delete)
 public final class NotesStore: CachedStoreBase<FileTree> {
-    @Published public private(set) var tree: FileTree? = nil
-    @Published public private(set) var activeNote: NotePayload? = nil
+    @Published public private(set) var tree: FileTree?
+    @Published public private(set) var activeNote: NotePayload?
 
     private let api: any NotesProviding
     private var isRefreshingTree = false

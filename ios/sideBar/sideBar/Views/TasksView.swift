@@ -45,19 +45,19 @@ private struct TasksDetailView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
-    @State private var renameTask: TaskItem? = nil
+    @State private var renameTask: TaskItem?
     @State private var renameValue: String = ""
-    @State private var notesTask: TaskItem? = nil
-    @State private var dueTask: TaskItem? = nil
+    @State private var notesTask: TaskItem?
+    @State private var dueTask: TaskItem?
     @State private var dueDate: Date = Date()
-    @State private var moveTask: TaskItem? = nil
+    @State private var moveTask: TaskItem?
     @State private var selectedListId: String = ""
-    @State private var repeatTask: TaskItem? = nil
+    @State private var repeatTask: TaskItem?
     @State private var repeatType: RepeatType = .daily
     @State private var repeatInterval: Int = 1
     @State private var repeatStartDate: Date = Date()
-    @State private var deleteTask: TaskItem? = nil
-    @State private var activeTaskId: String? = nil
+    @State private var deleteTask: TaskItem?
+    @State private var activeTaskId: String?
 
     var body: some View {
         let state = viewModel.viewState

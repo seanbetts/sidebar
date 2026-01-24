@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 
-// TODO: Revisit to prefer native-first data sources where applicable.
+// NOTE: Revisit to prefer native-first data sources where applicable.
 
 /// Persists navigation selections and layout preferences.
 public nonisolated final class NavigationState: ObservableObject {
@@ -17,5 +17,5 @@ public nonisolated final class NavigationState: ObservableObject {
         set { lastSectionRaw = newValue.rawValue }
     }
 
-    // TODO: Extend to support per-platform navigation state (tabs vs split).
+    // NOTE: Extend to support per-platform navigation state (tabs vs split).
 }

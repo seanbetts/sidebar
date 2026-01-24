@@ -79,8 +79,8 @@ private final class MockConversationsAPI: ConversationsProviding {
     let getResult: Result<ConversationWithMessages, Error>
     var listCallCount = 0
     var getCallCount = 0
-    var onList: (() -> Void)? = nil
-    var listDelay: TimeInterval? = nil
+    var onList: (() -> Void)?
+    var listDelay: TimeInterval?
 
     init(
         listResult: Result<[Conversation], Error>,

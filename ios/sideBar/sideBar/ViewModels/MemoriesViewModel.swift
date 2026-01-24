@@ -1,17 +1,17 @@
 import Foundation
 import Combine
 
-// TODO: Revisit to prefer native-first data sources where applicable.
+// NOTE: Revisit to prefer native-first data sources where applicable.
 
 @MainActor
 /// Manages memory list and selection state.
 public final class MemoriesViewModel: ObservableObject {
     @Published public private(set) var items: [MemoryItem] = []
-    @Published public private(set) var active: MemoryItem? = nil
-    @Published public private(set) var selectedMemoryId: String? = nil
+    @Published public private(set) var active: MemoryItem?
+    @Published public private(set) var selectedMemoryId: String?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var isLoadingDetail: Bool = false
-    @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var errorMessage: String?
 
     private let api: any MemoriesProviding
     private let cache: CacheClient

@@ -9,10 +9,10 @@ public final class TasksStore: ObservableObject {
     @Published public private(set) var tasks: [TaskItem] = []
     @Published public private(set) var groups: [TaskGroup] = []
     @Published public private(set) var projects: [TaskProject] = []
-    @Published public private(set) var counts: TaskCountsResponse? = nil
+    @Published public private(set) var counts: TaskCountsResponse?
     @Published public private(set) var isLoading: Bool = false
     @Published public private(set) var searchPending: Bool = false
-    @Published public private(set) var errorMessage: String? = nil
+    @Published public private(set) var errorMessage: String?
 
     private let api: any TasksProviding
     private let cache: CacheClient

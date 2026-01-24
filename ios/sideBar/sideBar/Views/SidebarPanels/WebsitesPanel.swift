@@ -24,11 +24,11 @@ private struct WebsitesPanelView: View {
     @State private var searchQuery: String = ""
     @State private var hasLoaded = false
     @State private var isArchiveExpanded = false
-    @State private var selection: String? = nil
+    @State private var selection: String?
     @State private var listAppeared = false
     @State private var isNewWebsitePresented = false
     @State private var newWebsiteUrl: String = ""
-    @State private var saveErrorMessage: String? = nil
+    @State private var saveErrorMessage: String?
     @State private var archiveHeight: CGFloat = 0
     @FocusState private var isSearchFocused: Bool
 
