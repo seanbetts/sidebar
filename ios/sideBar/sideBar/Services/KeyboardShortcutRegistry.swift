@@ -90,7 +90,9 @@ public final class KeyboardShortcutRegistry {
         }
         return false
     }
+}
 
+extension KeyboardShortcutRegistry {
     private static func buildShortcuts() -> [KeyboardShortcut] {
         buildUniversalShortcuts()
             + buildChatShortcuts()
