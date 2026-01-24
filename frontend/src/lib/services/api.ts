@@ -569,6 +569,23 @@ class TasksAPI {
 		return response.json();
 	}
 
+	async renameGroup(groupId: string, title: string): Promise<TaskGroup> {
+		const response = await fetch(`${this.baseUrl}/groups/${groupId}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ title })
+		});
+		if (!response.ok) throw new Error('Failed to rename task group');
+		return response.json();
+	}
+
+	async deleteGroup(groupId: string): Promise<void> {
+		const response = await fetch(`${this.baseUrl}/groups/${groupId}`, {
+			method: 'DELETE'
+		});
+		if (!response.ok) throw new Error('Failed to delete task group');
+	}
+
 	async createProject(title: string, groupId: string | null): Promise<TaskProject> {
 		const response = await fetch(`${this.baseUrl}/projects`, {
 			method: 'POST',
@@ -577,6 +594,23 @@ class TasksAPI {
 		});
 		if (!response.ok) throw new Error('Failed to create task project');
 		return response.json();
+	}
+
+	async renameProject(projectId: string, title: string): Promise<TaskProject> {
+		const response = await fetch(`${this.baseUrl}/projects/${projectId}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ title })
+		});
+		if (!response.ok) throw new Error('Failed to rename task project');
+		return response.json();
+	}
+
+	async deleteProject(projectId: string): Promise<void> {
+		const response = await fetch(`${this.baseUrl}/projects/${projectId}`, {
+			method: 'DELETE'
+		});
+		if (!response.ok) throw new Error('Failed to delete task project');
 	}
 
 	async apply(payload: Record<string, unknown>): Promise<void> {

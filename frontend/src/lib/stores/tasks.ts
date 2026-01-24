@@ -345,6 +345,61 @@ function createTasksStore() {
 				throw error;
 			}
 		},
+		renameGroup: async (groupId: string, title: string) => {
+			const trimmed = title.trim();
+			if (!trimmed) return;
+			try {
+				await tasksAPI.renameGroup(groupId, trimmed);
+				const selection = get({ subscribe }).selection;
+				await loadSelection(selection, { force: true, silent: true, notify: false });
+				void tasksAPI
+					.counts()
+					.then(applyCountsResponse)
+					.catch(() => {
+						update((current) => ({
+							...current,
+							error: 'Failed to update task counts'
+						}));
+					});
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to rename group'
+				}));
+				throw error;
+			}
+		},
+		deleteGroup: async (groupId: string) => {
+			try {
+				const state = get({ subscribe });
+				const projectIds = state.projects
+					.filter((project) => project.groupId === groupId)
+					.map((project) => project.id);
+				let nextSelection = state.selection;
+				if (state.selection.type === 'group' && state.selection.id === groupId) {
+					nextSelection = { type: 'today' };
+				} else if (state.selection.type === 'project' && projectIds.includes(state.selection.id)) {
+					nextSelection = { type: 'today' };
+				}
+				await tasksAPI.deleteGroup(groupId);
+				await loadSelection(nextSelection, { force: true, silent: true, notify: false });
+				void tasksAPI
+					.counts()
+					.then(applyCountsResponse)
+					.catch(() => {
+						update((current) => ({
+							...current,
+							error: 'Failed to update task counts'
+						}));
+					});
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to delete group'
+				}));
+				throw error;
+			}
+		},
 		createProject: async (title: string, groupId: string | null) => {
 			const trimmed = title.trim();
 			if (!trimmed) return;
@@ -365,6 +420,56 @@ function createTasksStore() {
 				update((state) => ({
 					...state,
 					error: error instanceof Error ? error.message : 'Failed to create project'
+				}));
+				throw error;
+			}
+		},
+		renameProject: async (projectId: string, title: string) => {
+			const trimmed = title.trim();
+			if (!trimmed) return;
+			try {
+				await tasksAPI.renameProject(projectId, trimmed);
+				const selection = get({ subscribe }).selection;
+				await loadSelection(selection, { force: true, silent: true, notify: false });
+				void tasksAPI
+					.counts()
+					.then(applyCountsResponse)
+					.catch(() => {
+						update((current) => ({
+							...current,
+							error: 'Failed to update task counts'
+						}));
+					});
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to rename project'
+				}));
+				throw error;
+			}
+		},
+		deleteProject: async (projectId: string) => {
+			try {
+				const state = get({ subscribe });
+				const nextSelection =
+					state.selection.type === 'project' && state.selection.id === projectId
+						? { type: 'today' }
+						: state.selection;
+				await tasksAPI.deleteProject(projectId);
+				await loadSelection(nextSelection, { force: true, silent: true, notify: false });
+				void tasksAPI
+					.counts()
+					.then(applyCountsResponse)
+					.catch(() => {
+						update((current) => ({
+							...current,
+							error: 'Failed to update task counts'
+						}));
+					});
+			} catch (error) {
+				update((state) => ({
+					...state,
+					error: error instanceof Error ? error.message : 'Failed to delete project'
 				}));
 				throw error;
 			}

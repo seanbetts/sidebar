@@ -131,9 +131,37 @@ class TaskService:
 
     @staticmethod
     def delete_task_group(db: Session, user_id: str, group_id: str) -> TaskGroup:
-        """Soft-delete a task group."""
+        """Soft-delete a task group along with related projects and tasks."""
         group = TaskService.get_task_group(db, user_id, group_id)
         now = datetime.now(UTC)
+        projects = (
+            db.query(TaskProject)
+            .filter(
+                TaskProject.user_id == user_id,
+                TaskProject.group_id == group.id,
+                TaskProject.deleted_at.is_(None),
+            )
+            .all()
+        )
+        project_ids = [project.id for project in projects]
+        for project in projects:
+            project.deleted_at = now
+            project.updated_at = now
+
+        tasks_query = db.query(Task).filter(
+            Task.user_id == user_id,
+            Task.deleted_at.is_(None),
+        )
+        if project_ids:
+            tasks_query = tasks_query.filter(
+                or_(Task.group_id == group.id, Task.project_id.in_(project_ids))
+            )
+        else:
+            tasks_query = tasks_query.filter(Task.group_id == group.id)
+        tasks = tasks_query.all()
+        for task in tasks:
+            task.deleted_at = now
+            task.updated_at = now
         group.deleted_at = now
         group.updated_at = now
         return group
@@ -219,9 +247,21 @@ class TaskService:
 
     @staticmethod
     def delete_task_project(db: Session, user_id: str, project_id: str) -> TaskProject:
-        """Soft-delete a task project."""
+        """Soft-delete a task project along with related tasks."""
         project = TaskService.get_task_project(db, user_id, project_id)
         now = datetime.now(UTC)
+        tasks = (
+            db.query(Task)
+            .filter(
+                Task.user_id == user_id,
+                Task.project_id == project.id,
+                Task.deleted_at.is_(None),
+            )
+            .all()
+        )
+        for task in tasks:
+            task.deleted_at = now
+            task.updated_at = now
         project.deleted_at = now
         project.updated_at = now
         return project
