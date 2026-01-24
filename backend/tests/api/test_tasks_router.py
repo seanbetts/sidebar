@@ -120,6 +120,55 @@ def test_tasks_counts(test_client, test_db):
     assert payload["counts"]["upcoming"] == 1
 
 
+def test_tasks_area_and_project_payloads(test_client, test_db):
+    area = TaskArea(
+        user_id=DEFAULT_USER_ID,
+        title="Home",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(area)
+    test_db.flush()
+    project = TaskProject(
+        user_id=DEFAULT_USER_ID,
+        title="Household",
+        area_id=area.id,
+        status="active",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    task = Task(
+        user_id=DEFAULT_USER_ID,
+        title="Vacuum",
+        status="inbox",
+        project_id=project.id,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add_all([project, task])
+    test_db.commit()
+
+    area_response = test_client.get(
+        f"/api/v1/tasks/areas/{area.id}/tasks", headers=_auth_headers()
+    )
+    assert area_response.status_code == 200
+    area_payload = area_response.json()
+    assert area_payload["scope"] == "area"
+    assert area_payload["areas"]
+    assert area_payload["projects"]
+    assert any(item["title"] == "Vacuum" for item in area_payload["tasks"])
+
+    project_response = test_client.get(
+        f"/api/v1/tasks/projects/{project.id}/tasks", headers=_auth_headers()
+    )
+    assert project_response.status_code == 200
+    project_payload = project_response.json()
+    assert project_payload["scope"] == "project"
+    assert project_payload["areas"]
+    assert project_payload["projects"]
+    assert any(item["title"] == "Vacuum" for item in project_payload["tasks"])
+
+
 def test_tasks_apply_idempotent(test_client, test_db):
     request = {"op": "add", "title": "New Task", "operation_id": "op-1"}
     response = test_client.post(
