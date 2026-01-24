@@ -77,3 +77,24 @@ class TasksParameterBuilder(BaseParameterBuilder):
         args = [params["title"]]
         TasksParameterBuilder.append_user_id(args, params)
         return args
+
+    @staticmethod
+    def build_trash_args(params: dict) -> list:
+        """Build CLI arguments for trash task."""
+        args = [params["task_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
+    def build_delete_project_args(params: dict) -> list:
+        """Build CLI arguments for delete project."""
+        args = [params["project_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        return args
+
+    @staticmethod
+    def build_delete_group_args(params: dict) -> list:
+        """Build CLI arguments for delete group."""
+        args = [params["group_id"]]
+        TasksParameterBuilder.append_user_id(args, params)
+        return args
