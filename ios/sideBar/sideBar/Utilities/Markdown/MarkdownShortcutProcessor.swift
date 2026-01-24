@@ -115,8 +115,10 @@ public struct MarkdownShortcutProcessor {
                 prefix: prefix,
                 suffix: suffix,
                 apply: { range in
-                    let current = text[range].inlinePresentationIntent ?? []
-                    text[range].inlinePresentationIntent = current.union(intent)
+                    var slice = text[range]
+                    let current = slice.inlinePresentationIntent ?? []
+                    slice.inlinePresentationIntent = current.union(intent)
+                    text.replaceSubrange(range, with: slice)
                 }
             ) {
                 return result
@@ -129,7 +131,9 @@ public struct MarkdownShortcutProcessor {
             prefix: strikethroughPattern.0,
             suffix: strikethroughPattern.1,
             apply: { range in
-                text[range].strikethroughStyle = .single
+                var slice = text[range]
+                slice.strikethroughStyle = .single
+                text.replaceSubrange(range, with: slice)
             }
         ) {
             return result
