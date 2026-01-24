@@ -1,5 +1,4 @@
 import Foundation
-import CoreGraphics
 import Combine
 import os
 
@@ -18,8 +17,6 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var isReadOnly: Bool = false
     @Published public var selectedRange: NSRange = NSRange(location: 0, length: 0)
     @Published public var isEditing: Bool = false
-    @Published public var editorFrame: CGRect = .zero
-    @Published public var pendingCaretCoords: CGPoint?
     @Published public private(set) var hasExternalUpdate: Bool = false
     @Published public var wantsEditingOnNextLoad: Bool = false
 
@@ -61,7 +58,6 @@ public final class NotesEditorViewModel: ObservableObject {
 
     public func requestEditingOnNextLoad() {
         wantsEditingOnNextLoad = true
-        pendingCaretCoords = nil
         selectedRange = NSRange(location: 0, length: 0)
     }
 
