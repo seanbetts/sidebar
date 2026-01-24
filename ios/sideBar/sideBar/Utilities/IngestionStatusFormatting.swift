@@ -2,41 +2,33 @@ import Foundation
 
 func ingestionStatusLabel(for job: IngestionJob) -> String? {
     let status = job.status?.lowercased() ?? ""
-    if status.isEmpty {
+    guard !status.isEmpty else {
         return nil
     }
-    switch status {
-    case "uploading":
-        return "Uploading..."
-    case "queued":
-        return "Queued"
-    case "ready":
-        return "Ready"
-    case "failed":
-        return "Failed"
-    case "canceled":
-        return "Canceled"
-    default:
-        break
+    let statusLabels: [String: String] = [
+        "uploading": "Uploading...",
+        "queued": "Queued",
+        "ready": "Ready",
+        "failed": "Failed",
+        "canceled": "Canceled"
+    ]
+    if let label = statusLabels[status] {
+        return label
     }
 
     let stage = job.stage?.lowercased() ?? ""
-    switch stage {
-    case "queued":
-        return "Queued"
-    case "validating", "converting", "extracting":
-        return "Preparing"
-    case "ai_md", "transcribing":
-        return "Transcribing"
-    case "thumb", "finalizing":
-        return "Finalizing"
-    case "ready":
-        return "Ready"
-    case "failed":
-        return "Failed"
-    case "canceled":
-        return "Canceled"
-    default:
-        return "Processing"
-    }
+    let stageLabels: [String: String] = [
+        "queued": "Queued",
+        "validating": "Preparing",
+        "converting": "Preparing",
+        "extracting": "Preparing",
+        "ai_md": "Transcribing",
+        "transcribing": "Transcribing",
+        "thumb": "Finalizing",
+        "finalizing": "Finalizing",
+        "ready": "Ready",
+        "failed": "Failed",
+        "canceled": "Canceled"
+    ]
+    return stageLabels[stage] ?? "Processing"
 }
