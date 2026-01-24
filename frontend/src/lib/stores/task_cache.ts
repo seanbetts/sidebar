@@ -1,6 +1,6 @@
 import type {
 	Task,
-	TaskArea,
+	TaskGroup,
 	TaskProject,
 	TaskSyncOperation,
 	TaskSyncUpdates
@@ -9,17 +9,18 @@ import type {
 export type TaskCacheSnapshot = {
 	tasks: Task[];
 	projects: TaskProject[];
-	areas: TaskArea[];
+	groups: TaskGroup[];
 	lastSync: string | null;
 };
 
 type TaskOutboxEntry = TaskSyncOperation & { queued_at: string };
 
 const DB_NAME = 'sidebar-tasks';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_TASKS = 'tasks';
 const STORE_PROJECTS = 'projects';
-const STORE_AREAS = 'areas';
+const STORE_GROUPS = 'groups';
+const LEGACY_STORE_AREAS = 'areas';
 const STORE_OPERATIONS = 'operations';
 const STORE_SYNC_STATE = 'sync_state';
 const SYNC_KEY = 'tasks.last_sync';
@@ -27,7 +28,7 @@ const SYNC_KEY = 'tasks.last_sync';
 const memoryState = {
 	tasks: new Map<string, Task>(),
 	projects: new Map<string, TaskProject>(),
-	areas: new Map<string, TaskArea>(),
+	groups: new Map<string, TaskGroup>(),
 	operations: [] as TaskOutboxEntry[],
 	lastSync: null as string | null
 };
@@ -51,14 +52,25 @@ const openDb = (): Promise<IDBDatabase | null> => {
 			const request = indexedDB.open(DB_NAME, DB_VERSION);
 			request.onupgradeneeded = () => {
 				const db = request.result;
+				const transaction = request.transaction;
 				if (!db.objectStoreNames.contains(STORE_TASKS)) {
 					db.createObjectStore(STORE_TASKS, { keyPath: 'id' });
 				}
 				if (!db.objectStoreNames.contains(STORE_PROJECTS)) {
 					db.createObjectStore(STORE_PROJECTS, { keyPath: 'id' });
 				}
-				if (!db.objectStoreNames.contains(STORE_AREAS)) {
-					db.createObjectStore(STORE_AREAS, { keyPath: 'id' });
+				if (!db.objectStoreNames.contains(STORE_GROUPS)) {
+					db.createObjectStore(STORE_GROUPS, { keyPath: 'id' });
+				}
+				if (transaction && db.objectStoreNames.contains(LEGACY_STORE_AREAS)) {
+					const legacyStore = transaction.objectStore(LEGACY_STORE_AREAS);
+					const groupStore = transaction.objectStore(STORE_GROUPS);
+					const requestAll = legacyStore.getAll();
+					requestAll.onsuccess = () => {
+						(requestAll.result ?? []).forEach((group) => {
+							groupStore.put(group);
+						});
+					};
 				}
 				if (!db.objectStoreNames.contains(STORE_OPERATIONS)) {
 					const store = db.createObjectStore(STORE_OPERATIONS, {
@@ -103,25 +115,25 @@ const runTransaction = async <T>(
 };
 
 /**
- * Load cached tasks, projects, areas, and sync state.
+ * Load cached tasks, projects, groups, and sync state.
  */
 export async function loadTaskCacheSnapshot(): Promise<TaskCacheSnapshot> {
 	if (!isIndexedDbAvailable()) {
 		return {
 			tasks: Array.from(memoryState.tasks.values()),
 			projects: Array.from(memoryState.projects.values()),
-			areas: Array.from(memoryState.areas.values()),
+			groups: Array.from(memoryState.groups.values()),
 			lastSync: memoryState.lastSync
 		};
 	}
 	return runTransaction(
-		[STORE_TASKS, STORE_PROJECTS, STORE_AREAS, STORE_SYNC_STATE],
+		[STORE_TASKS, STORE_PROJECTS, STORE_GROUPS, STORE_SYNC_STATE],
 		'readonly',
 		async (stores) => {
-			const [tasks, projects, areas, syncState] = await Promise.all([
+			const [tasks, projects, groups, syncState] = await Promise.all([
 				requestToPromise<Task[]>(stores[STORE_TASKS].getAll()),
 				requestToPromise<TaskProject[]>(stores[STORE_PROJECTS].getAll()),
-				requestToPromise<TaskArea[]>(stores[STORE_AREAS].getAll()),
+				requestToPromise<TaskGroup[]>(stores[STORE_GROUPS].getAll()),
 				requestToPromise<{ key: string; value: string } | undefined>(
 					stores[STORE_SYNC_STATE].get(SYNC_KEY)
 				)
@@ -129,7 +141,7 @@ export async function loadTaskCacheSnapshot(): Promise<TaskCacheSnapshot> {
 			return {
 				tasks,
 				projects,
-				areas,
+				groups,
 				lastSync: syncState?.value ?? null
 			};
 		}
@@ -169,17 +181,17 @@ export async function upsertProjects(projects: TaskProject[]): Promise<void> {
 }
 
 /**
- * Persist areas in the cache store.
+ * Persist groups in the cache store.
  */
-export async function upsertAreas(areas: TaskArea[]): Promise<void> {
-	if (!areas.length) return;
+export async function upsertGroups(groups: TaskGroup[]): Promise<void> {
+	if (!groups.length) return;
 	if (!isIndexedDbAvailable()) {
-		areas.forEach((area) => memoryState.areas.set(area.id, area));
+		groups.forEach((group) => memoryState.groups.set(group.id, group));
 		return;
 	}
-	await runTransaction([STORE_AREAS], 'readwrite', async (stores) => {
-		areas.forEach((area) => {
-			stores[STORE_AREAS].put(area);
+	await runTransaction([STORE_GROUPS], 'readwrite', async (stores) => {
+		groups.forEach((group) => {
+			stores[STORE_GROUPS].put(group);
 		});
 	});
 }
@@ -191,7 +203,7 @@ export async function applySyncUpdates(updates: TaskSyncUpdates): Promise<void> 
 	await Promise.all([
 		upsertTasks(updates.tasks ?? []),
 		upsertProjects(updates.projects ?? []),
-		upsertAreas(updates.areas ?? [])
+		upsertGroups(updates.groups ?? [])
 	]);
 }
 

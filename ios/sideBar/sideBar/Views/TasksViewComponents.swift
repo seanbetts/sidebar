@@ -43,6 +43,7 @@ struct TaskRow<MenuContent: View>: View {
     let selection: TaskSelection
     let onComplete: () -> Void
     let onOpenNotes: () -> Void
+    let onSelect: () -> Void
     let menuContent: () -> MenuContent
     @State private var showRepeatInfo = false
 
@@ -128,11 +129,13 @@ struct TaskRow<MenuContent: View>: View {
                 .stroke(DesignTokens.Colors.border, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg))
+        .contentShape(Rectangle())
+        .onTapGesture { onSelect() }
     }
 
     private var showsDuePill: Bool {
         switch selection {
-        case .area, .project, .search:
+        case .group, .project, .search:
             return true
         default:
             return false

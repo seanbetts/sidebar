@@ -74,8 +74,8 @@
 			draftListName = newTaskDraft.listName ?? '';
 			if (newTaskDraft.projectId) {
 				draftTargetLabel = view.projectTitleById.get(newTaskDraft.projectId) ?? 'Project';
-			} else if (newTaskDraft.areaId) {
-				draftTargetLabel = view.areaTitleById.get(newTaskDraft.areaId) ?? 'Area';
+			} else if (newTaskDraft.groupId) {
+				draftTargetLabel = view.groupTitleById.get(newTaskDraft.groupId) ?? 'Group';
 			} else {
 				draftTargetLabel = '';
 			}
@@ -103,7 +103,7 @@
 			view.selectionType,
 			view.selectionLabel,
 			view.projectTitleById,
-			view.areaTitleById
+			view.groupTitleById
 		);
 	const dueLabel = (task: Task) => formatDueLabel(task);
 
@@ -174,10 +174,10 @@
 
 	function openMoveDialog(task: Task) {
 		moveTask = task;
-		moveListId = task.projectId ?? task.areaId ?? '';
+		moveListId = task.projectId ?? task.groupId ?? '';
 		moveListName =
 			(moveListId &&
-				(view.projectTitleById.get(moveListId) ?? view.areaTitleById.get(moveListId))) ??
+				(view.projectTitleById.get(moveListId) ?? view.groupTitleById.get(moveListId))) ??
 			'';
 		showMoveDialog = true;
 	}
@@ -191,7 +191,7 @@
 
 	function handleMoveListChange(value: string) {
 		moveListId = value;
-		moveListName = view.projectTitleById.get(value) ?? view.areaTitleById.get(value) ?? '';
+		moveListName = view.projectTitleById.get(value) ?? view.groupTitleById.get(value) ?? '';
 	}
 
 	async function commitMove() {
@@ -385,9 +385,9 @@
 			return;
 		}
 		const project = view.projectTitleById.get(value);
-		const area = view.areaTitleById.get(value);
-		draftTargetLabel = project ?? area ?? '';
-		draftListName = project ?? area ?? '';
+		const group = view.groupTitleById.get(value);
+		draftTargetLabel = project ?? group ?? '';
+		draftListName = project ?? group ?? '';
 	}
 
 	const refreshTasks = () => {
@@ -461,8 +461,8 @@
 			{draftTargetLabel}
 			bind:draftListId
 			bind:titleInput
-			areaOptions={view.areaOptions}
-			projectsByArea={view.projectsByArea}
+			groupOptions={view.groupOptions}
+			projectsByGroup={view.projectsByGroup}
 			orphanProjects={view.orphanProjects}
 			{busyTasks}
 			{editingTaskId}
@@ -504,8 +504,8 @@
 		bind:showMoveDialog
 		{moveTask}
 		bind:moveListId
-		areaOptions={view.areaOptions}
-		projectsByArea={view.projectsByArea}
+		groupOptions={view.groupOptions}
+		projectsByGroup={view.projectsByGroup}
 		orphanProjects={view.orphanProjects}
 		onCloseMove={closeMoveDialog}
 		onMoveListChange={handleMoveListChange}

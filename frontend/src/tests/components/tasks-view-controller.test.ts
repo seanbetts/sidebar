@@ -42,7 +42,7 @@ const { tasksStore, loadMock, clearConflictNoticeMock } = vi.hoisted(() => {
 	const baseState: TasksState = {
 		selection: { type: 'today' },
 		tasks: [],
-		areas: [],
+		groups: [],
 		projects: [],
 		todayCount: 0,
 		counts: {},

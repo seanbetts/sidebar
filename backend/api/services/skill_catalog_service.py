@@ -127,7 +127,8 @@ class SkillCatalogService:
         """Return the static skill category map."""
         return {
             "fs": "Documents",
-            "notes": "Documents",
+            "notes": "Productivity",
+            "tasks": "Productivity",
             "docx": "Documents",
             "pdf": "Documents",
             "pptx": "Documents",

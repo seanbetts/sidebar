@@ -48,6 +48,13 @@ public final class AppEnvironment: ObservableObject {
             #endif
         }
     }
+    @Published public var isTasksFocused: Bool = false {
+        didSet {
+            #if os(iOS)
+            UIMenuSystem.main.setNeedsRebuild()
+            #endif
+        }
+    }
     @Published public var shortcutActionEvent: ShortcutActionEvent?
     private var cancellables = Set<AnyCancellable>()
 
@@ -318,7 +325,13 @@ extension AppEnvironment {
     public var activeShortcutContexts: Set<ShortcutContext> {
         var contexts: Set<ShortcutContext> = [.universal]
         if let activeSection {
-            contexts.insert(ShortcutContext.from(section: activeSection))
+            if activeSection == .tasks {
+                if isTasksFocused {
+                    contexts.insert(.tasks)
+                }
+            } else {
+                contexts.insert(ShortcutContext.from(section: activeSection))
+            }
         }
         if isNotesEditing {
             contexts.insert(.notesEditing)

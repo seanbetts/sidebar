@@ -26,7 +26,7 @@ describe('task_cache (memory fallback)', () => {
 			expect(snapshot).toEqual({
 				tasks: [],
 				projects: [],
-				areas: [],
+				groups: [],
 				lastSync: null
 			});
 		});
@@ -42,7 +42,7 @@ describe('task_cache (memory fallback)', () => {
 					deadline: null,
 					notes: null,
 					projectId: null,
-					areaId: null,
+					groupId: null,
 					repeating: false,
 					repeatTemplate: false,
 					updatedAt: null,
@@ -72,7 +72,7 @@ describe('task_cache (memory fallback)', () => {
 				deadline: null,
 				notes: null,
 				projectId: null,
-				areaId: null,
+				groupId: null,
 				repeating: false,
 				repeatTemplate: false,
 				updatedAt: null,
@@ -92,7 +92,7 @@ describe('task_cache (memory fallback)', () => {
 
 	describe('upsertProjects', () => {
 		it('stores projects in memory', async () => {
-			const projects = [{ id: 'proj-1', title: 'Project 1', areaId: null }];
+			const projects = [{ id: 'proj-1', title: 'Project 1', groupId: null }];
 
 			await taskCache.upsertProjects(projects);
 			const snapshot = await taskCache.loadTaskCacheSnapshot();
@@ -109,27 +109,27 @@ describe('task_cache (memory fallback)', () => {
 		});
 	});
 
-	describe('upsertAreas', () => {
-		it('stores areas in memory', async () => {
-			const areas = [{ id: 'area-1', title: 'Area 1' }];
+	describe('upsertGroups', () => {
+		it('stores groups in memory', async () => {
+			const groups = [{ id: 'group-1', title: 'Group 1' }];
 
-			await taskCache.upsertAreas(areas);
+			await taskCache.upsertGroups(groups);
 			const snapshot = await taskCache.loadTaskCacheSnapshot();
 
-			expect(snapshot.areas).toHaveLength(1);
-			expect(snapshot.areas[0].id).toBe('area-1');
+			expect(snapshot.groups).toHaveLength(1);
+			expect(snapshot.groups[0].id).toBe('group-1');
 		});
 
 		it('does nothing with empty array', async () => {
-			await taskCache.upsertAreas([]);
+			await taskCache.upsertGroups([]);
 			const snapshot = await taskCache.loadTaskCacheSnapshot();
 
-			expect(snapshot.areas).toHaveLength(0);
+			expect(snapshot.groups).toHaveLength(0);
 		});
 	});
 
 	describe('applySyncUpdates', () => {
-		it('applies tasks, projects, and areas in batch', async () => {
+		it('applies tasks, projects, and groups in batch', async () => {
 			await taskCache.applySyncUpdates({
 				tasks: [
 					{
@@ -139,22 +139,22 @@ describe('task_cache (memory fallback)', () => {
 						deadline: null,
 						notes: null,
 						projectId: null,
-						areaId: null,
+						groupId: null,
 						repeating: false,
 						repeatTemplate: false,
 						updatedAt: null,
 						deletedAt: null
 					}
 				],
-				projects: [{ id: 'proj-1', title: 'Project', areaId: null }],
-				areas: [{ id: 'area-1', title: 'Area' }]
+				projects: [{ id: 'proj-1', title: 'Project', groupId: null }],
+				groups: [{ id: 'group-1', title: 'Group' }]
 			});
 
 			const snapshot = await taskCache.loadTaskCacheSnapshot();
 
 			expect(snapshot.tasks).toHaveLength(1);
 			expect(snapshot.projects).toHaveLength(1);
-			expect(snapshot.areas).toHaveLength(1);
+			expect(snapshot.groups).toHaveLength(1);
 		});
 
 		it('handles undefined arrays', async () => {
@@ -163,7 +163,7 @@ describe('task_cache (memory fallback)', () => {
 
 			expect(snapshot.tasks).toHaveLength(0);
 			expect(snapshot.projects).toHaveLength(0);
-			expect(snapshot.areas).toHaveLength(0);
+			expect(snapshot.groups).toHaveLength(0);
 		});
 	});
 

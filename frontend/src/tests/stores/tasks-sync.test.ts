@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createTasksSyncCoordinator } from '$lib/stores/tasks-sync';
-import type { Task, TaskArea, TaskProject } from '$lib/types/tasks';
+import type { Task, TaskGroup, TaskProject } from '$lib/types/tasks';
 
 vi.mock('$lib/services/task_sync', () => ({
 	hydrateTaskCache: vi.fn().mockResolvedValue(null),
@@ -18,7 +18,7 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
 	deadline: null,
 	notes: null,
 	projectId: null,
-	areaId: null,
+	groupId: null,
 	repeating: false,
 	repeatTemplate: false,
 	updatedAt: null,
@@ -26,16 +26,16 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
 	...overrides
 });
 
-const createArea = (overrides: Partial<TaskArea> = {}): TaskArea => ({
-	id: 'area-1',
-	title: 'Test Area',
+const createGroup = (overrides: Partial<TaskGroup> = {}): TaskGroup => ({
+	id: 'group-1',
+	title: 'Test Group',
 	...overrides
 });
 
 const createProject = (overrides: Partial<TaskProject> = {}): TaskProject => ({
 	id: 'proj-1',
 	title: 'Test Project',
-	areaId: null,
+	groupId: null,
 	...overrides
 });
 
@@ -43,7 +43,7 @@ const createMockOptions = () => {
 	let state = {
 		selection: { type: 'today' as const },
 		tasks: [] as Task[],
-		areas: [] as TaskArea[],
+		groups: [] as TaskGroup[],
 		projects: [] as TaskProject[]
 	};
 
@@ -108,7 +108,7 @@ describe('tasks-sync', () => {
 				options._setState({
 					selection: { type: 'today' },
 					tasks: [createTask({ id: 't1', title: 'Original' })],
-					areas: [],
+					groups: [],
 					projects: []
 				});
 
@@ -123,11 +123,11 @@ describe('tasks-sync', () => {
 				expect(options.updateState).toHaveBeenCalled();
 			});
 
-			it('merges area updates into state', () => {
+			it('merges group updates into state', () => {
 				options._setState({
 					selection: { type: 'today' },
 					tasks: [],
-					areas: [createArea({ id: 'a1', title: 'Original' })],
+					groups: [createGroup({ id: 'g1', title: 'Original' })],
 					projects: []
 				});
 
@@ -135,7 +135,7 @@ describe('tasks-sync', () => {
 
 				handleSyncResponse({
 					updates: {
-						areas: [createArea({ id: 'a1', title: 'Updated' })]
+						groups: [createGroup({ id: 'g1', title: 'Updated' })]
 					}
 				});
 
@@ -147,7 +147,7 @@ describe('tasks-sync', () => {
 				options._setState({
 					selection: { type: 'today' },
 					tasks: [],
-					areas: [],
+					groups: [],
 					projects: [createProject({ id: 'p1', title: 'Original' })]
 				});
 
@@ -167,7 +167,7 @@ describe('tasks-sync', () => {
 				options._setState({
 					selection: { type: 'today' },
 					tasks: [createTask({ id: 't1' }), createTask({ id: 't2' })],
-					areas: [],
+					groups: [],
 					projects: []
 				});
 
@@ -187,7 +187,7 @@ describe('tasks-sync', () => {
 				const result = updater({
 					selection: { type: 'today' },
 					tasks: [createTask({ id: 't1' }), createTask({ id: 't2' })],
-					areas: [],
+					groups: [],
 					projects: []
 				});
 				expect(result.tasks).toHaveLength(0);

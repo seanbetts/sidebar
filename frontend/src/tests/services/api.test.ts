@@ -191,7 +191,7 @@ describe('api services', () => {
 		const data = await tasksAPI.counts();
 
 		expect(data.counts.today).toBe(0);
-		expect(data.areas).toEqual([]);
+		expect(data.groups).toEqual([]);
 	});
 
 	it('notesAPI.listTree returns children', async () => {
@@ -226,14 +226,14 @@ describe('api services', () => {
 		expect(data.tasks?.[0].id).toBe('t1');
 	});
 
-	it('tasksAPI.createArea posts area data', async () => {
+	it('tasksAPI.createGroup posts group data', async () => {
 		const fetchSpy = vi.spyOn(global, 'fetch').mockReturnValue(okJson({ id: 'a1' }));
 
-		await tasksAPI.createArea('Home');
+		await tasksAPI.createGroup('Home');
 
 		const body = fetchSpy.mock.calls[0]?.[1]?.body;
 		expect(fetchSpy).toHaveBeenCalledWith(
-			'/api/v1/tasks/areas',
+			'/api/v1/tasks/groups',
 			expect.objectContaining({ method: 'POST' })
 		);
 		expect(JSON.parse(String(body))).toEqual({ title: 'Home' });
@@ -249,7 +249,7 @@ describe('api services', () => {
 			'/api/v1/tasks/projects',
 			expect.objectContaining({ method: 'POST' })
 		);
-		expect(JSON.parse(String(body))).toEqual({ title: 'Launch', areaId: null });
+		expect(JSON.parse(String(body))).toEqual({ title: 'Launch', groupId: null });
 	});
 
 	it('ingestionAPI.delete ignores 404', async () => {
@@ -289,7 +289,7 @@ describe('api services', () => {
 				tasks: [],
 				nextTasks: [],
 				conflicts: [],
-				updates: { tasks: [], projects: [], areas: [] },
+				updates: { tasks: [], projects: [], groups: [] },
 				serverUpdatedSince: '2026-01-22T10:00:00Z'
 			})
 		);

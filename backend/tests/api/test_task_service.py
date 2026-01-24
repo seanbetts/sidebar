@@ -32,10 +32,10 @@ def db_session(test_db_engine):
         connection.close()
 
 
-def test_create_task_area_project_task(db_session):
-    area = TaskService.create_task_area(db_session, "user", "Work")
+def test_create_task_group_project_task(db_session):
+    group = TaskService.create_task_group(db_session, "user", "Work")
     project = TaskService.create_task_project(
-        db_session, "user", "Alpha", area_id=str(area.id)
+        db_session, "user", "Alpha", group_id=str(group.id)
     )
     task = TaskService.create_task(
         db_session,
@@ -52,9 +52,9 @@ def test_create_task_area_project_task(db_session):
     assert fetched.project_id == project.id
 
     projects = TaskService.list_task_projects(db_session, "user")
-    areas = TaskService.list_task_areas(db_session, "user")
+    groups = TaskService.list_task_groups(db_session, "user")
     assert projects[0].id == project.id
-    assert areas[0].id == area.id
+    assert groups[0].id == group.id
 
 
 def test_update_task_updates_jsonb(db_session):

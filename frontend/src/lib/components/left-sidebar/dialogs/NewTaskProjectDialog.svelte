@@ -4,10 +4,10 @@
 
 	export let open = false;
 	export let title = 'New project';
-	export let description = 'Name your project and choose an optional area.';
+	export let description = 'Name your project and choose an optional group.';
 	export let value = '';
-	export let areaId = '';
-	export let areas: Array<{ id: string; title: string }> = [];
+	export let groupId = '';
+	export let groups: Array<{ id: string; title: string }> = [];
 	export let confirmLabel = 'Create project';
 	export let cancelLabel = 'Cancel';
 	export let busyLabel = 'Creating...';
@@ -50,12 +50,12 @@
 		<div class="pb-2">
 			<select
 				class="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-				bind:value={areaId}
+				bind:value={groupId}
 				disabled={isBusy}
 			>
-				<option value="">No area</option>
-				{#each areas as area}
-					<option value={area.id}>{area.title}</option>
+				<option value="">No group</option>
+				{#each groups as group}
+					<option value={group.id}>{group.title}</option>
 				{/each}
 			</select>
 		</div>

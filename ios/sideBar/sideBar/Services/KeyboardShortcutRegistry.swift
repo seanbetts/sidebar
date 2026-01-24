@@ -67,11 +67,28 @@ public final class KeyboardShortcutRegistry {
             buckets[shortcut.keySignature, default: []].append(shortcut)
         }
         for (signature, shortcuts) in buckets where shortcuts.count > 1 {
+            guard hasContextOverlap(shortcuts) else { continue }
             let contexts = shortcuts.flatMap { $0.contexts.map { $0.rawValue } }.sorted()
             let titles = shortcuts.map { $0.title }.sorted()
             logger.warning("Shortcut conflict for \(signature, privacy: .public): \(titles.joined(separator: ", "), privacy: .public) contexts: \(contexts.joined(separator: ", "), privacy: .public)")
         }
         #endif
+    }
+
+    private func hasContextOverlap(_ shortcuts: [KeyboardShortcut]) -> Bool {
+        for index in shortcuts.indices {
+            for otherIndex in shortcuts.indices where otherIndex > index {
+                let lhs = shortcuts[index].contexts
+                let rhs = shortcuts[otherIndex].contexts
+                if lhs.contains(.universal) || rhs.contains(.universal) {
+                    return true
+                }
+                if !lhs.isDisjoint(with: rhs) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private static func buildShortcuts() -> [KeyboardShortcut] {
@@ -81,6 +98,7 @@ public final class KeyboardShortcutRegistry {
             + buildNotesEditingShortcuts()
             + buildWebsitesShortcuts()
             + buildFilesShortcuts()
+            + buildTasksShortcuts()
     }
 
     private static func buildUniversalShortcuts() -> [KeyboardShortcut] {
@@ -351,6 +369,57 @@ public final class KeyboardShortcutRegistry {
                 description: "Preview the current file",
                 action: .quickLook,
                 contexts: [.files]
+            )
+        ]
+    }
+
+    private static func buildTasksShortcuts() -> [KeyboardShortcut] {
+        [
+            KeyboardShortcut(
+                input: "\r",
+                title: "Complete Task",
+                description: "Mark the selected task as complete",
+                action: .completeTask,
+                contexts: [.tasks]
+            ),
+            KeyboardShortcut(
+                input: "n",
+                modifiers: [.command, .shift],
+                title: "Edit Notes",
+                description: "Open the notes editor for the selected task",
+                action: .editTaskNotes,
+                contexts: [.tasks]
+            ),
+            KeyboardShortcut(
+                input: "m",
+                modifiers: [.command, .shift],
+                title: "Move Task",
+                description: "Move the selected task to another group or project",
+                action: .moveTask,
+                contexts: [.tasks]
+            ),
+            KeyboardShortcut(
+                input: "d",
+                title: "Set Due Date",
+                description: "Adjust the due date for the selected task",
+                action: .setTaskDueDate,
+                contexts: [.tasks]
+            ),
+            KeyboardShortcut(
+                input: "r",
+                modifiers: [.command, .shift],
+                title: "Edit Repeat",
+                description: "Adjust repeat settings for the selected task",
+                action: .setTaskRepeat,
+                contexts: [.tasks]
+            ),
+            KeyboardShortcut(
+                input: UIKeyCommand.inputDelete,
+                modifiers: [.command, .shift],
+                title: "Delete Task",
+                description: "Delete the selected task",
+                action: .deleteItem,
+                contexts: [.tasks]
             )
         ]
     }

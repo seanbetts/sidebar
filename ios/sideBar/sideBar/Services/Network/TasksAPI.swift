@@ -3,10 +3,10 @@ import Foundation
 public protocol TasksProviding {
     func list(scope: String) async throws -> TaskListResponse
     func projectTasks(projectId: String) async throws -> TaskListResponse
-    func areaTasks(areaId: String) async throws -> TaskListResponse
+    func groupTasks(groupId: String) async throws -> TaskListResponse
     func search(query: String) async throws -> TaskListResponse
     func counts() async throws -> TaskCountsResponse
-    func createGroup(title: String) async throws -> TaskArea
+    func createGroup(title: String) async throws -> TaskGroup
     func createProject(title: String, groupId: String?) async throws -> TaskProject
     func apply(_ payload: TaskOperationBatch) async throws -> TaskSyncResponse
     func sync(_ payload: TaskSyncRequest) async throws -> TaskSyncResponse
@@ -91,11 +91,11 @@ private struct TaskCreateGroupRequest: Encodable {
 
 private struct TaskCreateProjectRequest: Encodable {
     let title: String
-    let areaId: String?
+    let groupId: String?
 
     private enum CodingKeys: String, CodingKey {
         case title
-        case areaId = "areaId"
+        case groupId = "groupId"
     }
 }
 
@@ -114,8 +114,8 @@ public struct TasksAPI {
         try await client.request("tasks/projects/\(projectId)/tasks")
     }
 
-    public func areaTasks(areaId: String) async throws -> TaskListResponse {
-        try await client.request("tasks/areas/\(areaId)/tasks")
+    public func groupTasks(groupId: String) async throws -> TaskListResponse {
+        try await client.request("tasks/groups/\(groupId)/tasks")
     }
 
     public func search(query: String) async throws -> TaskListResponse {
@@ -127,15 +127,15 @@ public struct TasksAPI {
         try await client.request("tasks/counts")
     }
 
-    public func createGroup(title: String) async throws -> TaskArea {
-        try await client.request("tasks/areas", method: "POST", body: TaskCreateGroupRequest(title: title))
+    public func createGroup(title: String) async throws -> TaskGroup {
+        try await client.request("tasks/groups", method: "POST", body: TaskCreateGroupRequest(title: title))
     }
 
     public func createProject(title: String, groupId: String?) async throws -> TaskProject {
         try await client.request(
             "tasks/projects",
             method: "POST",
-            body: TaskCreateProjectRequest(title: title, areaId: groupId)
+            body: TaskCreateProjectRequest(title: title, groupId: groupId)
         )
     }
 

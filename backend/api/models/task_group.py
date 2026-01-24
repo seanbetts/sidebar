@@ -1,4 +1,4 @@
-"""Task area model."""
+"""Task group model."""
 
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ if TYPE_CHECKING:
     from api.models.task_project import TaskProject
 
 
-class TaskArea(Base):
-    """Area grouping for tasks and projects."""
+class TaskGroup(Base):
+    """Group for organizing tasks and projects."""
 
-    __tablename__ = "task_areas"
+    __tablename__ = "task_groups"
     __table_args__ = (
-        UniqueConstraint("user_id", "source_id", name="uq_task_areas_user_source"),
-        Index("idx_task_areas_user_id", "user_id"),
-        Index("idx_task_areas_deleted_at", "deleted_at"),
+        UniqueConstraint("user_id", "source_id", name="uq_task_groups_user_source"),
+        Index("idx_task_groups_user_id", "user_id"),
+        Index("idx_task_groups_deleted_at", "deleted_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -44,10 +44,10 @@ class TaskArea(Base):
     )
 
     projects: Mapped[list[TaskProject]] = relationship(
-        "TaskProject", back_populates="area"
+        "TaskProject", back_populates="group"
     )
-    tasks: Mapped[list[Task]] = relationship("Task", back_populates="area")
+    tasks: Mapped[list[Task]] = relationship("Task", back_populates="group")
 
     def __repr__(self) -> str:
         """Return a readable representation for debugging."""
-        return f"<TaskArea(id={self.id}, title='{self.title}')>"
+        return f"<TaskGroup(id={self.id}, title='{self.title}')>"

@@ -26,14 +26,14 @@ def test_import_from_payload_filters_and_maps(test_db_engine):
     session, connection, schema = _build_session(test_db_engine)
     try:
         payload = {
-            "areas": [
-                {"id": "a1", "title": "Area", "updatedAt": "2026-01-01T00:00:00Z"}
+            "groups": [
+                {"id": "g1", "title": "Group", "updatedAt": "2026-01-01T00:00:00Z"}
             ],
             "projects": [
                 {
                     "id": "p1",
                     "title": "Project",
-                    "areaId": "a1",
+                    "groupId": "g1",
                     "status": "active",
                     "updatedAt": "2026-01-01T00:00:00Z",
                 },
@@ -45,7 +45,7 @@ def test_import_from_payload_filters_and_maps(test_db_engine):
                     "title": "Task",
                     "status": "today",
                     "projectId": "p1",
-                    "areaId": "a1",
+                    "groupId": "g1",
                     "deadline": "2026-01-02T00:00:00Z",
                     "scheduledDate": "2026-01-01T00:00:00Z",
                     "repeating": True,
@@ -59,7 +59,7 @@ def test_import_from_payload_filters_and_maps(test_db_engine):
         stats = TasksImportService.import_from_payload(session, "user", payload)
         session.commit()
 
-        assert stats.areas_imported == 1
+        assert stats.groups_imported == 1
         assert stats.projects_imported == 1
         assert stats.projects_skipped == 1
         assert stats.tasks_imported == 1

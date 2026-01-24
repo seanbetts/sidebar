@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { TaskArea, TaskProject } from '$lib/types/tasks';
+	import type { TaskGroup, TaskProject } from '$lib/types/tasks';
 
 	export let draftTitle = '';
 	export let draftNotes = '';
@@ -9,8 +9,8 @@
 	export let draftTargetLabel = '';
 	export let draftListId = '';
 	export let titleInput: HTMLInputElement | null = null;
-	export let areaOptions: TaskArea[] = [];
-	export let projectsByArea: Map<string, TaskProject[]> = new Map();
+	export let groupOptions: TaskGroup[] = [];
+	export let projectsByGroup: Map<string, TaskProject[]> = new Map();
 	export let orphanProjects: TaskProject[] = [];
 
 	export let onDraftInput: () => void;
@@ -54,10 +54,10 @@
 				onchange={(event) => onDraftListChange((event.currentTarget as HTMLSelectElement).value)}
 				disabled={draftSaving}
 			>
-				<option value="">Select area or project</option>
-				{#each areaOptions as area}
-					<option value={area.id}>{area.title}</option>
-					{#each projectsByArea.get(area.id) ?? [] as project}
+				<option value="">Select group or project</option>
+				{#each groupOptions as group}
+					<option value={group.id}>{group.title}</option>
+					{#each projectsByGroup.get(group.id) ?? [] as project}
 						<option value={project.id}>- {project.title}</option>
 					{/each}
 				{/each}

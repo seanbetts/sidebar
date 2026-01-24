@@ -118,12 +118,12 @@ class TaskNotFoundError(NotFoundError):
         super().__init__("Task", task_id)
 
 
-class TaskAreaNotFoundError(NotFoundError):
-    """Task area not found."""
+class TaskGroupNotFoundError(NotFoundError):
+    """Task group not found."""
 
-    def __init__(self, area_id: str) -> None:
-        """Initialize a not found error for a task area."""
-        super().__init__("TaskArea", area_id)
+    def __init__(self, group_id: str) -> None:
+        """Initialize a not found error for a task group."""
+        super().__init__("TaskGroup", group_id)
 
 
 class TaskProjectNotFoundError(NotFoundError):

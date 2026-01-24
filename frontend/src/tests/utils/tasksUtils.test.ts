@@ -10,7 +10,7 @@ const baseTask = (overrides: Partial<Task> = {}): Task => ({
 	deadline: null,
 	notes: null,
 	projectId: null,
-	areaId: null,
+	groupId: null,
 	repeating: false,
 	repeatTemplate: false,
 	updatedAt: null,
@@ -42,14 +42,14 @@ describe('tasksUtils taskSubtitle', () => {
 			recurrenceRule: { type: 'weekly', interval: 1, weekday: 1 }
 		});
 		const projectTitles = new Map([['project-1', 'Project Alpha']]);
-		const areaTitles = new Map<string, string>();
+		const groupTitles = new Map<string, string>();
 
-		const subtitle = taskSubtitle(task, 'project', 'Project Alpha', projectTitles, areaTitles);
+		const subtitle = taskSubtitle(task, 'project', 'Project Alpha', projectTitles, groupTitles);
 
 		expect(subtitle).toBe('Project Alpha');
 	});
 
-	it('returns recurrence label when no project or area', () => {
+	it('returns recurrence label when no project or group', () => {
 		const task = baseTask({ recurrenceRule: { type: 'daily', interval: 1 } });
 		const subtitle = taskSubtitle(task, 'today', 'Today', new Map(), new Map());
 

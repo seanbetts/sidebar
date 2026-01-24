@@ -35,7 +35,7 @@ export type { TaskSelection } from '$lib/types/tasks';
 export type { TaskNewTaskDraft, TasksState } from '$lib/stores/tasks-types';
 
 const CACHE_TTL = 60 * 1000;
-const CACHE_VERSION = '1.0';
+const CACHE_VERSION = '2.0';
 const META_CACHE_KEY = 'tasks.meta';
 const COUNTS_CACHE_KEY = 'tasks.counts';
 const isBrowser = typeof window !== 'undefined';
@@ -43,7 +43,7 @@ const isBrowser = typeof window !== 'undefined';
 const defaultState: TasksState = {
 	selection: { type: 'today' },
 	tasks: [],
-	areas: [],
+	groups: [],
 	projects: [],
 	todayCount: 0,
 	counts: {},
@@ -59,7 +59,7 @@ const defaultState: TasksState = {
 
 function createTasksStore() {
 	const { subscribe, set, update } = writable<TasksState>(defaultState);
-	let lastMeta: TasksMetaCache = { areas: [], projects: [] };
+	let lastMeta: TasksMetaCache = { groups: [], projects: [] };
 	let lastNonSearchSelection: TaskSelection = { type: 'today' };
 	let searchInFlight: Promise<void> | null = null;
 	let pendingSearchQuery: string | null = null;
@@ -178,25 +178,25 @@ function createTasksStore() {
 			const baseSelection =
 				state.selection.type === 'search' ? lastNonSearchSelection : state.selection;
 			let listId =
-				baseSelection.type === 'area' || baseSelection.type === 'project'
+				baseSelection.type === 'group' || baseSelection.type === 'project'
 					? baseSelection.id
 					: undefined;
 			const projectId = baseSelection.type === 'project' ? baseSelection.id : undefined;
-			let areaId =
-				baseSelection.type === 'area'
+			let groupId =
+				baseSelection.type === 'group'
 					? baseSelection.id
 					: projectId
-						? (state.projects.find((project) => project.id === projectId)?.areaId ?? null)
+						? (state.projects.find((project) => project.id === projectId)?.groupId ?? null)
 						: null;
 			const dueDate = baseSelection.type === 'upcoming' ? offsetDateKey(1) : todayKey();
 			if (!listId) {
-				const homeArea = state.areas.find((area) => area.title.toLowerCase() === 'home');
-				listId = homeArea?.id;
-				areaId = homeArea?.id ?? areaId;
+				const homeGroup = state.groups.find((group) => group.title.toLowerCase() === 'home');
+				listId = homeGroup?.id;
+				groupId = homeGroup?.id ?? groupId;
 			}
 			const listName = listId
 				? (state.projects.find((project) => project.id === listId)?.title ??
-					state.areas.find((area) => area.id === listId)?.title)
+					state.groups.find((group) => group.id === listId)?.title)
 				: undefined;
 			const draft: TaskNewTaskDraft = {
 				title: '',
@@ -205,7 +205,7 @@ function createTasksStore() {
 				selection: baseSelection,
 				listId,
 				listName,
-				areaId: areaId ?? undefined,
+				groupId: groupId ?? undefined,
 				projectId
 			};
 			update((current) => ({ ...current, newTaskDraft: draft, newTaskError: '' }));
@@ -229,10 +229,10 @@ function createTasksStore() {
 				draft.listName ??
 				(listId
 					? (state.projects.find((project) => project.id === listId)?.title ??
-						state.areas.find((area) => area.id === listId)?.title)
+						state.groups.find((group) => group.id === listId)?.title)
 					: undefined);
 			if (!listId) {
-				update((current) => ({ ...current, newTaskError: 'Select a project or area.' }));
+				update((current) => ({ ...current, newTaskError: 'Select a project or group.' }));
 				return;
 			}
 			if (!title) {
@@ -244,8 +244,8 @@ function createTasksStore() {
 				const stateAfter = get({ subscribe });
 				const dueDate = payload.dueDate ?? draft.dueDate;
 				const project = listId ? stateAfter.projects.find((item) => item.id === listId) : undefined;
-				const area =
-					listId && !project ? stateAfter.areas.find((item) => item.id === listId) : undefined;
+				const group =
+					listId && !project ? stateAfter.groups.find((item) => item.id === listId) : undefined;
 				const tempId = `temp-${Date.now()}`;
 				const optimisticTask: Task = {
 					id: tempId,
@@ -254,7 +254,7 @@ function createTasksStore() {
 					deadline: dueDate,
 					notes: payload.notes?.trim() ?? '',
 					projectId: project?.id ?? null,
-					areaId: project?.areaId ?? area?.id ?? null
+					groupId: project?.groupId ?? group?.id ?? null
 				};
 				update((current) => {
 					const selectionKeyValue = selectionKey(draft.selection);
@@ -321,11 +321,11 @@ function createTasksStore() {
 				}));
 			}
 		},
-		createArea: async (title: string) => {
+		createGroup: async (title: string) => {
 			const trimmed = title.trim();
 			if (!trimmed) return;
 			try {
-				await tasksAPI.createArea(trimmed);
+				await tasksAPI.createGroup(trimmed);
 				const selection = get({ subscribe }).selection;
 				await loadSelection(selection, { force: true, silent: true, notify: false });
 				void tasksAPI
@@ -340,16 +340,16 @@ function createTasksStore() {
 			} catch (error) {
 				update((state) => ({
 					...state,
-					error: error instanceof Error ? error.message : 'Failed to create area'
+					error: error instanceof Error ? error.message : 'Failed to create group'
 				}));
 				throw error;
 			}
 		},
-		createProject: async (title: string, areaId: string | null) => {
+		createProject: async (title: string, groupId: string | null) => {
 			const trimmed = title.trim();
 			if (!trimmed) return;
 			try {
-				await tasksAPI.createProject(trimmed, areaId);
+				await tasksAPI.createProject(trimmed, groupId);
 				const selection = get({ subscribe }).selection;
 				await loadSelection(selection, { force: true, silent: true, notify: false });
 				void tasksAPI
@@ -450,10 +450,10 @@ function createTasksStore() {
 							updatedCounts.counts.inbox = nextTasks.length;
 						} else if (key === 'upcoming') {
 							updatedCounts.counts.upcoming = nextTasks.length;
-						} else if (key.startsWith('area:')) {
-							const areaId = key.split(':')[1];
-							updatedCounts.areas = updatedCounts.areas.map((area) =>
-								area.id === areaId ? { ...area, count: nextTasks.length } : area
+						} else if (key.startsWith('group:')) {
+							const groupId = key.split(':')[1];
+							updatedCounts.groups = updatedCounts.groups.map((group) =>
+								group.id === groupId ? { ...group, count: nextTasks.length } : group
 							);
 						} else if (key.startsWith('project:')) {
 							const projectId = key.split(':')[1];

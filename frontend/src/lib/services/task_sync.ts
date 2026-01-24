@@ -7,7 +7,7 @@ import {
 	loadTaskCacheSnapshot,
 	removeOutboxOperations,
 	setLastSync,
-	upsertAreas,
+	upsertGroups,
 	upsertProjects,
 	upsertTasks
 } from '$lib/stores/task_cache';
@@ -37,7 +37,7 @@ const withOperationMetadata = (operation: Partial<TaskSyncOperation>): TaskSyncO
 });
 
 const applyResponseTasks = async (response: TaskSyncResponse) => {
-	const updates: TaskSyncUpdates = response.updates ?? { tasks: [], projects: [], areas: [] };
+	const updates: TaskSyncUpdates = response.updates ?? { tasks: [], projects: [], groups: [] };
 	await applySyncUpdates(updates);
 	await upsertTasks([...(response.tasks ?? []), ...(response.nextTasks ?? [])]);
 };
@@ -56,7 +56,7 @@ export async function cacheTaskListResponse(response: TaskListResponse): Promise
 	await Promise.all([
 		upsertTasks(response.tasks ?? []),
 		upsertProjects(response.projects ?? []),
-		upsertAreas(response.areas ?? [])
+		upsertGroups(response.groups ?? [])
 	]);
 }
 

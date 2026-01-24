@@ -99,13 +99,24 @@ const {
 			set: vi.fn(),
 			clear: vi.fn()
 		},
-		tasksStore: {
-			search: vi.fn(),
-			clearSearch: vi.fn(),
-			startNewTask: vi.fn(),
-			createArea: vi.fn(),
-			createProject: vi.fn()
-		},
+		tasksStore: (() => {
+			const tasksState = createStore({
+				selection: { type: 'today' as const },
+				groups: [],
+				projects: [],
+				counts: {},
+				todayCount: 0,
+				syncNotice: ''
+			});
+			return {
+				subscribe: tasksState.subscribe,
+				search: vi.fn(),
+				clearSearch: vi.fn(),
+				startNewTask: vi.fn(),
+				createGroup: vi.fn(),
+				createProject: vi.fn()
+			};
+		})(),
 		chatStore: {
 			subscribe: createStore({ conversationId: null, messages: [] }).subscribe
 		},

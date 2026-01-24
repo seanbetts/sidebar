@@ -11,12 +11,12 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
 from api.exceptions import (
-    TaskAreaNotFoundError,
+    TaskGroupNotFoundError,
     TaskNotFoundError,
     TaskProjectNotFoundError,
 )
 from api.models.task import Task
-from api.models.task_area import TaskArea
+from api.models.task_group import TaskGroup
 from api.models.task_project import TaskProject
 from api.services.recurrence_service import RecurrenceService
 from api.utils.validation import parse_optional_uuid, parse_uuid
@@ -30,7 +30,7 @@ class TaskCounts:
     today: int
     upcoming: int
     project_counts: list[tuple[str, int]]
-    area_counts: list[tuple[str, int]]
+    group_counts: list[tuple[str, int]]
 
 
 @dataclass
@@ -40,31 +40,31 @@ class TaskService:
     @staticmethod
     def _task_query_with_relations(db: Session):
         return db.query(Task).options(
-            joinedload(Task.project).joinedload(TaskProject.area),
-            joinedload(Task.area),
+            joinedload(Task.project).joinedload(TaskProject.group),
+            joinedload(Task.group),
         )
 
     @staticmethod
-    def create_task_area(
+    def create_task_group(
         db: Session,
         user_id: str,
         title: str,
         *,
         source_id: str | None = None,
-    ) -> TaskArea:
-        """Create a new task area.
+    ) -> TaskGroup:
+        """Create a new task group.
 
         Args:
             db: Database session.
             user_id: Current user ID.
-            title: Area title.
+            title: Group title.
             source_id: Optional external source identifier.
 
         Returns:
-            Newly created TaskArea.
+            Newly created TaskGroup.
         """
         now = datetime.now(UTC)
-        area = TaskArea(
+        group = TaskGroup(
             user_id=user_id,
             title=title,
             source_id=source_id,
@@ -72,71 +72,71 @@ class TaskService:
             updated_at=now,
             deleted_at=None,
         )
-        db.add(area)
+        db.add(group)
         db.flush()
-        return area
+        return group
 
     @staticmethod
-    def get_task_area(db: Session, user_id: str, area_id: str) -> TaskArea:
-        """Fetch a task area by ID.
+    def get_task_group(db: Session, user_id: str, group_id: str) -> TaskGroup:
+        """Fetch a task group by ID.
 
         Args:
             db: Database session.
             user_id: Current user ID.
-            area_id: Task area ID.
+            group_id: Task group ID.
 
         Returns:
-            TaskArea record.
+            TaskGroup record.
 
         Raises:
-            TaskAreaNotFoundError: If no matching area is found.
+            TaskGroupNotFoundError: If no matching group is found.
         """
-        parsed_id = parse_uuid(area_id, "task area", "id")
-        area = (
-            db.query(TaskArea)
+        parsed_id = parse_uuid(group_id, "task group", "id")
+        group = (
+            db.query(TaskGroup)
             .filter(
-                TaskArea.id == parsed_id,
-                TaskArea.user_id == user_id,
-                TaskArea.deleted_at.is_(None),
+                TaskGroup.id == parsed_id,
+                TaskGroup.user_id == user_id,
+                TaskGroup.deleted_at.is_(None),
             )
             .one_or_none()
         )
-        if not area:
-            raise TaskAreaNotFoundError(area_id)
-        return area
+        if not group:
+            raise TaskGroupNotFoundError(group_id)
+        return group
 
     @staticmethod
-    def list_task_areas(db: Session, user_id: str) -> list[TaskArea]:
-        """List active task areas for a user."""
+    def list_task_groups(db: Session, user_id: str) -> list[TaskGroup]:
+        """List active task groups for a user."""
         return (
-            db.query(TaskArea)
-            .filter(TaskArea.user_id == user_id, TaskArea.deleted_at.is_(None))
-            .order_by(TaskArea.title.asc())
+            db.query(TaskGroup)
+            .filter(TaskGroup.user_id == user_id, TaskGroup.deleted_at.is_(None))
+            .order_by(TaskGroup.title.asc())
             .all()
         )
 
     @staticmethod
-    def update_task_area(
+    def update_task_group(
         db: Session,
         user_id: str,
-        area_id: str,
+        group_id: str,
         *,
         title: str,
-    ) -> TaskArea:
-        """Update task area metadata."""
-        area = TaskService.get_task_area(db, user_id, area_id)
-        area.title = title
-        area.updated_at = datetime.now(UTC)
-        return area
+    ) -> TaskGroup:
+        """Update task group metadata."""
+        group = TaskService.get_task_group(db, user_id, group_id)
+        group.title = title
+        group.updated_at = datetime.now(UTC)
+        return group
 
     @staticmethod
-    def delete_task_area(db: Session, user_id: str, area_id: str) -> TaskArea:
-        """Soft-delete a task area."""
-        area = TaskService.get_task_area(db, user_id, area_id)
+    def delete_task_group(db: Session, user_id: str, group_id: str) -> TaskGroup:
+        """Soft-delete a task group."""
+        group = TaskService.get_task_group(db, user_id, group_id)
         now = datetime.now(UTC)
-        area.deleted_at = now
-        area.updated_at = now
-        return area
+        group.deleted_at = now
+        group.updated_at = now
+        return group
 
     @staticmethod
     def create_task_project(
@@ -144,7 +144,7 @@ class TaskService:
         user_id: str,
         title: str,
         *,
-        area_id: str | None = None,
+        group_id: str | None = None,
         status: str = "active",
         notes: str | None = None,
         source_id: str | None = None,
@@ -154,7 +154,7 @@ class TaskService:
         project = TaskProject(
             user_id=user_id,
             title=title,
-            area_id=parse_optional_uuid(area_id, "task area", "id"),
+            group_id=parse_optional_uuid(group_id, "task group", "id"),
             status=status,
             notes=notes,
             source_id=source_id,
@@ -200,7 +200,7 @@ class TaskService:
         project_id: str,
         *,
         title: str | None = None,
-        area_id: str | None = None,
+        group_id: str | None = None,
         status: str | None = None,
         notes: str | None = None,
     ) -> TaskProject:
@@ -208,8 +208,8 @@ class TaskService:
         project = TaskService.get_task_project(db, user_id, project_id)
         if title is not None:
             project.title = title
-        if area_id is not None:
-            project.area_id = parse_optional_uuid(area_id, "task area", "id")
+        if group_id is not None:
+            project.group_id = parse_optional_uuid(group_id, "task group", "id")
         if status is not None:
             project.status = status
         if notes is not None:
@@ -234,7 +234,7 @@ class TaskService:
         *,
         status: str = "inbox",
         project_id: str | None = None,
-        area_id: str | None = None,
+        group_id: str | None = None,
         notes: str | None = None,
         deadline: date | None = None,
         recurrence_rule: dict[str, Any] | None = None,
@@ -251,7 +251,7 @@ class TaskService:
             title=title,
             status=status,
             project_id=parse_optional_uuid(project_id, "task project", "id"),
-            area_id=parse_optional_uuid(area_id, "task area", "id"),
+            group_id=parse_optional_uuid(group_id, "task group", "id"),
             notes=notes,
             deadline=deadline,
             recurrence_rule=recurrence_rule,
@@ -298,8 +298,8 @@ class TaskService:
     @staticmethod
     def list_tasks_by_scope(
         db: Session, user_id: str, scope: str
-    ) -> tuple[list[Task], list[TaskProject], list[TaskArea]]:
-        """List tasks by scope with related areas/projects."""
+    ) -> tuple[list[Task], list[TaskProject], list[TaskGroup]]:
+        """List tasks by scope with related groups/projects."""
         today = date.today()
         base_query = TaskService._task_query_with_relations(db).filter(
             Task.user_id == user_id,
@@ -329,8 +329,8 @@ class TaskService:
 
         tasks = query.order_by(Task.updated_at.desc()).all()
         projects = TaskService.list_task_projects(db, user_id)
-        areas = TaskService.list_task_areas(db, user_id)
-        return tasks, projects, areas
+        groups = TaskService.list_task_groups(db, user_id)
+        return tasks, projects, groups
 
     @staticmethod
     def list_tasks_by_project(db: Session, user_id: str, project_id: str) -> list[Task]:
@@ -349,16 +349,16 @@ class TaskService:
         )
 
     @staticmethod
-    def list_tasks_by_area(db: Session, user_id: str, area_id: str) -> list[Task]:
-        """List tasks for a specific area."""
-        parsed_id = parse_uuid(area_id, "area", "id")
+    def list_tasks_by_group(db: Session, user_id: str, group_id: str) -> list[Task]:
+        """List tasks for a specific group."""
+        parsed_id = parse_uuid(group_id, "task group", "id")
         return (
             TaskService._task_query_with_relations(db)
             .filter(
                 Task.user_id == user_id,
                 or_(
-                    Task.area_id == parsed_id,
-                    Task.project.has(TaskProject.area_id == parsed_id),
+                    Task.group_id == parsed_id,
+                    Task.project.has(TaskProject.group_id == parsed_id),
                 ),
                 Task.deleted_at.is_(None),
                 Task.status.notin_(["completed", "trashed"]),
@@ -444,17 +444,17 @@ class TaskService:
             .group_by(Task.project_id)
             .all()
         )
-        area_id = func.coalesce(Task.area_id, TaskProject.area_id)
-        area_counts = (
-            db.query(area_id, func.count(Task.id))
+        group_id = func.coalesce(Task.group_id, TaskProject.group_id)
+        group_counts = (
+            db.query(group_id, func.count(Task.id))
             .outerjoin(TaskProject, Task.project_id == TaskProject.id)
             .filter(
                 Task.user_id == user_id,
                 Task.deleted_at.is_(None),
                 Task.status.notin_(["completed", "trashed"]),
-                area_id.isnot(None),
+                group_id.isnot(None),
             )
-            .group_by(area_id)
+            .group_by(group_id)
             .all()
         )
 
@@ -463,7 +463,7 @@ class TaskService:
             today=today_count,
             upcoming=upcoming_count,
             project_counts=[(str(pid), count) for pid, count in project_counts],
-            area_counts=[(str(aid), count) for aid, count in area_counts],
+            group_counts=[(str(gid), count) for gid, count in group_counts],
         )
 
     @staticmethod
@@ -475,7 +475,7 @@ class TaskService:
         title: str | None = None,
         status: str | None = None,
         project_id: str | None = None,
-        area_id: str | None = None,
+        group_id: str | None = None,
         notes: str | None = None,
         deadline: date | None = None,
         recurrence_rule: dict[str, Any] | None = None,
@@ -492,8 +492,8 @@ class TaskService:
             task.status = status
         if project_id is not None:
             task.project_id = parse_optional_uuid(project_id, "task project", "id")
-        if area_id is not None:
-            task.area_id = parse_optional_uuid(area_id, "task area", "id")
+        if group_id is not None:
+            task.group_id = parse_optional_uuid(group_id, "task group", "id")
         if notes is not None:
             task.notes = notes
         if deadline is not None:
@@ -619,3 +619,19 @@ class TaskService:
 
         next_task = RecurrenceService.complete_repeating_task(db, task)
         return task, next_task
+
+    @staticmethod
+    def list_completed_today(db: Session, user_id: str) -> list[Task]:
+        """List tasks completed today."""
+        today_start = datetime.combine(date.today(), datetime.min.time(), tzinfo=UTC)
+        return (
+            TaskService._task_query_with_relations(db)
+            .filter(
+                Task.user_id == user_id,
+                Task.status == "completed",
+                Task.completed_at >= today_start,
+                Task.deleted_at.is_(None),
+            )
+            .order_by(Task.completed_at.desc())
+            .all()
+        )

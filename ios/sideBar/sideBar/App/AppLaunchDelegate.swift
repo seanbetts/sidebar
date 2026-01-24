@@ -25,6 +25,11 @@ final class AppLaunchDelegate: UIResponder, UIApplicationDelegate {
         case toggleSidebar
         case sendMessage
         case attachFile
+        case completeTask
+        case editTaskNotes
+        case moveTask
+        case setTaskDueDate
+        case setTaskRepeat
         case renameItem
         case deleteItem
         case pinItem
@@ -250,6 +255,11 @@ extension AppLaunchDelegate {
         case .openInBrowser, .openInDefaultApp, .quickLook, .attachFile, .sendMessage:
             return .file
         case .renameItem,
+             .completeTask,
+             .editTaskNotes,
+             .moveTask,
+             .setTaskDueDate,
+             .setTaskRepeat,
              .deleteItem,
              .archiveItem,
              .pinItem,
@@ -343,6 +353,11 @@ extension AppLaunchDelegate {
         .toggleSidebar: "sidebar.left",
         .sendMessage: "paperplane",
         .attachFile: "paperclip",
+        .completeTask: "checkmark.circle",
+        .editTaskNotes: "note.text",
+        .moveTask: "arrowshape.turn.up.right",
+        .setTaskDueDate: "calendar",
+        .setTaskRepeat: "repeat",
         .renameItem: "pencil",
         .deleteItem: "trash",
         .pinItem: "pin",
@@ -369,6 +384,11 @@ extension AppLaunchDelegate {
         .toggleSidebar: .toggleSidebar,
         .sendMessage: .sendMessage,
         .attachFile: .attachFile,
+        .completeTask: .completeTask,
+        .editTaskNotes: .editTaskNotes,
+        .moveTask: .moveTask,
+        .setTaskDueDate: .setTaskDueDate,
+        .setTaskRepeat: .setTaskRepeat,
         .renameItem: .renameItem,
         .deleteItem: .deleteItem,
         .pinItem: .pinItem,
@@ -395,6 +415,11 @@ extension AppLaunchDelegate {
         .toggleSidebar: .toggleSidebar,
         .sendMessage: .sendMessage,
         .attachFile: .attachFile,
+        .completeTask: .completeTask,
+        .editTaskNotes: .editTaskNotes,
+        .moveTask: .moveTask,
+        .setTaskDueDate: .setTaskDueDate,
+        .setTaskRepeat: .setTaskRepeat,
         .renameItem: .renameItem,
         .deleteItem: .deleteItem,
         .pinItem: .pinItem,

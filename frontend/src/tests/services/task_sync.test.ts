@@ -20,7 +20,7 @@ const { taskCache } = vi.hoisted(() => ({
 		loadTaskCacheSnapshot: vi.fn(),
 		removeOutboxOperations: vi.fn(),
 		setLastSync: vi.fn(),
-		upsertAreas: vi.fn(),
+		upsertGroups: vi.fn(),
 		upsertProjects: vi.fn(),
 		upsertTasks: vi.fn()
 	}
@@ -82,13 +82,13 @@ describe('task_sync service', () => {
 		tasksAPI.sync.mockResolvedValue({
 			applied: ['op-1'],
 			serverUpdatedSince: '2025-01-01T01:00:00Z',
-			updates: { tasks: [], projects: [], areas: [] },
+			updates: { tasks: [], projects: [], groups: [] },
 			tasks: [
 				{
 					id: 'task-1',
 					title: 'Updated',
 					status: 'open',
-					areaId: null,
+					groupId: null,
 					projectId: null
 				}
 			],
@@ -113,14 +113,14 @@ describe('task_sync service', () => {
 		expect(taskCache.applySyncUpdates).toHaveBeenCalledWith({
 			tasks: [],
 			projects: [],
-			areas: []
+			groups: []
 		});
 		expect(taskCache.upsertTasks).toHaveBeenCalledWith([
 			{
 				id: 'task-1',
 				title: 'Updated',
 				status: 'open',
-				areaId: null,
+				groupId: null,
 				projectId: null
 			}
 		]);
@@ -132,7 +132,7 @@ describe('task_sync service', () => {
 		taskCache.getOutboxBatch.mockResolvedValue([]);
 		tasksAPI.sync.mockResolvedValue({
 			serverUpdatedSince: '2025-01-01T01:00:00Z',
-			updates: { tasks: [], projects: [], areas: [] },
+			updates: { tasks: [], projects: [], groups: [] },
 			tasks: [],
 			nextTasks: []
 		});

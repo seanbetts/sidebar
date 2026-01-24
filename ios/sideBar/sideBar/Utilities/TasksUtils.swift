@@ -89,7 +89,7 @@ public enum TasksUtils {
                     deadline: nextDate,
                     notes: task.notes,
                     projectId: task.projectId,
-                    areaId: task.areaId,
+                    groupId: task.groupId,
                     repeating: task.repeating,
                     repeatTemplate: true,
                     recurrenceRule: task.recurrenceRule,
@@ -115,46 +115,46 @@ public enum TasksUtils {
         selection: TaskSelection,
         selectionLabel: String,
         projectTitleById: [String: String],
-        areaTitleById: [String: String]
+        groupTitleById: [String: String]
     ) -> String {
         let projectTitle = task.projectId.flatMap { projectTitleById[$0] } ?? ""
-        let areaTitle = task.areaId.flatMap { areaTitleById[$0] } ?? ""
+        let groupTitle = task.groupId.flatMap { groupTitleById[$0] } ?? ""
 
         switch selection {
         case .project:
             return projectTitle.isEmpty ? selectionLabel : projectTitle
-        case .area:
-            return !projectTitle.isEmpty ? projectTitle : areaTitle
+        case .group:
+            return !projectTitle.isEmpty ? projectTitle : groupTitle
         case .today, .upcoming, .search:
-            return !projectTitle.isEmpty ? projectTitle : areaTitle
+            return !projectTitle.isEmpty ? projectTitle : groupTitle
         case .inbox:
             if let deadline = task.deadline {
                 return "Due \(deadline.prefix(10))"
             }
-            return !projectTitle.isEmpty ? projectTitle : areaTitle
+            return !projectTitle.isEmpty ? projectTitle : groupTitle
         }
     }
 
     public static func buildTodaySections(
         tasks: [TaskItem],
-        areas: [TaskArea],
+        groups: [TaskGroup],
         projects: [TaskProject],
-        areaTitleById: [String: String],
+        groupTitleById: [String: String],
         projectTitleById: [String: String]
     ) -> [TaskSection] {
         var buckets: [String: TaskSection] = [:]
-        for area in areas {
-            buckets["area:\(area.id)"] = TaskSection(id: area.id, title: area.title, tasks: [])
+        for group in groups {
+            buckets["group:\(group.id)"] = TaskSection(id: group.id, title: group.title, tasks: [])
         }
 
         for task in tasks {
             let project = task.projectId.flatMap { id in projects.first(where: { $0.id == id }) }
-            let areaId = task.areaId ?? project?.areaId
+            let groupId = task.groupId ?? project?.groupId
 
-            if let areaId {
-                let key = "area:\(areaId)"
+            if let groupId {
+                let key = "group:\(groupId)"
                 if buckets[key] == nil {
-                    let title = areaTitleById[areaId] ?? "Group"
+                    let title = groupTitleById[groupId] ?? "Group"
                     buckets[key] = TaskSection(id: key, title: title, tasks: [])
                 }
                 if var section = buckets[key] {
@@ -185,9 +185,9 @@ public enum TasksUtils {
         }
 
         var sections: [TaskSection] = []
-        for area in areas {
-            if let section = buckets["area:\(area.id)"], !section.tasks.isEmpty {
-                sections.append(TaskSection(id: area.id, title: section.title, tasks: section.tasks))
+        for group in groups {
+            if let section = buckets["group:\(group.id)"], !section.tasks.isEmpty {
+                sections.append(TaskSection(id: group.id, title: section.title, tasks: section.tasks))
             }
         }
         for (key, section) in buckets where key.hasPrefix("project:") && !section.tasks.isEmpty {
@@ -199,27 +199,27 @@ public enum TasksUtils {
         return sections
     }
 
-    public static func buildSearchSections(tasks: [TaskItem], areas: [TaskArea]) -> [TaskSection] {
+    public static func buildSearchSections(tasks: [TaskItem], groups: [TaskGroup]) -> [TaskSection] {
         var sections: [TaskSection] = []
-        var tasksByArea: [String: [TaskItem]] = [:]
+        var tasksByGroup: [String: [TaskItem]] = [:]
         var unassigned: [TaskItem] = []
 
-        for area in areas {
-            tasksByArea[area.id] = []
+        for group in groups {
+            tasksByGroup[group.id] = []
         }
 
         for task in tasks {
-            if let areaId = task.areaId, tasksByArea[areaId] != nil {
-                tasksByArea[areaId]?.append(task)
+            if let groupId = task.groupId, tasksByGroup[groupId] != nil {
+                tasksByGroup[groupId]?.append(task)
             } else {
                 unassigned.append(task)
             }
         }
 
-        for area in areas {
-            let bucket = tasksByArea[area.id] ?? []
+        for group in groups {
+            let bucket = tasksByGroup[group.id] ?? []
             if !bucket.isEmpty {
-                sections.append(TaskSection(id: area.id, title: area.title, tasks: sortByDueDate(bucket)))
+                sections.append(TaskSection(id: group.id, title: group.title, tasks: sortByDueDate(bucket)))
             }
         }
 
@@ -230,33 +230,33 @@ public enum TasksUtils {
         return sections
     }
 
-    public static func buildAreaSections(
+    public static func buildGroupSections(
         tasks: [TaskItem],
-        areaId: String,
-        areaTitle: String,
+        groupId: String,
+        groupTitle: String,
         projects: [TaskProject]
     ) -> [TaskSection] {
-        let projectsInArea = projects.filter { $0.areaId == areaId }
-        let projectById = Dictionary(uniqueKeysWithValues: projectsInArea.map { ($0.id, $0) })
+        let projectsInGroup = projects.filter { $0.groupId == groupId }
+        let projectById = Dictionary(uniqueKeysWithValues: projectsInGroup.map { ($0.id, $0) })
         var projectSections: [String: [TaskItem]] = [:]
-        var areaTasks: [TaskItem] = []
+        var groupTasks: [TaskItem] = []
 
         for task in tasks {
             if let projectId = task.projectId, projectById[projectId] != nil {
                 projectSections[projectId, default: []].append(task)
                 continue
             }
-            if task.areaId == areaId || task.projectId == nil {
-                areaTasks.append(task)
+            if task.groupId == groupId || task.projectId == nil {
+                groupTasks.append(task)
             }
         }
 
         var sections: [TaskSection] = []
-        if !areaTasks.isEmpty {
-            sections.append(TaskSection(id: "area", title: areaTitle, tasks: areaTasks))
+        if !groupTasks.isEmpty {
+            sections.append(TaskSection(id: "group", title: groupTitle, tasks: groupTasks))
         }
 
-        for project in projectsInArea.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }) {
+        for project in projectsInGroup.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }) {
             if let bucket = projectSections[project.id], !bucket.isEmpty {
                 sections.append(TaskSection(id: project.id, title: project.title, tasks: bucket))
             }
