@@ -53,11 +53,24 @@ struct DueDateSheet: View {
         NavigationStack {
             Form {
                 Section("Due date") {
-                    DatePicker("", selection: $selectedDate, displayedComponents: .date)
-                        .datePickerStyle(.graphical)
+                    HStack {
+                        DatePicker("Due date", selection: $selectedDate, displayedComponents: .date)
+                            .datePickerStyle(.compact)
+                        Spacer()
+                        Button {
+                            onClear()
+                            onDismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear due date")
+                    }
                 }
             }
             .navigationTitle("Due date")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
@@ -67,13 +80,6 @@ struct DueDateSheet: View {
                         onSave(selectedDate)
                         onDismiss()
                     }
-                }
-                ToolbarItem(placement: .bottomBar) {
-                    Button("Clear due date") {
-                        onClear()
-                        onDismiss()
-                    }
-                    .foregroundStyle(.red)
                 }
             }
             .onAppear { selectedDate = dueDate }
@@ -95,8 +101,8 @@ struct MoveTaskSheet: View {
         NavigationStack {
             Form {
                 Section("Move to") {
-                    Picker("", selection: $selectedId) {
-                        Text("No list").tag("")
+                    Picker("Group or project", selection: $selectedId) {
+                        Text("No group").tag("")
                         ForEach(listOptions, id: \.id) { option in
                             Text(option.label).tag(option.id)
                         }
@@ -104,6 +110,7 @@ struct MoveTaskSheet: View {
                 }
             }
             .navigationTitle("Move task")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
@@ -141,22 +148,23 @@ struct RepeatTaskSheet: View {
         NavigationStack {
             Form {
                 Section("Repeat") {
-                    Picker("", selection: $selectedType) {
+                    Picker("Repeat", selection: $selectedType) {
                         Text("None").tag(RepeatType.none)
                         Text("Daily").tag(RepeatType.daily)
                         Text("Weekly").tag(RepeatType.weekly)
                         Text("Monthly").tag(RepeatType.monthly)
                     }
+                    .pickerStyle(.segmented)
                     if selectedType != .none {
                         Stepper(value: $intervalValue, in: 1...30) {
-                            Text("Every \(intervalValue) \(intervalValue == 1 ? "time" : "times")")
+                            Text(intervalLabel)
                         }
                     }
                 }
                 if selectedType != .none {
                     Section("Start date") {
-                        DatePicker("", selection: $startDateValue, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
+                        DatePicker("Start", selection: $startDateValue, displayedComponents: .date)
+                            .datePickerStyle(.compact)
                         if selectedType == .weekly {
                             Text("On \(weekdayLabel(for: startDateValue))")
                                 .font(.caption)
@@ -171,6 +179,7 @@ struct RepeatTaskSheet: View {
                 }
             }
             .navigationTitle("Repeat")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
@@ -192,6 +201,21 @@ struct RepeatTaskSheet: View {
 
     private func weekdayLabel(for date: Date) -> String {
         date.formatted(.dateTime.weekday(.wide))
+    }
+
+    private var intervalLabel: String {
+        let unit: String
+        switch selectedType {
+        case .daily:
+            unit = intervalValue == 1 ? "day" : "days"
+        case .weekly:
+            unit = intervalValue == 1 ? "week" : "weeks"
+        case .monthly:
+            unit = intervalValue == 1 ? "month" : "months"
+        case .none:
+            unit = intervalValue == 1 ? "time" : "times"
+        }
+        return "Every \(intervalValue) \(unit)"
     }
 }
 
