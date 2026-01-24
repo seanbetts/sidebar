@@ -194,9 +194,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         switch markup {
         case let text as Markdown.Text:
             return AttributedString(text.string)
-        case let softBreak as SoftBreak:
+        case is SoftBreak:
             return AttributedString(" ")
-        case let lineBreak as LineBreak:
+        case is LineBreak:
             return AttributedString("\n")
         case let emphasis as Emphasis:
             var inner = AttributedString()
@@ -244,8 +244,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             }
             return inner
         case let image as Markdown.Image:
-            let alt = image.plainText
-            let source = image.source
+            let alt = unwrapOptionalString(image.plainText)
+            let source = unwrapOptionalString(image.source)
             return AttributedString("![\(alt)](\(source))")
         case let html as Markdown.InlineHTML:
             return AttributedString(html.rawHTML)
@@ -272,6 +272,14 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private func applyBlockKind(_ kind: BlockKind, to text: inout AttributedString) {
         let range = fullRange(in: text)
         text[range].blockKind = kind
+    }
+
+    private func unwrapOptionalString(_ value: String) -> String {
+        value
+    }
+
+    private func unwrapOptionalString(_ value: String?) -> String {
+        value ?? ""
     }
 }
 

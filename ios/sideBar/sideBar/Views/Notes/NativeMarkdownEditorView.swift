@@ -24,12 +24,11 @@ public struct NativeMarkdownEditorView: View {
 
             ScrollView {
                 TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
-                    .formattingDefinition(MarkdownFormattingDefinition())
+                    .attributedTextFormattingDefinition(\.markdownEditor)
                     .scrollDisabled(true)
                     .frame(maxWidth: maxContentWidth)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, DesignTokens.Spacing.md)
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
+                    .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
+                    .padding(EdgeInsets(top: DesignTokens.Spacing.md, leading: DesignTokens.Spacing.lg, bottom: DesignTokens.Spacing.md, trailing: DesignTokens.Spacing.lg))
                     .onChange(of: viewModel.attributedContent) { oldValue, _ in
                         viewModel.handleContentChange(previous: oldValue)
                     }
