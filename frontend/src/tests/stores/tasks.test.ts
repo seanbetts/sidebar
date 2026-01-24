@@ -53,6 +53,10 @@ vi.mock('$lib/utils/cache', () => ({
 	isCacheStale: vi.fn(() => false)
 }));
 
+vi.mock('svelte-sonner', () => ({
+	toast: { message: vi.fn() }
+}));
+
 describe('tasksStore', () => {
 	beforeEach(() => {
 		cacheState.clear();
@@ -83,6 +87,23 @@ describe('tasksStore', () => {
 
 		const state = get(tasksStore);
 		expect(state.newTaskError).toBe('Select a project or group.');
+	});
+
+	it('requires a title when creating a task with a list', async () => {
+		tasksAPI.list.mockResolvedValue({
+			scope: 'today',
+			tasks: [],
+			groups: [{ id: 'home', title: 'Home' }],
+			projects: []
+		});
+
+		await tasksStore.load({ type: 'today' }, { force: true });
+		tasksStore.startNewTask();
+
+		await tasksStore.createTask({ title: '   ' });
+
+		const state = get(tasksStore);
+		expect(state.newTaskError).toBe('Title is required.');
 	});
 
 	it('creates task groups and refreshes data', async () => {
@@ -218,6 +239,21 @@ describe('tasksStore', () => {
 		});
 	});
 
+	it('requires a title when renaming a task', async () => {
+		tasksAPI.list.mockResolvedValue({
+			scope: 'today',
+			tasks: [{ id: 'task-7', title: 'Task', status: 'open', groupId: null, projectId: null }],
+			groups: [],
+			projects: []
+		});
+
+		await tasksStore.load({ type: 'today' }, { force: true });
+		await tasksStore.renameTask('task-7', '   ');
+
+		const state = get(tasksStore);
+		expect(state.error).toBe('Title is required');
+	});
+
 	it('moves tasks between today and upcoming caches', async () => {
 		const task = { id: 'task-3', title: 'Task', status: 'open', groupId: null, projectId: null };
 		cacheState.set('tasks.tasks.today', [task]);
@@ -245,6 +281,81 @@ describe('tasksStore', () => {
 		const state = get(tasksStore);
 		expect(state.tasks).toHaveLength(0);
 		expect(state.counts.today).toBe(0);
+	});
+
+	it('sets an offline notice when moving a task without browser connectivity', async () => {
+		const originalNavigator = globalThis.navigator;
+		vi.stubGlobal('navigator', { onLine: false });
+		tasksAPI.list.mockResolvedValue({
+			scope: 'today',
+			tasks: [],
+			groups: [],
+			projects: []
+		});
+		taskSync.enqueueTaskOperation.mockResolvedValue(null);
+
+		await tasksStore.load({ type: 'today' }, { force: true });
+		await tasksStore.moveTask('task-8', 'group-1', 'Home');
+
+		const state = get(tasksStore);
+		expect(state.syncNotice).toBe('Task moved offline');
+		vi.stubGlobal('navigator', originalNavigator);
+	});
+
+	it('sets an error when moving a task fails', async () => {
+		tasksAPI.list.mockResolvedValue({
+			scope: 'today',
+			tasks: [],
+			groups: [],
+			projects: []
+		});
+		taskSync.enqueueTaskOperation.mockRejectedValueOnce(new Error('Move failed'));
+
+		await tasksStore.load({ type: 'today' }, { force: true });
+		await tasksStore.moveTask('task-9', 'group-1');
+
+		const state = get(tasksStore);
+		expect(state.error).toBe('Move failed');
+	});
+
+	it('replaces repeating tasks with the next instance on completion', async () => {
+		const today = new Date().toISOString().slice(0, 10);
+		tasksAPI.list.mockResolvedValue({
+			scope: 'today',
+			tasks: [
+				{
+					id: 'task-10',
+					title: 'Repeat',
+					status: 'open',
+					deadline: today,
+					repeating: true,
+					groupId: null,
+					projectId: null
+				}
+			],
+			groups: [],
+			projects: []
+		});
+		taskSync.enqueueTaskOperation.mockResolvedValue({
+			nextTasks: [
+				{
+					id: 'task-11',
+					title: 'Repeat',
+					status: 'open',
+					deadline: today,
+					repeating: true,
+					groupId: null,
+					projectId: null
+				}
+			]
+		});
+
+		await tasksStore.load({ type: 'today' }, { force: true });
+		await tasksStore.completeTask('task-10');
+
+		const state = get(tasksStore);
+		expect(state.tasks).toHaveLength(1);
+		expect(state.tasks[0].id).toBe('task-11');
 	});
 
 	it('updates notes locally after applying', async () => {
