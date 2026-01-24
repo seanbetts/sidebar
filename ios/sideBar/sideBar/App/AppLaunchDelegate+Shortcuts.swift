@@ -4,7 +4,7 @@ import Foundation
 
 extension AppLaunchDelegate {
 
-    private struct ShortcutCategories {
+    struct ShortcutCategories {
         var file: [KeyboardShortcut] = []
         var edit: [KeyboardShortcut] = []
         var view: [KeyboardShortcut] = []
@@ -12,7 +12,7 @@ extension AppLaunchDelegate {
         var help: [KeyboardShortcut] = []
     }
 
-    private enum ShortcutMenuCategory {
+    enum ShortcutMenuCategory {
         case file
         case edit
         case view
@@ -21,7 +21,7 @@ extension AppLaunchDelegate {
         case contextOnly
     }
 
-    private func categorizeShortcuts(
+    func categorizeShortcuts(
         universal: [KeyboardShortcut],
         contextual: [KeyboardShortcut]
     ) -> ShortcutCategories {
@@ -50,7 +50,7 @@ extension AppLaunchDelegate {
         return categories
     }
 
-    private func addShortcut(
+    func addShortcut(
         _ shortcut: KeyboardShortcut,
         category: ShortcutMenuCategory,
         categories: inout ShortcutCategories,
@@ -72,7 +72,7 @@ extension AppLaunchDelegate {
         }
     }
 
-    private func categoryForUniversal(_ action: ShortcutAction) -> ShortcutMenuCategory {
+    func categoryForUniversal(_ action: ShortcutAction) -> ShortcutMenuCategory {
         switch action {
         case .navigate:
             return .window
@@ -89,7 +89,7 @@ extension AppLaunchDelegate {
         }
     }
 
-    private func categoryForContextual(_ action: ShortcutAction) -> ShortcutMenuCategory {
+    func categoryForContextual(_ action: ShortcutAction) -> ShortcutMenuCategory {
         switch action {
         case .openInBrowser, .openInDefaultApp, .quickLook, .attachFile, .sendMessage:
             return .file
@@ -116,12 +116,12 @@ extension AppLaunchDelegate {
         }
     }
 
-    private func imageForShortcut(_ shortcut: KeyboardShortcut) -> UIImage? {
+    func imageForShortcut(_ shortcut: KeyboardShortcut) -> UIImage? {
         guard let symbolName = symbolName(for: shortcut) else { return nil }
         return UIImage(systemName: symbolName)
     }
 
-    private func symbolName(for shortcut: KeyboardShortcut) -> String? {
+    func symbolName(for shortcut: KeyboardShortcut) -> String? {
         switch shortcut.action {
         case .navigate(let section):
             return Self.sectionSymbolNames[section]
@@ -132,7 +132,7 @@ extension AppLaunchDelegate {
         }
     }
 
-    private func shortcutPayload(for action: ShortcutAction) -> [String: String] {
+    func shortcutPayload(for action: ShortcutAction) -> [String: String] {
         var payload: [String: String] = [:]
         switch action {
         case .navigate(let section):
@@ -150,7 +150,7 @@ extension AppLaunchDelegate {
         return payload
     }
 
-    private func shortcutAction(from payload: [String: String]) -> ShortcutAction? {
+    func shortcutAction(from payload: [String: String]) -> ShortcutAction? {
         guard let typeRaw = payload[ShortcutCommandKeys.type],
               let type = ShortcutCommandType(rawValue: typeRaw) else { return nil }
         switch type {
@@ -167,7 +167,7 @@ extension AppLaunchDelegate {
         }
     }
 
-    private static let sectionSymbolNames: [AppSection: String] = [
+    static let sectionSymbolNames: [AppSection: String] = [
         .notes: "text.document",
         .tasks: "checkmark.square",
         .websites: "globe",
@@ -176,12 +176,12 @@ extension AppLaunchDelegate {
         .settings: "gearshape"
     ]
 
-    private static let listDirectionSymbols: [ShortcutListDirection: String] = [
+    static let listDirectionSymbols: [ShortcutListDirection: String] = [
         .next: "arrow.down",
         .previous: "arrow.up"
     ]
 
-    private static let actionSymbolNames: [ShortcutAction: String] = [
+    static let actionSymbolNames: [ShortcutAction: String] = [
         .openSettings: "gearshape",
         .newItem: "plus",
         .closeItem: "xmark",
@@ -212,7 +212,7 @@ extension AppLaunchDelegate {
         .quickLook: "eye"
     ]
 
-    private static let commandTypeMap: [ShortcutAction: ShortcutCommandType] = [
+    static let commandTypeMap: [ShortcutAction: ShortcutCommandType] = [
         .openSettings: .openSettings,
         .newItem: .newItem,
         .closeItem: .closeItem,
@@ -243,7 +243,7 @@ extension AppLaunchDelegate {
         .quickLook: .quickLook
     ]
 
-    private static let actionFromCommandType: [ShortcutCommandType: ShortcutAction] = [
+    static let actionFromCommandType: [ShortcutCommandType: ShortcutAction] = [
         .openSettings: .openSettings,
         .newItem: .newItem,
         .closeItem: .closeItem,
