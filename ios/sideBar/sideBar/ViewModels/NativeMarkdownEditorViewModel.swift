@@ -14,6 +14,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private let exporter = MarkdownExporter()
     private let bodyFont = Font.system(size: 16)
     private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
+    private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private var frontmatter: String?
     private var lastSavedContent: String = ""
     private var autosaveTask: Task<Void, Never>?
@@ -37,6 +38,56 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     public func markSaved(markdown: String) {
         lastSavedContent = markdown
         hasUnsavedChanges = false
+    }
+
+    public func isBoldActive() -> Bool {
+        hasInlineIntent(.stronglyEmphasized)
+    }
+
+    public func setBold(_ enabled: Bool) {
+        applyInlineIntent(.stronglyEmphasized, enabled: enabled)
+    }
+
+    public func isItalicActive() -> Bool {
+        hasInlineIntent(.emphasized)
+    }
+
+    public func setItalic(_ enabled: Bool) {
+        applyInlineIntent(.emphasized, enabled: enabled)
+    }
+
+    public func toggleInlineCode() {
+        let enabled = !hasInlineIntent(.code)
+        applyInlineIntent(.code, enabled: enabled)
+    }
+
+    public func applyLink(_ url: URL) {
+        attributedContent.transformAttributes(in: &selection) { attrs in
+            attrs.link = url
+            attrs.foregroundColor = .accentColor
+            attrs.underlineStyle = .single
+        }
+    }
+
+    public func applyHeading(level: Int) {
+        setBlockKind(headingKind(for: level))
+    }
+
+    public func applyList(ordered: Bool) {
+        setBlockKind(ordered ? .orderedList : .bulletList, listDepth: 1)
+    }
+
+    public func applyTask() {
+        setBlockKind(.taskUnchecked, listDepth: 1)
+    }
+
+    public func applyQuote() {
+        setBlockKind(.blockquote)
+    }
+
+    public func applyCodeBlock(language: String?) {
+        _ = language
+        setBlockKind(.codeBlock)
     }
 
     // swiftlint:disable cyclomatic_complexity
@@ -98,22 +149,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         let ranges = selectionRanges()
         for range in ranges.ranges where !range.isEmpty {
             let current = attributedContent[range].inlinePresentationIntent ?? []
-            if current.contains(intent) {
-                attributedContent[range].inlinePresentationIntent = current.subtracting(intent)
-                if intent == .code {
-                    let blockKind = attributedContent.blockKind(in: range)
-                    attributedContent[range].font = baseFont(for: blockKind)
-                    attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
-                    attributedContent[range].backgroundColor = nil
-                }
-            } else {
-                attributedContent[range].inlinePresentationIntent = current.union(intent)
-                if intent == .code {
-                    attributedContent[range].font = inlineCodeFont
-                    attributedContent[range].foregroundColor = DesignTokens.Colors.textPrimary
-                    attributedContent[range].backgroundColor = DesignTokens.Colors.muted
-                }
-            }
+            let enabled = !current.contains(intent)
+            applyInlineIntent(intent, enabled: enabled, range: range)
         }
     }
 
@@ -141,6 +178,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             } else {
                 attributedContent[paragraphRange].listDepth = nil
             }
+            applyBlockStyle(blockKind: blockKind, range: paragraphRange)
         }
     }
 
@@ -263,6 +301,75 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             return DesignTokens.Colors.textSecondary
         default:
             return DesignTokens.Colors.textPrimary
+        }
+    }
+
+    private func baseBackgroundColor(for blockKind: BlockKind?) -> Color? {
+        switch blockKind {
+        case .codeBlock:
+            return DesignTokens.Colors.muted
+        default:
+            return nil
+        }
+    }
+
+    private func hasInlineIntent(_ intent: InlinePresentationIntent) -> Bool {
+        let attrs = selection.typingAttributes(in: attributedContent)
+        let intents = attrs.inlinePresentationIntent ?? []
+        return intents.contains(intent)
+    }
+
+    private func applyInlineIntent(
+        _ intent: InlinePresentationIntent,
+        enabled: Bool,
+        range: Range<AttributedString.Index>? = nil
+    ) {
+        if let range {
+            attributedContent.transformAttributes(in: range) { attrs in
+                updateInlineIntent(intent, enabled: enabled, attrs: &attrs)
+            }
+            return
+        }
+        attributedContent.transformAttributes(in: &selection) { attrs in
+            updateInlineIntent(intent, enabled: enabled, attrs: &attrs)
+        }
+    }
+
+    private func updateInlineIntent(
+        _ intent: InlinePresentationIntent,
+        enabled: Bool,
+        attrs: inout AttributeContainer
+    ) {
+        var intents = attrs.inlinePresentationIntent ?? []
+        if enabled {
+            intents.insert(intent)
+        } else {
+            intents.remove(intent)
+        }
+        attrs.inlinePresentationIntent = intents
+
+        if intent == .code {
+            let blockKind = attrs.blockKind
+            if enabled {
+                attrs.font = inlineCodeFont
+                attrs.foregroundColor = DesignTokens.Colors.textPrimary
+                attrs.backgroundColor = DesignTokens.Colors.muted
+            } else {
+                attrs.font = baseFont(for: blockKind)
+                attrs.foregroundColor = baseForegroundColor(for: blockKind)
+                attrs.backgroundColor = baseBackgroundColor(for: blockKind)
+            }
+        }
+    }
+
+    private func applyBlockStyle(blockKind: BlockKind, range: Range<AttributedString.Index>) {
+        let font = blockKind == .codeBlock ? blockCodeFont : baseFont(for: blockKind)
+        attributedContent[range].font = font
+        attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
+        attributedContent[range].backgroundColor = baseBackgroundColor(for: blockKind)
+        if blockKind == .taskChecked {
+            attributedContent[range].strikethroughStyle = .single
+            attributedContent[range].foregroundColor = DesignTokens.Colors.textSecondary
         }
     }
 
