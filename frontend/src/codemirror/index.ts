@@ -546,10 +546,18 @@ const linkClickHandler = EditorView.domEventHandlers({
 		const line = view.state.doc.lineAt(pos);
 		const offset = pos - line.from;
 		const href = findLinkAt(line.text, offset);
-		if (!href) return false;
-		const resolvedHref = href.startsWith('www.') ? `https://${href}` : href;
-		postToNative('linkTapped', { href: resolvedHref });
-		event.preventDefault();
+		if (href) {
+			const resolvedHref = href.startsWith('www.') ? `https://${href}` : href;
+			postToNative('linkTapped', { href: resolvedHref });
+			event.preventDefault();
+			return true;
+		}
+		if (!isReadOnly) return false;
+		const rect = view.dom.getBoundingClientRect();
+		postToNative('requestEdit', {
+			x: event.clientX - rect.left,
+			y: event.clientY - rect.top
+		});
 		return true;
 	}
 });
