@@ -236,7 +236,15 @@ async def get_project_tasks(
     """Fetch tasks for a project."""
     set_session_user_id(db, user_id)
     tasks = TaskService.list_tasks_by_project(db, user_id, project_id)
-    return {"tasks": [_task_payload(task) for task in tasks]}
+    projects = TaskService.list_task_projects(db, user_id)
+    areas = TaskService.list_task_areas(db, user_id)
+    return {
+        "scope": "project",
+        "generatedAt": datetime.now(UTC).isoformat(),
+        "tasks": [_task_payload(task) for task in tasks],
+        "projects": [_project_payload(project) for project in projects],
+        "areas": [_area_payload(area) for area in areas],
+    }
 
 
 @router.get("/areas/{area_id}/tasks")
@@ -249,7 +257,15 @@ async def get_area_tasks(
     """Fetch tasks for an area."""
     set_session_user_id(db, user_id)
     tasks = TaskService.list_tasks_by_area(db, user_id, area_id)
-    return {"tasks": [_task_payload(task) for task in tasks]}
+    projects = TaskService.list_task_projects(db, user_id)
+    areas = TaskService.list_task_areas(db, user_id)
+    return {
+        "scope": "area",
+        "generatedAt": datetime.now(UTC).isoformat(),
+        "tasks": [_task_payload(task) for task in tasks],
+        "projects": [_project_payload(project) for project in projects],
+        "areas": [_area_payload(area) for area in areas],
+    }
 
 
 @router.get("/counts")
