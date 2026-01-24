@@ -1,3 +1,5 @@
+@import '../lib/styles/markdown-shared.css';
+
 :root {
   color-scheme: light dark;
   --color-background: oklch(1 0 0);
@@ -68,6 +70,11 @@ body {
 
 .cm-focused {
   outline: none;
+}
+
+.cm-list-marker,
+.cm-live-hide {
+  opacity: 0;
 }
 
 .cm-heading {
@@ -193,19 +200,42 @@ body {
   line-height: 1.4;
 }
 
-.cm-list-marker,
-.cm-live-hide {
-  opacity: 0;
+.cm-list-depth {
+  padding-left: calc(var(--cm-list-depth, 1) * 1.25em);
 }
 
 .cm-list-marker-widget {
   color: var(--color-muted-foreground);
+  margin-right: 0.35em;
 }
 
 .cm-task-item--checked {
   color: var(--color-muted-foreground);
   text-decoration: line-through;
   opacity: 0.6;
+}
+
+.cm-task-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  border: 1px solid var(--color-border);
+  border-radius: 0.2em;
+  margin-right: 0.4em;
+  vertical-align: text-bottom;
+}
+
+.cm-task-checkbox--checked {
+  border-color: var(--color-muted-foreground);
+  background-color: color-mix(in oklab, var(--color-muted-foreground) 12%, transparent);
+}
+
+.cm-task-checkbox--checked::after {
+  content: "x";
+  font-size: 0.8em;
+  color: var(--color-muted-foreground);
 }
 
 .cm-hr {
@@ -225,4 +255,16 @@ body {
   border-radius: 0.25em;
   font-family: "SF Mono", Monaco, monospace;
   font-size: 0.875em;
+}
+
+.cm-strong {
+  font-weight: 700;
+}
+
+.cm-emphasis {
+  font-style: italic;
+}
+
+.cm-strikethrough {
+  text-decoration: line-through;
 }
