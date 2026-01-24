@@ -248,19 +248,11 @@ private struct MockIngestionAPI: IngestionProviding {
 
 private final class MockIngestionUploadManager: IngestionUploadManaging {
     func startUpload(
-        uploadId: String,
-        fileURL: URL,
-        filename: String,
-        mimeType: String,
-        folder: String,
+        request: UploadRequest,
         onProgress: @escaping (Double) -> Void,
         onCompletion: @escaping (Result<String, Error>) -> Void
     ) {
-        _ = uploadId
-        _ = fileURL
-        _ = filename
-        _ = mimeType
-        _ = folder
+        _ = request
         _ = onProgress
         _ = onCompletion
     }
