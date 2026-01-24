@@ -33,7 +33,7 @@ struct NotesSheet: View {
                 }
             }
             .navigationTitle("Notes")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayModeInline()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }

@@ -32,10 +32,10 @@ struct NewTaskSheet: View {
             Form {
                 Section("Task") {
                     TextField("Task title", text: $title)
-                        .textInputAutocapitalization(.sentences)
+                        .textInputAutocapitalizationSentences()
                         .disableAutocorrection(false)
                         .focused($focusedField, equals: .title)
-                        .submitLabel(.done)
+                        .submitLabelDone()
                         .onSubmit { handleSave() }
                 }
 
@@ -99,7 +99,7 @@ struct NewTaskSheet: View {
                 }
             }
             .navigationTitle("New task")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayModeInline()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
@@ -154,10 +154,10 @@ struct NewGroupSheet: View {
             Form {
                 Section("Group") {
                     TextField("Group name", text: $title)
-                        .textInputAutocapitalization(.sentences)
+                        .textInputAutocapitalizationSentences()
                         .disableAutocorrection(false)
                         .focused($isTitleFocused)
-                        .submitLabel(.done)
+                        .submitLabelDone()
                         .onSubmit { handleSave() }
                 }
 
@@ -170,7 +170,7 @@ struct NewGroupSheet: View {
                 }
             }
             .navigationTitle("New group")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayModeInline()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
@@ -221,10 +221,10 @@ struct NewProjectSheet: View {
             Form {
                 Section("Project") {
                     TextField("Project name", text: $title)
-                        .textInputAutocapitalization(.sentences)
+                        .textInputAutocapitalizationSentences()
                         .disableAutocorrection(false)
                         .focused($isTitleFocused)
-                        .submitLabel(.done)
+                        .submitLabelDone()
                         .onSubmit { handleSave() }
                 }
 
@@ -246,7 +246,7 @@ struct NewProjectSheet: View {
                 }
             }
             .navigationTitle("New project")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayModeInline()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }

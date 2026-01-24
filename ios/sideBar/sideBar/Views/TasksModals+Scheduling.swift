@@ -30,7 +30,7 @@ struct DueDateSheet: View {
                 }
             }
             .navigationTitle("Due date")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayModeInline()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
@@ -70,7 +70,7 @@ struct MoveTaskSheet: View {
                 }
             }
             .navigationTitle("Move task")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayModeInline()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
@@ -139,7 +139,7 @@ struct RepeatTaskSheet: View {
                 }
             }
             .navigationTitle("Repeat")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayModeInline()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onDismiss() }
