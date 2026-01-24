@@ -33,11 +33,14 @@ public struct SidebarRail: View {
 
     public var body: some View {
         VStack(spacing: 16) {
-            Button(action: { onTogglePanel?() }) {
-                Image(systemName: "sidebar.left")
-                    .font(DesignTokens.Typography.titleLg)
-                    .frame(width: 32, height: 32)
-            }
+            Button(
+                action: { onTogglePanel?() },
+                label: {
+                    Image(systemName: "sidebar.left")
+                        .font(DesignTokens.Typography.titleLg)
+                        .frame(width: 32, height: 32)
+                }
+            )
             .buttonStyle(.plain)
             .accessibilityLabel("Toggle sidebar")
 
@@ -56,9 +59,12 @@ public struct SidebarRail: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Settings")
             #else
-            Button(action: { onShowSettings?() }) {
-                ProfileAvatarView(size: 32)
-            }
+            Button(
+                action: { onShowSettings?() },
+                label: {
+                    ProfileAvatarView(size: 32)
+                }
+            )
             .buttonStyle(.plain)
             .accessibilityLabel("Settings")
             #endif

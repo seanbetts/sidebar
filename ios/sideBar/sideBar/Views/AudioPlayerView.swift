@@ -12,11 +12,14 @@ public struct AudioPlayerView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Button(action: { viewModel.togglePlay() }) {
-                    Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                        .font(DesignTokens.Typography.titleMd)
-                        .frame(width: 36, height: 36)
-                }
+                Button(
+                    action: { viewModel.togglePlay() },
+                    label: {
+                        Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
+                            .font(DesignTokens.Typography.titleMd)
+                            .frame(width: 36, height: 36)
+                    }
+                )
                 .buttonStyle(.bordered)
 
                 VStack(alignment: .leading, spacing: 6) {

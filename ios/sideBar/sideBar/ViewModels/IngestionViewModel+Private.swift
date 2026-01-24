@@ -421,7 +421,9 @@ extension IngestionViewModel {
 
     func makeYouTubeEmbedURL(videoId: String) -> URL? {
         guard let trimmed = videoId.trimmedOrNil else { return nil }
-        let url = "https://www.youtube-nocookie.com/embed/\(trimmed)?playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
+        let base = "https://www.youtube-nocookie.com/embed/\(trimmed)"
+        let query = "playsinline=1&rel=0&modestbranding=1&origin=https://www.youtube-nocookie.com"
+        let url = "\(base)?\(query)"
         return URL(string: url)
     }
 

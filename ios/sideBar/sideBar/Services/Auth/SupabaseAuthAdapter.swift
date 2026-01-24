@@ -361,7 +361,6 @@ public final class SupabaseAuthAdapter: ObservableObject, AuthSession {
         return Date(timeIntervalSinceNow: max(expiresAt, 0))
     }
 
-
     private func shouldAllowOfflineAccess(hasStoredToken: Bool) -> Bool {
         let lastAuthTimestamp = UserDefaults.standard.double(forKey: lastAuthTimestampKey)
         if lastAuthTimestamp == 0, hasStoredToken {

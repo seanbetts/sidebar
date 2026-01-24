@@ -118,7 +118,6 @@ extension ContentView {
         #endif
     }
 
-
     var tabBarTint: Color {
         #if os(macOS)
         return Color.accentColor

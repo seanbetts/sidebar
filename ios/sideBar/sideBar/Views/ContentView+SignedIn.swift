@@ -288,7 +288,10 @@ extension ContentView {
             case .biometricUnavailable:
                 return Alert(
                     title: Text("Biometric Unlock Unavailable"),
-                    message: Text("Biometric unlock is no longer available on this device. You can re-enable it in Settings once Face ID or Touch ID is available again."),
+                    message: Text(
+                        "Biometric unlock is no longer available on this device. " +
+                            "You can re-enable it in Settings once Face ID or Touch ID is available again."
+                    ),
                     dismissButton: .default(Text("OK"))
                 )
             case .biometricHint:

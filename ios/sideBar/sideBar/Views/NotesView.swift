@@ -223,11 +223,15 @@ extension NotesDetailView {
                 GeometryReader { proxy in
                     Color.platformSecondarySystemBackground
                         .overlay(alignment: .center) {
-                            MarkdownFormattingToolbar(isReadOnly: editorViewModel.isReadOnly, onClose: {
-                                editorViewModel.isEditing = false
-                            }) { command in
-                                editorHandle.applyCommand(command)
-                            }
+                            MarkdownFormattingToolbar(
+                                isReadOnly: editorViewModel.isReadOnly,
+                                onClose: {
+                                    editorViewModel.isEditing = false
+                                },
+                                onCommand: { command in
+                                    editorHandle.applyCommand(command)
+                                }
+                            )
                             .background(Color.clear)
                         }
                         .frame(height: proxy.size.height)
@@ -300,10 +304,11 @@ extension NotesDetailView {
                                     isReadOnly: editorViewModel.isReadOnly,
                                     onClose: {
                                         editorViewModel.isEditing = false
+                                    },
+                                    onCommand: { command in
+                                        editorHandle.applyCommand(command)
                                     }
-                                ) { command in
-                                    editorHandle.applyCommand(command)
-                                }
+                                )
                                 .background(Color.clear)
                             }
                             .frame(height: min(proxy.size.height, LayoutMetrics.contentHeaderMinHeight))

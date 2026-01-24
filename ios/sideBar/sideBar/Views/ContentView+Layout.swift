@@ -52,12 +52,14 @@ extension ContentView {
                     isLeftPanelExpanded: isLeftPanelExpanded,
                     shouldAnimateSidebar: hasCompletedInitialSetup
                 )
+            },
+            mainContent: {
+                detailView(for: primarySection)
+            },
+            rightSidebar: {
+                detailView(for: secondarySection)
             }
-        ) {
-            detailView(for: primarySection)
-        } rightSidebar: {
-            detailView(for: secondarySection)
-        }
+        )
     }
 
     var compactView: some View {
