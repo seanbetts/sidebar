@@ -208,9 +208,11 @@ module = [
     "pydantic_settings",
     "playwright.sync_api",
     "prometheus_client",
+    "pydub",
     "readability",
     "sentry_sdk",
     "sentry_sdk.*",
+    "ooxml",
     "yaml",
 ]
 ignore_missing_imports = true
