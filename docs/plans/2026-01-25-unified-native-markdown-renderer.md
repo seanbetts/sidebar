@@ -2,7 +2,7 @@
 
 **Created:** 2026-01-25
 **Platform:** iOS 26+ / macOS 26+
-**Status:** Planning
+**Status:** Complete (core implementation)
 
 ---
 
@@ -189,26 +189,15 @@ Bring native editor styling to parity with MarkdownUI theme.
 
 #### 3.2 Code Block Styling
 
-Current: Background color only
-Target: Rounded corners, border, horizontal scroll
+✅ **Basic styling complete** - Monospace font and muted background color applied via importer.
 
-**Approach:**
-- Code blocks are already identified by `.codeBlock` block kind
-- In hybrid renderer, detect code block segments
-- Wrap in styled container with:
-  - `RoundedRectangle` clip shape
-  - Border overlay
-  - `ScrollView(.horizontal)` for long lines
+**Deferred:** Rounded corners and borders would require custom view rendering outside of TextEditor, which adds complexity. The native styling is acceptable for now.
 
 #### 3.3 Table Styling
 
-Current: Basic table via presentation intent
-Target: Alternating row colors, header background, borders
+✅ **Basic styling complete** - Tables rendered via `PresentationIntent.table`.
 
-**Approach:**
-- Tables identified by presentation intent with `.table` component
-- May require custom rendering outside `TextEditor`
-- Consider extracting tables as separate segments (like galleries)
+**Deferred:** Alternating row colors, header backgrounds, and borders would require custom rendering. Native styling is acceptable for now.
 
 ---
 
@@ -216,29 +205,15 @@ Target: Alternating row colors, header background, borders
 
 #### 4.1 Focus Management
 
-When user taps to edit:
-- Scroll to tapped position
-- Place cursor at tap location
-- Show keyboard
+✅ **Complete** - Tapping the TextEditor naturally focuses it and enters edit mode. Focus state is tracked via `@FocusState`.
 
 #### 4.2 Read-Only Mode Behavior
 
-TextEditor supports read-only mode while preserving text selection. When `isEditing = false`:
-- Allow text selection for copy
-- Hide cursor / disable insertion point
-- Disable keyboard
-
-```swift
-TextEditor(text: $content, selection: $selection)
-    .disabled(!isEditing)  // Allows selection, prevents editing
-```
+✅ **Complete** - Using single TextEditor that gains focus on tap to enter edit mode. Escape key exits edit mode and removes focus.
 
 #### 4.3 Seamless Mode Transitions
 
-When toggling edit mode:
-- Preserve scroll position
-- Preserve cursor position (if applicable)
-- Animate transition smoothly
+✅ **Complete** - No view switching means scroll position is naturally preserved. Same TextEditor is used throughout.
 
 ---
 
@@ -246,38 +221,17 @@ When toggling edit mode:
 
 #### 5.1 Feature Flag
 
-Add setting to toggle between renderers during migration:
-
-```swift
-@AppStorage("useUnifiedNativeRenderer") var useUnifiedNativeRenderer = false
-```
+✅ **Already exists** - `useNativeMarkdownEditor` flag controls whether native editor is used.
 
 #### 5.2 Update NativeMarkdownEditorContainer
 
-```swift
-struct NativeMarkdownEditorContainer: View {
-    @State private var isEditing = false
+✅ **Complete** - Container uses single TextEditor for both read and edit modes. Focus triggers edit mode, escape exits.
 
-    var body: some View {
-        HybridMarkdownView(
-            segments: segments,
-            isEditing: isEditing,
-            attributedContent: $nativeViewModel.attributedContent,
-            selection: $nativeViewModel.selection
-        )
-        .onTapGesture { isEditing = true }
-        .onKeyPress(.escape) { isEditing = false; return .handled }
-    }
-}
-```
+#### 5.3 Remove MarkdownUI from Notes
 
-#### 5.3 Remove MarkdownUI Dependency
+✅ **Complete** - Notes on iOS 26+ use `NativeMarkdownEditorContainer` which doesn't use MarkdownUI. The `SideBarMarkdownContainer` fallback remains for older iOS versions.
 
-Once migration is complete and stable:
-1. Remove `SideBarMarkdownContainer` usage from notes
-2. Remove MarkdownUI theme configuration
-3. Keep `SideBarMarkdown` for other uses (chat, websites) or migrate those too
-4. Eventually remove MarkdownUI package dependency
+**Note:** `SideBarMarkdown` is kept for other features (chat, websites, file viewer, memories) which still use MarkdownUI.
 
 ---
 
