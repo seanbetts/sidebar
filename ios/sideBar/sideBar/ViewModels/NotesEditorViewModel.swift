@@ -8,6 +8,11 @@ import Combine
 public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var content: String = ""
     @Published public private(set) var currentNoteId: String?
+    @Published public private(set) var isDirty: Bool = false
+    @Published public private(set) var isSaving: Bool = false
+    @Published public private(set) var lastSavedAt: Date?
+    @Published public private(set) var saveErrorMessage: String?
+    @Published public private(set) var isReadOnly: Bool = true
 
     private let notesViewModel: NotesViewModel
     private var cancellables = Set<AnyCancellable>()
@@ -26,10 +31,18 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let note else {
             currentNoteId = nil
             content = ""
+            isDirty = false
+            isSaving = false
+            lastSavedAt = nil
+            saveErrorMessage = nil
             return
         }
         currentNoteId = note.id
         content = note.content
+        isDirty = false
+        isSaving = false
+        lastSavedAt = nil
+        saveErrorMessage = nil
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -44,8 +57,24 @@ public final class NotesEditorViewModel: ObservableObject {
         guard let noteId = currentNoteId else { return }
         let markdown = nativeViewModel.currentMarkdown()
         guard markdown != content else { return }
-        if await notesViewModel.updateNoteContent(id: noteId, content: markdown) {
+        isSaving = true
+        saveErrorMessage = nil
+        let saved = await notesViewModel.updateNoteContent(id: noteId, content: markdown)
+        isSaving = false
+        if saved {
             nativeViewModel.markSaved(markdown: markdown)
+            isDirty = false
+            lastSavedAt = Date()
+        } else {
+            saveErrorMessage = "Failed to save note"
         }
+    }
+
+    public func setDirty(_ dirty: Bool) {
+        isDirty = dirty
+    }
+
+    public func setReadOnly(_ readOnly: Bool) {
+        isReadOnly = readOnly
     }
 }
