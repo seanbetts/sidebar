@@ -62,7 +62,7 @@ Both Modes: markdown → MarkdownImporter → AttributedString → TextEditor (e
 | Feature | Priority | Complexity | Notes |
 |---------|----------|------------|-------|
 | Image galleries | High | Medium | Custom HTML block rendering, grid layout |
-| Inline images | High | Low | Use `AdaptiveImageGlyph` with remote URLs |
+| Inline images | High | Deferred | `AdaptiveImageGlyph` API not available as expected; using placeholder |
 | Image captions | Medium | Low | Already parsed, needs styling |
 | Blockquote border | ✅ Done | - | Handled by `PresentationIntent` natively |
 | Code block border/radius | Low | Low | Visual polish |
@@ -146,36 +146,18 @@ struct HybridMarkdownView: View {
 
 ### Phase 2: Inline Image Support
 
-iOS 26's `AdaptiveImageGlyph` supports remote URLs, making inline images straightforward.
+**Status:** Deferred - `AdaptiveImageGlyph` API not available as expected.
 
-#### 2.1 Update MarkdownImporter
+#### Current Implementation
 
-When encountering `![alt](url)` syntax, create an `AdaptiveImageGlyph`:
+Images are displayed as text placeholders (`![alt](url)`) with `ImageInfo` attribute for round-trip preservation. The placeholder is styled with secondary text color.
 
-```swift
-case let image as Markdown.Image:
-    if let source = image.source, let url = URL(string: source) {
-        let glyph = AdaptiveImageGlyph(url: url)
-        var imageString = AttributedString(glyph)
-        // Apply any needed attributes (alt text as accessibility label, etc.)
-        return imageString
-    }
-    // Fallback to text representation
-    return AttributedString("![\(image.plainText)](\(image.source ?? ""))")
-```
+#### Future Work
 
-#### 2.2 Image Size Constraints
-
-Apply size constraints to prevent images from being too large:
-- Use `MarkdownFormattingDefinition` constraints if available
-- Or apply max size during import
-
-#### 2.3 Gallery Images
-
-For gallery blocks, each image in the gallery can use `AdaptiveImageGlyph`:
-- Parse gallery HTML block
-- Create attributed string with multiple glyphs
-- Apply gallery-specific layout (may still need hybrid approach for grid layout)
+When `AdaptiveImageGlyph` or equivalent API becomes available:
+- Replace placeholder with actual image glyph
+- Apply size constraints
+- Handle gallery images with grid layout
 
 ---
 
