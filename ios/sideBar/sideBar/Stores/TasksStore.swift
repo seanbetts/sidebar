@@ -86,11 +86,6 @@ public final class TasksStore: ObservableObject {
         tasks.insert(task, at: 0)
     }
 
-    /// Clears a task from pending removals (called when server confirms removal).
-    public func confirmRemoval(id: String) {
-        pendingRemovals.remove(id)
-    }
-
     private func refresh(selection: TaskSelection) async {
         do {
             let response = try await fetch(selection: selection)
@@ -133,7 +128,13 @@ public final class TasksStore: ObservableObject {
         tasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
         groups = list.groups ?? []
         projects = list.projects ?? []
+
+        // Clean up pendingRemovals: remove IDs that are no longer in the server response
+        // (confirms the server has processed the removal)
         if persist {
+            let serverTaskIds = Set(list.tasks.map { $0.id })
+            pendingRemovals = pendingRemovals.filter { serverTaskIds.contains($0) }
+
             let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
             cache.set(key: cacheKey, value: list, ttlSeconds: CachePolicy.tasksList)
         }
