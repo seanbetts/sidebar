@@ -135,7 +135,7 @@ private func splitLines(in text: AttributedString) -> [Range<AttributedString.In
     var current = text.startIndex
 
     while current < text.endIndex {
-        if text.characters[current] == "\n" {
+        if text.characters[current].isNewline {
             lines.append(lineStart..<current)
             lineStart = text.index(afterCharacter: current)
             current = lineStart
@@ -229,7 +229,7 @@ private func isSoftBreakBeforeLine(
 ) -> Bool {
     guard lineRange.lowerBound > text.startIndex else { return false }
     let newlineIndex = text.index(beforeCharacter: lineRange.lowerBound)
-    guard newlineIndex >= text.startIndex, text.characters[newlineIndex] == "\n" else { return false }
+    guard newlineIndex >= text.startIndex, text.characters[newlineIndex].isNewline else { return false }
     let nextIndex = text.index(afterCharacter: newlineIndex)
     let newlineRange = newlineIndex..<nextIndex
     return text.blockKind(in: newlineRange) != nil

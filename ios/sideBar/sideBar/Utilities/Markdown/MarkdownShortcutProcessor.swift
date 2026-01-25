@@ -51,7 +51,7 @@ public struct MarkdownShortcutProcessor {
             return nil
         }
 
-        if lastInsertedCharacter == "\n",
+        if lastInsertedCharacter?.isNewline == true,
            let newSelection = processBlockShortcut(in: &text, at: cursorIndex) {
             return newSelection
         }
@@ -69,14 +69,14 @@ public struct MarkdownShortcutProcessor {
     ) -> AttributedTextSelection? {
         guard cursorIndex > text.startIndex else { return nil }
         let previousIndex = text.index(beforeCharacter: cursorIndex)
-        guard text.characters[previousIndex] == "\n" else { return nil }
+        guard text.characters[previousIndex].isNewline else { return nil }
 
         var lineStart = text.startIndex
         var current = previousIndex
 
         while current > text.startIndex {
             let prev = text.index(beforeCharacter: current)
-            if text.characters[prev] == "\n" {
+            if text.characters[prev].isNewline {
                 lineStart = current
                 break
             }
@@ -245,7 +245,7 @@ public struct MarkdownShortcutProcessor {
     private static func nextLineEnd(in text: AttributedString, from start: AttributedString.Index) -> AttributedString.Index {
         var current = start
         while current < text.endIndex {
-            if text.characters[current] == "\n" {
+            if text.characters[current].isNewline {
                 break
             }
             current = text.index(afterCharacter: current)
@@ -258,7 +258,7 @@ public struct MarkdownShortcutProcessor {
         lineStart: AttributedString.Index
     ) -> AttributedTextSelection {
         let lineEnd = nextLineEnd(in: text, from: lineStart)
-        if lineEnd < text.endIndex, text.characters[lineEnd] == "\n" {
+        if lineEnd < text.endIndex, text.characters[lineEnd].isNewline {
             let nextIndex = text.index(afterCharacter: lineEnd)
             return AttributedTextSelection(range: nextIndex..<nextIndex)
         }

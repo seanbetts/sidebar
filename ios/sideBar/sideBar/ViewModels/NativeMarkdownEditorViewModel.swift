@@ -176,11 +176,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     public func handleSelectionChange() {
         guard !isReadOnly, !isUpdatingPrefixVisibility else { return }
-        let currentLineIndex = lineIndexForSelection(in: attributedContent)
-        if currentLineIndex == lastSelectionLineIndex {
-            return
-        }
-        lastSelectionLineIndex = currentLineIndex
+        lastSelectionLineIndex = lineIndexForSelection(in: attributedContent)
         updatePrefixVisibility()
     }
 
@@ -228,14 +224,14 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
         while start > attributedContent.startIndex {
             let prev = attributedContent.index(beforeCharacter: start)
-            if attributedContent.characters[prev] == "\n" {
+            if attributedContent.characters[prev].isNewline {
                 break
             }
             start = prev
         }
 
         while end < attributedContent.endIndex {
-            if attributedContent.characters[end] == "\n" {
+            if attributedContent.characters[end].isNewline {
                 break
             }
             end = attributedContent.index(afterCharacter: end)
@@ -495,14 +491,62 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
     }
 
+    private enum SelectionSnapshot {
+        case insertionPoint(Int)
+        case ranges([Range<Int>])
+    }
+
+    private func selectionSnapshot(in text: AttributedString) -> SelectionSnapshot {
+        switch selection.indices(in: text) {
+        case .insertionPoint(let index):
+            let offset = text.characters.distance(from: text.startIndex, to: index)
+            return .insertionPoint(offset)
+        case .ranges(let ranges):
+            let offsets = ranges.ranges.map { range in
+                let lower = text.characters.distance(from: text.startIndex, to: range.lowerBound)
+                let upper = text.characters.distance(from: text.startIndex, to: range.upperBound)
+                return lower..<upper
+            }
+            return .ranges(offsets)
+        }
+    }
+
+    private func selection(from snapshot: SelectionSnapshot, in text: AttributedString) -> AttributedTextSelection {
+        let maxOffset = text.characters.count
+        func index(for offset: Int) -> AttributedString.Index {
+            let clamped = min(max(offset, 0), maxOffset)
+            return text.index(text.startIndex, offsetByCharacters: clamped)
+        }
+
+        switch snapshot {
+        case .insertionPoint(let offset):
+            let index = index(for: offset)
+            return AttributedTextSelection(range: index..<index)
+        case .ranges(let offsets):
+            let ranges = offsets.map { range -> Range<AttributedString.Index> in
+                let lower = index(for: range.lowerBound)
+                let upper = index(for: range.upperBound)
+                return lower..<upper
+            }
+            return AttributedTextSelection(ranges: RangeSet(ranges))
+        }
+    }
+
     private func updatePrefixVisibility() {
+        let selectionSnapshot = selectionSnapshot(in: attributedContent)
         var updated = attributedContent
+        let selectionForUpdated = selection(from: selectionSnapshot, in: updated)
 
         for lineRange in lineRanges(in: updated) {
             let lineText = String(updated[lineRange].characters)
-            let prefixRange = markdownPrefixRange(in: updated, lineRange: lineRange, lineText: lineText)
-            let shouldShow = shouldShowPrefix(for: lineRange, selection: selection, in: updated)
+            let shouldShow = shouldShowPrefix(for: lineRange, selection: selectionForUpdated, in: updated)
             let blockKind = updated.blockKind(in: lineRange) ?? inferredBlockKind(from: lineText)
+            let prefixRange = markdownPrefixRange(
+                in: updated,
+                lineRange: lineRange,
+                lineText: lineText,
+                blockKind: blockKind
+            )
 
             if let prefixRange {
                 if shouldShow {
@@ -538,6 +582,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         if updated != attributedContent {
             isUpdatingPrefixVisibility = true
             attributedContent = updated
+            selection = selection(from: selectionSnapshot, in: updated)
             Task { @MainActor [weak self] in
                 self?.isUpdatingPrefixVisibility = false
             }
@@ -550,7 +595,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         var current = text.startIndex
 
         while current < text.endIndex {
-            if text.characters[current] == "\n" {
+            if text.characters[current].isNewline {
                 lines.append(start..<current)
                 start = text.index(afterCharacter: current)
                 current = start
@@ -590,8 +635,18 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private func markdownPrefixRange(
         in text: AttributedString,
         lineRange: Range<AttributedString.Index>,
-        lineText: String
+        lineText: String,
+        blockKind: BlockKind?
     ) -> Range<AttributedString.Index>? {
+        if let blockKind, let range = prefixRangeForBlockKind(
+            blockKind,
+            in: text,
+            lineRange: lineRange,
+            lineText: lineText
+        ) {
+            return range
+        }
+
         let range = NSRange(location: 0, length: lineText.utf16.count)
         let regexes = [
             Self.taskRegex,
@@ -610,6 +665,42 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         return nil
+    }
+
+    private func prefixRangeForBlockKind(
+        _ blockKind: BlockKind,
+        in text: AttributedString,
+        lineRange: Range<AttributedString.Index>,
+        lineText: String
+    ) -> Range<AttributedString.Index>? {
+        let prefix: String
+        switch blockKind {
+        case .heading1:
+            prefix = "# "
+        case .heading2:
+            prefix = "## "
+        case .heading3:
+            prefix = "### "
+        case .heading4:
+            prefix = "#### "
+        case .heading5:
+            prefix = "##### "
+        case .heading6:
+            prefix = "###### "
+        default:
+            return nil
+        }
+
+        guard let firstNonWhitespace = lineText.firstIndex(where: { !$0.isWhitespace }) else {
+            return nil
+        }
+        guard lineText[firstNonWhitespace...].hasPrefix(prefix) else {
+            return nil
+        }
+
+        let leadingOffset = lineText.distance(from: lineText.startIndex, to: firstNonWhitespace)
+        let prefixEnd = text.index(lineRange.lowerBound, offsetByCharacters: leadingOffset + prefix.count)
+        return lineRange.lowerBound..<prefixEnd
     }
 
     private func inlineMarkerRanges(
