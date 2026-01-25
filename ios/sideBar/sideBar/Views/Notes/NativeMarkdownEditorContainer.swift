@@ -8,6 +8,7 @@ struct NativeMarkdownEditorContainer: View {
     @StateObject private var nativeViewModel = NativeMarkdownEditorViewModel()
     @State private var loadedNoteId: String?
     @State private var isEditing: Bool = false
+    @FocusState private var isTextEditorFocused: Bool
 
     var body: some View {
         Group {
@@ -16,6 +17,7 @@ struct NativeMarkdownEditorContainer: View {
                     viewModel: nativeViewModel,
                     maxContentWidth: maxContentWidth
                 ) { _ in }
+                .focused($isTextEditorFocused)
                 .onKeyPress(.escape) {
                     isEditing = false
                     return .handled
@@ -42,6 +44,9 @@ struct NativeMarkdownEditorContainer: View {
             Task {
                 await editorViewModel.syncFromNativeEditor(nativeViewModel)
             }
+        }
+        .onChange(of: isEditing) { _, editing in
+            isTextEditorFocused = editing
         }
     }
 
