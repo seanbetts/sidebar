@@ -62,6 +62,25 @@ public enum InlineMarkerAttribute: CodableAttributedStringKey {
     public static var inheritedByAddedText: Bool { false }
 }
 
+@available(iOS 26.0, macOS 26.0, *)
+public struct ImageInfo: Codable, Hashable, Sendable {
+    public let url: URL
+    public let altText: String
+
+    public init(url: URL, altText: String) {
+        self.url = url
+        self.altText = altText
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+public enum ImageInfoAttribute: CodableAttributedStringKey {
+    public typealias Value = ImageInfo
+    public static let name = "sideBar.imageInfo"
+
+    public static var inheritedByAddedText: Bool { false }
+}
+
 // MARK: - Attribute Scope
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -71,6 +90,7 @@ public extension AttributeScopes {
         public let listDepth: ListDepthAttribute
         public let codeLanguage: CodeLanguageAttribute
         public let inlineMarker: InlineMarkerAttribute
+        public let imageInfo: ImageInfoAttribute
         public let presentationIntent: AttributeScopes.FoundationAttributes.PresentationIntentAttribute
         public let listItemDelimiter: AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute
         public let foundation: AttributeScopes.FoundationAttributes

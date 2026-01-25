@@ -347,6 +347,13 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         case let image as Markdown.Image:
             let alt = unwrapOptionalString(image.plainText)
             let source = unwrapOptionalString(image.source)
+            if let url = URL(string: source) {
+                var imageString = AttributedString(AdaptiveImageGlyph(url: url))
+                let range = fullRange(in: imageString)
+                imageString[range].accessibilityLabel = alt
+                imageString[range].imageInfo = ImageInfo(url: url, altText: alt)
+                return imageString
+            }
             return AttributedString("![\(alt)](\(source))")
         case let html as Markdown.InlineHTML:
             return AttributedString(html.rawHTML)

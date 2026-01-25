@@ -169,6 +169,12 @@ private func serializeInline(_ attributed: AttributedSubstring) -> String {
     let hasInlineMarkers = lineHasInlineMarkers(lineText)
     var output = ""
     for run in attributed.runs {
+        // Handle images first
+        if let imageInfo = run.imageInfo {
+            output += "![\(imageInfo.altText)](\(imageInfo.url.absoluteString))"
+            continue
+        }
+
         let text = String(attributed[run.range].characters)
         let intents = run.inlinePresentationIntent ?? []
         let isBold = intents.contains(.stronglyEmphasized)
