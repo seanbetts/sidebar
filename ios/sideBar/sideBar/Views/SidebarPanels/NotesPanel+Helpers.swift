@@ -175,22 +175,20 @@ extension NotesPanelView {
     }
 
     func confirmSaveAndSwitch() {
-        guard let pendingNoteId else { return }
-        let noteId = pendingNoteId
+        guard let pendingId = pendingNoteId else { return }
         pendingNoteId = nil
         isSaveChangesDialogPresented = false
         Task {
             await environment.notesEditorViewModel.saveIfNeeded()
-            await viewModel.selectNote(id: noteId)
+            await viewModel.selectNote(id: pendingId)
         }
     }
 
     func discardAndSwitch() {
-        guard let pendingNoteId else { return }
-        let noteId = pendingNoteId
+        guard let pendingId = pendingNoteId else { return }
         pendingNoteId = nil
         isSaveChangesDialogPresented = false
-        Task { await viewModel.selectNote(id: noteId) }
+        Task { await viewModel.selectNote(id: pendingId) }
     }
 
     func noteNavigationItems() -> [String] {
