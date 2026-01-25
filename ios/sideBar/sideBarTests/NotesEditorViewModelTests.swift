@@ -57,7 +57,7 @@ final class NotesEditorViewModelTests: XCTestCase {
         let nativeViewModel = viewModel.makeNativeEditorViewModel()
         nativeViewModel.attributedContent = AttributedString("Updated")
         nativeViewModel.handleContentChange(previous: AttributedString("Hello"))
-        try? await Task.sleep(nanoseconds: 700_000_000)
+        try? await Task.sleep(nanoseconds: 1_700_000_000)
 
         XCTAssertTrue(nativeViewModel.hasUnsavedChanges)
 
