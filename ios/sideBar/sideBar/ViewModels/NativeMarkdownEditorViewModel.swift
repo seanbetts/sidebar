@@ -476,10 +476,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         var didUpdateTypingAttributes = false
 
         for lineRange in lineRanges(in: updated) {
-            guard let prefixRange = markdownPrefixRange(in: updated, lineRange: lineRange) else { continue }
+            let lineText = String(updated[lineRange].characters)
+            guard let prefixRange = markdownPrefixRange(in: updated, lineRange: lineRange, lineText: lineText) else { continue }
             let shouldShow = shouldShowPrefix(for: lineRange, selection: selection, in: updated)
+            let blockKind = updated.blockKind(in: lineRange) ?? inferredBlockKind(from: lineText)
             if shouldShow {
-                let blockKind = updated.blockKind(in: lineRange)
                 updated[prefixRange].foregroundColor = DesignTokens.Colors.textSecondary
                 updated[prefixRange].backgroundColor = baseBackgroundColor(for: blockKind)
                 updated[prefixRange].font = baseFont(for: blockKind)
@@ -493,7 +494,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             if case .insertionPoint(let index) = selectionCopy.indices(in: updated),
                (lineRange.contains(index) || index == lineRange.upperBound),
                (prefixRange.contains(index) || index == prefixRange.upperBound) {
-                let blockKind = updated.blockKind(in: lineRange)
                 updated.transformAttributes(in: &selectionCopy) { attrs in
                     attrs.foregroundColor = baseForegroundColor(for: blockKind)
                     attrs.backgroundColor = baseBackgroundColor(for: blockKind)
@@ -535,9 +535,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func markdownPrefixRange(
         in text: AttributedString,
-        lineRange: Range<AttributedString.Index>
+        lineRange: Range<AttributedString.Index>,
+        lineText: String
     ) -> Range<AttributedString.Index>? {
-        let lineText = String(text[lineRange].characters)
         let range = NSRange(location: 0, length: lineText.utf16.count)
         let regexes = [
             Self.taskRegex,
@@ -555,6 +555,38 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             return lineRange.lowerBound..<prefixEnd
         }
 
+        return nil
+    }
+
+    private func inferredBlockKind(from lineText: String) -> BlockKind? {
+        let range = NSRange(location: 0, length: lineText.utf16.count)
+
+        if let regex = Self.taskRegex, let match = regex.firstMatch(in: lineText, range: range) {
+            let prefix = (lineText as NSString).substring(with: match.range).lowercased()
+            return prefix.contains("[x]") ? .taskChecked : .taskUnchecked
+        }
+        if Self.orderedRegex?.firstMatch(in: lineText, range: range) != nil {
+            return .orderedList
+        }
+        if Self.bulletRegex?.firstMatch(in: lineText, range: range) != nil {
+            return .bulletList
+        }
+        if let regex = Self.headingRegex, let match = regex.firstMatch(in: lineText, range: range) {
+            let prefix = (lineText as NSString).substring(with: match.range)
+            let count = prefix.prefix { $0 == "#" }.count
+            switch count {
+            case 1: return .heading1
+            case 2: return .heading2
+            case 3: return .heading3
+            case 4: return .heading4
+            case 5: return .heading5
+            case 6: return .heading6
+            default: return nil
+            }
+        }
+        if Self.quoteRegex?.firstMatch(in: lineText, range: range) != nil {
+            return .blockquote
+        }
         return nil
     }
 
