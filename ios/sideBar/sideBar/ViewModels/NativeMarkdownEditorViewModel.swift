@@ -406,41 +406,41 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     ) {
         switch blockKind {
         case .heading1:
-            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 1), identity: 1)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 1), identity: 1)
         case .heading2:
-            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 2), identity: 2)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 2), identity: 2)
         case .heading3:
-            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 3), identity: 3)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 3), identity: 3)
         case .heading4:
-            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 4), identity: 4)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 4), identity: 4)
         case .heading5:
-            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 5), identity: 5)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 5), identity: 5)
         case .heading6:
-            attributedContent[range].presentationIntent = PresentationIntent(.header(level: 6), identity: 6)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            attributedContent[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
         case .codeBlock:
-            attributedContent[range].presentationIntent = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
         case .horizontalRule:
-            attributedContent[range].presentationIntent = PresentationIntent(.thematicBreak, identity: 1)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.thematicBreak, identity: 1)
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
             let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
             let listId = listDepth ?? 1
             let listIntent = PresentationIntent(listKind, identity: listId)
             let listItemIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
-            attributedContent[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
             if blockKind == .bulletList {
-                attributedContent[range].listItemDelimiter = "•"
+                attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "•"
             } else if blockKind == .taskChecked {
-                attributedContent[range].listItemDelimiter = "☑"
+                attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☑"
             } else if blockKind == .taskUnchecked {
-                attributedContent[range].listItemDelimiter = "☐"
+                attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☐"
             } else {
-                attributedContent[range].listItemDelimiter = nil
+                attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
             }
         case .paragraph, .imageCaption, .gallery, .htmlBlock:
-            attributedContent[range].presentationIntent = PresentationIntent(.paragraph, identity: 1)
+            attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
         }
     }
 
