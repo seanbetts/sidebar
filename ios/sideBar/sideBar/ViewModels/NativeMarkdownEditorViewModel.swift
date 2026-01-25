@@ -35,7 +35,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private var isApplyingShortcut = false
     private var isUpdatingPrefixVisibility = false
     private var lastSelectionLineIndex: Int?
-    private var lastSelectionOffset: Int?
     private static let headingRegex = try? NSRegularExpression(pattern: #"^#{1,6}\s"#)
     private static let bulletRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s"#)
     private static let orderedRegex = try? NSRegularExpression(pattern: #"^\s*\d+\.\s"#)
@@ -171,14 +170,12 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         scheduleAutosave()
-        updateSelectionOffset(in: attributedContent)
         lastSelectionLineIndex = lineIndexForSelection(in: attributedContent)
         updatePrefixVisibility()
     }
 
     public func handleSelectionChange() {
         guard !isReadOnly, !isUpdatingPrefixVisibility else { return }
-        updateSelectionOffset(in: attributedContent)
         let currentLineIndex = lineIndexForSelection(in: attributedContent)
         if currentLineIndex == lastSelectionLineIndex {
             return
@@ -500,7 +497,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func updatePrefixVisibility() {
         var updated = attributedContent
-        var selectionCopy = normalizedSelection(in: updated)
+        var selectionCopy = selection
         var didUpdateTypingAttributes = false
 
         for lineRange in lineRanges(in: updated) {
@@ -772,62 +769,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 return range.overlaps(lineRange)
             }
         }
-    }
-
-    private func updateSelectionOffset(in text: AttributedString) {
-        switch selection.indices(in: text) {
-        case .insertionPoint(let index):
-            lastSelectionOffset = characterOffset(of: index, in: text)
-        case .ranges(let ranges):
-            if let first = ranges.ranges.first {
-                lastSelectionOffset = characterOffset(of: first.lowerBound, in: text)
-            }
-        }
-    }
-
-    private func normalizedSelection(in text: AttributedString) -> AttributedTextSelection {
-        switch selection.indices(in: text) {
-        case .insertionPoint(let index):
-            if let offset = lastSelectionOffset,
-               index == text.endIndex,
-               offset < text.characters.count,
-               let restored = indexAt(offset: offset, in: text) {
-                return AttributedTextSelection(range: restored..<restored)
-            }
-            return AttributedTextSelection(range: index..<index)
-        case .ranges(let ranges):
-            if let first = ranges.ranges.first {
-                return AttributedTextSelection(range: first)
-            }
-            return AttributedTextSelection()
-        }
-    }
-
-    private func characterOffset(
-        of index: AttributedString.Index,
-        in text: AttributedString
-    ) -> Int {
-        var offset = 0
-        var current = text.startIndex
-        while current < index {
-            current = text.index(afterCharacter: current)
-            offset += 1
-        }
-        return offset
-    }
-
-    private func indexAt(
-        offset: Int,
-        in text: AttributedString
-    ) -> AttributedString.Index? {
-        guard offset >= 0 else { return nil }
-        var remaining = offset
-        var current = text.startIndex
-        while remaining > 0 && current < text.endIndex {
-            current = text.index(afterCharacter: current)
-            remaining -= 1
-        }
-        return remaining == 0 ? current : nil
     }
 
     private func paragraphStyle(for blockKind: BlockKind) -> NSParagraphStyle? {
