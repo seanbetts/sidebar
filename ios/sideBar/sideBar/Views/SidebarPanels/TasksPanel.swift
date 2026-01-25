@@ -176,7 +176,7 @@ extension TasksPanelView {
                     tasksListRow(
                         title: "Upcoming",
                         iconName: "calendar.badge.clock",
-                        count: viewModel.counts?.counts.upcoming,
+                        count: upcomingCount,
                         selection: .upcoming
                     )
                 }
@@ -259,6 +259,14 @@ extension TasksPanelView {
 
     private var groupsSorted: [TaskGroup] {
         viewModel.groups.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
+
+    /// Use viewState count when viewing Upcoming (excludes undated tasks), otherwise use server count.
+    private var upcomingCount: Int? {
+        if case .upcoming = viewModel.selection {
+            return viewModel.viewState.totalCount
+        }
+        return viewModel.counts?.counts.upcoming
     }
 
     private var projectsByGroup: [String: [TaskProject]] {

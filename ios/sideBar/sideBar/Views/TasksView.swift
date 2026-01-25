@@ -231,26 +231,34 @@ extension TasksDetailView {
                                 .foregroundStyle(DesignTokens.Colors.textSecondary)
                                 .padding(.horizontal, DesignTokens.Spacing.md)
                         }
-                        ForEach(section.tasks, id: \.id) { task in
-                            TaskRow(
-                                task: task,
-                                subtitle: TasksUtils.taskSubtitle(
+                        if section.tasks.isEmpty, case .upcoming = state.selection {
+                            Text("No tasks due")
+                                .font(.subheadline)
+                                .foregroundStyle(DesignTokens.Colors.textTertiary)
+                                .padding(.horizontal, DesignTokens.Spacing.md)
+                                .padding(.vertical, DesignTokens.Spacing.xs)
+                        } else {
+                            ForEach(section.tasks, id: \.id) { task in
+                                TaskRow(
                                     task: task,
+                                    subtitle: TasksUtils.taskSubtitle(
+                                        task: task,
+                                        selection: state.selection,
+                                        selectionLabel: state.selectionLabel,
+                                        projectTitleById: state.projectTitleById,
+                                        groupTitleById: state.groupTitleById
+                                    ),
+                                    dueLabel: TasksUtils.dueLabel(for: task),
+                                    repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
                                     selection: state.selection,
-                                    selectionLabel: state.selectionLabel,
-                                    projectTitleById: state.projectTitleById,
-                                    groupTitleById: state.groupTitleById
-                                ),
-                                dueLabel: TasksUtils.dueLabel(for: task),
-                                repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
-                                selection: state.selection,
-                                onComplete: { Task { await viewModel.completeTask(task: task) } },
-                                onOpenNotes: { openNotes(task) },
-                                onSelect: { setActiveTask(task) },
-                                menuContent: {
-                                taskMenu(for: task, selection: state.selection)
+                                    onComplete: { Task { await viewModel.completeTask(task: task) } },
+                                    onOpenNotes: { openNotes(task) },
+                                    onSelect: { setActiveTask(task) },
+                                    menuContent: {
+                                    taskMenu(for: task, selection: state.selection)
+                                }
+                                )
                             }
-                            )
                         }
                     }
                 }
