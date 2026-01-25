@@ -47,6 +47,7 @@ public final class APIClient {
             let decoder = Self.makeDecoder()
             return try decoder.decode(T.self, from: data)
         } catch {
+            logDecodingError(error, data: data, type: T.self)
             throw APIClientError.decodingFailed
         }
     }
@@ -153,6 +154,32 @@ public final class APIClient {
             throw APIClientError.requestFailed(http.statusCode)
         }
         return (data, http)
+    }
+
+    private func logDecodingError<T>(_ error: Error, data: Data, type: T.Type) {
+        print("[APIClient] ❌ Failed to decode \(String(describing: type))")
+        print("[APIClient] Error: \(error)")
+        if let decodingError = error as? DecodingError {
+            switch decodingError {
+            case .keyNotFound(let key, let context):
+                let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
+                print("[APIClient] Missing key '\(key.stringValue)' at path: \(path.isEmpty ? "(root)" : path)")
+            case .typeMismatch(let expectedType, let context):
+                let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
+                print("[APIClient] Type mismatch - expected \(expectedType) at path: \(path.isEmpty ? "(root)" : path)")
+            case .valueNotFound(let type, let context):
+                let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
+                print("[APIClient] Null value for non-optional \(type) at path: \(path.isEmpty ? "(root)" : path)")
+            case .dataCorrupted(let context):
+                let path = context.codingPath.map { $0.stringValue }.joined(separator: ".")
+                print("[APIClient] Data corrupted at path: \(path.isEmpty ? "(root)" : path) - \(context.debugDescription)")
+            @unknown default:
+                print("[APIClient] Unknown decoding error")
+            }
+        }
+        if let responseBody = String(data: data.prefix(3000), encoding: .utf8) {
+            print("[APIClient] Response body:\n\(responseBody)")
+        }
     }
 
     static func decodeErrorMessage(data: Data, decoder: JSONDecoder) -> String? {

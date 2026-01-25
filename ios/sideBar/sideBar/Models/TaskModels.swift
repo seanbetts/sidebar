@@ -124,8 +124,8 @@ public struct TaskSyncResponse: Codable, Equatable {
     public let tasks: [TaskItem]
     public let nextTasks: [TaskItem]
     public let conflicts: [TaskSyncConflict]
-    public let updates: TaskSyncUpdates
-    public let serverUpdatedSince: String
+    public let updates: TaskSyncUpdates?
+    public let serverUpdatedSince: String?
 }
 
 public struct TaskSyncUpdates: Codable, Equatable {
