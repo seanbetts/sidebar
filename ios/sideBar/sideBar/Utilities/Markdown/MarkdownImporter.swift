@@ -385,7 +385,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         case let text as Markdown.Text:
             return AttributedString(text.string)
         case is SoftBreak:
-            return AttributedString("\n")
+            return AttributedString("\n\n")
         case is LineBreak:
             return AttributedString("\n")
         case let emphasis as Emphasis:
