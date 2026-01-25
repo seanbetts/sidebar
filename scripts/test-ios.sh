@@ -8,7 +8,7 @@ fi
 
 IOS_PROJECT="${IOS_PROJECT:-ios/sideBar/sideBar.xcodeproj}"
 IOS_SCHEME="${IOS_SCHEME:-sideBar}"
-IOS_DESTINATION="${IOS_DESTINATION:-platform=iOS Simulator,name=iPhone 15}"
+IOS_DESTINATION="${IOS_DESTINATION:-platform=iOS Simulator,name=iPad Pro 13-inch (M5)}"
 
 echo "Running iOS tests for scheme ${IOS_SCHEME} (${IOS_DESTINATION})..."
 
