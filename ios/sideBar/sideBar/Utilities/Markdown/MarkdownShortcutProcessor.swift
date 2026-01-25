@@ -51,7 +51,8 @@ public struct MarkdownShortcutProcessor {
             return nil
         }
 
-        if let newSelection = processBlockShortcut(in: &text, at: cursorIndex) {
+        if lastInsertedCharacter == "\n",
+           let newSelection = processBlockShortcut(in: &text, at: cursorIndex) {
             return newSelection
         }
 
@@ -66,8 +67,12 @@ public struct MarkdownShortcutProcessor {
         in text: inout AttributedString,
         at cursorIndex: AttributedString.Index
     ) -> AttributedTextSelection? {
+        guard cursorIndex > text.startIndex else { return nil }
+        let previousIndex = text.index(beforeCharacter: cursorIndex)
+        guard text.characters[previousIndex] == "\n" else { return nil }
+
         var lineStart = text.startIndex
-        var current = cursorIndex
+        var current = previousIndex
 
         while current > text.startIndex {
             let prev = text.index(beforeCharacter: current)
@@ -78,82 +83,60 @@ public struct MarkdownShortcutProcessor {
             current = prev
         }
 
-        let lineRange = lineStart..<cursorIndex
+        let lineRange = lineStart..<previousIndex
         let lineText = String(text[lineRange].characters)
 
-        for pattern in blockPatterns where lineText == pattern.prefix {
-            text.removeSubrange(lineRange)
+        for pattern in blockPatterns where lineText.hasPrefix(pattern.prefix) {
+            let prefixEnd = text.index(lineStart, offsetByCharacters: pattern.prefix.count)
+            text.removeSubrange(lineStart..<prefixEnd)
 
-            let newLineStart = lineStart
-            let lineEnd = nextLineEnd(in: text, from: newLineStart)
-
-            if newLineStart < lineEnd {
-                text[newLineStart..<lineEnd].blockKind = pattern.blockKind
+            let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
+            if lineStart < updatedLineEnd {
+                text[lineStart..<updatedLineEnd].blockKind = pattern.blockKind
                 if let listDepth = pattern.listDepth {
-                    text[newLineStart..<lineEnd].listDepth = listDepth
+                    text[lineStart..<updatedLineEnd].listDepth = listDepth
                 }
                 applyPresentationIntent(
                     to: &text,
-                    range: newLineStart..<lineEnd,
+                    range: lineStart..<updatedLineEnd,
                     blockKind: pattern.blockKind,
                     listDepth: pattern.listDepth
                 )
                 applyBlockStyle(
                     to: &text,
-                    range: newLineStart..<lineEnd,
+                    range: lineStart..<updatedLineEnd,
                     blockKind: pattern.blockKind
                 )
-            } else {
-                var newSelection = AttributedTextSelection(range: newLineStart..<newLineStart)
-                text.transformAttributes(in: &newSelection) { attrs in
-                    attrs.blockKind = pattern.blockKind
-                    attrs.listDepth = pattern.listDepth
-                    applyTypingAttributes(
-                        to: &attrs,
-                        blockKind: pattern.blockKind,
-                        listDepth: pattern.listDepth
-                    )
-                }
             }
 
-            return AttributedTextSelection(range: newLineStart..<newLineStart)
+            return selectionAfterLine(in: text, lineStart: lineStart)
         }
 
-        if let match = lineText.wholeMatch(of: /^(\d+)\.\s$/) {
+        if let match = lineText.wholeMatch(of: /^(\d+)\.\s/) {
             _ = match
-            text.removeSubrange(lineRange)
+            let prefixLength = (lineText.firstIndex(of: " ") ?? lineText.endIndex)
+            let prefixCount = lineText.distance(from: lineText.startIndex, to: prefixLength) + 1
+            let prefixEnd = text.index(lineStart, offsetByCharacters: prefixCount)
+            text.removeSubrange(lineStart..<prefixEnd)
 
-            let newLineStart = lineStart
-            let lineEnd = nextLineEnd(in: text, from: newLineStart)
-
-            if newLineStart < lineEnd {
-                text[newLineStart..<lineEnd].blockKind = .orderedList
-                text[newLineStart..<lineEnd].listDepth = 1
+            let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
+            if lineStart < updatedLineEnd {
+                text[lineStart..<updatedLineEnd].blockKind = .orderedList
+                text[lineStart..<updatedLineEnd].listDepth = 1
                 applyPresentationIntent(
                     to: &text,
-                    range: newLineStart..<lineEnd,
+                    range: lineStart..<updatedLineEnd,
                     blockKind: .orderedList,
                     listDepth: 1
                 )
                 applyBlockStyle(
                     to: &text,
-                    range: newLineStart..<lineEnd,
+                    range: lineStart..<updatedLineEnd,
                     blockKind: .orderedList
                 )
-            } else {
-                var newSelection = AttributedTextSelection(range: newLineStart..<newLineStart)
-                text.transformAttributes(in: &newSelection) { attrs in
-                    attrs.blockKind = .orderedList
-                    attrs.listDepth = 1
-                    applyTypingAttributes(
-                        to: &attrs,
-                        blockKind: .orderedList,
-                        listDepth: 1
-                    )
-                }
             }
 
-            return AttributedTextSelection(range: newLineStart..<newLineStart)
+            return selectionAfterLine(in: text, lineStart: lineStart)
         }
 
         return nil
@@ -261,6 +244,18 @@ public struct MarkdownShortcutProcessor {
             current = text.index(afterCharacter: current)
         }
         return current
+    }
+
+    private static func selectionAfterLine(
+        in text: AttributedString,
+        lineStart: AttributedString.Index
+    ) -> AttributedTextSelection {
+        let lineEnd = nextLineEnd(in: text, from: lineStart)
+        if lineEnd < text.endIndex, text.characters[lineEnd] == "\n" {
+            let nextIndex = text.index(afterCharacter: lineEnd)
+            return AttributedTextSelection(range: nextIndex..<nextIndex)
+        }
+        return AttributedTextSelection(range: lineEnd..<lineEnd)
     }
 
     private static func cursorIndex(in text: AttributedString, selection: AttributedTextSelection) -> AttributedString.Index? {
