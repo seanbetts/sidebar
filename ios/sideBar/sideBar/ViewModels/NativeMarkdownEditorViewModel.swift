@@ -810,7 +810,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             return paragraphStyle(
                 lineSpacing: em(0.7, fontSize: baseFontSize),
                 spacingBefore: em(1, fontSize: baseFontSize),
-                spacingAfter: em(1, fontSize: baseFontSize)
+                spacingAfter: em(1, fontSize: baseFontSize),
+                headIndent: em(1, fontSize: baseFontSize)
             )
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
             return paragraphStyle(
@@ -856,12 +857,15 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private func paragraphStyle(
         lineSpacing: CGFloat,
         spacingBefore: CGFloat,
-        spacingAfter: CGFloat
+        spacingAfter: CGFloat,
+        headIndent: CGFloat = 0
     ) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = lineSpacing
         style.paragraphSpacingBefore = spacingBefore
         style.paragraphSpacing = spacingAfter
+        style.headIndent = headIndent
+        style.firstLineHeadIndent = headIndent
         return style
     }
 }

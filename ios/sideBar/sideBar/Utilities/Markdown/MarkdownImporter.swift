@@ -125,7 +125,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             paragraphText[fullRange(in: paragraphText)].paragraphStyle = paragraphStyle(
                 lineSpacing: em(0.7, fontSize: baseFontSize),
                 spacingBefore: em(1, fontSize: baseFontSize),
-                spacingAfter: em(1, fontSize: baseFontSize)
+                spacingAfter: em(1, fontSize: baseFontSize),
+                headIndent: em(1, fontSize: baseFontSize)
             )
         } else {
             applyBlockKind(.paragraph, to: &paragraphText)
@@ -603,6 +604,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             spacingBefore: isFirst ? rem(0.75) : 0,
             spacingAfter: isLast ? rem(0.75) : 0
         )
+        if !isHeader && rowIndex % 2 == 1 {
+            rowText[full].backgroundColor = DesignTokens.Colors.muted.opacity(0.4)
+        }
         appendBlock(rowText)
     }
 
@@ -659,12 +663,15 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private func paragraphStyle(
         lineSpacing: CGFloat,
         spacingBefore: CGFloat,
-        spacingAfter: CGFloat
+        spacingAfter: CGFloat,
+        headIndent: CGFloat = 0
     ) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = lineSpacing
         style.paragraphSpacingBefore = spacingBefore
         style.paragraphSpacing = spacingAfter
+        style.headIndent = headIndent
+        style.firstLineHeadIndent = headIndent
         return style
     }
 }
