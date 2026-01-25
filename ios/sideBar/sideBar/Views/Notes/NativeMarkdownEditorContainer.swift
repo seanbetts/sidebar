@@ -7,17 +7,30 @@ struct NativeMarkdownEditorContainer: View {
 
     @StateObject private var nativeViewModel = NativeMarkdownEditorViewModel()
     @State private var loadedNoteId: String?
+    @State private var isEditing: Bool = false
 
     var body: some View {
-        NativeMarkdownEditorView(
-            viewModel: nativeViewModel,
-            maxContentWidth: maxContentWidth
-        ) { _ in }
+        Group {
+            if isEditing {
+                NativeMarkdownEditorView(
+                    viewModel: nativeViewModel,
+                    maxContentWidth: maxContentWidth
+                ) { _ in }
+            } else {
+                ScrollView {
+                    SideBarMarkdownContainer(text: editorViewModel.content)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            isEditing = true
+                        }
+                }
+            }
+        }
         .onAppear {
-            nativeViewModel.isReadOnly = false
             loadIfNeeded()
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
+            isEditing = false
             loadIfNeeded()
         }
         .onChange(of: nativeViewModel.hasUnsavedChanges) { _, hasChanges in
