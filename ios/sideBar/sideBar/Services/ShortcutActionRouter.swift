@@ -75,7 +75,7 @@ public final class ShortcutActionRouter {
         case .chat:
             Task { await environment.chatViewModel.closeConversation() }
         case .notes:
-            environment.notesViewModel.clearSelection()
+            environment.emitShortcutAction(.closeItem)
         case .websites:
             environment.websitesViewModel.clearSelection()
         case .files:
