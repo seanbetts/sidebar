@@ -55,16 +55,6 @@ public struct MarkdownExporter {
                 output.append(prefix + inlineMarkdown)
             }
 
-            if shouldInsertParagraphBreak(
-                blockKind: blockKind,
-                lineText: lineText,
-                lineIndex: lineIndex,
-                lines: lines,
-                text: attributedString
-            ) {
-                output.append("")
-            }
-
             lineIndex += 1
         }
 
@@ -242,24 +232,6 @@ private func lineHasInlineMarkers(_ lineText: String) -> Bool {
     }
 
     return false
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-private func shouldInsertParagraphBreak(
-    blockKind: BlockKind,
-    lineText: String,
-    lineIndex: Int,
-    lines: [Range<AttributedString.Index>],
-    text: AttributedString
-) -> Bool {
-    guard blockKind == .paragraph, !lineText.isEmpty else { return false }
-    let nextIndex = lineIndex + 1
-    guard nextIndex < lines.count else { return false }
-    let nextRange = lines[nextIndex]
-    let nextText = String(text[nextRange].characters)
-    guard !nextText.isEmpty else { return false }
-    let nextBlockKind = text.blockKind(in: nextRange) ?? .paragraph
-    return nextBlockKind == .paragraph
 }
 
 @available(iOS 26.0, macOS 26.0, *)
