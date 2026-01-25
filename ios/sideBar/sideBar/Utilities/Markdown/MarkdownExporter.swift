@@ -258,7 +258,7 @@ private func tableRowInfo(in text: AttributedString, range: Range<AttributedStri
     var hasTableCell = false
 
     for run in text[range].runs {
-        guard let intent = run.presentationIntent else { continue }
+        guard let intent = run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] else { continue }
         for component in intent.components {
             switch component.kind {
             case .tableHeaderRow:
