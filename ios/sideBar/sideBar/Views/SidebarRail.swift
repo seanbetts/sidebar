@@ -84,6 +84,7 @@ public struct SidebarRail: View {
                     alignment: .trailing
                 )
         )
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .onAppear {
             guard environment.isAuthenticated,
                   environment.settingsViewModel.profileImageData == nil else { return }
