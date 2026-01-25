@@ -791,7 +791,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             if let offset = lastSelectionOffset,
                index == text.endIndex,
                offset < text.characters.count,
-               let restored = index(at: offset, in: text) {
+               let restored = indexAt(offset: offset, in: text) {
                 return AttributedTextSelection(range: restored..<restored)
             }
             return AttributedTextSelection(range: index..<index)
@@ -816,8 +816,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         return offset
     }
 
-    private func index(
-        at offset: Int,
+    private func indexAt(
+        offset: Int,
         in text: AttributedString
     ) -> AttributedString.Index? {
         guard offset >= 0 else { return nil }
