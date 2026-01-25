@@ -5,4 +5,4 @@
 @preconcurrency import AppKit
 #endif
 
-extension NSParagraphStyle: @unchecked Sendable {}
+extension NSParagraphStyle: @unchecked @retroactive Sendable {}
