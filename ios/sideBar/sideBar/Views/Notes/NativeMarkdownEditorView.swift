@@ -5,8 +5,6 @@ public struct NativeMarkdownEditorView: View {
     @ObservedObject var viewModel: NativeMarkdownEditorViewModel
     let maxContentWidth: CGFloat
     let onSave: (String) -> Void
-    @State private var isLinkPromptPresented = false
-    @State private var linkValue = "https://"
 
     public init(
         viewModel: NativeMarkdownEditorViewModel,
@@ -40,59 +38,10 @@ public struct NativeMarkdownEditorView: View {
         #if os(iOS)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
-                Toggle(isOn: boldBinding) {
-                    Image(systemName: "bold")
-                }
-                Toggle(isOn: italicBinding) {
-                    Image(systemName: "italic")
-                }
-                Button {
-                    viewModel.toggleInlineCode()
-                } label: {
-                    Image(systemName: "chevron.left.slash.chevron.right")
-                }
-                Button {
-                    isLinkPromptPresented = true
-                } label: {
-                    Image(systemName: "link")
-                }
-
-                Spacer()
-
                 blockMenu
             }
         }
         #endif
-        .alert("Insert Link", isPresented: $isLinkPromptPresented) {
-            TextField("https://", text: $linkValue)
-            Button("Insert") {
-                let trimmed = linkValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                if let url = URL(string: trimmed) {
-                    viewModel.applyLink(url)
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Apply a URL to the current selection.")
-        }
-    }
-
-    private var boldBinding: Binding<Bool> {
-        Binding(
-            get: { viewModel.isBoldActive() },
-            set: { enabled in
-                viewModel.setBold(enabled)
-            }
-        )
-    }
-
-    private var italicBinding: Binding<Bool> {
-        Binding(
-            get: { viewModel.isItalicActive() },
-            set: { enabled in
-                viewModel.setItalic(enabled)
-            }
-        )
     }
 
     private var blockMenu: some View {
