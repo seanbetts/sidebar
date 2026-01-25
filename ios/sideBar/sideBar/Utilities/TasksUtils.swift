@@ -225,12 +225,13 @@ public enum TasksUtils {
     public static func buildUpcomingSections(tasks: [TaskItem]) -> [TaskSection] {
         let today = startOfDay(Date())
         var overdue: [TaskItem] = []
-        var undated: [TaskItem] = []
         var daily: [String: TaskSection] = [:]
         var weekly: [Int: TaskSection] = [:]
         var monthly: [String: (date: Date, section: TaskSection)] = [:]
 
-        let sorted = tasks.sorted { compareByDueThenTitle($0, $1) }
+        // Filter out undated tasks - we don't show them in Upcoming
+        let datedTasks = tasks.filter { $0.deadline != nil }
+        let sorted = datedTasks.sorted { compareByDueThenTitle($0, $1) }
 
         for task in sorted {
             let bucket = upcomingBucket(for: task, today: today)
@@ -238,7 +239,6 @@ public enum TasksUtils {
                 task,
                 bucket: bucket,
                 overdue: &overdue,
-                undated: &undated,
                 daily: &daily,
                 weekly: &weekly,
                 monthly: &monthly
@@ -250,12 +250,13 @@ public enum TasksUtils {
             sections.append(TaskSection(id: "overdue", title: "Overdue", tasks: overdue))
         }
 
+        // Show all days for the next 7 days, even if empty
         for offset in 0...6 {
             let date = Calendar.current.date(byAdding: .day, value: offset, to: today) ?? today
             let key = formatDateKey(date)
-            if let section = daily[key] {
-                sections.append(section)
-            }
+            let label = formatDayLabel(date: date, dayDiff: offset)
+            let section = daily[key] ?? TaskSection(id: key, title: label, tasks: [])
+            sections.append(section)
         }
 
         for weekIndex in 1...3 {
@@ -266,10 +267,6 @@ public enum TasksUtils {
 
         let monthSections = monthly.values.sorted { $0.date < $1.date }
         sections.append(contentsOf: monthSections.map { $0.section })
-
-        if !undated.isEmpty {
-            sections.append(TaskSection(id: "undated", title: "No date", tasks: undated))
-        }
 
         return sections
     }
@@ -366,9 +363,11 @@ public enum TasksUtils {
             return .daily(key: key, label: label)
         }
         if diff <= 27 {
-            let weekIndex = Int(floor(Double(diff) / 7.0))
-            let weekStart = Calendar.current.date(byAdding: .day, value: weekIndex * 7, to: today) ?? today
-            let label = formatWeekLabel(date: weekStart)
+            // Use Monday-based calendar weeks
+            let todayMonday = mondayOfWeek(for: today)
+            let dateMonday = mondayOfWeek(for: date)
+            let weekIndex = dayDiff(from: todayMonday, to: dateMonday) / 7
+            let label = formatWeekLabel(date: dateMonday)
             return .weekly(index: weekIndex, label: label)
         }
         let monthKey = "\(Calendar.current.component(.year, from: date))-\(Calendar.current.component(.month, from: date))"
@@ -376,18 +375,25 @@ public enum TasksUtils {
         return .monthly(key: monthKey, date: date, label: label)
     }
 
+    /// Returns the Monday of the week containing the given date.
+    private static func mondayOfWeek(for date: Date) -> Date {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday = 2
+        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return calendar.date(from: components) ?? date
+    }
+
     private static func addUpcomingTask(
         _ task: TaskItem,
         bucket: UpcomingBucket,
         overdue: inout [TaskItem],
-        undated: inout [TaskItem],
         daily: inout [String: TaskSection],
         weekly: inout [Int: TaskSection],
         monthly: inout [String: (date: Date, section: TaskSection)]
     ) {
         switch bucket {
         case .undated:
-            undated.append(task)
+            return // Undated tasks are filtered out before this is called
         case .overdue:
             overdue.append(task)
         case let .daily(key, label):
