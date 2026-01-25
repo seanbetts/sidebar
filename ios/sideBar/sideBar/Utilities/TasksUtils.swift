@@ -129,7 +129,7 @@ public enum TasksUtils {
             return !projectTitle.isEmpty ? projectTitle : groupTitle
         case .inbox:
             if let deadline = task.deadline {
-                return "Due \(deadline.prefix(10))"
+                return "Due \(String(deadline.prefix(10)))"
             }
             return !projectTitle.isEmpty ? projectTitle : groupTitle
         }
@@ -328,12 +328,7 @@ public enum TasksUtils {
         key: String,
         title: String
     ) {
-        if buckets[key] == nil {
-            buckets[key] = TaskSection(id: key, title: title, tasks: [])
-        }
-        guard var section = buckets[key] else {
-            return
-        }
+        var section = buckets[key] ?? TaskSection(id: key, title: title, tasks: [])
         section.tasks.append(task)
         buckets[key] = section
     }

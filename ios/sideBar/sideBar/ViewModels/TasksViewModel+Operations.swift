@@ -68,13 +68,13 @@ extension TasksViewModel {
 
     public func deferTask(task: TaskItem, days: Int) async {
         let baseDate = TasksUtils.parseTaskDate(task) ?? Date()
-        let nextDate = Calendar.current.date(byAdding: .day, value: days, to: baseDate)
+        let nextDate = Calendar.current.date(byAdding: .day, value: days, to: baseDate) ?? baseDate
         await applyTaskOperation(
             TaskOperationPayload(
                 operationId: TaskOperationId.make(),
                 op: "defer",
                 id: task.id,
-                dueDate: nextDate.map { TasksUtils.formatDateKey($0) },
+                dueDate: TasksUtils.formatDateKey(nextDate),
                 clientUpdatedAt: task.updatedAt
             )
         )
@@ -120,9 +120,10 @@ extension TasksViewModel {
         do {
             let response = try await api.apply(TaskOperationBatch(operations: [operation]))
             if !response.nextTasks.isEmpty {
-                let message = response.nextTasks.count == 1
+                let count = response.nextTasks.count
+                let message = count == 1
                     ? "Next instance scheduled: \"\(response.nextTasks[0].title)\""
-                    : "Next instances scheduled: \(response.nextTasks.count)"
+                    : "\(count) recurring instances scheduled"
                 toastCenter.show(message: message)
             }
             await load(selection: selection, force: true)
