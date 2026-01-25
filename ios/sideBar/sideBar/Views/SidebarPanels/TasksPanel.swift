@@ -261,12 +261,15 @@ extension TasksPanelView {
         viewModel.groups.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
-    /// Use viewState count when viewing Upcoming (excludes undated tasks), otherwise use server count.
+    /// Use filtered count for Upcoming (excludes undated tasks).
+    /// When Upcoming is selected, use the live viewState count.
+    /// Otherwise, use the cached filtered count from the last Upcoming load.
     private var upcomingCount: Int? {
         if case .upcoming = viewModel.selection {
             return viewModel.viewState.totalCount
         }
-        return viewModel.counts?.counts.upcoming
+        // Use cached filtered count if available, otherwise fall back to server count
+        return viewModel.filteredUpcomingCount ?? viewModel.counts?.counts.upcoming
     }
 
     private var projectsByGroup: [String: [TaskProject]] {

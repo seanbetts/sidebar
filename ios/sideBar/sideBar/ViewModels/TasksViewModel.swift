@@ -16,6 +16,7 @@ public final class TasksViewModel: ObservableObject {
     @Published public var newTaskDraft: TaskDraft?
     @Published public private(set) var newTaskSaving: Bool = false
     @Published public private(set) var newTaskError: String = ""
+    @Published public private(set) var filteredUpcomingCount: Int?
 
     let api: any TasksProviding
     let store: TasksStore
@@ -83,6 +84,11 @@ public final class TasksViewModel: ObservableObject {
             lastNonSearchSelection = selection
         }
         await store.load(selection: selection, force: force)
+
+        // Update the cached filtered upcoming count when loading Upcoming
+        if case .upcoming = selection {
+            filteredUpcomingCount = viewState.totalCount
+        }
     }
 
     public func loadCounts(force: Bool = false) async {

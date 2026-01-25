@@ -232,7 +232,7 @@ extension TasksDetailView {
                                 .padding(.horizontal, DesignTokens.Spacing.md)
                         }
                         if section.tasks.isEmpty, case .upcoming = state.selection {
-                            Text("No tasks due")
+                            Label("No tasks due", systemImage: "checkmark.circle")
                                 .font(.subheadline)
                                 .foregroundStyle(DesignTokens.Colors.textTertiary)
                                 .padding(.horizontal, DesignTokens.Spacing.md)
