@@ -1,11 +1,6 @@
 import Foundation
 import Markdown
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#elseif canImport(AppKit)
-import AppKit
-#endif
 
 @available(iOS 26.0, macOS 26.0, *)
 public struct MarkdownImportResult {
@@ -352,14 +347,15 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         case let image as Markdown.Image:
             let alt = unwrapOptionalString(image.plainText)
             let source = unwrapOptionalString(image.source)
+            // Store image info for round-trip, display as placeholder for now
+            // TODO: Use AdaptiveImageGlyph when API is available
+            var imageString = AttributedString("![\(alt)](\(source))")
             if let url = URL(string: source) {
-                var imageString = AttributedString(AdaptiveImageGlyph(url: url))
                 let range = fullRange(in: imageString)
-                imageString[range].accessibilityLabel = alt
                 imageString[range].imageInfo = ImageInfo(url: url, altText: alt)
-                return imageString
+                imageString[range].foregroundColor = DesignTokens.Colors.textSecondary
             }
-            return AttributedString("![\(alt)](\(source))")
+            return imageString
         case let html as Markdown.InlineHTML:
             return AttributedString(html.rawHTML)
         default:
