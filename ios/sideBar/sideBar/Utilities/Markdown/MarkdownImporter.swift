@@ -335,24 +335,24 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let range = fullRange(in: text)
         switch blockKind {
         case .heading1:
-            text[range].presentationIntent = PresentationIntent(.header(level: 1), identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 1), identity: 1)
         case .heading2:
-            text[range].presentationIntent = PresentationIntent(.header(level: 2), identity: 2)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 2), identity: 2)
         case .heading3:
-            text[range].presentationIntent = PresentationIntent(.header(level: 3), identity: 3)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 3), identity: 3)
         case .heading4:
-            text[range].presentationIntent = PresentationIntent(.header(level: 4), identity: 4)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 4), identity: 4)
         case .heading5:
-            text[range].presentationIntent = PresentationIntent(.header(level: 5), identity: 5)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 5), identity: 5)
         case .heading6:
-            text[range].presentationIntent = PresentationIntent(.header(level: 6), identity: 6)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
         case .codeBlock:
-            text[range].presentationIntent = PresentationIntent(.codeBlock(languageHint: codeLanguage), identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.codeBlock(languageHint: codeLanguage), identity: 1)
         case .horizontalRule:
-            text[range].presentationIntent = PresentationIntent(.thematicBreak, identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.thematicBreak, identity: 1)
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
             let isOrdered = blockKind == .orderedList
             let listKind: PresentationIntent.Kind = isOrdered ? .orderedList : .unorderedList
@@ -360,16 +360,16 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             let listIntent = PresentationIntent(listKind, identity: listIdentity)
             let ordinal = listOrdinal ?? 1
             let listItemIntent = PresentationIntent(.listItem(ordinal: ordinal), identity: listIdentity * 1000 + ordinal, parent: listIntent)
-            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
             if blockKind == .bulletList {
-                text[range].listItemDelimiter = "•"
+                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "•"
             } else if blockKind == .taskChecked {
-                text[range].listItemDelimiter = "☑"
+                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☑"
             } else if blockKind == .taskUnchecked {
-                text[range].listItemDelimiter = "☐"
+                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☐"
             }
         case .paragraph, .imageCaption, .gallery, .htmlBlock:
-            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
         }
     }
 
@@ -439,7 +439,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             identity: (rowIndex + 1) * 1000 + columnIndex,
             parent: rowIntent
         )
-        text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: cellIntent)
+        text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: cellIntent)
     }
 
     private func makeTableIntent(columnAlignments: [Markdown.Table.ColumnAlignment?]) -> PresentationIntent {
