@@ -61,6 +61,8 @@ public extension AttributeScopes {
         public let blockKind: BlockKindAttribute
         public let listDepth: ListDepthAttribute
         public let codeLanguage: CodeLanguageAttribute
+        public let presentationIntent: AttributeScopes.FoundationAttributes.PresentationIntentAttribute
+        public let listItemDelimiter: AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute
         public let foundation: AttributeScopes.FoundationAttributes
         public let swiftUI: AttributeScopes.SwiftUIAttributes
     }
