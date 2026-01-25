@@ -16,6 +16,7 @@ public final class TasksStore: ObservableObject {
 
     private let api: any TasksProviding
     private let cache: CacheClient
+    private var pendingRemovals: Set<String> = []
 
     public init(api: any TasksProviding, cache: CacheClient) {
         self.api = api
@@ -75,12 +76,19 @@ public final class TasksStore: ObservableObject {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
         let task = tasks[index]
         tasks.remove(at: index)
+        pendingRemovals.insert(id)
         return task
     }
 
     /// Restores a previously removed task (used when an optimistic update fails).
     public func restoreTask(_ task: TaskItem) {
+        pendingRemovals.remove(task.id)
         tasks.insert(task, at: 0)
+    }
+
+    /// Clears a task from pending removals (called when server confirms removal).
+    public func confirmRemoval(id: String) {
+        pendingRemovals.remove(id)
     }
 
     private func refresh(selection: TaskSelection) async {
@@ -121,7 +129,8 @@ public final class TasksStore: ObservableObject {
     }
 
     private func apply(list: TaskListResponse, persist: Bool) {
-        tasks = list.tasks
+        // Filter out tasks that are pending removal (optimistic updates)
+        tasks = list.tasks.filter { !pendingRemovals.contains($0.id) }
         groups = list.groups ?? []
         projects = list.projects ?? []
         if persist {

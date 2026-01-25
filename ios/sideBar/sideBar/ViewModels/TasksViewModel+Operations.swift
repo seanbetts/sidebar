@@ -25,7 +25,8 @@ extension TasksViewModel {
                     : "\(count) recurring instances scheduled"
                 toastCenter.show(message: message)
             }
-            // Refresh in background to sync with server
+            // Confirm removal and refresh in background to sync with server
+            store.confirmRemoval(id: task.id)
             Task {
                 await load(selection: selection, force: true)
                 await loadCounts(force: true)
