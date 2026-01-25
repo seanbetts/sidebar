@@ -6,14 +6,37 @@ extension TasksViewModel {
     }
 
     public func completeTask(task: TaskItem) async {
-        await applyTaskOperation(
-            TaskOperationPayload(
-                operationId: TaskOperationId.make(),
-                op: "complete",
-                id: task.id,
-                clientUpdatedAt: task.updatedAt
-            )
-        )
+        // Optimistically remove the task immediately
+        let removedTask = store.removeTask(id: task.id)
+
+        do {
+            let response = try await api.apply(TaskOperationBatch(operations: [
+                TaskOperationPayload(
+                    operationId: TaskOperationId.make(),
+                    op: "complete",
+                    id: task.id,
+                    clientUpdatedAt: task.updatedAt
+                )
+            ]))
+            if !response.nextTasks.isEmpty {
+                let count = response.nextTasks.count
+                let message = count == 1
+                    ? "Next instance scheduled: \"\(response.nextTasks[0].title)\""
+                    : "\(count) recurring instances scheduled"
+                toastCenter.show(message: message)
+            }
+            // Refresh in background to sync with server
+            Task {
+                await load(selection: selection, force: true)
+                await loadCounts(force: true)
+            }
+        } catch {
+            // Restore the task if the API call failed
+            if let removedTask {
+                store.restoreTask(removedTask)
+            }
+            errorMessage = ErrorMapping.message(for: error)
+        }
     }
 
     public func renameTask(task: TaskItem, title: String) async {

@@ -46,6 +46,7 @@ struct TaskRow<MenuContent: View>: View {
     let onSelect: () -> Void
     let menuContent: () -> MenuContent
     @State private var showRepeatInfo = false
+    @State private var isCompleting = false
 
     var body: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
@@ -69,14 +70,22 @@ struct TaskRow<MenuContent: View>: View {
                 }
             } else {
                 Button {
-                    onComplete()
+                    guard !isCompleting else { return }
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isCompleting = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        onComplete()
+                    }
                 } label: {
-                    Image(systemName: "circle")
-                        .font(.caption)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
+                    Image(systemName: isCompleting ? "checkmark.circle.fill" : "circle")
+                        .font(.body)
+                        .foregroundStyle(isCompleting ? DesignTokens.Colors.success : DesignTokens.Colors.textSecondary)
                         .frame(width: 20, height: 20)
+                        .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
+                .disabled(isCompleting)
             }
 
             VStack(alignment: .leading, spacing: 4) {
