@@ -264,7 +264,8 @@ public struct MarkdownShortcutProcessor {
         case .heading6:
             text[range].presentationIntent = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
-            text[range].presentationIntent = PresentationIntent(.blockQuote, identity: 1)
+            let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
+            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
         case .codeBlock:
             text[range].presentationIntent = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
         case .horizontalRule:
@@ -273,7 +274,8 @@ public struct MarkdownShortcutProcessor {
             let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
             let listId = listDepth ?? 1
             let listIntent = PresentationIntent(listKind, identity: listId)
-            text[range].presentationIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
+            let listItemIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
+            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
             if blockKind == .bulletList {
                 text[range].listItemDelimiter = "•"
             } else if blockKind == .taskChecked {

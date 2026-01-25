@@ -347,7 +347,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         case .heading6:
             text[range].presentationIntent = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
-            text[range].presentationIntent = PresentationIntent(.blockQuote, identity: 1)
+            let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
+            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
         case .codeBlock:
             text[range].presentationIntent = PresentationIntent(.codeBlock(languageHint: codeLanguage), identity: 1)
         case .horizontalRule:
@@ -358,7 +359,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             let listIdentity = listId ?? (listDepth ?? 1)
             let listIntent = PresentationIntent(listKind, identity: listIdentity)
             let ordinal = listOrdinal ?? 1
-            text[range].presentationIntent = PresentationIntent(.listItem(ordinal: ordinal), identity: listIdentity * 1000 + ordinal, parent: listIntent)
+            let listItemIntent = PresentationIntent(.listItem(ordinal: ordinal), identity: listIdentity * 1000 + ordinal, parent: listIntent)
+            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
             if blockKind == .bulletList {
                 text[range].listItemDelimiter = "•"
             } else if blockKind == .taskChecked {
@@ -437,7 +439,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             identity: (rowIndex + 1) * 1000 + columnIndex,
             parent: rowIntent
         )
-        text[range].presentationIntent = cellIntent
+        text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: cellIntent)
     }
 
     private func makeTableIntent(columnAlignments: [Markdown.Table.ColumnAlignment?]) -> PresentationIntent {

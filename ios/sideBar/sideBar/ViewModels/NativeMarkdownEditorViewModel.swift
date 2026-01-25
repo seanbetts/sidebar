@@ -418,7 +418,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         case .heading6:
             attributedContent[range].presentationIntent = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
-            attributedContent[range].presentationIntent = PresentationIntent(.blockQuote, identity: 1)
+            let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
+            attributedContent[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
         case .codeBlock:
             attributedContent[range].presentationIntent = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
         case .horizontalRule:
@@ -427,7 +428,8 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
             let listId = listDepth ?? 1
             let listIntent = PresentationIntent(listKind, identity: listId)
-            attributedContent[range].presentationIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
+            let listItemIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
+            attributedContent[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
             if blockKind == .bulletList {
                 attributedContent[range].listItemDelimiter = "•"
             } else if blockKind == .taskChecked {
