@@ -50,6 +50,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         selection = AttributedTextSelection()
         lastSavedContent = markdown
         hasUnsavedChanges = false
+        updatePrefixVisibility()
     }
 
     public func currentMarkdown() -> String {
