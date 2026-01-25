@@ -20,8 +20,10 @@ public struct MarkdownImporter {
     public func attributedString(from markdown: String) -> MarkdownImportResult {
         let split = splitFrontmatter(from: markdown)
         let document = Document(parsing: split.body)
-        var walker = MarkdownToAttributedStringWalker()
+        let totalLines = split.body.isEmpty ? 0 : split.body.components(separatedBy: "\n").count
+        var walker = MarkdownToAttributedStringWalker(sourceLineCount: totalLines)
         walker.visit(document)
+        walker.appendTrailingBlankLines()
         return MarkdownImportResult(attributedString: walker.result, frontmatter: split.frontmatter)
     }
 }
@@ -36,11 +38,45 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private let bodyFont = Font.system(size: 16)
     private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
+    private let sourceLineCount: Int
+    private var lastProcessedLine: Int = 0
+
+    init(sourceLineCount: Int = 0) {
+        self.sourceLineCount = sourceLineCount
+    }
 
     mutating func visitDocument(_ document: Document) {
         for child in document.children {
+            insertBlankLinesBeforeBlock(child)
             visit(child)
+            if let range = child.range {
+                lastProcessedLine = range.upperBound.line
+            }
         }
+    }
+
+    private mutating func insertBlankLinesBeforeBlock(_ block: Markup) {
+        guard let range = block.range else { return }
+        let startLine = range.lowerBound.line
+        // Line numbers are 1-based, and we need blank lines for gaps > 1
+        let blankLineCount = startLine - lastProcessedLine - 1
+        for _ in 0..<blankLineCount {
+            appendBlankLine()
+        }
+    }
+
+    mutating func appendTrailingBlankLines() {
+        // sourceLineCount is 1-based count, lastProcessedLine is 1-based line number
+        let trailingBlankLines = sourceLineCount - lastProcessedLine
+        for _ in 0..<trailingBlankLines {
+            appendBlankLine()
+        }
+    }
+
+    private mutating func appendBlankLine() {
+        var blankLine = AttributedString("")
+        applyBlockKind(.blankLine, to: &blankLine)
+        appendBlock(blankLine)
     }
 
     mutating func visitParagraph(_ paragraph: Paragraph) {
@@ -410,7 +446,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             } else if blockKind == .taskUnchecked {
                 text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☐"
             }
-        case .paragraph, .imageCaption, .gallery, .htmlBlock:
+        case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
             text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
         }
     }

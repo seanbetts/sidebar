@@ -319,7 +319,7 @@ public struct MarkdownShortcutProcessor {
             } else {
                 text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
             }
-        case .paragraph, .imageCaption, .gallery, .htmlBlock:
+        case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
             text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
         }
     }
