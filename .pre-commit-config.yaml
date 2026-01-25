@@ -49,6 +49,16 @@ repos:
         language: system
         files: ^frontend/.*\.(ts|js|svelte|json|md|yml|yaml)$
 
+  # iOS - Xcode tests (run when iOS files change)
+  - repo: local
+    hooks:
+      - id: ios-tests
+        name: ios-tests
+        entry: scripts/test-ios.sh
+        language: system
+        files: ^ios/
+        pass_filenames: false
+
   # Frontend - ESLint (all files)
   - repo: https://github.com/pre-commit/mirrors-eslint
     rev: v9.17.0

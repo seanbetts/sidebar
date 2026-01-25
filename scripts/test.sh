@@ -13,6 +13,11 @@ run_frontend() {
   (cd frontend && npm run test)
 }
 
+run_ios() {
+  echo "Running iOS tests..."
+  ./scripts/test-ios.sh
+}
+
 case "${TARGET}" in
   backend)
     run_backend
@@ -20,12 +25,15 @@ case "${TARGET}" in
   frontend)
     run_frontend
     ;;
+  ios)
+    run_ios
+    ;;
   all)
     run_backend
     run_frontend
     ;;
   *)
-    echo "Usage: ./scripts/test.sh [backend|frontend|all]"
+    echo "Usage: ./scripts/test.sh [backend|frontend|ios|all]"
     exit 1
     ;;
 esac
