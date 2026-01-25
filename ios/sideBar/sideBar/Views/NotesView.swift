@@ -196,6 +196,8 @@ private struct NotesDetailView: View {
         .onReceive(environment.$shortcutActionEvent) { event in
             guard let event, event.section == .notes else { return }
             switch event.action {
+            case .closeItem:
+                requestCloseNote()
             case .renameItem:
                 guard viewModel.activeNote != nil else { return }
                 renameValue = displayTitle
