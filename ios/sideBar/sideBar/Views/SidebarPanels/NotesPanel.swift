@@ -32,6 +32,8 @@ struct NotesPanelView: View {
     @State var renameTarget: FileNodeItem?
     @State var renameValue: String = ""
     @State var deleteTarget: FileNodeItem?
+    @State var pendingNoteId: String?
+    @State var isSaveChangesDialogPresented = false
     @FocusState var isSearchFocused: Bool
 
     var body: some View {
@@ -112,6 +114,19 @@ struct NotesPanelView: View {
             }
         } message: {
             Text(deleteDialogMessage)
+        }
+        .confirmationDialog("Save changes?", isPresented: $isSaveChangesDialogPresented, titleVisibility: .visible) {
+            Button("Save changes") {
+                confirmSaveAndSwitch()
+            }
+            Button("Don't save", role: .destructive) {
+                discardAndSwitch()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingNoteId = nil
+            }
+        } message: {
+            Text("You have unsaved changes. Save before switching notes?")
         }
         .onReceive(environment.$shortcutActionEvent) { event in
             guard let event, event.section == .notes else { return }

@@ -22,9 +22,13 @@ struct NativeMarkdownEditorContainer: View {
             return .handled
         }
         .onAppear {
+            editorViewModel.attachNativeEditor(nativeViewModel)
             loadIfNeeded()
             nativeViewModel.isReadOnly = !isEditing
             editorViewModel.setReadOnly(!isEditing)
+        }
+        .onDisappear {
+            editorViewModel.detachNativeEditor(nativeViewModel)
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
             isEditing = false
