@@ -92,6 +92,16 @@
 - [x] **8.4** Markdown syntax visibility
   - [x] Show block prefixes only on the caret line
 
+### Phase 9: Syntax Preservation
+- [ ] **9.1** Preserve inline markers
+  - [ ] Keep inline markdown tokens (`**`, `*`, `` ` ``, `~~`) in the attributed string
+  - [ ] Hide inline tokens when caret is not on the line
+  - [ ] Reveal inline tokens when caret returns to the line
+- [ ] **9.2** Expand prefix visibility rules
+  - [ ] Apply block formatting on space-trigger (`# `, `- `, `> `, etc.)
+  - [ ] Hide block prefixes when caret leaves the line (keyboard/tap/enter)
+  - [ ] Restore block prefixes when caret returns
+
 ### Testing
 - [x] Unit tests for `MarkdownImporter`
   - [x] Test each block type
