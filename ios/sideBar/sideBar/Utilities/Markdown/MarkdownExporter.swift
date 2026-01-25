@@ -45,7 +45,9 @@ public struct MarkdownExporter {
                 output.append("\(MarkdownRendering.imageCaptionMarker) \(lineText)")
             default:
                 closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
-                let prefix = prefix(for: blockKind, listDepth: listDepth)
+                let prefix = hasExistingBlockPrefix(blockKind: blockKind, lineText: lineText)
+                    ? ""
+                    : prefix(for: blockKind, listDepth: listDepth)
                 let inlineMarkdown = serializeInline(attributedString[lineRange])
                 output.append(prefix + inlineMarkdown)
             }
@@ -197,6 +199,37 @@ private func serializeInline(_ attributed: AttributedSubstring) -> String {
         }
     }
     return output
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func hasExistingBlockPrefix(blockKind: BlockKind, lineText: String) -> Bool {
+    let trimmed = lineText.trimmingCharacters(in: .whitespaces)
+    switch blockKind {
+    case .heading1:
+        return trimmed.hasPrefix("# ")
+    case .heading2:
+        return trimmed.hasPrefix("## ")
+    case .heading3:
+        return trimmed.hasPrefix("### ")
+    case .heading4:
+        return trimmed.hasPrefix("#### ")
+    case .heading5:
+        return trimmed.hasPrefix("##### ")
+    case .heading6:
+        return trimmed.hasPrefix("###### ")
+    case .bulletList:
+        return trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("+ ")
+    case .orderedList:
+        return trimmed.range(of: #"^\d+\.\s"#, options: .regularExpression) != nil
+    case .taskChecked:
+        return trimmed.range(of: #"^[-+*]\s+\[[xX]\]\s"#, options: .regularExpression) != nil
+    case .taskUnchecked:
+        return trimmed.range(of: #"^[-+*]\s+\[\s\]\s"#, options: .regularExpression) != nil
+    case .blockquote:
+        return trimmed.hasPrefix("> ")
+    default:
+        return false
+    }
 }
 
 @available(iOS 26.0, macOS 26.0, *)

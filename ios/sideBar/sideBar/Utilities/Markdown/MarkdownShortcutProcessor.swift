@@ -87,9 +87,6 @@ public struct MarkdownShortcutProcessor {
         let lineText = String(text[lineRange].characters)
 
         for pattern in blockPatterns where lineText.hasPrefix(pattern.prefix) {
-            let prefixEnd = text.index(lineStart, offsetByCharacters: pattern.prefix.count)
-            text.removeSubrange(lineStart..<prefixEnd)
-
             let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
             if lineStart < updatedLineEnd {
                 text[lineStart..<updatedLineEnd].blockKind = pattern.blockKind
@@ -114,11 +111,6 @@ public struct MarkdownShortcutProcessor {
 
         if let match = lineText.wholeMatch(of: /^(\d+)\.\s/) {
             _ = match
-            let prefixLength = (lineText.firstIndex(of: " ") ?? lineText.endIndex)
-            let prefixCount = lineText.distance(from: lineText.startIndex, to: prefixLength) + 1
-            let prefixEnd = text.index(lineStart, offsetByCharacters: prefixCount)
-            text.removeSubrange(lineStart..<prefixEnd)
-
             let updatedLineEnd = nextLineEnd(in: text, from: lineStart)
             if lineStart < updatedLineEnd {
                 text[lineStart..<updatedLineEnd].blockKind = .orderedList
