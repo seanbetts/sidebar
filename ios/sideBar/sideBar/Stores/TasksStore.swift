@@ -70,6 +70,19 @@ public final class TasksStore: ObservableObject {
         errorMessage = nil
     }
 
+    /// Optimistically removes a task from the local list. Returns the task for restoration if needed.
+    public func removeTask(id: String) -> TaskItem? {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
+        let task = tasks[index]
+        tasks.remove(at: index)
+        return task
+    }
+
+    /// Restores a previously removed task (used when an optimistic update fails).
+    public func restoreTask(_ task: TaskItem) {
+        tasks.insert(task, at: 0)
+    }
+
     private func refresh(selection: TaskSelection) async {
         do {
             let response = try await fetch(selection: selection)

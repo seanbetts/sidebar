@@ -18,7 +18,7 @@ public final class TasksViewModel: ObservableObject {
     @Published public private(set) var newTaskError: String = ""
 
     let api: any TasksProviding
-    private let store: TasksStore
+    let store: TasksStore
     let toastCenter: ToastCenter
     private var cancellables = Set<AnyCancellable>()
     private var searchDebounce: Task<Void, Never>?
