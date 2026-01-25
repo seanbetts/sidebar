@@ -10,26 +10,63 @@ public struct MarkdownExporter {
         var output: [String] = []
         var isInCodeBlock = false
         var lineIndex = 0
+        var previousContext: ExportLineContext?
 
         while lineIndex < lines.count {
             let lineRange = lines[lineIndex]
 
             if let tableBlock = tableBlock(from: attributedString, lines: lines, startIndex: lineIndex) {
-                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
+                if isInCodeBlock {
+                    closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
+                }
+                let currentContext = ExportLineContext.tableBlock()
+                if shouldInsertBlankLine(
+                    previous: previousContext,
+                    current: currentContext,
+                    isSoftBreak: false
+                ) {
+                    output.append("")
+                }
                 output.append(contentsOf: tableBlock.markdown)
+                previousContext = currentContext
                 lineIndex = tableBlock.nextIndex
                 continue
             }
 
             let lineText = String(attributedString[lineRange].characters)
             let blockKind = attributedString.blockKind(in: lineRange) ?? .paragraph
+
+            if isInCodeBlock && blockKind != .codeBlock {
+                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
+            }
+
+            if blockKind == .blankLine {
+                lineIndex += 1
+                continue
+            }
+
             let listDepth = listDepth(in: attributedString, range: lineRange)
             let codeLanguage = codeLanguage(in: attributedString, range: lineRange)
+            let currentContext = ExportLineContext(
+                blockKind: blockKind,
+                listDepth: listDepth,
+                listIdentity: listIdentity(in: attributedString, range: lineRange),
+                isListItem: isListItemBlockKind(blockKind),
+                isBlockquote: isBlockquoteLine(blockKind: blockKind, lineText: lineText),
+                isCodeBlock: blockKind == .codeBlock,
+                isTableBlock: false
+            )
+            let isSoftBreak = isSoftBreakBeforeLine(in: attributedString, lineRange: lineRange)
+
+            if shouldInsertBlankLine(
+                previous: previousContext,
+                current: currentContext,
+                isSoftBreak: isSoftBreak
+            ) {
+                output.append("")
+            }
 
             switch blockKind {
-            case .blankLine:
-                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
-                output.append("")
             case .codeBlock:
                 if !isInCodeBlock {
                     let fence = codeLanguage.map { "```\($0)" } ?? "```"
@@ -38,16 +75,12 @@ public struct MarkdownExporter {
                 }
                 output.append(lineText)
             case .horizontalRule:
-                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
                 output.append("---")
             case .gallery, .htmlBlock:
-                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
                 output.append(lineText)
             case .imageCaption:
-                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
                 output.append("\(MarkdownRendering.imageCaptionMarker) \(lineText)")
             default:
-                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
                 let prefix = hasExistingBlockPrefix(blockKind: blockKind, lineText: lineText)
                     ? ""
                     : prefix(for: blockKind, listDepth: listDepth)
@@ -55,6 +88,7 @@ public struct MarkdownExporter {
                 output.append(prefix + inlineMarkdown)
             }
 
+            previousContext = currentContext
             lineIndex += 1
         }
 
@@ -68,6 +102,29 @@ public struct MarkdownExporter {
             return frontmatter
         }
         return frontmatter + "\n\n" + body
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private struct ExportLineContext: Equatable {
+    let blockKind: BlockKind
+    let listDepth: Int?
+    let listIdentity: Int?
+    let isListItem: Bool
+    let isBlockquote: Bool
+    let isCodeBlock: Bool
+    let isTableBlock: Bool
+
+    static func tableBlock() -> ExportLineContext {
+        ExportLineContext(
+            blockKind: .htmlBlock,
+            listDepth: nil,
+            listIdentity: nil,
+            isListItem: false,
+            isBlockquote: false,
+            isCodeBlock: false,
+            isTableBlock: true
+        )
     }
 }
 
@@ -128,6 +185,85 @@ private func codeLanguage(in text: AttributedString, range: Range<AttributedStri
         }
     }
     return result
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func listIdentity(in text: AttributedString, range: Range<AttributedString.Index>) -> Int? {
+    for run in text[range].runs {
+        guard let intent = run[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] else { continue }
+        for component in intent.components {
+            switch component.kind {
+            case .orderedList, .unorderedList:
+                return component.identity
+            default:
+                break
+            }
+        }
+    }
+    return nil
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func isListItemBlockKind(_ blockKind: BlockKind) -> Bool {
+    switch blockKind {
+    case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+        return true
+    default:
+        return false
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func isBlockquoteLine(blockKind: BlockKind, lineText: String) -> Bool {
+    if blockKind == .blockquote {
+        return true
+    }
+    let trimmed = lineText.trimmingCharacters(in: .whitespaces)
+    return trimmed.hasPrefix(">")
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func isSoftBreakBeforeLine(
+    in text: AttributedString,
+    lineRange: Range<AttributedString.Index>
+) -> Bool {
+    guard lineRange.lowerBound > text.startIndex else { return false }
+    let newlineIndex = text.index(beforeCharacter: lineRange.lowerBound)
+    guard newlineIndex >= text.startIndex, text.characters[newlineIndex] == "\n" else { return false }
+    let nextIndex = text.index(afterCharacter: newlineIndex)
+    let newlineRange = newlineIndex..<nextIndex
+    return text.blockKind(in: newlineRange) != nil
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func shouldInsertBlankLine(
+    previous: ExportLineContext?,
+    current: ExportLineContext,
+    isSoftBreak: Bool
+) -> Bool {
+    guard let previous else { return false }
+    if isSoftBreak {
+        return false
+    }
+    if previous.isCodeBlock && current.isCodeBlock {
+        return false
+    }
+    if previous.isBlockquote && current.isBlockquote {
+        return false
+    }
+    if previous.isListItem && current.isListItem {
+        if let previousListId = previous.listIdentity, let currentListId = current.listIdentity {
+            if previousListId == currentListId {
+                return false
+            }
+        } else if previous.listDepth == current.listDepth {
+            return false
+        }
+    }
+    if previous.isTableBlock && current.isTableBlock {
+        return false
+    }
+    return true
 }
 
 @available(iOS 26.0, macOS 26.0, *)
