@@ -68,6 +68,9 @@ private struct NotesDetailView: View {
     @State private var isExporting = false
     @State private var exportDocument: MarkdownFileDocument?
     @State private var exportFilename: String = "note.md"
+    @State private var showSavedIndicator = false
+    @State private var lastSavedTimestamp: TimeInterval = 0
+    @State private var savedIndicatorTask: Task<Void, Never>?
     @AppStorage(AppStorageKeys.useNativeMarkdownEditor) private var useNativeMarkdownEditor = true
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -85,6 +88,25 @@ private struct NotesDetailView: View {
             contentWithToolbar
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onChange(of: editorViewModel.lastSavedAt) { _, newValue in
+            handleSavedIndicatorChange(newValue)
+        }
+        .onChange(of: editorViewModel.isDirty) { _, isDirty in
+            if isDirty {
+                hideSavedIndicator()
+            }
+        }
+        .onChange(of: editorViewModel.isSaving) { _, isSaving in
+            if isSaving {
+                hideSavedIndicator()
+            }
+        }
+        .onChange(of: editorViewModel.currentNoteId) { _, _ in
+            resetSavedIndicator()
+        }
+        .onDisappear {
+            savedIndicatorTask?.cancel()
+        }
         .fileExporter(
             isPresented: $isExporting,
             document: exportDocument,
@@ -194,9 +216,14 @@ extension NotesDetailView {
                 title: displayTitle
             ) {
                 if viewModel.activeNote != nil {
-                    HeaderActionRow {
-                        noteActionsMenu
-                        closeButton
+                    HStack(spacing: DesignTokens.Spacing.md) {
+                        if let status = noteStatus {
+                            noteStatusText(status)
+                        }
+                        HeaderActionRow {
+                            noteActionsMenu
+                            closeButton
+                        }
                     }
                 }
             }
@@ -216,6 +243,9 @@ extension NotesDetailView {
                     )
                 } else {
                     SideBarMarkdownContainer(text: editorViewModel.content)
+                        .onAppear {
+                            editorViewModel.setReadOnly(true)
+                        }
                 }
             } else if viewModel.selectedNoteId != nil {
                 if let error = viewModel.errorMessage {
@@ -255,7 +285,94 @@ extension NotesDetailView {
         }
 
     private var contentWithToolbar: some View {
-        content
+        VStack(spacing: 0) {
+            if isCompact, viewModel.activeNote != nil, let status = noteStatus {
+                HStack {
+                    Spacer()
+                    noteStatusText(status)
+                }
+                .padding(.horizontal, DesignTokens.Spacing.md)
+                .padding(.vertical, DesignTokens.Spacing.xs)
+                Divider()
+            }
+            content
+        }
+    }
+
+    private struct NoteStatus: Equatable {
+        let text: String
+        let color: Color
+    }
+
+    private var noteStatus: NoteStatus? {
+        if editorViewModel.isReadOnly {
+            return NoteStatus(text: "Read-only preview", color: DesignTokens.Colors.textSecondary)
+        }
+        if let error = editorViewModel.saveErrorMessage, !error.isEmpty {
+            return NoteStatus(text: error, color: DesignTokens.Colors.error)
+        }
+        if editorViewModel.isSaving {
+            return NoteStatus(text: "Saving...", color: DesignTokens.Colors.textSecondary)
+        }
+        if editorViewModel.isDirty {
+            return NoteStatus(text: "Unsaved changes", color: DesignTokens.Colors.textSecondary)
+        }
+        if let label = lastSavedLabel {
+            return NoteStatus(text: "Saved \(label)", color: DesignTokens.Colors.textSecondary)
+        }
+        return nil
+    }
+
+    private var lastSavedLabel: String? {
+        guard showSavedIndicator, let lastSaved = editorViewModel.lastSavedAt else { return nil }
+        return formatLastSaved(lastSaved)
+    }
+
+    private func noteStatusText(_ status: NoteStatus) -> some View {
+        Text(status.text)
+            .font(.caption)
+            .foregroundStyle(status.color)
+            .lineLimit(1)
+    }
+
+    private func formatLastSaved(_ date: Date) -> String {
+        let now = Date()
+        let diffSeconds = Int(now.timeIntervalSince(date))
+        if diffSeconds < 60 {
+            return "just now"
+        }
+        if diffSeconds < 3600 {
+            return "\(diffSeconds / 60)m ago"
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func handleSavedIndicatorChange(_ date: Date?) {
+        guard let date else { return }
+        let timestamp = date.timeIntervalSince1970
+        guard timestamp != lastSavedTimestamp else { return }
+        lastSavedTimestamp = timestamp
+        guard !editorViewModel.isDirty, !editorViewModel.isSaving else { return }
+        showSavedIndicator = true
+        savedIndicatorTask?.cancel()
+        savedIndicatorTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            showSavedIndicator = false
+        }
+    }
+
+    private func hideSavedIndicator() {
+        showSavedIndicator = false
+        savedIndicatorTask?.cancel()
+        savedIndicatorTask = nil
+    }
+
+    private func resetSavedIndicator() {
+        hideSavedIndicator()
+        lastSavedTimestamp = 0
     }
 
     private var displayTitle: String {

@@ -24,12 +24,15 @@ struct NativeMarkdownEditorContainer: View {
         .onAppear {
             loadIfNeeded()
             nativeViewModel.isReadOnly = !isEditing
+            editorViewModel.setReadOnly(!isEditing)
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
             isEditing = false
+            editorViewModel.setReadOnly(true)
             loadIfNeeded()
         }
         .onChange(of: nativeViewModel.hasUnsavedChanges) { _, hasChanges in
+            editorViewModel.setDirty(hasChanges)
             guard hasChanges else { return }
             Task {
                 await editorViewModel.syncFromNativeEditor(nativeViewModel)
@@ -38,6 +41,7 @@ struct NativeMarkdownEditorContainer: View {
         .onChange(of: isEditing) { _, editing in
             isTextEditorFocused = editing
             nativeViewModel.isReadOnly = !editing
+            editorViewModel.setReadOnly(!editing)
         }
         .onChange(of: isTextEditorFocused) { _, focused in
             // When user taps into the editor, enter edit mode
