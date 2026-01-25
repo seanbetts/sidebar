@@ -184,7 +184,7 @@ extension TasksViewModel {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         searchDebounce = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 350_000_000)
-            guard let self else { return }
+            guard !Task.isCancelled, let self else { return }
             if trimmed.isEmpty {
                 await self.load(selection: self.lastNonSearchSelection)
             } else {
@@ -215,6 +215,9 @@ extension TasksViewModel {
             if let home = groups.first(where: { $0.title.lowercased() == "home" }) {
                 listId = home.id
                 listName = home.title
+            } else if let first = groups.first {
+                listId = first.id
+                listName = first.title
             }
         }
 
@@ -235,6 +238,7 @@ extension TasksViewModel {
     }
 
     public func createTask(title: String, notes: String, dueDate: Date?, listId: String?) async {
+        guard !newTaskSaving else { return }
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let draft = newTaskDraft else { return }
         guard !trimmed.isEmpty else {

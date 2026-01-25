@@ -109,12 +109,8 @@ public final class TasksStore: ObservableObject {
 
     private func apply(list: TaskListResponse, persist: Bool) {
         tasks = list.tasks
-        if let groups = list.groups {
-            self.groups = groups
-        }
-        if let projects = list.projects {
-            self.projects = projects
-        }
+        groups = list.groups ?? []
+        projects = list.projects ?? []
         if persist {
             let cacheKey = CacheKeys.tasksList(selectionKey: selection.cacheKey)
             cache.set(key: cacheKey, value: list, ttlSeconds: CachePolicy.tasksList)

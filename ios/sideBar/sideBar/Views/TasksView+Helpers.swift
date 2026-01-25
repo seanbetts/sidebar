@@ -62,6 +62,8 @@ extension TasksDetailView {
         return nil
     }
 
+    /// Builds a recurrence rule from the repeat sheet inputs.
+    /// Note: weekday uses 0-indexed format (0=Sun, 1=Mon, ..., 6=Sat) to match server API.
     func buildRecurrenceRule(type: RepeatType, interval: Int, startDate: Date) -> RecurrenceRule? {
         switch type {
         case .none:
@@ -69,6 +71,7 @@ extension TasksDetailView {
         case .daily:
             return RecurrenceRule(type: "daily", interval: interval, weekday: nil, dayOfMonth: nil)
         case .weekly:
+            // Calendar.component(.weekday) returns 1-7 (Sun=1), convert to 0-6 for API
             let weekday = Calendar.current.component(.weekday, from: startDate) - 1
             return RecurrenceRule(type: "weekly", interval: interval, weekday: weekday, dayOfMonth: nil)
         case .monthly:
