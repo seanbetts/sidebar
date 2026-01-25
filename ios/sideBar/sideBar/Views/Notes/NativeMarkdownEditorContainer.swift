@@ -23,6 +23,7 @@ struct NativeMarkdownEditorContainer: View {
         }
         .onAppear {
             loadIfNeeded()
+            nativeViewModel.isReadOnly = !isEditing
         }
         .onChange(of: editorViewModel.currentNoteId) { _, _ in
             isEditing = false
@@ -36,6 +37,7 @@ struct NativeMarkdownEditorContainer: View {
         }
         .onChange(of: isEditing) { _, editing in
             isTextEditorFocused = editing
+            nativeViewModel.isReadOnly = !editing
         }
         .onChange(of: isTextEditorFocused) { _, focused in
             // When user taps into the editor, enter edit mode

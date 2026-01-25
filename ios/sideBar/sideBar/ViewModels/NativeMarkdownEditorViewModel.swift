@@ -7,7 +7,12 @@ import SwiftUI
 public final class NativeMarkdownEditorViewModel: ObservableObject {
     @Published public var attributedContent: AttributedString = AttributedString()
     @Published public var selection: AttributedTextSelection = AttributedTextSelection()
-    @Published public var isReadOnly: Bool = false
+    @Published public var isReadOnly: Bool = false {
+        didSet {
+            guard isReadOnly != oldValue else { return }
+            updatePrefixVisibility()
+        }
+    }
     @Published public private(set) var hasUnsavedChanges: Bool = false
 
     private let importer = MarkdownImporter()
@@ -749,6 +754,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         selection: AttributedTextSelection,
         in text: AttributedString
     ) -> Bool {
+        if isReadOnly {
+            return false
+        }
         switch selection.indices(in: text) {
         case .insertionPoint(let index):
             return lineRange.contains(index) || index == lineRange.upperBound
