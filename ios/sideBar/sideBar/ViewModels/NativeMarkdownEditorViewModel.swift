@@ -497,8 +497,6 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private func updatePrefixVisibility() {
         var updated = attributedContent
-        var selectionCopy = selection
-        var didUpdateTypingAttributes = false
 
         for lineRange in lineRanges(in: updated) {
             let lineText = String(updated[lineRange].characters)
@@ -535,34 +533,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                     updated[inlineRange].font = .system(size: 0.1)
                 }
             }
-
-            guard !didUpdateTypingAttributes else { continue }
-            if case .insertionPoint(let index) = selectionCopy.indices(in: updated),
-               (lineRange.contains(index) || index == lineRange.upperBound) {
-                if let prefixRange,
-                   prefixRange.contains(index) || index == prefixRange.upperBound {
-                    updated.transformAttributes(in: &selectionCopy) { attrs in
-                        attrs.foregroundColor = baseForegroundColor(for: blockKind)
-                        attrs.backgroundColor = baseBackgroundColor(for: blockKind)
-                    }
-                    didUpdateTypingAttributes = true
-                    continue
-                }
-
-                if inlineRanges.contains(where: { $0.contains(index) || index == $0.upperBound }) {
-                    updated.transformAttributes(in: &selectionCopy) { attrs in
-                        attrs.foregroundColor = baseForegroundColor(for: blockKind)
-                        attrs.backgroundColor = baseBackgroundColor(for: blockKind)
-                    }
-                    didUpdateTypingAttributes = true
-                }
-            }
         }
 
-        if updated != attributedContent || didUpdateTypingAttributes {
+        if updated != attributedContent {
             isUpdatingPrefixVisibility = true
             attributedContent = updated
-            selection = selectionCopy
             Task { @MainActor [weak self] in
                 self?.isUpdatingPrefixVisibility = false
             }
