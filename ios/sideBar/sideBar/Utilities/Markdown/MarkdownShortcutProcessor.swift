@@ -98,6 +98,11 @@ public struct MarkdownShortcutProcessor {
                     blockKind: pattern.blockKind,
                     listDepth: pattern.listDepth
                 )
+                applyBlockStyle(
+                    to: &text,
+                    range: newLineStart..<lineEnd,
+                    blockKind: pattern.blockKind
+                )
             }
 
             return AttributedTextSelection(range: newLineStart..<newLineStart)
@@ -118,6 +123,11 @@ public struct MarkdownShortcutProcessor {
                     range: newLineStart..<lineEnd,
                     blockKind: .orderedList,
                     listDepth: 1
+                )
+                applyBlockStyle(
+                    to: &text,
+                    range: newLineStart..<lineEnd,
+                    blockKind: .orderedList
                 )
             }
 
@@ -287,6 +297,44 @@ public struct MarkdownShortcutProcessor {
             }
         case .paragraph, .imageCaption, .gallery, .htmlBlock:
             text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
+        }
+    }
+
+    private static func applyBlockStyle(
+        to text: inout AttributedString,
+        range: Range<AttributedString.Index>,
+        blockKind: BlockKind
+    ) {
+        switch blockKind {
+        case .heading1:
+            text[range].font = .system(size: 32, weight: .bold)
+        case .heading2:
+            text[range].font = .system(size: 24, weight: .semibold)
+        case .heading3:
+            text[range].font = .system(size: 20, weight: .semibold)
+        case .heading4:
+            text[range].font = .system(size: 18, weight: .semibold)
+        case .heading5:
+            text[range].font = .system(size: 17, weight: .semibold)
+        case .heading6:
+            text[range].font = .system(size: 16, weight: .semibold)
+        case .codeBlock:
+            text[range].font = Font.system(size: 14, weight: .regular, design: .monospaced)
+            text[range].backgroundColor = DesignTokens.Colors.muted
+        default:
+            text[range].font = Font.system(size: 16)
+        }
+
+        switch blockKind {
+        case .blockquote, .taskChecked:
+            text[range].foregroundColor = DesignTokens.Colors.textSecondary
+        default:
+            text[range].foregroundColor = DesignTokens.Colors.textPrimary
+        }
+
+        if blockKind == .taskChecked {
+            text[range].strikethroughStyle = .single
+            text[range].foregroundColor = DesignTokens.Colors.textSecondary
         }
     }
 }
