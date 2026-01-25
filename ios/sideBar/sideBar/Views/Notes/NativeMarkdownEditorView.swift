@@ -20,24 +20,21 @@ public struct NativeMarkdownEditorView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
-                    .attributedTextFormattingDefinition(MarkdownFormattingDefinition())
-                    .scrollDisabled(true)
-                    .frame(maxWidth: maxContentWidth)
-                    .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
-                    .padding(
-                        EdgeInsets(
-                            top: DesignTokens.Spacing.md,
-                            leading: DesignTokens.Spacing.lg,
-                            bottom: DesignTokens.Spacing.md,
-                            trailing: DesignTokens.Spacing.lg
-                        )
+            TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
+                .attributedTextFormattingDefinition(MarkdownFormattingDefinition())
+                .frame(maxWidth: maxContentWidth)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(
+                    EdgeInsets(
+                        top: DesignTokens.Spacing.md,
+                        leading: DesignTokens.Spacing.lg,
+                        bottom: DesignTokens.Spacing.md,
+                        trailing: DesignTokens.Spacing.lg
                     )
-                    .onChange(of: viewModel.attributedContent) { oldValue, _ in
-                        viewModel.handleContentChange(previous: oldValue)
-                    }
-            }
+                )
+                .onChange(of: viewModel.attributedContent) { oldValue, _ in
+                    viewModel.handleContentChange(previous: oldValue)
+                }
         }
         .background(DesignTokens.Colors.background)
         #if os(iOS)
