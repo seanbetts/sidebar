@@ -16,6 +16,10 @@ struct NativeMarkdownEditorContainer: View {
                     viewModel: nativeViewModel,
                     maxContentWidth: maxContentWidth
                 ) { _ in }
+                .onKeyPress(.escape) {
+                    isEditing = false
+                    return .handled
+                }
             } else {
                 ScrollView {
                     SideBarMarkdownContainer(text: editorViewModel.content)
