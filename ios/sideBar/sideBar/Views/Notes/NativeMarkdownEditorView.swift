@@ -22,7 +22,7 @@ public struct NativeMarkdownEditorView: View {
         VStack(spacing: 0) {
             ScrollView {
                 TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
-                    .attributedTextFormattingDefinition(\.markdownEditor)
+                    .attributedTextFormattingDefinition(MarkdownFormattingDefinition())
                     .scrollDisabled(true)
                     .frame(maxWidth: maxContentWidth)
                     .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
