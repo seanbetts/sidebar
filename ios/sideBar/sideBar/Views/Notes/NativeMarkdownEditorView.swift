@@ -19,8 +19,8 @@ public struct NativeMarkdownEditorView: View {
     public var body: some View {
         TextEditor(text: $viewModel.attributedContent, selection: $viewModel.selection)
             .attributedTextFormattingDefinition(MarkdownFormattingDefinition())
-            .padding(.horizontal, DesignTokens.Spacing.lg)
-            .padding(.vertical, DesignTokens.Spacing.md)
+            .padding(.horizontal, SideBarMarkdownLayout.horizontalPadding)
+            .padding(.vertical, SideBarMarkdownLayout.verticalPadding)
             .frame(maxWidth: maxContentWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onChange(of: viewModel.attributedContent) { oldValue, _ in
