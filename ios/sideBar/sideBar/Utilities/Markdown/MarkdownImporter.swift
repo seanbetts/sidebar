@@ -1,4 +1,4 @@
-import Foundation
+@preconcurrency import Foundation
 import Markdown
 import SwiftUI
 
@@ -210,7 +210,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let listId = nextListId
         nextListId += 1
         listStack.append((ordered: false, depth: depth, listId: listId, itemIndex: 0))
-        let items = unorderedList.listItems
+        let items = Array(unorderedList.listItems)
         for (index, item) in items.enumerated() {
             visitListItem(item, isFirst: index == 0, isLast: index == items.count - 1)
         }
@@ -222,7 +222,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let listId = nextListId
         nextListId += 1
         listStack.append((ordered: true, depth: depth, listId: listId, itemIndex: 0))
-        let items = orderedList.listItems
+        let items = Array(orderedList.listItems)
         for (index, item) in items.enumerated() {
             visitListItem(item, isFirst: index == 0, isLast: index == items.count - 1)
         }
@@ -352,7 +352,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let tableIntent = makeTableIntent(columnAlignments: alignments)
 
         var rowIndex = 0
-        let totalRows = table.body.rows.count + 1
+        let rows = Array(table.body.rows)
+        let totalRows = rows.count + 1
         appendTableRow(
             cells: table.head.children.compactMap { $0 as? Markdown.Table.Cell },
             rowIndex: rowIndex,
@@ -363,7 +364,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         )
         rowIndex += 1
 
-        for row in table.body.rows {
+        for row in rows {
             let isLast = rowIndex == totalRows - 1
             appendTableRow(
                 cells: row.children.compactMap { $0 as? Markdown.Table.Cell },
