@@ -213,13 +213,13 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         appendBlock(itemText)
     }
 
-    mutating func visitTable(_ table: Table) {
+    mutating func visitTable(_ table: Markdown.Table) {
         let alignments = table.columnAlignments
         let tableIntent = makeTableIntent(columnAlignments: alignments)
 
         var rowIndex = 0
         appendTableRow(
-            cells: table.head.children.compactMap { $0 as? Table.Cell },
+            cells: table.head.children.compactMap { $0 as? Markdown.Table.Cell },
             rowIndex: rowIndex,
             isHeader: true,
             tableIntent: tableIntent
@@ -228,7 +228,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
         for row in table.body.rows {
             appendTableRow(
-                cells: row.children.compactMap { $0 as? Table.Cell },
+                cells: row.children.compactMap { $0 as? Markdown.Table.Cell },
                 rowIndex: rowIndex,
                 isHeader: false,
                 tableIntent: tableIntent
@@ -382,8 +382,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
     }
 
-    private func appendTableRow(
-        cells: [Table.Cell],
+    private mutating func appendTableRow(
+        cells: [Markdown.Table.Cell],
         rowIndex: Int,
         isHeader: Bool,
         tableIntent: PresentationIntent
@@ -440,7 +440,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         text[range].presentationIntent = cellIntent
     }
 
-    private func makeTableIntent(columnAlignments: [Table.ColumnAlignment?]) -> PresentationIntent {
+    private func makeTableIntent(columnAlignments: [Markdown.Table.ColumnAlignment?]) -> PresentationIntent {
         let columns = columnAlignments.map { alignment -> PresentationIntent.TableColumn in
             let mapped: PresentationIntent.TableColumn.Alignment
             switch alignment {
