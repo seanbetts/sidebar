@@ -15,6 +15,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private let bodyFont = Font.system(size: 16)
     private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
+    private let style = SideBarMarkdownStyle.default
     private var frontmatter: String?
     private var lastSavedContent: String = ""
     private var autosaveTask: Task<Void, Never>?
@@ -332,7 +333,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private func baseBackgroundColor(for blockKind: BlockKind?) -> Color? {
         switch blockKind {
         case .codeBlock:
-            return DesignTokens.Colors.muted
+            return style.codeBlockBackground
         default:
             return nil
         }
@@ -376,7 +377,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             if enabled {
                 attrs.font = inlineCodeFont
                 attrs.foregroundColor = DesignTokens.Colors.textPrimary
-                attrs.backgroundColor = DesignTokens.Colors.muted
+                attrs.backgroundColor = style.codeBackground
             } else {
                 attrs.font = baseFont(for: blockKind)
                 attrs.foregroundColor = baseForegroundColor(for: blockKind)
@@ -403,7 +404,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         if enabled {
             attributedContent[range].font = inlineCodeFont
             attributedContent[range].foregroundColor = DesignTokens.Colors.textPrimary
-            attributedContent[range].backgroundColor = DesignTokens.Colors.muted
+            attributedContent[range].backgroundColor = style.codeBackground
         } else {
             let blockKind = attributedContent.blockKind(in: range)
             attributedContent[range].font = baseFont(for: blockKind)

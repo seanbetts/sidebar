@@ -15,13 +15,17 @@ public struct MarkdownImportResult {
 
 @available(iOS 26.0, macOS 26.0, *)
 public struct MarkdownImporter {
-    public init() {}
+    private let style: SideBarMarkdownStyle
+
+    public init() {
+        self.style = .default
+    }
 
     public func attributedString(from markdown: String) -> MarkdownImportResult {
         let split = splitFrontmatter(from: markdown)
         let document = Document(parsing: split.body)
         let totalLines = split.body.isEmpty ? 0 : split.body.components(separatedBy: "\n").count
-        var walker = MarkdownToAttributedStringWalker(sourceLineCount: totalLines)
+        var walker = MarkdownToAttributedStringWalker(sourceLineCount: totalLines, style: style)
         walker.visit(document)
         walker.appendTrailingBlankLines()
         return MarkdownImportResult(attributedString: walker.result, frontmatter: split.frontmatter)
@@ -40,9 +44,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private let sourceLineCount: Int
     private var lastProcessedLine: Int = 0
+    private let style: SideBarMarkdownStyle
 
-    init(sourceLineCount: Int = 0) {
+    init(sourceLineCount: Int = 0, style: SideBarMarkdownStyle) {
         self.sourceLineCount = sourceLineCount
+        self.style = style
     }
 
     mutating func visitDocument(_ document: Document) {
@@ -194,7 +200,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             lineText[fullRange(in: lineText)].codeLanguage = language
             lineText[fullRange(in: lineText)].font = blockCodeFont
             lineText[fullRange(in: lineText)].foregroundColor = DesignTokens.Colors.textPrimary
-            lineText[fullRange(in: lineText)].backgroundColor = DesignTokens.Colors.muted
+            lineText[fullRange(in: lineText)].backgroundColor = style.codeBlockBackground
             applyPresentationIntent(for: .codeBlock, codeLanguage: language, to: &lineText)
             appendBlock(lineText)
         }
@@ -330,7 +336,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             let current = inner[range].inlinePresentationIntent ?? []
             inner[range].inlinePresentationIntent = current.union(.code)
             inner[range].font = inlineCodeFont
-            inner[range].backgroundColor = DesignTokens.Colors.muted
+            inner[range].backgroundColor = style.codeBackground
             return wrapInlineMarkers(inner, prefix: "`", suffix: "`")
         case let link as Markdown.Link:
             var inner = AttributedString()
