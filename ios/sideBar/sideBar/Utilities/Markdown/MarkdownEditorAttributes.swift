@@ -6,6 +6,7 @@ import SwiftUI
 @available(iOS 26.0, macOS 26.0, *)
 public enum BlockKind: String, Codable, Hashable, Sendable {
     case paragraph
+    case blankLine
     case heading1
     case heading2
     case heading3

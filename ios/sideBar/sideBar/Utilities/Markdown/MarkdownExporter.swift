@@ -27,6 +27,9 @@ public struct MarkdownExporter {
             let codeLanguage = codeLanguage(in: attributedString, range: lineRange)
 
             switch blockKind {
+            case .blankLine:
+                closeCodeBlockIfNeeded(&isInCodeBlock, output: &output)
+                output.append("")
             case .codeBlock:
                 if !isInCodeBlock {
                     let fence = codeLanguage.map { "```\($0)" } ?? "```"

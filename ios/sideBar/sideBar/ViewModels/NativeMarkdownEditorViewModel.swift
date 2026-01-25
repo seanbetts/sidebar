@@ -20,6 +20,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private var autosaveTask: Task<Void, Never>?
     private var isApplyingShortcut = false
     private var isUpdatingPrefixVisibility = false
+    private var lastSelectionLineIndex: Int?
     private static let headingRegex = try? NSRegularExpression(pattern: #"^#{1,6}\s"#)
     private static let bulletRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s"#)
     private static let orderedRegex = try? NSRegularExpression(pattern: #"^\s*\d+\.\s"#)
@@ -154,11 +155,17 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         scheduleAutosave()
+        lastSelectionLineIndex = lineIndexForSelection(in: attributedContent)
         updatePrefixVisibility()
     }
 
     public func handleSelectionChange() {
         guard !isReadOnly, !isUpdatingPrefixVisibility else { return }
+        let currentLineIndex = lineIndexForSelection(in: attributedContent)
+        if currentLineIndex == lastSelectionLineIndex {
+            return
+        }
+        lastSelectionLineIndex = currentLineIndex
         updatePrefixVisibility()
     }
 
@@ -456,7 +463,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
             } else {
                 attributedContent[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
             }
-        case .paragraph, .imageCaption, .gallery, .htmlBlock:
+        case .paragraph, .blankLine, .imageCaption, .gallery, .htmlBlock:
             attributedContent[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
         }
     }
@@ -537,8 +544,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         if updated != attributedContent || didUpdateTypingAttributes {
             isUpdatingPrefixVisibility = true
             attributedContent = updated
-            if didUpdateTypingAttributes {
-                selection = selectionCopy
+            selection = selectionCopy
+            Task { @MainActor [weak self] in
+                self?.isUpdatingPrefixVisibility = false
             }
         }
     }
@@ -563,6 +571,27 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         return lines
+    }
+
+    private func lineIndexForSelection(in text: AttributedString) -> Int? {
+        let ranges = lineRanges(in: text)
+        let selectionIndex: AttributedString.Index?
+
+        switch selection.indices(in: text) {
+        case .insertionPoint(let index):
+            selectionIndex = index
+        case .ranges(let set):
+            selectionIndex = set.ranges.first?.lowerBound
+        }
+
+        guard let selectionIndex else { return nil }
+
+        for (lineIndex, range) in ranges.enumerated() {
+            if range.contains(selectionIndex) || selectionIndex == range.upperBound {
+                return lineIndex
+            }
+        }
+        return nil
     }
 
     private func markdownPrefixRange(
