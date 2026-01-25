@@ -19,6 +19,12 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private var lastSavedContent: String = ""
     private var autosaveTask: Task<Void, Never>?
     private var isApplyingShortcut = false
+    private var isUpdatingPrefixVisibility = false
+    private static let headingRegex = try? NSRegularExpression(pattern: #"^#{1,6}\s"#)
+    private static let bulletRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s"#)
+    private static let orderedRegex = try? NSRegularExpression(pattern: #"^\s*\d+\.\s"#)
+    private static let taskRegex = try? NSRegularExpression(pattern: #"^\s*[-+*]\s+\[[ xX]\]\s"#)
+    private static let quoteRegex = try? NSRegularExpression(pattern: #"^\s*>\s"#)
 
     public init() {}
 
@@ -124,6 +130,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     // swiftlint:enable cyclomatic_complexity
 
     public func handleContentChange(previous: AttributedString) {
+        if isUpdatingPrefixVisibility {
+            isUpdatingPrefixVisibility = false
+            return
+        }
+
         guard !isReadOnly, !isApplyingShortcut else {
             return
         }
@@ -143,6 +154,12 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         scheduleAutosave()
+        updatePrefixVisibility()
+    }
+
+    public func handleSelectionChange() {
+        guard !isReadOnly else { return }
+        updatePrefixVisibility()
     }
 
     private func toggleInlineIntent(_ intent: InlinePresentationIntent) {
@@ -451,6 +468,76 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         case .ranges(let ranges):
             return ranges
         }
+    }
+
+    private func updatePrefixVisibility() {
+        let ranges = selectionRanges().ranges
+        var updated = attributedContent
+
+        for lineRange in lineRanges(in: updated) {
+            guard let prefixRange = markdownPrefixRange(in: updated, lineRange: lineRange) else { continue }
+            let shouldShow = ranges.contains { $0.overlaps(lineRange) }
+            if shouldShow {
+                let blockKind = updated.blockKind(in: lineRange)
+                updated[prefixRange].foregroundColor = baseForegroundColor(for: blockKind)
+                updated[prefixRange].backgroundColor = baseBackgroundColor(for: blockKind)
+            } else {
+                updated[prefixRange].foregroundColor = .clear
+                updated[prefixRange].backgroundColor = nil
+            }
+        }
+
+        if updated != attributedContent {
+            isUpdatingPrefixVisibility = true
+            attributedContent = updated
+        }
+    }
+
+    private func lineRanges(in text: AttributedString) -> [Range<AttributedString.Index>] {
+        var lines: [Range<AttributedString.Index>] = []
+        var start = text.startIndex
+        var current = text.startIndex
+
+        while current < text.endIndex {
+            if text.characters[current] == "\n" {
+                lines.append(start..<current)
+                start = text.index(afterCharacter: current)
+                current = start
+            } else {
+                current = text.index(afterCharacter: current)
+            }
+        }
+
+        if start <= text.endIndex {
+            lines.append(start..<text.endIndex)
+        }
+
+        return lines
+    }
+
+    private func markdownPrefixRange(
+        in text: AttributedString,
+        lineRange: Range<AttributedString.Index>
+    ) -> Range<AttributedString.Index>? {
+        let lineText = String(text[lineRange].characters)
+        let range = NSRange(location: 0, length: lineText.utf16.count)
+        let regexes = [
+            Self.taskRegex,
+            Self.orderedRegex,
+            Self.bulletRegex,
+            Self.headingRegex,
+            Self.quoteRegex
+        ]
+
+        for regex in regexes {
+            guard let regex, let match = regex.firstMatch(in: lineText, range: range) else { continue }
+            guard let matchRange = Range(match.range, in: lineText) else { continue }
+            let prefixCount = lineText.distance(from: lineText.startIndex, to: matchRange.upperBound)
+            let prefixEnd = text.index(lineRange.lowerBound, offsetByCharacters: prefixCount)
+            return lineRange.lowerBound..<prefixEnd
+        }
+
+        return nil
     }
 }
 

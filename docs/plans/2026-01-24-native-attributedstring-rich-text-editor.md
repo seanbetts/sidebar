@@ -89,6 +89,8 @@
 - [x] **8.3** Code blocks and tables
   - [x] Code blocks visually match `SideBarMarkdown` (padding/border/background)
   - [x] Tables parse and render with basic styling
+- [x] **8.4** Markdown syntax visibility
+  - [x] Show block prefixes only on the caret line
 
 ### Testing
 - [x] Unit tests for `MarkdownImporter`
