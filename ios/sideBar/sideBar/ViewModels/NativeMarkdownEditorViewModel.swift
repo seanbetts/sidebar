@@ -236,7 +236,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private func scheduleAutosave() {
         autosaveTask?.cancel()
         autosaveTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(0.6))
+            try? await Task.sleep(for: .seconds(1.5))
             guard let self else { return }
             let current = self.currentMarkdown()
             self.hasUnsavedChanges = current != self.lastSavedContent
