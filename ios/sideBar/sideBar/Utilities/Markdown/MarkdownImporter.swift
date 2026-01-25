@@ -64,6 +64,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
 
         if blockquoteDepth > 0 {
+            paragraphText = prefixBlock(paragraphText, with: String(repeating: "> ", count: blockquoteDepth))
             applyBlockKind(.blockquote, to: &paragraphText)
             paragraphText[fullRange(in: paragraphText)].foregroundColor = DesignTokens.Colors.textSecondary
         } else {
@@ -80,6 +81,8 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         for child in heading.children {
             headingText.append(inlineAttributedString(for: child))
         }
+        let prefix = String(repeating: "#", count: heading.level) + " "
+        headingText = prefixBlock(headingText, with: prefix)
 
         switch heading.level {
         case 1:
@@ -201,6 +204,19 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             applyBlockKind(context.ordered ? .orderedList : .bulletList, to: &itemText)
         }
 
+        let indent = String(repeating: "  ", count: max(0, context.depth - 1))
+        let listPrefix: String
+        if let checkbox = listItem.checkbox {
+            let isChecked = checkbox == .checked
+            listPrefix = indent + "- [" + (isChecked ? "x" : " ") + "] "
+        } else if context.ordered {
+            listPrefix = indent + "\(context.itemIndex). "
+        } else {
+            listPrefix = indent + "- "
+        }
+        let quotePrefix = blockquoteDepth > 0 ? String(repeating: "> ", count: blockquoteDepth) : ""
+        itemText = prefixBlock(itemText, with: quotePrefix + listPrefix)
+
         itemText[fullRange(in: itemText)].listDepth = context.depth
         itemText[fullRange(in: itemText)].font = bodyFont
         applyPresentationIntent(
@@ -254,7 +270,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             let range = fullRange(in: inner)
             let current = inner[range].inlinePresentationIntent ?? []
             inner[range].inlinePresentationIntent = current.union(.emphasized)
-            return inner
+            return wrapInlineMarkers(inner, prefix: "*", suffix: "*")
         case let strong as Strong:
             var inner = AttributedString()
             for child in strong.children {
@@ -263,7 +279,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             let range = fullRange(in: inner)
             let current = inner[range].inlinePresentationIntent ?? []
             inner[range].inlinePresentationIntent = current.union(.stronglyEmphasized)
-            return inner
+            return wrapInlineMarkers(inner, prefix: "**", suffix: "**")
         case let strike as Strikethrough:
             var inner = AttributedString()
             for child in strike.children {
@@ -271,7 +287,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             }
             inner[fullRange(in: inner)].strikethroughStyle = .single
             inner[fullRange(in: inner)].foregroundColor = DesignTokens.Colors.textSecondary
-            return inner
+            return wrapInlineMarkers(inner, prefix: "~~", suffix: "~~")
         case let code as InlineCode:
             var inner = AttributedString(code.code)
             let range = fullRange(in: inner)
@@ -279,7 +295,7 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             inner[range].inlinePresentationIntent = current.union(.code)
             inner[range].font = inlineCodeFont
             inner[range].backgroundColor = DesignTokens.Colors.muted
-            return inner
+            return wrapInlineMarkers(inner, prefix: "`", suffix: "`")
         case let link as Markdown.Link:
             var inner = AttributedString()
             for child in link.children {
@@ -313,6 +329,32 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             result.append(AttributedString("\n"))
         }
         result.append(block)
+    }
+
+    private func prefixBlock(_ inner: AttributedString, with prefix: String) -> AttributedString {
+        var result = AttributedString(prefix)
+        result.append(inner)
+        return result
+    }
+
+    private func wrapInlineMarkers(
+        _ inner: AttributedString,
+        prefix: String,
+        suffix: String
+    ) -> AttributedString {
+        var prefixText = AttributedString(prefix)
+        if !prefixText.characters.isEmpty {
+            prefixText[prefixText.startIndex..<prefixText.endIndex].inlineMarker = true
+        }
+        var suffixText = AttributedString(suffix)
+        if !suffixText.characters.isEmpty {
+            suffixText[suffixText.startIndex..<suffixText.endIndex].inlineMarker = true
+        }
+
+        var result = prefixText
+        result.append(inner)
+        result.append(suffixText)
+        return result
     }
 
     private func fullRange(in text: AttributedString) -> Range<AttributedString.Index> {
