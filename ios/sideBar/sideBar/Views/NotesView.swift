@@ -65,6 +65,7 @@ private struct NotesDetailView: View {
     @State private var moveSelection: String = ""
     @State private var isDeleteAlertPresented = false
     @State private var isArchiveAlertPresented = false
+    @State private var isCloseConfirmPresented = false
     @State private var isExporting = false
     @State private var exportDocument: MarkdownFileDocument?
     @State private var exportFilename: String = "note.md"
@@ -177,6 +178,20 @@ private struct NotesDetailView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text(archiveAlertMessage)
+        }
+        .confirmationDialog("Save changes?", isPresented: $isCloseConfirmPresented, titleVisibility: .visible) {
+            Button("Save changes") {
+                Task {
+                    await editorViewModel.saveIfNeeded()
+                    viewModel.clearSelection()
+                }
+            }
+            Button("Don't save", role: .destructive) {
+                viewModel.clearSelection()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You have unsaved changes. Save before closing the note?")
         }
         .onReceive(environment.$shortcutActionEvent) { event in
             guard let event, event.section == .notes else { return }
@@ -486,7 +501,7 @@ extension NotesDetailView {
             systemName: "xmark",
             accessibilityLabel: "Close note",
             action: {
-                viewModel.clearSelection()
+                requestCloseNote()
             },
             isDisabled: viewModel.activeNote == nil
         )
@@ -578,6 +593,14 @@ extension NotesDetailView {
         exportFilename = filename
         exportDocument = MarkdownFileDocument(text: text)
         isExporting = true
+    }
+
+    private func requestCloseNote() {
+        if editorViewModel.isDirty {
+            isCloseConfirmPresented = true
+            return
+        }
+        viewModel.clearSelection()
     }
 
 }

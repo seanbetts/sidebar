@@ -15,6 +15,8 @@ public final class NotesEditorViewModel: ObservableObject {
     @Published public private(set) var isReadOnly: Bool = true
 
     private let notesViewModel: NotesViewModel
+    @available(iOS 26.0, macOS 26.0, *)
+    private weak var nativeEditorViewModel: NativeMarkdownEditorViewModel?
     private var cancellables = Set<AnyCancellable>()
 
     public init(notesViewModel: NotesViewModel) {
@@ -53,6 +55,18 @@ public final class NotesEditorViewModel: ObservableObject {
     }
 
     @available(iOS 26.0, macOS 26.0, *)
+    public func attachNativeEditor(_ nativeViewModel: NativeMarkdownEditorViewModel) {
+        nativeEditorViewModel = nativeViewModel
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    public func detachNativeEditor(_ nativeViewModel: NativeMarkdownEditorViewModel) {
+        if nativeEditorViewModel === nativeViewModel {
+            nativeEditorViewModel = nil
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
     public func syncFromNativeEditor(_ nativeViewModel: NativeMarkdownEditorViewModel) async {
         guard let noteId = currentNoteId else { return }
         let markdown = nativeViewModel.currentMarkdown()
@@ -67,6 +81,14 @@ public final class NotesEditorViewModel: ObservableObject {
             lastSavedAt = Date()
         } else {
             saveErrorMessage = "Failed to save note"
+        }
+    }
+
+    public func saveIfNeeded() async {
+        guard isDirty else { return }
+        if #available(iOS 26.0, macOS 26.0, *) {
+            guard let nativeViewModel = nativeEditorViewModel else { return }
+            await syncFromNativeEditor(nativeViewModel)
         }
     }
 

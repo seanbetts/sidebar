@@ -161,7 +161,36 @@ extension NotesPanelView {
             nextIndex = direction == .next ? 0 : items.count - 1
         }
         let nextId = items[nextIndex]
-        Task { await viewModel.selectNote(id: nextId) }
+        requestNoteSelection(id: nextId)
+    }
+
+    func requestNoteSelection(id: String) {
+        guard viewModel.selectedNoteId != id else { return }
+        if environment.notesEditorViewModel.isDirty, viewModel.selectedNoteId != nil {
+            pendingNoteId = id
+            isSaveChangesDialogPresented = true
+            return
+        }
+        Task { await viewModel.selectNote(id: id) }
+    }
+
+    func confirmSaveAndSwitch() {
+        guard let pendingNoteId else { return }
+        let noteId = pendingNoteId
+        pendingNoteId = nil
+        isSaveChangesDialogPresented = false
+        Task {
+            await environment.notesEditorViewModel.saveIfNeeded()
+            await viewModel.selectNote(id: noteId)
+        }
+    }
+
+    func discardAndSwitch() {
+        guard let pendingNoteId else { return }
+        let noteId = pendingNoteId
+        pendingNoteId = nil
+        isSaveChangesDialogPresented = false
+        Task { await viewModel.selectNote(id: noteId) }
     }
 
     func noteNavigationItems() -> [String] {
@@ -219,7 +248,7 @@ extension NotesPanelView {
                             ),
                             isSelected: viewModel.selectedNoteId == node.path
                         ) {
-                            Task { await viewModel.selectNote(id: node.path) }
+                            requestNoteSelection(id: node.path)
                         } onRename: {
                             beginRename(for: FileNodeItem(id: node.path, name: node.name, type: node.type, children: nil))
                         } onDelete: {
@@ -302,7 +331,7 @@ extension NotesPanelView {
                             item: item,
                             isSelected: viewModel.selectedNoteId == item.id
                         ) {
-                            Task { await viewModel.selectNote(id: item.id) }
+                            requestNoteSelection(id: item.id)
                         } onRename: {
                             beginRename(for: item)
                         } onDelete: {
@@ -331,7 +360,7 @@ extension NotesPanelView {
                                     isSelected: viewModel.selectedNoteId == item.id
                                 ) {
                                     if item.isFile {
-                                        Task { await viewModel.selectNote(id: item.id) }
+                                        requestNoteSelection(id: item.id)
                                     }
                                 } onRename: {
                                     beginRename(for: item)
@@ -381,7 +410,7 @@ extension NotesPanelView {
                 isSelected: viewModel.selectedNoteId == item.id
             ) {
                 if item.isFile {
-                    Task { await viewModel.selectNote(id: item.id) }
+                    requestNoteSelection(id: item.id)
                 }
             } onRename: {
                 beginRename(for: item)
@@ -413,7 +442,7 @@ extension NotesPanelView {
                                     useListStyling: false
                                 ) {
                                     if item.isFile {
-                                        Task { await viewModel.selectNote(id: item.id) }
+                                        requestNoteSelection(id: item.id)
                                     }
                                 } onRename: {
                                     beginRename(for: item)
