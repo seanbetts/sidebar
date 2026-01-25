@@ -33,6 +33,9 @@ public struct NativeMarkdownEditorView: View {
                 .onChange(of: viewModel.attributedContent) { oldValue, _ in
                     viewModel.handleContentChange(previous: oldValue)
                 }
+                .onChange(of: viewModel.selection) { _, _ in
+                    viewModel.handleSelectionChange()
+                }
         }
         .background(DesignTokens.Colors.background)
     }
