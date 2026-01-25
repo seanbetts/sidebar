@@ -19,6 +19,7 @@ public final class NotesStore: CachedStoreBase<FileTree> {
 
     private let api: any NotesProviding
     private var isRefreshingTree = false
+    private var refreshingNotes = Set<String>()
 
     public init(api: any NotesProviding, cache: CacheClient) {
         self.api = api
@@ -52,6 +53,9 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         let cacheKey = CacheKeys.note(id: id)
         if !force, let cached: NotePayload = cache.get(key: cacheKey) {
             applyNoteUpdate(cached, persist: false)
+            Task { [weak self] in
+                await self?.refreshNote(id: id)
+            }
             return
         }
         let response = try await api.getNote(id: id)
@@ -105,6 +109,20 @@ public final class NotesStore: CachedStoreBase<FileTree> {
         do {
             let response = try await api.listTree()
             applyTreeUpdate(response, persist: true)
+        } catch {
+            // Ignore background refresh failures; cache remains source of truth.
+        }
+    }
+
+    private func refreshNote(id: String) async {
+        guard !refreshingNotes.contains(id) else {
+            return
+        }
+        refreshingNotes.insert(id)
+        defer { refreshingNotes.remove(id) }
+        do {
+            let response = try await api.getNote(id: id)
+            applyNoteUpdate(response, persist: true)
         } catch {
             // Ignore background refresh failures; cache remains source of truth.
         }
