@@ -482,9 +482,11 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 let blockKind = updated.blockKind(in: lineRange)
                 updated[prefixRange].foregroundColor = DesignTokens.Colors.textSecondary
                 updated[prefixRange].backgroundColor = baseBackgroundColor(for: blockKind)
+                updated[prefixRange].font = baseFont(for: blockKind)
             } else {
                 updated[prefixRange].foregroundColor = .clear
                 updated[prefixRange].backgroundColor = nil
+                updated[prefixRange].font = .system(size: 0.1)
             }
 
             guard !didUpdateTypingAttributes else { continue }
