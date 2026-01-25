@@ -141,10 +141,16 @@ pytest --cov=api --cov-report=term-missing  # With coverage
 npm test                                  # All tests
 npm test TaskItem                         # Specific file
 npm run coverage                          # With coverage
+
+# iOS
+./scripts/test-ios.sh                     # Xcode scheme tests (unit + UI)
+IOS_DESTINATION='platform=iOS Simulator,name=iPhone 15 Pro' ./scripts/test-ios.sh
 ```
 
 ## CI/CD
 
-Tests run automatically on push/PR via GitHub Actions. Coverage reports uploaded to Codecov.
+Backend/frontend tests run automatically on push/PR via GitHub Actions. Coverage reports uploaded to Codecov.
 
-**Tests don't block commits** (only linting/docs do), but they block merge.
+Xcode Cloud runs the `sideBar` scheme test action (unit + UI tests).
+
+**iOS tests run on commit when `ios/` changes** via pre-commit; other tests don't block commits, but they block merge.

@@ -67,6 +67,7 @@ git checkout dev
 Run iOS unit tests from the CLI:
 
 ```bash
+./scripts/test-ios.sh
 xcodebuild -project ios/sideBar/sideBar.xcodeproj -scheme sideBar -destination 'platform=iOS Simulator,name=iPhone 15' test
 ```
 
