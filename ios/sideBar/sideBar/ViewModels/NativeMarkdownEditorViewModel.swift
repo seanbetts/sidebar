@@ -477,28 +477,60 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
         for lineRange in lineRanges(in: updated) {
             let lineText = String(updated[lineRange].characters)
-            guard let prefixRange = markdownPrefixRange(in: updated, lineRange: lineRange, lineText: lineText) else { continue }
+            let prefixRange = markdownPrefixRange(in: updated, lineRange: lineRange, lineText: lineText)
             let shouldShow = shouldShowPrefix(for: lineRange, selection: selection, in: updated)
             let blockKind = updated.blockKind(in: lineRange) ?? inferredBlockKind(from: lineText)
-            if shouldShow {
-                updated[prefixRange].foregroundColor = DesignTokens.Colors.textSecondary
-                updated[prefixRange].backgroundColor = baseBackgroundColor(for: blockKind)
-                updated[prefixRange].font = baseFont(for: blockKind)
-            } else {
-                updated[prefixRange].foregroundColor = .clear
-                updated[prefixRange].backgroundColor = nil
-                updated[prefixRange].font = .system(size: 0.1)
+
+            if let prefixRange {
+                if shouldShow {
+                    updated[prefixRange].foregroundColor = DesignTokens.Colors.textSecondary
+                    updated[prefixRange].backgroundColor = baseBackgroundColor(for: blockKind)
+                    updated[prefixRange].font = baseFont(for: blockKind)
+                } else {
+                    updated[prefixRange].foregroundColor = .clear
+                    updated[prefixRange].backgroundColor = nil
+                    updated[prefixRange].font = .system(size: 0.1)
+                }
+            }
+
+            let inlineRanges = ensureInlineMarkerRanges(in: &updated, lineRange: lineRange, lineText: lineText)
+            for inlineRange in inlineRanges {
+                if shouldShow {
+                    updated[inlineRange].foregroundColor = DesignTokens.Colors.textSecondary
+                    updated[inlineRange].backgroundColor = nil
+                    updated[inlineRange].font = inlineMarkerFont(
+                        for: inlineRange,
+                        lineRange: lineRange,
+                        in: updated,
+                        fallback: baseFont(for: blockKind)
+                    )
+                } else {
+                    updated[inlineRange].foregroundColor = .clear
+                    updated[inlineRange].backgroundColor = nil
+                    updated[inlineRange].font = .system(size: 0.1)
+                }
             }
 
             guard !didUpdateTypingAttributes else { continue }
             if case .insertionPoint(let index) = selectionCopy.indices(in: updated),
-               (lineRange.contains(index) || index == lineRange.upperBound),
-               (prefixRange.contains(index) || index == prefixRange.upperBound) {
-                updated.transformAttributes(in: &selectionCopy) { attrs in
-                    attrs.foregroundColor = baseForegroundColor(for: blockKind)
-                    attrs.backgroundColor = baseBackgroundColor(for: blockKind)
+               (lineRange.contains(index) || index == lineRange.upperBound) {
+                if let prefixRange,
+                   prefixRange.contains(index) || index == prefixRange.upperBound {
+                    updated.transformAttributes(in: &selectionCopy) { attrs in
+                        attrs.foregroundColor = baseForegroundColor(for: blockKind)
+                        attrs.backgroundColor = baseBackgroundColor(for: blockKind)
+                    }
+                    didUpdateTypingAttributes = true
+                    continue
                 }
-                didUpdateTypingAttributes = true
+
+                if inlineRanges.contains(where: { $0.contains(index) || index == $0.upperBound }) {
+                    updated.transformAttributes(in: &selectionCopy) { attrs in
+                        attrs.foregroundColor = baseForegroundColor(for: blockKind)
+                        attrs.backgroundColor = baseBackgroundColor(for: blockKind)
+                    }
+                    didUpdateTypingAttributes = true
+                }
             }
         }
 
@@ -556,6 +588,87 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         return nil
+    }
+
+    private func inlineMarkerRanges(
+        in text: AttributedString,
+        lineRange: Range<AttributedString.Index>
+    ) -> [Range<AttributedString.Index>] {
+        var ranges: [Range<AttributedString.Index>] = []
+        for run in text[lineRange].runs {
+            guard run.inlineMarker == true else { continue }
+            ranges.append(run.range)
+        }
+        return ranges
+    }
+
+    private func ensureInlineMarkerRanges(
+        in text: inout AttributedString,
+        lineRange: Range<AttributedString.Index>,
+        lineText: String
+    ) -> [Range<AttributedString.Index>] {
+        let attributedRanges = inlineMarkerRanges(in: text, lineRange: lineRange)
+        if !attributedRanges.isEmpty {
+            return attributedRanges
+        }
+
+        let patterns = [
+            #"\*\*"#,
+            #"__"#,
+            #"~~"#,
+            #"(?<!\*)\*(?!\*)"#,
+            #"(?<!_)_(?!_)"#,
+            #"(?<!`)`(?!`)"#
+        ]
+        var ranges: [Range<AttributedString.Index>] = []
+
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            let nsRange = NSRange(location: 0, length: lineText.utf16.count)
+            for match in regex.matches(in: lineText, range: nsRange) {
+                guard let matchRange = Range(match.range, in: lineText) else { continue }
+                let startOffset = lineText.distance(from: lineText.startIndex, to: matchRange.lowerBound)
+                let endOffset = lineText.distance(from: lineText.startIndex, to: matchRange.upperBound)
+                let start = text.index(lineRange.lowerBound, offsetByCharacters: startOffset)
+                let end = text.index(lineRange.lowerBound, offsetByCharacters: endOffset)
+                let range = start..<end
+                text[range].inlineMarker = true
+                ranges.append(range)
+            }
+        }
+
+        return ranges
+    }
+
+    private func inlineMarkerFont(
+        for markerRange: Range<AttributedString.Index>,
+        lineRange: Range<AttributedString.Index>,
+        in text: AttributedString,
+        fallback: Font
+    ) -> Font {
+        if markerRange.upperBound < lineRange.upperBound {
+            if let font = font(at: markerRange.upperBound, in: text, lineRange: lineRange) {
+                return font
+            }
+        }
+        if markerRange.lowerBound > lineRange.lowerBound {
+            let beforeIndex = text.index(beforeCharacter: markerRange.lowerBound)
+            if let font = font(at: beforeIndex, in: text, lineRange: lineRange) {
+                return font
+            }
+        }
+        return fallback
+    }
+
+    private func font(
+        at index: AttributedString.Index,
+        in text: AttributedString,
+        lineRange: Range<AttributedString.Index>
+    ) -> Font? {
+        guard lineRange.contains(index) else { return nil }
+        let nextIndex = text.index(afterCharacter: index)
+        guard nextIndex <= text.endIndex else { return nil }
+        return text[index..<nextIndex].font
     }
 
     private func inferredBlockKind(from lineText: String) -> BlockKind? {

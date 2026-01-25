@@ -53,6 +53,14 @@ public enum CodeLanguageAttribute: CodableAttributedStringKey {
     public static var runBoundaries: AttributedString.AttributeRunBoundaries? { .paragraph }
 }
 
+@available(iOS 26.0, macOS 26.0, *)
+public enum InlineMarkerAttribute: CodableAttributedStringKey {
+    public typealias Value = Bool
+    public static let name = "sideBar.inlineMarker"
+
+    public static var inheritedByAddedText: Bool { false }
+}
+
 // MARK: - Attribute Scope
 
 @available(iOS 26.0, macOS 26.0, *)
@@ -61,6 +69,7 @@ public extension AttributeScopes {
         public let blockKind: BlockKindAttribute
         public let listDepth: ListDepthAttribute
         public let codeLanguage: CodeLanguageAttribute
+        public let inlineMarker: InlineMarkerAttribute
         public let presentationIntent: AttributeScopes.FoundationAttributes.PresentationIntentAttribute
         public let listItemDelimiter: AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute
         public let foundation: AttributeScopes.FoundationAttributes

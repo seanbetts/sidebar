@@ -187,6 +187,8 @@ public struct MarkdownShortcutProcessor {
         suffix: String,
         apply: (inout AttributedString, Range<AttributedString.Index>) -> Void
     ) -> AttributedTextSelection? {
+        let isSingleToken = prefix.count == 1 && suffix.count == 1 && prefix == suffix
+        let singleTokenChar = isSingleToken ? prefix.first : nil
         let prefixCount = prefix.count
         let suffixCount = suffix.count
         let minChars = prefixCount + 1 + suffixCount
@@ -218,13 +220,26 @@ public struct MarkdownShortcutProcessor {
         let contentStartAttr = text.index(prefixStart, offsetByCharacters: prefixCount)
         let contentEndAttr = text.index(cursorIndex, offsetByCharacters: -suffixCount)
 
+        if let tokenChar = singleTokenChar, tokenChar == "*" || tokenChar == "_" {
+            if prefixStart > text.startIndex {
+                let prevPrefix = text.index(beforeCharacter: prefixStart)
+                if text.characters[prevPrefix] == tokenChar {
+                    return nil
+                }
+            }
+            if contentEndAttr > text.startIndex {
+                let prevSuffix = text.index(beforeCharacter: contentEndAttr)
+                if text.characters[prevSuffix] == tokenChar {
+                    return nil
+                }
+            }
+        }
+
         apply(&text, contentStartAttr..<contentEndAttr)
+        text[prefixStart..<contentStartAttr].inlineMarker = true
+        text[contentEndAttr..<cursorIndex].inlineMarker = true
 
-        text.removeSubrange(contentEndAttr..<cursorIndex)
-        text.removeSubrange(prefixStart..<contentStartAttr)
-
-        let newCursorIndex = text.index(prefixStart, offsetByCharacters: content.count)
-        return AttributedTextSelection(range: newCursorIndex..<newCursorIndex)
+        return AttributedTextSelection(range: cursorIndex..<cursorIndex)
     }
 
     private static func nextLineEnd(in text: AttributedString, from start: AttributedString.Index) -> AttributedString.Index {

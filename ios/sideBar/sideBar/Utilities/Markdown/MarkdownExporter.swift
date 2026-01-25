@@ -162,6 +162,8 @@ private func prefix(for blockKind: BlockKind, listDepth: Int?) -> String {
 
 @available(iOS 26.0, macOS 26.0, *)
 private func serializeInline(_ attributed: AttributedSubstring) -> String {
+    let lineText = String(attributed.characters)
+    let hasInlineMarkers = lineHasInlineMarkers(lineText)
     var output = ""
     for run in attributed.runs {
         let text = String(attributed[run.range].characters)
@@ -194,11 +196,33 @@ private func serializeInline(_ attributed: AttributedSubstring) -> String {
 
         if let link {
             output += "[\(text)](\(link.absoluteString))"
+        } else if hasInlineMarkers {
+            output += text
         } else {
             output += "\(prefix)\(text)\(suffix)"
         }
     }
     return output
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func lineHasInlineMarkers(_ lineText: String) -> Bool {
+    let patterns = [
+        #"\*\*[^*]+?\*\*"#,
+        #"__[^_]+?__"#,
+        #"~~[^~]+?~~"#,
+        #"`[^`]+?`"#,
+        #"\*[^*]+?\*"#,
+        #"_[^_]+?_"#
+    ]
+
+    for pattern in patterns {
+        if lineText.range(of: pattern, options: .regularExpression) != nil {
+            return true
+        }
+    }
+
+    return false
 }
 
 @available(iOS 26.0, macOS 26.0, *)
