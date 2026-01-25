@@ -12,6 +12,14 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
 
     private let importer = MarkdownImporter()
     private let exporter = MarkdownExporter()
+    private let baseFontSize: CGFloat = 16
+    private let inlineCodeFontSize: CGFloat = 14
+    private let heading1FontSize: CGFloat = 32
+    private let heading2FontSize: CGFloat = 24
+    private let heading3FontSize: CGFloat = 20
+    private let heading4FontSize: CGFloat = 18
+    private let heading5FontSize: CGFloat = 17
+    private let heading6FontSize: CGFloat = 16
     private let bodyFont = Font.system(size: 16)
     private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
@@ -305,17 +313,17 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     private func baseFont(for blockKind: BlockKind?) -> Font {
         switch blockKind {
         case .heading1:
-            return .system(size: 32, weight: .bold)
+            return .system(size: heading1FontSize, weight: .bold)
         case .heading2:
-            return .system(size: 24, weight: .semibold)
+            return .system(size: heading2FontSize, weight: .semibold)
         case .heading3:
-            return .system(size: 20, weight: .semibold)
+            return .system(size: heading3FontSize, weight: .semibold)
         case .heading4:
-            return .system(size: 18, weight: .semibold)
+            return .system(size: heading4FontSize, weight: .semibold)
         case .heading5:
-            return .system(size: 17, weight: .semibold)
+            return .system(size: heading5FontSize, weight: .semibold)
         case .heading6:
-            return .system(size: 16, weight: .semibold)
+            return .system(size: heading6FontSize, weight: .semibold)
         default:
             return bodyFont
         }
@@ -418,6 +426,9 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         attributedContent[range].font = font
         attributedContent[range].foregroundColor = baseForegroundColor(for: blockKind)
         attributedContent[range].backgroundColor = baseBackgroundColor(for: blockKind)
+        if let paragraphStyle = paragraphStyle(for: blockKind) {
+            attributedContent[range].paragraphStyle = paragraphStyle
+        }
         if blockKind == .taskChecked {
             attributedContent[range].strikethroughStyle = .single
             attributedContent[range].foregroundColor = DesignTokens.Colors.textSecondary
@@ -749,6 +760,109 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
                 return range.overlaps(lineRange)
             }
         }
+    }
+
+    private func paragraphStyle(for blockKind: BlockKind) -> NSParagraphStyle? {
+        switch blockKind {
+        case .heading1:
+            return paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading1FontSize),
+                spacingBefore: 0,
+                spacingAfter: rem(0.3)
+            )
+        case .heading2:
+            return paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading2FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
+        case .heading3:
+            return paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading3FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
+        case .heading4:
+            return paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading4FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
+        case .heading5:
+            return paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading5FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
+        case .heading6:
+            return paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading6FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
+        case .paragraph:
+            return paragraphStyle(
+                lineSpacing: em(0.2, fontSize: baseFontSize),
+                spacingBefore: rem(0.5),
+                spacingAfter: rem(0.5)
+            )
+        case .blockquote:
+            return paragraphStyle(
+                lineSpacing: em(0.7, fontSize: baseFontSize),
+                spacingBefore: em(1, fontSize: baseFontSize),
+                spacingAfter: em(1, fontSize: baseFontSize)
+            )
+        case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
+            return paragraphStyle(
+                lineSpacing: em(0.2, fontSize: baseFontSize),
+                spacingBefore: 0,
+                spacingAfter: 0
+            )
+        case .codeBlock:
+            return paragraphStyle(
+                lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
+                spacingBefore: 0,
+                spacingAfter: 0
+            )
+        case .horizontalRule:
+            return paragraphStyle(
+                lineSpacing: 0,
+                spacingBefore: rem(1.5),
+                spacingAfter: rem(1.5)
+            )
+        case .imageCaption:
+            return paragraphStyle(
+                lineSpacing: 0,
+                spacingBefore: rem(0.25),
+                spacingAfter: rem(0.75)
+            )
+        case .blankLine, .gallery, .htmlBlock:
+            return paragraphStyle(
+                lineSpacing: 0,
+                spacingBefore: 0,
+                spacingAfter: 0
+            )
+        }
+    }
+
+    private func rem(_ value: CGFloat) -> CGFloat {
+        value * baseFontSize
+    }
+
+    private func em(_ value: CGFloat, fontSize: CGFloat) -> CGFloat {
+        value * fontSize
+    }
+
+    private func paragraphStyle(
+        lineSpacing: CGFloat,
+        spacingBefore: CGFloat,
+        spacingAfter: CGFloat
+    ) -> NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.lineSpacing = lineSpacing
+        style.paragraphSpacingBefore = spacingBefore
+        style.paragraphSpacing = spacingAfter
+        return style
     }
 }
 

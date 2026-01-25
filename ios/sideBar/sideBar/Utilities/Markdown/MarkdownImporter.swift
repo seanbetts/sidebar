@@ -39,6 +39,14 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     private var listStack: [(ordered: Bool, depth: Int, listId: Int, itemIndex: Int)] = []
     private var blockquoteDepth: Int = 0
     private var nextListId: Int = 1
+    private let baseFontSize: CGFloat = 16
+    private let inlineCodeFontSize: CGFloat = 14
+    private let heading1FontSize: CGFloat = 32
+    private let heading2FontSize: CGFloat = 24
+    private let heading3FontSize: CGFloat = 20
+    private let heading4FontSize: CGFloat = 18
+    private let heading5FontSize: CGFloat = 17
+    private let heading6FontSize: CGFloat = 16
     private let bodyFont = Font.system(size: 16)
     private let inlineCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
     private let blockCodeFont = Font.system(size: 14, weight: .regular, design: .monospaced)
@@ -95,6 +103,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             applyBlockKind(.imageCaption, to: &captionText)
             captionText[fullRange(in: captionText)].font = DesignTokens.Typography.footnote
             captionText[fullRange(in: captionText)].foregroundColor = DesignTokens.Colors.textTertiary
+            captionText[fullRange(in: captionText)].paragraphStyle = paragraphStyle(
+                lineSpacing: 0,
+                spacingBefore: rem(0.25),
+                spacingAfter: rem(0.75)
+            )
             applyPresentationIntent(for: .imageCaption, to: &captionText)
             appendBlock(captionText)
             return
@@ -109,8 +122,18 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             paragraphText = prefixBlock(paragraphText, with: String(repeating: "> ", count: blockquoteDepth))
             applyBlockKind(.blockquote, to: &paragraphText)
             paragraphText[fullRange(in: paragraphText)].foregroundColor = DesignTokens.Colors.textSecondary
+            paragraphText[fullRange(in: paragraphText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.7, fontSize: baseFontSize),
+                spacingBefore: em(1, fontSize: baseFontSize),
+                spacingAfter: em(1, fontSize: baseFontSize)
+            )
         } else {
             applyBlockKind(.paragraph, to: &paragraphText)
+            paragraphText[fullRange(in: paragraphText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.2, fontSize: baseFontSize),
+                spacingBefore: rem(0.5),
+                spacingAfter: rem(0.5)
+            )
         }
 
         paragraphText[fullRange(in: paragraphText)].font = bodyFont
@@ -129,22 +152,52 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         switch heading.level {
         case 1:
             applyBlockKind(.heading1, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: 32, weight: .bold)
+            headingText[fullRange(in: headingText)].font = .system(size: heading1FontSize, weight: .bold)
+            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading1FontSize),
+                spacingBefore: 0,
+                spacingAfter: rem(0.3)
+            )
         case 2:
             applyBlockKind(.heading2, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: 24, weight: .semibold)
+            headingText[fullRange(in: headingText)].font = .system(size: heading2FontSize, weight: .semibold)
+            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading2FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
         case 3:
             applyBlockKind(.heading3, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: 20, weight: .semibold)
+            headingText[fullRange(in: headingText)].font = .system(size: heading3FontSize, weight: .semibold)
+            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading3FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
         case 4:
             applyBlockKind(.heading4, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: 18, weight: .semibold)
+            headingText[fullRange(in: headingText)].font = .system(size: heading4FontSize, weight: .semibold)
+            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading4FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
         case 5:
             applyBlockKind(.heading5, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: 17, weight: .semibold)
+            headingText[fullRange(in: headingText)].font = .system(size: heading5FontSize, weight: .semibold)
+            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading5FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
         default:
             applyBlockKind(.heading6, to: &headingText)
-            headingText[fullRange(in: headingText)].font = .system(size: 16, weight: .semibold)
+            headingText[fullRange(in: headingText)].font = .system(size: heading6FontSize, weight: .semibold)
+            headingText[fullRange(in: headingText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.3, fontSize: heading6FontSize),
+                spacingBefore: rem(1),
+                spacingAfter: rem(0.3)
+            )
         }
 
         headingText[fullRange(in: headingText)].foregroundColor = DesignTokens.Colors.textPrimary
@@ -157,8 +210,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let listId = nextListId
         nextListId += 1
         listStack.append((ordered: false, depth: depth, listId: listId, itemIndex: 0))
-        for item in unorderedList.listItems {
-            visitListItem(item)
+        let items = unorderedList.listItems
+        for (index, item) in items.enumerated() {
+            visitListItem(item, isFirst: index == 0, isLast: index == items.count - 1)
         }
         listStack.removeLast()
     }
@@ -168,8 +222,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let listId = nextListId
         nextListId += 1
         listStack.append((ordered: true, depth: depth, listId: listId, itemIndex: 0))
-        for item in orderedList.listItems {
-            visitListItem(item)
+        let items = orderedList.listItems
+        for (index, item) in items.enumerated() {
+            visitListItem(item, isFirst: index == 0, isLast: index == items.count - 1)
         }
         listStack.removeLast()
     }
@@ -186,6 +241,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         var rule = AttributedString("---")
         applyBlockKind(.horizontalRule, to: &rule)
         rule[fullRange(in: rule)].foregroundColor = DesignTokens.Colors.border
+        rule[fullRange(in: rule)].paragraphStyle = paragraphStyle(
+            lineSpacing: 0,
+            spacingBefore: rem(1.5),
+            spacingAfter: rem(1.5)
+        )
         applyPresentationIntent(for: .horizontalRule, to: &rule)
         appendBlock(rule)
     }
@@ -193,14 +253,20 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
     mutating func visitCodeBlock(_ codeBlock: CodeBlock) {
         let language = codeBlock.language?.trimmingCharacters(in: .whitespacesAndNewlines)
         let content = codeBlock.code.split(separator: "\n", omittingEmptySubsequences: false)
+        let totalLines = content.count
 
-        for line in content {
+        for (index, line) in content.enumerated() {
             var lineText = AttributedString(String(line))
             applyBlockKind(.codeBlock, to: &lineText)
             lineText[fullRange(in: lineText)].codeLanguage = language
             lineText[fullRange(in: lineText)].font = blockCodeFont
             lineText[fullRange(in: lineText)].foregroundColor = DesignTokens.Colors.textPrimary
             lineText[fullRange(in: lineText)].backgroundColor = style.codeBlockBackground
+            lineText[fullRange(in: lineText)].paragraphStyle = paragraphStyle(
+                lineSpacing: em(0.5, fontSize: inlineCodeFontSize),
+                spacingBefore: index == 0 ? rem(1) : 0,
+                spacingAfter: index == totalLines - 1 ? rem(1) : 0
+            )
             applyPresentationIntent(for: .codeBlock, codeLanguage: language, to: &lineText)
             appendBlock(lineText)
         }
@@ -217,11 +283,16 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         }
         htmlText[fullRange(in: htmlText)].font = blockCodeFont
         htmlText[fullRange(in: htmlText)].foregroundColor = DesignTokens.Colors.textSecondary
+        htmlText[fullRange(in: htmlText)].paragraphStyle = paragraphStyle(
+            lineSpacing: em(0.2, fontSize: baseFontSize),
+            spacingBefore: rem(0.5),
+            spacingAfter: rem(0.5)
+        )
         applyPresentationIntent(for: .htmlBlock, to: &htmlText)
         appendBlock(htmlText)
     }
 
-    mutating func visitListItem(_ listItem: ListItem) {
+    mutating func visitListItem(_ listItem: ListItem, isFirst: Bool, isLast: Bool) {
         guard !listStack.isEmpty else { return }
         listStack[listStack.count - 1].itemIndex += 1
         let context = listStack[listStack.count - 1]
@@ -261,6 +332,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
         itemText[fullRange(in: itemText)].listDepth = context.depth
         itemText[fullRange(in: itemText)].font = bodyFont
+        itemText[fullRange(in: itemText)].paragraphStyle = paragraphStyle(
+            lineSpacing: em(0.2, fontSize: baseFontSize),
+            spacingBefore: isFirst ? rem(0.5) : 0,
+            spacingAfter: isLast ? rem(0.5) : 0
+        )
         applyPresentationIntent(
             for: itemText.blockKind(in: fullRange(in: itemText)) ?? .paragraph,
             listDepth: context.depth,
@@ -276,20 +352,26 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         let tableIntent = makeTableIntent(columnAlignments: alignments)
 
         var rowIndex = 0
+        let totalRows = table.body.rows.count + 1
         appendTableRow(
             cells: table.head.children.compactMap { $0 as? Markdown.Table.Cell },
             rowIndex: rowIndex,
             isHeader: true,
-            tableIntent: tableIntent
+            tableIntent: tableIntent,
+            isFirst: true,
+            isLast: totalRows == 1
         )
         rowIndex += 1
 
         for row in table.body.rows {
+            let isLast = rowIndex == totalRows - 1
             appendTableRow(
                 cells: row.children.compactMap { $0 as? Markdown.Table.Cell },
                 rowIndex: rowIndex,
                 isHeader: false,
-                tableIntent: tableIntent
+                tableIntent: tableIntent,
+                isFirst: false,
+                isLast: isLast
             )
             rowIndex += 1
         }
@@ -480,7 +562,9 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
         cells: [Markdown.Table.Cell],
         rowIndex: Int,
         isHeader: Bool,
-        tableIntent: PresentationIntent
+        tableIntent: PresentationIntent,
+        isFirst: Bool,
+        isLast: Bool
     ) {
         var rowText = AttributedString()
         for (index, cell) in cells.enumerated() {
@@ -513,6 +597,11 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
             rowText[full].font = .system(size: 16, weight: .semibold)
             rowText[full].backgroundColor = DesignTokens.Colors.muted
         }
+        rowText[full].paragraphStyle = paragraphStyle(
+            lineSpacing: em(0.7, fontSize: baseFontSize),
+            spacingBefore: isFirst ? rem(0.75) : 0,
+            spacingAfter: isLast ? rem(0.75) : 0
+        )
         appendBlock(rowText)
     }
 
@@ -556,6 +645,26 @@ private struct MarkdownToAttributedStringWalker: MarkupWalker {
 
     private func unwrapOptionalString(_ value: String?) -> String {
         value ?? ""
+    }
+
+    private func rem(_ value: CGFloat) -> CGFloat {
+        value * baseFontSize
+    }
+
+    private func em(_ value: CGFloat, fontSize: CGFloat) -> CGFloat {
+        value * fontSize
+    }
+
+    private func paragraphStyle(
+        lineSpacing: CGFloat,
+        spacingBefore: CGFloat,
+        spacingAfter: CGFloat
+    ) -> NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.lineSpacing = lineSpacing
+        style.paragraphSpacingBefore = spacingBefore
+        style.paragraphSpacing = spacingAfter
+        return style
     }
 }
 
