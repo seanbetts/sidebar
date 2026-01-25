@@ -158,7 +158,7 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     public func handleSelectionChange() {
-        guard !isReadOnly else { return }
+        guard !isReadOnly, !isUpdatingPrefixVisibility else { return }
         updatePrefixVisibility()
     }
 
@@ -471,25 +471,41 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
     }
 
     private func updatePrefixVisibility() {
-        let ranges = selectionRanges().ranges
         var updated = attributedContent
+        var selectionCopy = selection
+        var didUpdateTypingAttributes = false
 
         for lineRange in lineRanges(in: updated) {
             guard let prefixRange = markdownPrefixRange(in: updated, lineRange: lineRange) else { continue }
-            let shouldShow = ranges.contains { $0.overlaps(lineRange) }
+            let shouldShow = shouldShowPrefix(for: lineRange, selection: selection, in: updated)
             if shouldShow {
                 let blockKind = updated.blockKind(in: lineRange)
-                updated[prefixRange].foregroundColor = baseForegroundColor(for: blockKind)
+                updated[prefixRange].foregroundColor = DesignTokens.Colors.textSecondary
                 updated[prefixRange].backgroundColor = baseBackgroundColor(for: blockKind)
             } else {
                 updated[prefixRange].foregroundColor = .clear
                 updated[prefixRange].backgroundColor = nil
             }
+
+            guard !didUpdateTypingAttributes else { continue }
+            if case .insertionPoint(let index) = selectionCopy.indices(in: updated),
+               (lineRange.contains(index) || index == lineRange.upperBound),
+               (prefixRange.contains(index) || index == prefixRange.upperBound) {
+                let blockKind = updated.blockKind(in: lineRange)
+                updated.transformAttributes(in: &selectionCopy) { attrs in
+                    attrs.foregroundColor = baseForegroundColor(for: blockKind)
+                    attrs.backgroundColor = baseBackgroundColor(for: blockKind)
+                }
+                didUpdateTypingAttributes = true
+            }
         }
 
-        if updated != attributedContent {
+        if updated != attributedContent || didUpdateTypingAttributes {
             isUpdatingPrefixVisibility = true
             attributedContent = updated
+            if didUpdateTypingAttributes {
+                selection = selectionCopy
+            }
         }
     }
 
@@ -538,6 +554,24 @@ public final class NativeMarkdownEditorViewModel: ObservableObject {
         }
 
         return nil
+    }
+
+    private func shouldShowPrefix(
+        for lineRange: Range<AttributedString.Index>,
+        selection: AttributedTextSelection,
+        in text: AttributedString
+    ) -> Bool {
+        switch selection.indices(in: text) {
+        case .insertionPoint(let index):
+            return lineRange.contains(index) || index == lineRange.upperBound
+        case .ranges(let ranges):
+            return ranges.ranges.contains { range in
+                if range.isEmpty {
+                    return lineRange.contains(range.lowerBound) || range.lowerBound == lineRange.upperBound
+                }
+                return range.overlaps(lineRange)
+            }
+        }
     }
 }
 
