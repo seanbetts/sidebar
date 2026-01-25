@@ -252,41 +252,41 @@ public struct MarkdownShortcutProcessor {
     ) {
         switch blockKind {
         case .heading1:
-            text[range].presentationIntent = PresentationIntent(.header(level: 1), identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 1), identity: 1)
         case .heading2:
-            text[range].presentationIntent = PresentationIntent(.header(level: 2), identity: 2)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 2), identity: 2)
         case .heading3:
-            text[range].presentationIntent = PresentationIntent(.header(level: 3), identity: 3)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 3), identity: 3)
         case .heading4:
-            text[range].presentationIntent = PresentationIntent(.header(level: 4), identity: 4)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 4), identity: 4)
         case .heading5:
-            text[range].presentationIntent = PresentationIntent(.header(level: 5), identity: 5)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 5), identity: 5)
         case .heading6:
-            text[range].presentationIntent = PresentationIntent(.header(level: 6), identity: 6)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.header(level: 6), identity: 6)
         case .blockquote:
             let quoteIntent = PresentationIntent(.blockQuote, identity: 1)
-            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: quoteIntent)
         case .codeBlock:
-            text[range].presentationIntent = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.codeBlock(languageHint: nil), identity: 1)
         case .horizontalRule:
-            text[range].presentationIntent = PresentationIntent(.thematicBreak, identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.thematicBreak, identity: 1)
         case .bulletList, .orderedList, .taskChecked, .taskUnchecked:
             let listKind: PresentationIntent.Kind = blockKind == .orderedList ? .orderedList : .unorderedList
             let listId = listDepth ?? 1
             let listIntent = PresentationIntent(listKind, identity: listId)
             let listItemIntent = PresentationIntent(.listItem(ordinal: 1), identity: listId * 1000 + 1, parent: listIntent)
-            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1, parent: listItemIntent)
             if blockKind == .bulletList {
-                text[range].listItemDelimiter = "•"
+                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "•"
             } else if blockKind == .taskChecked {
-                text[range].listItemDelimiter = "☑"
+                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☑"
             } else if blockKind == .taskUnchecked {
-                text[range].listItemDelimiter = "☐"
+                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = "☐"
             } else {
-                text[range].listItemDelimiter = nil
+                text[range][AttributeScopes.FoundationAttributes.ListItemDelimiterAttribute.self] = nil
             }
         case .paragraph, .imageCaption, .gallery, .htmlBlock:
-            text[range].presentationIntent = PresentationIntent(.paragraph, identity: 1)
+            text[range][AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self] = PresentationIntent(.paragraph, identity: 1)
         }
     }
 }
