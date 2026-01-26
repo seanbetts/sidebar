@@ -86,14 +86,27 @@ struct TaskRow<MenuContent: View>: View {
                             onComplete()
                         }
                     } label: {
-                        Image(systemName: (isCompleting || isCompleted) ? "checkmark.circle.fill" : "circle")
-                            .font(.body)
-                            .foregroundStyle((isCompleting || isCompleted) ? DesignTokens.Colors.success : DesignTokens.Colors.textSecondary)
-                            .frame(width: 20, height: 20)
-                            .contentTransition(.symbolEffect(.replace))
+                        if isCompleted {
+                            ZStack {
+                                Circle()
+                                    .fill(checkboxFillColor)
+                                    .opacity(1)
+                                    .frame(width: 20, height: 20)
+                                Image(systemName: "checkmark")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(checkboxMarkColor)
+                                    .opacity(1)
+                            }
+                        } else {
+                            Image(systemName: isCompleting ? "checkmark.circle.fill" : "circle")
+                                .font(.body)
+                                .foregroundStyle(isCompleting ? DesignTokens.Colors.success : DesignTokens.Colors.textSecondary)
+                                .frame(width: 20, height: 20)
+                                .contentTransition(.symbolEffect(.replace))
+                        }
                     }
                     .buttonStyle(.plain)
-                    .disabled(isCompleting || isCompleted)
+                    .allowsHitTesting(!(isCompleting || isCompleted))
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -212,6 +225,14 @@ struct TaskRow<MenuContent: View>: View {
         colorScheme == .dark
             ? DesignTokens.Colors.textSecondary.opacity(0.45)
             : DesignTokens.Colors.textSecondary.opacity(0.3)
+    }
+
+    private var checkboxFillColor: Color {
+        colorScheme == .dark ? .white : .black
+    }
+
+    private var checkboxMarkColor: Color {
+        colorScheme == .dark ? .black : .white
     }
 
     private var detailTransition: AnyTransition {
