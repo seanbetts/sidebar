@@ -75,8 +75,10 @@ struct TaskRow<MenuContent: View>: View {
                         Text(repeatLabel ?? "")
                     }
                 } else {
+                    let isCompleted = selection == .completed || task.status == "completed"
                     Button {
                         guard !isCompleting else { return }
+                        guard !isCompleted else { return }
                         withAnimation(.easeInOut(duration: 0.15)) {
                             isCompleting = true
                         }
@@ -84,14 +86,14 @@ struct TaskRow<MenuContent: View>: View {
                             onComplete()
                         }
                     } label: {
-                        Image(systemName: isCompleting ? "checkmark.circle.fill" : "circle")
+                        Image(systemName: (isCompleting || isCompleted) ? "checkmark.circle.fill" : "circle")
                             .font(.body)
-                            .foregroundStyle(isCompleting ? DesignTokens.Colors.success : DesignTokens.Colors.textSecondary)
+                            .foregroundStyle((isCompleting || isCompleted) ? DesignTokens.Colors.success : DesignTokens.Colors.textSecondary)
                             .frame(width: 20, height: 20)
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.plain)
-                    .disabled(isCompleting)
+                    .disabled(isCompleting || isCompleted)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -115,7 +117,7 @@ struct TaskRow<MenuContent: View>: View {
                 }
                 Spacer()
                 HStack(spacing: DesignTokens.Spacing.xs) {
-                    if TasksUtils.isOverdue(task) {
+                    if selection != .completed && TasksUtils.isOverdue(task) {
                         TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
                             .overlay(isExpanded ? pillBorder : nil)
                     }

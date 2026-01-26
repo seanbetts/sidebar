@@ -116,7 +116,7 @@ public final class TasksViewModel: ObservableObject {
 extension TasksViewModel {
     public var viewState: TasksViewState {
         let filteredTasks = tasks.filter { $0.status != "project" }
-        let expanded = selection == .today
+        let expanded = selection == .today || selection == .completed
             ? filteredTasks
             : TasksUtils.expandRepeatingTasks(filteredTasks)
 
@@ -162,6 +162,10 @@ extension TasksViewModel {
             selectionLabel = "Upcoming"
             titleIcon = "calendar.badge.clock"
             sections = TasksUtils.buildUpcomingSections(tasks: sortedTasks)
+        case .completed:
+            selectionLabel = "Completed"
+            titleIcon = "calendar.badge.checkmark"
+            sections = TasksUtils.buildCompletedSections(tasks: sortedTasks)
         case .inbox:
             selectionLabel = "Inbox"
             titleIcon = "tray"
@@ -234,7 +238,7 @@ extension TasksViewModel {
         case .project(let id):
             listId = id
             listName = projects.first(where: { $0.id == id })?.title
-        case .today, .upcoming, .inbox, .search:
+        case .today, .upcoming, .inbox, .search, .completed:
             if let home = groups.first(where: { $0.title.lowercased() == "home" }) {
                 listId = home.id
                 listName = home.title

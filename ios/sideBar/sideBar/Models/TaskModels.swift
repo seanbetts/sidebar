@@ -112,6 +112,7 @@ public struct TaskCounts: Codable, Equatable {
     public let inbox: Int
     public let today: Int
     public let upcoming: Int
+    public let completed: Int
 }
 
 public struct TaskCountBucket: Codable, Equatable {
@@ -147,6 +148,7 @@ public enum TaskSelection: Equatable, Hashable {
     case inbox
     case today
     case upcoming
+    case completed
     case group(id: String)
     case project(id: String)
     case search(query: String)
@@ -159,6 +161,8 @@ public enum TaskSelection: Equatable, Hashable {
             return "today"
         case .upcoming:
             return "upcoming"
+        case .completed:
+            return "completed"
         case .group:
             return "group"
         case .project:
@@ -176,6 +180,8 @@ public enum TaskSelection: Equatable, Hashable {
             return "today"
         case .upcoming:
             return "upcoming"
+        case .completed:
+            return "completed"
         case .group(let id):
             return "group:\(id)"
         case .project(let id):

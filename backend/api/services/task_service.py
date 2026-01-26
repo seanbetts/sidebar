@@ -29,6 +29,7 @@ class TaskCounts:
     inbox: int
     today: int
     upcoming: int
+    completed: int
     project_counts: list[tuple[str, int]]
     group_counts: list[tuple[str, int]]
 
@@ -347,6 +348,16 @@ class TaskService:
             Task.status.notin_(["completed", "trashed"]),
         )
 
+        if scope == "completed":
+            query = TaskService._task_query_with_relations(db).filter(
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None),
+                Task.status == "completed",
+            )
+            tasks = query.order_by(Task.completed_at.desc()).all()
+            projects = TaskService.list_task_projects(db, user_id)
+            groups = TaskService.list_task_groups(db, user_id)
+            return tasks, projects, groups
         if scope == "today":
             query = base_query.filter(
                 Task.status != "someday",
@@ -472,6 +483,16 @@ class TaskService:
             .scalar()
             or 0
         )
+        completed_count = (
+            db.query(func.count())
+            .filter(
+                Task.user_id == user_id,
+                Task.deleted_at.is_(None),
+                Task.status == "completed",
+            )
+            .scalar()
+            or 0
+        )
 
         project_counts = (
             db.query(Task.project_id, func.count(Task.id))
@@ -502,6 +523,7 @@ class TaskService:
             inbox=inbox_count,
             today=today_count,
             upcoming=upcoming_count,
+            completed=completed_count,
             project_counts=[(str(pid), count) for pid, count in project_counts],
             group_counts=[(str(gid), count) for gid, count in group_counts],
         )

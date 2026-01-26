@@ -134,7 +134,7 @@ public enum TasksUtils {
             return projectTitle.isEmpty ? selectionLabel : projectTitle
         case .group:
             return !projectTitle.isEmpty ? projectTitle : groupTitle
-        case .today, .upcoming, .search:
+        case .today, .upcoming, .search, .completed:
             return !projectTitle.isEmpty ? projectTitle : groupTitle
         case .inbox:
             if let deadline = task.deadline {
@@ -287,6 +287,37 @@ public enum TasksUtils {
 
         let monthSections = monthly.values.sorted { $0.date < $1.date }
         sections.append(contentsOf: monthSections.map { $0.section })
+
+        return sections
+    }
+
+    public static func buildCompletedSections(tasks: [TaskItem]) -> [TaskSection] {
+        let today = startOfDay(Date())
+        var daily: [String: TaskSection] = [:]
+
+        let datedTasks = tasks.filter { $0.deadline != nil }
+        let undated = tasks.filter { $0.deadline == nil }
+        let sorted = datedTasks.sorted { compareByDueThenTitle($0, $1) }
+
+        for task in sorted {
+            guard let date = parseTaskDate(task) else { continue }
+            let diff = dayDiff(from: today, to: date)
+            let key = formatDateKey(date)
+            let label = formatDayLabel(date: date, dayDiff: diff)
+            var section = daily[key] ?? TaskSection(id: key, title: label, tasks: [])
+            section.tasks.append(task)
+            daily[key] = section
+        }
+
+        var sections: [TaskSection] = []
+        for key in daily.keys.sorted() {
+            if let section = daily[key], !section.tasks.isEmpty {
+                sections.append(section)
+            }
+        }
+        if !undated.isEmpty {
+            sections.append(TaskSection(id: "undated", title: "No due date", tasks: undated))
+        }
 
         return sections
     }

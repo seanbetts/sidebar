@@ -115,7 +115,7 @@ public final class TasksStore: ObservableObject {
             return try await api.groupTasks(groupId: id)
         case .project(let id):
             return try await api.projectTasks(projectId: id)
-        case .inbox, .today, .upcoming:
+        case .inbox, .today, .upcoming, .completed:
             guard let scope = selection.scope else {
                 throw APIClientError.invalidUrl
             }
