@@ -1,6 +1,14 @@
 import Foundation
 import SwiftUI
 
+@available(iOS 26.0, macOS 26.0, *)
+private func displayText(for text: AttributedString, isEditable: Bool) -> NSAttributedString {
+    if isEditable {
+        return NSAttributedString(text)
+    }
+    return CodeBlockAttachmentBuilder.displayText(from: text)
+}
+
 #if os(iOS)
 @available(iOS 26.0, macOS 26.0, *)
 struct NativeMarkdownTextView: UIViewRepresentable {
@@ -22,7 +30,7 @@ struct NativeMarkdownTextView: UIViewRepresentable {
         textView.backgroundColor = .clear
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
-        textView.attributedText = NSAttributedString(text)
+        textView.attributedText = displayText(for: text, isEditable: isEditable)
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
         tap.cancelsTouchesInView = false
         textView.addGestureRecognizer(tap)
@@ -37,7 +45,7 @@ struct NativeMarkdownTextView: UIViewRepresentable {
         textView.isSelectable = isSelectable
         textView.isScrollEnabled = isScrollEnabled
         context.coordinator.tapRecognizer?.isEnabled = onTap != nil
-        let nsText = NSAttributedString(text)
+        let nsText = displayText(for: text, isEditable: isEditable)
         if !textView.attributedText.isEqual(to: nsText) {
             textView.attributedText = nsText
             textView.setNeedsDisplay()
@@ -496,7 +504,7 @@ struct NativeMarkdownTextView: NSViewRepresentable {
         textView.drawsBackground = false
         textView.textContainerInset = .zero
         textView.textContainer?.lineFragmentPadding = 0
-        textView.textStorage?.setAttributedString(NSAttributedString(text))
+        textView.textStorage?.setAttributedString(displayText(for: text, isEditable: isEditable))
         let tap = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
         tap.cancelsTouchesInView = false
         textView.addGestureRecognizer(tap)
@@ -518,7 +526,7 @@ struct NativeMarkdownTextView: NSViewRepresentable {
         textView.isSelectable = isSelectable
         scrollView.hasVerticalScroller = isScrollEnabled
         context.coordinator.tapRecognizer?.isEnabled = onTap != nil
-        let nsText = NSAttributedString(text)
+        let nsText = displayText(for: text, isEditable: isEditable)
         if !(textView.attributedString().isEqual(to: nsText)) {
             textView.textStorage?.setAttributedString(nsText)
             textView.needsDisplay = true
