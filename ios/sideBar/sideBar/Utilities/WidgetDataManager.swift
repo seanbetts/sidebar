@@ -68,23 +68,12 @@ public final class WidgetDataManager {
     // MARK: - App Group Access
 
     private var userDefaults: UserDefaults? {
-        guard let suiteName = appGroupId else { return nil }
-        return UserDefaults(suiteName: suiteName)
+        UserDefaults(suiteName: appGroupId)
     }
 
-    private var appGroupId: String? {
-        // Try configured value first
-        if let configured = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_ID") as? String,
-           !configured.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-           !configured.contains("$(") {
-            return configured
-        }
-        // Fall back to derived value
-        guard let bundleId = Bundle.main.bundleIdentifier else { return nil }
-        let normalized = bundleId
-            .replacingOccurrences(of: ".ShareExtension", with: "")
-            .replacingOccurrences(of: ".sideBarWidgets", with: "")
-        return "group.\(normalized)"
+    private var appGroupId: String {
+        // Hardcoded to ensure consistency between main app and widget
+        "group.ai.sidebar.sidebar"
     }
 
     // MARK: - Today Tasks
@@ -117,10 +106,35 @@ public final class WidgetDataManager {
 
     /// Called by main app when auth state changes
     public func updateAuthState(isAuthenticated: Bool) {
-        guard let defaults = userDefaults else { return }
+        guard let defaults = userDefaults else {
+            print("[WidgetDataManager] Failed to get UserDefaults for app group: \(appGroupId)")
+            return
+        }
         defaults.set(isAuthenticated, forKey: isAuthenticatedKey)
         defaults.synchronize()
+
+        // Also write to shared file as backup
+        writeToSharedFile(isAuthenticated: isAuthenticated)
+
+        // Read back to verify
+        let readBack = defaults.bool(forKey: isAuthenticatedKey)
+        print("[WidgetDataManager] Updated auth state: \(isAuthenticated), read back: \(readBack), appGroup: \(appGroupId)")
         reloadWidgets()
+    }
+
+    private func writeToSharedFile(isAuthenticated: Bool) {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) else {
+            print("[WidgetDataManager] Failed to get container URL for: \(appGroupId)")
+            return
+        }
+        let fileURL = containerURL.appendingPathComponent("widget_auth.txt")
+        let content = isAuthenticated ? "true" : "false"
+        do {
+            try content.write(to: fileURL, atomically: true, encoding: .utf8)
+            print("[WidgetDataManager] Wrote to: \(containerURL.lastPathComponent)/widget_auth.txt")
+        } catch {
+            print("[WidgetDataManager] Write failed: \(error)")
+        }
     }
 
     /// Called by widgets to check auth state
