@@ -165,11 +165,12 @@ private final class MarkdownTextView: UITextView {
             let blockKind = blockKind(at: lineRange.location, in: textStorage)
             guard let marker = listMarker(for: string.substring(with: lineRange), blockKind: blockKind) else { continue }
             guard isPrefixHidden(in: lineRange, text: textStorage) else { continue }
-            let depth = max(1, listDepth(at: lineRange.location, in: textStorage) ?? 1)
             let rects = lineRects(for: lineRange, in: textContainer)
             guard let lineRect = rects.first else { continue }
             let adjusted = lineRect.offsetBy(dx: origin.x, dy: origin.y)
-            let markerX = adjusted.minX + markerWidth * CGFloat(depth - 1)
+            let glyphIndex = layoutManager.glyphIndexForCharacter(at: lineRange.location)
+            let glyphLocation = layoutManager.location(forGlyphAt: glyphIndex)
+            let markerX = origin.x + glyphLocation.x - markerWidth
             let markerRect = CGRect(x: markerX, y: adjusted.minY, width: markerWidth, height: adjusted.height)
 
             switch marker {
@@ -199,7 +200,7 @@ private final class MarkdownTextView: UITextView {
             case .task(let isChecked):
                 let name = isChecked ? "checkmark.square.fill" : "square"
                 if let image = UIImage(systemName: name)?.withTintColor(markerColor, renderingMode: .alwaysOriginal) {
-                    let size = CGSize(width: baseFontSize, height: baseFontSize)
+                    let size = CGSize(width: baseFontSize * 0.9, height: baseFontSize * 0.9)
                     let imageRect = CGRect(
                         x: markerRect.maxX - size.width - 2,
                         y: markerRect.midY - size.height / 2,
@@ -264,6 +265,7 @@ private final class MarkdownTextView: UITextView {
     }
 
     private func drawTableBackgrounds(lines: [LineData]) {
+        let tablePaddingX: CGFloat = 12
         for line in lines {
             guard let info = line.tableInfo, let rect = unionRect(line.rects) else { continue }
             let background: UIColor
@@ -274,13 +276,15 @@ private final class MarkdownTextView: UITextView {
             } else {
                 background = UIColor(DesignTokens.Colors.background)
             }
+            let paddedRect = rect.insetBy(dx: -tablePaddingX, dy: 0)
             background.setFill()
-            UIBezierPath(rect: rect).fill()
+            UIBezierPath(rect: paddedRect).fill()
         }
     }
 
     private func drawTableBorders(lines: [LineData]) {
         let strokeColor = UIColor(DesignTokens.Colors.border)
+        let tablePaddingX: CGFloat = 12
         var index = 0
         while index < lines.count {
             guard lines[index].tableInfo != nil else {
@@ -292,10 +296,11 @@ private final class MarkdownTextView: UITextView {
                 endIndex += 1
             }
             let rects = lines[index...endIndex].flatMap { $0.rects }
-            guard let tableRect = unionRect(rects) else {
+            guard let rawRect = unionRect(rects) else {
                 index = endIndex + 1
                 continue
             }
+            let tableRect = rawRect.insetBy(dx: -tablePaddingX, dy: 0)
             let borderPath = UIBezierPath(rect: tableRect)
             strokeColor.setStroke()
             borderPath.lineWidth = 1
@@ -643,11 +648,13 @@ private final class MarkdownTextView: NSTextView {
             let blockKind = blockKind(at: lineRange.location, in: textStorage)
             guard let marker = listMarker(for: string.substring(with: lineRange), blockKind: blockKind) else { continue }
             guard isPrefixHidden(in: lineRange, text: textStorage) else { continue }
-            let depth = max(1, listDepth(at: lineRange.location, in: textStorage) ?? 1)
             let rects = lineRects(for: lineRange, in: textContainer)
             guard let lineRect = rects.first else { continue }
             let adjusted = lineRect.offsetBy(dx: origin.x, dy: origin.y)
-            let markerX = adjusted.minX + markerWidth * CGFloat(depth - 1)
+            guard let layoutManager else { continue }
+            let glyphIndex = layoutManager.glyphIndexForCharacter(at: lineRange.location)
+            let glyphLocation = layoutManager.location(forGlyphAt: glyphIndex)
+            let markerX = origin.x + glyphLocation.x - markerWidth
             let markerRect = CGRect(x: markerX, y: adjusted.minY, width: markerWidth, height: adjusted.height)
 
             switch marker {
@@ -678,7 +685,7 @@ private final class MarkdownTextView: NSTextView {
                 let name = isChecked ? "checkmark.square.fill" : "square"
                 if let image = NSImage(systemSymbolName: name, accessibilityDescription: nil) {
                     image.isTemplate = true
-                    let size = CGSize(width: baseFontSize, height: baseFontSize)
+                    let size = CGSize(width: baseFontSize * 0.9, height: baseFontSize * 0.9)
                     let imageRect = CGRect(
                         x: markerRect.maxX - size.width - 2,
                         y: markerRect.midY - size.height / 2,
@@ -744,6 +751,7 @@ private final class MarkdownTextView: NSTextView {
     }
 
     private func drawTableBackgrounds(lines: [LineData]) {
+        let tablePaddingX: CGFloat = 12
         for line in lines {
             guard let info = line.tableInfo, let rect = unionRect(line.rects) else { continue }
             let background: NSColor
@@ -754,13 +762,15 @@ private final class MarkdownTextView: NSTextView {
             } else {
                 background = NSColor(DesignTokens.Colors.background)
             }
+            let paddedRect = rect.insetBy(dx: -tablePaddingX, dy: 0)
             background.setFill()
-            NSBezierPath(rect: rect).fill()
+            NSBezierPath(rect: paddedRect).fill()
         }
     }
 
     private func drawTableBorders(lines: [LineData]) {
         let strokeColor = NSColor(DesignTokens.Colors.border)
+        let tablePaddingX: CGFloat = 12
         var index = 0
         while index < lines.count {
             guard lines[index].tableInfo != nil else {
@@ -772,10 +782,11 @@ private final class MarkdownTextView: NSTextView {
                 endIndex += 1
             }
             let rects = lines[index...endIndex].flatMap { $0.rects }
-            guard let tableRect = unionRect(rects) else {
+            guard let rawRect = unionRect(rects) else {
                 index = endIndex + 1
                 continue
             }
+            let tableRect = rawRect.insetBy(dx: -tablePaddingX, dy: 0)
             let borderPath = NSBezierPath(rect: tableRect)
             strokeColor.setStroke()
             borderPath.lineWidth = 1
