@@ -62,6 +62,7 @@ struct TasksDetailView: View {
     @State var repeatStartDate: Date = Date()
     @State var deleteTask: TaskItem?
     @State var activeTaskId: String?
+    @State private var expandedTaskIds: Set<String> = []
 
     var body: some View {
         let state = viewModel.viewState
@@ -227,7 +228,7 @@ extension TasksDetailView {
             )
         } else {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     ForEach(state.sections) { section in
                         if !section.title.isEmpty {
                             if case .today = state.selection {
@@ -249,16 +250,26 @@ extension TasksDetailView {
                                 .padding(.horizontal, DesignTokens.Spacing.md)
                                 .padding(.vertical, DesignTokens.Spacing.xs)
                         } else {
-                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
                                 ForEach(section.tasks, id: \.id) { task in
+                                    let isExpandable = state.selection == .today
                                     TaskRow(
                                         task: task,
                                         dueLabel: TasksUtils.dueLabel(for: task),
                                         repeatLabel: formatRepeatLabel(TasksUtils.recurrenceLabel(for: task)),
                                         selection: state.selection,
+                                        isExpanded: isExpandable && expandedTaskIds.contains(task.id),
                                         onComplete: { Task { await viewModel.completeTask(task: task) } },
                                         onOpenNotes: { openNotes(task) },
                                         onSelect: { setActiveTask(task) },
+                                        onToggleExpanded: {
+                                            guard isExpandable, !task.isPreview else { return }
+                                            if expandedTaskIds.contains(task.id) {
+                                                expandedTaskIds.remove(task.id)
+                                            } else {
+                                                expandedTaskIds.insert(task.id)
+                                            }
+                                        },
                                         menuContent: {
                                         taskMenu(for: task, selection: state.selection)
                                     }
@@ -274,6 +285,10 @@ extension TasksDetailView {
                 .padding(.vertical, DesignTokens.Spacing.lg)
                 .frame(maxWidth: DesignTokens.Size.contentMaxWidth, alignment: .leading)
                 .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                expandedTaskIds.removeAll()
             }
         }
     }
