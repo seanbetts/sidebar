@@ -47,6 +47,7 @@ struct TaskRow<MenuContent: View>: View {
     let onToggleExpanded: () -> Void
     let onMove: () -> Void
     let onRepeat: () -> Void
+    let onDelete: () -> Void
     let menuContent: () -> MenuContent
     @State private var showRepeatInfo = false
     @State private var isCompleting = false
@@ -138,16 +139,28 @@ struct TaskRow<MenuContent: View>: View {
                         TaskPill(text: dueLabel)
                             .overlay(isExpanded ? pillBorder : nil)
                     }
-                    Menu {
-                        menuContent()
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.subheadline)
-                            .foregroundStyle(DesignTokens.Colors.textSecondary)
-                            .frame(width: 24, height: 24)
+                    if selection == .completed {
+                        Button(role: .destructive) {
+                            onDelete()
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.subheadline)
+                                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Menu {
+                            menuContent()
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.subheadline)
+                                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(task.isPreview)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(task.isPreview)
                 }
             }
             .padding(.top, DesignTokens.Spacing.xxs)
@@ -189,24 +202,26 @@ struct TaskRow<MenuContent: View>: View {
                         .overlay(pillBorder)
                 }
                 Spacer()
-                Button {
-                    onMove()
-                } label: {
-                    Image(systemName: "folder")
-                        .font(.caption)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        .padding(DesignTokens.Spacing.xxxs)
+                if selection != .completed {
+                    Button {
+                        onMove()
+                    } label: {
+                        Image(systemName: "folder")
+                            .font(.caption)
+                            .foregroundStyle(DesignTokens.Colors.textSecondary)
+                            .padding(DesignTokens.Spacing.xxxs)
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        onRepeat()
+                    } label: {
+                        Image(systemName: "repeat")
+                            .font(.caption)
+                            .foregroundStyle(DesignTokens.Colors.textSecondary)
+                            .padding(DesignTokens.Spacing.xxxs)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                Button {
-                    onRepeat()
-                } label: {
-                    Image(systemName: "repeat")
-                        .font(.caption)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        .padding(DesignTokens.Spacing.xxxs)
-                }
-                .buttonStyle(.plain)
             }
         }
         .padding(.leading, DesignTokens.Spacing.sm + 22 + DesignTokens.Spacing.sm)

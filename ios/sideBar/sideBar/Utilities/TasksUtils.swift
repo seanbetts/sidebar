@@ -310,7 +310,14 @@ public enum TasksUtils {
         }
 
         var sections: [TaskSection] = []
-        for key in daily.keys.sorted() {
+        let sortedKeys = daily.keys.sorted { lhs, rhs in
+            guard let left = tasksDateFormatter.date(from: lhs),
+                  let right = tasksDateFormatter.date(from: rhs) else {
+                return lhs < rhs
+            }
+            return left > right
+        }
+        for key in sortedKeys {
             if let section = daily[key], !section.tasks.isEmpty {
                 sections.append(section)
             }
@@ -489,6 +496,7 @@ public enum TasksUtils {
     private static func formatDayLabel(date: Date, dayDiff: Int) -> String {
         if dayDiff == 0 { return "Today" }
         if dayDiff == 1 { return "Tomorrow" }
+        if dayDiff == -1 { return "Yesterday" }
         return date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
     }
 
