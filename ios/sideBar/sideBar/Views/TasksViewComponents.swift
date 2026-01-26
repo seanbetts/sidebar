@@ -51,6 +51,7 @@ struct TaskRow<MenuContent: View>: View {
     @State private var showRepeatInfo = false
     @State private var isCompleting = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -138,14 +139,19 @@ struct TaskRow<MenuContent: View>: View {
             .padding(.bottom, DesignTokens.Spacing.xxxs)
             .padding(.horizontal, DesignTokens.Spacing.sm)
 
-            expandedContent
+            if isExpanded {
+                expandedContent
+                    .transition(detailTransition)
+            }
         }
         .background(isExpanded ? DesignTokens.Colors.surface : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm))
         .contentShape(Rectangle())
         .onTapGesture {
             onSelect()
-            onToggleExpanded()
+            withAnimation(expandAnimation) {
+                onToggleExpanded()
+            }
         }
     }
 
@@ -192,9 +198,6 @@ struct TaskRow<MenuContent: View>: View {
         .padding(.trailing, DesignTokens.Spacing.sm)
         .padding(.top, 0)
         .padding(.bottom, DesignTokens.Spacing.md)
-        .frame(maxHeight: isExpanded ? .infinity : 0, alignment: .top)
-        .opacity(isExpanded ? 1 : 0)
-        .scaleEffect(y: isExpanded ? 1 : 0, anchor: .top)
         .clipped()
     }
 
@@ -207,6 +210,22 @@ struct TaskRow<MenuContent: View>: View {
         colorScheme == .dark
             ? DesignTokens.Colors.textSecondary.opacity(0.45)
             : DesignTokens.Colors.textSecondary.opacity(0.3)
+    }
+
+    private var detailTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .opacity.combined(with: .move(edge: .top))
+    }
+
+    private var expandAnimation: Animation {
+        if reduceMotion {
+            return .easeOut(duration: 0.15)
+        }
+        if #available(iOS 17.0, macOS 14.0, *) {
+            return .snappy(duration: 0.22, extraBounce: 0.0)
+        }
+        return .spring(response: 0.28, dampingFraction: 0.9, blendDuration: 0.1)
     }
 
     private var showsDuePill: Bool {

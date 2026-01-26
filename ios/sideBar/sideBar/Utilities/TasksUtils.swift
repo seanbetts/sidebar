@@ -45,6 +45,9 @@ public enum TasksUtils {
         if diff == 1 {
             return "Tomorrow"
         }
+        if diff == -1 {
+            return "Yesterday"
+        }
         if diff > 1 && diff <= 6 {
             return date.formatted(.dateTime.weekday(.abbreviated))
         }
