@@ -40,95 +40,153 @@ struct TaskRow<MenuContent: View>: View {
     let dueLabel: String?
     let repeatLabel: String?
     let selection: TaskSelection
+    let isExpanded: Bool
     let onComplete: () -> Void
     let onOpenNotes: () -> Void
     let onSelect: () -> Void
+    let onToggleExpanded: () -> Void
     let menuContent: () -> MenuContent
     @State private var showRepeatInfo = false
     @State private var isCompleting = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-            if task.isPreview {
-                Button {
-                    if repeatLabel != nil {
-                        showRepeatInfo = true
-                    }
-                } label: {
-                    Image(systemName: "repeat")
-                        .font(.caption)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        .frame(width: 20, height: 20)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Repeat details")
-                .alert("Repeats", isPresented: $showRepeatInfo) {
-                    Button("OK", role: .cancel) {}
-                } message: {
-                    Text(repeatLabel ?? "")
-                }
-            } else {
-                Button {
-                    guard !isCompleting else { return }
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        isCompleting = true
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        onComplete()
-                    }
-                } label: {
-                    Image(systemName: isCompleting ? "checkmark.circle.fill" : "circle")
-                        .font(.body)
-                        .foregroundStyle(isCompleting ? DesignTokens.Colors.success : DesignTokens.Colors.textSecondary)
-                        .frame(width: 20, height: 20)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                .buttonStyle(.plain)
-                .disabled(isCompleting)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(task.title)
-                        .font(.subheadline)
-                        .foregroundStyle(DesignTokens.Colors.textPrimary)
-                        .lineLimit(1)
-                    if let notes = task.notes, !notes.isEmpty {
-                        Button {
-                            onOpenNotes()
-                        } label: {
-                            Image(systemName: "text.document")
-                                .font(.caption)
-                                .foregroundStyle(DesignTokens.Colors.textSecondary)
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
+                if task.isPreview {
+                    Button {
+                        if repeatLabel != nil {
+                            showRepeatInfo = true
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Edit notes")
+                    } label: {
+                        Image(systemName: "repeat")
+                            .font(.caption)
+                            .foregroundStyle(DesignTokens.Colors.textSecondary)
+                            .frame(width: 20, height: 20)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Repeat details")
+                    .alert("Repeats", isPresented: $showRepeatInfo) {
+                        Button("OK", role: .cancel) {}
+                    } message: {
+                        Text(repeatLabel ?? "")
+                    }
+                } else {
+                    Button {
+                        guard !isCompleting else { return }
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            isCompleting = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            onComplete()
+                        }
+                    } label: {
+                        Image(systemName: isCompleting ? "checkmark.circle.fill" : "circle")
+                            .font(.body)
+                            .foregroundStyle(isCompleting ? DesignTokens.Colors.success : DesignTokens.Colors.textSecondary)
+                            .frame(width: 20, height: 20)
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isCompleting)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(task.title)
+                            .font(.subheadline)
+                            .foregroundStyle(DesignTokens.Colors.textPrimary)
+                            .lineLimit(1)
+                        if let notes = task.notes, !notes.isEmpty {
+                            Button {
+                                onOpenNotes()
+                            } label: {
+                                Image(systemName: "text.document")
+                                    .font(.caption)
+                                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Edit notes")
+                        }
                     }
                 }
+                Spacer()
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    if showsDuePill, let dueLabel {
+                        TaskPill(text: dueLabel)
+                            .overlay(isExpanded ? pillBorder : nil)
+                    }
+                    if TasksUtils.isOverdue(task) {
+                        TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
+                            .overlay(isExpanded ? pillBorder : nil)
+                    }
+                    Menu {
+                        menuContent()
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.subheadline)
+                            .foregroundStyle(DesignTokens.Colors.textSecondary)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(task.isPreview)
+                }
             }
-            Spacer()
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                if showsDuePill, let dueLabel {
+            .padding(.top, DesignTokens.Spacing.xxs)
+            .padding(.bottom, DesignTokens.Spacing.xxxs)
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+
+            expandedContent
+        }
+        .background(isExpanded ? DesignTokens.Colors.surface : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.sm))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect()
+            onToggleExpanded()
+        }
+    }
+
+    private var expandedContent: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxxs) {
+            Text(task.notes?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? task.notes ?? ""
+                : "No notes")
+                .font(.caption)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+                .lineLimit(4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, DesignTokens.Spacing.md)
+            HStack {
+                if let dueLabel {
                     TaskPill(text: dueLabel)
+                        .overlay(pillBorder)
+                } else {
+                    TaskPill(text: "No due date")
+                        .overlay(pillBorder)
                 }
-                if TasksUtils.isOverdue(task) {
-                    TaskPill(text: "Overdue", iconName: "exclamationmark.circle")
-                }
-                Menu {
-                    menuContent()
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.subheadline)
-                        .foregroundStyle(DesignTokens.Colors.textSecondary)
-                        .frame(width: 24, height: 24)
-                }
-                .buttonStyle(.plain)
-                .disabled(task.isPreview)
+                Spacer()
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.xxs)
-        .contentShape(Rectangle())
-        .onTapGesture { onSelect() }
+        .padding(.leading, DesignTokens.Spacing.sm + 22 + DesignTokens.Spacing.sm)
+        .padding(.trailing, DesignTokens.Spacing.sm)
+        .padding(.top, 0)
+        .padding(.bottom, DesignTokens.Spacing.xs)
+        .frame(maxHeight: isExpanded ? .infinity : 0, alignment: .top)
+        .opacity(isExpanded ? 1 : 0)
+        .scaleEffect(y: isExpanded ? 1 : 0, anchor: .top)
+        .clipped()
+    }
+
+    private var pillBorder: some View {
+        RoundedRectangle(cornerRadius: 999)
+            .stroke(pillBorderColor, lineWidth: 1)
+    }
+
+    private var pillBorderColor: Color {
+        colorScheme == .dark
+            ? DesignTokens.Colors.textSecondary.opacity(0.45)
+            : DesignTokens.Colors.textSecondary.opacity(0.3)
     }
 
     private var showsDuePill: Bool {
